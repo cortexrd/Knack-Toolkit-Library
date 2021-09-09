@@ -3095,7 +3095,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     submitBtn.append(label);
                                 else {
                                     //console.log(view.key, 'no submit button');
-                                    $(divTitle).css({ 'display': 'inline-flex' }).append(label);
+                                    $('#' + view.key + ' .view-header').append(label);
                                 }
                             } else {
                                 $('#' + view.key + ' .view-header').css({ 'display': 'inline-flex' }).append(label);
