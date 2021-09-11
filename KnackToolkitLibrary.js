@@ -2588,17 +2588,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         //TODO:  Add info logs here.
                         'Total localStorage usage = ' + lsItems + '\n'; 
 
-                    //debugWndText.textContent +=
-                    //    'CRITICAL: ' + ktl.storage.lsGetItem(ktl.const.LS_CRITICAL + Knack.getUserAttributes().id) + '\n' +
-                    //    'LOGIN: ' + ktl.storage.lsGetItem(ktl.const.LS_LOGIN + Knack.getUserAttributes().id) + '\n' +
-                    //    'ACT: ' + ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id) + '\n' +
-                    //    'NAV: ' + ktl.storage.lsGetItem(ktl.const.LS_NAVIGATION + Knack.getUserAttributes().id) + '\n' +
-                    //    'APP ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id) + '\n' +
-                    //    'SVR ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id) + '\n' +
-                    //    'WRN: ' + ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id) + '\n' +
-                    //    //TODO:  Add info logs here.
-                    //'localStorage length = ' + lsItems + '\n'; 
-
                     debugWndText.scrollTop = dbgWndScrollHeight - 14;
                     debugWndText.focus();
                 }
@@ -2628,7 +2617,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var applyUserPrefs = null; //Apply your own prefs.
 
         readUserPrefsFromLs();
-        var lastUserPrefsUpdate = Date.parse(userPrefs.dt.toString());
+        var lastUserPrefsUpdate = userPrefs.dt ? Date.parse(userPrefs.dt.toString()) : new Date();
 
         function readUserPrefsFromLs() {
             var lsPrefs = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
@@ -2688,7 +2677,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var lsPrefs = readUserPrefsFromLs();
                 //var userPrefs = lsPrefs ? JSON.parse(lsPrefs) : {};
                 var prefsBar = document.createElement('div');
-                document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .view-header').appendChild(prefsBar);
+                document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId).appendChild(prefsBar);
+                document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .columns').style.display = 'none';
 
                 //TODO: change this "add pref" mechanism to allow developer to add all the app-specific prefs that are desired,
                 //on top of default ones.  Use an object that describes each prefs and loop through each one with an iterator.
@@ -4388,15 +4378,22 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             create: function () {
-                if (!ktl.core.getCfg().enabled.iFrameWnd || !Knack.scenes._byId['iframewnd']) return;
+                if (!ktl.core.getCfg().enabled.iFrameWnd) return;
 
+                var URL = Knack.scenes._byId['iframewnd'] || Knack.scenes._byId['iframe-account-logs'];
+                //console.log('URL =', URL);//$$$
+                //console.log('URL slug =', URL.attributes.slug);//$$$
+                
+
+                //iframe-account-logs
                 //Create invisible iFrame logging object.
                 if (!iFrameWnd && $('.kn-login').length === 0
                     && !window.self.frameElement && Knack.getUserAttributes() != 'No user found') {
                     var index = window.location.href.indexOf('#');
                     iFrameWnd = document.createElement('iFrame');
                     iFrameWnd.setAttribute('id', 'iFrameWnd');
-                    iFrameWnd.src = window.location.href.slice(0, index + 1) + 'iframewnd';
+                    //iFrameWnd.src = window.location.href.slice(0, index + 1) + 'iframewnd';
+                    iFrameWnd.src = window.location.href.slice(0, index + 1) + URL.attributes.slug;
 
                     document.body.appendChild(iFrameWnd);
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
@@ -4412,6 +4409,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             showIFrame: function (show = false) {
+                //console.log('iFrameWnd =', iFrameWnd);//$$$
                 if (!iFrameWnd)
                     return;
 
@@ -4976,7 +4974,5 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     };
 }; //ktl end
 
-//'localStorage length = ' + localStorage.length + '\n'; 
-//if (view.title.includes('HIDDEN_TITLE'))
 
 
