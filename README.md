@@ -98,7 +98,7 @@
 
 [Setup 13](#setup)
 
-[CLS Mode -- Code in Local Server 14](#cls-mode---code-in-local-server)
+[CLS Mode - Code in Local Server 14](#cls-mode---code-in-local-server)
 
 [Pros 14](#pros-1)
 
