@@ -1,0 +1,1 @@
+pandoc "KTL - API Documentation.docx" -t markdown -o ..\README.md
