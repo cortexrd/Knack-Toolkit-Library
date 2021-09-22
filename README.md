@@ -98,7 +98,7 @@
 
 [Setup 13](#setup)
 
-[CLS Mode -- Code in Local Server 14](#cls-mode-code-in-local-server)
+[CLS Mode -- Code in Local Server 14](#cls-mode---code-in-local-server)
 
 [Pros 14](#pros-1)
 
@@ -855,7 +855,7 @@ pane itself.
 
 10) Check console logs to see if all is looking good.
 
-## CLS Mode -- Code in Local Server
+## CLS Mode - Code in Local Server
 
 This mode is for advanced users and provides much faster code-save-test
 cycles and is typically used for longer stretches of code development,
