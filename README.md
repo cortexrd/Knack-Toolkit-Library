@@ -958,15 +958,15 @@ maintain with a revision control tool like GIT.
 
 .code\\MyKnackApps\\App1\\App1.js
 
-\\App2\\App2.js
+.code\\MyKnackApps\\App2\\App2.js
 
-\\App3\\App3.js
+.code\\MyKnackApps\\App3\\App3.js
 
 .code\\Lib\\KTL\\KnackBootloader.js
 
-\\KnackToolkitLibrary.css
+.code\\Lib\\KTL\\KnackToolkitLibrary.css
 
-\\KTLSetupTemplate.js
+.code\\Lib\\KTL\\KTLSetupTemplate.js
 
 .code\\Lib\\SomeOtherCoolLib\\CoolCode.js
 
