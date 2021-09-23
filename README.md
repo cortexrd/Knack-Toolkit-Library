@@ -810,7 +810,7 @@ pane itself.
     will need that the file name matches your App name in order to
     recognize it.
 
-2)  Add code from file KnackBootloader.js.
+2)  Add code from file KTLBootloader.js.
 
 3)  Add code from file ktl.js.
 
@@ -921,7 +921,7 @@ terminal window. You should see the version number displayed.
 
     a.  Wipe all code
 
-    b.  Add the code from file KnackBootloader.js
+    b.  Add the code from file KTLBootloader.js
 
 5)  Copy the ktl.js and ktl.css files to the folder as per
     recommendation below (Lib\\KTL).
@@ -961,7 +961,7 @@ maintain with a revision control tool like GIT.
 
 .code\\MyKnackApps\\App3\\App3.js
 
-.code\\Lib\\KTL\\KnackBootloader.js
+.code\\Lib\\KTL\\KTLBootloader.js
 
 .code\\Lib\\KTL\\ktl.css
 
