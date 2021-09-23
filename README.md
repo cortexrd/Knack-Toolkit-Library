@@ -812,7 +812,7 @@ pane itself.
 
 2)  Add code from file KnackBootloader.js.
 
-3)  Add code from file KnackToolkitLibrary.js.
+3)  Add code from file ktl.js.
 
 4)  Add the code from file KTLSetupTemplate.js
 
@@ -845,8 +845,7 @@ pane itself.
         to ACB modes eventually. Keeping this file will save you from
         going through this merge procedure everytime.
 
-7)  In the CSS pane, add the CSS code from file KnackToolkitLibrary.css
-    to yours.
+7)  In the CSS pane, add the CSS code from file ktl.css to yours.
 
 8)  Copy all that CSS code to another file named **ACB\_*AppName*.css**
     and save it, for the same reasons as stated above for .js.
@@ -924,8 +923,8 @@ terminal window. You should see the version number displayed.
 
     b.  Add the code from file KnackBootloader.js
 
-5)  Copy the KnackToolkitLibrary.js and KnackToolkitLibrary.css files to
-    the folder as per recommendation below (Lib\\KTL).
+5)  Copy the ktl.js and ktl.css files to the folder as per
+    recommendation below (Lib\\KTL).
 
 6)  Back in *AppName*.js
 
@@ -964,7 +963,7 @@ maintain with a revision control tool like GIT.
 
 .code\\Lib\\KTL\\KnackBootloader.js
 
-.code\\Lib\\KTL\\KnackToolkitLibrary.css
+.code\\Lib\\KTL\\ktl.css
 
 .code\\Lib\\KTL\\KTLSetupTemplate.js
 
@@ -1003,7 +1002,7 @@ development copy of the app, using the fast CLS mode.
     that and save.
 
 4)  You probably want to migrate (and remove) any new KTL-related CSS
-    code to the KnackToolkitLibrary.css file.
+    code to the ktl.css file.
 
 5)  Run **node FileServe.js**
 
