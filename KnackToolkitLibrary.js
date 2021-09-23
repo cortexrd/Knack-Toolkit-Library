@@ -922,6 +922,50 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         })
 
+        document.addEventListener('click', function (e) {
+            //Work in progress:  When user clicks on a cell for inline editing, provide a mthod to change its style, to make it wider for example.
+            //console.log('e.target =', e.target);//$$$
+
+            var popover = e.target.closest('.kn-popover');
+            if (popover) {
+                console.log('popover =', popover);//$$$
+                console.log('e.target.parentElement =', e.target.parentElement);//$$$
+            }
+            return;
+
+            if (e.target.classList) {
+                console.log('e.target.classList =', e.target.classList);//$$$
+                var target = e.target;
+                if (e.target.classList.value.includes('col-'))
+                    target = e.target.parentElement;
+
+                //console.log('target =', target);//$$$
+                if (target.classList && target.classList.value.includes('cell-edit')) {
+                    var fieldId = target.attributes['data-field-key'].value;
+                    console.log('fieldId =', fieldId);//$$$
+                    if (true || fieldId === 'field_x') { //TODO provide an array of fields and their style to apply.
+                        ktl.core.waitSelector('#cell-editor ' + ' #' + fieldId)
+                            .then(function () {
+                                console.log('Found inline 1');//$$$
+                                ktl.fields.inlineEditChangeStyle();
+                            })
+                            .catch(() => {
+                                console.log('1 - Failed waiting for cell editor.');//$$$
+                            });
+
+                        ktl.core.waitSelector('#cell-editor ' + ' #kn-input-' + fieldId)
+                            .then(function () {
+                                console.log('Found inline 2');//$$$
+                                ktl.fields.inlineEditChangeStyle();
+                            })
+                            .catch(() => {
+                                console.log('2 - Failed waiting for cell editor.');//$$$
+                            });
+                    }
+                }
+            }
+        })
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
@@ -1046,7 +1090,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             //Barcode reader specific functions
-            addChar: function (char = '') { keyBuffer += char; },
+            addChar: function (char = '') {
+                if (!char) {
+                    ktl.log.clog('addChar - invalid', 'purple');
+                    return;
+                }
+
+                keyBuffer += char;
+            },
             clearBuffer: function () { keyBuffer = ''; },
             getBuffer: function () { return keyBuffer; },
             setUsingBarcode: function (using) { usingBarcodeReader = using; },
@@ -1162,6 +1213,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                         })
                 }
+            },
+
+            //TODO, detect inline edit cell and modify its style dyanmically.  Typical use: make them wider to see more context when typing.
+            inlineEditChangeStyle: function () {
+                setTimeout(function () {
+                    console.log('222');//$$$
+                    //$('.kn-form-col.is-constrained').css({ 'max-width': '100vw', 'width': '75vw' }); //Example here that enlarges width.
+                    $('.kn-form-col.column.is-constrained').css({ 'max-width': '100vw', 'width': '75vw' }); //Example here that enlarges width.
+                    var sel = document.querySelector('.kn-form-col.column.is-constrained');
+                    console.log('sel =', sel);//$$$
+                //kn-form-col column is-constrained
+                }, 500);
             },
         }
     })();
@@ -2598,7 +2661,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //User Preferences feature
     this.userPrefs = (function () {
-        var userPrefs = {
+        var userPrefsObj = {
             dt: new Date(1970, 0, 1),
             showViewId: false,
             showExtraDebugInfo: false,
@@ -2617,13 +2680,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var applyUserPrefs = null; //Apply your own prefs.
 
         readUserPrefsFromLs();
-        var lastUserPrefsUpdate = userPrefs.dt ? Date.parse(userPrefs.dt.toString()) : new Date();
-
+        console.log('userPrefsObj =', userPrefsObj);//$$$
+        var lastUserPrefsUpdate = Date.parse(userPrefsObj.dt ? userPrefsObj.dt.toString() : new Date(1970, 0, 1));
         function readUserPrefsFromLs() {
-            var lsPrefs = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
-            if (lsPrefs)
-                userPrefs = JSON.parse(lsPrefs);
-            return lsPrefs; //Return string version.
+            var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
+            if (lsPrefsStr) {
+                if (Object.keys(JSON.parse(lsPrefsStr)).length !== Object.keys(userPrefsObj).length) {
+                    var lsUserPrefsLen = Object.keys(JSON.parse(lsPrefsStr)).length;
+                    console.log('lsUserPrefsLen =', lsUserPrefsLen);//$$$
+                    var userPrefsObjLen = Object.keys(userPrefsObj).length;
+                    console.log('userPrefsObjLen =', userPrefsObjLen);//$$$
+
+                    //Could be a remnant from older version.  Scrap current prefs in ls and use new version with defaults.
+                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefsObj));
+                    ktl.log.clog('Init user prefs to defaults', 'orangered');
+                } else
+                    userPrefsObj = JSON.parse(lsPrefsStr);
+            }
+            return lsPrefsStr; //Return string version.
         }
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -2634,13 +2708,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (form) {
                     var updateDirection = '';
-                    var lsPrefs = readUserPrefsFromLs();
+                    var lsPrefsStr = readUserPrefsFromLs();
                     var knPrefsObj = data[fieldId] ? JSON.parse(data[fieldId]) : {};
 
-                    var lsDt = new Date();
+                    var lsDt = 0;
                     if (!$.isEmptyObject(knPrefsObj)) {
-                        var knDt = Date.parse(knPrefsObj.dt.toString());
-                        lsDt = Date.parse(userPrefs.dt.toString());
+                        var knDt = Date.parse(knPrefsObj.dt ? knPrefsObj.dt.toString() : null);
+                        console.log('knDt =', knDt);//$$$
+
+                        readUserPrefsFromLs();
+                        console.log('userPrefsObj.dt =', userPrefsObj.dt);//$$$
+                        lsDt = Date.parse(userPrefsObj.dt ? userPrefsObj.dt.toString() : null);
+                        console.log('lsDt =', lsDt);//$$$
 
                         if (!isNaN(knDt) && !isNaN(lsDt)) {
                             if (knDt < lsDt)
@@ -2650,11 +2729,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         }
                     }
 
-                    if (!updateDirection && lsPrefs && (lsPrefs !== data[fieldId]))
+                    if (!updateDirection && lsPrefsStr && (lsPrefsStr !== data[fieldId]))
                         updateDirection = 'up';
 
                     if (form && updateDirection === 'up') {
-                        form.value = lsPrefs;
+                        form.value = lsPrefsStr;
                         document.querySelector('#' + formId + ' .kn-button.is-primary').click();
                         ktl.log.clog('Uploading prefs to cloud', 'green');
                     } else if (updateDirection === 'down') {
@@ -2662,6 +2741,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(knPrefsObj));
                         ktl.userPrefs.applyUserPrefs();
                     } else if (lastUserPrefsUpdate !== lsDt) {
+                        console.log('lastUserPrefsUpdate =', lastUserPrefsUpdate);//$$$
+                        console.log('lsDt =', lsDt);//$$$
+
                         lastUserPrefsUpdate = lsDt;
                         ktl.wndMsg.send('userPrefsChangedMsg', 'req', window.self.frameElement.id, ktl.const.MSG_APP);
                         ktl.userPrefs.applyUserPrefs();
@@ -2674,7 +2756,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     return;
                 }
 
-                var lsPrefs = readUserPrefsFromLs();
+                var lsPrefsStr = readUserPrefsFromLs();
                 //var userPrefs = lsPrefs ? JSON.parse(lsPrefs) : {};
                 var prefsBar = document.createElement('div');
                 document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId).appendChild(prefsBar);
@@ -2684,41 +2766,41 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 //on top of default ones.  Use an object that describes each prefs and loop through each one with an iterator.
 
                 if (allow.showViewId) {
-                    var showViewIdCb = ktl.fields.addCheckbox(prefsBar, 'Show View ID', userPrefs.showViewId);
+                    var showViewIdCb = ktl.fields.addCheckbox(prefsBar, 'Show View ID', userPrefsObj.showViewId);
                     showViewIdCb.addEventListener('change', e => {
-                        userPrefs.showViewId = e.target.checked;
-                        userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefs));
+                        userPrefsObj.showViewId = e.target.checked;
+                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefsObj));
                         ktl.scenes.refreshScene();
                     });
                 }
 
                 if (allow.showIframe) {
-                    var showIframeWndCb = ktl.fields.addCheckbox(prefsBar, 'Show iFrameWnd', userPrefs.showIframeWnd);
+                    var showIframeWndCb = ktl.fields.addCheckbox(prefsBar, 'Show iFrameWnd', userPrefsObj.showIframeWnd);
                     showIframeWndCb.addEventListener('change', e => {
-                        userPrefs.showIframeWnd = e.target.checked;
-                        userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefs));
+                        userPrefsObj.showIframeWnd = e.target.checked;
+                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefsObj));
                         ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
                     });
                 }
 
                 if (allow.showDebugWnd) {
-                    var showDebugWndCb = ktl.fields.addCheckbox(prefsBar, 'Show DebugWnd', userPrefs.showDebugWnd);
+                    var showDebugWndCb = ktl.fields.addCheckbox(prefsBar, 'Show DebugWnd', userPrefsObj.showDebugWnd);
                     showDebugWndCb.addEventListener('change', e => {
-                        userPrefs.showDebugWnd = e.target.checked;
-                        userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefs));
+                        userPrefsObj.showDebugWnd = e.target.checked;
+                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefsObj));
                         ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
                     });
                 }
 
                 if (allow.showExtraDebugInfo) {
-                    var showExtraDebugCb = ktl.fields.addCheckbox(prefsBar, 'Show Extra Debug', userPrefs.showExtraDebugInfo);
+                    var showExtraDebugCb = ktl.fields.addCheckbox(prefsBar, 'Show Extra Debug', userPrefsObj.showExtraDebugInfo);
                     showExtraDebugCb.addEventListener('change', e => {
-                        userPrefs.showExtraDebugInfo = e.target.checked;
-                        userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefs));
+                        userPrefsObj.showExtraDebugInfo = e.target.checked;
+                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefsObj));
                     });
                 }
             }
@@ -2739,7 +2821,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             getUserPrefs: function () {
                 readUserPrefsFromLs();
-                return userPrefs;
+                return userPrefsObj;
             },
 
             applyUserPrefs: function () {
@@ -2937,7 +3019,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 } else {
                                                     if (retryCtr-- > 0) {
                                                         var responseTxt = JSON.stringify(response);
-                                                        ktl.clog('refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr, 'purple');
+                                                        ktl.log.clog('refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr, 'purple');
 
                                                         setTimeout(function () {
                                                             tryRefresh(retryCtr);
@@ -4381,11 +4463,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!ktl.core.getCfg().enabled.iFrameWnd) return;
 
                 var URL = Knack.scenes._byId['iframewnd'] || Knack.scenes._byId['iframe-account-logs'];
+                if (!URL) return;
                 //console.log('URL =', URL);//$$$
                 //console.log('URL slug =', URL.attributes.slug);//$$$
                 
-
-                //iframe-account-logs
                 //Create invisible iFrame logging object.
                 if (!iFrameWnd && $('.kn-login').length === 0
                     && !window.self.frameElement && Knack.getUserAttributes() != 'No user found') {
@@ -4503,6 +4584,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }, FIVE_MINUTES_DELAY);
             } else if (event.data.msgType === 'userPrefsChangedMsg') {
+                ktl.log.clog('userPrefsChangedMsg', 'purple');
                 ktl.userPrefs.applyUserPrefs();
             }
         })
@@ -4975,4 +5057,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 }; //ktl end
 
 
-
+//TODO:
+//console.log('000');//$$$
+//inlineEditChangeStyle: function () {
