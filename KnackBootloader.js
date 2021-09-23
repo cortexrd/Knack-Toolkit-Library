@@ -1,11 +1,12 @@
 //KTL Bootloader - BEGIN
 /**
- * Knack Bootloader
  * This offers you the option of loading all your libraries and your app code from separate files.
  * A big advantage of this is that you can work directly from your local hard drive
  * during the development phase, which speeds up significatly each
  * save/refresh iteration cycle.
  * To do so, you need ot install NodeJS as a file server on port 3000. * 
+ * 
+ * See documentation for more details.
  * */
 KnackInitAsync = function ($, callback) {
     window.$ = $;
@@ -17,13 +18,13 @@ KnackInitAsync = function ($, callback) {
 
     //ACB mode by default
     //Un-comment the three lines below to switch to CLS mode.
-    //ktlUrl = 'http://localhost:3000/Lib/KTL/KnackToolkitLibrary.js';
+    //ktlUrl = 'http://localhost:3000/Lib/KTL/ktl.js';
     //appUrl = 'http://localhost:3000/MyKnackApps/' + appName + '.js';
-    //LazyLoad.css(['http://localhost:3000/Lib/KTL/KnackToolkitLibrary.css'], function () { });
+    //LazyLoad.css(['http://localhost:3000/Lib/KTL/ktl.css'], function () { });
 
     //When we reach production, we'll be using Cortex R&D server to host library files
-    //ktlUrl = 'https://ctrnd.com/Lib/KTL/KnackToolkitLibrary.js';
-    //LazyLoad.css(['https://ctrnd.com/Lib/KTL/KnackToolkitLibrary.css'], function () { });
+    //ktlUrl = 'https://ctrnd.com/Lib/KTL/ktl.js';
+    //LazyLoad.css(['https://ctrnd.com/Lib/KTL/ktl.css'], function () { });
 
 
 
