@@ -31,7 +31,7 @@
 
 # Introduction
 
-Knack Toolkit Library
+**Knack Toolkit Library**
 
 v0.1.0 - pre-release
 
