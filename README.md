@@ -190,7 +190,7 @@ app-specific code, and does two things:
 
 ### External library loading
 
-First, I wish to say a big ***thank you*** to **[Soluntech]{.ul}** for
+First, I wish to say a big ***\"thank you\"*** to **Soluntech** for
 their gracious permission to use a portion of their code to manage the
 dynamic library loading. To be honest, I don\'t fully understand it, but
 it sure does a wonderful job, and allowed me to start the KTL project.
