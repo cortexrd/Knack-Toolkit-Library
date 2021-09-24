@@ -2712,7 +2712,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (data[fieldId] && (data[fieldId] !== lastUserPrefs)) {
                     ktl.log.clog('Prefs have changed!!!!', 'blue');
-                    console.log('data[fieldId] =', data[fieldId]);//$$$
+                    //console.log('data[fieldId] =', data[fieldId]);//$$$
 
                     lastUserPrefs = data[fieldId];
                     ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, data[fieldId]);
@@ -2772,6 +2772,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
                     });
                 }
+            }
+        })
+
+        $(document).on('knack-scene-render.any', function (event, scene) {
+            if (!lastUserPrefs) {
+                lastUserPrefs = readUserPrefsFromLs();
+                ktl.userPrefs.applyUserPrefs();
             }
         })
 
@@ -4289,7 +4296,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (window.self.frameElement && IFRAME_WND_ID === IFRAME_WND_ID) {
-                parent.postMessage({ msgType: 'iFrameWndReadyMsg', sw_version: SW_VERSION }, '*');
+                ktl.wndMsg.send('iFrameWndReadyMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, SW_VERSION);
 
                 startHighPriorityLogging();
                 startLowPriorityLogging();
@@ -4504,27 +4511,32 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             this.retryCnt = retryCnt;
         }
 
+        startMsgQueueProc();
+
         window.addEventListener('message', (event) => {
             var msgId = event.data.msgId; //Keep a copy for ack.
 
-            if (event.data.msgType === 'iFrameWndReadyMsg') {
-                startHeartbeat();
-                startMsgQueueProc();
+            if (event.data.msgSubType === 'req') {
+                //ktl.log.clog('REQ: ' + event.data.msgType + ', ' + event.data.msgId, 'purple');
 
-                if (event.data.sw_version !== SW_VERSION) {
-                    ktl.core.timedPopup('Updating app to new version, please wait...');
-                    ktl.core.waitAndReload(2000);
-                }
+                if (event.data.msgType === 'iFrameWndReadyMsg') {
+                    ktl.wndMsg.send('iFrameWndReadyMsg', 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
 
-                //Delete iFrameWnd and re-create periodically.  This is to check for a SW update.
-                setTimeout(function () {
-                    if (ktl.iFrameWnd.getiFrameWnd()) {
-                        ktl.iFrameWnd.delete();
-                        ktl.iFrameWnd.create();
+                    if (event.data.msgData !== SW_VERSION) {
+                        ktl.core.timedPopup('Updating app to new version, please wait...');
+                        ktl.core.waitAndReload(2000);
                     }
-                }, FIVE_MINUTES_DELAY);
-            } else if (event.data.msgType === 'heartbeatMsg') {
-                if (event.data.msgSubType === 'req') {
+
+                    startHeartbeat();
+
+                    //Delete iFrameWnd and re-create periodically.  This is to check for a SW update.
+                    setTimeout(function () {
+                        if (ktl.iFrameWnd.getiFrameWnd()) {
+                            ktl.iFrameWnd.delete();
+                            ktl.iFrameWnd.create();
+                        }
+                    }, FIVE_MINUTES_DELAY);
+                } else if (event.data.msgType === 'heartbeatMsg') {
                     var viewId = ktl.iFrameWnd.getCfg().hbViewId;
                     if (!viewId) {
                         ktl.log.clog('Found heartbeatMsg with empty viewId', 'purple');
@@ -4542,20 +4554,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     $(document).off('knack-form-submit.' + viewId); //Prevent multiple re-entry.
                     document.querySelector('#' + viewId + ' .kn-button.is-primary').click();
 
-
                     //Wait until Submit is completed and ack parent
                     $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
                         if (record[ktl.iFrameWnd.getCfg().acctLocHbFld] === ktl.core.getCurrentDateTime(true, false, false, false))
                             ktl.wndMsg.send('heartbeatMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
                     });
-                } else if (event.data.msgSubType === 'ack') {
-                    ktl.wndMsg.removeAllMsgOfType('heartbeatMsg');
-                    //console.log('ACK: event.data.msgId =', event.data.msgId);
-                }
-            } else if (event.data.msgType === 'userPrefsChangedMsg') {
-                if (event.data.msgSubType === 'req') {
-                    ktl.log.clog('REQ id = ' + event.data.msgId, 'purple');
-                    ktl.log.objSnapshot('msgQueue before at REQ = ', msgQueue);
+                } else if (event.data.msgType === 'userPrefsChangedMsg') {
+                    ktl.log.clog('REQ: ' + event.data.msgType + ', ' + event.data.msgId, 'purple');
 
                     if (window.self.frameElement && (IFRAME_WND_ID === event.data.dst)) { //App to iFrameWnd, when prefs changed locally by user.
                         //Upload new prefs so other opened browsers can see the changes.
@@ -4574,14 +4579,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.views.refreshView(ktl.iFrameWnd.getCfg().curUserPrefsViewId);
                         });
                     } else { //iFrameWnd to App, when prefs changed remotely, by user or Sysop.
-                        ktl.wndMsg.send('userPrefsChangedMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
+                        ktl.wndMsg.send('userPrefsChangedMsg', 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                         ktl.userPrefs.applyUserPrefs();
                     }
-                } else if (event.data.msgSubType === 'ack') {
-                    ktl.log.clog('ACK id = ' + event.data.msgId, 'green');
-                    ktl.log.objSnapshot('msgQueue before = ', msgQueue);
+                }
+            } else if (event.data.msgSubType === 'ack') {
+                //console.log('ACK: event.data.msgId =', event.data.msgId);
+
+                if (event.data.msgType === 'heartbeatMsg')
+                    ktl.wndMsg.removeAllMsgOfType('heartbeatMsg');
+                else {
+                    ktl.log.clog('ACK: ' + event.data.msgType + ', ' + event.data.msgId, 'green');
                     removeMsg(msgId);
-                    ktl.log.objSnapshot('msgQueue after = ', msgQueue);
                 }
             }
         })
@@ -4604,7 +4613,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             clearInterval(procMsgInterval);
             procMsgInterval = setInterval(function () {
                 for (var msgId in msgQueue) {
-                    ktl.log.objSnapshot('processMsgQueue - msgQueue[msgId] =', msgQueue[msgId]);
+                    //if (msgQueue[msgId].msgType !== 'heartbeatMsg')
+                    //    ktl.log.objSnapshot('processMsgQueue - msgQueue[msgId] =', msgQueue[msgId]);
+
                     var exp = Math.round((msgQueue[msgId].expiration - new Date().valueOf()) / 1000);
                     if (exp <= 0)
                         retryMsg(msgId);
@@ -4614,9 +4625,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         function retryMsg (msgId = '') {
             if (--msgQueue[msgId].retryCnt > 0) {
-                //ktl.log.clog('RETRY Sending msg:  ' + msgId + '    retryCnt: ' + msgQueue[msgId].retryCnt, 'purple');
+                ktl.log.clog('RETRY Sending msg:  ' + msgId + '    retryCnt: ' + msgQueue[msgId].retryCnt, 'purple');
                 msgQueue[msgId].expiration = new Date().valueOf() + MSG_EXP_DELAY;
-                ktl.iFrameWnd.getiFrameWnd().contentWindow.postMessage(msgQueue[msgId], '*');
+                //ktl.iFrameWnd.getiFrameWnd().contentWindow.postMessage(msgQueue[msgId], '*');
+                ktl.wndMsg.send(msgQueue[msgId].msgType, msgQueue[msgId].msgSubType, msgQueue[msgId].src, msgQueue[msgId].dst, msgId, msgQueue[msgId].msgData);
             } else {
                 ktl.log.clog('Msg Send MAX RETRIES Failed!!!', 'purple');
                 ktl.log.objSnapshot('msgQueue[msgId] =', msgQueue[msgId]);
