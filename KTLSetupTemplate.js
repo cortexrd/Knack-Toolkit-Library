@@ -286,8 +286,8 @@ var KnackApp = function ($, info = {}) {
         return allow;
     }
 
-    function processFailedMessages(msgType = '') {
-        msgType && console.log('Failed msgType =', msgType);
+    function processFailedMessages(msgType = 'unknown', msgId = 'unknown') {
+        console.log('Failed Message: msgType =', msgType, 'msgId =', msgId);
     }
 
     function updateWorkShiftItems(shiftLetter = '') {
