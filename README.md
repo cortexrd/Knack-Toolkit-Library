@@ -1,134 +1,39 @@
-# Knack Toolkit Library
-
-(v0.1.0 - pre-release)
-
-# Contents {#contents .TOC-Heading}
-
-[Knack Toolkit Library 1](#knack-toolkit-library)
-
-[Introduction 4](#introduction)
-
-[Features 4](#features)
-
-[Bootloader 4](#bootloader)
-
-[External library loading 4](#external-library-loading)
-
-[Developing code locally 5](#developing-code-locally)
-
-[Functions 5](#functions)
-
-[Core 5](#core)
-
-[Functions 5](#functions-1)
-
-[Storage 6](#storage)
-
-[Functions 6](#functions-2)
-
-[Scenes 6](#scenes)
-
-[Functions 6](#functions-3)
-
-[Views 7](#views)
-
-[Functions 7](#functions-4)
-
-[Fields 8](#fields)
-
-[Functions 8](#functions-5)
-
-[Bulk Operations 9](#bulk-operations)
-
-[Bulk Edit 9](#bulk-edit)
-
-[Bulk Delete 9](#bulk-delete)
-
-[Functions 9](#functions-6)
-
-[User Filters 10](#user-filters)
-
-[Functions 10](#functions-7)
-
-[Form Persistence 10](#form-persistence)
-
-[Functions 10](#functions-8)
-
-[Account 10](#account)
-
-[Functions 10](#functions-9)
-
-[User Preferences 10](#user-preferences)
-
-[Functions 10](#functions-10)
-
-[iFrame Window 10](#iframe-window)
-
-[Usage 11](#usage)
-
-[Functions 11](#functions-11)
-
-[Debug Window 11](#debug-window)
-
-[Functions 11](#functions-12)
-
-[Logging 11](#logging)
-
-[Functions 11](#functions-13)
-
-[Windows Messaging 12](#windows-messaging)
-
-[Functions 12](#functions-14)
-
-[System Info 12](#system-info)
-
-[Functions 12](#functions-15)
-
-[System Colors 12](#system-colors)
-
-[Functions 12](#functions-16)
-
-[How to use KTL 13](#how-to-use-ktl)
-
-[ACB Mode - All Code in Builder 13](#acb-mode---all-code-in-builder)
-
-[Pros 13](#pros)
-
-[Cons 13](#cons)
-
-[Setup 13](#setup)
-
-[CLS Mode - Code in Local Server 14](#cls-mode---code-in-local-server)
-
-[Pros 14](#pros-1)
-
-[Cons 14](#cons-1)
-
-[Setup 15](#setup-1)
-
-[Folder Structure 16](#folder-structure)
-
-[Switching Modes 16](#switching-modes)
-
-[From ACB to CLS 16](#from-acb-to-cls)
-
-[From CLS to ACB 16](#from-cls-to-acb)
-
-[Basic Features 17](#basic-features)
-
-[Advanced Features 17](#advanced-features)
-
-[Setup 18](#setup-2)
-
-[Invisible Menu 18](#invisible-menu)
-
-[iFrameWnd 18](#iframewnd)
-
-[Future Improvements 20](#future-improvements)
-
-[Conslusion 20](#conslusion)
+-   [Introduction](#introduction)
+-   [Features](#features)
+    -   [Bootloader](#bootloader)
+    -   [Core](#core)
+    -   [Storage](#storage)
+    -   [Scenes](#scenes)
+    -   [Views](#views)
+    -   [Fields](#fields)
+    -   [Bulk Operations](#bulk-operations)
+    -   [User Filters](#user-filters)
+    -   [Form Persistence](#form-persistence)
+    -   [Account](#account)
+    -   [User Preferences](#user-preferences)
+    -   [iFrame Window](#iframe-window)
+    -   [Debug Window](#debug-window)
+    -   [Logging](#logging)
+    -   [Windows Messaging](#windows-messaging)
+    -   [System Info](#system-info)
+    -   [System Colors](#system-colors)
+-   [How to use KTL](#how-to-use-ktl)
+    -   [ACB Mode - All Code in
+        Builder](#acb-mode---all-code-in-builder)
+    -   [CLS Mode - Code in Local
+        Server](#cls-mode---code-in-local-server)
+    -   [Switching Modes](#switching-modes)
+-   [Basic Features](#basic-features)
+-   [Advanced Features](#advanced-features)
+    -   [Setup](#setup-2)
+-   [Future Improvements](#future-improvements)
+-   [Conslusion](#conslusion)
 
 # Introduction
+
+Knack Toolkit Library
+
+v0.1.0 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
