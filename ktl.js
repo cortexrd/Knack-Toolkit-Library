@@ -2721,7 +2721,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     ktl.userPrefs.applyUserPrefs();
                 }
             } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) {
-                var allow = allowShowPrefs();
+                var allow = allowShowPrefs ? allowShowPrefs() : {};
                 if ($.isEmptyObject(allow)) {
                     ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
                     return;
@@ -2804,7 +2804,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
                 ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
                 ktl.scenes.refreshScene();
-                applyUserPrefs();
+                applyUserPrefs && applyUserPrefs();
             },
         }
     })(); //User Prefs
@@ -2935,7 +2935,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (view.title.includes('USER_FILTERS_CODE'))
                         ktl.userFilters.setCfg({ ufCodeViewId: view.key })
 
-                    processTitleFlags(view, data);
+                    processTitleFlags && processTitleFlags(view, data);
                 }
 
                 //Put back h2 opacity to normal (see CSS code).
@@ -2956,10 +2956,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var res = $('#' + viewId);
                         if (res.length > 0) { //One last check if view is in the current scene, since user can change page quickly.
                             var viewType = Knack.router.scene_view.model.views._byId[viewId];
+                            if (!viewType) {
+                                resolve();
+                                return;
+                            }
+
                             (function tryRefresh(retryCtr) {
                                 if (viewType && ['search', 'form', 'rich_text', 'menu' /*add more types here*/].includes(viewType.attributes.type)) {
                                     Knack.views[viewId].render();
-                                    Knack.views[viewId].postRender(); //This is needed for menus.
+                                    Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
                                 } else {
                                     Knack.views[viewId].model.fetch({
                                         success: function (model, response, options) {
@@ -3670,7 +3675,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 ktl.storage.lsSetItem(LS_SW_VERSION, SW_VERSION);
             }
 
-            onSceneRender(event, scene);
+            onSceneRender && onSceneRender(event, scene);
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -3705,7 +3710,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     return;
 
                 if (!document.querySelector('#cell-editor')) //If inline editing uses chznBetter, keep focus here after a succesful search.
-                    autoFocus();
+                    autoFocus && autoFocus();
             },
 
             refreshScene: function () {
@@ -3888,7 +3893,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     ktl.core.timedPopup('Please wait... ' + (spinnerCtr + 1).toString() + ' seconds', 'success', 1100); //Allow a 100ms overlap to prevent blinking.
                             } else {
                                 ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1010 - Spinner Watchdog Timeout in ' + Knack.router.current_scene_key); //@@@ Replace by a weekly counter.
-                                spinnerWatchDogTimeout(); //Callback to your App for proper handling.
+                                spinnerWatchDogTimeout && spinnerWatchDogTimeout(); //Callback to your App for proper handling.
                             }
                         } else {
                             spinnerCtr = spinnerCtrReload;
@@ -3941,7 +3946,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 idleTimer = setTimeout(function () {
                     if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId)
-                        idleWatchDogTimout();
+                        idleWatchDogTimout && idleWatchDogTimout();
                 }, ktl.scenes.getCfg().idleWatchDogDelay);
             },
 
