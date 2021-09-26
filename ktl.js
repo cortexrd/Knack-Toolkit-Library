@@ -2690,15 +2690,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         function readUserPrefsFromLs() {
             var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
             if (lsPrefsStr) {
-                if (Object.keys(JSON.parse(lsPrefsStr)).length !== Object.keys(userPrefsObj).length) {
-                    var lsUserPrefsLen = Object.keys(JSON.parse(lsPrefsStr)).length;
-                    console.log('lsUserPrefsLen =', lsUserPrefsLen);//$$$
-                    var userPrefsObjLen = Object.keys(userPrefsObj).length;
-                    console.log('userPrefsObjLen =', userPrefsObjLen);//$$$
+                if (Object.keys(JSON.parse(lsPrefsStr)).length < Object.keys(userPrefsObj).length) {
+                //    var lsUserPrefsLen = Object.keys(JSON.parse(lsPrefsStr)).length;
+                //    console.log('lsUserPrefsLen =', lsUserPrefsLen);//$$$
+                //    var userPrefsObjLen = Object.keys(userPrefsObj).length;
+                //    console.log('userPrefsObjLen =', userPrefsObjLen);//$$$
 
-                    //Could be a remnant from older version.  Scrap current prefs in ls and use new version with defaults.
-                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefsObj));
-                    ktl.log.clog('Init user prefs to defaults', 'orangered'); //TODO: find a way to copy existing user prefs to new object.
+                //    //Could be a remnant from older version.  Scrap current prefs in ls and use new version with defaults.
+                //    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefsObj));
+                //    ktl.log.clog('Init user prefs to defaults', 'orangered'); //TODO: find a way to copy existing user prefs to new object.
                 } else
                     userPrefsObj = JSON.parse(lsPrefsStr);
             }
@@ -2707,20 +2707,38 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId) {
+            if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId /*USER_PREFS_CUR - read-only autorefresh view*/) {
                 var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
 
-                if (data[fieldId] && (data[fieldId] !== lastUserPrefs)) {
-                    ktl.log.clog('Prefs have changed!!!!', 'blue');
-                    //console.log('data[fieldId] =', data[fieldId]);//$$$
+                if (data[fieldId].includes('Refresh')) {
+                    var prefsTmpObj = JSON.parse(data[fieldId]);
+                    delete prefsTmpObj['Refresh'];
+                    var txtToSubmit = JSON.stringify(prefsTmpObj);
+                    console.log('txtToSubmit =', txtToSubmit);//$$$
 
-                    lastUserPrefs = data[fieldId];
-                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, data[fieldId]);
-                    ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                    ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, fieldId, txtToSubmit)
+                        .then(success => {
+                            ktl.log.clog('SUCCESS', 'green');
+                            console.log('success =', success);//$$$
+                            ktl.core.waitAndReload(2000);
+                        })
+                        .catch(failure => {
+                            ktl.log.clog('FAILURE', 'red');
+                            console.log('failure =', failure);//$$$
+                        })
+                } else {
+                    if (data[fieldId] && (data[fieldId] !== lastUserPrefs)) {
+                        ktl.log.clog('Prefs have changed!!!!', 'blue');
 
-                    ktl.userPrefs.applyUserPrefs();
+                        lastUserPrefs = data[fieldId];
+
+                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, data[fieldId]);
+                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+
+                        ktl.userPrefs.applyUserPrefs();
+                    }
                 }
-            } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) {
+            } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId /*USER_PREFS_SET - form to update prefs*/) {
                 var allow = allowShowPrefs ? allowShowPrefs() : {};
                 if ($.isEmptyObject(allow)) {
                     ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
@@ -2955,69 +2973,81 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (viewId) {
                         var res = $('#' + viewId);
                         if (res.length > 0) { //One last check if view is in the current scene, since user can change page quickly.
-                            var viewType = Knack.router.scene_view.model.views._byId[viewId];
-                            if (!viewType) {
+                            var view = Knack.router.scene_view.model.views._byId[viewId];
+                            if (!view || !view.attributes) {
                                 resolve();
                                 return;
                             }
 
+                            var viewType = view.attributes.type;
+                            var formAction = view.attributes.action;
+                            var useFetch = (formAction === 'insert') ? false : true;
+
+                            if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo) {
+                                ktl.log.clog('refreshView: ' + viewId, 'purple');
+                                console.log('viewType:', viewType, '  formAction:', formAction, '  useFetch:', useFetch);
+                            }
+
                             (function tryRefresh(retryCtr) {
-                                if (viewType && ['search', 'form', 'rich_text', 'menu' /*add more types here*/].includes(viewType.attributes.type)) {
+                                if (view && ['search', 'rich_text', 'menu' /*add more types here*/].includes(viewType)) {
                                     Knack.views[viewId].render();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
                                 } else {
-                                    Knack.views[viewId].model.fetch({
-                                        success: function (model, response, options) {
-                                            //if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo)
-                                            //    console.log('Refreshing table view: ' + viewId);
+                                    if (useFetch) {
+                                        Knack.views[viewId].model.fetch({
+                                            success: function (model, response, options) {
+                                                if (['details', 'form'].includes(viewType))
+                                                    Knack.views[viewId].render();
 
-                                            if (viewType && viewType.attributes.type === 'details')
-                                                Knack.views[viewId].render();
+                                                resolve(model);
+                                                return;
+                                            },
+                                            error: function (model, response, options) {
+                                                response.caller = 'refreshView';
+                                                response.viewId = viewId;
 
-                                            resolve(model);
-                                            return;
-                                        },
-                                        error: function (model, response, options) {
-                                            response.caller = 'refreshView';
-                                            response.viewId = viewId;
-
-                                            //Process critical failures by forcing a logout or hard reset.
-                                            if (response.status === 401 || response.status === 403 || response.status === 500) {
-                                                if (Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
-                                                    parent.postMessage({ msgType: 'forceReload', response: response }, '*');
-                                                else {
-                                                    if (response.status === 500)
-                                                        location.reload(true);
+                                                //Process critical failures by forcing a logout or hard reset.
+                                                if (response.status === 401 || response.status === 403 || response.status === 500) {
+                                                    if (Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+                                                        parent.postMessage({ msgType: 'forceReload', response: response }, '*');
                                                     else {
-                                                        ktl.log.addLog(LS_APP_ERROR, 'KEC_1007 - Forcing logout');
-                                                        $('.kn-log-out').trigger('click'); //Token has expired, force logout.
-                                                    }
-                                                }
-                                            } else {
-                                                if (Knack.router.scene_view.model.views._byId[viewId].attributes.title.includes('AUTOREFRESH')) {
-                                                    resolve(); //Just ignore, we'll try again shortly anyways.
-                                                    return;
-                                                } else {
-                                                    if (retryCtr-- > 0) {
-                                                        var responseTxt = JSON.stringify(response);
-                                                        ktl.log.clog('refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr, 'purple');
-
-                                                        setTimeout(function () {
-                                                            tryRefresh(retryCtr);
-                                                        }, 1000);
-                                                    } else {
-                                                        if (response.status === 0 && Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
-                                                            parent.postMessage({ msgType: 'forceReload', response: response }, '*');
+                                                        if (response.status === 500)
+                                                            location.reload(true);
                                                         else {
-                                                            ktl.log.addLog(LS_SERVER_ERROR, 'KEC_1008 - refreshView failure in ' + viewId + ', status: ' + response.status + ', statusText: ' + response.statusText);
-                                                            resolve(model);
-                                                            return;
+                                                            ktl.log.addLog(LS_APP_ERROR, 'KEC_1007 - Forcing logout');
+                                                            $('.kn-log-out').trigger('click'); //Token has expired, force logout.
+                                                        }
+                                                    }
+                                                } else {
+                                                    if (Knack.router.scene_view.model.views._byId[viewId].attributes.title.includes('AUTOREFRESH')) {
+                                                        resolve(); //Just ignore, we'll try again shortly anyways.
+                                                        return;
+                                                    } else {
+                                                        if (retryCtr-- > 0) {
+                                                            var responseTxt = JSON.stringify(response);
+                                                            ktl.log.clog('refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr, 'purple');
+
+                                                            setTimeout(function () {
+                                                                tryRefresh(retryCtr);
+                                                            }, 1000);
+                                                        } else {
+                                                            if (response.status === 0 && Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+                                                                parent.postMessage({ msgType: 'forceReload', response: response }, '*');
+                                                            else {
+                                                                ktl.log.addLog(ktl.const.LS_SERVER_ERROR, 'KEC_1008 - refreshView failure in ' + viewId + ', status: ' + response.status + ', statusText: ' + response.statusText);
+                                                                resolve(model);
+                                                                return;
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
-                                        }
-                                    });
+                                        });
+                                    } else {
+                                        Knack.views[viewId].render();
+                                        resolve();
+                                        return;
+                                    }
                                 }
                             })(10); //Retries
                         }
@@ -3620,6 +3650,41 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         }
                     }
                 }
+            },
+
+            submitAndWait: function (viewId = '', fieldId = '', textToSubmit = '') { //TODO: support multi fields and add error handling.
+                return new Promise(function (resolve, reject) {
+                    if (viewId === '' || fieldId === '') return;
+
+                    console.log('submitAndWait');//$$$
+                    console.log('viewId =', viewId);//$$$
+                    console.log('fieldId =', fieldId);//$$$
+                    console.log('textToSubmit =', textToSubmit);//$$$
+
+                    document.querySelector('#' + viewId + ' #' + fieldId).value = textToSubmit;
+                    document.querySelector('#' + viewId + ' .kn-button.is-primary').click();
+
+                    var success, failure = null;
+                    var intervalId = setInterval(function () {
+                        success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
+                        failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
+
+                        if (success || failure) {
+                            console.log('success =', success);
+                            console.log('failure =', failure);
+
+                            clearInterval(intervalId);
+                            success && resolve(success);
+                            failure && reject(failure);
+                            return;
+                        }
+                    }, 200);
+
+                    setTimeout(function () { //Failsafe
+                        clearInterval(intervalId);
+                        reject('submitAndWait timeout error');
+                    }, 5000);
+                })
             },
         }
     })();
@@ -4445,8 +4510,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var URL = Knack.scenes._byId[IFRAME_WND_ID] || Knack.scenes._byId['iframe-account-logs'];
                 if (!URL) return;
-                //console.log('URL =', URL);//$$$
-                //console.log('URL slug =', URL.attributes.slug);//$$$
+                //console.log('URL =', URL);
+                //console.log('URL slug =', URL.attributes.slug);
                 
                 //Create invisible iFrame logging object.
                 if (!iFrameWnd && $('.kn-login').length === 0
@@ -4471,7 +4536,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             showIFrame: function (show = false) {
-                //console.log('iFrameWnd =', iFrameWnd);//$$$
+                //console.log('iFrameWnd =', iFrameWnd);
                 if (!iFrameWnd)
                     return;
 
@@ -4538,6 +4603,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                         //Delete iFrameWnd and re-create periodically.  This is to check for a SW update.
                         setTimeout(function () {
+                            ktl.core.timedPopup('Reloading frame');
+                            ktl.log.clog('Reloading frame', 'purple');
                             if (ktl.iFrameWnd.getiFrameWnd()) {
                                 ktl.iFrameWnd.delete();
                                 ktl.iFrameWnd.create();
@@ -5087,3 +5154,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //inlineEditChangeStyle: function () {
 //TODO: find a way to copy existing user prefs to new object.
 //Check all ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS
+//var msgId = event.data.msgId; //Keep a copy for ack.
