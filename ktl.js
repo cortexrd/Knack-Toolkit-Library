@@ -2710,22 +2710,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId /*USER_PREFS_CUR - read-only autorefresh view*/) {
                 var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
 
+                //Add iFrameRefresh=true to user prefs and this will force a iFrameWnd refresh.
+                //Can be useful sometimes to trigger on/off views via Page Rules.
                 if (data[fieldId].includes('iFrameRefresh')) {
                     var prefsTmpObj = JSON.parse(data[fieldId]);
                     delete prefsTmpObj['iFrameRefresh'];
-                    var txtToSubmit = JSON.stringify(prefsTmpObj);
-                    console.log('txtToSubmit =', txtToSubmit);//$$$
-
-                    ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, fieldId, txtToSubmit)
-                        .then(success => {
-                            ktl.log.clog('SUCCESS', 'green');
-                            console.log('success =', success);//$$$
-                            ktl.core.waitAndReload(2000);
-                        })
-                        .catch(failure => {
-                            ktl.log.clog('FAILURE', 'red');
-                            console.log('failure =', failure);//$$$
-                        })
+                    var updatedPrefs = JSON.stringify(prefsTmpObj);
+                    ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, fieldId, updatedPrefs)
+                        .then(success => { ktl.core.waitAndReload(2000); })
+                        .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
                 } else {
                     if (data[fieldId] && (data[fieldId] !== lastUserPrefs)) {
                         ktl.log.clog('Prefs have changed!!!!', 'blue');
@@ -3654,23 +3647,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return new Promise(function (resolve, reject) {
                     if (viewId === '' || fieldId === '') return;
 
-                    console.log('submitAndWait');//$$$
-                    console.log('viewId =', viewId);//$$$
-                    console.log('fieldId =', fieldId);//$$$
-                    console.log('textToSubmit =', textToSubmit);//$$$
-
                     document.querySelector('#' + viewId + ' #' + fieldId).value = textToSubmit;
                     document.querySelector('#' + viewId + ' .kn-button.is-primary').click();
-
                     var success, failure = null;
+
                     var intervalId = setInterval(function () {
                         success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
                         failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
-
                         if (success || failure) {
-                            console.log('success =', success);
-                            console.log('failure =', failure);
-
                             clearInterval(intervalId);
                             success && resolve(success);
                             failure && reject(failure);
@@ -4710,10 +4694,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         function retryMsg (msgId = '') {
             if (--msgQueue[msgId].retryCnt > 0) {
-                ktl.log.clog('RETRY MSG: ' + msgQueue[msgId].msgType + ', ' + msgId + ', ' + msgQueue[msgId].retryCnt, 'purple');
+                ktl.log.clog('RETRY MSG: ' + msgQueue[msgId].msgType + ', ' + msgId + ', ' + msgQueue[msgId].retryCnt, 'red');
                 msgQueue[msgId].expiration = new Date().valueOf() + MSG_EXP_DELAY;
+                ktl.wndMsg.send(msgQueue[msgId].msgType, msgQueue[msgId].msgSubType, msgQueue[msgId].src, msgQueue[msgId].dst, msgId, msgQueue[msgId].msgData);
             } else {
-                ktl.log.clog('Msg Send MAX RETRIES Failed!!!', 'purple');
+                ktl.log.clog('Msg Send MAX RETRIES Failed!!!', 'red');
                 ktlProcessFailedMessages(msgId);
             }
         }
