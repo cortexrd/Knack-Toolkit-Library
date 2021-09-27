@@ -4072,7 +4072,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             else
                 isActive = true;
 
-            if (window.self.frameElement && IFRAME_WND_ID === IFRAME_WND_ID)
+            if (window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID)
                 return;
 
             if (ktl.storage.hasLocalStorage() && Knack.getUserAttributes() !== 'No user found') {
@@ -4365,7 +4365,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         ];
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            if (window.self.frameElement && IFRAME_WND_ID === IFRAME_WND_ID) {
+            if (window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID) {
                 ktl.wndMsg.send('iFrameWndReadyMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, SW_VERSION);
 
                 startHighPriorityLogging();
@@ -4508,7 +4508,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             create: function () {
                 if (!ktl.core.getCfg().enabled.iFrameWnd) return;
 
-                var URL = Knack.scenes._byId[IFRAME_WND_ID] || Knack.scenes._byId['iframe-account-logs'];
+                var URL = Knack.scenes._byId[IFRAME_WND_ID] || Knack.scenes._byId['iframe-account-logs']; //TODO:  remove iframe-account-logs after switchover.
                 if (!URL) return;
                 //console.log('URL =', URL);
                 //console.log('URL slug =', URL.attributes.slug);
@@ -4519,7 +4519,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var index = window.location.href.indexOf('#');
                     iFrameWnd = document.createElement('iFrame');
                     iFrameWnd.setAttribute('id', IFRAME_WND_ID);
-                    //iFrameWnd.src = window.location.href.slice(0, index + 1) + IFRAME_WND_ID;
                     iFrameWnd.src = window.location.href.slice(0, index + 1) + URL.attributes.slug;
 
                     document.body.appendChild(iFrameWnd);
@@ -4603,7 +4602,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                         //Delete iFrameWnd and re-create periodically.  This is to check for a SW update.
                         setTimeout(function () {
-                            ktl.core.timedPopup('Reloading frame');
                             ktl.log.clog('Reloading frame', 'purple');
                             if (ktl.iFrameWnd.getiFrameWnd()) {
                                 ktl.iFrameWnd.delete();
@@ -4634,7 +4632,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.wndMsg.send('heartbeatMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
                         });
                     } else if (event.data.msgType === 'userPrefsChangedMsg') {
-                        if (window.self.frameElement && (IFRAME_WND_ID === event.data.dst)) { //App to iFrameWnd, when prefs changed locally by user.
+                        if (window.self.frameElement && (event.data.dst === IFRAME_WND_ID)) { //App to iFrameWnd, when prefs are changed locally by user.
                             //Upload new prefs so other opened browsers can see the changes.
                             var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                             var formId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
@@ -5155,3 +5153,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: find a way to copy existing user prefs to new object.
 //Check all ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS
 //var msgId = event.data.msgId; //Keep a copy for ack.
+//TODO:  remove iframe-account-logs after switchover.
