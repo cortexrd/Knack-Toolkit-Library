@@ -1084,7 +1084,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     cbLabel.appendChild(document.createTextNode(label));
                 }
 
-                checkBox.setAttribute('style', 'margin-left: 5px; ' + cbStyle);
+                checkBox.setAttribute('style', 'margin-left: 5px; width: 15px; height: 15px; ' + cbStyle);
                 cbLabel.setAttribute('style', 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px; ' + lbStyle);
                 div.append(checkBox, cbLabel);
                 checkBox.checked = state;
@@ -2710,9 +2710,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId /*USER_PREFS_CUR - read-only autorefresh view*/) {
                 var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
 
-                if (data[fieldId].includes('Refresh')) {
+                if (data[fieldId].includes('iFrameRefresh')) {
                     var prefsTmpObj = JSON.parse(data[fieldId]);
-                    delete prefsTmpObj['Refresh'];
+                    delete prefsTmpObj['iFrameRefresh'];
                     var txtToSubmit = JSON.stringify(prefsTmpObj);
                     console.log('txtToSubmit =', txtToSubmit);//$$$
 
@@ -3094,9 +3094,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }, 200);
 
                             setTimeout(function () { //Failsafe
-                                if (intervalId !== null) {
-                                    clearInterval(intervalId);
-                                }
+                                clearInterval(intervalId);
                             }, 3000);
                         }
                     }
@@ -4366,10 +4364,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID) {
-                ktl.wndMsg.send('iFrameWndReadyMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, SW_VERSION);
+                var intervalId = setInterval(function () { //Wait until ready HB field is ready.
+                    if (ktl.iFrameWnd.getCfg().hbViewId !== '') {
+                        clearInterval(intervalId);
+                        clearTimeout(timeout);
+                        ktl.wndMsg.send('iFrameWndReadyMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, SW_VERSION);
+                        startHighPriorityLogging();
+                        startLowPriorityLogging();
+                    }
+                }, 20);
 
-                startHighPriorityLogging();
-                startLowPriorityLogging();
+                var timeout = setTimeout(function () { //Failsafe
+                    clearInterval(intervalId);
+                    ktl.log.clog('iFrameWndReadyMsg timeout', 'purple');
+                }, 30000);
             }
         })
 
@@ -4602,7 +4610,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                         //Delete iFrameWnd and re-create periodically.  This is to check for a SW update.
                         setTimeout(function () {
-                            ktl.log.clog('Reloading frame', 'purple');
+                            //ktl.log.clog('Reloading frame', 'purple');
                             if (ktl.iFrameWnd.getiFrameWnd()) {
                                 ktl.iFrameWnd.delete();
                                 ktl.iFrameWnd.create();
@@ -4678,7 +4686,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(function () { sendHB(); }, ONE_MINUTE_DELAY);
             function sendHB() {
-                ktl.iFrameWnd.getiFrameWnd() && (ktl.wndMsg.send('heartbeatMsg', 'req', ktl.const.MSG_APP, ktl.iFrameWnd.getiFrameWnd().id));
+                ktl.wndMsg.send('heartbeatMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
             };
         }
 
@@ -4720,16 +4728,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             removeMsg(msgId);
 
             if (msgType === 'heartbeatMsg') {
-                if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
-                    if (ktl.iFrameWnd.getiFrameWnd()) {
-                        ktl.log.clog('Re-creating iFrameWnd', 'red');
-                        ktl.iFrameWnd.delete();
-                        ktl.iFrameWnd.create();
-                    }
-
-                    //debugger;
-                } else
-                    ktl.core.waitAndReload();
+                if (ktl.iFrameWnd.getiFrameWnd()) {
+                    ktl.log.clog('iFrameWnd stopped responding.  Re-creating...', 'red');
+                    ktl.iFrameWnd.delete();
+                    ktl.iFrameWnd.create();
+                }
             } else {
                 ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1018 - Message type dropped: ' + msgType + ' in ' + Knack.router.current_scene_key);
                 processFailedMessages && processFailedMessages(msgType, msgId);
