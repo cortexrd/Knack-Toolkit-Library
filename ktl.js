@@ -2982,65 +2982,64 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
 
                             (function tryRefresh(retryCtr) {
-                                if (view && ['search', 'rich_text', 'menu' /*add more types here*/].includes(viewType)) {
+                                if (view && ['search', 'form', 'rich_text', 'menu' /*more types?*/].includes(viewType)) {
+                                    if (useFetch) { //Can't use fetch() because it triggers a on submit event for some reason.
+                                        Knack.views[viewId].model.trigger('change'); //This does the job though.  Discovered by trial and error!
+                                        Knack.views[viewId].renderForm();
+                                        Knack.views[viewId].renderView();
+                                    }
                                     Knack.views[viewId].render();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
                                 } else {
-                                    if (useFetch) {
-                                        Knack.views[viewId].model.fetch({
-                                            success: function (model, response, options) {
-                                                if (['details', 'form'].includes(viewType))
-                                                    Knack.views[viewId].render();
+                                    Knack.views[viewId].model.fetch({
+                                        success: function (model, response, options) {
+                                            if (['details' /*more types?*/].includes(viewType))
+                                                Knack.views[viewId].render();
 
-                                                resolve(model);
-                                                return;
-                                            },
-                                            error: function (model, response, options) {
-                                                response.caller = 'refreshView';
-                                                response.viewId = viewId;
+                                            resolve(model);
+                                            return;
+                                        },
+                                        error: function (model, response, options) {
+                                            response.caller = 'refreshView';
+                                            response.viewId = viewId;
 
-                                                //Process critical failures by forcing a logout or hard reset.
-                                                if (response.status === 401 || response.status === 403 || response.status === 500) {
-                                                    if (Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
-                                                        parent.postMessage({ msgType: 'forceReload', response: response }, '*');
+                                            //Process critical failures by forcing a logout or hard reset.
+                                            if (response.status === 401 || response.status === 403 || response.status === 500) {
+                                                if (Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+                                                    parent.postMessage({ msgType: 'forceReload', response: response }, '*');
+                                                else {
+                                                    if (response.status === 500)
+                                                        location.reload(true);
                                                     else {
-                                                        if (response.status === 500)
-                                                            location.reload(true);
-                                                        else {
-                                                            ktl.log.addLog(LS_APP_ERROR, 'KEC_1007 - Forcing logout');
-                                                            $('.kn-log-out').trigger('click'); //Token has expired, force logout.
-                                                        }
+                                                        ktl.log.addLog(LS_APP_ERROR, 'KEC_1007 - Forcing logout');
+                                                        $('.kn-log-out').trigger('click'); //Token has expired, force logout.
                                                     }
+                                                }
+                                            } else {
+                                                if (Knack.router.scene_view.model.views._byId[viewId].attributes.title.includes('AUTOREFRESH')) {
+                                                    resolve(); //Just ignore, we'll try again shortly anyways.
+                                                    return;
                                                 } else {
-                                                    if (Knack.router.scene_view.model.views._byId[viewId].attributes.title.includes('AUTOREFRESH')) {
-                                                        resolve(); //Just ignore, we'll try again shortly anyways.
-                                                        return;
-                                                    } else {
-                                                        if (retryCtr-- > 0) {
-                                                            var responseTxt = JSON.stringify(response);
-                                                            ktl.log.clog('refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr, 'purple');
+                                                    if (retryCtr-- > 0) {
+                                                        var responseTxt = JSON.stringify(response);
+                                                        ktl.log.clog('refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr, 'purple');
 
-                                                            setTimeout(function () {
-                                                                tryRefresh(retryCtr);
-                                                            }, 1000);
-                                                        } else {
-                                                            if (response.status === 0 && Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
-                                                                parent.postMessage({ msgType: 'forceReload', response: response }, '*');
-                                                            else {
-                                                                ktl.log.addLog(ktl.const.LS_SERVER_ERROR, 'KEC_1008 - refreshView failure in ' + viewId + ', status: ' + response.status + ', statusText: ' + response.statusText);
-                                                                resolve(model);
-                                                                return;
-                                                            }
+                                                        setTimeout(function () {
+                                                            tryRefresh(retryCtr);
+                                                        }, 1000);
+                                                    } else {
+                                                        if (response.status === 0 && Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+                                                            parent.postMessage({ msgType: 'forceReload', response: response }, '*');
+                                                        else {
+                                                            ktl.log.addLog(ktl.const.LS_SERVER_ERROR, 'KEC_1008 - refreshView failure in ' + viewId + ', status: ' + response.status + ', statusText: ' + response.statusText);
+                                                            resolve(model);
+                                                            return;
                                                         }
                                                     }
                                                 }
                                             }
-                                        });
-                                    } else {
-                                        Knack.views[viewId].render();
-                                        resolve();
-                                        return;
-                                    }
+                                        }
+                                    });
                                 }
                             })(10); //Retries
                         }
@@ -5142,3 +5141,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //Check all ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS
 //var msgId = event.data.msgId; //Keep a copy for ack.
 //TODO:  remove iframe-account-logs after switchover.
+//console.log('found critical error log');
