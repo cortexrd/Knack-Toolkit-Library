@@ -1565,8 +1565,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 //console.log('Init complete, systemColors =', systemColors);
 
                 function extractSysElClr(cssSearchStr = '') {
-                    var index, clrIdx = 0;
-                    var hsl, hsv, rgbClr = [];
+                    var index = 0, clrIdx = 0;
+                    var hsl = [], hsv = [], rgbClr = [];
                     index = dynStylesCssTxt.search(cssSearchStr);
                     clrIdx = dynStylesCssTxt.indexOf('#', index + 1);
                     var color = dynStylesCssTxt.substr(clrIdx, 7); //Format is #rrggbb
@@ -2687,7 +2687,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //console.log('userPrefsObj =', userPrefsObj);//$$$
         //var lastUserPrefsUpdate = Date.parse(userPrefsObj.dt ? userPrefsObj.dt.toString() : new Date(1970, 0, 1));
-        function readUserPrefsFromLs() {
+        function readUserPrefsFromLs() { //Use Try Catch to prevent white screen.
             var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
             if (lsPrefsStr) {
                 if (Object.keys(JSON.parse(lsPrefsStr)).length < Object.keys(userPrefsObj).length) {
@@ -2716,8 +2716,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var prefsTmpObj = JSON.parse(data[fieldId]);
                     delete prefsTmpObj['iFrameRefresh'];
                     var updatedPrefs = JSON.stringify(prefsTmpObj);
-                    ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, fieldId, updatedPrefs)
-                        .then(success => { ktl.core.waitAndReload(2000); })
+                    ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, { [fieldId]: updatedPrefs })
+                        .then(success => { location.reload(true); })
                         .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
                 } else {
                     if (data[fieldId] && (data[fieldId] !== lastUserPrefs)) {
@@ -2985,8 +2985,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 if (view && ['search', 'form', 'rich_text', 'menu' /*more types?*/].includes(viewType)) {
                                     if (useFetch) { //Can't use fetch() because it triggers a on submit event for some reason.
                                         Knack.views[viewId].model.trigger('change'); //This does the job though.  Discovered by trial and error!
-                                        Knack.views[viewId].renderForm();
-                                        Knack.views[viewId].renderView();
+                                        Knack.views[viewId].renderForm && Knack.views[viewId].renderForm();
+                                        Knack.views[viewId].renderView && Knack.views[viewId].renderView();
                                     }
                                     Knack.views[viewId].render();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
@@ -3642,29 +3642,37 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            submitAndWait: function (viewId = '', fieldId = '', textToSubmit = '') { //TODO: support multi fields and add error handling.
+            submitAndWait: function (viewId = '', formData = {}) {
                 return new Promise(function (resolve, reject) {
-                    if (viewId === '' || fieldId === '') return;
+                    if (!viewId || $.isEmptyObject(formData)) return;
 
-                    document.querySelector('#' + viewId + ' #' + fieldId).value = textToSubmit;
-                    document.querySelector('#' + viewId + ' .kn-button.is-primary').click();
-                    var success, failure = null;
+                    var fields = Object.entries(formData);
+                    try {
+                        for (var i = 0; i < fields.length; i++)
+                            document.querySelector('#' + viewId + ' #' + fields[i][0]).value = fields[i][1];
 
-                    var intervalId = setInterval(function () {
-                        success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
-                        failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
-                        if (success || failure) {
+                        document.querySelector('#' + viewId + ' .kn-button.is-primary').click();
+
+                        var success = null, failure = null;
+                        var intervalId = setInterval(function () {
+                            success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
+                            failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
+                            if (success || failure) {
+                                clearInterval(intervalId);
+                                success && resolve('submitAndWait, ' + viewId + ' : ' + success);
+                                failure && reject('submitAndWait, ' + viewId + ' : ' + failure);
+                                return;
+                            }
+                        }, 200);
+
+                        setTimeout(function () { //Failsafe
                             clearInterval(intervalId);
-                            success && resolve(success);
-                            failure && reject(failure);
-                            return;
-                        }
-                    }, 200);
-
-                    setTimeout(function () { //Failsafe
-                        clearInterval(intervalId);
-                        reject('submitAndWait timeout error');
-                    }, 5000);
+                            reject('submitAndWait timeout error');
+                        }, 5000);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
                 })
             },
         }
@@ -5142,3 +5150,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //var msgId = event.data.msgId; //Keep a copy for ack.
 //TODO:  remove iframe-account-logs after switchover.
 //console.log('found critical error log');
+//Use Try Catch to prevent white screen.
