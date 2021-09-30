@@ -1,4 +1,4 @@
-//KTL Bootloader - BEGIN
+//KTL Bootloader
 /**
  * This offers you the option of loading all your libraries and your app code from separate files.
  * A big advantage of this is that you can work directly from your local hard drive
@@ -13,40 +13,75 @@ KnackInitAsync = function ($, callback) {
     window.LazyLoad = LazyLoad;
 
     var appName = Knack.app.attributes.name;
-    var appUrl = '';
     var ktlUrl = '';
 
-    //ACB mode by default
-    //Un-comment the three lines below to switch to CLS mode.
-    //ktlUrl = 'http://localhost:3000/Lib/KTL/ktl.js';
-    //appUrl = 'http://localhost:3000/MyKnackApps/' + appName + '.js';
-    //LazyLoad.css(['http://localhost:3000/Lib/KTL/ktl.css'], function () { });
+    //Assume ACB mode by default, unless KnackApp function is not found.  Then keep testing other locations.
+    if (typeof (KnackApp) === 'function')
+        runApp();
+    else {
+        //This is to prevent repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
+        var localhost = localStorage.getItem(appName + '_localhost');
+        if (window.self.frameElement) {
+            if (localhost === 'true') {
+                LazyLoad.js(['http://localhost:3000/KnackApps/DevWIP/' + appName + '.js'], () => {
+                    if (typeof (KnackApp) === 'function') {
+                        console.log('iframe Code App found in localhost');
+                        ktlUrl = 'http://localhost:3000/Lib/KTL/ktl.js';
+                        LazyLoad.css(['http://localhost:3000/Lib/KTL/ktl.css'], () => { });
+                        runApp();
+                    }
+                })
+            } else {
+                LazyLoad.js(['https://ctrnd.com/jsLibs/KTL/' + appName + '.js'], () => {
+                    if (typeof (KnackApp) === 'function') {
+                        console.log('iframe Code App found on ctrnd.com CDN.');
+                        ktlUrl = 'https://ctrnd.com/jsLibs/KTL/ktl.js';
+                        LazyLoad.css(['https://ctrnd.com/jsLibs/KTL/ktl.css'], () => { });
+                        runApp();
+                    }
+                })
+            }
+        } else {
+            LazyLoad.js(['http://localhost:3000/KnackApps/DevWIP/' + appName + '.js'], () => {
+                if (typeof (KnackApp) === 'function') {
+                    localStorage.setItem(appName + '_localhost', true);
+                    console.log('Code App found in localhost');
+                    ktlUrl = 'http://localhost:3000/Lib/KTL/ktl.js';
+                    LazyLoad.css(['http://localhost:3000/Lib/KTL/ktl.css'], () => { });
+                    runApp();
+                } else {
+                    localStorage.setItem(appName + '_localhost', false);
+                    LazyLoad.js(['https://ctrnd.com/jsLibs/KTL/' + appName + '.js'], () => {
+                        if (typeof (KnackApp) === 'function') {
+                            console.log('Code App found on ctrnd.com CDN.');
+                            ktlUrl = 'https://ctrnd.com/jsLibs/KTL/ktl.js';
+                            LazyLoad.css(['https://ctrnd.com/jsLibs/KTL/ktl.css'], () => { });
+                            runApp();
+                        }
+                    })
+                }
+            })
+        }
+    }
 
-    //When we reach production, we'll be using Cortex R&D server to host library files
-    //ktlUrl = 'https://ctrnd.com/Lib/KTL/ktl.js';
-    //LazyLoad.css(['https://ctrnd.com/Lib/KTL/ktl.css'], function () { });
+    function runApp() {
+        var lib = new libLoader();
+        lib.insertLibrary('blockUI', 'https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js'); // Comes from here:  http://malsup.com/jquery/block/
+        lib.insertLibrary('Sortable', 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js'); // Comes from here:  https://github.com/SortableJS/Sortable
 
+        ktlUrl && lib.insertLibrary('ktl', ktlUrl); //ktl = Knack Toolkit Library
+        //console.log('ktlUrl =', ktlUrl);
 
-
-    var lib = new libLoader();
-    lib.insertLibrary('blockUI', 'https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js'); // Comes from here:  http://malsup.com/jquery/block/
-    lib.insertLibrary('Sortable', 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js'); // Comes from here:  https://github.com/SortableJS/Sortable
-
-    ktlUrl && lib.insertLibrary('ktl', ktlUrl); //ktl = Knack Toolkit Library
-    appUrl && lib.insertLibrary('app', appUrl); //The actual Knack App
-
-    //console.log('appUrl =', appUrl);//$$$
-    //console.log('ktlUrl =', ktlUrl);//$$$
-
-    lib.loadLibrary('jquery', 'blockUI', 'Sortable', 'ktl', 'app', function () {
-        if (typeof (KnackApp) === 'function') {
-            KnackApp($, {
-                local: ktlUrl ? 'local' : '',
-            });
-            callback();
-        } else
-            alert('Error - Cannot find Knack application...');
-    });
+        lib.loadLibrary('jquery', 'blockUI', 'Sortable', 'ktl', function () {
+            if (typeof (KnackApp) === 'function') {
+                KnackApp($, {
+                    local: ktlUrl.includes('localhost') ? 'local' : '',
+                });
+                callback();
+            } else
+                alert('Error - Cannot find Knack application...');
+        });
+    }
 };
 
 /**
@@ -148,7 +183,7 @@ libLoader.prototype.librariesRequired = function () {
         self.assert(window[library.objectName], 'Library "' + libraryName + '" is required');
     });
 };
-//KTL Bootloader - END
+
 
 
 
