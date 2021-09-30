@@ -12,55 +12,48 @@ KnackInitAsync = function ($, callback) {
     window.$ = $;
     window.LazyLoad = LazyLoad;
 
+    var svrURL = 'http://localhost:3000/';
+    var appPath = 'KnackApps/';
     var appName = Knack.app.attributes.name;
+    var ktlPath = 'Lib/KTL/';
     var ktlUrl = '';
 
     //Assume ACB mode by default, unless KnackApp function is not found.  Then keep testing other locations.
-    if (typeof (KnackApp) === 'function')
+    if (typeof (KnackApp) === 'function') {
+        localStorage.removeItem(appName + '_svrURL');
+        localStorage.removeItem(appName + '_appPath');
+        localStorage.removeItem(appName + '_ktlPath');
+        svrURL = '';
         runApp();
-    else {
-        //This is to prevent repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
-        var localhost = localStorage.getItem(appName + '_localhost');
-        if (window.self.frameElement) {
-            if (localhost === 'true') {
-                LazyLoad.js(['http://localhost:3000/KnackApps/DevWIP/' + appName + '.js'], () => {
-                    if (typeof (KnackApp) === 'function') {
-                        console.log('iframe Code App found in localhost');
-                        ktlUrl = 'http://localhost:3000/Lib/KTL/ktl.js';
-                        LazyLoad.css(['http://localhost:3000/Lib/KTL/ktl.css'], () => { });
-                        runApp();
-                    }
-                })
-            } else {
-                LazyLoad.js(['https://ctrnd.com/jsLibs/KTL/' + appName + '.js'], () => {
-                    if (typeof (KnackApp) === 'function') {
-                        console.log('iframe Code App found on ctrnd.com CDN.');
-                        ktlUrl = 'https://ctrnd.com/jsLibs/KTL/ktl.js';
-                        LazyLoad.css(['https://ctrnd.com/jsLibs/KTL/ktl.css'], () => { });
-                        runApp();
-                    }
-                })
-            }
-        } else {
-            LazyLoad.js(['http://localhost:3000/KnackApps/DevWIP/' + appName + '.js'], () => {
+    } else {
+        //The App does the first pass of detecting the code location so the iFrameWnd doesn't have to do it again.
+        //This also prevents repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
+        if (!window.self.frameElement) {
+            LazyLoad.js([svrURL + appPath + appName + '.js'], () => {
                 if (typeof (KnackApp) === 'function') {
-                    localStorage.setItem(appName + '_localhost', true);
-                    console.log('Code App found in localhost');
-                    ktlUrl = 'http://localhost:3000/Lib/KTL/ktl.js';
-                    LazyLoad.css(['http://localhost:3000/Lib/KTL/ktl.css'], () => { });
                     runApp();
                 } else {
-                    localStorage.setItem(appName + '_localhost', false);
-                    LazyLoad.js(['https://ctrnd.com/jsLibs/KTL/' + appName + '.js'], () => {
+                    //Put your favorite CDN and set paths accordingly
+                    svrURL = 'https://ctrnd.com/';
+                    appPath = 'KnackApps/';
+                    LazyLoad.js([svrURL + appPath + appName + '.js'], () => {
                         if (typeof (KnackApp) === 'function') {
-                            console.log('Code App found on ctrnd.com CDN.');
-                            ktlUrl = 'https://ctrnd.com/jsLibs/KTL/ktl.js';
-                            LazyLoad.css(['https://ctrnd.com/jsLibs/KTL/ktl.css'], () => { });
-                            runApp();
+                            ktlPath = 'jsLibs/KTL/';
+                        } else {
+                            localStorage.removeItem(appName + '_svrURL');
+                            localStorage.removeItem(appName + '_appPath');
+                            localStorage.removeItem(appName + '_ktlPath');
+                            svrURL = '';
                         }
+                        runApp();
                     })
                 }
             })
+        } else { //iframe
+            svrURL = localStorage.getItem(appName + '_svrURL');
+            appPath = localStorage.getItem(appName + '_appPath');
+            ktlPath = localStorage.getItem(appName + '_ktlPath');
+            svrURL && LazyLoad.js([svrURL + appPath + appName + '.js'], () => { runApp(); })
         }
     }
 
@@ -69,8 +62,14 @@ KnackInitAsync = function ($, callback) {
         lib.insertLibrary('blockUI', 'https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js'); // Comes from here:  http://malsup.com/jquery/block/
         lib.insertLibrary('Sortable', 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js'); // Comes from here:  https://github.com/SortableJS/Sortable
 
-        ktlUrl && lib.insertLibrary('ktl', ktlUrl); //ktl = Knack Toolkit Library
-        //console.log('ktlUrl =', ktlUrl);
+        if (svrURL) {
+            localStorage.setItem(appName + '_svrURL', svrURL);
+            localStorage.setItem(appName + '_appPath', appPath);
+            localStorage.setItem(appName + '_ktlPath', ktlPath);
+            ktlUrl = svrURL + ktlPath + 'ktl.js';
+            lib.insertLibrary('ktl', ktlUrl);
+            LazyLoad.css([svrURL + ktlPath + 'ktl.css'], () => { });
+        }
 
         lib.loadLibrary('jquery', 'blockUI', 'Sortable', 'ktl', function () {
             if (typeof (KnackApp) === 'function') {
