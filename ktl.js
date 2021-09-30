@@ -948,7 +948,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     console.log('fieldId =', fieldId);//$$$
                     if (true || fieldId === 'field_x') { //TODO provide an array of fields and their style to apply.
                         ktl.core.waitSelector('#cell-editor ' + ' #' + fieldId)
-                            .then(function () {
+                            .then(() => {
                                 console.log('Found inline 1');//$$$
                                 ktl.fields.inlineEditChangeStyle();
                             })
@@ -957,7 +957,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             });
 
                         ktl.core.waitSelector('#cell-editor ' + ' #kn-input-' + fieldId)
-                            .then(function () {
+                            .then(() => {
                                 console.log('Found inline 2');//$$$
                                 ktl.fields.inlineEditChangeStyle();
                             })
@@ -4104,6 +4104,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             clog: function (msg = '', color = 'black') {
+                console.log('%c' + msg, 'color:' + color + ';font-weight:bold');
+            },
+
+            clog2: function (color = 'black', ...msgArray) {
+                var msg = '';
+                for (var i = 0; i < msgArray.length; i++)
+                    msg += msgArray[i] + ', ';
+                msg = msg.slice(0, -2);
                 console.log('%c' + msg, 'color:' + color + ';font-weight:bold');
             },
 
