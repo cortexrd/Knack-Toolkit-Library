@@ -1053,7 +1053,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (style !== '')
                     button.setAttribute('style', style);
-                ktl.systemColors.getSystemColors().then(sc => { button.style.color = sc.text.rgb });
+
+                if (!style.includes(' color: '))
+                    ktl.systemColors.getSystemColors().then(sc => { button.style.color = sc.text.rgb });
 
                 if (classes.length > 0)
                     button.classList.add(...classes);
@@ -1562,7 +1564,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 initDone = true;
 
-                //console.log('Init complete, systemColors =', systemColors);
+                //console.log('Init complete, sysColors =', sysColors);
 
                 function extractSysElClr(cssSearchStr = '') {
                     var index = 0, clrIdx = 0;
@@ -2689,19 +2691,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //var lastUserPrefsUpdate = Date.parse(userPrefsObj.dt ? userPrefsObj.dt.toString() : new Date(1970, 0, 1));
         function readUserPrefsFromLs() { //Use Try Catch to prevent white screen.
             var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
-            if (lsPrefsStr) {
-                if (Object.keys(JSON.parse(lsPrefsStr)).length < Object.keys(userPrefsObj).length) {
-                //    var lsUserPrefsLen = Object.keys(JSON.parse(lsPrefsStr)).length;
-                //    console.log('lsUserPrefsLen =', lsUserPrefsLen);//$$$
-                //    var userPrefsObjLen = Object.keys(userPrefsObj).length;
-                //    console.log('userPrefsObjLen =', userPrefsObjLen);//$$$
-
-                //    //Could be a remnant from older version.  Scrap current prefs in ls and use new version with defaults.
-                //    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefsObj));
-                //    ktl.log.clog('Init user prefs to defaults', 'orangered'); //TODO: find a way to copy existing user prefs to new object.
-                } else
-                    userPrefsObj = JSON.parse(lsPrefsStr);
-            }
+            if (lsPrefsStr)
+                userPrefsObj = JSON.parse(lsPrefsStr);
 
             return lsPrefsStr; //Return string version.
         }
@@ -3775,7 +3766,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Add default extra buttons to facilitate Kiosk mode:  Refresh, Back, Done and Messaging
             //Excludes all iFrames and all view titles must not contain NO_BUTTONS flag.
-            addKioskButtons: function () {
+            addKioskButtons: function (style = {}) {
                 if (window.self.frameElement || !ktl.core.isKiosk())
                     return;
 
@@ -3923,7 +3914,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 //Make all buttons same size and style.
-                $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '40px', 'line-height': '0px' });
+                if (!$.isEmptyObject(style))
+                    $('.kn-button').css(style);
+                else
+                    $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '40px', 'line-height': '0px' });
+
                 $('.kiosk-btn').css({ 'margin-left': '20px' });
 
                 if (!hasSubmitButton)
@@ -4030,9 +4025,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if ($('#version-label-id').length === 0 && !window.self.frameElement) {
                     var versionLabel = document.createElement('label');
                     versionLabel.setAttribute('id', 'version-label-id');
-                    var ktlVer = ktl.core.getCfg().showKtlInfo ? '      KTL v' + KTL_VERSION : '';
+                    var ktlVer = ktl.core.getCfg().showKtlInfo ? '    KTL v' + KTL_VERSION : '';
                     var appName = Knack.app.attributes.name.toUpperCase();
-                    var versionInfo = appName + ' v' + SW_VERSION + ktlVer + (info.local ? '      (LOCAL)' : '');
+                    var versionInfo = appName + '    v' + SW_VERSION + ktlVer + (info.local ? '    (LOCAL)' : '');
                     versionLabel.appendChild(document.createTextNode(versionInfo));
                     versionLabel.setAttribute('style', style || 'white-space: pre; margin-left: 10px; margin-top: 8px; font-size:small; position:absolute; top:0; right:10px; color:lightsteelblue'); //TODO:  Use system colors instead.
                     document.body.appendChild(versionLabel);
