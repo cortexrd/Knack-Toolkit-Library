@@ -1807,12 +1807,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
                 addFilterButtons(view.key);
-
-            ktl.systemColors.getSystemColors()
-                .then((sysColors) => {
-                    $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr });
-                    $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr, 'border-color': sysColors.borderClr });
-                })
         })
 
         $(document).on('click', function (e) {
@@ -2013,9 +2007,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                 //Check Active status.  If already active, skip.  If not remove any currently active filter and set this one.
                                 var index = getFilterIndex(allFiltersObj, filter.filterName, viewIdWithColumn);
+                                $('.activeFilter').removeClass('activeFilter');
+                                this.classList.add('activeFilter');
+
+                                ktl.systemColors.getSystemColors()
+                                    .then((sysColors) => {
+                                        $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr });
+                                        $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr, 'border-color': sysColors.borderClr });
+                                    })
+
                                 allFiltersObj[viewIdWithColumn].active = index;
                                 saveAllFilters();
-                                //console.log('allFiltersObj[viewId] =', allFiltersObj[viewId]);
 
                                 //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
                                 var parts = ktl.core.splitUrl(window.location.href);
@@ -2038,10 +2040,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
 
                                 var encodedNewFilter = encodeURIComponent(filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
-
                                 var allParams = otherParams + viewIdWithColumn + '_filters=' + encodedNewFilter;
-
                                 newUrl += allParams;
+
                                 window.location.href = newUrl;
                             });
 
