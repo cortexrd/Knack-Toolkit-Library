@@ -93,6 +93,7 @@ var KnackApp = function ($, info = {}) {
 
         ktl.wndMsg.setCfg({
             processFailedMessages: processFailedMessages,
+            processAppMsg: processAppMsg,
         })
 
         //Features that do not apply to the iFrameWnd.
@@ -288,6 +289,24 @@ var KnackApp = function ($, info = {}) {
 
     function processFailedMessages(msgType = 'unknown', msgId = 'unknown') {
         console.log('Failed Message: msgType =', msgType, 'msgId =', msgId);
+    }
+
+    function processAppMsg(event) {
+        try {
+            var msgId = event.data.msgId; //Keep a copy for ack.
+
+            if (event.data.msgSubType === 'req') {
+                if (event.data.msgType === 'someMsg') {
+                    ktl.wndMsg.send('someMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
+                    //Process your msg here...
+                }
+            }
+            //Ack is always handled by ktl.
+        }
+        catch (e) {
+            ktl.log.clog('App message handler error:', 'purple');
+            console.log(e);
+        }
     }
 
     function updateWorkShiftItems(shiftLetter = '') {

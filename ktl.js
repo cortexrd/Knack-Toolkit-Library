@@ -3993,7 +3993,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!ktl.core.getCfg().enabled.idleWatchDog) return;
 
                 clearTimeout(idleTimer);
-
                 idleTimer = setTimeout(function () {
                     if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId)
                         idleWatchDogTimout && idleWatchDogTimout();
@@ -4571,6 +4570,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var heartbeatInterval = null;
         var procMsgInterval = null;
         var processFailedMessages = null;
+        var processAppMsg = null;
 
         function Msg(type, subtype, src, dst, id, data, expiration, retryCnt = SEND_RETRIES) {
             this.msgType = type;
@@ -4655,7 +4655,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.wndMsg.send('userPrefsChangedMsg', 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userPrefs.applyUserPrefs();
                         }
-                    }
+                    } else
+                        processAppMsg && processAppMsg(event); //App-specific messages.
                 } else if (event.data.msgSubType === 'ack') {
                     if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo)
                         ktl.log.clog('ACK: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt, 'darkcyan');
@@ -4667,7 +4668,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             }
             catch (e) {
-                ktl.log.clog('Message handler error:', 'purple');
+                ktl.log.clog('KTL message handler error:', 'purple');
                 console.log(e);
             }
         })
@@ -4738,6 +4739,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processFailedMessages && (processFailedMessages = cfgObj.processFailedMessages);
+                cfgObj.processAppMsg && (processAppMsg = cfgObj.processAppMsg);
             },
 
             send: function (msgType = '', msgSubType = '', src = '', dst = '', msgId = 0, msgData = null) {
@@ -4758,7 +4760,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     //ktl.log.objSnapshot('msgQueue', msgQueue);
                 }
 
-                if (src === ktl.const.MSG_APP && dst === IFRAME_WND_ID)
+                if (src === ktl.const.MSG_APP && dst === IFRAME_WND_ID && ktl.iFrameWnd.getiFrameWnd())
                     ktl.iFrameWnd.getiFrameWnd().contentWindow.postMessage(msg, '*');
                 else if (src === IFRAME_WND_ID && dst === ktl.const.MSG_APP)
                     parent.postMessage(msg, '*');
