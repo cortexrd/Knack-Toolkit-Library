@@ -2968,10 +2968,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             var formAction = view.attributes.action;
                             var useFetch = (formAction === 'insert') ? false : true;
 
-                            if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo) {
-                                ktl.log.clog('refreshView: ' + viewId, 'purple');
-                                console.log('viewType:', viewType, '  formAction:', formAction, '  useFetch:', useFetch);
-                            }
+                            //This generates a bit too much logs sometimes.  Uncomment if you really need it.
+                            //if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo) {
+                            //    ktl.log.clog('refreshView: ' + viewId, 'purple');
+                            //    console.log('viewType:', viewType, '  formAction:', formAction, '  useFetch:', useFetch);
+                            //}
 
                             (function tryRefresh(retryCtr) {
                                 if (view && ['search', 'form', 'rich_text', 'menu' /*more types?*/].includes(viewType)) {
@@ -4316,7 +4317,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     this.iFrameWnd = (function () {
         const LOGGING_DELAY = ONE_HOUR_DELAY;
 
+        //TODO: Put all this in an object like core:  var cfg = {...
         var iFrameWnd = null;
+        var iFrameReady = false;
 
         //Scene and views
         var iFrameScnId = '';
@@ -4475,6 +4478,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.iFrameScnId && (iFrameScnId = cfgObj.iFrameScnId);
+                cfgObj.iFrameReady && (iFrameReady = cfgObj.iFrameReady);
                 cfgObj.curUserPrefsViewId && (curUserPrefsViewId = cfgObj.curUserPrefsViewId);
                 cfgObj.hbViewId && (hbViewId = cfgObj.hbViewId);
                 cfgObj.accountLogsViewId && (accountLogsViewId = cfgObj.accountLogsViewId);
@@ -4494,6 +4498,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             getCfg: function () {
                 return {
                     iFrameWnd,
+                    iFrameReady,
                     iFrameScnId,
                     curUserPrefsViewId,
                     updUserPrefsViewId,
@@ -4595,6 +4600,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     if (event.data.msgType === 'iFrameWndReadyMsg') {
                         ktl.wndMsg.send('iFrameWndReadyMsg', 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
+                        ktl.iFrameWnd.setCfg({ iFrameReady: true });
 
                         if (event.data.msgData !== SW_VERSION) {
                             ktl.core.timedPopup('Updating app to new version, please wait...');
@@ -4716,8 +4722,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function removeMsg(msgId = '') {
-            if (msgQueue[msgId])
+            if (msgQueue[msgId]) {
                 delete msgQueue[msgId];
+                if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo)
+                    console.log('Msg removed:', msgId);//$$$
+            }
         }
 
         function ktlProcessFailedMessages (msgId = '') {
