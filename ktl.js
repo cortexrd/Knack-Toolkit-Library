@@ -1807,6 +1807,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
                 addFilterButtons(view.key);
+
+        //    ktl.systemColors.getSystemColors()
+        //        .then((sysColors) => {
+        //            $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr });
+        //            $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr, 'border-color': sysColors.borderClr });
+        //        })
         })
 
         $(document).on('click', function (e) {
@@ -2001,6 +2007,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             else
                                 filterButton.classList.remove('activeFilter');
 
+                            applyButtonColors();
+
                             //Apply Filter
                             filterButton.addEventListener('click', function (e) {
                                 e.preventDefault();
@@ -2010,11 +2018,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 $('.activeFilter').removeClass('activeFilter');
                                 this.classList.add('activeFilter');
 
-                                ktl.systemColors.getSystemColors()
-                                    .then((sysColors) => {
-                                        $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr });
-                                        $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr, 'border-color': sysColors.borderClr });
-                                    })
+                                applyButtonColors();
 
                                 allFiltersObj[viewIdWithColumn].active = index;
                                 saveAllFilters();
@@ -2195,6 +2199,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
 
             saveAllFilters(viewId);
+        }
+
+        function applyButtonColors() {
+            ktl.systemColors.getSystemColors()
+                .then((sysColors) => {
+                    $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr });
+                    $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr, 'border-color': sysColors.borderClr });
+                })
         }
 
         function contextMenuFilter (e, viewId, filter) {
