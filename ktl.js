@@ -4019,15 +4019,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             addVersionNumber: function (info, style = '') {
-                if (!ktl.core.getCfg().showAppInfo) return;
+                if (!ktl.core.getCfg().showAppInfo || window.self.frameElement) return;
 
                 //By default, version numbers are added at top right of screen
-                if ($('#version-label-id').length === 0 && !window.self.frameElement) {
+                if ($('#version-label-id').length === 0) {
                     var versionLabel = document.createElement('label');
                     versionLabel.setAttribute('id', 'version-label-id');
                     var ktlVer = ktl.core.getCfg().showKtlInfo ? '    KTL v' + KTL_VERSION : '';
                     var appName = Knack.app.attributes.name.toUpperCase();
-                    var versionInfo = appName + '    v' + SW_VERSION + ktlVer + (info.local ? '    (LOCAL)' : '');
+                    var versionInfo = appName + '    v' + SW_VERSION + ktlVer + '    ' + info.hostname;
                     versionLabel.appendChild(document.createTextNode(versionInfo));
                     versionLabel.setAttribute('style', style || 'white-space: pre; margin-left: 10px; margin-top: 8px; font-size:small; position:absolute; top:0; right:10px; color:lightsteelblue'); //TODO:  Use system colors instead.
                     document.body.appendChild(versionLabel);
