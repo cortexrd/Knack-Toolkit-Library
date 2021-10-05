@@ -8,6 +8,9 @@
  * 
  * See documentation for more details.
  * */
+
+this.SW_VERSION = '0.1.0'; //Put your own app version here.
+
 KnackInitAsync = function ($, callback) {
     window.$ = $;
     window.LazyLoad = LazyLoad;
@@ -74,7 +77,7 @@ KnackInitAsync = function ($, callback) {
         lib.loadLibrary('jquery', 'blockUI', 'Sortable', 'ktl', function () {
             if (typeof (KnackApp) === 'function') {
                 KnackApp($, {
-                    local: ktlUrl.includes('localhost') ? 'local' : '',
+                    hostname: svrURL.includes('localhost') ? 'localhost' : '',
                 });
                 callback();
             } else
