@@ -3,8 +3,10 @@
  * @author  Normand Defayette <nd@ctrnd.com>
  * @license GPLv3
  */
+
 function Ktl($) {
     const KTL_VERSION = '0.1.0';
+    var SW_VERSION = window.SW_VERSION;
 
 
     //KEC mean KTL Event Code.  Next:  KEC_1019
@@ -1223,12 +1225,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //TODO, detect inline edit cell and modify its style dyanmically.  Typical use: make them wider to see more context when typing.
             inlineEditChangeStyle: function () {
                 setTimeout(function () {
-                    console.log('222');//$$$
-                    //$('.kn-form-col.is-constrained').css({ 'max-width': '100vw', 'width': '75vw' }); //Example here that enlarges width.
                     $('.kn-form-col.column.is-constrained').css({ 'max-width': '100vw', 'width': '75vw' }); //Example here that enlarges width.
-                    var sel = document.querySelector('.kn-form-col.column.is-constrained');
-                    console.log('sel =', sel);//$$$
-                //kn-form-col column is-constrained
+                    //var sel = document.querySelector('.kn-form-col.column.is-constrained');
+                    //console.log('sel =', sel);//$$$
                 }, 500);
             },
         }
