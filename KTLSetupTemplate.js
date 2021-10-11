@@ -263,7 +263,9 @@ var KnackApp = function ($, info = {}) {
         return allow;
     }
 
-    function applyUserPrefs() {
+    function applyUserPrefs(refreshScene = false) {
+        if (refreshScene)
+            ktl.scenes.refreshScene();
     }
 
     function allowUserFilters() {
