@@ -295,6 +295,15 @@ function Ktl($) {
                 }, delay);
             },
 
+            switchVersion: function (userVer = 'prod') {
+                ktl.storage.lsSetItem('USE_VER', userVer);
+                var useVer = ktl.storage.lsGetItem('USE_VER');
+                ktl.debugWnd.lsLog('SWITCH USE_VER' + useVer);
+                setTimeout(() => {
+                    ktl.wndMsg.send('reloadPageMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                }, 2000);
+            },
+
             enableDragElement: function (el) {
                 var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
                 if (document.getElementById(el.id + "header")) {
@@ -929,42 +938,42 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         document.addEventListener('click', function (e) {
             //Work in progress:  When user clicks on a cell for inline editing, provide a mthod to change its style, to make it wider for example.
-            //console.log('e.target =', e.target);//$$$
+            //console.log('e.target =', e.target);
 
             var popover = e.target.closest('.kn-popover');
             if (popover) {
-                console.log('popover =', popover);//$$$
-                console.log('e.target.parentElement =', e.target.parentElement);//$$$
+                console.log('popover =', popover);
+                console.log('e.target.parentElement =', e.target.parentElement);
             }
             return;
 
             if (e.target.classList) {
-                console.log('e.target.classList =', e.target.classList);//$$$
+                console.log('e.target.classList =', e.target.classList);
                 var target = e.target;
                 if (e.target.classList.value.includes('col-'))
                     target = e.target.parentElement;
 
-                //console.log('target =', target);//$$$
+                //console.log('target =', target);
                 if (target.classList && target.classList.value.includes('cell-edit')) {
                     var fieldId = target.attributes['data-field-key'].value;
-                    console.log('fieldId =', fieldId);//$$$
+                    console.log('fieldId =', fieldId);
                     if (true || fieldId === 'field_x') { //TODO provide an array of fields and their style to apply.
                         ktl.core.waitSelector('#cell-editor ' + ' #' + fieldId)
                             .then(() => {
-                                console.log('Found inline 1');//$$$
+                                console.log('Found inline 1');
                                 ktl.fields.inlineEditChangeStyle();
                             })
                             .catch(() => {
-                                console.log('1 - Failed waiting for cell editor.');//$$$
+                                console.log('1 - Failed waiting for cell editor.');
                             });
 
                         ktl.core.waitSelector('#cell-editor ' + ' #kn-input-' + fieldId)
                             .then(() => {
-                                console.log('Found inline 2');//$$$
+                                console.log('Found inline 2');
                                 ktl.fields.inlineEditChangeStyle();
                             })
                             .catch(() => {
-                                console.log('2 - Failed waiting for cell editor.');//$$$
+                                console.log('2 - Failed waiting for cell editor.');
                             });
                     }
                 }
@@ -1032,17 +1041,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             },
 
-            addButton: function (div = null, label = '', style = '', classes = [], id = '', suffix = 'btn') {
-                if (div === null || label === '') {
+            addButton: function (div = null, label = '', style = '', classes = [], id = '') {
+                if (!div) {
                     ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1014 - Called addButton with invalid parameters');
                     return null;
                 }
 
+                !label && (label = 'Button');
+
                 //If id is not specified, create it from Label. Ex: 'Closed Lots' will give id = 'closed-lots-id'
-                if (id === '' && label !== null)
+                if (!id) {
                     id = label.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_"); //Any character other than a-z or 0-9, replace by underscore.
-                var viewId = $(div).closest('.kn-view').attr('id');
-                id = viewId + '_' + id + '-' + suffix;
+                    var viewId = $(div).closest('.kn-view').attr('id');
+                    id = viewId + '_' + id;
+                }
 
                 var button = document.getElementById(id);
                 if (button === null) {
@@ -1056,7 +1068,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (style !== '')
                     button.setAttribute('style', style);
 
-                if (!style.includes(' color: '))
+                if (!style.includes(' color:'))
                     ktl.systemColors.getSystemColors().then(sc => { button.style.color = sc.text.rgb });
 
                 if (classes.length > 0)
@@ -1227,7 +1239,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 setTimeout(function () {
                     $('.kn-form-col.column.is-constrained').css({ 'max-width': '100vw', 'width': '75vw' }); //Example here that enlarges width.
                     //var sel = document.querySelector('.kn-form-col.column.is-constrained');
-                    //console.log('sel =', sel);//$$$
+                    //console.log('sel =', sel);
                 }, 500);
             },
         }
@@ -1762,7 +1774,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     const LS_FILTERS = 'FILTERS_';
     
     this.userFilters = (function () {
-        const SAVE_FILTER_BTN = 'SaveFilter';
+        const SAVE_FILTER_BTN = 'Save';
         const FILTER_BTN_SUFFIX = 'filterBtn';
         const SAVE_FILTER_BTN_SEL = SAVE_FILTER_BTN + '-' + FILTER_BTN_SUFFIX; //ex: view_1234-SaveFilter-filterBtn
 
@@ -1810,7 +1822,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         $(document).on('click', function (e) {
             var viewToRefresh = getViewToRefresh();
-            if (e.target.classList.length > 0 && e.target.className.includes('kn-button is-primary') && e.target.type === 'submit') {
+            if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
                 if (e.target.id === 'kn-submit-filters') {
                     if (viewToRefresh) {
                         ktl.views.refreshView(viewToRefresh);
@@ -1943,7 +1955,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
 
             var columns = document.querySelectorAll('#' + viewId + ' li.column');
+
             var addFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left');
+
             addFiltersBar.forEach(function (viewFilterDiv, divIndex) {
                 var viewIdWithColumn = viewId;
                 var idPrefix = '';
@@ -1964,7 +1978,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 /////////////////////////////
                 //Add Save Filter button.  Always create, but hide/show depending on filter state.
-                var saveFilterButton = ktl.fields.addButton(filterCtrlDiv, 'Save Filter', filterBtnStyle + '; background-color: #ece6a6', ['kn-button', 'is-small'], idPrefix + SAVE_FILTER_BTN, FILTER_BTN_SUFFIX);
+                var saveFilterButton = ktl.fields.addButton(filterCtrlDiv, 'Save Filter', filterBtnStyle + '; background-color: #ece6a6',
+                    ['kn-button', 'is-small'],
+                    viewId + '_' + idPrefix + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
+
                 saveFilterButton.setAttribute('disabled', 'true');
                 saveFilterButton.classList.add('filterControl', 'tooltip');
                 saveFilterButton.innerHTML = '<i class="fa fa-save fa-lg" id="' + viewIdWithColumn + '-' + SAVE_FILTER_BTN_SEL + '"></i><div class="tooltip"><span class="tooltiptext">Name and save your filter.<br>This will create a button.</span ></div>';
@@ -1993,7 +2010,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             if (filter.filterName === '')
                                 return;
                             var filterBtnId = idPrefix + filter.filterName.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_"); //Any character other than a-z or 0-9, replace by underscore.
-                            var filterButton = ktl.fields.addButton(filterDiv, filter.filterName, filterBtnStyle, ['kn-button', 'is-small'], filterBtnId, FILTER_BTN_SUFFIX);
+                            var filterButton = ktl.fields.addButton(filterDiv, filter.filterName, filterBtnStyle,
+                                ['kn-button', 'is-small'],
+                                filterBtnId + '_' + FILTER_BTN_SUFFIX);
                             filterButton.classList.add('filterBtn', 'draggable');
                             if (btnIndex === activeFilter)
                                 filterButton.classList.add('activeFilter');
@@ -2006,12 +2025,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             filterButton.addEventListener('click', function (e) {
                                 e.preventDefault();
 
-                                //Check Active status.  If already active, skip.  If not remove any currently active filter and set this one.
+                                //Check Active status.  If already active, skip.  If not, remove any currently active filter and set this one.
                                 var index = getFilterIndex(allFiltersObj, filter.filterName, viewIdWithColumn);
                                 $('.activeFilter').removeClass('activeFilter');
                                 this.classList.add('activeFilter');
-
                                 applyButtonColors();
+
+                                //Nice attempt, but does not work.  Skips first filtering.  Check for another solution...
+                                //if (allFiltersObj[viewIdWithColumn].active === index) {
+                                //    ktl.log.clog('Skipping filter since same.', 'purple');
+                                //    return;
+                                //}
+
+                                //console.log('allFiltersObj[viewIdWithColumn].active =', allFiltersObj[viewIdWithColumn].active);//$$$
+                                //console.log('index =', index);//$$$
 
                                 allFiltersObj[viewIdWithColumn].active = index;
                                 saveAllFilters();
@@ -2109,12 +2136,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 //Enable/disable control buttons (Only save in this case)
-                ktl.core.waitSelector('#' + viewId + ' .kn-tag-filter', 5000, 'visible')
+                ktl.core.waitSelector('#' + viewId + ' .kn-tag-filter', 5000, 'visible') //Instead, maybe try to wait until scene has rendered.
                     .then(function () {
                         var enabledFilters = document.querySelectorAll('#' + viewId + ' .kn-tag-filter');
                         enabledFilters.forEach(function (filter) {
                             var nav = filter.closest('.kn-records-nav');
-                            var saveBtn = $(nav).find('#' + viewIdWithColumn + '_SaveFilter-filterBtn');
+                            var saveBtn = $(nav).find('#' + viewIdWithColumn + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
                             if (saveBtn.length > 0) {
                                 saveBtn.prop('disabled', false);
                             }
@@ -2442,7 +2469,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 debugWndHeader.style.height = '30px';
                                 debugWndHeader.style['z-index'] = 10;
                                 debugWndHeader.style['color'] = sysColors.paleLowSatClr;
-                                debugWndHeader.style['font-weight'] = 'bold';
                                 debugWndHeader.style['font-size'] = '12pt';
                                 debugWndHeader.style['background-color'] = sysColors.header.rgb;
                                 debugWndHeader.style['margin-bottom'] = '5px';
@@ -2640,7 +2666,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (key && key.startsWith(APP_ROOT_NAME))
                             lsItems++;
                     }
-                    //console.log('showLogsInDebugWnd, lsItems =', lsItems);//$$$
+                    //console.log('showLogsInDebugWnd, lsItems =', lsItems);
 
                     //Append activity at end of all logs.
                     var cri = ktl.storage.lsGetItem(ktl.const.LS_CRITICAL + Knack.getUserAttributes().id);
@@ -2670,154 +2696,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     })();
 
     //====================================================
-    //User Preferences feature
-    this.userPrefs = (function () {
-        var userPrefsObj = {
-            dt: new Date(1970, 0, 1),
-            showViewId: false,
-            showExtraDebugInfo: false,
-            showIframeWnd: false,
-            showDebugWnd: false,
-            workShift: ''
-            //TODO:  allow dynamically adding more as per user requirements.
-        };
-
-
-        var myUserPrefsViewId = '';
-        //Should we move user prefs field id also here?
-
-        //App Callbacks
-        var allowShowPrefs = null; //Determines what prefs can be shown, based on app's rules.
-        var applyUserPrefs = null; //Apply your own prefs.
-        var lastUserPrefs = ''; //Empty to force first update.
-
-        readUserPrefsFromLs();
-
-        //console.log('userPrefsObj =', userPrefsObj);//$$$
-        //var lastUserPrefsUpdate = Date.parse(userPrefsObj.dt ? userPrefsObj.dt.toString() : new Date(1970, 0, 1));
-        function readUserPrefsFromLs() { //Use Try Catch to prevent white screen.
-            var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
-            if (lsPrefsStr)
-                userPrefsObj = JSON.parse(lsPrefsStr);
-
-            return lsPrefsStr; //Return string version.
-        }
-
-        $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId /*USER_PREFS_CUR - read-only autorefresh view*/) {
-                var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-
-                //Add iFrameRefresh=true to user prefs and this will force a iFrameWnd refresh.
-                //Can be useful sometimes to trigger on/off views via Page Rules.
-                if (data[fieldId].includes('iFrameRefresh')) {
-                    var prefsTmpObj = JSON.parse(data[fieldId]);
-                    delete prefsTmpObj['iFrameRefresh'];
-                    var updatedPrefs = JSON.stringify(prefsTmpObj);
-                    ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, { [fieldId]: updatedPrefs })
-                        .then(success => { location.reload(true); })
-                        .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
-                } else {
-                    if (data[fieldId] && (data[fieldId] !== lastUserPrefs)) {
-                        ktl.log.clog('Prefs have changed!!!!', 'blue');
-
-                        lastUserPrefs = data[fieldId];
-
-                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, data[fieldId]);
-                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
-
-                        ktl.userPrefs.applyUserPrefs();
-                    }
-                }
-            } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId /*USER_PREFS_SET - form to update prefs*/) {
-                var allow = allowShowPrefs ? allowShowPrefs() : {};
-                if ($.isEmptyObject(allow)) {
-                    ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
-                    return;
-                }
-
-                readUserPrefsFromLs();
-                var prefsBar = document.createElement('div');
-                document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId).appendChild(prefsBar);
-                document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .columns').style.display = 'none';
-
-                //TODO: change this "add pref" mechanism to allow developer to add all the app-specific prefs that are desired,
-                //on top of default ones.  Use an object that describes each prefs and loop through each one with an iterator.
-
-                if (allow.showViewId) {
-                    var showViewIdCb = ktl.fields.addCheckbox(prefsBar, 'Show View ID', userPrefsObj.showViewId);
-                    showViewIdCb.addEventListener('change', e => {
-                        userPrefsObj.showViewId = e.target.checked;
-                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
-                    });
-                }
-
-                if (allow.showIframe) {
-                    var showIframeWndCb = ktl.fields.addCheckbox(prefsBar, 'Show iFrameWnd', userPrefsObj.showIframeWnd);
-                    showIframeWndCb.addEventListener('change', e => {
-                        userPrefsObj.showIframeWnd = e.target.checked;
-                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.iFrameWnd.showIFrame(userPrefsObj.showIframeWnd);
-                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
-                    });
-                }
-
-                if (allow.showDebugWnd) {
-                    var showDebugWndCb = ktl.fields.addCheckbox(prefsBar, 'Show DebugWnd', userPrefsObj.showDebugWnd);
-                    showDebugWndCb.addEventListener('change', e => {
-                        userPrefsObj.showDebugWnd = e.target.checked;
-                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.debugWnd.showDebugWnd(userPrefsObj.showDebugWnd);
-                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
-                    });
-                }
-
-                if (allow.showExtraDebugInfo) {
-                    var showExtraDebugCb = ktl.fields.addCheckbox(prefsBar, 'Show Extra Debug', userPrefsObj.showExtraDebugInfo);
-                    showExtraDebugCb.addEventListener('change', e => {
-                        userPrefsObj.showExtraDebugInfo = e.target.checked;
-                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
-                    });
-                }
-            }
-        })
-
-        $(document).on('knack-scene-render.any', function (event, scene) {
-            if (!lastUserPrefs) {
-                lastUserPrefs = readUserPrefsFromLs();
-                ktl.userPrefs.applyUserPrefs();
-            }
-        })
-
-        return {
-            setCfg: function (cfgObj = {}) {
-                cfgObj.allowShowPrefs && (allowShowPrefs = cfgObj.allowShowPrefs);
-                cfgObj.applyUserPrefs && (applyUserPrefs = cfgObj.applyUserPrefs);
-                cfgObj.myUserPrefsViewId && (myUserPrefsViewId = cfgObj.myUserPrefsViewId);
-            },
-
-            getCfg: function () {
-                return {
-                    myUserPrefsViewId,
-                };
-            },
-
-            getUserPrefs: function () {
-                readUserPrefsFromLs();
-                return userPrefsObj;
-            },
-
-            applyUserPrefs: function () {
-                ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
-                ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
-                ktl.scenes.refreshScene();
-                applyUserPrefs && applyUserPrefs();
-            },
-        }
-    })(); //User Prefs
-
-    //====================================================
     //Views feature
     this.views = (function () {
         const PAUSE_REFRESH = 'pause_auto_refresh';
@@ -2839,6 +2717,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     });
                 }
             }
+
+            for (var viewId in Knack.views)
+                ktl.views.addViewId(Knack.views[viewId].model.view);
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -3145,6 +3026,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             addViewId: function (view, fontStyle = 'color: red; font-weight: bold; font-size:small') {
                 if (ktl.userPrefs.getUserPrefs().showViewId && $('#' + view.key + '-label-id').length === 0/*Add once only*/) {
+                    //console.log('viewId =', viewId);//$$$
                     var label = document.createElement('label');
                     label.setAttribute('id', view.key + '-label-id');
                     label.appendChild(document.createTextNode('    ' + view.key));
@@ -3188,6 +3070,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             $('#' + view.key).prepend(label);
                         }
                     }
+                } else {
+                    if (!ktl.userPrefs.getUserPrefs().showViewId) {
+                        $('#' + view.key + '-label-id').remove();
+                    }
                 }
             },
 
@@ -3212,6 +3098,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     $('#' + viewKey + '.kn-table tbody tr').each(function () {
                         $(this).prepend('<td><input type="checkbox"></td>');
                     });
+
+                    if (!Knack.views[viewKey].options.model.view.totals) return;
 
                     var hasSummary = Knack.views[viewKey].options.model.view.totals.length;
                     if (hasSummary) {
@@ -3766,6 +3654,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             refreshScene: function () {
+                //console.log('ktl.scenes.refreshScene.caller =', ktl.scenes.refreshScene.caller);
                 var views = Object.entries(Knack.views);
                 for (var i = 0; i < views.length; i++)
                     ktl.views.refreshView(views[i][0]);
@@ -4028,15 +3917,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!ktl.core.getCfg().showAppInfo || window.self.frameElement) return;
 
                 //By default, version numbers are added at top right of screen
-                if ($('#version-label-id').length === 0) {
-                    var versionLabel = document.createElement('label');
-                    versionLabel.setAttribute('id', 'version-label-id');
+                if ($('#verButtonId').length === 0) {
                     var ktlVer = ktl.core.getCfg().showKtlInfo ? '    KTL v' + KTL_VERSION : '';
                     var appName = Knack.app.attributes.name.toUpperCase();
                     var versionInfo = appName + '    v' + SW_VERSION + ktlVer + '    ' + info.hostname;
-                    versionLabel.appendChild(document.createTextNode(versionInfo));
-                    versionLabel.setAttribute('style', style || 'white-space: pre; margin-left: 10px; margin-top: 8px; font-size:small; position:absolute; top:0; right:10px; color:lightsteelblue'); //TODO:  Use system colors instead.
-                    document.body.appendChild(versionLabel);
+
+                    ktl.fields.addButton(document.body, versionInfo, style, [], 'verButtonId');
+
+                    $('#verButtonId').on('click touchstart', function(e) {
+                        e.preventDefault();
+                        var ver = prompt('Which version to run, "prod" or "beta"?', 'prod');
+                        if (ver === 'prod' || ver === 'beta') {
+                            ktl.storage.lsSetItem('USE_VER', ver);
+                            location.reload(true);
+                        }
+                    })
                 }
             },
         }
@@ -4221,6 +4116,183 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     })();
 
     //====================================================
+    //User Preferences feature
+    this.userPrefs = (function () {
+        var userPrefsObj = {
+            dt: new Date(1970, 0, 1),
+            showViewId: false,
+            showExtraDebugInfo: false,
+            showIframeWnd: false,
+            showDebugWnd: false,
+            workShift: ''
+            //TODO:  allow dynamically adding more as per user requirements.
+        };
+
+
+        var myUserPrefsViewId = '';
+        //Should we move user prefs field id also here?
+
+        //App Callbacks
+        var allowShowPrefs = null; //Determines what prefs can be shown, based on app's rules.
+        var applyUserPrefs = null; //Apply your own prefs.
+
+        //Convert old prefs to new ones.
+        var lsPrefsStr = localStorage.getItem(Knack.app.attributes.name + '_' + ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
+        if (lsPrefsStr) {
+            if (lsPrefsStr.includes('showId')) {
+                var oldUserPrefsObj = JSON.parse(lsPrefsStr);
+                userPrefsObj.showViewId = oldUserPrefsObj.showId;
+                userPrefsObj.showExtraDebugInfo = oldUserPrefsObj.allowDebug;
+                userPrefsObj.showIframeWnd = oldUserPrefsObj.showIFrame;
+                userPrefsObj.workShift = oldUserPrefsObj.workShift;
+
+                delete userPrefsObj.showId;
+                delete userPrefsObj.allowDebug;
+                delete userPrefsObj.showIFrame;
+
+                lsPrefsStr = JSON.stringify(userPrefsObj);
+                localStorage.setItem(Knack.app.attributes.name + '_' + ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, lsPrefsStr);
+
+                ktl.debugWnd.lsLog('KTL - Converted old prefs format...');
+                ktl.log.addLog(ktl.const.LS_WRN, 'New app - PREFS_UPGRADE: user preferences have been converted.');
+            }
+        }
+
+        readUserPrefsFromLs();
+        var lastUserPrefs = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id); //Used to detect prefs changes.
+
+        //console.log('userPrefsObj =', userPrefsObj);
+        function readUserPrefsFromLs() { //Use Try Catch to prevent white screen.
+            var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
+            if (lsPrefsStr)
+                userPrefsObj = JSON.parse(lsPrefsStr);
+
+            return lsPrefsStr; //Return string version.
+        }
+
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId /*USER_PREFS_CUR - read-only autorefresh view*/) {
+                var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                if (!fieldId) return;
+
+                //Add iFrameRefresh=true to user prefs and this will force a iFrameWnd refresh.
+                //Can be useful sometimes to trigger on/off views via Page Rules.
+                if (data[fieldId].includes('iFrameRefresh')) {
+                    var prefsTmpObj = JSON.parse(data[fieldId]);
+                    delete prefsTmpObj['iFrameRefresh'];
+                    var updatedPrefs = JSON.stringify(prefsTmpObj);
+                    ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, { [fieldId]: updatedPrefs })
+                        .then(success => { location.reload(true); })
+                        .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
+                } else {
+                    if (data[fieldId] && (data[fieldId] !== lastUserPrefs)) {
+                        ktl.log.clog('Prefs have changed!!!!', 'blue');
+
+                        lastUserPrefs = data[fieldId];
+
+                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, data[fieldId]);
+                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+
+                        ktl.userPrefs.applyUserPrefs();
+                    }
+                }
+            } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId /*USER_PREFS_SET - form for user to update his own prefs*/) {
+                var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                var allow = allowShowPrefs ? allowShowPrefs() : {};
+                if ($.isEmptyObject(allow)) {
+                    ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
+                    return;
+                }
+
+                var userPrefsTmp = userPrefsObj;
+
+                var prefsBar = document.createElement('div');
+                prefsBar.style.marginTop = '20px';
+                prefsBar.style.marginBottom = '50px';
+                ktl.core.insertAfter(prefsBar, document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .view-header'));
+                ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .columns');
+
+                //TODO: change this "add pref" mechanism to allow developer to add all the app-specific prefs that are desired,
+                //on top of default ones.  Use an object that describes each prefs and loop through each one with an iterator.
+
+                if (allow.showViewId) {
+                    var showViewIdCb = ktl.fields.addCheckbox(prefsBar, 'Show View ID', userPrefsTmp.showViewId);
+                    showViewIdCb.addEventListener('change', e => {
+                        userPrefsTmp.showViewId = e.target.checked;
+                        sendPrefsChangedMsg();
+                    });
+                }
+
+                if (allow.showIframe) {
+                    var showIframeWndCb = ktl.fields.addCheckbox(prefsBar, 'Show iFrameWnd', userPrefsTmp.showIframeWnd);
+                    showIframeWndCb.addEventListener('change', e => {
+                        userPrefsTmp.showIframeWnd = e.target.checked;
+                        sendPrefsChangedMsg();
+                    });
+                }
+
+                if (allow.showDebugWnd) {
+                    var showDebugWndCb = ktl.fields.addCheckbox(prefsBar, 'Show DebugWnd', userPrefsTmp.showDebugWnd);
+                    showDebugWndCb.addEventListener('change', e => {
+                        userPrefsTmp.showDebugWnd = e.target.checked;
+                        sendPrefsChangedMsg();
+                    });
+                }
+
+                if (allow.showExtraDebugInfo) {
+                    var showExtraDebugCb = ktl.fields.addCheckbox(prefsBar, 'Show Extra Debug', userPrefsTmp.showExtraDebugInfo);
+                    showExtraDebugCb.addEventListener('change', e => {
+                        userPrefsTmp.showExtraDebugInfo = e.target.checked;
+                        sendPrefsChangedMsg();
+                    });
+                }
+
+                function sendPrefsChangedMsg() {
+                    userPrefsTmp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                    document.querySelector('#' + fieldId).value = JSON.stringify(userPrefsTmp);
+                }
+            }
+        })
+
+        $(document).on('knack-scene-render.any', function (event, scene) {
+            ktl.userPrefs.applyUserPrefs();
+        })
+
+        return {
+            setCfg: function (cfgObj = {}) {
+                cfgObj.allowShowPrefs && (allowShowPrefs = cfgObj.allowShowPrefs);
+                cfgObj.applyUserPrefs && (applyUserPrefs = cfgObj.applyUserPrefs);
+                cfgObj.myUserPrefsViewId && (myUserPrefsViewId = cfgObj.myUserPrefsViewId);
+            },
+
+            getCfg: function () {
+                return {
+                    myUserPrefsViewId,
+                };
+            },
+
+            getUserPrefs: function () {
+                readUserPrefsFromLs();
+                return userPrefsObj;
+            },
+
+            applyUserPrefs: function (refreshScene = false) {
+                ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
+                ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
+                for (var viewId in Knack.views)
+                    ktl.views.addViewId(Knack.views[viewId].model.view);
+
+                var myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
+                myUserPrefsViewId && ktl.views.refreshView(myUserPrefsViewId);
+
+                if (refreshScene && !applyUserPrefs)
+                    ktl.scenes.refreshScene();
+                applyUserPrefs && applyUserPrefs(refreshScene);
+            },
+        }
+    })(); //User Prefs
+
+    //====================================================
     //Account feature
     this.account = (function () {
         const LOGIN_SUCCESSFUL = 'Successful';
@@ -4393,14 +4465,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var details = ktl.storage.lsGetItem(el.type + Knack.getUserAttributes().id);
                     if (details && details.length) {
                         if (el.type === ktl.const.LS_CRITICAL || el.type === ktl.const.LS_LOGIN || el.type === ktl.const.LS_WRN || el.type === ktl.const.LS_APP_ERROR) {
-                            //lsLog('Submitting priority log for: ' + el.typeStr);
+                            ktl.log.clog('Submitting priority log for: ' + el.typeStr, 'purple');
 
                             var logId = ktl.core.getCurrentDateTime(true, true, true, true).replace(/[\D]/g, ''); //Unique message identifier used validate that transmission was successfull, created from a millisecond timestamp.
                             if (el.type === ktl.const.LS_CRITICAL) { //In this case, send via email directly first.
-                                console.log('found critical error log');
-                                //TODO Send email
+                                console.log('found critical error log'); //TODO Send email
                             } else {
                                 var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
+                                console.log('accounts logs viewId =', viewId);//$$$
                                 if (viewId) {
                                     var apiData = {};
                                     apiData[alLogIdFld] = logId;
@@ -4745,7 +4817,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (msgQueue[msgId]) {
                 delete msgQueue[msgId];
                 if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo)
-                    console.log('Msg removed:', msgId);//$$$
+                    console.log('Msg removed:', msgId);
             }
         }
 
@@ -5178,11 +5250,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
 
 //TODO:
-//console.log('000');//$$$
 //inlineEditChangeStyle: function () {
-//TODO: find a way to copy existing user prefs to new object.
-//Check all ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS
-//var msgId = event.data.msgId; //Keep a copy for ack.
+//necessary?... var msgId = event.data.msgId; //Keep a copy for ack.
 //TODO:  remove iframe-account-logs after switchover.
-//console.log('found critical error log');
+//console.log('found critical error log'); //TODO Send email
 //Use Try Catch to prevent white screen.
+//ktl.core.waitSelector('#' + viewId + ' .kn-tag-filter', 5000, 'visible') //Instead, maybe try to wait until scene has rendered.
+//TODO: Should only call this if really needed.
+//Need to find a way to apply user filters to view where there are many reports (columns).  Currently, filters cause lots of refreshes.  Maybe pre-format URL once, then apply?
+
