@@ -4124,7 +4124,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             showExtraDebugInfo: false,
             showIframeWnd: false,
             showDebugWnd: false,
-            workShift: ''
+            workShift: 'A'
             //TODO:  allow dynamically adding more as per user requirements.
         };
 
@@ -4140,11 +4140,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var lsPrefsStr = localStorage.getItem(Knack.app.attributes.name + '_' + ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
         if (lsPrefsStr) {
             if (lsPrefsStr.includes('showId')) {
-                var oldUserPrefsObj = JSON.parse(lsPrefsStr);
-                userPrefsObj.showViewId = oldUserPrefsObj.showId;
-                userPrefsObj.showExtraDebugInfo = oldUserPrefsObj.allowDebug;
-                userPrefsObj.showIframeWnd = oldUserPrefsObj.showIFrame;
-                userPrefsObj.workShift = oldUserPrefsObj.workShift;
+                userPrefsObj = JSON.parse(lsPrefsStr);
+                userPrefsObj.showViewId = userPrefsObj.showId;
+                userPrefsObj.showExtraDebugInfo = userPrefsObj.allowDebug;
+                userPrefsObj.showIframeWnd = userPrefsObj.showIFrame;
+                userPrefsObj.workShift = userPrefsObj.workShift;
 
                 delete userPrefsObj.showId;
                 delete userPrefsObj.allowDebug;
@@ -4194,6 +4194,25 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
 
                         ktl.userPrefs.applyUserPrefs();
+                    } else if (!data[fieldId] || data[fieldId].includes('showId')) {
+                        //If nothing yet, or old format, use default object: 1970, etc.
+                        var defaultUserPrefsObj = {
+                            dt: new Date(1970, 0, 1),
+                            showViewId: false,
+                            showExtraDebugInfo: false,
+                            showIframeWnd: false,
+                            showDebugWnd: false,
+                            workShift: 'A'
+                        };
+
+                        //ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(defaultUserPrefsObj));
+                        var acctUserPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                        var updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
+                        if (!updUserPrefsViewId || !acctUserPrefsFld) return;
+
+                        document.querySelector('#' + acctUserPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
+                        document.querySelector('#' + updUserPrefsViewId + ' .kn-button.is-primary').click();
+                        ktl.log.clog('Uploading default prefs to cloud', 'green');
                     }
                 }
             } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId /*USER_PREFS_SET - form for user to update his own prefs*/) {
