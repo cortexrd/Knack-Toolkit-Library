@@ -995,10 +995,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     else {
                         var fields = document.querySelectorAll('.kn-input');
                         fields.forEach(function (field) {
-                            if (field.closest('.kn-input-number') || textAsNumeric.includes(field.id)) {
-                                if (!field.getAttribute('numeric')) {
-                                    field.setAttribute('numeric', true);
-                                    $(field).clone().attr('type', 'tel').insertAfter($(field)).prev().remove();
+                            var viewId = $(field).closest('.kn-view') || e.target.closest('#cell-editor');
+                            if (viewId && viewId[0]) {
+                                viewId = viewId[0].id;
+                                if (field.closest('.kn-input-number') || textAsNumeric.includes(field.id)) {
+                                    var fieldId = document.querySelector('#' + field.id + ' .control [id]').id;
+                                    if (!field.getAttribute('numeric')) {
+                                        field.setAttribute('numeric', true);
+                                        $(field).clone().attr('type', 'tel').insertAfter($(field)).prev().remove();
+
+                                        //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
+                                        $('#' + viewId + ' #' + fieldId).clone().attr('type', 'tel').insertAfter($('#' + viewId + ' #' + fieldId)).prev().remove();
+                                    }
                                 }
                             }
                         })
