@@ -4,27 +4,21 @@
  * @license GPLv3
  */
 
+//Find a better place for these universal values.
+const APP_ROOT_NAME = Knack.app.attributes.name + '_';
+const TEN_SECONDS_DELAY = 10000;
+const ONE_MINUTE_DELAY = 60000;
+const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
+const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
+const IFRAME_WND_ID = 'iFrameWnd';
+
 function Ktl($) {
     const KTL_VERSION = '0.1.0';
-    var SW_VERSION = window.SW_VERSION;
-
-
-    //KEC mean KTL Event Code.  Next:  KEC_1019
+    const SW_VERSION = window.SW_VERSION;
 
     var ktl = this;
 
-    /** Generic timer constants, in milliseconds */
-    /**
-    *  @constant
-    *  @type {number}
-    */
-    const APP_ROOT_NAME = Knack.app.attributes.name + '_';
-    const TEN_SECONDS_DELAY = 10000;
-    const ONE_MINUTE_DELAY = 60000;
-    const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
-    const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
-
-    const IFRAME_WND_ID = 'iFrameWnd';
+    //KEC stands for "KTL Event Code".  Next:  KEC_1019
 
     /**
     * Exposed constant strings
@@ -4738,13 +4732,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             var time = utcHb.substr(11, 5);
                             document.querySelector('#' + viewId + '-' + fieldId + '-time').value = time;
 
+                            var dtUTC = ktl.core.getCurrentDateTime(true, false, false, false);
                             $(document).off('knack-form-submit.' + viewId); //Prevent multiple re-entry.
                             document.querySelector('#' + viewId + ' .kn-button.is-primary').click();
 
                             //Wait until Submit is completed and ack parent
                             $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
-                                if (record[ktl.iFrameWnd.getCfg().acctLocHbFld] === ktl.core.getCurrentDateTime(true, false, false, false))
+                                var before = Date.parse(dtUTC);
+                                var after = Date.parse(record[ktl.iFrameWnd.getCfg().acctLocHbFld]);
+                                var diff = after - before;
+                                if (diff <= 60000) //One second discrepancy is common due to calculation delay when submit is minute-borderline.
                                     ktl.wndMsg.send('heartbeatMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
+                                else
+                                    console.log('Missed HB, diff:', diff);
                             });
                             break;
                         case 'reloadPageMsg':
