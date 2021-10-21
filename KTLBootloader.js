@@ -9,8 +9,6 @@
  * See documentation for more details.
  * */
 
-this.SW_VERSION = '0.1.0'; //Put your own app version here.
-
 KnackInitAsync = function ($, callback) {
     window.$ = $;
     window.LazyLoad = LazyLoad;
@@ -18,31 +16,41 @@ KnackInitAsync = function ($, callback) {
     var svrURL = 'http://localhost:3000/';
     var appPath = 'KnackApps/';
     var appName = Knack.app.attributes.name;
+    var fileName = appName; //Or any other specific name you'd prefer to use.
     var ktlPath = 'Lib/KTL/';
     var ktlUrl = '';
 
-    //Assume ACB mode by default, unless KnackApp function is not found.  Then keep testing other locations.
-    if (typeof (KnackApp) === 'function') {
-        localStorage.removeItem(appName + '_svrURL');
-        localStorage.removeItem(appName + '_appPath');
-        localStorage.removeItem(appName + '_ktlPath');
-        svrURL = '';
-        runApp();
+    //If contains "beta", run beta code.  Anything else (incl not existing), run prod code.
+    //This is to avoid error 404 not found in console output when using CLS mode, and faster startup time.
+    var prod = (localStorage.getItem(appName + '_USE_VER') !== 'beta');
+
+    //Assume Prod ACB mode by default.
+    if (prod) {
+        if (typeof (KnackAppProd) === 'function') { //ACB Prod
+            localStorage.removeItem(appName + '_svrURL');
+            localStorage.removeItem(appName + '_appPath');
+            localStorage.removeItem(appName + '_ktlPath');
+            svrURL = '';
+            runApp();
+        } else
+            alert('Error - Cannot find Knack application...');
     } else {
-        //The App does the first pass of detecting the code location so the iFrameWnd doesn't have to do it again.
+        fileName += '_Beta';
+
+        //The App does a first pass of detecting and saving the code location, so the iFrameWnd doesn't have to do it again.
         //This also prevents repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
-        if (!window.self.frameElement) {
-            LazyLoad.js([svrURL + appPath + appName + '.js'], () => {
-                if (typeof (KnackApp) === 'function') {
+        if (!window.self.frameElement) { //CLS localhost Beta
+            LazyLoad.js([svrURL + appPath + fileName + '.js'], () => {
+                if (typeof (KnackAppBeta) === 'function') {
                     runApp();
                 } else {
                     //Put your favorite CDN and set paths accordingly
                     svrURL = 'https://ctrnd.com/';
                     appPath = 'KnackApps/';
-                    LazyLoad.js([svrURL + appPath + appName + '.js'], () => {
-                        if (typeof (KnackApp) === 'function') {
+                    LazyLoad.js([svrURL + appPath + fileName + '.js'], () => {
+                        if (typeof (KnackAppBeta) === 'function') { //CDN Beta
                             ktlPath = 'jsLibs/KTL/';
-                        } else {
+                        } else { //ACB Prod
                             localStorage.removeItem(appName + '_svrURL');
                             localStorage.removeItem(appName + '_appPath');
                             localStorage.removeItem(appName + '_ktlPath');
@@ -56,7 +64,7 @@ KnackInitAsync = function ($, callback) {
             svrURL = localStorage.getItem(appName + '_svrURL');
             appPath = localStorage.getItem(appName + '_appPath');
             ktlPath = localStorage.getItem(appName + '_ktlPath');
-            svrURL && LazyLoad.js([svrURL + appPath + appName + '.js'], () => { runApp(); })
+            svrURL && LazyLoad.js([svrURL + appPath + fileName + '.js'], () => { runApp(); })
         }
     }
 
@@ -75,13 +83,22 @@ KnackInitAsync = function ($, callback) {
         }
 
         lib.loadLibrary('jquery', 'blockUI', 'Sortable', 'ktl', function () {
-            if (typeof (KnackApp) === 'function') {
-                KnackApp($, {
-                    hostname: svrURL.includes('localhost') ? 'localhost' : '',
-                });
-                callback();
-            } else
-                alert('Error - Cannot find Knack application...');
+            if (prod) {
+                if (typeof (KnackAppProd) === 'function')
+                    KnackAppProd($, { hostname: svrURL.includes('localhost') ? 'localhost' : 'ACB' });
+                else
+                    alert('Error - Cannot find Knack application...');
+            } else {
+                if (typeof (KnackAppBeta) === 'function')
+                    KnackAppBeta($, { hostname: svrURL.includes('localhost') ? 'localhost' : 'ACB' });
+                else {
+                    alert('Error - Cannot find Knack BETA application.\nReverting to Production version.');
+                    if (typeof (KnackAppProd) === 'function')
+                        KnackAppProd($, { hostname: svrURL.includes('localhost') ? 'localhost' : 'ACB' });
+                }
+            }
+
+            callback();
         });
     }
 };
@@ -185,10 +202,5 @@ libLoader.prototype.librariesRequired = function () {
         self.assert(window[library.objectName], 'Library "' + libraryName + '" is required');
     });
 };
-
-
-
-
-
 
 
