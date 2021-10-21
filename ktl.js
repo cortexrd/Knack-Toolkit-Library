@@ -2932,45 +2932,45 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 });
             },
 
-            //In progress.  Convert to use Promise.all to see if helps.
             refreshViewArray: function (viewsToRefresh) {
                 return new Promise(function (resolve, reject) {
                     if (viewsToRefresh.length === 0)
                         resolve();
                     else {
-                        //console.log('Entering refreshViewArray');
-                        //console.log(viewsToRefresh);
-                        var ctr = viewsToRefresh.length;
-                        //console.log('ctr 1 = ' + ctr);
-
                         Knack.showSpinner();
-                        viewsToRefresh.forEach(function (view) {
-                            ktl.views.refreshView(view).then(function () {
-                                ctr--;
-                                //console.log('view = ' + view);
-                                //console.log('ctr 2 = ' + ctr);
-                            })
+
+                        var promisesArray = [];
+                        viewsToRefresh.forEach(function (viewId) {
+                            promisesArray.push(
+                                ktl.views.refreshView(viewId)
+                                    .then(() => {
+                                        //ktl.log.clog('View refreshed successfully: ' + viewId, 'green');
+                                    })
+                                    .catch(() => {
+                                        ktl.log.clog('Error refreshing view:' + viewId, 'red');
+                                    })
+                            )
                         })
 
-                        //console.log('forEach refreshViewArray');
-
-                        //console.log('ctr 3 = ' + ctr);
-                        if (ctr > 0) {
-                            var intervalId = setInterval(function () {
-                                if (ctr === 0) {
-                                    clearInterval(intervalId);
-                                    //console.log('hide spinner 5');
-                                    Knack.hideSpinner();
-                                    resolve();
-                                }
-                                //console.log('Looping refreshViewArray');
-                            }, 200);
-
-                            setTimeout(function () { //Failsafe
-                                clearInterval(intervalId);
-                            }, 3000);
+                        Promise.all(promisesArray)
+                            .then(() => {
+                                //ktl.log.clog('All views refreshed!', 'green');
+                                Knack.hideSpinner();
+                                resolve();
+                            })
+                            .catch(() => {
+                                ktl.log.clog('Error refreshing views!', 'red');
+                                reject()
+                            })
+                            .finally(() => {
+                                clearTimeout(failsafe);
+                            })
                         }
-                    }
+
+                    var failsafe = setTimeout(() => {
+                        ktl.log.clog('Failsafe timeout in refreshViewArray!', 'red');
+                        reject();
+                    }, 30000);
                 })
             },
 
@@ -3512,7 +3512,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 overlayCSS: {
                                     backgroundColor: '#ddd',
                                     opacity: 0.2,
-                                    cursor: 'wait'
+                                    //cursor: 'wait'
                                 },
                             })
 
@@ -4493,7 +4493,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 console.log('found critical error log'); //TODO Send email
                             } else {
                                 var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
-                                console.log('accounts logs viewId =', viewId);//$$$
                                 if (viewId) {
                                     var apiData = {};
                                     apiData[alLogIdFld] = logId;
@@ -5098,7 +5097,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 overlayCSS: {
                                     backgroundColor: '#ddd',
                                     opacity: 0.2,
-                                    cursor: 'wait'
+                                    //cursor: 'wait'
                                 },
                             })
 
