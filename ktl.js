@@ -4671,8 +4671,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var msgQueue = {};
         var heartbeatInterval = null;
         var procMsgInterval = null;
-        var processFailedMessages = null;
-        var processAppMsg = null;
+        var processFailedMessages = null; //Process failed app-specific messages.
+        var processAppMsg = null; //Process app-specific messages.
+        var sendAppMsg = null; //To tx/rx app-specific messages to/from iFrames or child windows.
 
         function Msg(type, subtype, src, dst, id, data, expiration, retryCnt = SEND_RETRIES) {
             this.msgType = type;
@@ -4778,7 +4779,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                             break;
                         default:
-                            processAppMsg && processAppMsg(event); //App-specific messages.
+                            processAppMsg && processAppMsg(event);
                             break;
                     }
                 } else if (event.data.msgSubType === 'ack') {
@@ -4867,6 +4868,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             setCfg: function (cfgObj = {}) {
                 cfgObj.processFailedMessages && (processFailedMessages = cfgObj.processFailedMessages);
                 cfgObj.processAppMsg && (processAppMsg = cfgObj.processAppMsg);
+                cfgObj.sendAppMsg && (sendAppMsg = cfgObj.sendAppMsg);
             },
 
             send: function (msgType = '', msgSubType = '', src = '', dst = '', msgId = 0, msgData = null) {
@@ -4891,9 +4893,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     ktl.iFrameWnd.getiFrameWnd().contentWindow.postMessage(msg, '*');
                 else if (src === IFRAME_WND_ID && dst === ktl.const.MSG_APP)
                     parent.postMessage(msg, '*');
-                else {
-                    //Cover more cases eventually, like other iFrames or child windows.
-                }
+                else
+                    sendAppMsg && sendAppMsg(msg);
             },
 
             removeAllMsgOfType: function (msgType = '') {
