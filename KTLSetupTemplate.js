@@ -1,6 +1,6 @@
 //====================================================
 //====================================================
-const SW_VERSION = '0.1.0'; //Your App version.
+window.SW_VERSION = '0.1.0'; //Your App version.
 //Your App ID:  xxxxxxxxxxxxxxxxxxxxxxxx
 
 var KnackApp = function ($, info = {}) {
