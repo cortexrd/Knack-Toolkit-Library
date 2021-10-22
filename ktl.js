@@ -3539,15 +3539,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         for (var i = 0; i < fields.length; i++)
                             document.querySelector('#' + viewId + ' #' + fields[i][0]).value = fields[i][1];
 
+                        var resultRecord = {};
+                        $(document).off('knack-form-submit.' + viewId); //Prevent multiple re-entry.
                         document.querySelector('#' + viewId + ' .kn-button.is-primary').click();
+                        $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
+                            resultRecord = record;
+                        })
 
                         var success = null, failure = null;
                         var intervalId = setInterval(function () {
                             success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
                             failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
-                            if (success || failure) {
+                            if (!$.isEmptyObject(resultRecord) && (success || failure)) {
                                 clearInterval(intervalId);
-                                success && resolve('submitAndWait, ' + viewId + ' : ' + success);
+                                //console.log('success, failure:', success, failure);//$$$
+                                success && resolve({
+                                    outcome: 'submitAndWait, ' + viewId + ' : ' + success,
+                                    record: resultRecord
+                                });
                                 failure && reject('submitAndWait, ' + viewId + ' : ' + failure);
                                 return;
                             }
@@ -3556,7 +3565,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         setTimeout(function () { //Failsafe
                             clearInterval(intervalId);
                             reject('submitAndWait timeout error');
-                        }, 5000);
+                        }, 15000);
                     }
                     catch (e) {
                         reject(e);
@@ -4724,28 +4733,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 return;
                             }
 
-                            document.querySelector('#' + viewId + ' #' + ktl.iFrameWnd.getCfg().acctSwVersionFld).value = SW_VERSION;
                             var utcHb = ktl.core.getCurrentDateTime(true, false, false, true);
+                            var locHB = new Date().valueOf();
                             var date = utcHb.substr(0, 10);
                             var fieldId = ktl.iFrameWnd.getCfg().acctUtcHbFld;
                             document.querySelector('#' + viewId + '-' + fieldId).value = date;
                             var time = utcHb.substr(11, 5);
                             document.querySelector('#' + viewId + '-' + fieldId + '-time').value = time;
 
-                            var dtUTC = ktl.core.getCurrentDateTime(true, false, false, false);
-                            $(document).off('knack-form-submit.' + viewId); //Prevent multiple re-entry.
-                            document.querySelector('#' + viewId + ' .kn-button.is-primary').click();
-
                             //Wait until Submit is completed and ack parent
-                            $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
-                                var before = Date.parse(dtUTC);
-                                var after = Date.parse(record[ktl.iFrameWnd.getCfg().acctLocHbFld]);
-                                var diff = after - before;
-                                if (diff <= 60000) //One second discrepancy is common due to calculation delay when submit is minute-borderline.
-                                    ktl.wndMsg.send('heartbeatMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
-                                else
-                                    console.log('Missed HB, diff:', diff);
-                            });
+                            ktl.views.submitAndWait(viewId, { [ktl.iFrameWnd.getCfg().acctSwVersionFld]: SW_VERSION })
+                                .then(success => {
+                                    var after = Date.parse(success.record[ktl.iFrameWnd.getCfg().acctLocHbFld]);
+                                    var diff = locHB - after;
+                                    if (diff <= 60000) //One second discrepancy is common due to calculation delay when submit is minute-borderline.
+                                        ktl.wndMsg.send('heartbeatMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
+                                    else
+                                        console.log('Missed HB, diff:', diff);
+                                })
+                                .catch(failure => {
+                                    ktl.log.clog('Failure sending heartbeatMsg: ' + failure, 'red');
+                                })
                             break;
                         case 'reloadPageMsg':
                             ktl.debugWnd.lsLog('Rxed msg: reloadPage');
@@ -5285,4 +5293,5 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //ktl.core.waitSelector('#' + viewId + ' .kn-tag-filter', 5000, 'visible') //Instead, maybe try to wait until scene has rendered.
 //TODO: Should only call this if really needed.
 //Need to find a way to apply user filters to view where there are many reports (columns).  Currently, filters cause lots of refreshes.  Maybe pre-format URL once, then apply?
-
+//Wait until Submit is completed and ack parent - convert to use submitAndWait
+//Afer app starup, if iframe never acks its presence within X seconds, re-create it.
