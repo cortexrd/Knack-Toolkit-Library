@@ -4427,6 +4427,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //TODO: Put all this in an object like core:  var cfg = {...
         var iFrameWnd = null;
         var iFrameReady = false;
+        var iFrameTimeout = null;
 
         //Scene and views
         var iFrameScnId = '';
@@ -4584,7 +4585,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.iFrameScnId && (iFrameScnId = cfgObj.iFrameScnId);
-                cfgObj.iFrameReady && (iFrameReady = cfgObj.iFrameReady);
+                if (cfgObj.iFrameReady) {
+                    iFrameReady = cfgObj.iFrameReady;
+                    clearTimeout(iFrameTimeout);
+                }
+
                 cfgObj.curUserPrefsViewId && (curUserPrefsViewId = cfgObj.curUserPrefsViewId);
                 cfgObj.hbViewId && (hbViewId = cfgObj.hbViewId);
                 cfgObj.accountLogsViewId && (accountLogsViewId = cfgObj.accountLogsViewId);
@@ -4636,6 +4641,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     document.body.appendChild(iFrameWnd);
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
+
+                    //If creation fails, re-create.
+                    iFrameTimeout = setTimeout(() => {
+                        ktl.log.clog('ERROR - iFrameWnd creation failed with timeout!', 'purple');
+                        if (ktl.iFrameWnd.getiFrameWnd()) {
+                            ktl.iFrameWnd.delete();
+                            ktl.iFrameWnd.create();
+                        }
+                    }, 30000);
                 }
             },
 
