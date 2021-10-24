@@ -903,7 +903,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         chznBetterTxt = inputVal;
                         chznLastKeyTimer = setTimeout(function () {
                             if (inputVal.length >= threshold) {
-                                console.log('inputVal =', inputVal);
+                                //console.log('inputVal =', inputVal);
                                 inputVal = $(e.target).val().replace(' ', ''); //Get a last update in case user was quick and entered more than threshold chars.
                                 ktl.fields.searchChznBetterDropdown(inputVal);
                             }
@@ -936,13 +936,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             var popover = e.target.closest('.kn-popover');
             if (popover) {
-                console.log('popover =', popover);
-                console.log('e.target.parentElement =', e.target.parentElement);
+                //console.log('popover =', popover);
+                //console.log('e.target.parentElement =', e.target.parentElement);
             }
             return;
 
             if (e.target.classList) {
-                console.log('e.target.classList =', e.target.classList);
+                //console.log('e.target.classList =', e.target.classList);
                 var target = e.target;
                 if (e.target.classList.value.includes('col-'))
                     target = e.target.parentElement;
@@ -950,11 +950,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 //console.log('target =', target);
                 if (target.classList && target.classList.value.includes('cell-edit')) {
                     var fieldId = target.attributes['data-field-key'].value;
-                    console.log('fieldId =', fieldId);
+                    //console.log('fieldId =', fieldId);
                     if (true || fieldId === 'field_x') { //TODO provide an array of fields and their style to apply.
                         ktl.core.waitSelector('#cell-editor ' + ' #' + fieldId)
                             .then(() => {
-                                console.log('Found inline 1');
+                                //console.log('Found inline 1');
                                 ktl.fields.inlineEditChangeStyle();
                             })
                             .catch(() => {
@@ -963,7 +963,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                         ktl.core.waitSelector('#cell-editor ' + ' #kn-input-' + fieldId)
                             .then(() => {
-                                console.log('Found inline 2');
+                                //console.log('Found inline 2');
                                 ktl.fields.inlineEditChangeStyle();
                             })
                             .catch(() => {
@@ -3535,6 +3535,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (!viewId || $.isEmptyObject(formData)) return;
 
                     var fields = Object.entries(formData);
+
                     try {
                         for (var i = 0; i < fields.length; i++)
                             document.querySelector('#' + viewId + ' #' + fields[i][0]).value = fields[i][1];
@@ -3552,6 +3553,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
                             if (!$.isEmptyObject(resultRecord) && (success || failure)) {
                                 clearInterval(intervalId);
+                                clearTimeout(failsafe);
                                 //console.log('success, failure:', success, failure);//$$$
                                 success && resolve({
                                     outcome: 'submitAndWait, ' + viewId + ' : ' + success,
@@ -3562,10 +3564,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                         }, 200);
 
-                        setTimeout(function () { //Failsafe
+                        var failsafe = setTimeout(function () {
                             clearInterval(intervalId);
                             reject('submitAndWait timeout error');
-                        }, 15000);
+                        }, 20000);
                     }
                     catch (e) {
                         reject(e);
@@ -4641,6 +4643,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     document.body.appendChild(iFrameWnd);
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
+
+                    //ktl.log.clog('Created iFrameWnd', 'blue');
 
                     //If creation fails, re-create.
                     iFrameTimeout = setTimeout(() => {
