@@ -4723,8 +4723,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var msgId = event.data.msgId; //Keep a copy for ack.
 
                 if (event.data.msgSubType === 'req') {
-                    if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo)
-                        ktl.log.clog('REQ: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt, 'darkcyan');
+                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('REQ: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt, 'darkcyan');
 
                     switch (event.data.msgType) {
                         case 'iFrameWndReadyMsg':
@@ -4815,8 +4814,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             break;
                     }
                 } else if (event.data.msgSubType === 'ack') {
-                    if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo)
-                        ktl.log.clog('ACK: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt, 'darkcyan');
+                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('ACK: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt, 'darkcyan');
 
                     if (event.data.msgType === 'heartbeatMsg')
                         ktl.wndMsg.removeAllMsgOfType('heartbeatMsg');
@@ -4863,7 +4861,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         function retryMsg (msgId = '') {
             if (--msgQueue[msgId].retryCnt > 0) {
-                ktl.log.clog('RETRY MSG: ' + msgQueue[msgId].msgType + ', ' + msgId + ', ' + msgQueue[msgId].retryCnt, 'red');
+                ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('RETRY MSG: ' + msgQueue[msgId].msgType + ', ' + msgId + ', ' + msgQueue[msgId].retryCnt, 'red');
                 msgQueue[msgId].expiration = new Date().valueOf() + MSG_EXP_DELAY;
                 ktl.wndMsg.send(msgQueue[msgId].msgType, msgQueue[msgId].msgSubType, msgQueue[msgId].src, msgQueue[msgId].dst, msgId, msgQueue[msgId].msgData);
             } else {
@@ -4875,8 +4873,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         function removeMsg(msgId = '') {
             if (msgQueue[msgId]) {
                 delete msgQueue[msgId];
-                if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo)
-                    console.log('Msg removed:', msgId);
+                ktl.userPrefs.getUserPrefs().showExtraDebugInfo && console.log('Msg removed:', msgId);
             }
         }
 
