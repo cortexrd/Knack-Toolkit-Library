@@ -1810,7 +1810,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (colView.length > 0)
                         column = '_' + (colView[0].id.slice(-1) - 1);
 
-                    removeActiveFilter(getViewToRefresh() + column);
+                    ktl.userFilters.removeActiveFilter(getViewToRefresh() + column);
                 }
             });
         })
@@ -2069,7 +2069,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 var allParams = otherParams + viewIdWithColumn + '_filters=' + encodedNewFilter;
                                 newUrl += allParams;
 
-                                window.location.href = newUrl;
+                                if (window.location.href !== newUrl)
+                                    window.location.href = newUrl;
                             });
 
                             //Right-click to provide Delete and Rename options.
@@ -2342,11 +2343,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             ul.appendChild(listRename);
         }
 
-        function removeActiveFilter (viewId) {
-            allFiltersObj[viewId].active = -1;
-            saveAllFilters();
-        }
-
         function setViewToRefresh (viewId) {
             viewToRefreshAfterFilterChg = viewId;
         }
@@ -2378,6 +2374,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return {
                     uf,
                 };
+            },
+
+            removeActiveFilter: function (viewId) {
+                allFiltersObj[viewId].active = -1;
+                saveAllFilters();
             },
         }
     })();
@@ -3471,7 +3472,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (alreadySorted)
                         return;
 
-
                     var fieldId = e.target.closest('th').className;
                     if (Knack.objects.getField(fieldId)) {
                         var fieldAttr = Knack.objects.getField(fieldId).attributes;
@@ -3483,6 +3483,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var viewId = e.target.closest('.kn-table.kn-view');
                         if (viewId) {
                             viewId = viewId.getAttribute('id');
+
+                            ktl.userFilters.removeActiveFilter(viewId); //Prevent conflict with userFilters by removing current one.
+
                             //if (fieldAttr.type === 'connection')
                             //    Knack.views[viewId].model.view.source.sort[0].field = fieldId + '-' + fieldId;
                             //else
@@ -3518,7 +3521,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             ktl.views.refreshView(viewId)
                                 .then(function () {
-                                    //For some reason, we need a second refreshe, otherwise order is wrong.  TODO: Need to find a better solution.
+                                    //For some reason, we need a second refresh, otherwise order is wrong.  TODO: Need to find a better solution.
                                     ktl.views.refreshView(viewId)
                                         .then(function () {
                                             Knack.hideSpinner();
@@ -4760,7 +4763,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             document.querySelector('#' + viewId + '-' + fieldId).value = date;
                             var time = utcHb.substr(11, 5);
                             document.querySelector('#' + viewId + '-' + fieldId + '-time').value = time;
-
                             document.querySelector('#' + viewId + ' #' + ktl.iFrameWnd.getCfg().acctTimeZoneFld).value = -(new Date().getTimezoneOffset() / 60);
                             document.querySelector('#' + viewId + ' #kn-input-' + ktl.iFrameWnd.getCfg().acctOnlineFld + ' input').checked = true;
 
