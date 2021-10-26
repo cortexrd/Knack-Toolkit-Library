@@ -13,7 +13,7 @@ const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 const IFRAME_WND_ID = 'iFrameWnd';
 
 function Ktl($) {
-    const KTL_VERSION = '0.1.0';
+    const KTL_VERSION = '0.2.0';
     const SW_VERSION = window.SW_VERSION;
 
     var ktl = this;
@@ -4442,8 +4442,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var acctSwVersionFld = '';
         var acctUtcHbFld = '';
         var acctLocHbFld = '';
+        var acctTimeZoneFld = '';
+        var acctOnlineFld = '';
         var acctUserPrefsFld = '';
-        var acctWorkShiftFld = '';
 
         //Account Logs fields
         var alLogTypeFld = '';
@@ -4599,8 +4600,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.acctSwVersionFld && (acctSwVersionFld = cfgObj.acctSwVersionFld);
                 cfgObj.acctUtcHbFld && (acctUtcHbFld = cfgObj.acctUtcHbFld);
                 cfgObj.acctLocHbFld && (acctLocHbFld = cfgObj.acctLocHbFld);
+                cfgObj.acctTimeZoneFld && (acctTimeZoneFld = cfgObj.acctTimeZoneFld);
+                cfgObj.acctOnlineFld && (acctOnlineFld = cfgObj.acctOnlineFld);
                 cfgObj.acctUserPrefsFld && (acctUserPrefsFld = cfgObj.acctUserPrefsFld);
-                cfgObj.acctWorkShiftFld && (acctWorkShiftFld = cfgObj.acctWorkShiftFld);
                 cfgObj.updUserPrefsViewId && (updUserPrefsViewId = cfgObj.updUserPrefsViewId);
 
                 cfgObj.alLogTypeFld && (alLogTypeFld = cfgObj.alLogTypeFld);
@@ -4620,8 +4622,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     acctSwVersionFld,
                     acctUtcHbFld,
                     acctLocHbFld,
+                    acctTimeZoneFld,
+                    acctOnlineFld,
                     acctUserPrefsFld,
-                    acctWorkShiftFld,
                 };
             },
 
@@ -4659,7 +4662,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             delete: function () {
                 if (iFrameWnd) {
-                    ktl.wndMsg.removeAllMsgOfType('heartbeatMsg');
+                    ktl.wndMsg.removeAllMsgOfType('heartbeatMsg'); //TODO:  change to delete all msg for dst === iFrameWnd.
                     iFrameWnd.parentNode.removeChild(iFrameWnd);
                     iFrameWnd = null;
                 }
@@ -4759,18 +4762,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             var time = utcHb.substr(11, 5);
                             document.querySelector('#' + viewId + '-' + fieldId + '-time').value = time;
 
+                            document.querySelector('#' + viewId + ' #' + ktl.iFrameWnd.getCfg().acctTimeZoneFld).value = -(new Date().getTimezoneOffset() / 60);
+                            document.querySelector('#' + viewId + ' #kn-input-' + ktl.iFrameWnd.getCfg().acctOnlineFld + ' input').checked = true;
+
                             //Wait until Submit is completed and ack parent
                             ktl.views.submitAndWait(viewId, { [ktl.iFrameWnd.getCfg().acctSwVersionFld]: SW_VERSION })
                                 .then(success => {
                                     var after = Date.parse(success.record[ktl.iFrameWnd.getCfg().acctLocHbFld]);
                                     var diff = locHB - after;
-                                    if (diff <= 60000) //One second discrepancy is common due to calculation delay when submit is minute-borderline.
+                                    if (diff <= 60000) //One minute discrepancy is common due to calculation delay when submit is minute-borderline.
                                         ktl.wndMsg.send('heartbeatMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
                                     else
                                         console.log('Missed HB, diff:', diff);
                                 })
                                 .catch(failure => {
-                                    ktl.log.clog('Failure sending heartbeatMsg: ' + failure, 'red');
+                                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('Failure sending heartbeatMsg: ' + failure, 'red');
                                 })
                             break;
                         case 'reloadPageMsg':
@@ -4914,6 +4920,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     msgQueue[msg.msgId] = msg;
                     //ktl.log.objSnapshot('msgQueue', msgQueue);
                 }
+
 
                 if (src === ktl.const.MSG_APP && dst === IFRAME_WND_ID && ktl.iFrameWnd.getiFrameWnd())
                     ktl.iFrameWnd.getiFrameWnd().contentWindow.postMessage(msg, '*');
@@ -5313,3 +5320,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //Need to find a way to apply user filters to view where there are many reports (columns).  Currently, filters cause lots of refreshes.  Maybe pre-format URL once, then apply?
 //Wait until Submit is completed and ack parent - convert to use submitAndWait
 //Afer app starup, if iframe never acks its presence within X seconds, re-create it.
+//ktl.wndMsg.removeAllMsgOfType('heartbeatMsg'); //TODO:  change to delete all msg for dst === iFrameWnd.
