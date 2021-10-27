@@ -13,7 +13,7 @@ const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 const IFRAME_WND_ID = 'iFrameWnd';
 
 function Ktl($) {
-    const KTL_VERSION = '0.2.0';
+    const KTL_VERSION = '0.2.1';
     const SW_VERSION = window.SW_VERSION;
 
     var ktl = this;
@@ -3474,8 +3474,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     var fieldId = e.target.closest('th').className;
                     if (Knack.objects.getField(fieldId)) {
-                        var fieldAttr = Knack.objects.getField(fieldId).attributes;
+                        e.preventDefault();
 
+                        var fieldAttr = Knack.objects.getField(fieldId).attributes;
                         var invert = false;
                         if (e.ctrlKey)
                             invert = true;
@@ -3486,48 +3487,34 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             ktl.userFilters.removeActiveFilter(viewId); //Prevent conflict with userFilters by removing current one.
 
-                            //if (fieldAttr.type === 'connection')
-                            //    Knack.views[viewId].model.view.source.sort[0].field = fieldId + '-' + fieldId;
-                            //else
-                            //    Knack.views[viewId].model.view.source.sort[0].field = fieldId;
+                            var href = e.target.closest('[href]');
+                            if (href) {
+                                Knack.views[viewId].model.view.source.sort[0].field = href.getAttribute('href').split(/[#|]/)[1];
 
-                            //if (fieldAttr.type === 'date_time')
-                            //    Knack.views[viewId].model.view.source.sort[0].order = invert ? 'asc' : 'desc';
-                            //else
-                            //    Knack.views[viewId].model.view.source.sort[0].order = invert ? 'desc' : 'asc';
+                                if (fieldAttr.type === 'date_time')
+                                    Knack.views[viewId].model.view.source.sort[0].order = invert ? 'asc' : 'desc';
+                                else
+                                    Knack.views[viewId].model.view.source.sort[0].order = invert ? 'desc' : 'asc';
 
-
-                            //Temporary fix for the above code, until I find what's wrong with the random refresh.
-                            if (fieldAttr.type === 'date_time')
-                                Knack.views[viewId].model.view.source.sort[0].field = fieldId;
-                            else
-                                return;
-
-                            Knack.views[viewId].model.view.source.sort[0].order = invert ? 'asc' : 'desc';
-
-                            e.preventDefault();
-
-                            Knack.showSpinner();
-                            //jQuery.blockUI({ message: 'Please wait...' });
-                            jQuery.blockUI({
-                                message: '',
-                                //css: { backgroundColor: '#f00', color: '#fff' },
-                                overlayCSS: {
-                                    backgroundColor: '#ddd',
-                                    opacity: 0.2,
-                                    //cursor: 'wait'
-                                },
-                            })
-
-                            ktl.views.refreshView(viewId)
-                                .then(function () {
-                                    //For some reason, we need a second refresh, otherwise order is wrong.  TODO: Need to find a better solution.
-                                    ktl.views.refreshView(viewId)
-                                        .then(function () {
-                                            Knack.hideSpinner();
-                                            jQuery.unblockUI();
-                                        })
+                                Knack.showSpinner();
+                                jQuery.blockUI({
+                                    message: '',
+                                    overlayCSS: {
+                                        backgroundColor: '#ddd',
+                                        opacity: 0.2,
+                                    },
                                 })
+
+                                ktl.views.refreshView(viewId)
+                                    .then(function () {
+                                        //For some reason, we need a second refresh, otherwise order is wrong.  TODO: Need to find a better solution.
+                                        ktl.views.refreshView(viewId)
+                                            .then(function () {
+                                                Knack.hideSpinner();
+                                                jQuery.unblockUI();
+                                            })
+                                    })
+                            }
                         }
                     }
                 }
