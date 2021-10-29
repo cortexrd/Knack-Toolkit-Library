@@ -236,7 +236,7 @@ function Ktl($) {
             isKiosk: function () {
                 return isKiosk();
             },
-            
+
             //Param is selector string.
             hideSelector: function (sel = '') {
                 sel && $(sel).css({ 'position': 'absolute', 'left': '-9000px' });
@@ -1301,7 +1301,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         });
 
         //Save data for a given view and field.
-        function saveFormData (viewId = '', fieldId = '', text = '') {
+        function saveFormData(viewId = '', fieldId = '', text = '') {
             if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId))
                 return;
 
@@ -1328,7 +1328,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Loads any data previously saved for all fields in all forms.
         //Also adds Change event handlers for dropdowns and calendars.   Eventually, support all object types.
         //After loading, re-validates numeric fields and put errors in pink.
-        function loadFormData () {
+        function loadFormData() {
             return new Promise(function (resolve) {
                 formDataObj = {};
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
@@ -1774,7 +1774,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //User Filters feature
     const LS_FILTERS = 'FILTERS_';
-    
+
     this.userFilters = (function () {
         const SAVE_FILTER_BTN = 'Save';
         const FILTER_BTN_SUFFIX = 'filterBtn';
@@ -1939,7 +1939,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         //Save all filters to local storage.
-        function saveAllFilters (viewId = '', filtersObj = allFiltersObj) {
+        function saveAllFilters(viewId = '', filtersObj = allFiltersObj) {
             if (!$.isEmptyObject(filtersObj)) {
                 var filterObjStr = JSON.stringify(filtersObj);
                 ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, filterObjStr);
@@ -1949,7 +1949,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         }
 
-        function addFilterButtons (viewId = '') {
+        function addFilterButtons(viewId = '') {
             if ($('#' + viewId + ' .kn-add-filter').length === 0)
                 return;
 
@@ -2163,7 +2163,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         //When user saves a filter to a named button
-        function saveUserFilter (viewId = '') {
+        function saveUserFilter(viewId = '') {
             if (!viewId) return;
 
             //Extract filter string for this view from URL and decode.
@@ -2232,7 +2232,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
         }
 
-        function contextMenuFilter (e, viewId, filter) {
+        function contextMenuFilter(e, viewId, filter) {
             e.preventDefault();
             var menuDiv = $('.menuDiv');
             if (menuDiv.length !== 0)
@@ -2343,15 +2343,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             ul.appendChild(listRename);
         }
 
-        function setViewToRefresh (viewId) {
+        function setViewToRefresh(viewId) {
             viewToRefreshAfterFilterChg = viewId;
         }
 
-        function getViewToRefresh () {
+        function getViewToRefresh() {
             return viewToRefreshAfterFilterChg;
         }
 
-        function getFilterIndex (allFiltersObj, filterName, viewId) {
+        function getFilterIndex(allFiltersObj, filterName, viewId) {
             var filterIndex = allFiltersObj[viewId].filters.findIndex(function (filter) {
                 if (filter.filterName === filterName) {
                     return filter;
@@ -2377,7 +2377,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             removeActiveFilter: function (viewId) {
-                allFiltersObj[viewId].active = -1;
+                allFiltersObj[viewId] && (allFiltersObj[viewId].active = -1);
                 saveAllFilters();
             },
         }
@@ -2404,7 +2404,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         // Returns an array with only our elements:
         //  - filtered on APP_ROOT_NAME but excluding it
         //  - sorted ascending, oldest first
-        function getLocalStorageLogs () {
+        function getLocalStorageLogs() {
             if (!ktl.storage.hasLocalStorage()) return;
 
             var ls = [];
@@ -2689,7 +2689,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         (svrErr ? ('SVR ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
                         (wrn ? ('WRN: ' + ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id) + '\n') : '') +
                         //TODO:  Add info logs here.
-                        'Total localStorage usage = ' + lsItems + '\n'; 
+                        'Total localStorage usage = ' + lsItems + '\n';
 
                     debugWndText.scrollTop = dbgWndScrollHeight - 14;
                     debugWndText.focus();
@@ -2966,7 +2966,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             .finally(() => {
                                 clearTimeout(failsafe);
                             })
-                        }
+                    }
 
                     var failsafe = setTimeout(() => {
                         ktl.log.clog('Failsafe timeout in refreshViewArray!', 'red');
@@ -3927,7 +3927,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     ktl.fields.addButton(document.body, versionInfo, style, [], 'verButtonId');
 
-                    $('#verButtonId').on('click touchstart', function(e) {
+                    $('#verButtonId').on('click touchstart', function (e) {
                         e.preventDefault();
                         var ver = prompt('Which version to run, "prod" or "beta"?', 'prod');
                         if (ver === 'prod' || ver === 'beta') {
@@ -4620,12 +4620,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             create: function () {
                 if (!ktl.core.getCfg().enabled.iFrameWnd) return;
-
-                var URL = Knack.scenes._byId[IFRAME_WND_ID] || Knack.scenes._byId['iframe-account-logs']; //TODO:  remove iframe-account-logs after switchover.
+                var URL = Knack.scenes._byId[IFRAME_WND_ID.toLowerCase()] || Knack.scenes._byId['iframe-account-logs']; //TODO:  remove iframe-account-logs after switchover.
                 if (!URL) return;
                 //console.log('URL =', URL);
                 //console.log('URL slug =', URL.attributes.slug);
-                
+
                 //Create invisible iFrame logging object.
                 if (!iFrameWnd && $('.kn-login').length === 0
                     && !window.self.frameElement && Knack.getUserAttributes() != 'No user found') {
@@ -4848,7 +4847,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }, 1000);
         }
 
-        function retryMsg (msgId = '') {
+        function retryMsg(msgId = '') {
             if (--msgQueue[msgId].retryCnt > 0) {
                 ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('RETRY MSG: ' + msgQueue[msgId].msgType + ', ' + msgId + ', ' + msgQueue[msgId].retryCnt, 'red');
                 msgQueue[msgId].expiration = new Date().valueOf() + MSG_EXP_DELAY;
@@ -4866,7 +4865,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         }
 
-        function ktlProcessFailedMessages (msgId = '') {
+        function ktlProcessFailedMessages(msgId = '') {
             var msgType = msgQueue[msgId].msgType;
             removeMsg(msgId);
 
@@ -5008,7 +5007,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Called to refresh the record array to be modified.
         //Can be changed by user clicks, table filtering change, view refresh.
-        function updateBulkOpCheckboxes () {
+        function updateBulkOpCheckboxes() {
             bulkOpsRecIdArray = [];
             $('#' + bulkOpsViewId + ' tbody input[type=checkbox]:checked').each(function () {
                 var id = $(this).closest('tr').attr('id');
