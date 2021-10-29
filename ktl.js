@@ -13,7 +13,7 @@ const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 const IFRAME_WND_ID = 'iFrameWnd';
 
 function Ktl($) {
-    const KTL_VERSION = '0.2.1';
+    const KTL_VERSION = '0.2.2';
     const SW_VERSION = window.SW_VERSION;
 
     var ktl = this;
