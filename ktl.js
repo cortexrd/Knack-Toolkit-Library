@@ -4495,7 +4495,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         .then(function () {
                             selToast = '#toast-container > div > div > p';
                             var msg = $(selToast).text();
-                            if (msg === 'ACC_LOGS_CRITICAL_EMAIL_SENT') {
+                            if (msg.includes('ACC_LOGS_CRITICAL_EMAIL_SENT')) {
                                 //console.log('Email sent, re-starting autorefresh');//$$$
                                 ktl.views.autoRefresh();
                                 startHighPriorityLogging();
@@ -4520,7 +4520,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var logObj = JSON.parse(categoryLogs);
                         var details = JSON.stringify(logObj.logs);
                         if (details) {
-                            if (el.type === ktl.const.LS_CRITICAL || el.type === ktl.const.LS_LOGIN || el.type === ktl.const.LS_WRN || el.type === ktl.const.LS_APP_ERROR) {
+                            if (!logObj.sent) {
+                                logObj.sent = true; //Do not send twice, when many opened windows.
+                                ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj)); //Convert back to string and save to ls.
+
                                 ktl.log.clog('Submitting priority log for: ' + el.typeStr, 'purple');
 
                                 var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
@@ -4585,20 +4588,26 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     if (el.type === ktl.const.LS_ACTIVITY && (details.substring(65, 80) === 'mc\\":0,\\"kp\\":0')) //Do not send zero activity.
                                         checkNext = true;
                                     else {
-                                        var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
-                                        if (viewId) {
-                                            var apiData = {};
-                                            apiData[alLogIdFld] = logObj.logId;
-                                            apiData[alLogTypeFld] = el.typeStr;
-                                            apiData[alDetailsFld] = details;
-                                            ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
-                                                .then(function (result) {
-                                                    checkNext = true;
-                                                })
-                                                .catch(function (reason) {
-                                                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1016 - Failed posting low-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
-                                                })
-                                        }
+                                        if (!logObj.sent) {
+                                            logObj.sent = true; //Do not send twice, when many opened windows.
+                                            ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj)); //Convert back to string and save to ls.
+
+                                            var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
+                                            if (viewId) {
+                                                var apiData = {};
+                                                apiData[alLogIdFld] = logObj.logId;
+                                                apiData[alLogTypeFld] = el.typeStr;
+                                                apiData[alDetailsFld] = details;
+                                                ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
+                                                    .then(function (result) {
+                                                        checkNext = true;
+                                                    })
+                                                    .catch(function (reason) {
+                                                        ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1016 - Failed posting low-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
+                                                    })
+                                            }
+                                        } else
+                                            checkNext = true;
                                     }
                                 } else
                                     checkNext = true;
