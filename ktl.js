@@ -38,16 +38,6 @@ function Ktl($) {
         LS_SERVER_ERROR: 'SVR_ERR_',
         LS_CRITICAL: 'CRI_',
 
-        LS_LOGIN_STR: 'Login',
-        LS_ACTIVITY_STR: 'Activity',
-        LS_NAVIGATION_STR: 'Navigation',
-        LS_INFO_STR: 'Info',
-        LS_DEBUG_STR: 'Debug',
-        LS_WRN_STR: 'Warning',
-        LS_APP_ERROR_STR: 'App Error',
-        LS_SERVER_ERROR_STR: 'Server Error',
-        LS_CRITICAL_STR: 'Critical',
-
         LS_LAST_ERROR: 'LAST_ERROR',
         LS_SYSOP_MSG_UNREAD: 'SYSOP_MSG_UNREAD', //Maybe too app-specific
 
@@ -4452,22 +4442,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var highPriorityLoggingTimer = null;
         var lowPriorityLoggingTimer = null;
 
-
         //High priority logs, sent every minute.
         var highPriorityLogs = [
-            { type: ktl.const.LS_CRITICAL, typeStr: ktl.const.LS_CRITICAL_STR },
-            { type: ktl.const.LS_LOGIN, typeStr: ktl.const.LS_LOGIN_STR },
-            { type: ktl.const.LS_WRN, typeStr: ktl.const.LS_WRN_STR },
-            { type: ktl.const.LS_APP_ERROR, typeStr: ktl.const.LS_APP_ERROR_STR },
+            { type: ktl.const.LS_CRITICAL, typeStr: 'Critical' },
+            { type: ktl.const.LS_LOGIN, typeStr: 'Login' },
+            { type: ktl.const.LS_WRN, typeStr: 'Warning' },
+            { type: ktl.const.LS_APP_ERROR, typeStr: 'App Error' },
         ];
 
         //Lower priority logs, accumulated in localStorage and sent every 3 hours.
         var lowPriorityLogs = [
-            { type: ktl.const.LS_INFO, typeStr: ktl.const.LS_INFO_STR },
-            { type: ktl.const.LS_DEBUG, typeStr: ktl.const.LS_DEBUG_STR },
-            { type: ktl.const.LS_ACTIVITY, typeStr: ktl.const.LS_ACTIVITY_STR },
-            { type: ktl.const.LS_NAVIGATION, typeStr: ktl.const.LS_NAVIGATION_STR },
-            { type: ktl.const.LS_SERVER_ERROR, typeStr: ktl.const.LS_SERVER_ERROR_STR }
+            { type: ktl.const.LS_INFO, typeStr: 'Info' },
+            { type: ktl.const.LS_DEBUG, typeStr: 'Debug' },
+            { type: ktl.const.LS_ACTIVITY, typeStr: 'Activity' },
+            { type: ktl.const.LS_NAVIGATION, typeStr: 'Navigation' },
+            { type: ktl.const.LS_SERVER_ERROR, typeStr: 'Server Error' }
         ];
 
         $(document).on('knack-scene-render.any', function (event, scene) {
