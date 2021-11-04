@@ -4411,7 +4411,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //iFrameWnd feature
     this.iFrameWnd = (function () {
-        const LOGGING_DELAY = ONE_HOUR_DELAY;
+        const LOW_PRIORITY_LOGGING_DELAY = ONE_HOUR_DELAY; //TODO: make these configurable.
+        const DEV_LOW_PRIORITY_LOGGING_DELAY = TEN_SECONDS_DELAY;
 
         //TODO: Put all this in an object like core:  var cfg = {...
         var iFrameWnd = null;
@@ -4439,8 +4440,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var alLogIdFld = '';
         var alEmailFld = '';
 
-        var highPriorityLoggingTimer = null;
-        var lowPriorityLoggingTimer = null;
+        var highPriLoggingInterval = null;
+        var lowPriLoggingInterval = null;
 
         //High priority logs, sent every minute.
         var highPriorityLogs = [
@@ -4508,8 +4509,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         function startHighPriorityLogging() {
-            clearInterval(highPriorityLoggingTimer);
-            highPriorityLoggingTimer = setInterval(() => {
+            clearInterval(highPriLoggingInterval);
+            highPriLoggingInterval = setInterval(() => {
                 //Send high-priority logs immediately, as these are not accumulated like low-priority logs.
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
@@ -4536,7 +4537,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         apiData[alEmailFld] = 'normand@morbern.com';
                                         console.log('Critical error log, sending email to', apiData[alEmailFld]);
                                         ktl.views.autoRefresh(false);
-                                        clearInterval(highPriorityLoggingTimer);
+                                        clearInterval(highPriLoggingInterval);
                                     }
 
                                     ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
@@ -4561,18 +4562,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }, 10000);
         }
 
-        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 0/*1 min for devs*/ : 180; //3 hours.
+        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 0/*send immediately for devs*/ : 180; //3 hours.
         function startLowPriorityLogging() {
             // - Submit all accumulated low-priority logs.
             // - Check what needs to be uploaded, i.e. non-empty arrays, older than LOGGING_DELAY, send them in sequence.
             // - Submit to Knack if activity or other log accumulator has changed.
-            clearInterval(lowPriorityLoggingTimer);
-            lowPriorityLoggingTimer = setInterval(() => {
+            clearInterval(lowPriLoggingInterval);
+            lowPriLoggingInterval = setInterval(() => {
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
                     var el = lowPriorityLogs[ix];
                     var oldestLog = ktl.log.getLogArrayAge(el.type);
-                    oldestLog && console.log('oldestLog =', oldestLog);//$$$
                     if (oldestLog !== null) {
                         //console.log('Oldest log for ', el.type, 'is', oldestLog);
 
@@ -4621,7 +4621,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (checkNext && ++ix < lowPriorityLogs.length)
                         sequentialSubmit(ix);
                 })(0);
-            }, ktl.account.isDeveloper() ? 10000 : LOGGING_DELAY); //TODO: make configurable, and with a special short value for developers.
+            }, ktl.account.isDeveloper() ? DEV_LOW_PRIORITY_LOGGING_DELAY : LOW_PRIORITY_LOGGING_DELAY);
         }
 
         return {
