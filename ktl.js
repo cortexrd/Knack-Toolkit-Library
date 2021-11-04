@@ -5,12 +5,12 @@
  */
 
 //Find a better place for these universal values.
-const APP_ROOT_NAME = Knack.app.attributes.name + '_';
-const TEN_SECONDS_DELAY = 10000;
-const ONE_MINUTE_DELAY = 60000;
-const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
-const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
-const IFRAME_WND_ID = 'iFrameWnd';
+this.APP_ROOT_NAME = Knack.app.attributes.name + '_';
+this.TEN_SECONDS_DELAY = 10000;
+this.ONE_MINUTE_DELAY = 60000;
+this.FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
+this.ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
+this.IFRAME_WND_ID = 'iFrameWnd';
 
 function Ktl($) {
     const KTL_VERSION = '0.2.2';
@@ -58,6 +58,7 @@ function Ktl($) {
     this.core = (function () {
         var cfg = {
             developerName: '',
+            developerEmail : '',
             showAppInfo: false,
             showKtlInfo: false,
             showMenuInTitle: false,
@@ -94,6 +95,7 @@ function Ktl($) {
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.developerName && (cfg.developerName = cfgObj.developerName);
+                cfgObj.developerEmail && (cfg.developerEmail = cfgObj.developerEmail);
                 cfgObj.showAppInfo && (cfg.showAppInfo = cfgObj.showAppInfo);
                 cfgObj.showKtlInfo && (cfg.showKtlInfo = cfgObj.showKtlInfo);
                 cfgObj.showMenuInTitle && (cfg.showMenuInTitle = cfgObj.showMenuInTitle);
@@ -2651,7 +2653,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         debugWndText.textContent += el.dateTime + '    ' + el.logDetails + '\n';
                     })
 
-                    const APP_ROOT_NAME = Knack.app.attributes.name + '_';
                     var lsItems = 0;
                     var len = localStorage.length;
                     for (var i = len - 1; i >= 0; i--) {
@@ -3915,6 +3916,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var appName = Knack.app.attributes.name.toUpperCase();
                     var versionInfo = appName + '    v' + SW_VERSION + ktlVer + '    ' + info.hostname;
 
+                    if (!style) {
+                        var style = 'white-space: pre; margin-left: 10px; height: 40px; padding-bottom: 10px; font-size:small; position:absolute; top:0px; right:10px; background-color:transparent; border-style:none';
+                        style += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
+                    }
+
                     ktl.fields.addButton(document.body, versionInfo, style, [], 'verButtonId');
 
                     $('#verButtonId').on('click touchstart', function (e) {
@@ -4054,7 +4060,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     logId: ktl.core.getCurrentDateTime(true, true, true, true).replace(/[\D]/g, ''), //Unique message identifier used validate that transmission was successfull, created from a millisecond timestamp.
                 };
 
-                ktl.storage.lsSetItem(category + Knack.getUserAttributes().id, JSON.stringify(logObj)); //Convert back to string and save to ls.
+                ktl.storage.lsSetItem(category + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
                 //Also show some of them in console.
                 if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
@@ -4103,7 +4109,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (categoryLogs) {
                         var logObj = JSON.parse(categoryLogs);
                         if (logObj.logId && logObj.logId === logId) {
-                            console.log('Deleting found logId =', logId, 'cat=', category);//$$$
+                            //console.log('Deleting found logId =', logId, 'cat=', category);//$$$
                             ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
                         }
                     }
@@ -4515,17 +4521,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
                     var el = highPriorityLogs[ix];
+                    console.log('el =', el);//$$$
 
                     var categoryLogs = ktl.storage.lsGetItem(el.type + Knack.getUserAttributes().id);
                     if (categoryLogs) {
+                        console.log('categoryLogs =', categoryLogs);//$$$
                         var logObj = JSON.parse(categoryLogs);
                         var details = JSON.stringify(logObj.logs);
                         if (details) {
                             if (!logObj.sent) {
                                 logObj.sent = true; //Do not send twice, when many opened windows.
-                                ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj)); //Convert back to string and save to ls.
+                                ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                                ktl.log.clog('Submitting priority log for: ' + el.typeStr, 'purple');
+                                ktl.log.clog('Submitting high priority log for: ' + el.typeStr, 'purple');
 
                                 var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
                                 if (viewId) {
@@ -4534,7 +4542,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     apiData[alLogTypeFld] = el.typeStr;
                                     apiData[alDetailsFld] = details;
                                     if (el.type === ktl.const.LS_CRITICAL) { //When critical, send via email immediately.
-                                        apiData[alEmailFld] = 'normand@morbern.com';
+                                        apiData[alEmailFld] = ktl.core.getCfg().developerEmail;
                                         console.log('Critical error log, sending email to', apiData[alEmailFld]);
                                         ktl.views.autoRefresh(false);
                                         clearInterval(highPriLoggingInterval);
@@ -4546,6 +4554,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         })
                                         .catch(function (reason) {
                                             ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1015 - Failed posting high-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
+                                            delete logObj.sent;
+                                            ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                                            ktl.views.autoRefresh(); //JIC it was stopped by critical email not sent.
+                                            startHighPriorityLogging();
                                         })
                                 } else
                                     checkNext = true;
@@ -4590,7 +4602,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     else {
                                         if (!logObj.sent) {
                                             logObj.sent = true; //Do not send twice, when many opened windows.
-                                            ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj)); //Convert back to string and save to ls.
+                                            ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
                                             var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
                                             if (viewId) {
@@ -4604,6 +4616,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                     })
                                                     .catch(function (reason) {
                                                         ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1016 - Failed posting low-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
+                                                        delete logObj.sent;
+                                                        ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
                                                     })
                                             }
                                         } else
@@ -5366,3 +5380,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: add getCategoryLogs.  Returns object with array and logId.
 //We need a logs category list!
 //ACC_LOGS_CRITICAL_EMAIL_SENT
+//User Filters: can't delete last one.  Rename creates a new button.
