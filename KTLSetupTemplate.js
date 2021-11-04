@@ -1,6 +1,6 @@
 //====================================================
 //====================================================
-var KnackApp = function ($, info = {}) {
+var KnackAppProd = function ($, info = {}) {
     window.$ = $;
 
     //Your App ID:  xxxxxxxxxxxxxxxxxxxxxxxx
@@ -19,6 +19,7 @@ var KnackApp = function ($, info = {}) {
     (function () {
         ktl.core.setCfg({
             developerName: 'Firstname Lastname', //Put your name here to get super powers!
+            developerEmail: '', //yourmail@provider.com
             showAppInfo: true,
             showKtlInfo: true,
             showMenuInTitle: true,
@@ -42,6 +43,12 @@ var KnackApp = function ($, info = {}) {
             //Functions in this app.
             isKiosk: isKiosk,
         })
+
+        //For Idle timeout delay, you can use a fixed value, or change it depending on the use case.
+        //As an example, below I change it if it's a kiosk device.
+        var idleWatchDogDelay = 7.2e+6;
+        //if (isKiosk())
+        //    idleWatchDogDelay = 3.6e+6; //1 hour for kiosks.
 
         ktl.scenes.setCfg({
             idleWatchDogDelay: idleWatchDogDelay,
@@ -70,7 +77,7 @@ var KnackApp = function ($, info = {}) {
         })
         ktl.systemColors.getSystemColors()
             .then(() => { })
-            .catch(function () { ktl.log.clog('KTL error loading system colors', 'red'); })
+            .catch((err) => { ktl.log.clog('App getSystemColors error: ' + err, 'red'); })
 
         ktl.userPrefs.setCfg({
             allowShowPrefs: allowShowPrefs,
@@ -79,21 +86,25 @@ var KnackApp = function ($, info = {}) {
 
         ktl.iFrameWnd.setCfg({
             //Fields below must match those in the Account object.
-            acctSwVersionFld: 'field_x',
-            acctUtcHbFld: 'field_x',
-            acctLocHbFld: 'field_x',
-            acctUserPrefsFld: 'field_x',
-            acctWorkShiftFld: 'field_x',
+            acctSwVersionFld: 'field_',
+            acctUtcHbFld: 'field_',
+            acctTimeZoneFld: 'field_',
+            acctLocHbFld: 'field_',
+            acctOnlineFld: 'field_',
+            acctUserPrefsFld: 'field_',
+            acctWorkShiftFld: 'field_',
 
             //Fields below must match those in the Account Logs object.
-            alLogTypeFld: 'field_x',
-            alDetailsFld: 'field_x',
-            alLogIdFld: 'field_x',
+            alLogTypeFld: 'field_',
+            alDetailsFld: 'field_',
+            alLogIdFld: 'field_',
+            alEmailFld: 'field_',
         })
 
         ktl.wndMsg.setCfg({
             processFailedMessages: processFailedMessages,
             processAppMsg: processAppMsg,
+            sendAppMsg: sendAppMsg,
         })
 
         //Features that do not apply to the iFrameWnd.
@@ -197,7 +208,7 @@ var KnackApp = function ($, info = {}) {
                             sel[0].focus();
                         else {
                             sel = $('button'); //Try button
-                            if (sel.length > 0)
+                            if (sel.length > 0 && sel[0].id !== 'verButtonId')
                                 sel[0].focus();
                         }
                     }
@@ -252,10 +263,10 @@ var KnackApp = function ($, info = {}) {
         var allow = {};
 
         if (ktl.account.isDeveloper()) {
-            allow.showViewId = false;
-            allow.showDebugWnd = false;
-            allow.showIframe = false;
-            allow.showExtraDebugInfo = false;
+            allow.showViewId = true;
+            allow.showDebugWnd = true;
+            allow.showIframe = true;
+            allow.showExtraDebugInfo = true;
         }
 
         //Add your own conditions here.
@@ -311,6 +322,22 @@ var KnackApp = function ($, info = {}) {
         }
     }
 
+    //External Apps data exchange and communication - just a test as a proof of concept - BEGIN
+    function sendAppMsg(msg = {}) {
+        if (!msg.msgType || !msg.msgSubType) {
+            ktl.log.clog('Called sendAppMsg with invalid parameters', 'purple');
+            return;
+        }
+
+        if (msg.src === ktl.const.MSG_APP && msg.dst === IFRAME_WND_ID)
+            ktl.iFrameWnd.getiFrameWnd() && ktl.iFrameWnd.getiFrameWnd().contentWindow.postMessage(msg, '*');
+        else if (msg.src === 'iFrame_App1' && msg.dst === 'App2_iFrame') //Can be app to app, app to iframe, iframe to App, but not iframe to iframe.
+            parent.postMessage(msg, '*');
+        else {
+            console.log('Called sendAppMsg with unsupported src/dst.');//$$$
+        }
+    }
+
     function updateWorkShiftItems(shiftLetter = '') {
         //Update Shift button text, if it exists.
         var shiftBtn = $('#kn-button-shift');
@@ -338,9 +365,9 @@ var KnackApp = function ($, info = {}) {
     //Setup default preferences - BEGIN
     var userPrefs = ktl.userPrefs.getUserPrefs();
     userPrefs.showViewId = true;
-    userPrefs.showExtraDebugInfo = true;
-    userPrefs.showIframeWnd = true;
-    userPrefs.showDebugWnd = true;
+    userPrefs.showExtraDebugInfo = false;
+    userPrefs.showIframeWnd = false;
+    userPrefs.showDebugWnd = false;
     userPrefs.workShift = '';
 
     //Save back to localStorage.
