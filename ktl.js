@@ -13,7 +13,7 @@ this.ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 this.IFRAME_WND_ID = 'iFrameWnd';
 
 function Ktl($) {
-    const KTL_VERSION = '0.2.2';
+    const KTL_VERSION = '0.2.3';
     const SW_VERSION = window.SW_VERSION;
 
     var ktl = this;
@@ -1411,8 +1411,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Add Change event handlers for Dropdowns, Calendars, etc.
         function addChangeEventHandlers() {
-            var self = this;
-
             //Dropdowns
             $('.chzn-select').chosen().change(function (e, p) {
                 if (e.target.id) {
@@ -1776,10 +1774,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var applyFilter = true;
         var allowUserFilters = null; //Callback to your app to allow user filters based on specific conditions.
         var viewToRefreshAfterFilterChg = null;
-        var ufMenuViewId = '';
-        var ufCodeViewId = '';
-        var ufDateTimeFld = '';
-        var ufFiltersCodeFld = '';
+        var ufMenuViewId = 'view_';
+        var ufCodeViewId = 'view_';
+        var ufDateTimeFld = 'field_';
+        var ufFiltersCodeFld = 'field_';
 
 
         Object.defineProperty(allFiltersObj, "isEmpty", {
@@ -1789,6 +1787,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         loadAllFilters();
 
         $(document).on('knack-scene-render.any', function (event, scene) {
+            console.log('scene =', scene.key);
+
             applyFilter = true;
             loadAllFilters();
 
@@ -1815,9 +1815,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         $(document).on('click', function (e) {
-            var viewToRefresh = getViewToRefresh();
             if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
+                console.log('111');//$$$
                 if (e.target.id === 'kn-submit-filters') {
+                    var viewToRefresh = getViewToRefresh();
                     if (viewToRefresh) {
                         ktl.views.refreshView(viewToRefresh);
                         setViewToRefresh(null);
@@ -1827,9 +1828,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 //When user clicks on Add Filters button or edits the current filter,
                 //we must refresh the view to get our User Filter buttons back.
                 if (e.target.closest('.kn-filters-nav,.kn-filters,.kn-remove-filter')) {
+                    console.log('222');//$$$
                     var viewId = e.target.closest('.kn-view');
                     viewId = viewId ? viewId.id : null;
-                    setViewToRefresh(viewToRefresh || viewId);
+                    setViewToRefresh(getViewToRefresh() || viewId);
                     if (e.target.closest('.kn-remove-filter')) {
                         if (getViewToRefresh()) {
                             ktl.views.refreshView(getViewToRefresh());
@@ -1936,14 +1938,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var filterObjStr = JSON.stringify(filtersObj);
                 ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, filterObjStr);
 
-                if (viewId)
+                if (viewId) {
+                    console.log('saveAllFilters:', viewId, saveAllFilters.caller);//$$$
                     ktl.views.refreshView(viewId);
+                }
             }
         }
 
         function addFilterButtons(viewId = '') {
             if ($('#' + viewId + ' .kn-add-filter').length === 0)
                 return;
+
+            console.log('addFilterButtons viewId ', viewId, addFilterButtons.caller);//$$$
 
             //Prepare div and style
             var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
@@ -2019,6 +2025,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             filterButton.addEventListener('click', function (e) {
                                 e.preventDefault();
 
+                                console.log('filterButton click');//$$$
+
                                 //Check Active status.  If already active, skip.  If not, remove any currently active filter and set this one.
                                 var index = getFilterIndex(allFiltersObj, filter.filterName, viewIdWithColumn);
                                 $('.activeFilter').removeClass('activeFilter');
@@ -2061,8 +2069,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 var allParams = otherParams + viewIdWithColumn + '_filters=' + encodedNewFilter;
                                 newUrl += allParams;
 
-                                if (window.location.href !== newUrl)
+                                if (window.location.href !== newUrl) {
+                                    console.log('window.location.href = newUrl;');//$$$
                                     window.location.href = newUrl;
+                                }
                             });
 
                             //Right-click to provide Delete and Rename options.
@@ -2080,6 +2090,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             if (activeFilter >= 0) {
                                 //TODO as per above comment: use this list. var selActiveList = $('.activeFilter');
                                 //console.log('selActiveList =', selActiveList);
+                                console.log('click filter');//$$$
                                 $('.activeFilter').click();
                             }
                         }
@@ -2836,6 +2847,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             refreshView: function (viewId) {
                 return new Promise(function (resolve) {
                     if (viewId) {
+
+                        if (viewId === 'view_84')
+                            console.log('refreshView', ktl.views.refreshView.caller);//$$$
+
                         var res = $('#' + viewId);
                         if (res.length > 0) { //One last check if view is in the current scene, since user can change page quickly.
                             var view = Knack.router.scene_view.model.views._byId[viewId];
@@ -3071,37 +3086,38 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            //Params:   - viewKey is the id of the view, like view_123 or view.key.
-            //          - callback is the function to be called when the top checkbox is clicked.
-            //            It is used to do an action upon change like ena/disable a button or show number of items checked.
-            addCheckboxesToTable: function (viewKey, masterCheckBoxCallback = null) {
-                var selNoData = $('#' + viewKey + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
-                if (selNoData.length === 0) { //Only add checkboxes if there's data.
+            //Params: callback is the function to be called when the top checkbox is clicked.
+            //        It is used to do an action upon change like ena/disable a button or show number of items checked.
+            addCheckboxesToTable: function (viewId, masterCheckBoxCallback = null) {
+                var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
+
+                //Only add checkboxes if there's data and checkboxes not yet added.
+                if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]')) {
                     // Add the checkbox to to the header to select/unselect all
-                    $('#' + viewKey + '.kn-table thead tr').prepend('<th><input type="checkbox"></th>');
-                    $('#' + viewKey + '.kn-table thead input').change(function () {
-                        $('.' + viewKey + '.kn-table tbody tr input').each(function () {
-                            $(this).attr('checked', $('#' + viewKey + '.kn-table thead input').attr('checked') != undefined);
+                    $('#' + viewId + '.kn-table thead tr').prepend('<th><input type="checkbox"></th>');
+                    $('#' + viewId + '.kn-table thead input').change(function () {
+                        $('.' + viewId + '.kn-table tbody tr input').each(function () {
+                            $(this).attr('checked', $('#' + viewId + '.kn-table thead input').attr('checked') != undefined);
                         });
 
-                        var numChecked = $('#' + viewKey + ' tbody input[type=checkbox]:checked').length;
+                        var numChecked = $('#' + viewId + ' tbody input[type=checkbox]:checked').length;
                         masterCheckBoxCallback && masterCheckBoxCallback(numChecked);
                     });
 
                     // Add a checkbox to each row in the table body
-                    $('#' + viewKey + '.kn-table tbody tr').each(function () {
+                    $('#' + viewId + '.kn-table tbody tr').each(function () {
                         $(this).prepend('<td><input type="checkbox"></td>');
                     });
 
-                    if (!Knack.views[viewKey].options.model.view.totals) return;
+                    if (!Knack.views[viewId].options.model.view.totals) return;
 
-                    var hasSummary = Knack.views[viewKey].options.model.view.totals.length;
+                    var hasSummary = Knack.views[viewId].options.model.view.totals.length;
                     if (hasSummary) {
-                        var sel = '#' + viewKey + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals';
+                        var sel = '#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals';
                         ktl.core.waitSelector(sel)
                             .then(function () {
                                 $(sel).prepend('<td><input type="checkbox"></td>');
-                                $('#' + viewKey + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals > td:nth-child(1) > input[type=checkbox]').css('display', 'none');
+                                $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals > td:nth-child(1) > input[type=checkbox]').css('display', 'none');
                             })
                             .catch(function () {
                             })
