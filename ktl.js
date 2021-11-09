@@ -1292,6 +1292,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 eraseFormData(view);
         });
 
+        $(document).on('click', function (e) {
+            if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId && e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
+                var view = e.target.closest('.kn-view');
+                ktl.views.waitSubmitOutcome(view.id)
+                    .then(success => {
+                        var viewObj = Knack.router.scene_view.model.views._byId[view.id].attributes;
+                        eraseFormData(viewObj);
+                    })
+                    .catch(failure => {
+                        console.log('waitSubmitOutcome failed:', failure);//$$$
+                    });
+            }
+        })
+    
         //Save data for a given view and field.
         function saveFormData(viewId = '', fieldId = '', text = '') {
             if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId))
@@ -1487,6 +1501,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Remove all saved data for this view after a submit 
         //If changing scene (view param is null), then erase for all views.
         function eraseFormData(view = null) {
+            console.log('eraseFormData', view.key);//$$$
             if (view) {
                 delete formDataObj[view.key];
                 ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
@@ -1787,8 +1802,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         loadAllFilters();
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            console.log('scene =', scene.key);
-
             applyFilter = true;
             loadAllFilters();
 
@@ -1816,7 +1829,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         $(document).on('click', function (e) {
             if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
-                console.log('111');//$$$
                 if (e.target.id === 'kn-submit-filters') {
                     var viewToRefresh = getViewToRefresh();
                     if (viewToRefresh) {
@@ -3532,7 +3544,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (!viewId || $.isEmptyObject(formData)) return;
 
                     var fields = Object.entries(formData);
-
                     try {
                         for (var i = 0; i < fields.length; i++)
                             document.querySelector('#' + viewId + ' #' + fields[i][0]).value = fields[i][1];
@@ -3569,6 +3580,30 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     catch (e) {
                         reject(e);
                     }
+                })
+            },
+
+            waitSubmitOutcome: function (viewId = '') {
+                return new Promise(function (resolve, reject) {
+                    if (!viewId) return;
+
+                    var success = null, failure = null;
+                    var intervalId = setInterval(function () {
+                        success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
+                        failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
+                        if (success || failure) {
+                            clearInterval(intervalId);
+                            clearTimeout(failsafe);
+                            success && resolve({ outcome: 'waitSubmitOutcome, ' + viewId + ' : ' + success });
+                            failure && reject('waitSubmitOutcome, ' + viewId + ' : ' + failure);
+                            return;
+                        }
+                    }, 200);
+
+                    var failsafe = setTimeout(function () {
+                        clearInterval(intervalId);
+                        reject('waitSubmitOutcome timeout error');
+                    }, 20000);
                 })
             },
         }
@@ -4537,7 +4572,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
                     var el = highPriorityLogs[ix];
-                    console.log('el =', el);//$$$
+                    //console.log('el =', el);//$$$
 
                     var categoryLogs = ktl.storage.lsGetItem(el.type + Knack.getUserAttributes().id);
                     if (categoryLogs) {
