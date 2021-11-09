@@ -1501,7 +1501,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Remove all saved data for this view after a submit 
         //If changing scene (view param is null), then erase for all views.
         function eraseFormData(view = null) {
-            console.log('eraseFormData', view.key);//$$$
             if (view) {
                 delete formDataObj[view.key];
                 ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
