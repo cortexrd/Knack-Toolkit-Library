@@ -148,7 +148,7 @@ function Ktl($) {
                             //        'match': 'or',
                             //        'rules': [
                             //            {
-                            //                'field': 'field_xx',
+                            //                'field': 'field_x',
                             //                'operator': 'is',
                             //                'value': 'recordIdxxxxxxxxxxxxxxx'
                             //            }
@@ -1788,10 +1788,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var applyFilter = true;
         var allowUserFilters = null; //Callback to your app to allow user filters based on specific conditions.
         var viewToRefreshAfterFilterChg = null;
-        var ufMenuViewId = 'view_';
-        var ufCodeViewId = 'view_';
-        var ufDateTimeFld = 'field_';
-        var ufFiltersCodeFld = 'field_';
+        var ufMenuViewId = 'view_x';
+        var ufCodeViewId = 'view_x';
+        var ufDateTimeFld = 'field_x';
+        var ufFiltersCodeFld = 'field_x';
 
 
         Object.defineProperty(allFiltersObj, "isEmpty", {
