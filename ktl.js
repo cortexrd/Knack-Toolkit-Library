@@ -1785,10 +1785,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         const SAVE_FILTER_BTN_SEL = SAVE_FILTER_BTN + '-' + FILTER_BTN_SUFFIX; //ex: view_1234-SaveFilter-filterBtn
 
         var allFiltersObj = {}; //The main object that drives the whole feature.
-        var applyFilter = true;
+        var applyFilter = null;
         var allowUserFilters = null; //Callback to your app to allow user filters based on specific conditions.
         var viewToRefreshAfterFilterChg = null;
-        var eraseFiltersViewId = '';
 
         var ufMenuViewId = 'view_x';
         var ufCodeViewId = 'view_x';
@@ -1803,8 +1802,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         loadAllFilters();
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            applyFilter = true;
-            loadAllFilters();
+            if (!window.self.frameElement) {
+                console.log('setting applyFilter = true', scene.key);//$$$
+                applyFilter = true;
+                loadAllFilters();
+            }
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -1817,25 +1819,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('mousedown click', e => {
             var viewId = e.target.closest('.kn-view');
             viewId = viewId ? viewId.id : null;
-            console.log('mousedown click - viewId =', viewId);//$$$
-
-            var kn_filters = e.target.closest('.kn-filters');
-            if (kn_filters) {
-                console.log('kn_filters =', kn_filters);//$$$
-
-                //kn-report-
-                var knView = kn_filters.closest('.kn-view');
-                if (knView) {
-                    console.log('knView =', knView);//$$$
-                    eraseFiltersViewId = knView.id;
-                    console.log('eraseFiltersViewId =', eraseFiltersViewId);//$$$
-                }
-            }
 
             if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
                 if (e.target.id === 'kn-submit-filters') {
-                    eraseFiltersViewId && ktl.userFilters.removeActiveFilter(eraseFiltersViewId);
-                    eraseFiltersViewId = '';
+                    var filterDivId = e.target.closest('div[id^=kn-report-' + viewId + '-]:not(.filterDiv)');
+                    filterDivId = filterDivId ? filterDivId.id : viewId; //Typically view_123 for tables and kn-report-view_123-1 for reports.
+                    filterDivId && ktl.userFilters.removeActiveFilter(filterDivId);
                     var viewToRefresh = getViewToRefresh();
                     if (viewToRefresh) {
                         ktl.views.refreshView(viewToRefresh);
@@ -1856,6 +1845,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
             }
+
+            //console.log('mousedown or click -', viewId, filterDivId);//$$$
         })
 
         $(document).on('knack-view-render.' + ufMenuViewId, function (event, view, data) {
@@ -1934,79 +1925,83 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         });
 
         //Load all filters from local storage.
+        //Returns a temporary object from the localStorage.
+        //updateObj: true will modify the actual placeholder allFiltersObj, and false will not.  Used to merge filters form multiple opened browsers.
         function loadAllFilters(updateObj = true) {
-            //TODO: Should we use a promise?
-            var lsFilters = ktl.storage.lsGetItem(LS_FILTERS + Knack.getUserAttributes().id);
             var allFiltersObjTemp = {};
+            var lsFilters = ktl.storage.lsGetItem(LS_FILTERS + Knack.getUserAttributes().id);
             if (lsFilters) {
                 try {
                     allFiltersObjTemp = JSON.parse(lsFilters);
-                    if (!$.isEmptyObject(allFiltersObjTemp)) {
-                        if (updateObj)
-                            allFiltersObj = allFiltersObjTemp;
-                    }
+                    if (updateObj && !$.isEmptyObject(allFiltersObjTemp))
+                        allFiltersObj = allFiltersObjTemp;
                 } catch (e) {
                     alert('Error Found Parsing Filters:', e);
                 }
-
             }
 
             return allFiltersObjTemp;
         }
 
         //Save all filters to local storage. TODO: read back before saving to get any external updates from another browser.
-        function saveAllFilters(viewId = '') {
-            if ($.isEmptyObject(allFiltersObj)) return;
-
-            if (viewId) {
+        function saveAllFilters(filterDivId = '') {
+            console.log('saveAllFilters', saveAllFilters.caller);//$$$
+            if (filterDivId) {
                 var allFiltersObjTemp = loadAllFilters(false);
-                console.log('allFiltersObjTemp =', allFiltersObjTemp);//$$$
 
-                var activeIndex = -1;
-                var buttons = document.querySelectorAll('#' + viewId + '-filterDivId .filterBtn');
-                console.log('buttons =', buttons);//$$$
+                var activeIndex = null;
+                var buttons = document.querySelectorAll('#' + filterDivId + '-filterDivId .filterBtn');
                 for (var i = 0; i < buttons.length; i++) {
                     if (buttons[i].classList.contains('activeFilter')) {
                         activeIndex = i;
-                        console.log('Found activeIndex =', activeIndex);//$$$
                         break;
                     }
                 }
 
-                console.log('viewId =', viewId);//$$$
-                console.log('1 - filtersObj[viewId] =', allFiltersObj[viewId]);//$$$
+                console.log('Found activeIndex for', filterDivId, activeIndex);//$$$
 
-                if (allFiltersObjTemp[viewId]) {
-                    allFiltersObjTemp[viewId] = allFiltersObj[viewId];
-                    allFiltersObjTemp[viewId].active = activeIndex;
+                if (allFiltersObjTemp[filterDivId]) { //Existing view
+                    if (allFiltersObj[filterDivId]) { //Modified filter
+                        allFiltersObjTemp[filterDivId] = allFiltersObj[filterDivId];
+                        allFiltersObjTemp[filterDivId].active = (activeIndex >= 0) ? activeIndex : allFiltersObj[filterDivId].filters.length - 1;
+                    } else //Deleted filter.
+                        delete allFiltersObjTemp[filterDivId];
+
+                } else { //Non-existing view
+                    if (allFiltersObj[filterDivId]) { //Added view and filter.
+                        allFiltersObjTemp[filterDivId] = allFiltersObj[filterDivId];
+                        allFiltersObjTemp[filterDivId].active = allFiltersObjTemp[filterDivId].filters.length - 1;
+                        console.log('allFiltersObjTemp[viewId].active =', allFiltersObjTemp[filterDivId].active);//$$$
+                    }
                 }
 
                 allFiltersObj = allFiltersObjTemp;
-                console.log('2 - filtersObj[viewId] =', allFiltersObj[viewId]);//$$$
             }
 
             ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, JSON.stringify(allFiltersObj));
-            viewId && ktl.views.refreshView(viewId);
+
+            if (filterDivId) {
+                filterDivId = filterDivId.split('-')[2] || filterDivId.split('-')[0];
+                filterDivId && ktl.views.refreshView(filterDivId);
+            }
         }
 
         function addFilterButtons(viewId = '') {
-            if ($('#' + viewId + ' .kn-add-filter').length === 0)
+            if (!document.querySelector('#' + viewId + ' .kn-add-filter') || document.querySelector('.filterCtrlDiv'))
                 return;
-
-            //console.log('addFilterButtons viewId ', viewId, addFilterButtons.caller);//$$$
 
             //Prepare div and style
             var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
 
-            var columns = document.querySelectorAll('#' + viewId + ' li.column');
+            //var columns = document.querySelectorAll('#' + filterDivId + ' li.column');
 
             var addFiltersBar = document.querySelectorAll('[id^=kn-report-' + viewId + '-] .level-left'); //Report viewx
             if (!addFiltersBar.length)
                 addFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left'); //Table views
 
             addFiltersBar.forEach(function (viewFilterDiv, divIndex) {
-                var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]');
-                filterDivId = filterDivId ? filterDivId.id : viewId; //Typically view_123 for tables and kn-report-view_123-1 for reports.
+                var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]') || viewFilterDiv.closest('#' + viewId);
+                filterDivId = filterDivId ? filterDivId.id : null; //Typically view_123 for tables and kn-report-view_123-1 for reports.
 
                 //Section for non-draggable control buttons.
                 var filterCtrlDiv = $('#' + filterDivId + ' .filterCtrlDiv');
@@ -2015,7 +2010,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     filterCtrlDiv.setAttribute('class', 'filterCtrlDiv');
                     $('#' + filterDivId + ' .table-keyword-search').css({ 'display': 'flex' });
                     viewFilterDiv.appendChild(filterCtrlDiv);
-                    $('#' + viewId + ' .filterCtrlDiv').css({ 'display': 'flex', 'margin-left': '15px' });
+                    $('#' + filterDivId + ' .filterCtrlDiv').css({ 'display': 'flex', 'margin-left': '15px' });
                 }
 
                 /////////////////////////////
@@ -2030,7 +2025,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 saveFilterButton.addEventListener('click', function (e) {
                     e.preventDefault();
                     saveUserFilter(filterDivId);
-                    ktl.views.refreshView(viewId);
+                    ktl.views.refreshView(filterDivId);
                 });
 
                 //Section for draggable user filter buttons.
@@ -2050,10 +2045,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         allFiltersObj[filterDivId].filters.forEach(function (filter, btnIndex) {
                             if (filter.filterName === '') return;
 
-                            var filterBtnId = filterDivId + '_' + filter.filterName.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_"); //Any character other than a-z or 0-9, replace by underscore.
                             var filterButton = ktl.fields.addButton(filterDiv, filter.filterName, filterBtnStyle,
                                 ['kn-button', 'is-small'],
-                                filterBtnId + '_' + FILTER_BTN_SUFFIX);
+                                filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
                             filterButton.classList.add('filterBtn', 'draggable');
                             if (btnIndex === activeFilterIndex)
                                 filterButton.classList.add('activeFilter');
@@ -2069,11 +2063,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
                                 this.classList.add('activeFilter');
 
-                                var sel = document.querySelector('#' + filterDivId + ' .activeFilter');
-                                console.log('sel =', sel);//$$$
-
                                 applyButtonColors();
-                                console.log('viewIdWithColumn =', filterDivId);//$$$
                                 saveAllFilters(filterDivId);
 
                                 //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
@@ -2116,14 +2106,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         //@@@ TODO:  Need an elegant support of multi-column reports, i.e. up to 3 filters to apply per view.
                         //Need to get all filter strings, concatenante them in memory and create new URL,
                         //instead fo applying three times, which causes multi-refreshes and flickering.
-                        if (applyFilter) {
+                        console.log('applyFilter =', applyFilter);//$$$
+                        if (applyFilter === true) {
                             applyFilter = false;
                             if (activeFilterIndex >= 0) {
                                 //TODO as per above comment: use this list. var selActiveList = $('.activeFilter');
                                 //console.log('selActiveList =', selActiveList);
 
                                 //console.log("$('.activeFilter').click();");//$$$
-                                $('#' + viewId + ' .activeFilter').click();
+                                //Called twice?
+                                //console.log('clicking filter buttons==================', Knack.router.current_scene_key);//$$$
+                                //$('#' + filterDivId + ' .activeFilter').click();
                             }
                         }
 
@@ -2174,9 +2167,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 //Enable/disable control buttons (Only save in this case)
-                ktl.core.waitSelector('#' + viewId + ' .kn-tag-filter', 5000, 'visible') //Instead, maybe try to wait until scene has rendered.
+                ktl.core.waitSelector('#' + filterDivId + ' .kn-tag-filter', 5000, 'visible') //Instead, maybe try to wait until scene has rendered.
                     .then(function () {
-                        var enabledFilters = document.querySelectorAll('#' + viewId + ' .kn-tag-filter');
+                        var enabledFilters = document.querySelectorAll('#' + filterDivId + ' .kn-tag-filter');
                         enabledFilters.forEach(function (filter) {
                             var nav = filter.closest('.kn-records-nav');
                             var saveBtn = $(nav).find('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
@@ -2196,8 +2189,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         //When user saves a filter to a named button
-        function saveUserFilter(viewId = '') {
-            if (!viewId) return;
+        function saveUserFilter(filterDivId = '') {
+            if (!filterDivId) return;
 
             //Extract filter string for this view from URL and decode.
             var newFilterStr = '';
@@ -2205,7 +2198,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             const params = Object.entries(parts['params']);
             if (!$.isEmptyObject(params)) {
                 params.forEach(function (param) {
-                    if (param[0].indexOf(viewId + '_filters') >= 0)
+                    if (param[0].indexOf(filterDivId + '_filters') >= 0)
                         newFilterStr = param[1];
                 });
             }
@@ -2217,13 +2210,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             if (!allFiltersObj.isEmpty) {
                 var exists = false;
-                if (viewId in allFiltersObj) {
-                    //console.log('View is found');
-                    //console.log('allFilterObj[id] =', allFilterObj[viewId].filters);
-
+                if (filterDivId in allFiltersObj) {
                     var filter = {};
-                    for (var i = 0; i < allFiltersObj[viewId].filters.length; i++) {
-                        filter = allFiltersObj[viewId].filters[i];
+                    for (var i = 0; i < allFiltersObj[filterDivId].filters.length; i++) {
+                        filter = allFiltersObj[filterDivId].filters[i];
 
                         if (filterName === filter.filterName) {
                             exists = true;
@@ -2234,28 +2224,25 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (exists) {
                         if (confirm(filterName + ' already exists.  Do you want to overwrite?')) {
                             //console.log('Overwriting filter');
-                            allFiltersObj[viewId].filters[i].filterString = newFilterStr;
-                            allFiltersObj[viewId].active = i;
+                            allFiltersObj[filterDivId].filters[i].filterString = newFilterStr;
                         }
                     } else {
                         //console.log('Adding filter to existing view');
-                        allFiltersObj[viewId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr });
-                        allFiltersObj[viewId].active = allFiltersObj[viewId].filters.length - 1;
-                        console.log('Save filter, viewId =', viewId);//$$$
-                        console.log('allFiltersObj[viewId].filters.length', allFiltersObj[viewId].filters.length);//$$$
+                        allFiltersObj[filterDivId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr });
+                        ktl.userFilters.removeActiveFilter(filterDivId);
                     }
                 } else {
                     //console.log('View not found.  Adding view with new filter');
-                    allFiltersObj[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr }] };
-                    allFiltersObj[viewId].active = 0;
+                    allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr }] };
+                    ktl.userFilters.removeActiveFilter(filterDivId);
                 }
             } else {
                 //console.log('No filters found, creating new');
-                allFiltersObj[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr }] };
-                allFiltersObj[viewId].active = 0;
+                allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr }] };
+                ktl.userFilters.removeActiveFilter(filterDivId);
             }
 
-            saveAllFilters(viewId);
+            saveAllFilters(filterDivId);
         }
 
         function applyButtonColors() {
@@ -2267,6 +2254,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function contextMenuFilter(e, viewId, filter) {
+            console.log('contextMenuFilter, viewId', viewId);//$$$
             e.preventDefault();
             var menuDiv = $('.menuDiv');
             if (menuDiv.length !== 0)
@@ -2275,7 +2263,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             menuDiv = document.createElement('div');
             menuDiv.setAttribute('class', 'menuDiv');
             $('#' + e.target.id).append(menuDiv);
-            $('.menuDiv').css({ 'display': 'flex', 'margin-left': '5px', 'position': 'absolute', 'top': '-80px' });
+            $('.menuDiv').css({ 'margin-top': '-100px' });
 
             var ul = document.createElement('ul');
             menuDiv.appendChild(ul);
@@ -2298,6 +2286,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (confirm('Are you sure you want to delete filter "' + filterName + '" ?')) {
                     var filterIndex = getFilterIndex(allFiltersObj, filter.filterName, viewId);
+                    console.log('filterIndex =', filterIndex);//$$$
                     allFiltersObj[viewId].filters.splice(filterIndex, 1);
                     if (allFiltersObj[viewId].filters.length === 0)
                         delete allFiltersObj[viewId];
@@ -2313,7 +2302,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             listRename.addEventListener('click', function (e) {
                 e.preventDefault();
-                e.stopPropagation(); //Required?
+                //e.stopPropagation(); //Required?
 
                 var id = $(e.target).closest('.filterBtn').attr('id');
                 var filterName = $('#' + id);
@@ -2321,7 +2310,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 filterName = $('#' + id).text();
 
                 var newFilterName = prompt('New Filter Name: ', filterName);
-                if (newFilterName !== null && newFilterName !== '' && newFilterName !== filterName) {
+                if (newFilterName && newFilterName !== filterName) {
                     var foundFilter = allFiltersObj[viewId].filters.find(function (filter) {
                         if (filter.filterName === filterName)
                             return filter;
@@ -5449,3 +5438,5 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //ACC_LOGS_CRITICAL_EMAIL_SENT
 //User Filters: can't delete last one.  Rename creates a new button.
 //Save all filters to local storage. TODO: read back before dsaving to get any external updates from another browser.
+//to render reports only, not all view:  Knack.router.scene_view.model.views._byId['view_838'].attributes.rows[0].reports[0].this.renderReports()
+//Setting active filter is not required anymore since Save takes care of that. Delete all.
