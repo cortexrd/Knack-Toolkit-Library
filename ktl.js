@@ -2005,19 +2005,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 addFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left'); //Table views
 
             addFiltersBar.forEach(function (viewFilterDiv, divIndex) {
-                var viewIdWithColumn = viewId;
-                var idPrefix = '';
-                if (columns.length > 0) {
-                    viewIdWithColumn = viewId + '_' + divIndex;
-                    idPrefix = divIndex + '_';
-                }
+                var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]');
+                filterDivId = filterDivId ? filterDivId.id : viewId; //Typically view_123 for tables and kn-report-view_123-1 for reports.
 
                 //Section for non-draggable control buttons.
-                var filterCtrlDiv = $('#' + viewIdWithColumn + ' .filterCtrlDiv');
+                var filterCtrlDiv = $('#' + filterDivId + ' .filterCtrlDiv');
                 if (filterCtrlDiv.length === 0) {
                     filterCtrlDiv = document.createElement('div');
                     filterCtrlDiv.setAttribute('class', 'filterCtrlDiv');
-                    $('#' + viewIdWithColumn + ' .table-keyword-search').css({ 'display': 'flex' });
+                    $('#' + filterDivId + ' .table-keyword-search').css({ 'display': 'flex' });
                     viewFilterDiv.appendChild(filterCtrlDiv);
                     $('#' + viewId + ' .filterCtrlDiv').css({ 'display': 'flex', 'margin-left': '15px' });
                 }
@@ -2026,35 +2022,35 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 //Add Save Filter button.  Always create, but hide/show depending on filter state.
                 var saveFilterButton = ktl.fields.addButton(filterCtrlDiv, 'Save Filter', filterBtnStyle + '; background-color: #ece6a6',
                     ['kn-button', 'is-small'],
-                    viewId + '_' + idPrefix + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
+                    filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
 
                 saveFilterButton.setAttribute('disabled', 'true');
                 saveFilterButton.classList.add('filterControl', 'tooltip');
-                saveFilterButton.innerHTML = '<i class="fa fa-save fa-lg" id="' + viewIdWithColumn + '-' + SAVE_FILTER_BTN_SEL + '"></i><div class="tooltip"><span class="tooltiptext">Name and save your filter.<br>This will create a button.</span ></div>';
+                saveFilterButton.innerHTML = '<i class="fa fa-save fa-lg" id="' + filterDivId + '-' + SAVE_FILTER_BTN_SEL + '"></i><div class="tooltip"><span class="tooltiptext">Name and save your filter.<br>This will create a button.</span ></div>';
                 saveFilterButton.addEventListener('click', function (e) {
                     e.preventDefault();
-                    saveUserFilter(viewIdWithColumn);
+                    saveUserFilter(filterDivId);
                     ktl.views.refreshView(viewId);
                 });
 
                 //Section for draggable user filter buttons.
-                var filterDiv = $('#' + viewIdWithColumn + ' .filterDiv');
+                var filterDiv = $('#' + filterDivId + ' .filterDiv');
                 if (filterDiv.length === 0) {
                     filterDiv = document.createElement('div');
                     filterDiv.setAttribute('class', 'filterDiv');
-                    filterDiv.setAttribute('id', viewIdWithColumn + '-filterDivId');
-                    $('#' + viewIdWithColumn + ' .table-keyword-search').css({ 'display': 'flex' });
+                    filterDiv.setAttribute('id', filterDivId + '-filterDivId');
+                    $('#' + filterDivId + ' .table-keyword-search').css({ 'display': 'flex' });
                     filterCtrlDiv && filterCtrlDiv.appendChild(filterDiv);
-                    $('#' + viewIdWithColumn + ' .filterDiv').css({ 'display': 'flex', 'margin-left': '5px' });
+                    $('#' + filterDivId + ' .filterDiv').css({ 'display': 'flex', 'margin-left': '5px' });
                 }
 
                 if (!allFiltersObj.isEmpty) {
-                    if (!$.isEmptyObject(allFiltersObj[viewIdWithColumn])) {
-                        var activeFilterIndex = allFiltersObj[viewIdWithColumn].active;
-                        allFiltersObj[viewIdWithColumn].filters.forEach(function (filter, btnIndex) {
+                    if (!$.isEmptyObject(allFiltersObj[filterDivId])) {
+                        var activeFilterIndex = allFiltersObj[filterDivId].active;
+                        allFiltersObj[filterDivId].filters.forEach(function (filter, btnIndex) {
                             if (filter.filterName === '') return;
 
-                            var filterBtnId = idPrefix + filter.filterName.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_"); //Any character other than a-z or 0-9, replace by underscore.
+                            var filterBtnId = filterDivId + '_' + filter.filterName.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_"); //Any character other than a-z or 0-9, replace by underscore.
                             var filterButton = ktl.fields.addButton(filterDiv, filter.filterName, filterBtnStyle,
                                 ['kn-button', 'is-small'],
                                 filterBtnId + '_' + FILTER_BTN_SUFFIX);
@@ -2070,15 +2066,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             filterButton.addEventListener('click', function (e) {
                                 e.preventDefault();
 
-                                $('#' + viewIdWithColumn + ' .activeFilter').removeClass('activeFilter');
+                                $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
                                 this.classList.add('activeFilter');
 
-                                var sel = document.querySelector('#' + viewIdWithColumn + ' .activeFilter');
+                                var sel = document.querySelector('#' + filterDivId + ' .activeFilter');
                                 console.log('sel =', sel);//$$$
 
                                 applyButtonColors();
-                                console.log('viewIdWithColumn =', viewIdWithColumn);//$$$
-                                saveAllFilters(viewIdWithColumn);
+                                console.log('viewIdWithColumn =', filterDivId);//$$$
+                                saveAllFilters(filterDivId);
 
                                 //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
                                 var parts = ktl.core.splitUrl(window.location.href);
@@ -2090,9 +2086,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 const params = Object.entries(parts['params']);
                                 if (!$.isEmptyObject(params)) {
                                     params.forEach(function (param) {
-                                        if (param[0].indexOf(viewIdWithColumn + '_filters') >= 0 || param[0].indexOf(viewIdWithColumn + '_page') >= 0) {
+                                        if (param[0].indexOf(filterDivId + '_filters') >= 0 || param[0].indexOf(filterDivId + '_page') >= 0) {
                                             //Ignore these
-                                        } else if (param[0].indexOf(viewIdWithColumn + '_page') >= 0) {
+                                        } else if (param[0].indexOf(filterDivId + '_page') >= 0) {
                                             //Ignore also
                                         } else {
                                             otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22") + '&';
@@ -2101,7 +2097,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
 
                                 var encodedNewFilter = encodeURIComponent(filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
-                                var allParams = otherParams + viewIdWithColumn + '_filters=' + encodedNewFilter;
+                                var allParams = otherParams + filterDivId + '_filters=' + encodedNewFilter;
                                 newUrl += allParams;
 
                                 if (window.location.href !== newUrl) {
@@ -2112,7 +2108,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             //Right-click to provide Delete and Rename options.
                             filterButton.addEventListener('contextmenu', function (e) {
-                                contextMenuFilter(e, viewIdWithColumn, filter);
+                                contextMenuFilter(e, filterDivId, filter);
                             })
                         });
 
@@ -2132,8 +2128,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         }
 
                         //Setup Drag n Drop for filter buttons.
-                        if (document.getElementById(viewIdWithColumn + '-filterDivId')) {
-                            new Sortable(document.getElementById(viewIdWithColumn + '-filterDivId'), {
+                        if (document.getElementById(filterDivId + '-filterDivId')) {
+                            new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
                                 swapThreshold: 0.96,
                                 animation: 250,
                                 easing: "cubic-bezier(1, 0, 0, 1)",
@@ -2149,26 +2145,26 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         filterNames.push(item.innerText);
                                     });
 
-                                    var initialLength = allFiltersObj[viewIdWithColumn].filters.length;
+                                    var initialLength = allFiltersObj[filterDivId].filters.length;
                                     //console.log('initialLength =', initialLength);
                                     filterNames.slice().reverse().forEach(function (item) {
-                                        var foundFilter = allFiltersObj[viewIdWithColumn].filters.find(function (filter) {
+                                        var foundFilter = allFiltersObj[filterDivId].filters.find(function (filter) {
                                             if (filter.filterName === item)
                                                 return filter;
                                         });
 
-                                        allFiltersObj[viewIdWithColumn].filters.unshift({ 'filterName': item, 'filterString': foundFilter.filterString });
+                                        allFiltersObj[filterDivId].filters.unshift({ 'filterName': item, 'filterString': foundFilter.filterString });
                                     });
 
                                     //console.log('allFiltersObj[viewId].filters =');
                                     //console.log(JSON.parse(JSON.stringify(allFiltersObj[viewId].filters)))
 
                                     //New length should (must) be doubled.
-                                    var length = allFiltersObj[viewIdWithColumn].filters.length;
+                                    var length = allFiltersObj[filterDivId].filters.length;
                                     //console.log('length =', length);
                                     if (length === initialLength * 2) { //JIC.  Should always be true.
-                                        allFiltersObj[viewIdWithColumn].filters.length = length / 2;
-                                        saveAllFilters(viewIdWithColumn); //Save updated object
+                                        allFiltersObj[filterDivId].filters.length = length / 2;
+                                        saveAllFilters(filterDivId); //Save updated object
                                     } else
                                         alert('Unexpected filter length detected.  Filters not saved.'); //@@@ TODO:  handle this somehow.
                                 }
@@ -2183,7 +2179,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var enabledFilters = document.querySelectorAll('#' + viewId + ' .kn-tag-filter');
                         enabledFilters.forEach(function (filter) {
                             var nav = filter.closest('.kn-records-nav');
-                            var saveBtn = $(nav).find('#' + viewIdWithColumn + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
+                            var saveBtn = $(nav).find('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
                             if (saveBtn.length > 0) {
                                 saveBtn.prop('disabled', false);
                             }
@@ -2191,7 +2187,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     })
                     .catch(function () { //Normal case, where the _filters section never appear.  We still needed to wait to see.
                         if (!allFiltersObj.isEmpty) {
-                            if (allFiltersObj[viewIdWithColumn] && allFiltersObj[viewIdWithColumn].active !== -1) {
+                            if (allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active !== -1) {
                                 $('.filterBtn').removeClass('activeFilter');
                             }
                         }
