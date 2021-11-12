@@ -1827,7 +1827,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             /* Maybe use this later, when Report views are better supported.
             var filterDivId = e.target.closest('div[id^=kn-report-' + viewId + '-]:not(.filterDiv)');
             filterDivId = filterDivId ? filterDivId.id : viewId; //Typically view_123 for tables and kn-report-view_123-1 for reports.
-            filterDivId && ktl.userFilters.removeActiveFilter(filterDivId);
+            filterDivId && ktl.userFilters.setActiveFilter('', filterDivId);
             */
 
             //When user clicks on Add Filters button or edits the current filter, we must remember the view we're in 
@@ -1838,7 +1838,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 setViewToRefresh(getViewToRefresh() || viewId);
                 if (e.target.closest('.kn-remove-filter')) {
-                    ktl.userFilters.removeActiveFilter(viewId);
+                    ktl.userFilters.setActiveFilter('', viewId);
                     if (getViewToRefresh()) {
                         ktl.views.refreshView(getViewToRefresh());
                         setViewToRefresh(null);
@@ -1847,7 +1847,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             } else if (e.target.id && e.target.id === 'kn-submit-filters') {
                 var viewToRefresh = getViewToRefresh();
                 if (viewToRefresh) {
-                    ktl.userFilters.removeActiveFilter(viewToRefresh);
+                    ktl.userFilters.setActiveFilter('', viewToRefresh);
                     setViewToRefresh(null);
                 }
             }
@@ -2293,7 +2293,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     allFiltersObj[viewId].filters.splice(filterIndex, 1);
                     if (allFiltersObj[viewId].filters.length === 0) {
                         delete allFiltersObj[viewId];
-                        ktl.userFilters.removeActiveFilter(viewId);
+                        ktl.userFilters.setActiveFilter('', viewId);
                     }
 
                     saveAllFilters(viewId);
@@ -2406,33 +2406,41 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             removeActiveFilter: function (viewId) {
-                console.log('removeActiveFilter', ktl.userFilters.removeActiveFilter.caller);//$$$
-                $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
-                applyButtonColors();
-                saveAllFilters(viewId);
+            //    console.log('removeActiveFilter', ktl.userFilters.removeActiveFilter.caller);//$$$
+            //    $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
+            //    applyButtonColors();
+            //    saveAllFilters(viewId);
             },
 
             setActiveFilter: function (filterName = '', viewId = '') {
-                if (!filterName || !viewId) return;
-                var filterIndex = getFilterIndex(allFiltersObj, filterName, viewId);
-                console.log('filterIndex =', filterIndex);//$$$
+                if (!viewId) return;
 
-                if (filterIndex >= 0) {
-                    var btnSelector = '#' + viewId + '_' + filterIndex + '_' + FILTER_BTN_SUFFIX;
-                    console.log('btnSelector =', btnSelector);//$$$
-                    ktl.core.waitSelector(btnSelector)
-                        .then(function () {
-                            var filterBtn = document.querySelector(btnSelector);
-                            if (filterBtn) {
-                                ktl.userFilters.removeActiveFilter(viewId);
-                                filterBtn.classList.add('activeFilter');
-                                console.log('Active filterBtn =', filterBtn);//$$$
-                                saveAllFilters(viewId);
-                            }
-                        })
-                        .catch(function () {
-                            ktl.log.clog('Failed waiting for ' + btnSelector, 'purple');
-                        })
+                if (filterName) {
+                    var filterIndex = getFilterIndex(allFiltersObj, filterName, viewId);
+                    console.log('filterIndex =', filterIndex);//$$$
+
+                    if (filterIndex >= 0) {
+                        var btnSelector = '#' + viewId + '_' + filterIndex + '_' + FILTER_BTN_SUFFIX;
+                        console.log('btnSelector =', btnSelector);//$$$
+                        ktl.core.waitSelector(btnSelector, 10000)
+                            .then(function () {
+                                var filterBtn = document.querySelector(btnSelector);
+                                if (filterBtn) {
+                                    ktl.userFilters.setActiveFilter('', viewId);
+                                    filterBtn.classList.add('activeFilter');
+                                    console.log('Active filterBtn =', filterBtn);//$$$
+                                    saveAllFilters(viewId);
+                                }
+                            })
+                            .catch(function () {
+                                ktl.log.clog('Failed waiting for ' + btnSelector, 'purple');
+                            })
+                    }
+                } else { //Remove active filter.
+                    console.log('removeActiveFilter', ktl.userFilters.removeActiveFilter.caller);//$$$
+                    $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
+                    applyButtonColors();
+                    saveAllFilters(viewId);
                 }
             },
         }
@@ -3540,7 +3548,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (viewId) {
                             viewId = viewId.getAttribute('id');
 
-                            ktl.userFilters.removeActiveFilter(viewId); //Prevent conflict with userFilters by removing current one.
+                            ktl.userFilters.setActiveFilter('', viewId); //Prevent conflict with userFilters by removing current one.
 
                             var href = e.target.closest('[href]');
                             if (href) {
