@@ -1811,11 +1811,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('knack-view-render.any', function (event, view, data) {
             if ((window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID) || !ktl.core.getCfg().enabled.userFilters) return;
 
+            //Report views are much more complex, thus not well supported yet.  Sorry :(
+            if (document.querySelector('#' + view.key + '.kn-report')) return;
+
             if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
                 addFilterButtons(view.key);
-        })
-
-        $(document).on('click', e => {
         })
 
         $(document).on('mousedown click', e => {
@@ -1831,7 +1831,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             */
 
             //When user clicks on Add Filters button or edits the current filter, we must remember the view we're in 
-            //because when we click Submit from the filter edit pop-up, it will not be possible to retrieve it.
+            //because when we click Submit in the filter's edit pop-up, it's not be possible to retrieve it.
             if (e.type === 'mousedown' && e.target.closest('.kn-filters-nav,.kn-filters,.kn-remove-filter')) {
                 setViewToRefresh(getViewToRefresh() || viewId);
                 if (e.target.closest('.kn-remove-filter')) {
