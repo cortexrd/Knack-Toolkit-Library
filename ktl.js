@@ -630,12 +630,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 //Save cookies per user.
                 var username = Knack.getUserAttributes().name;
-                setCookie(username + '_' + setting, value, expdays);
+                ktl.storage.setCookie(username + '_' + setting, value, expdays);
             },
 
             loadUserSetting: function (setting) {
                 var username = Knack.getUserAttributes().name;
-                return getCookie(username + '_' + setting);
+                return ktl.storage.getCookie(username + '_' + setting);
             },
 
             setCookie: function (cname, cvalue, exdays = COOKIE_DEFAULT_EXP_DAYS) {
@@ -3823,7 +3823,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 } else {
                     //Add shift Button right next to Submit.
-                    var shiftBtn = document.getElementById(kioskButtons.ADD_SHIFT.id);
+                    var shiftBtn = kioskButtons.ADD_SHIFT && document.getElementById(kioskButtons.ADD_SHIFT.id);
                     if (kioskButtons.ADD_SHIFT && !shiftBtn && !kioskButtons.ADD_SHIFT.scenesToExclude.includes(Knack.router.current_scene_key)) {
                         shiftBtn = document.createElement('BUTTON');
                         shiftBtn.classList.add('kn-button');
