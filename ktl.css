@@ -19,14 +19,18 @@ h2 {
 }
 
 tr:hover {
-	background-color: #fdfdfd !important;
-	filter: brightness(95%) !important;
+	background-color: #fdfdfd !important; /*Make this configurable*/
+	filter: brightness(95%) !important; /*Make this configurable*/
 }
 
 .pointer {
 	cursor: pointer;
 }
 
+.kn-table.cell-editable td.cell-edit {
+	background-color: #ffffdd; /*Make this configurable*/
+	font-weight: bold; /*Make this configurable*/
+}
 
 /************ Tooltips **************/
 .tooltip {
