@@ -6,6 +6,8 @@
 	* @license GPLv3
     */
 
+
+/************ General Settings **************/
 /* Always hide H2 until stripped from special codes. HiDDEN_VIEW, etc. */
 h2 {
 	opacity: 0;
@@ -13,10 +15,20 @@ h2 {
 
 /* Hide header and scene render will put it back if not an iFrame. */
 #kn-app-header {
-	display: none;
+	display: none !important;
 }
 
-/* Tooltip container */
+tr:hover {
+	background-color: #fdfdfd !important;
+	filter: brightness(95%) !important;
+}
+
+.pointer {
+	cursor: pointer;
+}
+
+
+/************ Tooltips **************/
 .tooltip {
 	position: relative;
 	display: inline-block;
@@ -60,7 +72,7 @@ h2 {
 		opacity: 1;
 	}
 
-/* User Filters - BEGIN */
+/************ User Filters **************/
 .activeFilter {
 	border-width: 2px;
 }
@@ -69,15 +81,16 @@ h2 {
 	display: flex;
 	width: 30px;
 }
-/* User Filters - END */
 
+
+/************ Improved Chzn Dropdown **************/
 #chznBetter {
 	left: 0px;
 	width: 100% !important;
 	background-color: #efedff; /*Very pale blue*/
 }
 
-/************ Pop-up - BEGIN **************/
+/************ Pop-up **************/
 .contextMenu {
 	text-align: left;
 	font-size: larger;
@@ -96,9 +109,8 @@ h2 {
 	.menuDiv li:hover {
 		background-color: #a6bdf9;
 	}
-/************ Pop-up - END **************/
 
-/************ Debug Window - BEGIN **************/
+/************ Debug Window **************/
 #debugWnd::-webkit-scrollbar {
 	-webkit-appearance: none;
 }
@@ -119,9 +131,4 @@ h2 {
 #debugWnd::-webkit-scrollbar-track {
 	background-color: #ffffff;
 }
-
-.pointer {
-	cursor: pointer;
-}
-/************ Debug Window - END **************/
 
