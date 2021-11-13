@@ -5,12 +5,16 @@
  */
 
 //Find a better place for these universal values.
-this.APP_ROOT_NAME = Knack.app.attributes.name + '_';
-this.TEN_SECONDS_DELAY = 10000;
-this.ONE_MINUTE_DELAY = 60000;
-this.FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
-this.ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
-this.IFRAME_WND_ID = 'iFrameWnd';
+window.APP_ROOT_NAME = Knack.app.attributes.name + '_';
+const APP_ROOT_NAME = window.APP_ROOT_NAME;
+
+window.IFRAME_WND_ID = 'iFrameWnd';
+const IFRAME_WND_ID = window.IFRAME_WND_ID;
+
+const TEN_SECONDS_DELAY = 10000;
+const ONE_MINUTE_DELAY = 60000;
+const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
+const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
     const KTL_VERSION = '0.2.4';
