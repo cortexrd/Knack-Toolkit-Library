@@ -4593,7 +4593,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         .then(function () {
                             selToast = '#toast-container > div > div > p';
                             var msg = $(selToast).text();
-                            if (msg.includes('ACC_LOGS_CRITICAL_EMAIL_SENT')) {
+                            if (msg.includes('ACC_LOGS_EMAIL_SENT')) {
                                 //console.log('Email sent, re-starting autorefresh and logging loop');//$$$
                                 ktl.views.autoRefresh();
                                 startHighPriorityLogging();
@@ -5470,7 +5470,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //@@@ TODO: Use logId as a feedback to delete them.
 //TODO: add getCategoryLogs.  Returns object with array and logId.
 //We need a logs category list!
-//ACC_LOGS_CRITICAL_EMAIL_SENT
 //User Filters: can't delete last one.  Rename creates a new button.
 //Save all filters to local storage. TODO: read back before dsaving to get any external updates from another browser.
 //to render reports only, not all view:  Knack.router.scene_view.model.views._byId['view_838'].attributes.rows[0].reports[0].this.renderReports()
