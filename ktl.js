@@ -4509,7 +4509,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //iFrameWnd feature
     this.iFrameWnd = (function () {
         const LOW_PRIORITY_LOGGING_DELAY = ONE_HOUR_DELAY; //TODO: make these configurable.
-        const DEV_LOW_PRIORITY_LOGGING_DELAY = TEN_SECONDS_DELAY;
+        const DEV_LOW_PRIORITY_LOGGING_DELAY = ONE_MINUTE_DELAY * 10;
 
         //TODO: Put all this in an object like core:  var cfg = {...
         var iFrameWnd = null;
@@ -4567,7 +4567,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         startHighPriorityLogging();
                         startLowPriorityLogging();
                     }
-                }, 20);
+                }, 200);
 
                 var timeout = setTimeout(function () { //Failsafe
                     clearInterval(intervalId);
@@ -4594,7 +4594,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             selToast = '#toast-container > div > div > p';
                             var msg = $(selToast).text();
                             if (msg.includes('ACC_LOGS_CRITICAL_EMAIL_SENT')) {
-                                //console.log('Email sent, re-starting autorefresh');//$$$
+                                //console.log('Email sent, re-starting autorefresh and logging loop');//$$$
                                 ktl.views.autoRefresh();
                                 startHighPriorityLogging();
                             } else
