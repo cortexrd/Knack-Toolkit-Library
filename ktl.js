@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.2.4';
+    const KTL_VERSION = '0.2.5';
     const SW_VERSION = window.SW_VERSION;
 
     var ktl = this;
@@ -376,19 +376,18 @@ function Ktl($) {
             getMenuInfo: function () {
                 var linkStr = window.location.href;
                 var topMenu = null;
-                var menu = '';
                 var topMenuStr = '';
                 var menuStr = '';
-                if (ktl.core.isKiosk())
-                    topMenuStr = 'Kiosk Mode - no menu'; //For some reason, Kiosk's Menu have many entries.
-                else {
-                    menu = $('#app-menu-list .is-active > a > span');
-                    if (menu.length > 0)
-                        menuStr = menu[0].innerText;
 
-                    topMenu = menu.closest('.kn-dropdown-menu');
-                    if (topMenu.length > 0) {
-                        topMenuStr = topMenu[0].innerText;
+                var menuElem = document.querySelector('#app-menu-list .is-active > a > span');
+                menuElem && (menuStr = menuElem.innerText);
+                
+                if (ktl.core.isKiosk()) {
+                    topMenuStr = 'Kiosk Mode - no menu'; //For some reason, Kiosk's Menu have many entries.
+                } else {
+                    menuElem && (topMenu = menuElem.closest('.kn-dropdown-menu'));
+                    if (topMenu) {
+                        topMenuStr = topMenu.innerText;
 
                         //Special case for Apple devices, where all menus are included.  Must cleanup and keep only first one.
                         if (topMenuStr.length >= 13 && topMenuStr.substr(0, 13) === '\n            ') {
@@ -398,7 +397,7 @@ function Ktl($) {
                     }
                 }
 
-                return { topmenu: topMenuStr, menu: menuStr, link: linkStr };
+                return { topmenu: topMenuStr.trim(), menu: menuStr.trim(), link: linkStr.trim() };
             },
 
             isHex: function (str) {
@@ -1305,7 +1304,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         eraseFormData(viewObj);
                     })
                     .catch(failure => {
-                        ktl.log.clog('waitSubmitOutcome failed:' + failure, 'red');
+                        ktl.log.clog('Persistent Form - waitSubmitOutcome failed:' + failure, 'red');
                     });
             }
         })
@@ -2935,7 +2934,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                     if (response.status === 500)
                                                         location.reload(true);
                                                     else {
-                                                        ktl.log.addLog(LS_APP_ERROR, 'KEC_1007 - Forcing logout');
+                                                        ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1007 - Forcing logout');
                                                         $('.kn-log-out').trigger('click'); //Token has expired, force logout.
                                                     }
                                                 }
@@ -3626,7 +3625,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     var failsafe = setTimeout(function () {
                         clearInterval(intervalId);
-                        reject('waitSubmitOutcome timeout error');
+                        reject('waitSubmitOutcome timeout error in ' + viewId);
                     }, 20000);
                 })
             },
@@ -5456,22 +5455,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
 
 //TODO:
+//Need to find a way to apply user filters to view where there are many reports (columns).  Currently, filters cause lots of refreshes.  Maybe pre-format URL once, then apply?
+//Experiment with this to render reports only, not all view:  Knack.router.scene_view.model.views._byId['view_838'].attributes.rows[0].reports[0].this.renderReports()
 //inlineEditChangeStyle: function () {
 //necessary?... var msgId = event.data.msgId; //Keep a copy for ack.
-//console.log('found critical error log'); //TODO Send email
 //Use Try Catch to prevent white screen.
 //ktl.core.waitSelector('#' + viewId + ' .kn-tag-filter', 5000, 'visible') //Instead, maybe try to wait until scene has rendered.
 //TODO: Should only call this if really needed.
-//Need to find a way to apply user filters to view where there are many reports (columns).  Currently, filters cause lots of refreshes.  Maybe pre-format URL once, then apply?
 //Wait until Submit is completed and ack parent - convert to use submitAndWait
-//Afer app starup, if iframe never acks its presence within X seconds, re-create it.
+//After app startup...
+//   1) If iframe never acks its presence within X seconds, re - create it(this is done).
+//   2) If after 5 attempts, still not there, refresh app.
 //ktl.wndMsg.removeAllMsgOfType('heartbeatMsg'); //TODO:  change to delete all msg for dst === iFrameWnd.
 //Fails with undefined.value after a log out:  document.querySelector('#' + viewId + '-' + fieldId).value = date;
-//@@@ TODO: Use logId as a feedback to delete them.
 //TODO: add getCategoryLogs.  Returns object with array and logId.
-//We need a logs category list!
-//User Filters: can't delete last one.  Rename creates a new button.
-//Save all filters to local storage. TODO: read back before dsaving to get any external updates from another browser.
-//to render reports only, not all view:  Knack.router.scene_view.model.views._byId['view_838'].attributes.rows[0].reports[0].this.renderReports()
-//Setting active filter is not required anymore since Save takes care of that. Delete all.
-//TODO:  set as active
+//We need a logs category list, and move all constants from core to log object.
+//Msg is not handled:  parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
