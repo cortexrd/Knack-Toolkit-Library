@@ -1806,14 +1806,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         loadAllFilters();
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            if (window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID) return;
+            if (ktl.scenes.isiFrameWnd()) return;
 
             applyFilter = true;
             loadAllFilters();
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            if ((window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID) || !ktl.core.getCfg().enabled.userFilters) return;
+            if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             //Report views are much more complex, thus not well supported yet.  Sorry :(
             if (document.querySelector('#' + view.key + '.kn-report')) return;
@@ -1823,7 +1823,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         $(document).on('mousedown click', e => {
-            if (window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID) return;
+            if (ktl.scenes.isiFrameWnd()) return;
 
             var viewId = e.target.closest('.kn-view');
             viewId = viewId ? viewId.id : null;
@@ -3657,8 +3657,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return;
             }
 
-            if (!window.self.frameElement && !ktl.core.isKiosk()) //If not an iFrame, put back header hidden by CSS.
-                document.querySelector("#kn-app-header").style.display = 'block';
+            if (ktl.core.isKiosk()) {
+                //Add extra space at bottom of screen in kiosk mode, to allow editing with the 
+                //virtual keyboard without blocking the input field.
+                if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
+                    $('body').css({ 'padding-bottom': '' });
+                else
+                    $('body').css({ 'padding-bottom': '500px' });
+            } else {
+                if (!window.self.frameElement) //If not an iFrame, put back header hidden by CSS.
+                    document.querySelector("#kn-app-header").style.display = 'block';
+            }
 
             ktl.scenes.spinnerWatchdog(true);
             ktl.iFrameWnd.create();
@@ -4006,7 +4015,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             location.reload(true);
                         }
                     })
+
+                    //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
+                    if (ktl.core.isKiosk() && !ktl.scenes.isiFrameWnd())
+                        $('body').css({ 'padding-top': '15px' });
                 }
+            },
+
+            isiFrameWnd: function () {
+                return (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID)) ? true : false;
             },
         }
     })(); //Scenes
@@ -4031,7 +4048,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             else
                 isActive = true;
 
-            if (window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID) return;
+            if (ktl.scenes.isiFrameWnd()) return;
 
             if (ktl.storage.hasLocalStorage() && Knack.getUserAttributes() !== 'No user found') {
                 $(document).on('click', function (e) { mouseClickCtr++; })
@@ -4541,7 +4558,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         ];
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            if (window.self.frameElement && window.self.frameElement.id === IFRAME_WND_ID) {
+            if (ktl.scenes.isiFrameWnd()) {
                 var intervalId = setInterval(function () { //Wait until ready HB field is ready.
                     if (ktl.iFrameWnd.getCfg().hbViewId !== '') {
                         clearInterval(intervalId);
