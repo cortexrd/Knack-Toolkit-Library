@@ -2869,6 +2869,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (view.title.includes('USER_FILTERS_CODE'))
                         ktl.userFilters.setCfg({ ufCodeViewId: view.key })
 
+                    if (view.title.includes('ADD_TIMESTAMP'))
+                        ktl.views.addTimeStampToHeader(view);
+                    
                     processTitleFlags && processTitleFlags(view, data);
                 }
 
