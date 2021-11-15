@@ -210,6 +210,7 @@ function Ktl($) {
                                         if (jqXHR.status === 401 || jqXHR.status === 403 || jqXHR.status === 500) {
                                             if (window.self.frameElement)
                                                 parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
+                                                //ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
                                             else {
                                                 ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1002 - Forcing logout');
                                                 $('.kn-log-out').trigger('click'); //Token has expired, force logout.
@@ -290,7 +291,7 @@ function Ktl($) {
                 var useVer = ktl.storage.lsGetItem('USE_VER');
                 ktl.debugWnd.lsLog('SWITCH USE_VER' + useVer);
                 setTimeout(() => {
-                    ktl.wndMsg.send('reloadPageMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                    ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
                 }, 2000);
             },
 
@@ -1304,7 +1305,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         eraseFormData(viewObj);
                     })
                     .catch(failure => {
-                        ktl.log.clog('Persistent Form - waitSubmitOutcome failed:' + failure, 'red');
+                        ktl.log.clog('Persistent Form - waitSubmitOutcome failed: ' + failure, 'red');
                     });
             }
         })
@@ -2763,7 +2764,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
 
             for (var viewId in Knack.views)
-                ktl.views.addViewId(Knack.views[viewId].model.view);
+                Knack.views[viewId] && (ktl.views.addViewId(Knack.views[viewId].model.view));
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -4256,115 +4257,134 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         readUserPrefsFromLs();
         var lastUserPrefs = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id); //Used to detect prefs changes.
 
-        //console.log('userPrefsObj =', userPrefsObj);
         function readUserPrefsFromLs() { //Use Try Catch to prevent white screen.
-            var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
-            if (lsPrefsStr)
-                userPrefsObj = JSON.parse(lsPrefsStr);
+            try {
+                var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
+                if (lsPrefsStr)
+                    userPrefsObj = JSON.parse(lsPrefsStr);
 
-            return lsPrefsStr; //Return string version.
+                return lsPrefsStr; //Return string version.
+            }
+            catch (e) {
+                //ktl.log.clog('Exception in readUserPrefsFromLs: ' + e, 'purple');
+            }
+
+            return '';
         }
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId /*USER_PREFS_CUR - read-only autorefresh view*/) {
-                var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-                if (!fieldId) return;
+            try {
+                if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId) { //USER_PREFS_CUR - read-only autorefresh view
+                    var acctUserPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                    if (!acctUserPrefsFld) return;
 
-                //Add iFrameRefresh=true to user prefs and this will force a iFrameWnd refresh.
-                //Can be useful sometimes to trigger on/off views via Page Rules.
-                if (data[fieldId].includes('iFrameRefresh')) {
-                    var prefsTmpObj = JSON.parse(data[fieldId]);
-                    delete prefsTmpObj['iFrameRefresh'];
-                    var updatedPrefs = JSON.stringify(prefsTmpObj);
-                    ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, { [fieldId]: updatedPrefs })
-                        .then(success => { location.reload(true); })
-                        .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
-                } else {
-                    if (data[fieldId] && (data[fieldId] !== lastUserPrefs)) {
-                        ktl.log.clog('Prefs have changed!!!!', 'blue');
+                    var prefsStr = data[acctUserPrefsFld];
+                    var prefsTmpObj = JSON.parse(prefsStr);
 
-                        lastUserPrefs = data[fieldId];
+                    //Add iFrameRefresh=true to user prefs and this will force a iFrameWnd refresh.
+                    //Can be useful sometimes to trigger on/off views via Page Rules.
+                    if (prefsStr.includes('iFrameRefresh')) {
+                        delete prefsTmpObj['iFrameRefresh'];
+                        var updatedPrefs = JSON.stringify(prefsTmpObj);
+                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, { [acctUserPrefsFld]: updatedPrefs })
+                            .then(success => { location.reload(true); })
+                            .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
+                    } else if (prefsStr.includes('reloadApp')) {
+                        delete prefsTmpObj['reloadApp'];
+                        var updatedPrefs = JSON.stringify(prefsTmpObj);
+                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, { [acctUserPrefsFld]: updatedPrefs })
+                            .then(success => { ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP); })
+                            .catch(failure => { ktl.log.clog('reloadAppMsg failure: ' + failure, 'red'); })
+                    } else {
+                        if (prefsStr && (prefsStr !== lastUserPrefs)) {
+                            ktl.log.clog('Prefs have changed!!!!', 'blue');
 
-                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, data[fieldId]);
-                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                            lastUserPrefs = prefsStr;
 
-                        ktl.userPrefs.applyUserPrefs();
-                    } else if (!data[fieldId] || data[fieldId].includes('showId')) {
-                        //If nothing yet, or old format, use default object: 1970, etc.
-                        var defaultUserPrefsObj = {
-                            dt: new Date(1970, 0, 1),
-                            showViewId: false,
-                            showExtraDebugInfo: false,
-                            showIframeWnd: false,
-                            showDebugWnd: false,
-                            workShift: 'A'
-                        };
+                            ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, prefsStr);
+                            ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
 
-                        //ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(defaultUserPrefsObj));
-                        var acctUserPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-                        var updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
-                        if (!updUserPrefsViewId || !acctUserPrefsFld) return;
+                            ktl.userPrefs.applyUserPrefs();
+                        } else if (!prefsStr || prefsStr.includes('showId')) {
+                            //If nothing yet, or old format, use default object: 1970, etc.
+                            var defaultUserPrefsObj = {
+                                dt: new Date(1970, 0, 1),
+                                showViewId: false,
+                                showExtraDebugInfo: false,
+                                showIframeWnd: false,
+                                showDebugWnd: false,
+                                workShift: 'A'
+                            };
 
-                        document.querySelector('#' + acctUserPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
-                        document.querySelector('#' + updUserPrefsViewId + ' .kn-button.is-primary').click();
-                        ktl.log.clog('Uploading default prefs to cloud', 'green');
+                            var updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
+                            if (!updUserPrefsViewId || !acctUserPrefsFld) return;
+
+                            document.querySelector('#' + acctUserPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
+                            document.querySelector('#' + updUserPrefsViewId + ' .kn-button.is-primary').click();
+                            ktl.log.clog('Uploading default prefs to cloud', 'green');
+                        }
+                    }
+                } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) { //USER_PREFS_SET - form for user to update his own prefs
+                    var acctUserPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                    var allow = allowShowPrefs ? allowShowPrefs() : {};
+                    if ($.isEmptyObject(allow)) {
+                        ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
+                        return;
+                    }
+
+                    var userPrefsTmp = userPrefsObj;
+
+                    var prefsBar = document.createElement('div');
+                    prefsBar.style.marginTop = '20px';
+                    prefsBar.style.marginBottom = '50px';
+                    ktl.core.insertAfter(prefsBar, document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .view-header'));
+                    ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .columns');
+
+                    //TODO: change this "add pref" mechanism to allow developer to add all the app-specific prefs that are desired,
+                    //on top of default ones.  Use an object that describes each prefs and loop through each one with an iterator.
+
+                    if (allow.showViewId) {
+                        var showViewIdCb = ktl.fields.addCheckbox(prefsBar, 'Show View ID', userPrefsTmp.showViewId);
+                        showViewIdCb.addEventListener('change', e => {
+                            userPrefsTmp.showViewId = e.target.checked;
+                            sendPrefsChangedMsg();
+                        });
+                    }
+
+                    if (allow.showIframe) {
+                        var showIframeWndCb = ktl.fields.addCheckbox(prefsBar, 'Show iFrameWnd', userPrefsTmp.showIframeWnd);
+                        showIframeWndCb.addEventListener('change', e => {
+                            userPrefsTmp.showIframeWnd = e.target.checked;
+                            sendPrefsChangedMsg();
+                        });
+                    }
+
+                    if (allow.showDebugWnd) {
+                        var showDebugWndCb = ktl.fields.addCheckbox(prefsBar, 'Show DebugWnd', userPrefsTmp.showDebugWnd);
+                        showDebugWndCb.addEventListener('change', e => {
+                            userPrefsTmp.showDebugWnd = e.target.checked;
+                            sendPrefsChangedMsg();
+                        });
+                    }
+
+                    if (allow.showExtraDebugInfo) {
+                        var showExtraDebugCb = ktl.fields.addCheckbox(prefsBar, 'Show Extra Debug', userPrefsTmp.showExtraDebugInfo);
+                        showExtraDebugCb.addEventListener('change', e => {
+                            userPrefsTmp.showExtraDebugInfo = e.target.checked;
+                            sendPrefsChangedMsg();
+                        });
+                    }
+
+                    function sendPrefsChangedMsg() {
+                        userPrefsTmp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                        document.querySelector('#' + acctUserPrefsFld).value = JSON.stringify(userPrefsTmp);
                     }
                 }
-            } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId /*USER_PREFS_SET - form for user to update his own prefs*/) {
-                var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-                var allow = allowShowPrefs ? allowShowPrefs() : {};
-                if ($.isEmptyObject(allow)) {
-                    ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
-                    return;
-                }
-
-                var userPrefsTmp = userPrefsObj;
-
-                var prefsBar = document.createElement('div');
-                prefsBar.style.marginTop = '20px';
-                prefsBar.style.marginBottom = '50px';
-                ktl.core.insertAfter(prefsBar, document.querySelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .view-header'));
-                ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId + ' .columns');
-
-                //TODO: change this "add pref" mechanism to allow developer to add all the app-specific prefs that are desired,
-                //on top of default ones.  Use an object that describes each prefs and loop through each one with an iterator.
-
-                if (allow.showViewId) {
-                    var showViewIdCb = ktl.fields.addCheckbox(prefsBar, 'Show View ID', userPrefsTmp.showViewId);
-                    showViewIdCb.addEventListener('change', e => {
-                        userPrefsTmp.showViewId = e.target.checked;
-                        sendPrefsChangedMsg();
-                    });
-                }
-
-                if (allow.showIframe) {
-                    var showIframeWndCb = ktl.fields.addCheckbox(prefsBar, 'Show iFrameWnd', userPrefsTmp.showIframeWnd);
-                    showIframeWndCb.addEventListener('change', e => {
-                        userPrefsTmp.showIframeWnd = e.target.checked;
-                        sendPrefsChangedMsg();
-                    });
-                }
-
-                if (allow.showDebugWnd) {
-                    var showDebugWndCb = ktl.fields.addCheckbox(prefsBar, 'Show DebugWnd', userPrefsTmp.showDebugWnd);
-                    showDebugWndCb.addEventListener('change', e => {
-                        userPrefsTmp.showDebugWnd = e.target.checked;
-                        sendPrefsChangedMsg();
-                    });
-                }
-
-                if (allow.showExtraDebugInfo) {
-                    var showExtraDebugCb = ktl.fields.addCheckbox(prefsBar, 'Show Extra Debug', userPrefsTmp.showExtraDebugInfo);
-                    showExtraDebugCb.addEventListener('change', e => {
-                        userPrefsTmp.showExtraDebugInfo = e.target.checked;
-                        sendPrefsChangedMsg();
-                    });
-                }
-
-                function sendPrefsChangedMsg() {
-                    userPrefsTmp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                    document.querySelector('#' + fieldId).value = JSON.stringify(userPrefsTmp);
-                }
+            }
+            catch (e) {
+                ktl.log.clog('On render view for User Prefs error: ' + e, 'purple');
+                console.log('view =', view);//$$$
+                console.log('data =', data);//$$$
             }
         })
 
@@ -4394,7 +4414,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
                 ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
                 for (var viewId in Knack.views)
-                    ktl.views.addViewId(Knack.views[viewId].model.view);
+                    Knack.views[viewId] && (ktl.views.addViewId(Knack.views[viewId].model.view));
 
                 var myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
                 myUserPrefsViewId && ktl.views.refreshView(myUserPrefsViewId);
@@ -4920,8 +4940,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('Failure sending heartbeatMsg: ' + failure, 'red');
                                 })
                             break;
-                        case 'reloadPageMsg':
-                            ktl.debugWnd.lsLog('Rxed msg: reloadPage');
+                        case 'reloadAppMsg':
+                            ktl.debugWnd.lsLog('Rxed msg: reloadApp');
                             setTimeout(() => {
                                 if (typeof Android === 'object')
                                     Android.restartApplication()
