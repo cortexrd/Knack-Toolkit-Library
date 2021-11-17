@@ -3589,7 +3589,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             if (!$.isEmptyObject(resultRecord) && (success || failure)) {
                                 clearInterval(intervalId);
                                 clearTimeout(failsafe);
-                                //console.log('success, failure:', success, failure);//$$$
+                                //console.log('success, failure:', success, failure);
                                 success && resolve({
                                     outcome: 'submitAndWait, ' + viewId + ' : ' + success,
                                     record: resultRecord
@@ -4060,14 +4060,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 setInterval(function () {
                     //Important to read again every 5 seconds in case some other opened pages would add to shared counters.
                     var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
-                    if (!categoryLogs)
-                        ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0 })); //Doesn't exist, create activity entry.
-                    else {
-                        if (mouseClickCtr > 0 || keyPressCtr > 0) {
-                            var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
-                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr }));
-                            ktl.log.resetActivityCtr();
+                    try {
+                        if (!categoryLogs)
+                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0 })); //Doesn't exist, create activity entry.
+                        else {
+                            if (mouseClickCtr > 0 || keyPressCtr > 0) {
+                                var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
+                                ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr }));
+                                ktl.log.resetActivityCtr();
+                            }
                         }
+                    }
+                    catch (e) {
+                        ktl.log.addLog(ktl.const.LS_INFO, 'Deleted ACTIVITY log having obsolete format: ' + e);
+                        ktl.storage.lsRemoveItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
                     }
                 }, 5000);
             }
@@ -4091,13 +4097,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             objSnapshot: function (logMsg, obj) {
-                console.log(logMsg, JSON.parse(JSON.stringify(obj)));
+                try {
+                    console.log(logMsg, JSON.parse(JSON.stringify(obj)));
+                }
+                catch (e) {
+                    ktl.log.clog('objSnapshot exception: ' + e, 'purple');
+                }
             },
 
             // Adds a new log for a given category in the logs accumulator.
             // These logs are stored in localStorage, and each new one is inserted
             // at the beginning of the array to get the most recent at top.
-            addLog: function (category = '', details = '') {
+            addLog: function (category = '', details = '', showInConsole = true) {
                 if (category === '' || details === '' || lastDetails === details)
                     return;
 
@@ -4136,54 +4147,69 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 };
 
                 //Read logs as a string.
-                var logArray = [];
-                var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
-                if (categoryLogs)
-                    logArray = JSON.parse(categoryLogs).logs;
+                try {
+                    var logArray = [];
+                    var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
+                    if (categoryLogs)
+                        logArray = JSON.parse(categoryLogs).logs;
 
-                if (category === ktl.const.LS_ACTIVITY) { //Activity is a special case, where only one entry is present.
-                    if (logArray.length === 0)
-                        logArray.push(newLog);
-                    else
-                        logArray[0] = newLog; //Update existing.
-                } else
-                    logArray.unshift(newLog); //Add at beginning of array.
+                    if (category === ktl.const.LS_ACTIVITY) { //Activity is a special case, where only one entry is present.
+                        if (logArray.length === 0)
+                            logArray.push(newLog);
+                        else
+                            logArray[0] = newLog; //Update existing.
+                    } else
+                        logArray.unshift(newLog); //Add at beginning of array.
 
-                var logObj = {
-                    logs: logArray,
-                    logId: ktl.core.getCurrentDateTime(true, true, true, true).replace(/[\D]/g, ''), //Unique message identifier used validate that transmission was successfull, created from a millisecond timestamp.
-                };
+                    var logObj = {
+                        logs: logArray,
+                        logId: ktl.core.getCurrentDateTime(true, true, true, true).replace(/[\D]/g, ''), //Unique message identifier used validate that transmission was successfull, created from a millisecond timestamp.
+                    };
 
-                ktl.storage.lsSetItem(category + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                    ktl.storage.lsSetItem(category + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                //Also show some of them in console.
-                if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
-                    var color = 'purple';
-                    if (category === ktl.const.LS_WRN)
-                        color = 'orangered';
-                    ktl.log.clog(type + ' - ' + details, color);
+                    //Also show some of them in console.
+                    if (showInConsole) {
+                        if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
+                            var color = 'purple';
+                            if (category === ktl.const.LS_WRN)
+                                color = 'orangered';
+                        } else
+                            color = 'blue';
+
+                        ktl.log.clog(type + ' - ' + details, color);
+                    }
+                }
+                catch (e) {
+                    ktl.log.addLog(ktl.const.LS_INFO, 'addLog, deleted log having obsolete format: ' + category + ', ' + e);
+                    ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
                 }
             },
 
             // Returns the oldest log's date/time from array.
             // Resolution is 1 minute.
             getLogArrayAge: function (category = '') {
-                if (category === '')
-                    return null;
+                if (category === '') return null;
 
-                var logArray = [];
-                var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
-                if (categoryLogs)
-                    logArray = JSON.parse(categoryLogs).logs;
+                try {
+                    var logArray = [];
+                    var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
+                    if (categoryLogs)
+                        logArray = JSON.parse(categoryLogs).logs;
 
-                if (logArray.length > 0) {
-                    var oldestLogDT = Date.parse(logArray[logArray.length - 1].dt);
-                    var nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
-                    var hoursElapsed = Math.round((nowUTC - oldestLogDT) / 60000);
-                    //console.log('hoursElapsed =', hoursElapsed);
-                    return hoursElapsed;
-                } else
-                    return null;
+                    if (logArray.length > 0) {
+                        var oldestLogDT = Date.parse(logArray[logArray.length - 1].dt);
+                        var nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
+                        var hoursElapsed = Math.round((nowUTC - oldestLogDT) / 60000);
+                        //console.log('hoursElapsed =', hoursElapsed);
+                        return hoursElapsed;
+                    } else
+                        return null;
+                }
+                catch (e) {
+                    ktl.log.addLog(ktl.const.LS_INFO, 'getLogArrayAge, deleted log having obsolete format: ' + category + ', ' + e);
+                    ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
+                }
             },
 
             resetActivityCtr: function () {
@@ -4201,9 +4227,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 categories.forEach(category => {
                     var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
                     if (categoryLogs) {
-                        var logObj = JSON.parse(categoryLogs);
-                        if (logObj.logId && logObj.logId === logId) {
-                            //console.log('Deleting found logId =', logId, 'cat=', category);//$$$
+                        try {
+                            var logObj = JSON.parse(categoryLogs);
+                            if (logObj.logId && logObj.logId === logId) {
+                                //console.log('Deleting found logId =', logId, 'cat=', category);
+                                ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
+                            }
+                        }
+                        catch (e) {
+                            ktl.log.addLog(ktl.const.LS_INFO, 'removeLogById, deleted log having obsolete format: ' + category + ', ' + e);
                             ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
                         }
                     }
@@ -4260,7 +4292,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         readUserPrefsFromLs();
         var lastUserPrefs = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id); //Used to detect prefs changes.
 
-        function readUserPrefsFromLs() { //Use Try Catch to prevent white screen.
+        function readUserPrefsFromLs() {
             try {
                 var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
                 if (lsPrefsStr)
@@ -4386,8 +4418,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
             catch (e) {
                 ktl.log.clog('On render view for User Prefs error: ' + e, 'purple');
-                console.log('view =', view);//$$$
-                console.log('data =', data);//$$$
+                console.log('view =', view);
+                console.log('data =', data);
             }
         })
 
@@ -4616,7 +4648,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             selToast = '#toast-container > div > div > p';
                             var msg = $(selToast).text();
                             if (msg.includes('ACC_LOGS_EMAIL_SENT')) {
-                                //console.log('Email sent, re-starting autorefresh and logging loop');//$$$
+                                //console.log('Email sent, re-starting autorefresh and logging loop');
                                 ktl.views.autoRefresh();
                                 startHighPriorityLogging();
                             } else
@@ -4634,50 +4666,55 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
                     var el = highPriorityLogs[ix];
-                    //console.log('el =', el);//$$$
 
                     var categoryLogs = ktl.storage.lsGetItem(el.type + Knack.getUserAttributes().id);
                     if (categoryLogs) {
-                        //console.log('categoryLogs =', categoryLogs);//$$$
-                        var logObj = JSON.parse(categoryLogs);
-                        var details = JSON.stringify(logObj.logs);
-                        if (details) {
-                            if (!logObj.sent) {
-                                logObj.sent = true; //Do not send twice, when many opened windows.
-                                ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                        try {
+                            var logObj = JSON.parse(categoryLogs);
+                            var details = JSON.stringify(logObj.logs);
+                            if (details) {
+                                if (!logObj.sent) {
+                                    logObj.sent = true; //Do not send twice, when many opened windows.
+                                    ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                                ktl.log.clog('Submitting high priority log for: ' + el.typeStr, 'purple');
+                                    ktl.log.clog('Submitting high priority log for: ' + el.typeStr, 'purple');
 
-                                var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
-                                if (viewId) {
-                                    var apiData = {};
-                                    apiData[alLogIdFld] = logObj.logId;
-                                    apiData[alLogTypeFld] = el.typeStr;
-                                    apiData[alDetailsFld] = details;
-                                    if (el.type === ktl.const.LS_CRITICAL) { //When critical, send via email immediately.
-                                        apiData[alEmailFld] = ktl.core.getCfg().developerEmail;
-                                        console.log('Critical error log, sending email to', apiData[alEmailFld]);
-                                        ktl.views.autoRefresh(false);
-                                        clearInterval(highPriLoggingInterval);
-                                    }
+                                    var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
+                                    if (viewId) {
+                                        var apiData = {};
+                                        apiData[alLogIdFld] = logObj.logId;
+                                        apiData[alLogTypeFld] = el.typeStr;
+                                        apiData[alDetailsFld] = details;
+                                        if (el.type === ktl.const.LS_CRITICAL) { //When critical, send via email immediately.
+                                            apiData[alEmailFld] = ktl.core.getCfg().developerEmail;
+                                            console.log('Critical error log, sending email to', apiData[alEmailFld]);
+                                            ktl.views.autoRefresh(false);
+                                            clearInterval(highPriLoggingInterval);
+                                        }
 
-                                    ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
-                                        .then(function (result) {
-                                            checkNext = true;
-                                        })
-                                        .catch(function (reason) {
-                                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1015 - Failed posting high-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
-                                            delete logObj.sent;
-                                            ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
-                                            ktl.views.autoRefresh(); //JIC it was stopped by critical email not sent.
-                                            startHighPriorityLogging();
-                                        })
+                                        ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
+                                            .then(function (result) {
+                                                checkNext = true;
+                                            })
+                                            .catch(function (reason) {
+                                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1015 - Failed posting high-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
+                                                delete logObj.sent;
+                                                ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                                                ktl.views.autoRefresh(); //JIC it was stopped by critical email not sent.
+                                                startHighPriorityLogging();
+                                            })
+                                    } else
+                                        checkNext = true;
                                 } else
                                     checkNext = true;
                             } else
                                 checkNext = true;
-                        } else
+                        }
+                        catch (e) {
+                            ktl.log.addLog(ktl.const.LS_INFO, 'startHighPriorityLogging, deleted log having obsolete format: ' + el.type + ', ' + e);
+                            ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
                             checkNext = true;
+                        }
                     } else
                         checkNext = true;
 
@@ -4704,40 +4741,46 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         //Accumulate logs over a longer period of time to reduce nb of records
                         if (oldestLog >= TIME_TO_SEND_LOW_PRIORITY_LOGS) {
                             //lsLog('Submitting logs for: ' + el.typeStr);
-
                             var categoryLogs = ktl.storage.lsGetItem(el.type + Knack.getUserAttributes().id);
                             if (categoryLogs) {
-                                var logObj = JSON.parse(categoryLogs);
-                                var details = JSON.stringify(logObj.logs);
-                                if (details) {
-                                    if (el.type === ktl.const.LS_ACTIVITY && (details.substring(65, 80) === 'mc\\":0,\\"kp\\":0')) //Do not send zero activity.
-                                        checkNext = true;
-                                    else {
-                                        if (!logObj.sent) {
-                                            logObj.sent = true; //Do not send twice, when many opened windows.
-                                            ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
-
-                                            var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
-                                            if (viewId) {
-                                                var apiData = {};
-                                                apiData[alLogIdFld] = logObj.logId;
-                                                apiData[alLogTypeFld] = el.typeStr;
-                                                apiData[alDetailsFld] = details;
-                                                ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
-                                                    .then(function (result) {
-                                                        checkNext = true;
-                                                    })
-                                                    .catch(function (reason) {
-                                                        ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1016 - Failed posting low-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
-                                                        delete logObj.sent;
-                                                        ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
-                                                    })
-                                            }
-                                        } else
+                                try {
+                                    var logObj = JSON.parse(categoryLogs);
+                                    var details = JSON.stringify(logObj.logs);
+                                    if (details) {
+                                        if (el.type === ktl.const.LS_ACTIVITY && (details.substring(65, 80) === 'mc\\":0,\\"kp\\":0')) //Do not send zero activity.
                                             checkNext = true;
-                                    }
-                                } else
+                                        else {
+                                            if (!logObj.sent) {
+                                                logObj.sent = true; //Do not send twice, when many opened windows.
+                                                ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+
+                                                var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
+                                                if (viewId) {
+                                                    var apiData = {};
+                                                    apiData[alLogIdFld] = logObj.logId;
+                                                    apiData[alLogTypeFld] = el.typeStr;
+                                                    apiData[alDetailsFld] = details;
+                                                    ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
+                                                        .then(function (result) {
+                                                            checkNext = true;
+                                                        })
+                                                        .catch(function (reason) {
+                                                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1016 - Failed posting low-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
+                                                            delete logObj.sent;
+                                                            ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                                                        })
+                                                }
+                                            } else
+                                                checkNext = true;
+                                        }
+                                    } else
+                                        checkNext = true;
+                                }
+                                catch (e) {
+                                    ktl.log.addLog(ktl.const.LS_INFO, 'startLowPriorityLogging, deleted log having obsolete format: ' + el.type + ', ' + e);
+                                    ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
                                     checkNext = true;
+                                }
                             } else
                                 checkNext = true;
                         } else
@@ -4797,8 +4840,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             create: function () {
                 if (!ktl.core.getCfg().enabled.iFrameWnd) return;
+
                 var URL = Knack.scenes._byId[IFRAME_WND_ID.toLowerCase()];
-                if (!URL) return;
+                if (!URL) {
+                    ktl.log.clog('Attempted to create iFrameWnd, but could not find page.', 'red');
+                    return;
+                }
                 //console.log('URL =', URL);
                 //console.log('URL slug =', URL.attributes.slug);
 
@@ -4835,7 +4882,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             showIFrame: function (show = false) {
-                //console.log('iFrameWnd =', iFrameWnd);
                 if (!iFrameWnd)
                     return;
 
@@ -5494,3 +5540,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: add getCategoryLogs.  Returns object with array and logId.
 //We need a logs category list, and move all constants from core to log object.
 //Msg is not handled:  parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
+
