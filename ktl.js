@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.2.8';
+    const KTL_VERSION = '0.2.9';
     const SW_VERSION = window.SW_VERSION;
 
     var ktl = this;
@@ -3684,7 +3684,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 (ktl.core.getCfg().showMenuInTitle && menu) && (document.title = Knack.app.attributes.name + ' - ' + menu); //Add menu to browser's tab.
 
                 if (prevScene) //Do not log navigation on first page - useless and excessive.  We only want transitions.
-                    ktl.log.addLog(ktl.const.LS_NAVIGATION, JSON.stringify(ktl.core.getMenuInfo()));
+                    ktl.log.addLog(ktl.const.LS_NAVIGATION, JSON.stringify(ktl.core.getMenuInfo()), false);
 
                 prevScene = scene.key;
             }
@@ -4062,11 +4062,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
                     try {
                         if (!categoryLogs)
-                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0 })); //Doesn't exist, create activity entry.
+                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0 }), false); //Doesn't exist, create activity entry.
                         else {
                             if (mouseClickCtr > 0 || keyPressCtr > 0) {
                                 var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
-                                ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr }));
+                                ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr }), false);
                                 ktl.log.resetActivityCtr();
                             }
                         }
@@ -4168,17 +4168,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     ktl.storage.lsSetItem(category + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                    //Also show some of them in console.
-                    if (showInConsole) {
-                        if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
-                            var color = 'purple';
-                            if (category === ktl.const.LS_WRN)
-                                color = 'orangered';
-                        } else
-                            color = 'blue';
-
-                        ktl.log.clog(type + ' - ' + details, color);
+                    //Also show some of them in console.  Important logs always show, others depending on param.
+                    var color = 'blue';
+                    if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
+                        if (category === ktl.const.LS_WRN)
+                            color = 'orangered';
+                        else
+                            color = 'purple';
+                        showInConsole = true;
                     }
+
+                    showInConsole && ktl.log.clog(type + ' - ' + details, color);
                 }
                 catch (e) {
                     ktl.log.addLog(ktl.const.LS_INFO, 'addLog, deleted log having obsolete format: ' + category + ', ' + e);
