@@ -3695,7 +3695,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             const LS_SW_VERSION = 'SW_VERSION';
             var lastSavedVersion = ktl.storage.lsGetItem(LS_SW_VERSION);
             if (!lastSavedVersion || lastSavedVersion !== SW_VERSION) {
-                ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1013 - Updated to SW_VERSION: ' + SW_VERSION); //TODO:  change type to Info
+                ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1013 - Updated SW_VERSION: ' + SW_VERSION + ', KTL_VERSION: ' + KTL_VERSION); //TODO:  change type to Info
                 ktl.storage.lsSetItem(LS_SW_VERSION, SW_VERSION);
             }
 
