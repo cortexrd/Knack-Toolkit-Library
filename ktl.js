@@ -2721,6 +2721,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var appErr = ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id);
                     var svrErr = ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id);
                     var wrn = ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id);
+                    var inf = ktl.storage.lsGetItem(ktl.const.LS_INFO + Knack.getUserAttributes().id);
+                    var dbg = ktl.storage.lsGetItem(ktl.const.LS_DEBUG + Knack.getUserAttributes().id);
 
                     debugWndText.textContent +=
                         (cri ? ('CRITICAL: ' + ktl.storage.lsGetItem(ktl.const.LS_CRITICAL + Knack.getUserAttributes().id) + '\n') : '') +
@@ -2730,7 +2732,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         (appErr ? ('APP ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
                         (svrErr ? ('SVR ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
                         (wrn ? ('WRN: ' + ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id) + '\n') : '') +
-                        //TODO:  Add info logs here.
+                        (inf ? ('INF: ' + ktl.storage.lsGetItem(ktl.const.LS_INFO + Knack.getUserAttributes().id) + '\n') : '') +
+                        (dbg ? ('DBG: ' + ktl.storage.lsGetItem(ktl.const.LS_DEBUG + Knack.getUserAttributes().id) + '\n') : '') +
                         'Total localStorage usage = ' + lsItems + '\n';
 
                     debugWndText.scrollTop = dbgWndScrollHeight - 14;
@@ -4034,7 +4037,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //Logging feature
     this.log = (function () {
-        var lastDetails = ''; //Prevent multiple duplicated logs.
+        var lastDetails = ''; //Prevent multiple duplicated logs.  //TODO: replace by a list of last 10 logs and a timestamp
         var mouseClickCtr = 0;
         var keyPressCtr = 0;
         var isActive = false;
@@ -4143,7 +4146,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var newLog = {
                     dt: ktl.core.getCurrentDateTime(true, true, true, true),
                     type: type,
-                    details: details                    
+                    details: details
                 };
 
                 //Read logs as a string.
@@ -4562,9 +4565,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //iFrameWnd feature
     this.iFrameWnd = (function () {
-        const LOW_PRIORITY_LOGGING_DELAY = ONE_HOUR_DELAY; //TODO: make these configurable.
-        const DEV_LOW_PRIORITY_LOGGING_DELAY = ONE_MINUTE_DELAY * 10;
-
         //TODO: Put all this in an object like core:  var cfg = {...
         var iFrameWnd = null;
         var iFrameReady = false;
@@ -4724,7 +4724,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }, 10000);
         }
 
-        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 0/*send immediately for devs*/ : 180; //3 hours.
+        const LOW_PRIORITY_LOGGING_DELAY = ONE_MINUTE_DELAY; //TODO: make these configurable.
+        const DEV_LOW_PRIORITY_LOGGING_DELAY = 10000;
+        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 0/*send immediately for devs*/ : 60; //1 hour.
         function startLowPriorityLogging() {
             // - Submit all accumulated low-priority logs.
             // - Check what needs to be uploaded, i.e. non-empty arrays, older than LOGGING_DELAY, send them in sequence.
@@ -5540,4 +5542,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: add getCategoryLogs.  Returns object with array and logId.
 //We need a logs category list, and move all constants from core to log object.
 //Msg is not handled:  parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
-
+//TODO: replace by a list of last 10 logs and a timestamp
