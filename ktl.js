@@ -4007,7 +4007,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var versionInfo = appName + '    v' + SW_VERSION + ktlVer + '    ' + info.hostname;
 
                     if (!style) {
-                        var style = 'white-space: pre; margin-left: 10px; height: 40px; padding-bottom: 10px; font-size:small; position:absolute; top:0px; right:10px; background-color:transparent; border-style:none';
+                        var style = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
                         style += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
                     }
 
@@ -4304,7 +4304,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return lsPrefsStr; //Return string version.
             }
             catch (e) {
-                //ktl.log.clog('Exception in readUserPrefsFromLs: ' + e, 'purple');
+                ktl.log.clog('Exception in readUserPrefsFromLs: ' + e, 'purple');
             }
 
             return '';
@@ -4726,7 +4726,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         const LOW_PRIORITY_LOGGING_DELAY = ONE_MINUTE_DELAY; //TODO: make these configurable.
         const DEV_LOW_PRIORITY_LOGGING_DELAY = 10000;
-        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 0/*send immediately for devs*/ : 60; //1 hour.
+        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 10/*send sooner for devs*/ : 60; //1 hour.
         function startLowPriorityLogging() {
             // - Submit all accumulated low-priority logs.
             // - Check what needs to be uploaded, i.e. non-empty arrays, older than LOGGING_DELAY, send them in sequence.
