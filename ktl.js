@@ -236,7 +236,9 @@ function Ktl($) {
 
             //Param is selector string.
             hideSelector: function (sel = '') {
-                sel && $(sel).css({ 'position': 'absolute', 'left': '-9000px' });
+                sel && ktl.core.waitSelector(sel)
+                    .then(() => { $(sel).css({ 'position': 'absolute', 'left': '-9000px' }); })
+                    .catch(() => { ktl.log.clog('hideSelector failed waiting for selector.', 'purple'); });
             },
 
             //Param: sel is a string, not the jquery object.
@@ -1260,7 +1262,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var pfInitDone = false;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key) || Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key) || ktl.scenes.isiFrameWnd())
                 return;
 
             if (previousScene != scene.key) {
@@ -1282,22 +1284,31 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         document.addEventListener('input', function (e) {
-            if (pfInitDone && !scenesToExclude.includes(Knack.router.current_scene_key))
-                inputHasChanged(e);
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
+                return;
+
+            pfInitDone && inputHasChanged(e);
         })
 
         document.addEventListener('focusout', function (e) {
-            if (pfInitDone && !scenesToExclude.includes(Knack.router.current_scene_key) && document.hasFocus())
-                inputHasChanged(e);
+            if (!document.hasFocus() || !ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
+                return;
+
+            pfInitDone && inputHasChanged(e);
         }, true);
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
-            if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId)
-                eraseFormData(view);
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
+                return;
+
+            eraseFormData(view);
         });
 
         $(document).on('click', function (e) {
-            if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId && e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
+                return;
+
+            if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
                 var view = e.target.closest('.kn-view');
                 view && ktl.views.waitSubmitOutcome(view.id)
                     .then(success => {
@@ -1358,7 +1369,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 Knack.router.scene_view.model.views.models.forEach(function (eachView) {
                     var view = eachView.attributes;
                     currentViews.push(view);
-
+                    
                     //Restore stored data
                     if (formDataObj[view.key]) {
                         var fieldsArray = Object.keys(formDataObj[view.key]);
@@ -1437,8 +1448,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (text !== '' && text !== 'Select' && text !== 'Type to search') {
                         text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
                         var fieldId = $('#' + e.target.id).closest('.kn-input').attr('data-input-id');
-                        var viewId = e.target.closest('.kn-view').id;
-                        saveFormData(viewId, fieldId, text + '-' + recId);
+                        if (!fieldsToExclude.includes(fieldId)) {
+                            var viewId = e.target.closest('.kn-view').id;
+                            saveFormData(viewId, fieldId, text + '-' + recId);
+                        }
                     }
                 }
             });
@@ -1522,7 +1535,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.fieldsToExclude && (fieldsToExclude = cfgObj.fieldsToExclude);
             },
         }
-    })();
+    })(); //persistentForm
 
     //====================================================
     //System Colors feature
@@ -1777,7 +1790,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     .map(x => parseInt(x, 16));
             },
         }; //return systemColors functions
-    })();
+    })(); //systemColors
 
     //====================================================
     //User Filters feature
@@ -2816,6 +2829,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     //Truncate all title characters beyond the lowest index found.
                     var title = view.title.substring(0, index);
+                    $('#' + view.key + ' > div.view-header > h1').text(title); //Search Views use H1 instead of H2.
                     $('#' + view.key + ' > div.view-header > h2').text(title);
 
                     //Hide the whole view, typically used when doing background searches.
@@ -2825,8 +2839,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
 
                     //Hide the view title only, typically used to save space when real estate is critical.
-                    if (view.title.includes('HIDDEN_TITLE'))
+                    if (view.title.includes('HIDDEN_TITLE')) {
+                        $('#' + view.key + ' > div.view-header > h1').css({ 'display': 'none' }); //Search Views use H1 instead of H2.
                         $('#' + view.key + ' > div.view-header > h2').css({ 'display': 'none' });
+                    }
 
                     //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
                     if (Knack.views[view.key] && Knack.views[view.key].model && Knack.views[view.key].model.view.options && Knack.views[view.key].model.view.options.cell_editor) {
@@ -3218,77 +3234,84 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var lowercaseSrch = srchTxt.toString().toLowerCase();
                         Knack.showSpinner();
 
+                        var searchTimeout = null;
                         var intervalId = setInterval(function () {
                             if (!$('.ui-autocomplete-loading').is(':visible')) {
                                 clearInterval(intervalId);
+                                clearTimeout(searchTimeout);
 
                                 if (isSingleSelection || isMultipleChoice) {
                                     //The dropdown has finished searching and came up with some results, but we must now
                                     //filter them to exclude any found elements that are not an exact match (whole word only).
                                     //Otherwise, we may end up with wrong results.  
                                     //Ex: Typing 1234 could select 12345 if it was part of the results and before 1234.
-                                    var id = '';
-                                    var options = dropdownObj.find('option');
-                                    var foundExactMatch = false;
-                                    if (options.length > 0) {
-                                        var text = '';
-                                        for (var i = 0; i < options.length; i++) {
-                                            text = options[i].innerText;
-                                            if (text !== 'Select...' && text !== 'Select') {
-                                                if (text.toLowerCase() === lowercaseSrch) { //Exact match, but not case sensitive.
-                                                    foundExactMatch = true;
-                                                    foundText = text;
-                                                    id = options[i].value;
-                                                    if (isMultipleChoice)
-                                                        dropdownObj.find('option[value="' + id + '"]').attr('selected', 1);
-                                                    else
-                                                        dropdownObj.val(id);
-                                                    dropdownObj.trigger('liszt:updated');
-                                                    break;
-                                                } else if (!foundExactMatch && text.toLowerCase().indexOf(lowercaseSrch) >= 0) { //Partial match
-                                                    foundText = text;
+
+                                    setTimeout(() => { //This extra little 500ms delay helps A LOT in finding the results.  Not sure why, but otherwise, options have zero length.
+                                        var id = '';
+                                        var options = dropdownObj.find('option');
+                                        console.log('options =', options);//$$$
+                                        var foundExactMatch = false;
+                                        if (options.length > 0) {
+                                            var text = '';
+                                            for (var i = 0; i < options.length; i++) {
+                                                text = options[i].innerText;
+                                                if (text !== 'Select...' && text !== 'Select') {
+                                                    if (text.toLowerCase() === lowercaseSrch) { //Exact match, but not case sensitive.
+                                                        foundExactMatch = true;
+                                                        foundText = text;
+                                                        id = options[i].value;
+                                                        if (isMultipleChoice)
+                                                            dropdownObj.find('option[value="' + id + '"]').attr('selected', 1);
+                                                        else
+                                                            dropdownObj.val(id);
+                                                        dropdownObj.trigger('liszt:updated');
+                                                        break;
+                                                    } else if (!foundExactMatch && text.toLowerCase().indexOf(lowercaseSrch) >= 0) { //Partial match
+                                                        foundText = text;
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    Knack.hideSpinner();
+                                        Knack.hideSpinner();
 
-                                    if (foundText) { //Found something.  Is it an exact match or multiple options?
-                                        if (foundExactMatch) {
+                                        if (foundText) { //Found something.  Is it an exact match or multiple options?
+                                            if (foundExactMatch) {
+                                                if (showPopup)
+                                                    ktl.core.timedPopup('Found ' + foundText);
+
+                                                dropdownObj.trigger('change'); //Required to save persistent form data.
+
+                                                if (chznContainer.length) {
+                                                    $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                                    ktl.scenes.autoFocus();
+                                                }
+                                            } else { //Multiple options.
+                                                if (onlyExactMatch) {
+                                                    ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
+                                                    reject(foundText);
+                                                    return;
+                                                }
+                                            }
+
+                                            resolve(foundText);
+                                            return;
+                                        } else { //Nothing found.
                                             if (showPopup)
-                                                ktl.core.timedPopup('Found ' + foundText);
-
-                                            dropdownObj.trigger('change'); //Required to save persistent form data.
-
-                                            if (chznContainer.length) {
-                                                $(chznContainer).find('.chzn-drop').css('left', '-9000px');
-                                                ktl.scenes.autoFocus();
-                                            }
-                                        } else { //Multiple options.
-                                            if (onlyExactMatch) {
                                                 ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
-                                                reject(foundText);
-                                                return;
+
+                                            if (onlyExactMatch) {
+                                                if (chznContainer.length) {
+                                                    $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                                    ktl.scenes.autoFocus();
+                                                }
                                             }
+
+                                            reject(foundText);
+                                            return;
                                         }
+                                    }, 900);
 
-                                        resolve(foundText);
-                                        return;
-                                    } else { //Nothing found.
-                                        if (showPopup)
-                                            ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
-
-                                        if (onlyExactMatch) {
-                                            if (chznContainer.length) {
-                                                $(chznContainer).find('.chzn-drop').css('left', '-9000px');
-                                                ktl.scenes.autoFocus();
-                                            }
-                                        }
-
-                                        reject(foundText);
-                                        return;
-                                    }
                                 } else { //Multi selection
                                     if (chznContainer.length) {
                                         chznContainer.find('.chzn-drop').css('left', '-9000px'); //Hide results until parsed.
@@ -3306,6 +3329,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             results = chznContainer.find('.chzn-results li');
                                             if (update || initialResults !== results.length) { //Whichever comes first.
                                                 clearInterval(intervalId);
+                                                clearTimeout(searchTimeout);
 
                                                 if (results.length > 0) {
                                                     var foundAtLeastOne = false;
@@ -3374,7 +3398,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                         }, 200);
 
-                        setTimeout(function () { //Failsafe
+                        searchTimeout = setTimeout(function () { //Failsafe
                             Knack.hideSpinner();
                             clearInterval(intervalId);
                             reject(foundText);
@@ -3610,13 +3634,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             },
 
+            //Will return with true if the form has been submitted successfuly or account has logged-in, or false otherwise.
             waitSubmitOutcome: function (viewId = '') {
                 return new Promise(function (resolve, reject) {
                     if (!viewId) return;
 
                     var success = null, failure = null;
+                    var loggedIn = (Knack.getUserAttributes() !== 'No user found');
                     var intervalId = setInterval(function () {
                         success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
+                        if (!loggedIn && (Knack.getUserAttributes() !== 'No user found'))
+                            success = true;
                         failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
                         if (success || failure) {
                             clearInterval(intervalId);
@@ -4113,7 +4141,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     return;
 
                 //Use app's callback to check if log category is allowed.
-                if (logCategoryAllowed && !logCategoryAllowed(category)) {
+                if (logCategoryAllowed && !logCategoryAllowed(category, details)) {
                     //ktl.log.clog('Skipped log category ' + category, 'purple');
                     return;
                 }
