@@ -1264,9 +1264,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             if (previousScene != scene.key) {
                 previousScene = scene.key;
-                currentViews.forEach(function (view) {
-                    eraseFormData(view);
-                });
+                for (var i = 0; i < currentViews.length; i++) {
+                    eraseFormData(currentViews[i]);
+                };
                 currentViews = [];
             }
 
@@ -1306,15 +1306,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return;
 
             if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
-                var view = e.target.closest('.kn-view');
-                view && ktl.views.waitSubmitOutcome(view.id)
-                    .then(success => {
-                        var viewObj = Knack.router.scene_view.model.views._byId[view.id].attributes;
-                        eraseFormData(viewObj);
-                    })
-                    .catch(failure => {
-                        ktl.log.clog('Persistent Form - waitSubmitOutcome failed: ' + failure, 'red');
-                    });
+                var view = e.target.closest('.kn-form.kn-view');
+                if (view) {
+                    view && ktl.views.waitSubmitOutcome(view.id)
+                        .then(success => {
+                            eraseFormData(Knack.router.scene_view.model.views._byId[view.id].attributes);
+                        })
+                        .catch(failure => {
+                            ktl.log.clog('Persistent Form - waitSubmitOutcome failed: ' + failure, 'red');
+                        });
+                }
             }
         })
     
@@ -1406,7 +1407,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             $(chznContainer).find('.chzn-drop').css('left', '-9000px');
                                         }
                                     } else if (fieldType === 'multiple_choice') {
-                                        ktl.views.searchDropdown(fieldText, fieldId, true, false)
+                                        fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false)
                                             .then(function () { })
                                             .catch(function () { })
                                     }
@@ -3924,10 +3925,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         messagingBtn && extraButtonsBar[0].appendChild(messagingBtn);
                     }
                 } else { //Page has menu buttons.
+                    return;
+
                     var knMenuBar = document.getElementsByClassName('kn-menu');
                     backBtn && knMenuBar[0].appendChild(backBtn);
 
-                    //Add Refresh at end of menu.
+                    //Add Refresh and Messaging at end of menu.
                     refreshBtn && knMenuBar[0].appendChild(refreshBtn);
                     messagingBtn && knMenuBar[0].appendChild(messagingBtn);
 
