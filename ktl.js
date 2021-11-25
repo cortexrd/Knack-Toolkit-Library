@@ -244,41 +244,38 @@ function Ktl($) {
             //Param: sel is a string, not the jquery object.
             waitSelector: function (sel = '', timeout = 2000, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
                 return new Promise(function (resolve, reject) {
-                    if (selIsOk(sel)) {
+                    if (selIsValid(sel)) {
                         resolve();
                         return;
-                    } else {
-                        var intervalId = setInterval(function () {
-                            if (selIsOk(sel)) {
-                                clearInterval(intervalId);
-                                intervalId = null;
-                                resolve();
-                                return;
-                            }
-                        }, scanSpd);
-
-                        setTimeout(function () { //Failsafe
-                            if (intervalId) {
-                                clearInterval(intervalId);
-                                intervalId = null;
-                                if (outcome === ktl.const.WAIT_SEL_LOG_WARN) {
-                                    ktl.log.addLog(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                                } else if (outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
-                                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                                } else if (outcome === ktl.const.WAIT_SEL_ALERT && Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
-                                    alert('waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-
-                                reject();
-                            }
-                        }, timeout);
                     }
 
-                    function selIsOk(sel) {
-                        var testSel = $(sel);
-                        if (is !== '')
-                            testSel = $(sel).is(':' + is);
-                        return (testSel === true || testSel.length > 0);
-                    }
+                    var intervalId = setInterval(function () {
+                        if (selIsValid(sel)) {
+                            clearTimeout(failsafe);
+                            clearInterval(intervalId);
+                            resolve();
+                            return;
+                        }
+                    }, scanSpd);
+
+                    var failsafe = setTimeout(function () {
+                        clearInterval(intervalId);
+                        if (outcome === ktl.const.WAIT_SEL_LOG_WARN) {
+                            ktl.log.addLog(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
+                        } else if (outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
+                        } else if (outcome === ktl.const.WAIT_SEL_ALERT && Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
+                            alert('waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
+
+                        reject();
+                    }, timeout);
+
+                function selIsValid(sel) {
+                    var testSel = $(sel);
+                    if (is !== '')
+                        testSel = $(sel).is(':' + is);
+                    return (testSel === true || testSel.length > 0);
+                }
                 });
             },
 
@@ -3227,9 +3224,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if ($(prefix + '[id*="' + fieldId + '"] .ui-autocomplete-input').length > 0) {
                             chznSearchInput.focus();
                             chznSearchInput.autocomplete('search', srchTxt); //GO!
+                            //Wait for response...
+                        } else {
+                            //The dropdown does not have a search field (less than 500 entries), just select among the options that are already populated.
                         }
 
-                        //Wait for response...
                         var foundText = '';
                         var lowercaseSrch = srchTxt.toString().toLowerCase();
                         Knack.showSpinner();
@@ -3246,72 +3245,73 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     //Otherwise, we may end up with wrong results.  
                                     //Ex: Typing 1234 could select 12345 if it was part of the results and before 1234.
 
-                                    setTimeout(() => { //This extra little 500ms delay helps A LOT in finding the results.  Not sure why, but otherwise, options have zero length.
-                                        var id = '';
-                                        var options = dropdownObj.find('option');
-                                        console.log('options =', options);//$$$
-                                        var foundExactMatch = false;
-                                        if (options.length > 0) {
-                                            var text = '';
-                                            for (var i = 0; i < options.length; i++) {
-                                                text = options[i].innerText;
-                                                if (text !== 'Select...' && text !== 'Select') {
-                                                    if (text.toLowerCase() === lowercaseSrch) { //Exact match, but not case sensitive.
-                                                        foundExactMatch = true;
-                                                        foundText = text;
-                                                        id = options[i].value;
-                                                        if (isMultipleChoice)
-                                                            dropdownObj.find('option[value="' + id + '"]').attr('selected', 1);
-                                                        else
-                                                            dropdownObj.val(id);
-                                                        dropdownObj.trigger('liszt:updated');
-                                                        break;
-                                                    } else if (!foundExactMatch && text.toLowerCase().indexOf(lowercaseSrch) >= 0) { //Partial match
-                                                        foundText = text;
+                                    var id = '';
+                                    waitForOptions(dropdownObj)
+                                        .then((options) => {
+                                            var foundExactMatch = false;
+                                            if (options.length > 0) {
+                                                var text = '';
+                                                for (var i = 0; i < options.length; i++) {
+                                                    text = options[i].innerText;
+                                                    if (text !== 'Select...' && text !== 'Select') {
+                                                        if (text.toLowerCase() === lowercaseSrch) { //Exact match, but not case sensitive.
+                                                            foundExactMatch = true;
+                                                            foundText = text;
+                                                            id = options[i].value;
+                                                            if (isMultipleChoice)
+                                                                dropdownObj.find('option[value="' + id + '"]').attr('selected', 1);
+                                                            else
+                                                                dropdownObj.val(id);
+                                                            dropdownObj.trigger('liszt:updated');
+                                                            break;
+                                                        } else if (!foundExactMatch && text.toLowerCase().indexOf(lowercaseSrch) >= 0) { //Partial match
+                                                            foundText = text;
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
 
-                                        Knack.hideSpinner();
+                                            Knack.hideSpinner();
 
-                                        if (foundText) { //Found something.  Is it an exact match or multiple options?
-                                            if (foundExactMatch) {
+                                            if (foundText) { //Found something.  Is it an exact match or multiple options?
+                                                if (foundExactMatch) {
+                                                    if (showPopup)
+                                                        ktl.core.timedPopup('Found ' + foundText);
+
+                                                    dropdownObj.trigger('change'); //Required to save persistent form data.
+
+                                                    if (chznContainer.length) {
+                                                        $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                                        ktl.scenes.autoFocus();
+                                                    }
+                                                } else { //Multiple options.
+                                                    if (onlyExactMatch) {
+                                                        ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
+                                                        reject(foundText);
+                                                        return;
+                                                    }
+                                                }
+
+                                                resolve(foundText);
+                                                return;
+                                            } else { //Nothing found.
                                                 if (showPopup)
-                                                    ktl.core.timedPopup('Found ' + foundText);
-
-                                                dropdownObj.trigger('change'); //Required to save persistent form data.
-
-                                                if (chznContainer.length) {
-                                                    $(chznContainer).find('.chzn-drop').css('left', '-9000px');
-                                                    ktl.scenes.autoFocus();
-                                                }
-                                            } else { //Multiple options.
-                                                if (onlyExactMatch) {
                                                     ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
-                                                    reject(foundText);
-                                                    return;
+
+                                                if (onlyExactMatch) {
+                                                    if (chznContainer.length) {
+                                                        $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                                        ktl.scenes.autoFocus();
+                                                    }
                                                 }
+
+                                                reject(foundText);
+                                                return;
                                             }
-
-                                            resolve(foundText);
-                                            return;
-                                        } else { //Nothing found.
-                                            if (showPopup)
-                                                ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
-
-                                            if (onlyExactMatch) {
-                                                if (chznContainer.length) {
-                                                    $(chznContainer).find('.chzn-drop').css('left', '-9000px');
-                                                    ktl.scenes.autoFocus();
-                                                }
-                                            }
-
-                                            reject(foundText);
-                                            return;
-                                        }
-                                    }, 900);
-
+                                        })
+                                        .catch(() => {
+                                            reject('No results!');
+                                        })
                                 } else { //Multi selection
                                     if (chznContainer.length) {
                                         chznContainer.find('.chzn-drop').css('left', '-9000px'); //Hide results until parsed.
@@ -3406,6 +3406,28 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         }, 5000);
                     } else {
                         //ktl.log.clog('Called searchDropdown with a field that does not exist: ' + fieldId, 'purple');
+                    }
+
+                    function waitForOptions(dropdownObj) {
+                        return new Promise(function (resolve, reject) {
+                            var options = [];
+                            var intervalId = setInterval(() => {
+                                options = dropdownObj.find('option');
+                                if (options.length) {
+                                    clearInterval(intervalId);
+                                    clearTimeout(failsafe);
+                                    resolve(options);
+                                    return;
+                                }
+                            }, 200);
+
+                            var failsafe = setTimeout(function () {
+                                ktl.log.clog('waitForOptions timeout', 'purple');
+                                clearInterval(intervalId);
+                                reject(foundText);
+                                return; //JIC
+                            }, 5000);
+                        })
                     }
                 });
             },
