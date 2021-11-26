@@ -3695,7 +3695,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var spinnerInterval = null;
         var spinnerWdExcludeScn = [];
         var spinnerWdRunning = false;
-        var idleTimer = null;
+        var idleWatchDogTimeout = null;
         var kioskButtons = {};
         var prevScene = '';
 
@@ -4021,10 +4021,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             resetIdleWatchdog: function () {
                 if (ktl.scenes.isiFrameWnd() || !ktl.core.getCfg().enabled.idleWatchDog) return;
 
-                clearTimeout(idleTimer);
-                idleTimer = setTimeout(function () {
-                    ktl.scenes.idleWatchDogTimout();
-                }, ktl.scenes.getCfg().idleWatchDogDelay);
+                clearTimeout(idleWatchDogTimeout);
+                if (ktl.scenes.getCfg().idleWatchDogDelay > 0) {
+                    idleWatchDogTimeout = setTimeout(function () {
+                        ktl.scenes.idleWatchDogTimout();
+                    }, ktl.scenes.getCfg().idleWatchDogDelay);
+                }
             },
 
             idleWatchDogTimout: function () {
@@ -4288,7 +4290,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     else {
                         var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
                         var diff = Date.parse(nowUTC) - Date.parse(details.dt);
-                        if (diff < ktl.scenes.getCfg().idleWatchDogDelay)
+                        if ((ktl.scenes.getCfg().idleWatchDogDelay === 0) || (diff < ktl.scenes.getCfg().idleWatchDogDelay))
                             ktl.scenes.resetIdleWatchdog();
                         else
                             ktl.scenes.idleWatchDogTimout();
