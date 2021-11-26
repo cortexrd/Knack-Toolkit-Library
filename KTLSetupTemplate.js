@@ -51,9 +51,9 @@ var KnackAppProd = function ($, info = {}) {
         //    idleWatchDogDelay = 3.6e+6; //1 hour for kiosks.
 
         ktl.scenes.setCfg({
-            idleWatchDogDelay: idleWatchDogDelay,
             onSceneRender: onSceneRender,
             autoFocus: autoFocus,
+            idleWatchDogDelay: idleWatchDogDelay,
             idleWatchDogTimout: idleWatchDogTimout,
             spinnerWatchDogTimeout: spinnerWatchDogTimeout,
             spinnerWdExcludeScn: [],

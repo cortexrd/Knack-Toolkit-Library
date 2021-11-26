@@ -238,7 +238,7 @@ function Ktl($) {
             hideSelector: function (sel = '') {
                 sel && ktl.core.waitSelector(sel)
                     .then(() => { $(sel).css({ 'position': 'absolute', 'left': '-9000px' }); })
-                    .catch(() => { ktl.log.clog('hideSelector failed waiting for selector.', 'purple'); });
+                    .catch(() => { ktl.log.clog('hideSelector failed waiting for selector: ' + sel, 'purple'); });
             },
 
             //Param: sel is a string, not the jquery object.
@@ -3723,7 +3723,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     document.querySelector("#kn-app-header").style.display = 'block';
             }
 
-            ktl.scenes.spinnerWatchdog(true);
+            ktl.scenes.spinnerWatchdog();
             ktl.iFrameWnd.create();
             ktl.views.autoRefresh();
             ktl.scenes.resetIdleWatchdog();
@@ -3755,9 +3755,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             ktl.scenes.addKioskButtons();
         })
 
-        $(document).on('click', function (e) { ktl.scenes.resetIdleWatchdog(); })
-        $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
+        $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('mousemove', function (e) { ktl.scenes.resetIdleWatchdog(); })
+        $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -4019,13 +4019,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             resetIdleWatchdog: function () {
-                if (!ktl.core.getCfg().enabled.idleWatchDog) return;
+                if (ktl.scenes.isiFrameWnd() || !ktl.core.getCfg().enabled.idleWatchDog) return;
 
                 clearTimeout(idleTimer);
                 idleTimer = setTimeout(function () {
-                    if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId)
-                        idleWatchDogTimout && idleWatchDogTimout();
+                    ktl.scenes.idleWatchDogTimout();
                 }, ktl.scenes.getCfg().idleWatchDogDelay);
+            },
+
+            idleWatchDogTimout: function () {
+                idleWatchDogTimout && idleWatchDogTimout();
             },
 
             findViewWithTitle: function (srch = '', exact = false) {
@@ -4099,37 +4102,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         function monitorActivity() {
-            if (isActive)
+            if (isActive || ktl.scenes.isiFrameWnd() || ktl.storage.hasLocalStorage() && Knack.getUserAttributes() === 'No user found')
                 return;
             else
                 isActive = true;
 
-            if (ktl.scenes.isiFrameWnd()) return;
+            $(document).on('click', function (e) { mouseClickCtr++; })
+            $(document).on('keypress', function (e) { keyPressCtr++; })
 
-            if (ktl.storage.hasLocalStorage() && Knack.getUserAttributes() !== 'No user found') {
-                $(document).on('click', function (e) { mouseClickCtr++; })
-                $(document).on('keypress', function (e) { keyPressCtr++; })
-
-                setInterval(function () {
-                    //Important to read again every 5 seconds in case some other opened pages would add to shared counters.
-                    var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
-                    try {
-                        if (!categoryLogs)
-                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0 })); //Doesn't exist, create activity entry.
-                        else {
-                            if (mouseClickCtr > 0 || keyPressCtr > 0) {
-                                var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
-                                ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr }));
-                                ktl.log.resetActivityCtr();
-                            }
-                        }
-                    }
-                    catch (e) {
-                        ktl.log.addLog(ktl.const.LS_INFO, 'Deleted ACTIVITY log having obsolete format: ' + e);
-                        ktl.storage.lsRemoveItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
-                    }
-                }, 5000);
-            }
+            setInterval(function () {
+                ktl.log.updateActivity();
+            }, 5000);
         }
 
         return {
@@ -4293,6 +4276,33 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         }
                     }
                 })
+            },
+
+            updateActivity: function () {
+                //Important to read again every 5 seconds in case some other opened pages would add to shared counters.
+                var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
+                try {
+                    var nowUTC = ktl.core.getCurrentDateTime(true, true, false, true);
+                    if (!categoryLogs)
+                        ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0, dt: nowUTC })); //Doesn't exist, create activity entry.
+                    else {
+                        var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
+                        var diff = Date.parse(nowUTC) - Date.parse(details.dt);
+                        if (diff < ktl.scenes.getCfg().idleWatchDogDelay)
+                            ktl.scenes.resetIdleWatchdog();
+                        else
+                            ktl.scenes.idleWatchDogTimout();
+
+                        if (mouseClickCtr > 0 || keyPressCtr > 0) {
+                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr, dt: nowUTC }));
+                            ktl.log.resetActivityCtr();
+                        }
+                    }
+                }
+                catch (e) {
+                    ktl.log.addLog(ktl.const.LS_INFO, 'Deleted ACTIVITY log having obsolete format: ' + e);
+                    ktl.storage.lsRemoveItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
+                }
             },
 
             //TODO: add getCategoryLogs.  Returns object with array and logId.
@@ -5336,7 +5346,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.views.refreshView(bulkOpsViewId).then(function () {
                                     setTimeout(function () {
                                         ktl.views.autoRefresh();
-                                        ktl.scenes.spinnerWatchdog(true);
+                                        ktl.scenes.spinnerWatchdog();
                                         alert('Operation completed successfully');
                                     }, 1000);
                                 })
@@ -5348,7 +5358,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             alert('Error code KEC_1017 while processing bulk operations: ' + reason);
                             ktl.core.removeInfoPopup();
                             ktl.views.autoRefresh();
-                            ktl.scenes.spinnerWatchdog(true);
+                            ktl.scenes.spinnerWatchdog();
                         })
                 })(bulkOpsRecIdArray);
             } else
@@ -5392,7 +5402,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     ktl.scenes.spinnerWatchdog(false);
                     ktl.bulkOps.deleteRecords(deleteArray, view)
                         .then(function () {
-                            ktl.scenes.spinnerWatchdog(true);
+                            ktl.scenes.spinnerWatchdog();
                             jQuery.blockUI({
                                 message: '',
                                 overlayCSS: {
