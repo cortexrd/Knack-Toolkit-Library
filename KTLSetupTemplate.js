@@ -46,9 +46,10 @@ var KnackAppProd = function ($, info = {}) {
 
         //For Idle timeout delay, you can use a fixed value, or change it depending on the use case.
         //As an example, below I change it if it's a kiosk device.
+        //Zero means disabled, so idleWatchDogTimout() will never be called.
         var idleWatchDogDelay = 7.2e+6;
-        //if (isKiosk())
-        //    idleWatchDogDelay = 3.6e+6; //1 hour for kiosks.
+        if (isKiosk())
+            idleWatchDogDelay = 0; //Inactivity timeout is disabled by default hour for kiosks.
 
         ktl.scenes.setCfg({
             onSceneRender: onSceneRender,
