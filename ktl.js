@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.2.11';
+    const KTL_VERSION = '0.2.12';
     const SW_VERSION = window.SW_VERSION;
 
     var ktl = this;
@@ -236,47 +236,46 @@ function Ktl($) {
 
             //Param is selector string.
             hideSelector: function (sel = '') {
-                sel && $(sel).css({ 'position': 'absolute', 'left': '-9000px' });
+                sel && ktl.core.waitSelector(sel)
+                    .then(() => { $(sel).css({ 'position': 'absolute', 'left': '-9000px' }); })
+                    .catch(() => { ktl.log.clog('hideSelector failed waiting for selector: ' + sel, 'purple'); });
             },
 
             //Param: sel is a string, not the jquery object.
             waitSelector: function (sel = '', timeout = 2000, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
                 return new Promise(function (resolve, reject) {
-                    if (selIsOk(sel)) {
+                    if (selIsValid(sel)) {
                         resolve();
                         return;
-                    } else {
-                        var intervalId = setInterval(function () {
-                            if (selIsOk(sel)) {
-                                clearInterval(intervalId);
-                                intervalId = null;
-                                resolve();
-                                return;
-                            }
-                        }, scanSpd);
-
-                        setTimeout(function () { //Failsafe
-                            if (intervalId) {
-                                clearInterval(intervalId);
-                                intervalId = null;
-                                if (outcome === ktl.const.WAIT_SEL_LOG_WARN) {
-                                    ktl.log.addLog(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                                } else if (outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
-                                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                                } else if (outcome === ktl.const.WAIT_SEL_ALERT && Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
-                                    alert('waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-
-                                reject();
-                            }
-                        }, timeout);
                     }
 
-                    function selIsOk(sel) {
-                        var testSel = $(sel);
-                        if (is !== '')
-                            testSel = $(sel).is(':' + is);
-                        return (testSel === true || testSel.length > 0);
-                    }
+                    var intervalId = setInterval(function () {
+                        if (selIsValid(sel)) {
+                            clearTimeout(failsafe);
+                            clearInterval(intervalId);
+                            resolve();
+                            return;
+                        }
+                    }, scanSpd);
+
+                    var failsafe = setTimeout(function () {
+                        clearInterval(intervalId);
+                        if (outcome === ktl.const.WAIT_SEL_LOG_WARN) {
+                            ktl.log.addLog(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
+                        } else if (outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
+                        } else if (outcome === ktl.const.WAIT_SEL_ALERT && Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
+                            alert('waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
+
+                        reject();
+                    }, timeout);
+
+                function selIsValid(sel) {
+                    var testSel = $(sel);
+                    if (is !== '')
+                        testSel = $(sel).is(':' + is);
+                    return (testSel === true || testSel.length > 0);
+                }
                 });
             },
 
@@ -1260,14 +1259,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var pfInitDone = false;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key) || Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key) || ktl.scenes.isiFrameWnd())
                 return;
 
             if (previousScene != scene.key) {
                 previousScene = scene.key;
-                currentViews.forEach(function (view) {
-                    eraseFormData(view);
-                });
+                for (var i = 0; i < currentViews.length; i++) {
+                    eraseFormData(currentViews[i]);
+                };
                 currentViews = [];
             }
 
@@ -1282,31 +1281,41 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         document.addEventListener('input', function (e) {
-            if (pfInitDone && !scenesToExclude.includes(Knack.router.current_scene_key))
-                inputHasChanged(e);
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
+                return;
+
+            pfInitDone && inputHasChanged(e);
         })
 
         document.addEventListener('focusout', function (e) {
-            if (pfInitDone && !scenesToExclude.includes(Knack.router.current_scene_key) && document.hasFocus())
-                inputHasChanged(e);
+            if (!document.hasFocus() || !ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
+                return;
+
+            pfInitDone && inputHasChanged(e);
         }, true);
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
-            if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId)
-                eraseFormData(view);
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
+                return;
+
+            eraseFormData(view);
         });
 
         $(document).on('click', function (e) {
-            if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId && e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
-                var view = e.target.closest('.kn-view');
-                view && ktl.views.waitSubmitOutcome(view.id)
-                    .then(success => {
-                        var viewObj = Knack.router.scene_view.model.views._byId[view.id].attributes;
-                        eraseFormData(viewObj);
-                    })
-                    .catch(failure => {
-                        ktl.log.clog('Persistent Form - waitSubmitOutcome failed: ' + failure, 'red');
-                    });
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
+                return;
+
+            if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
+                var view = e.target.closest('.kn-form.kn-view');
+                if (view) {
+                    view && ktl.views.waitSubmitOutcome(view.id)
+                        .then(success => {
+                            eraseFormData(Knack.router.scene_view.model.views._byId[view.id].attributes);
+                        })
+                        .catch(failure => {
+                            ktl.log.clog('Persistent Form - waitSubmitOutcome failed: ' + failure, 'red');
+                        });
+                }
             }
         })
     
@@ -1358,7 +1367,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 Knack.router.scene_view.model.views.models.forEach(function (eachView) {
                     var view = eachView.attributes;
                     currentViews.push(view);
-
+                    
                     //Restore stored data
                     if (formDataObj[view.key]) {
                         var fieldsArray = Object.keys(formDataObj[view.key]);
@@ -1398,7 +1407,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             $(chznContainer).find('.chzn-drop').css('left', '-9000px');
                                         }
                                     } else if (fieldType === 'multiple_choice') {
-                                        ktl.views.searchDropdown(fieldText, fieldId, true, false)
+                                        fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false)
                                             .then(function () { })
                                             .catch(function () { })
                                     }
@@ -1437,8 +1446,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (text !== '' && text !== 'Select' && text !== 'Type to search') {
                         text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
                         var fieldId = $('#' + e.target.id).closest('.kn-input').attr('data-input-id');
-                        var viewId = e.target.closest('.kn-view').id;
-                        saveFormData(viewId, fieldId, text + '-' + recId);
+                        if (!fieldsToExclude.includes(fieldId)) {
+                            var viewId = e.target.closest('.kn-view').id;
+                            saveFormData(viewId, fieldId, text + '-' + recId);
+                        }
                     }
                 }
             });
@@ -1522,7 +1533,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.fieldsToExclude && (fieldsToExclude = cfgObj.fieldsToExclude);
             },
         }
-    })();
+    })(); //persistentForm
 
     //====================================================
     //System Colors feature
@@ -1777,7 +1788,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     .map(x => parseInt(x, 16));
             },
         }; //return systemColors functions
-    })();
+    })(); //systemColors
 
     //====================================================
     //User Filters feature
@@ -1989,7 +2000,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function addFilterButtons(viewId = '') {
-            if (!document.querySelector('#' + viewId + ' .kn-add-filter') || document.querySelector('#' + viewId + ' .filterCtrlDiv'))
+            if (!document.querySelector('#' + viewId + ' .kn-add-filter') || document.querySelector('.filterCtrlDiv'))
                 return;
 
             //Prepare div and style
@@ -2721,8 +2732,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var appErr = ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id);
                     var svrErr = ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id);
                     var wrn = ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id);
-                    var inf = ktl.storage.lsGetItem(ktl.const.LS_INFO + Knack.getUserAttributes().id);
-                    var dbg = ktl.storage.lsGetItem(ktl.const.LS_DEBUG + Knack.getUserAttributes().id);
 
                     debugWndText.textContent +=
                         (cri ? ('CRITICAL: ' + ktl.storage.lsGetItem(ktl.const.LS_CRITICAL + Knack.getUserAttributes().id) + '\n') : '') +
@@ -2732,8 +2741,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         (appErr ? ('APP ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
                         (svrErr ? ('SVR ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
                         (wrn ? ('WRN: ' + ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id) + '\n') : '') +
-                        (inf ? ('INF: ' + ktl.storage.lsGetItem(ktl.const.LS_INFO + Knack.getUserAttributes().id) + '\n') : '') +
-                        (dbg ? ('DBG: ' + ktl.storage.lsGetItem(ktl.const.LS_DEBUG + Knack.getUserAttributes().id) + '\n') : '') +
+                        //TODO:  Add info logs here.
                         'Total localStorage usage = ' + lsItems + '\n';
 
                     debugWndText.scrollTop = dbgWndScrollHeight - 14;
@@ -2819,6 +2827,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     //Truncate all title characters beyond the lowest index found.
                     var title = view.title.substring(0, index);
+                    $('#' + view.key + ' > div.view-header > h1').text(title); //Search Views use H1 instead of H2.
                     $('#' + view.key + ' > div.view-header > h2').text(title);
 
                     //Hide the whole view, typically used when doing background searches.
@@ -2828,8 +2837,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
 
                     //Hide the view title only, typically used to save space when real estate is critical.
-                    if (view.title.includes('HIDDEN_TITLE'))
+                    if (view.title.includes('HIDDEN_TITLE')) {
+                        $('#' + view.key + ' > div.view-header > h1').css({ 'display': 'none' }); //Search Views use H1 instead of H2.
                         $('#' + view.key + ' > div.view-header > h2').css({ 'display': 'none' });
+                    }
 
                     //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
                     if (Knack.views[view.key] && Knack.views[view.key].model && Knack.views[view.key].model.view.options && Knack.views[view.key].model.view.options.cell_editor) {
@@ -3214,84 +3225,94 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if ($(prefix + '[id*="' + fieldId + '"] .ui-autocomplete-input').length > 0) {
                             chznSearchInput.focus();
                             chznSearchInput.autocomplete('search', srchTxt); //GO!
+                            //Wait for response...
+                        } else {
+                            //The dropdown does not have a search field (less than 500 entries), just select among the options that are already populated.
                         }
 
-                        //Wait for response...
                         var foundText = '';
                         var lowercaseSrch = srchTxt.toString().toLowerCase();
                         Knack.showSpinner();
 
+                        var searchTimeout = null;
                         var intervalId = setInterval(function () {
                             if (!$('.ui-autocomplete-loading').is(':visible')) {
                                 clearInterval(intervalId);
+                                clearTimeout(searchTimeout);
 
                                 if (isSingleSelection || isMultipleChoice) {
                                     //The dropdown has finished searching and came up with some results, but we must now
                                     //filter them to exclude any found elements that are not an exact match (whole word only).
                                     //Otherwise, we may end up with wrong results.  
                                     //Ex: Typing 1234 could select 12345 if it was part of the results and before 1234.
+
                                     var id = '';
-                                    var options = dropdownObj.find('option');
-                                    var foundExactMatch = false;
-                                    if (options.length > 0) {
-                                        var text = '';
-                                        for (var i = 0; i < options.length; i++) {
-                                            text = options[i].innerText;
-                                            if (text !== 'Select...' && text !== 'Select') {
-                                                if (text.toLowerCase() === lowercaseSrch) { //Exact match, but not case sensitive.
-                                                    foundExactMatch = true;
-                                                    foundText = text;
-                                                    id = options[i].value;
-                                                    if (isMultipleChoice)
-                                                        dropdownObj.find('option[value="' + id + '"]').attr('selected', 1);
-                                                    else
-                                                        dropdownObj.val(id);
-                                                    dropdownObj.trigger('liszt:updated');
-                                                    break;
-                                                } else if (!foundExactMatch && text.toLowerCase().indexOf(lowercaseSrch) >= 0) { //Partial match
-                                                    foundText = text;
+                                    waitForOptions(dropdownObj)
+                                        .then((options) => {
+                                            var foundExactMatch = false;
+                                            if (options.length > 0) {
+                                                var text = '';
+                                                for (var i = 0; i < options.length; i++) {
+                                                    text = options[i].innerText;
+                                                    if (text !== 'Select...' && text !== 'Select') {
+                                                        if (text.toLowerCase() === lowercaseSrch) { //Exact match, but not case sensitive.
+                                                            foundExactMatch = true;
+                                                            foundText = text;
+                                                            id = options[i].value;
+                                                            if (isMultipleChoice)
+                                                                dropdownObj.find('option[value="' + id + '"]').attr('selected', 1);
+                                                            else
+                                                                dropdownObj.val(id);
+                                                            dropdownObj.trigger('liszt:updated');
+                                                            break;
+                                                        } else if (!foundExactMatch && text.toLowerCase().indexOf(lowercaseSrch) >= 0) { //Partial match
+                                                            foundText = text;
+                                                        }
+                                                    }
                                                 }
                                             }
-                                        }
-                                    }
 
-                                    Knack.hideSpinner();
+                                            Knack.hideSpinner();
 
-                                    if (foundText) { //Found something.  Is it an exact match or multiple options?
-                                        if (foundExactMatch) {
-                                            if (showPopup)
-                                                ktl.core.timedPopup('Found ' + foundText);
+                                            if (foundText) { //Found something.  Is it an exact match or multiple options?
+                                                if (foundExactMatch) {
+                                                    if (showPopup)
+                                                        ktl.core.timedPopup('Found ' + foundText);
 
-                                            dropdownObj.trigger('change'); //Required to save persistent form data.
+                                                    dropdownObj.trigger('change'); //Required to save persistent form data.
 
-                                            if (chznContainer.length) {
-                                                $(chznContainer).find('.chzn-drop').css('left', '-9000px');
-                                                ktl.scenes.autoFocus();
-                                            }
-                                        } else { //Multiple options.
-                                            if (onlyExactMatch) {
-                                                ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
+                                                    if (chznContainer.length) {
+                                                        $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                                        ktl.scenes.autoFocus();
+                                                    }
+                                                } else { //Multiple options.
+                                                    if (onlyExactMatch) {
+                                                        ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
+                                                        reject(foundText);
+                                                        return;
+                                                    }
+                                                }
+
+                                                resolve(foundText);
+                                                return;
+                                            } else { //Nothing found.
+                                                if (showPopup)
+                                                    ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
+
+                                                if (onlyExactMatch) {
+                                                    if (chznContainer.length) {
+                                                        $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                                        ktl.scenes.autoFocus();
+                                                    }
+                                                }
+
                                                 reject(foundText);
                                                 return;
                                             }
-                                        }
-
-                                        resolve(foundText);
-                                        return;
-                                    } else { //Nothing found.
-                                        if (showPopup)
-                                            ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
-
-                                        if (onlyExactMatch) {
-                                            if (chznContainer.length) {
-                                                $(chznContainer).find('.chzn-drop').css('left', '-9000px');
-                                                ktl.scenes.autoFocus();
-                                            }
-                                        }
-
-                                        reject(foundText);
-                                        return;
-                                    }
+                                        })
+                                        .catch(() => {
+                                            reject('No results!');
+                                        })
                                 } else { //Multi selection
                                     if (chznContainer.length) {
                                         chznContainer.find('.chzn-drop').css('left', '-9000px'); //Hide results until parsed.
@@ -3309,6 +3330,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             results = chznContainer.find('.chzn-results li');
                                             if (update || initialResults !== results.length) { //Whichever comes first.
                                                 clearInterval(intervalId);
+                                                clearTimeout(searchTimeout);
 
                                                 if (results.length > 0) {
                                                     var foundAtLeastOne = false;
@@ -3377,7 +3399,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                         }, 200);
 
-                        setTimeout(function () { //Failsafe
+                        searchTimeout = setTimeout(function () { //Failsafe
                             Knack.hideSpinner();
                             clearInterval(intervalId);
                             reject(foundText);
@@ -3385,6 +3407,28 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         }, 5000);
                     } else {
                         //ktl.log.clog('Called searchDropdown with a field that does not exist: ' + fieldId, 'purple');
+                    }
+
+                    function waitForOptions(dropdownObj) {
+                        return new Promise(function (resolve, reject) {
+                            var options = [];
+                            var intervalId = setInterval(() => {
+                                options = dropdownObj.find('option');
+                                if (options.length) {
+                                    clearInterval(intervalId);
+                                    clearTimeout(failsafe);
+                                    resolve(options);
+                                    return;
+                                }
+                            }, 200);
+
+                            var failsafe = setTimeout(function () {
+                                ktl.log.clog('waitForOptions timeout', 'purple');
+                                clearInterval(intervalId);
+                                reject(foundText);
+                                return; //JIC
+                            }, 5000);
+                        })
                     }
                 });
             },
@@ -3613,13 +3657,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             },
 
+            //Will return with true if the form has been submitted successfuly or account has logged-in, or false otherwise.
             waitSubmitOutcome: function (viewId = '') {
                 return new Promise(function (resolve, reject) {
                     if (!viewId) return;
 
                     var success = null, failure = null;
+                    var loggedIn = (Knack.getUserAttributes() !== 'No user found');
                     var intervalId = setInterval(function () {
                         success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
+                        if (!loggedIn && (Knack.getUserAttributes() !== 'No user found'))
+                            success = true;
                         failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
                         if (success || failure) {
                             clearInterval(intervalId);
@@ -3647,7 +3695,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var spinnerInterval = null;
         var spinnerWdExcludeScn = [];
         var spinnerWdRunning = false;
-        var idleTimer = null;
+        var idleWatchDogTimeout = null;
         var kioskButtons = {};
         var prevScene = '';
 
@@ -3675,7 +3723,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     document.querySelector("#kn-app-header").style.display = 'block';
             }
 
-            ktl.scenes.spinnerWatchdog(true);
+            ktl.scenes.spinnerWatchdog();
             ktl.iFrameWnd.create();
             ktl.views.autoRefresh();
             ktl.scenes.resetIdleWatchdog();
@@ -3687,7 +3735,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 (ktl.core.getCfg().showMenuInTitle && menu) && (document.title = Knack.app.attributes.name + ' - ' + menu); //Add menu to browser's tab.
 
                 if (prevScene) //Do not log navigation on first page - useless and excessive.  We only want transitions.
-                    ktl.log.addLog(ktl.const.LS_NAVIGATION, JSON.stringify(ktl.core.getMenuInfo()), false);
+                    ktl.log.addLog(ktl.const.LS_NAVIGATION, JSON.stringify(ktl.core.getMenuInfo()));
 
                 prevScene = scene.key;
             }
@@ -3695,7 +3743,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             const LS_SW_VERSION = 'SW_VERSION';
             var lastSavedVersion = ktl.storage.lsGetItem(LS_SW_VERSION);
             if (!lastSavedVersion || lastSavedVersion !== SW_VERSION) {
-                ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1013 - Updated SW_VERSION: ' + SW_VERSION + ', KTL_VERSION: ' + KTL_VERSION); //TODO:  change type to Info
+                ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1013 - Updated to SW_VERSION: ' + SW_VERSION); //TODO:  change type to Info
                 ktl.storage.lsSetItem(LS_SW_VERSION, SW_VERSION);
             }
 
@@ -3707,9 +3755,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             ktl.scenes.addKioskButtons();
         })
 
-        $(document).on('click', function (e) { ktl.scenes.resetIdleWatchdog(); })
-        $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
+        $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('mousemove', function (e) { ktl.scenes.resetIdleWatchdog(); })
+        $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -3877,10 +3925,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         messagingBtn && extraButtonsBar[0].appendChild(messagingBtn);
                     }
                 } else { //Page has menu buttons.
+                    return;
+
                     var knMenuBar = document.getElementsByClassName('kn-menu');
                     backBtn && knMenuBar[0].appendChild(backBtn);
 
-                    //Add Refresh at end of menu.
+                    //Add Refresh and Messaging at end of menu.
                     refreshBtn && knMenuBar[0].appendChild(refreshBtn);
                     messagingBtn && knMenuBar[0].appendChild(messagingBtn);
 
@@ -3969,13 +4019,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             resetIdleWatchdog: function () {
-                if (!ktl.core.getCfg().enabled.idleWatchDog) return;
+                if (ktl.scenes.isiFrameWnd() || !ktl.core.getCfg().enabled.idleWatchDog) return;
 
-                clearTimeout(idleTimer);
-                idleTimer = setTimeout(function () {
-                    if (Knack.router.current_scene_key !== ktl.iFrameWnd.getCfg().iFrameScnId)
-                        idleWatchDogTimout && idleWatchDogTimout();
-                }, ktl.scenes.getCfg().idleWatchDogDelay);
+                clearTimeout(idleWatchDogTimeout);
+                if (ktl.scenes.getCfg().idleWatchDogDelay > 0) {
+                    idleWatchDogTimeout = setTimeout(function () {
+                        ktl.scenes.idleWatchDogTimout();
+                    }, ktl.scenes.getCfg().idleWatchDogDelay);
+                }
+            },
+
+            idleWatchDogTimout: function () {
+                idleWatchDogTimout && idleWatchDogTimout();
             },
 
             findViewWithTitle: function (srch = '', exact = false) {
@@ -4007,7 +4062,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var versionInfo = appName + '    v' + SW_VERSION + ktlVer + '    ' + info.hostname;
 
                     if (!style) {
-                        var style = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
+                        var style = 'white-space: pre; margin-left: 10px; height: 40px; padding-bottom: 10px; font-size:small; position:absolute; top:0px; right:10px; background-color:transparent; border-style:none';
                         style += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
                     }
 
@@ -4037,7 +4092,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //Logging feature
     this.log = (function () {
-        var lastDetails = ''; //Prevent multiple duplicated logs.  //TODO: replace by a list of last 10 logs and a timestamp
+        var lastDetails = ''; //Prevent multiple duplicated logs.
         var mouseClickCtr = 0;
         var keyPressCtr = 0;
         var isActive = false;
@@ -4049,37 +4104,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         function monitorActivity() {
-            if (isActive)
+            if (isActive || ktl.scenes.isiFrameWnd() || ktl.storage.hasLocalStorage() && Knack.getUserAttributes() === 'No user found')
                 return;
             else
                 isActive = true;
 
-            if (ktl.scenes.isiFrameWnd()) return;
+            $(document).on('click', function (e) { mouseClickCtr++; })
+            $(document).on('keypress', function (e) { keyPressCtr++; })
 
-            if (ktl.storage.hasLocalStorage() && Knack.getUserAttributes() !== 'No user found') {
-                $(document).on('click', function (e) { mouseClickCtr++; })
-                $(document).on('keypress', function (e) { keyPressCtr++; })
-
-                setInterval(function () {
-                    //Important to read again every 5 seconds in case some other opened pages would add to shared counters.
-                    var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
-                    try {
-                        if (!categoryLogs)
-                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0 }), false); //Doesn't exist, create activity entry.
-                        else {
-                            if (mouseClickCtr > 0 || keyPressCtr > 0) {
-                                var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
-                                ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr }), false);
-                                ktl.log.resetActivityCtr();
-                            }
-                        }
-                    }
-                    catch (e) {
-                        ktl.log.addLog(ktl.const.LS_INFO, 'Deleted ACTIVITY log having obsolete format: ' + e);
-                        ktl.storage.lsRemoveItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
-                    }
-                }, 5000);
-            }
+            setInterval(function () {
+                ktl.log.updateActivity();
+            }, 5000);
         }
 
         return {
@@ -4116,7 +4151,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     return;
 
                 //Use app's callback to check if log category is allowed.
-                if (logCategoryAllowed && !logCategoryAllowed(category)) {
+                if (logCategoryAllowed && !logCategoryAllowed(category, details)) {
                     //ktl.log.clog('Skipped log category ' + category, 'purple');
                     return;
                 }
@@ -4146,7 +4181,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var newLog = {
                     dt: ktl.core.getCurrentDateTime(true, true, true, true),
                     type: type,
-                    details: details
+                    details: details                    
                 };
 
                 //Read logs as a string.
@@ -4171,17 +4206,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     ktl.storage.lsSetItem(category + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                    //Also show some of them in console.  Important logs always show, others depending on param.
-                    var color = 'blue';
-                    if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
-                        if (category === ktl.const.LS_WRN)
-                            color = 'orangered';
-                        else
-                            color = 'purple';
-                        showInConsole = true;
-                    }
+                    //Also show some of them in console.
+                    if (showInConsole) {
+                        if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
+                            var color = 'purple';
+                            if (category === ktl.const.LS_WRN)
+                                color = 'orangered';
+                        } else
+                            color = 'blue';
 
-                    showInConsole && ktl.log.clog(type + ' - ' + details, color);
+                        ktl.log.clog(type + ' - ' + details, color);
+                    }
                 }
                 catch (e) {
                     ktl.log.addLog(ktl.const.LS_INFO, 'addLog, deleted log having obsolete format: ' + category + ', ' + e);
@@ -4245,6 +4280,33 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             },
 
+            updateActivity: function () {
+                //Important to read again every 5 seconds in case some other opened pages would add to shared counters.
+                var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
+                try {
+                    var nowUTC = ktl.core.getCurrentDateTime(true, true, false, true);
+                    if (!categoryLogs)
+                        ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0, dt: nowUTC })); //Doesn't exist, create activity entry.
+                    else {
+                        var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
+                        var diff = Date.parse(nowUTC) - Date.parse(details.dt);
+                        if ((ktl.scenes.getCfg().idleWatchDogDelay === 0) || (diff < ktl.scenes.getCfg().idleWatchDogDelay))
+                            ktl.scenes.resetIdleWatchdog();
+                        else
+                            ktl.scenes.idleWatchDogTimout();
+
+                        if (mouseClickCtr > 0 || keyPressCtr > 0) {
+                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr, dt: nowUTC }));
+                            ktl.log.resetActivityCtr();
+                        }
+                    }
+                }
+                catch (e) {
+                    ktl.log.addLog(ktl.const.LS_INFO, 'Deleted ACTIVITY log having obsolete format: ' + e);
+                    ktl.storage.lsRemoveItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
+                }
+            },
+
             //TODO: add getCategoryLogs.  Returns object with array and logId.
         }
     })();
@@ -4304,7 +4366,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return lsPrefsStr; //Return string version.
             }
             catch (e) {
-                ktl.log.clog('Exception in readUserPrefsFromLs: ' + e, 'purple');
+                //ktl.log.clog('Exception in readUserPrefsFromLs: ' + e, 'purple');
             }
 
             return '';
@@ -4565,6 +4627,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //iFrameWnd feature
     this.iFrameWnd = (function () {
+        const LOW_PRIORITY_LOGGING_DELAY = ONE_HOUR_DELAY; //TODO: make these configurable.
+        const DEV_LOW_PRIORITY_LOGGING_DELAY = ONE_MINUTE_DELAY * 10;
+
         //TODO: Put all this in an object like core:  var cfg = {...
         var iFrameWnd = null;
         var iFrameReady = false;
@@ -4724,9 +4789,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }, 10000);
         }
 
-        const LOW_PRIORITY_LOGGING_DELAY = ONE_MINUTE_DELAY; //TODO: make these configurable.
-        const DEV_LOW_PRIORITY_LOGGING_DELAY = 10000;
-        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 10/*send sooner for devs*/ : 60; //1 hour.
+        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 0/*send immediately for devs*/ : 180; //3 hours.
         function startLowPriorityLogging() {
             // - Submit all accumulated low-priority logs.
             // - Check what needs to be uploaded, i.e. non-empty arrays, older than LOGGING_DELAY, send them in sequence.
@@ -5285,7 +5348,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.views.refreshView(bulkOpsViewId).then(function () {
                                     setTimeout(function () {
                                         ktl.views.autoRefresh();
-                                        ktl.scenes.spinnerWatchdog(true);
+                                        ktl.scenes.spinnerWatchdog();
                                         alert('Operation completed successfully');
                                     }, 1000);
                                 })
@@ -5297,7 +5360,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             alert('Error code KEC_1017 while processing bulk operations: ' + reason);
                             ktl.core.removeInfoPopup();
                             ktl.views.autoRefresh();
-                            ktl.scenes.spinnerWatchdog(true);
+                            ktl.scenes.spinnerWatchdog();
                         })
                 })(bulkOpsRecIdArray);
             } else
@@ -5341,7 +5404,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     ktl.scenes.spinnerWatchdog(false);
                     ktl.bulkOps.deleteRecords(deleteArray, view)
                         .then(function () {
-                            ktl.scenes.spinnerWatchdog(true);
+                            ktl.scenes.spinnerWatchdog();
                             jQuery.blockUI({
                                 message: '',
                                 overlayCSS: {
@@ -5542,4 +5605,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: add getCategoryLogs.  Returns object with array and logId.
 //We need a logs category list, and move all constants from core to log object.
 //Msg is not handled:  parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
-//TODO: replace by a list of last 10 logs and a timestamp
+
