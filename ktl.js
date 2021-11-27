@@ -2000,7 +2000,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function addFilterButtons(viewId = '') {
-            if (!document.querySelector('#' + viewId + ' .kn-add-filter') || document.querySelector('.filterCtrlDiv'))
+            if (!document.querySelector('#' + viewId + ' .kn-add-filter') || document.querySelector('#' + viewId + ' .filterCtrlDiv'))
                 return;
 
             //Prepare div and style
@@ -2732,6 +2732,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var appErr = ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id);
                     var svrErr = ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id);
                     var wrn = ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id);
+                    var inf = ktl.storage.lsGetItem(ktl.const.LS_INFO + Knack.getUserAttributes().id);
+                    var dbg = ktl.storage.lsGetItem(ktl.const.LS_DEBUG + Knack.getUserAttributes().id);
 
                     debugWndText.textContent +=
                         (cri ? ('CRITICAL: ' + ktl.storage.lsGetItem(ktl.const.LS_CRITICAL + Knack.getUserAttributes().id) + '\n') : '') +
@@ -2741,7 +2743,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         (appErr ? ('APP ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
                         (svrErr ? ('SVR ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
                         (wrn ? ('WRN: ' + ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id) + '\n') : '') +
-                        //TODO:  Add info logs here.
+                        (inf ? ('INF: ' + ktl.storage.lsGetItem(ktl.const.LS_INFO + Knack.getUserAttributes().id) + '\n') : '') +
+                        (dbg ? ('DBG: ' + ktl.storage.lsGetItem(ktl.const.LS_DEBUG + Knack.getUserAttributes().id) + '\n') : '') +
                         'Total localStorage usage = ' + lsItems + '\n';
 
                     debugWndText.scrollTop = dbgWndScrollHeight - 14;
@@ -3735,7 +3738,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 (ktl.core.getCfg().showMenuInTitle && menu) && (document.title = Knack.app.attributes.name + ' - ' + menu); //Add menu to browser's tab.
 
                 if (prevScene) //Do not log navigation on first page - useless and excessive.  We only want transitions.
-                    ktl.log.addLog(ktl.const.LS_NAVIGATION, JSON.stringify(ktl.core.getMenuInfo()));
+                    ktl.log.addLog(ktl.const.LS_NAVIGATION, JSON.stringify(ktl.core.getMenuInfo()), false);
 
                 prevScene = scene.key;
             }
@@ -3743,7 +3746,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             const LS_SW_VERSION = 'SW_VERSION';
             var lastSavedVersion = ktl.storage.lsGetItem(LS_SW_VERSION);
             if (!lastSavedVersion || lastSavedVersion !== SW_VERSION) {
-                ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1013 - Updated to SW_VERSION: ' + SW_VERSION); //TODO:  change type to Info
+                ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1013 - Updated SW_VERSION: ' + SW_VERSION + ', KTL_VERSION: ' + KTL_VERSION); //TODO:  change type to Info
                 ktl.storage.lsSetItem(LS_SW_VERSION, SW_VERSION);
             }
 
@@ -3925,8 +3928,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         messagingBtn && extraButtonsBar[0].appendChild(messagingBtn);
                     }
                 } else { //Page has menu buttons.
-                    return;
-
                     var knMenuBar = document.getElementsByClassName('kn-menu');
                     backBtn && knMenuBar[0].appendChild(backBtn);
 
@@ -4062,7 +4063,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var versionInfo = appName + '    v' + SW_VERSION + ktlVer + '    ' + info.hostname;
 
                     if (!style) {
-                        var style = 'white-space: pre; margin-left: 10px; height: 40px; padding-bottom: 10px; font-size:small; position:absolute; top:0px; right:10px; background-color:transparent; border-style:none';
+                        var style = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
                         style += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
                     }
 
@@ -4092,7 +4093,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //Logging feature
     this.log = (function () {
-        var lastDetails = ''; //Prevent multiple duplicated logs.
+        var lastDetails = ''; //Prevent multiple duplicated logs.  //TODO: replace by a list of last 10 logs and a timestamp
         var mouseClickCtr = 0;
         var keyPressCtr = 0;
         var isActive = false;
@@ -4206,17 +4207,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     ktl.storage.lsSetItem(category + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                    //Also show some of them in console.
-                    if (showInConsole) {
-                        if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
-                            var color = 'purple';
-                            if (category === ktl.const.LS_WRN)
-                                color = 'orangered';
-                        } else
-                            color = 'blue';
-
-                        ktl.log.clog(type + ' - ' + details, color);
+                    //Also show some of them in console.  Important logs always show, others depending on param.
+                    var color = 'blue';
+                    if (category === ktl.const.LS_WRN || category === ktl.const.LS_CRITICAL || category === ktl.const.LS_APP_ERROR || category === ktl.const.LS_SERVER_ERROR) {
+                        if (category === ktl.const.LS_WRN)
+                            color = 'orangered';
+                        else
+                            color = 'purple';
+                        showInConsole = true;
                     }
+
+                    showInConsole && ktl.log.clog(type + ' - ' + details, color);
                 }
                 catch (e) {
                     ktl.log.addLog(ktl.const.LS_INFO, 'addLog, deleted log having obsolete format: ' + category + ', ' + e);
@@ -4366,7 +4367,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return lsPrefsStr; //Return string version.
             }
             catch (e) {
-                //ktl.log.clog('Exception in readUserPrefsFromLs: ' + e, 'purple');
+                ktl.log.clog('Exception in readUserPrefsFromLs: ' + e, 'purple');
             }
 
             return '';
@@ -4627,9 +4628,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //iFrameWnd feature
     this.iFrameWnd = (function () {
-        const LOW_PRIORITY_LOGGING_DELAY = ONE_HOUR_DELAY; //TODO: make these configurable.
-        const DEV_LOW_PRIORITY_LOGGING_DELAY = ONE_MINUTE_DELAY * 10;
-
         //TODO: Put all this in an object like core:  var cfg = {...
         var iFrameWnd = null;
         var iFrameReady = false;
@@ -4789,7 +4787,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }, 10000);
         }
 
-        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 0/*send immediately for devs*/ : 180; //3 hours.
+        const LOW_PRIORITY_LOGGING_DELAY = ONE_MINUTE_DELAY; //TODO: make these configurable.
+        const DEV_LOW_PRIORITY_LOGGING_DELAY = 10000;
+        const TIME_TO_SEND_LOW_PRIORITY_LOGS = ktl.account.isDeveloper() ? 10/*send sooner for devs*/ : 60; //1 hour.
         function startLowPriorityLogging() {
             // - Submit all accumulated low-priority logs.
             // - Check what needs to be uploaded, i.e. non-empty arrays, older than LOGGING_DELAY, send them in sequence.
@@ -5605,4 +5605,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: add getCategoryLogs.  Returns object with array and logId.
 //We need a logs category list, and move all constants from core to log object.
 //Msg is not handled:  parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
-
+//TODO: replace by a list of last 10 logs and a timestamp
