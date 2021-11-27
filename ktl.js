@@ -4105,7 +4105,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         function monitorActivity() {
-            if (isActive || ktl.scenes.isiFrameWnd() || ktl.storage.hasLocalStorage() && Knack.getUserAttributes() === 'No user found')
+            if (isActive || ktl.scenes.isiFrameWnd() || !ktl.storage.hasLocalStorage() || Knack.getUserAttributes() === 'No user found')
                 return;
             else
                 isActive = true;
