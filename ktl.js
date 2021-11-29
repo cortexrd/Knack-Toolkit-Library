@@ -4287,7 +4287,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 try {
                     var nowUTC = ktl.core.getCurrentDateTime(true, true, false, true);
                     if (!categoryLogs)
-                        ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0, dt: nowUTC })); //Doesn't exist, create activity entry.
+                        ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: 0, kp: 0, dt: nowUTC }), false); //Doesn't exist, create activity entry.
                     else {
                         var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
                         var diff = Date.parse(nowUTC) - Date.parse(details.dt);
@@ -4297,7 +4297,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.scenes.idleWatchDogTimout();
 
                         if (mouseClickCtr > 0 || keyPressCtr > 0) {
-                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr, dt: nowUTC }));
+                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr, dt: nowUTC }), false);
                             ktl.log.resetActivityCtr();
                         }
                     }
