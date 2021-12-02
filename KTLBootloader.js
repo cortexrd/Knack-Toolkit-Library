@@ -4,7 +4,7 @@
  * A big advantage of this is that you can work directly from your local hard drive
  * during the development phase, which speeds up significatly each
  * save/refresh iteration cycle.
- * To do so, you need ot install NodeJS as a file server on port 3000. * 
+ * To do so, you need ot install NodeJS as a SSL file server on port 3000. * 
  * 
  * See documentation for more details.
  * */
@@ -13,42 +13,45 @@ KnackInitAsync = function ($, callback) {
     window.$ = $;
     window.LazyLoad = LazyLoad;
 
-    var svrURL = 'http://localhost:3000/';
+    var svrURL = 'https://localhost:3000/'; //Or use your development workstation's IP if you need to test across several devices on your Lan.
     var appPath = 'KnackApps/';
     var appName = Knack.app.attributes.name;
     var fileName = appName; //Or any other specific name you'd prefer to use.
     var ktlPath = 'Lib/KTL/';
     var ktlUrl = '';
 
-    //If contains "beta", run beta code.  Anything else (incl not existing), run prod code.
+    //If appname_dev exists, run development code.  If does not exist, run prod code.
     //This is to avoid error 404 not found in console output when using CLS mode, and faster startup time.
-    var prod = (localStorage.getItem(appName + '_USE_VER') !== 'beta');
+    var prod = (localStorage.getItem(appName + '_dev') === null);
 
     //Assume Prod ACB mode by default.
     if (prod) {
-        if (typeof (KnackAppProd) === 'function') { //ACB Prod
+        if (typeof KnackAppProd === 'function') { //ACB Prod
             localStorage.removeItem(appName + '_svrURL');
             localStorage.removeItem(appName + '_appPath');
             localStorage.removeItem(appName + '_ktlPath');
             svrURL = '';
             runApp();
-        } else
-            alert('Error - Cannot find Knack application...');
+        } else {
+            if (confirm('Error - Cannot find Knack application...\nSwitch to development mode?'))
+                localStorage.setItem(appName + '_dev', '');
+            location.reload(true);
+        }
     } else {
-        fileName += '_Beta';
+        //fileName += '_Beta'; //Optional, if you need to use a different filename.
 
         //The App does a first pass of detecting and saving the code location, so the iFrameWnd doesn't have to do it again.
         //This also prevents repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
-        if (!window.self.frameElement) { //CLS localhost Beta
+        if (!window.self.frameElement) { //CLS development mode
             LazyLoad.js([svrURL + appPath + fileName + '.js'], () => {
-                if (typeof (KnackAppBeta) === 'function') {
+                if (typeof KnackAppDev === 'function') {
                     runApp();
                 } else {
                     //Put your favorite CDN and set paths accordingly
                     svrURL = 'https://ctrnd.com/';
                     appPath = 'KnackApps/';
                     LazyLoad.js([svrURL + appPath + fileName + '.js'], () => {
-                        if (typeof (KnackAppBeta) === 'function') { //CDN Beta
+                        if (typeof KnackAppDev === 'function') { //CDN Dev
                             ktlPath = 'jsLibs/KTL/';
                         } else { //ACB Prod
                             localStorage.removeItem(appName + '_svrURL');
@@ -84,17 +87,17 @@ KnackInitAsync = function ($, callback) {
 
         lib.loadLibrary('jquery', 'blockUI', 'Sortable', 'ktl', function () {
             if (prod) {
-                if (typeof (KnackAppProd) === 'function')
-                    KnackAppProd($, { hostname: svrURL.includes('localhost') ? 'localhost' : 'ACB' });
+                if (typeof KnackAppProd === 'function')
+                    KnackAppProd($, { hostname: 'ACB' });
                 else
                     alert('Error - Cannot find Knack application...');
             } else {
-                if (typeof (KnackAppBeta) === 'function')
-                    KnackAppBeta($, { hostname: svrURL.includes('localhost') ? 'localhost' : 'ACB' });
+                if (typeof KnackAppDev === 'function')
+                    KnackAppDev($, { hostname: svrURL });
                 else {
-                    alert('Error - Cannot find Knack BETA application.\nReverting to Production version.');
-                    if (typeof (KnackAppProd) === 'function')
-                        KnackAppProd($, { hostname: svrURL.includes('localhost') ? 'localhost' : 'ACB' });
+                    alert('Error - Cannot find Knack Dev application.\nReverting to Production version.');
+                    if (typeof KnackAppProd === 'function')
+                        KnackAppProd($, { hostname: svrURL });
                 }
             }
 
