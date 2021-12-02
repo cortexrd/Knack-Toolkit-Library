@@ -285,12 +285,19 @@ function Ktl($) {
                 }, delay);
             },
 
-            switchVersion: function (userVer = 'prod') {
-                ktl.storage.lsSetItem('USE_VER', userVer);
-                var useVer = ktl.storage.lsGetItem('USE_VER');
-                ktl.debugWnd.lsLog('SWITCH USE_VER' + useVer);
+            switchVersion: function (ver = 'prod') {
+                if (ver === 'prod')
+                    ktl.storage.lsRemoveItem('dev');
+                else if (ver === 'dev')
+                    ktl.storage.lsSetItem('dev', '');
+
+                ktl.debugWnd.lsLog('Switching version to ' + ver);
+
                 setTimeout(() => {
-                    ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                    if (ktl.scenes.isiFrameWnd())
+                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                    else
+                        location.reload(true);
                 }, 2000);
             },
 
@@ -4071,11 +4078,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     $('#verButtonId').on('click touchstart', function (e) {
                         e.preventDefault();
-                        var ver = prompt('Which version to run, "prod" or "beta"?', 'prod');
-                        if (ver === 'prod' || ver === 'beta') {
-                            ktl.storage.lsSetItem('USE_VER', ver);
-                            location.reload(true);
-                        }
+                        var ver = prompt('Which version to run, "prod" or "dev"?', 'prod');
+                        if (ver === 'prod' || ver === 'dev')
+                            ktl.core.switchVersion(ver);
                     })
 
                     //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
@@ -4380,6 +4385,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (!acctUserPrefsFld) return;
 
                     var prefsStr = data[acctUserPrefsFld];
+                    if (!prefsStr) return;
                     var prefsTmpObj = JSON.parse(prefsStr);
 
                     //Add iFrameRefresh=true to user prefs and this will force a iFrameWnd refresh.
