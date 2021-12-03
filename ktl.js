@@ -1866,8 +1866,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             } else if (e.target.id && e.target.id === 'kn-submit-filters') {
                 var viewToRefresh = getViewToRefresh();
                 if (viewToRefresh) {
-                    ktl.userFilters.setActiveFilter('', viewToRefresh);
                     setViewToRefresh(null);
+                    ktl.userFilters.setActiveFilter('', viewToRefresh);
                 }
             }
         })
@@ -2000,7 +2000,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, JSON.stringify(allFiltersObj));
 
-            if (filterDivId) {
+            if (getViewToRefresh() && filterDivId) {
                 filterDivId = filterDivId.split('-')[2] || filterDivId.split('-')[0];
                 filterDivId && ktl.views.refreshView(filterDivId);
             }
@@ -2187,7 +2187,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 //Enable/disable control buttons (Only save in this case)
-                ktl.core.waitSelector('#' + filterDivId + ' .kn-tag-filter', 5000, 'visible') //Instead, maybe try to wait until scene has rendered.
+                ktl.core.waitSelector('#' + filterDivId + ' .kn-tag-filter', 5000, 'visible')
                     .then(function () {
                         var enabledFilters = document.querySelectorAll('#' + filterDivId + ' .kn-tag-filter');
                         enabledFilters.forEach(function (filter) {
