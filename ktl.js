@@ -1857,11 +1857,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (e.type === 'mousedown' && e.target.closest('.kn-filters-nav,.kn-filters,.kn-remove-filter')) {
                 setViewToRefresh(getViewToRefresh() || viewId);
                 if (e.target.closest('.kn-remove-filter')) {
+                    setViewToRefresh(null);
                     ktl.userFilters.setActiveFilter('', viewId);
-                    if (getViewToRefresh()) {
-                        ktl.views.refreshView(getViewToRefresh());
-                        setViewToRefresh(null);
-                    }
                 }
             } else if (e.target.id && e.target.id === 'kn-submit-filters') {
                 var viewToRefresh = getViewToRefresh();
@@ -2063,7 +2060,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (!$.isEmptyObject(allFiltersObj[filterDivId])) {
                         var activeFilterIndex = allFiltersObj[filterDivId].active;
 
-                        for (var btnIndex = 0; btnIndex < allFiltersObj[filterDivId].filters.length; btnIndex++){
+                        for (var btnIndex = 0; btnIndex < allFiltersObj[filterDivId].filters.length; btnIndex++) {
                             var filter = allFiltersObj[filterDivId].filters[btnIndex];
 
                             if (filter.filterName === '') break;
@@ -2187,24 +2184,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 //Enable/disable control buttons (Only save in this case)
-                ktl.core.waitSelector('#' + filterDivId + ' .kn-tag-filter', 5000, 'visible')
-                    .then(function () {
-                        var enabledFilters = document.querySelectorAll('#' + filterDivId + ' .kn-tag-filter');
-                        enabledFilters.forEach(function (filter) {
-                            var nav = filter.closest('.kn-records-nav');
-                            var saveBtn = $(nav).find('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
-                            if (saveBtn.length > 0) {
-                                saveBtn.prop('disabled', false);
-                            }
-                        })
-                    })
-                    .catch(function () { //Normal case, where the _filters section never appear.  We still needed to wait to see.
-                        if (!allFiltersObj.isEmpty) {
-                            if (allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active !== -1) {
-                                $('.filterBtn').removeClass('activeFilter');
-                            }
+                if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) {
+                    var saveBtn = document.querySelector('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
+                    saveBtn && saveBtn.removeAttribute('disabled');
+                } else {
+                    if (!allFiltersObj.isEmpty) {
+                        if (allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active !== -1) {
+                            $('#' + filterDivId + ' .filterBtn').removeClass('activeFilter');
+                            applyButtonColors();
                         }
-                    })
+                    }
+                }
             })
         }
 
