@@ -49,7 +49,7 @@ var KnackAppProd = function ($, info = {}) {
         //Zero means disabled, so idleWatchDogTimout() will never be called.
         var idleWatchDogDelay = 7.2e+6;
         if (isKiosk())
-            idleWatchDogDelay = 0; //Inactivity timeout is disabled by default hour for kiosks.
+            idleWatchDogDelay = 0; //Inactivity timeout is disabled by default for kiosks.
 
         ktl.scenes.setCfg({
             onSceneRender: onSceneRender,
