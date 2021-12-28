@@ -5051,7 +5051,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 })
                             break;
                         case 'reloadAppMsg':
-                            ktl.debugWnd.lsLog('Rxed msg: reloadApp');
+                            ktl.debugWnd.lsLog('Rxed msg: reloadAppMsg');
                             setTimeout(() => {
                                 if (typeof Android === 'object')
                                     Android.restartApplication()
@@ -5589,9 +5589,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //Experiment with this to render reports only, not all view:  Knack.router.scene_view.model.views._byId['view_838'].attributes.rows[0].reports[0].this.renderReports()
 //inlineEditChangeStyle: function () {
 //necessary?... var msgId = event.data.msgId; //Keep a copy for ack.
-//Use Try Catch to prevent white screen.
-//ktl.core.waitSelector('#' + viewId + ' .kn-tag-filter', 5000, 'visible') //Instead, maybe try to wait until scene has rendered.
-//TODO: Should only call this if really needed.
 //Wait until Submit is completed and ack parent - convert to use submitAndWait
 //After app startup...
 //   1) If iframe never acks its presence within X seconds, re - create it(this is done).
