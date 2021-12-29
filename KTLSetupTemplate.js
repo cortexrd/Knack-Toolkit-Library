@@ -4,7 +4,7 @@ var KnackAppProd = function ($, info = {}) {
     window.$ = $;
 
     //Your App ID:  xxxxxxxxxxxxxxxxxxxxxxxx
-    window.SW_VERSION = '0.1.0'; //Your App version.
+    window.APP_VERSION = '0.1.0'; //Your App version.
 
     var ktl = new Ktl($);
 
