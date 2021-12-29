@@ -13,7 +13,12 @@ KnackInitAsync = function ($, callback) {
     window.$ = $;
     window.LazyLoad = LazyLoad;
 
-    var svrURL = 'https://localhost:3000/'; //Or use your development workstation's IP if you need to test across several devices on your Lan.
+    //Two options when using local file server: 
+    // 1) simple localhost, non-secure
+    // 2) Secure SSL file server.  In this case, use your development workstation's IP and it will allow you to test across several devices on your local network.
+    var svrURL = 'http://localhost:3000/';
+    //var svrURL = 'https://192.168.1.106:3000/';
+
     var appPath = 'KnackApps/';
     var appName = Knack.app.attributes.name;
     var fileName = appName; //Or any other specific name you'd prefer to use.
