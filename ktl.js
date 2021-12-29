@@ -17,8 +17,10 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.2.13';
-    const SW_VERSION = window.SW_VERSION;
+    const KTL_VERSION = '0.2.14';
+    const APP_VERSION = window.APP_VERSION;
+    const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
+    window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
     var ktl = this;
 
@@ -35,7 +37,7 @@ function Ktl($) {
         LS_LOGIN: 'LOGIN_',
         LS_ACTIVITY: 'ACTIVITY_',
         LS_NAVIGATION: 'NAVIGATION_',
-        LS_INFO: 'INF_', //TODO, not yet implemented.
+        LS_INFO: 'INF_',
         LS_DEBUG: 'DBG_',
         LS_WRN: 'WRN_',
         LS_APP_ERROR: 'APP_ERR_',
@@ -62,7 +64,7 @@ function Ktl($) {
     this.core = (function () {
         var cfg = {
             developerName: '',
-            developerEmail : '',
+            developerEmail: '',
             showAppInfo: false,
             showKtlInfo: false,
             showMenuInTitle: false,
@@ -209,8 +211,7 @@ function Ktl($) {
                                         //Process critical failures by forcing a logout or hard reset.
                                         if (jqXHR.status === 401 || jqXHR.status === 403 || jqXHR.status === 500) {
                                             if (window.self.frameElement)
-                                                parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
-                                                //ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                                                alert('Your log-in has expired. Please log-out and back in to continue.'); //Alert is necessary because we can't event notify the parent in this case.
                                             else {
                                                 ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1002 - Forcing logout');
                                                 $('.kn-log-out').trigger('click'); //Token has expired, force logout.
@@ -3695,15 +3696,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var spinnerInterval = null;
         var spinnerWdExcludeScn = [];
         var spinnerWdRunning = false;
-        var idleWatchDogTimeout = null;
+        var idleWatchDogTimer = null;
         var kioskButtons = {};
         var prevScene = '';
+        var idleWatchDogDelay = 0;
 
         //App callbacks
         var onSceneRender = null;
         var autoFocus = null;
-        var idleWatchDogTimout = null;
         var spinnerWatchDogTimeout = null;
+        var idleWatchDogTimeout = null;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (Knack.router.current_scene_key !== scene.key) {
@@ -3740,11 +3742,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 prevScene = scene.key;
             }
 
-            const LS_SW_VERSION = 'SW_VERSION';
-            var lastSavedVersion = ktl.storage.lsGetItem(LS_SW_VERSION);
-            if (!lastSavedVersion || lastSavedVersion !== SW_VERSION) {
-                ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1013 - Updated SW_VERSION: ' + SW_VERSION + ', KTL_VERSION: ' + KTL_VERSION); //TODO:  change type to Info
-                ktl.storage.lsSetItem(LS_SW_VERSION, SW_VERSION);
+            var lastSavedVersion = ktl.storage.lsGetItem('APP_KTL_VERSIONS');
+            if (!lastSavedVersion || lastSavedVersion !== APP_KTL_VERSIONS) {
+                ktl.log.addLog(ktl.const.LS_INFO, 'KEC_1013 - Updated software: ' + APP_KTL_VERSIONS);
+                ktl.storage.lsSetItem('APP_KTL_VERSIONS', APP_KTL_VERSIONS);
+                ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
             }
 
             onSceneRender && onSceneRender(event, scene);
@@ -3767,7 +3769,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.spinnerWdExcludeScn && (spinnerWdExcludeScn = cfgObj.spinnerWdExcludeScn);
                 cfgObj.onSceneRender && (onSceneRender = cfgObj.onSceneRender);
                 cfgObj.spinnerCtrReload && (spinnerCtrReload = cfgObj.spinnerCtrReload);
-                cfgObj.idleWatchDogTimout && (idleWatchDogTimout = cfgObj.idleWatchDogTimout);
+                cfgObj.idleWatchDogTimeout && (idleWatchDogTimeout = cfgObj.idleWatchDogTimeout);
                 cfgObj.spinnerWatchDogTimeout && (spinnerWatchDogTimeout = cfgObj.spinnerWatchDogTimeout);
             },
 
@@ -4019,16 +4021,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             resetIdleWatchdog: function () {
                 if (ktl.scenes.isiFrameWnd() || !ktl.core.getCfg().enabled.idleWatchDog) return;
 
-                clearTimeout(idleWatchDogTimeout);
+                clearTimeout(idleWatchDogTimer);
                 if (ktl.scenes.getCfg().idleWatchDogDelay > 0) {
-                    idleWatchDogTimeout = setTimeout(function () {
-                        ktl.scenes.idleWatchDogTimout();
+                    idleWatchDogTimer = setTimeout(function () {
+                        ktl.scenes.idleWatchDogTimeout();
                     }, ktl.scenes.getCfg().idleWatchDogDelay);
                 }
             },
 
-            idleWatchDogTimout: function () {
-                idleWatchDogTimout && idleWatchDogTimout();
+            idleWatchDogTimeout: function () {
+                idleWatchDogTimeout && idleWatchDogTimeout();
             },
 
             findViewWithTitle: function (srch = '', exact = false) {
@@ -4057,7 +4059,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if ($('#verButtonId').length === 0) {
                     var ktlVer = ktl.core.getCfg().showKtlInfo ? '    KTL v' + KTL_VERSION : '';
                     var appName = Knack.app.attributes.name.toUpperCase();
-                    var versionInfo = appName + '    v' + SW_VERSION + ktlVer + '    ' + info.hostname;
+                    var versionInfo = appName + '    v' + APP_VERSION + ktlVer + '    ' + info.hostname;
 
                     if (!style) {
                         var style = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
@@ -4286,10 +4288,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     else {
                         var details = JSON.parse(JSON.parse(categoryLogs).logs[0].details);
                         var diff = Date.parse(nowUTC) - Date.parse(details.dt);
-                        if ((ktl.scenes.getCfg().idleWatchDogDelay === 0) || (diff < ktl.scenes.getCfg().idleWatchDogDelay))
+                        if (isNaN(diff) || (ktl.scenes.getCfg().idleWatchDogDelay === 0) || (diff < ktl.scenes.getCfg().idleWatchDogDelay))
                             ktl.scenes.resetIdleWatchdog();
-                        else
-                            ktl.scenes.idleWatchDogTimout();
+                        else {
+                            //Update activity's date/time to now.
+                            ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc, kp: details.kp, dt: nowUTC }), false);
+                            ktl.scenes.idleWatchDogTimeout();
+                        }
 
                         if (mouseClickCtr > 0 || keyPressCtr > 0) {
                             ktl.log.addLog(ktl.const.LS_ACTIVITY, JSON.stringify({ mc: details.mc + mouseClickCtr, kp: details.kp + keyPressCtr, dt: nowUTC }), false);
@@ -4542,7 +4547,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         .then(function (result) {
                             var menuInfo = ktl.core.getMenuInfo();
                             if (result === LOGIN_SUCCESSFUL) {
-                                result = JSON.stringify({ result: result, sw_version: SW_VERSION, page: menuInfo, agent: navigator.userAgent });
+                                result = JSON.stringify({ result: result, APP_KTL_VERSIONS: APP_KTL_VERSIONS, page: menuInfo, agent: navigator.userAgent });
                                 if (logLogin) {
                                     logLogin = false;
                                     ktl.log.addLog(ktl.const.LS_LOGIN, result);
@@ -4656,15 +4661,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //High priority logs, sent every minute.
         var highPriorityLogs = [
             { type: ktl.const.LS_CRITICAL, typeStr: 'Critical' },
-            { type: ktl.const.LS_LOGIN, typeStr: 'Login' },
-            { type: ktl.const.LS_WRN, typeStr: 'Warning' },
             { type: ktl.const.LS_APP_ERROR, typeStr: 'App Error' },
+            { type: ktl.const.LS_WRN, typeStr: 'Warning' },
+            { type: ktl.const.LS_INFO, typeStr: 'Info' },
+            { type: ktl.const.LS_DEBUG, typeStr: 'Debug' },
+            { type: ktl.const.LS_LOGIN, typeStr: 'Login' },
         ];
 
         //Lower priority logs, accumulated in localStorage and sent every 3 hours.
         var lowPriorityLogs = [
-            { type: ktl.const.LS_INFO, typeStr: 'Info' },
-            { type: ktl.const.LS_DEBUG, typeStr: 'Debug' },
             { type: ktl.const.LS_ACTIVITY, typeStr: 'Activity' },
             { type: ktl.const.LS_NAVIGATION, typeStr: 'Navigation' },
             { type: ktl.const.LS_SERVER_ERROR, typeStr: 'Server Error' }
@@ -4676,7 +4681,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (ktl.iFrameWnd.getCfg().hbViewId !== '') {
                         clearInterval(intervalId);
                         clearTimeout(timeout);
-                        ktl.wndMsg.send('iFrameWndReadyMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, SW_VERSION);
+                        ktl.wndMsg.send('iFrameWndReadyMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, APP_KTL_VERSIONS);
                         startHighPriorityLogging();
                         startLowPriorityLogging();
                     }
@@ -5003,7 +5008,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.wndMsg.send('iFrameWndReadyMsg', 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.iFrameWnd.setCfg({ iFrameReady: true });
 
-                            if (event.data.msgData !== SW_VERSION) {
+                            if (event.data.msgData !== APP_KTL_VERSIONS) {
                                 ktl.core.timedPopup('Updating app to new version, please wait...');
                                 ktl.core.waitAndReload(2000);
                             }
@@ -5037,7 +5042,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             document.querySelector('#' + viewId + ' #kn-input-' + ktl.iFrameWnd.getCfg().acctOnlineFld + ' input').checked = true;
 
                             //Wait until Submit is completed and ack parent
-                            ktl.views.submitAndWait(viewId, { [ktl.iFrameWnd.getCfg().acctSwVersionFld]: SW_VERSION })
+                            ktl.views.submitAndWait(viewId, { [ktl.iFrameWnd.getCfg().acctSwVersionFld]: APP_KTL_VERSIONS })
                                 .then(success => {
                                     var after = Date.parse(success.record[ktl.iFrameWnd.getCfg().acctLocHbFld]);
                                     var diff = locHB - after;
@@ -5598,4 +5603,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: add getCategoryLogs.  Returns object with array and logId.
 //We need a logs category list, and move all constants from core to log object.
 //Msg is not handled:  parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
+//Replace all forceReload messages to the new reloadAppMsg
 //TODO: replace by a list of last 10 logs and a timestamp
+//ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
