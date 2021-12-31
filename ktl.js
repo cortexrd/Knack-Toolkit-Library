@@ -613,12 +613,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            getViewIdByTitle: function (sceneId = ''/*Empty to search all (but takes longer)*/, srchTitle = '', exactMatch = false) {
+            getViewIdByTitle: function (srchTitle = '', sceneId = ''/*Empty to search all (but takes longer)*/, exactMatch = false) {
                 if (!srchTitle) return;
                 if (!sceneId) {
                     var scenes = Knack.scenes.models;
                     for (var i = 0; i < scenes.length; i++) {
-                        var foundView = this.getViewIdByTitle(scenes[i].id, srchTitle, exactMatch);
+                        var foundView = this.getViewIdByTitle(srchTitle, scenes[i].id, exactMatch);
                         if (foundView) return foundView;
                     }
                 } else {
@@ -1849,8 +1849,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var allowUserFilters = null; //Callback to your app to allow user filters based on specific conditions.
         var viewToRefreshAfterFilterChg = null;
 
-        var ufMenuViewId = 'view_x';
-        var ufCodeViewId = 'view_x';
+        var ufMenuViewId = ktl.core.getViewIdByTitle('USER_FILTERS_MENU');
+        var ufCodeViewId = ktl.core.getViewIdByTitle('USER_FILTERS_CODE');
         var ufDateTimeFld = 'field_x';
         var ufFiltersCodeFld = 'field_x';
 
@@ -2852,9 +2852,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.core.getSubstringPosition(view.title, 'AUTOREFRESH', 1),
                         ktl.core.getSubstringPosition(view.title, 'HIDDEN_', 1),
                         ktl.core.getSubstringPosition(view.title, 'NO_INLINE', 1),
-                        ktl.core.getSubstringPosition(view.title, 'USER_PREFS_', 1),
-                        ktl.core.getSubstringPosition(view.title, 'UTC_HEARTBEAT', 1),
-                        ktl.core.getSubstringPosition(view.title, 'ACCOUNT_LOGS', 1),
                         ktl.core.getSubstringPosition(view.title, 'USER_FILTERS_', 1),
                         ktl.core.getSubstringPosition(view.title, 'ADD_', 1),
                         ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1)
@@ -2885,28 +2882,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
                     }
 
-                    //Special processing of iFrameWnd settings - BEGIN
-                    if (!ktl.iFrameWnd.getCfg().hbViewId && view.title.includes('UTC_HEARTBEAT')) {
-                        ktl.iFrameWnd.setCfg({
-                            hbViewId: view.key,
-                        });
+                    //if (view.title.includes('USER_FILTERS_MENU'))
+                    //    ktl.userFilters.setCfg({ ufMenuViewId: view.key })
 
-                        //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
-                        //Anyways... no one is getting impatient at an invisible window!
-                        ktl.scenes.setCfg({ spinnerCtrReload: 60 });
-                    }
-                    //Special processing of iFrameWnd settings - END
-
-                    if (!ktl.userPrefs.getCfg().myUserPrefsViewId && view.title.includes('USER_PREFS_SET')) {
-                        ktl.userPrefs.setCfg({ myUserPrefsViewId: view.key })
-                        ktl.views.refreshView(view.key);
-                    }
-
-                    if (view.title.includes('USER_FILTERS_MENU'))
-                        ktl.userFilters.setCfg({ ufMenuViewId: view.key })
-
-                    if (view.title.includes('USER_FILTERS_CODE'))
-                        ktl.userFilters.setCfg({ ufCodeViewId: view.key })
+                    //if (view.title.includes('USER_FILTERS_CODE'))
+                    //    ktl.userFilters.setCfg({ ufCodeViewId: view.key })
 
                     if (view.title.includes('ADD_TIMESTAMP'))
                         ktl.views.addTimeStampToHeader(view);
@@ -4349,9 +4329,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //TODO:  allow dynamically adding more as per user requirements.
         };
 
-
-        var myUserPrefsViewId = '';
-        //Should we move user prefs field id also here?
+        var myUserPrefsViewId = ktl.core.getViewIdByTitle('My Preferences');
 
         //App Callbacks
         var allowShowPrefs = null; //Determines what prefs can be shown, based on app's rules.
@@ -4399,7 +4377,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             try {
-                if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId) { //USER_PREFS_CUR - read-only autorefresh view
+                if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId) {
                     var acctUserPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                     if (!acctUserPrefsFld) return;
 
@@ -4412,13 +4390,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (prefsStr.includes('iFrameRefresh')) {
                         delete prefsTmpObj['iFrameRefresh'];
                         var updatedPrefs = JSON.stringify(prefsTmpObj);
-                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, { [acctUserPrefsFld]: updatedPrefs })
+                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctUserPrefsFld]: updatedPrefs })
                             .then(success => { location.reload(true); })
                             .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
                     } else if (prefsStr.includes('reloadApp')) {
                         delete prefsTmpObj['reloadApp'];
                         var updatedPrefs = JSON.stringify(prefsTmpObj);
-                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId /*USER_PREFS_UPD*/, { [acctUserPrefsFld]: updatedPrefs })
+                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctUserPrefsFld]: updatedPrefs })
                             .then(success => { ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP); })
                             .catch(failure => { ktl.log.clog('reloadAppMsg failure: ' + failure, 'red'); })
                     } else {
@@ -4450,7 +4428,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.log.clog('Uploading default prefs to cloud', 'green');
                         }
                     }
-                } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) { //USER_PREFS_SET - form for user to update his own prefs
+                } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) { //Form for user to update his own prefs
                     var acctUserPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                     var allow = allowShowPrefs ? allowShowPrefs() : {};
                     if ($.isEmptyObject(allow)) {
@@ -4658,15 +4636,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var iFrameReady = false;
         var iFrameTimeout = null;
 
-        var start = window.performance.now();
+        //Auto-detection of view and field IDs - BEGIN
+        var hbViewId = ktl.core.getViewIdByTitle('Heartbeat', 'iframewnd');
+        var curUserPrefsViewId = ktl.core.getViewIdByTitle('Current User Prefs', 'iframewnd');
+        var updUserPrefsViewId = ktl.core.getViewIdByTitle('Update User Prefs', 'iframewnd');
+        var acctLogsViewId = ktl.core.getViewIdByTitle('Account Logs', 'iframewnd');
 
-        //Scene and views
-        var hbViewId = ktl.core.getViewIdByTitle('iframewnd', 'UTC_HEARTBEAT');
-        var curUserPrefsViewId = ktl.core.getViewIdByTitle('iframewnd', 'curUserPrefsViewId');
-        var updUserPrefsViewId = ktl.core.getViewIdByTitle('iframewnd', 'updUserPrefsViewId');
-        var accountLogsViewId = ktl.core.getViewIdByTitle('iframewnd', 'ACCOUNT_LOGS');
-
-        //Account fields
         var obj = ktl.core.getObjectIdByName('Accounts');
         var acctSwVersionFld = ktl.core.getFieldIdByName(obj, 'SW Version');
         var acctUtcHbFld = ktl.core.getFieldIdByName(obj, 'UTC HB');
@@ -4676,22 +4651,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var acctUserPrefsFld = ktl.core.getFieldIdByName(obj, 'User Prefs');
         var acctLastActivityFld = ktl.core.getFieldIdByName(obj, 'UTC Last Activity');
 
-
-        //Account Logs fields
         obj = ktl.core.getObjectIdByName('Account Logs');
         var alLogTypeFld = ktl.core.getFieldIdByName(obj, 'Log Type');
         var alDetailsFld = ktl.core.getFieldIdByName(obj, 'Details');
         var alLogIdFld = ktl.core.getFieldIdByName(obj, 'Log Id');
         var alEmailFld = ktl.core.getFieldIdByName(obj, 'Email To');
+        //Auto-detection of view and field IDs - END
 
         var highPriLoggingInterval = null;
         var lowPriLoggingInterval = null;
-
-        //var viewId = ktl.core.getViewIdByTitle('', 'curUserPrefsViewId');
-        //console.log('viewId =', viewId);//$$$
-
-        var end = window.performance.now();
-        console.log(`Execution time: ${end - start} ms`);
 
 
         //High priority logs, sent every minute.
@@ -4734,7 +4702,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('knack-view-render.any', function (event, view, data) {
             //console.log('ktl.iFrameWnd.getCfg() =', ktl.iFrameWnd.getCfg());//$$$
 
-            if (view.key === ktl.iFrameWnd.getCfg().accountLogsViewId) {
+            if (view.key === ktl.iFrameWnd.getCfg().acctLogsViewId) {
                 var recId = '';
                 for (var i = 0; i < data.length; i++) {
                     ktl.log.removeLogById(data[i][alLogIdFld]);
@@ -4781,7 +4749,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                     ktl.log.clog('Submitting high priority log for: ' + el.typeStr, 'purple');
 
-                                    var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
+                                    var viewId = ktl.iFrameWnd.getCfg().acctLogsViewId;
                                     if (viewId) {
                                         var apiData = {};
                                         apiData[alLogIdFld] = logObj.logId;
@@ -4794,7 +4762,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             clearInterval(highPriLoggingInterval);
                                         }
 
-                                        ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
+                                        ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().acctLogsViewId], false)
                                             .then(function (result) {
                                                 checkNext = true;
                                             })
@@ -4858,13 +4826,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 logObj.sent = true; //Do not send twice, when many opened windows.
                                                 ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                                                var viewId = ktl.iFrameWnd.getCfg().accountLogsViewId;
+                                                var viewId = ktl.iFrameWnd.getCfg().acctLogsViewId;
                                                 if (viewId) {
                                                     var apiData = {};
                                                     apiData[alLogIdFld] = logObj.logId;
                                                     apiData[alLogTypeFld] = el.typeStr;
                                                     apiData[alDetailsFld] = details;
-                                                    ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().accountLogsViewId], false)
+                                                    ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().acctLogsViewId], false)
                                                         .then(function (result) {
                                                             checkNext = true;
                                                         })
@@ -4913,7 +4881,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     curUserPrefsViewId,
                     updUserPrefsViewId,
                     hbViewId,
-                    accountLogsViewId,
+                    acctLogsViewId,
                     acctSwVersionFld,
                     acctUtcHbFld,
                     acctLocHbFld,
@@ -4945,6 +4913,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     document.body.appendChild(iFrameWnd);
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
+
+                    //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
+                    //Anyways... no one is getting impatient at an invisible window!
+                    ktl.scenes.setCfg({ spinnerCtrReload: 60 }); //TOTEST
 
                     //ktl.log.clog('Created iFrameWnd', 'blue');
 
@@ -5608,6 +5580,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     };
 }; //ktl end
 
+/*
+    --------- Useful code samples ---------
+    var start = window.performance.now();
+    var end = window.performance.now();
+    console.log(`Execution time: ${end - start} ms`);
+*/
 
 //TODO:
 //Need to find a way to apply user filters to view where there are many reports (columns).  Currently, filters cause lots of refreshes.  Maybe pre-format URL once, then apply?
