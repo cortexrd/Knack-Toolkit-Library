@@ -31,7 +31,7 @@ KnackInitAsync = function ($, callback) {
 
     //Assume Prod ACB mode by default.
     if (prod) {
-        if (typeof KnackAppProd === 'function') { //ACB Prod
+        if (typeof KnackApp === 'function') { //ACB Prod
             localStorage.removeItem(appName + '_svrURL');
             localStorage.removeItem(appName + '_appPath');
             localStorage.removeItem(appName + '_ktlPath');
@@ -49,14 +49,14 @@ KnackInitAsync = function ($, callback) {
         //This also prevents repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
         if (!window.self.frameElement) { //CLS development mode
             LazyLoad.js([svrURL + appPath + fileName + '.js'], () => {
-                if (typeof KnackAppDev === 'function') {
+                if (typeof KnackApp === 'function') {
                     runApp();
                 } else {
                     //Put your favorite CDN and set paths accordingly
                     svrURL = 'https://ctrnd.com/';
                     appPath = 'KnackApps/';
                     LazyLoad.js([svrURL + appPath + fileName + '.js'], () => {
-                        if (typeof KnackAppDev === 'function') { //CDN Dev
+                        if (typeof KnackApp === 'function') { //CDN Dev
                             ktlPath = 'jsLibs/KTL/';
                         } else { //ACB Prod
                             localStorage.removeItem(appName + '_svrURL');
@@ -92,17 +92,17 @@ KnackInitAsync = function ($, callback) {
 
         lib.loadLibrary('jquery', 'blockUI', 'Sortable', 'ktl', function () {
             if (prod) {
-                if (typeof KnackAppProd === 'function')
-                    KnackAppProd($, { hostname: 'ACB' });
+                if (typeof KnackApp === 'function')
+                    KnackApp($, { hostname: 'ACB' });
                 else
                     alert('Error - Cannot find Knack application...');
             } else {
-                if (typeof KnackAppDev === 'function')
-                    KnackAppDev($, { hostname: svrURL });
+                if (typeof KnackApp === 'function')
+                    KnackApp($, { hostname: svrURL });
                 else {
                     alert('Error - Cannot find Knack Dev application.\nReverting to Production version.');
-                    if (typeof KnackAppProd === 'function')
-                        KnackAppProd($, { hostname: svrURL });
+                    if (typeof KnackApp === 'function')
+                        KnackApp($, { hostname: svrURL });
                 }
             }
 
