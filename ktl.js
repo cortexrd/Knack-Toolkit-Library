@@ -1851,9 +1851,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         var ufMenuViewId = ktl.core.getViewIdByTitle('USER_FILTERS_MENU');
         var ufCodeViewId = ktl.core.getViewIdByTitle('USER_FILTERS_CODE');
-        var ufDateTimeFld = 'field_x';
-        var ufFiltersCodeFld = 'field_x';
-
+        var obj = ktl.core.getObjectIdByName('Filters');
+        var ufDateTimeFld = ktl.core.getFieldIdByName(obj, 'Date/Time');
+        var ufFiltersCodeFld = ktl.core.getFieldIdByName(obj, 'Filters Code');
 
         Object.defineProperty(allFiltersObj, "isEmpty", {
             get: function () { $.isEmptyObject(this); }
