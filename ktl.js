@@ -271,12 +271,12 @@ function Ktl($) {
                         reject();
                     }, timeout);
 
-                function selIsValid(sel) {
-                    var testSel = $(sel);
-                    if (is !== '')
-                        testSel = $(sel).is(':' + is);
-                    return (testSel === true || testSel.length > 0);
-                }
+                    function selIsValid(sel) {
+                        var testSel = $(sel);
+                        if (is !== '')
+                            testSel = $(sel).is(':' + is);
+                        return (testSel === true || testSel.length > 0);
+                    }
                 });
             },
 
@@ -389,7 +389,7 @@ function Ktl($) {
 
                 var menuElem = document.querySelector('#app-menu-list .is-active > a > span');
                 menuElem && (menuStr = menuElem.innerText);
-                
+
                 if (ktl.core.isKiosk()) {
                     topMenuStr = 'Kiosk Mode - no menu'; //For some reason, Kiosk's Menu have many entries.
                 } else {
@@ -593,6 +593,43 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     menuPostion.y = mousePosition.y;
 
                 return menuPostion;
+            },
+
+            getObjectIdByName: function (objectName = '') {
+                if (!objectName) return;
+                var objects = Knack.objects.models;
+                for (var i = 0; i < objects.length; i++) {
+                    if (objects[i].attributes.name === objectName)
+                        return objects[i].attributes.key;
+                }
+            },
+
+            getFieldIdByName: function (objectId = '', fieldName = '') {
+                if (!objectId || !fieldName) return;
+                var fields = Knack.objects._byId[objectId].fields.models;
+                for (var i = 0; i < fields.length; i++) {
+                    if (fields[i].attributes.name === fieldName)
+                        return fields[i].attributes.key;
+                }
+            },
+
+            getViewIdByTitle: function (sceneId = ''/*Empty to search all (but takes longer)*/, srchTitle = '', exactMatch = false) {
+                if (!srchTitle) return;
+                if (!sceneId) {
+                    var scenes = Knack.scenes.models;
+                    for (var i = 0; i < scenes.length; i++) {
+                        var foundView = this.getViewIdByTitle(scenes[i].id, srchTitle, exactMatch);
+                        if (foundView) return foundView;
+                    }
+                } else {
+                    var sceneObj = Knack.scenes._byId[sceneId];
+                    var views = sceneObj.views.models;
+                    for (var j = 0; j < views.length; j++) {
+                        var title = views[j].attributes.title;
+                        if (title && exactMatch && (title === srchTitle)) return views[j].id;
+                        if (title && !exactMatch && title.includes(srchTitle)) return views[j].id;
+                    }
+                }
             },
         }
     })();
@@ -987,7 +1024,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //Also, using tel type is a little trick that allows auto-selection of text in a number field upon focus.
             convertNumToTel: function () {
                 return new Promise(function (resolve) {
-                    if (convertNumDone || Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+                    if (convertNumDone || ktl.scenes.isiFrameWnd())
                         resolve();
                     else {
                         var fields = document.querySelectorAll('.kn-input');
@@ -2011,8 +2048,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //Prepare div and style
             var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
 
-            //var columns = document.querySelectorAll('#' + filterDivId + ' li.column');
-
             var addFiltersBar = document.querySelectorAll('[id^=kn-report-' + viewId + '-] .level-left'); //Report viewx
             if (!addFiltersBar.length)
                 addFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left'); //Table views
@@ -2762,8 +2797,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
-            if (ktl.account.isDeveloper() && scene.key !== ktl.iFrameWnd.getCfg().iFrameScnId) {
-                //var div = $('.kn-info-bar > div');
+            if (ktl.account.isDeveloper() && !ktl.scenes.isiFrameWnd()) {
                 var div = $('.kn-info-bar > div');
                 if (div.length > 0) {
                     var cbStyle = 'position: absolute; left: 40vw; top: 0.7vh; width: 20px; height: 20px';
@@ -2855,22 +2889,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (!ktl.iFrameWnd.getCfg().hbViewId && view.title.includes('UTC_HEARTBEAT')) {
                         ktl.iFrameWnd.setCfg({
                             hbViewId: view.key,
-                            iFrameScnId: view.scene.key,
                         });
 
                         //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
                         //Anyways... no one is getting impatient at an invisible window!
                         ktl.scenes.setCfg({ spinnerCtrReload: 60 });
                     }
-
-                    if (!ktl.iFrameWnd.getCfg().accountLogsViewId && view.title.includes('ACCOUNT_LOGS'))
-                        ktl.iFrameWnd.setCfg({ accountLogsViewId: view.key });
-
-                    if (!ktl.iFrameWnd.getCfg().curUserPrefsViewId && view.title.includes('USER_PREFS_CUR'))
-                        ktl.iFrameWnd.setCfg({ curUserPrefsViewId: view.key })
-
-                    if (!ktl.iFrameWnd.getCfg().updUserPrefsViewId && view.title.includes('USER_PREFS_UPD'))
-                        ktl.iFrameWnd.setCfg({ updUserPrefsViewId: view.key })
                     //Special processing of iFrameWnd settings - END
 
                     if (!ktl.userPrefs.getCfg().myUserPrefsViewId && view.title.includes('USER_PREFS_SET')) {
@@ -2947,7 +2971,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                             //Process critical failures by forcing a logout or hard reset.
                                             if (response.status === 401 || response.status === 403 || response.status === 500) {
-                                                if (Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+                                                if (ktl.scenes.isiFrameWnd())
                                                     parent.postMessage({ msgType: 'forceReload', response: response }, '*');
                                                 else {
                                                     if (response.status === 500)
@@ -2970,7 +2994,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                             tryRefresh(retryCtr);
                                                         }, 1000);
                                                     } else {
-                                                        if (response.status === 0 && Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+                                                        if (response.status === 0 && ktl.scenes.isiFrameWnd())
                                                             parent.postMessage({ msgType: 'forceReload', response: response }, '*');
                                                         else {
                                                             ktl.log.addLog(ktl.const.LS_SERVER_ERROR, 'KEC_1008 - refreshView failure in ' + viewId + ', status: ' + response.status + ', statusText: ' + response.statusText);
@@ -4634,29 +4658,41 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var iFrameReady = false;
         var iFrameTimeout = null;
 
+        var start = window.performance.now();
+
         //Scene and views
-        var iFrameScnId = '';
-        var hbViewId = '';
-        var curUserPrefsViewId = '';
-        var updUserPrefsViewId = '';
-        var accountLogsViewId = '';
+        var hbViewId = ktl.core.getViewIdByTitle('iframewnd', 'UTC_HEARTBEAT');
+        var curUserPrefsViewId = ktl.core.getViewIdByTitle('iframewnd', 'curUserPrefsViewId');
+        var updUserPrefsViewId = ktl.core.getViewIdByTitle('iframewnd', 'updUserPrefsViewId');
+        var accountLogsViewId = ktl.core.getViewIdByTitle('iframewnd', 'ACCOUNT_LOGS');
 
         //Account fields
-        var acctSwVersionFld = '';
-        var acctUtcHbFld = '';
-        var acctLocHbFld = '';
-        var acctTimeZoneFld = '';
-        var acctOnlineFld = '';
-        var acctUserPrefsFld = '';
+        var obj = ktl.core.getObjectIdByName('Accounts');
+        var acctSwVersionFld = ktl.core.getFieldIdByName(obj, 'SW Version');
+        var acctUtcHbFld = ktl.core.getFieldIdByName(obj, 'UTC HB');
+        var acctTimeZoneFld = ktl.core.getFieldIdByName(obj, 'Time Zone');
+        var acctLocHbFld = ktl.core.getFieldIdByName(obj, 'LOC HB');
+        var acctOnlineFld = ktl.core.getFieldIdByName(obj, 'Online');
+        var acctUserPrefsFld = ktl.core.getFieldIdByName(obj, 'User Prefs');
+        var acctLastActivityFld = ktl.core.getFieldIdByName(obj, 'UTC Last Activity');
+
 
         //Account Logs fields
-        var alLogTypeFld = '';
-        var alDetailsFld = '';
-        var alLogIdFld = '';
-        var alEmailFld = '';
+        obj = ktl.core.getObjectIdByName('Account Logs');
+        var alLogTypeFld = ktl.core.getFieldIdByName(obj, 'Log Type');
+        var alDetailsFld = ktl.core.getFieldIdByName(obj, 'Details');
+        var alLogIdFld = ktl.core.getFieldIdByName(obj, 'Log Id');
+        var alEmailFld = ktl.core.getFieldIdByName(obj, 'Email To');
 
         var highPriLoggingInterval = null;
         var lowPriLoggingInterval = null;
+
+        //var viewId = ktl.core.getViewIdByTitle('', 'curUserPrefsViewId');
+        //console.log('viewId =', viewId);//$$$
+
+        var end = window.performance.now();
+        console.log(`Execution time: ${end - start} ms`);
+
 
         //High priority logs, sent every minute.
         var highPriorityLogs = [
@@ -4696,6 +4732,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Logs cleanup and processing of email action.
         $(document).on('knack-view-render.any', function (event, view, data) {
+            //console.log('ktl.iFrameWnd.getCfg() =', ktl.iFrameWnd.getCfg());//$$$
+
             if (view.key === ktl.iFrameWnd.getCfg().accountLogsViewId) {
                 var recId = '';
                 for (var i = 0; i < data.length; i++) {
@@ -4862,35 +4900,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         return {
             setCfg: function (cfgObj = {}) {
-                cfgObj.iFrameScnId && (iFrameScnId = cfgObj.iFrameScnId);
                 if (cfgObj.iFrameReady) {
                     iFrameReady = cfgObj.iFrameReady;
                     clearTimeout(iFrameTimeout);
                 }
-
-                cfgObj.curUserPrefsViewId && (curUserPrefsViewId = cfgObj.curUserPrefsViewId);
-                cfgObj.hbViewId && (hbViewId = cfgObj.hbViewId);
-                cfgObj.accountLogsViewId && (accountLogsViewId = cfgObj.accountLogsViewId);
-
-                cfgObj.acctSwVersionFld && (acctSwVersionFld = cfgObj.acctSwVersionFld);
-                cfgObj.acctUtcHbFld && (acctUtcHbFld = cfgObj.acctUtcHbFld);
-                cfgObj.acctLocHbFld && (acctLocHbFld = cfgObj.acctLocHbFld);
-                cfgObj.acctTimeZoneFld && (acctTimeZoneFld = cfgObj.acctTimeZoneFld);
-                cfgObj.acctOnlineFld && (acctOnlineFld = cfgObj.acctOnlineFld);
-                cfgObj.acctUserPrefsFld && (acctUserPrefsFld = cfgObj.acctUserPrefsFld);
-                cfgObj.updUserPrefsViewId && (updUserPrefsViewId = cfgObj.updUserPrefsViewId);
-
-                cfgObj.alLogTypeFld && (alLogTypeFld = cfgObj.alLogTypeFld);
-                cfgObj.alDetailsFld && (alDetailsFld = cfgObj.alDetailsFld);
-                cfgObj.alLogIdFld && (alLogIdFld = cfgObj.alLogIdFld);
-                cfgObj.alEmailFld && (alEmailFld = cfgObj.alEmailFld);
             },
 
             getCfg: function () {
                 return {
                     iFrameWnd,
                     iFrameReady,
-                    iFrameScnId,
                     curUserPrefsViewId,
                     updUserPrefsViewId,
                     hbViewId,
@@ -4901,6 +4920,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     acctTimeZoneFld,
                     acctOnlineFld,
                     acctUserPrefsFld,
+                    acctLastActivityFld,
                 };
             },
 
@@ -5369,7 +5389,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function addBulkDeleteButtons(view, data, div = null) {
-            if (!ktl.core.getCfg().enabled.bulkOps.bulkDelete || !data.length || Knack.router.current_scene_key === ktl.iFrameWnd.getCfg().iFrameScnId)
+            if (!ktl.core.getCfg().enabled.bulkOps.bulkDelete || !data.length || ktl.scenes.isiFrameWnd())
                 return;
 
             var prepend = false;
@@ -5606,3 +5626,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //Replace all forceReload messages to the new reloadAppMsg
 //TODO: replace by a list of last 10 logs and a timestamp
 //ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
+//Delete and replace this:  getRoleNames: function ()
