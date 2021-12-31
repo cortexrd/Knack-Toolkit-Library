@@ -2429,10 +2429,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.allowUserFilters && (allowUserFilters = cfgObj.allowUserFilters);
-                cfgObj.ufCodeViewId && (ufCodeViewId = cfgObj.ufCodeViewId);
-                cfgObj.ufMenuViewId && (ufMenuViewId = cfgObj.ufMenuViewId);
-                cfgObj.ufDateTimeFld && (ufDateTimeFld = cfgObj.ufDateTimeFld);
-                cfgObj.ufFiltersCodeFld && (ufFiltersCodeFld = cfgObj.ufFiltersCodeFld);
             },
 
             getCfg: function () {
@@ -2881,12 +2877,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         else
                             $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
                     }
-
-                    //if (view.title.includes('USER_FILTERS_MENU'))
-                    //    ktl.userFilters.setCfg({ ufMenuViewId: view.key })
-
-                    //if (view.title.includes('USER_FILTERS_CODE'))
-                    //    ktl.userFilters.setCfg({ ufCodeViewId: view.key })
 
                     if (view.title.includes('ADD_TIMESTAMP'))
                         ktl.views.addTimeStampToHeader(view);
@@ -4700,8 +4690,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Logs cleanup and processing of email action.
         $(document).on('knack-view-render.any', function (event, view, data) {
-            //console.log('ktl.iFrameWnd.getCfg() =', ktl.iFrameWnd.getCfg());//$$$
-
             if (view.key === ktl.iFrameWnd.getCfg().acctLogsViewId) {
                 var recId = '';
                 for (var i = 0; i < data.length; i++) {
@@ -5605,3 +5593,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: replace by a list of last 10 logs and a timestamp
 //ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
 //Delete and replace this:  getRoleNames: function ()
+//TOTEST
