@@ -1,6 +1,6 @@
 //====================================================
 //====================================================
-var KnackAppProd = function ($, info = {}) {
+var KnackApp = function ($, info = {}) {
     window.$ = $;
 
     //Your App ID:  xxxxxxxxxxxxxxxxxxxxxxxx
