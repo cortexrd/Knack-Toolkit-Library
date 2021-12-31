@@ -604,7 +604,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            getFieldIdByName: function (objectId = '', fieldName = '') {
+            getFieldIdByName: function (fieldName = '', objectId = '') {
                 if (!objectId || !fieldName) return;
                 var fields = Knack.objects._byId[objectId].fields.models;
                 for (var i = 0; i < fields.length; i++) {
@@ -1851,9 +1851,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         var ufMenuViewId = ktl.core.getViewIdByTitle('USER_FILTERS_MENU');
         var ufCodeViewId = ktl.core.getViewIdByTitle('USER_FILTERS_CODE');
-        var obj = ktl.core.getObjectIdByName('Filters');
-        var ufDateTimeFld = ktl.core.getFieldIdByName(obj, 'Date/Time');
-        var ufFiltersCodeFld = ktl.core.getFieldIdByName(obj, 'Filters Code');
+        var obj = ktl.core.getObjectIdByName('User Filters');
+        var ufDateTimeFld = ktl.core.getFieldIdByName('Date/Time', obj);
+        var ufFiltersCodeFld = ktl.core.getFieldIdByName('Filters Code', obj);
 
         Object.defineProperty(allFiltersObj, "isEmpty", {
             get: function () { $.isEmptyObject(this); }
@@ -4643,19 +4643,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var acctLogsViewId = ktl.core.getViewIdByTitle('Account Logs', 'iframewnd');
 
         var obj = ktl.core.getObjectIdByName('Accounts');
-        var acctSwVersionFld = ktl.core.getFieldIdByName(obj, 'SW Version');
-        var acctUtcHbFld = ktl.core.getFieldIdByName(obj, 'UTC HB');
-        var acctTimeZoneFld = ktl.core.getFieldIdByName(obj, 'Time Zone');
-        var acctLocHbFld = ktl.core.getFieldIdByName(obj, 'LOC HB');
-        var acctOnlineFld = ktl.core.getFieldIdByName(obj, 'Online');
-        var acctUserPrefsFld = ktl.core.getFieldIdByName(obj, 'User Prefs');
-        var acctUtcLastActFld = ktl.core.getFieldIdByName(obj, 'UTC Last Activity');
+        var acctSwVersionFld = ktl.core.getFieldIdByName('SW Version', obj);
+        var acctUtcHbFld = ktl.core.getFieldIdByName('UTC HB', obj);
+        var acctTimeZoneFld = ktl.core.getFieldIdByName('Time Zone', obj);
+        var acctLocHbFld = ktl.core.getFieldIdByName('LOC HB', obj);
+        var acctOnlineFld = ktl.core.getFieldIdByName('Online', obj);
+        var acctUserPrefsFld = ktl.core.getFieldIdByName('User Prefs', obj);
+        var acctUtcLastActFld = ktl.core.getFieldIdByName('UTC Last Activity', obj);
 
         obj = ktl.core.getObjectIdByName('Account Logs');
-        var alLogTypeFld = ktl.core.getFieldIdByName(obj, 'Log Type');
-        var alDetailsFld = ktl.core.getFieldIdByName(obj, 'Details');
-        var alLogIdFld = ktl.core.getFieldIdByName(obj, 'Log Id');
-        var alEmailFld = ktl.core.getFieldIdByName(obj, 'Email To');
+        var alLogTypeFld = ktl.core.getFieldIdByName('Log Type', obj);
+        var alDetailsFld = ktl.core.getFieldIdByName('Details', obj);
+        var alLogIdFld = ktl.core.getFieldIdByName('Log Id', obj);
+        var alEmailFld = ktl.core.getFieldIdByName('Email To', obj);
         //Auto-detection of view and field IDs - END
 
         var highPriLoggingInterval = null;
