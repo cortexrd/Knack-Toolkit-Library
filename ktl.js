@@ -4649,7 +4649,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var acctLocHbFld = ktl.core.getFieldIdByName(obj, 'LOC HB');
         var acctOnlineFld = ktl.core.getFieldIdByName(obj, 'Online');
         var acctUserPrefsFld = ktl.core.getFieldIdByName(obj, 'User Prefs');
-        var acctLastActivityFld = ktl.core.getFieldIdByName(obj, 'UTC Last Activity');
+        var acctUtcLastActFld = ktl.core.getFieldIdByName(obj, 'UTC Last Activity');
 
         obj = ktl.core.getObjectIdByName('Account Logs');
         var alLogTypeFld = ktl.core.getFieldIdByName(obj, 'Log Type');
@@ -4888,7 +4888,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     acctTimeZoneFld,
                     acctOnlineFld,
                     acctUserPrefsFld,
-                    acctLastActivityFld,
+                    acctUtcLastActFld,
                 };
             },
 
