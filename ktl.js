@@ -3686,6 +3686,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //Scenes feature
     this.scenes = (function () {
         var spinnerCtrReload = 30;
+
+        //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
+        //Anyways... no one is getting impatient at an invisible window!
+        if (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID))
+            spinnerCtrReload = 60;
+
         var spinnerCtr = spinnerCtrReload;
         var spinnerInterval = null;
         var spinnerWdExcludeScn = [];
@@ -3762,7 +3768,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.kioskButtons && (kioskButtons = cfgObj.kioskButtons);
                 cfgObj.spinnerWdExcludeScn && (spinnerWdExcludeScn = cfgObj.spinnerWdExcludeScn);
                 cfgObj.onSceneRender && (onSceneRender = cfgObj.onSceneRender);
-                cfgObj.spinnerCtrReload && (spinnerCtrReload = cfgObj.spinnerCtrReload);
                 cfgObj.idleWatchDogTimeout && (idleWatchDogTimeout = cfgObj.idleWatchDogTimeout);
                 cfgObj.spinnerWatchDogTimeout && (spinnerWatchDogTimeout = cfgObj.spinnerWatchDogTimeout);
             },
@@ -4901,10 +4906,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     document.body.appendChild(iFrameWnd);
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
-
-                    //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
-                    //Anyways... no one is getting impatient at an invisible window!
-                    ktl.scenes.setCfg({ spinnerCtrReload: 60 }); //TOTEST
 
                     //ktl.log.clog('Created iFrameWnd', 'blue');
 
