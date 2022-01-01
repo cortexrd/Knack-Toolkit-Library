@@ -2860,7 +2860,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     //Hide the whole view, typically used when doing background searches.
                     if (view.title.includes('HIDDEN_VIEW')) {
-                        if (!ktl.account.getRoleNames().includes('Developer'))
+                        if (!Knack.getUserRoleNames().includes('Developer'))
                             $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' }); //Hide (move) away from screen to prevent clicking and adding duplicates.
                     }
 
@@ -4373,10 +4373,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('knack-view-render.any', function (event, view, data) {
             try {
                 if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId) {
-                    var acctUserPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-                    if (!acctUserPrefsFld) return;
+                    var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                    if (!acctPrefsFld) return;
 
-                    var prefsStr = data[acctUserPrefsFld];
+                    var prefsStr = data[acctPrefsFld];
                     if (!prefsStr) return;
                     var prefsTmpObj = JSON.parse(prefsStr);
 
@@ -4385,13 +4385,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (prefsStr.includes('iFrameRefresh')) {
                         delete prefsTmpObj['iFrameRefresh'];
                         var updatedPrefs = JSON.stringify(prefsTmpObj);
-                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctUserPrefsFld]: updatedPrefs })
+                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
                             .then(success => { location.reload(true); })
                             .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
                     } else if (prefsStr.includes('reloadApp')) {
                         delete prefsTmpObj['reloadApp'];
                         var updatedPrefs = JSON.stringify(prefsTmpObj);
-                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctUserPrefsFld]: updatedPrefs })
+                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
                             .then(success => { ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP); })
                             .catch(failure => { ktl.log.clog('reloadAppMsg failure: ' + failure, 'red'); })
                     } else {
@@ -4415,16 +4415,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 workShift: 'A'
                             };
 
-                            var updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
-                            if (!updUserPrefsViewId || !acctUserPrefsFld) return;
+                            var prefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
+                            if (!prefsViewId || !acctPrefsFld) return;
 
-                            document.querySelector('#' + acctUserPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
-                            document.querySelector('#' + updUserPrefsViewId + ' .kn-button.is-primary').click();
+                            document.querySelector('#' + acctPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
+                            document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
                             ktl.log.clog('Uploading default prefs to cloud', 'green');
                         }
                     }
                 } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) { //Form for user to update his own prefs
-                    var acctUserPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                    var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                     var allow = allowShowPrefs ? allowShowPrefs() : {};
                     if ($.isEmptyObject(allow)) {
                         ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
@@ -4476,7 +4476,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     function sendPrefsChangedMsg() {
                         userPrefsTmp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        document.querySelector('#' + acctUserPrefsFld).value = JSON.stringify(userPrefsTmp);
+                        document.querySelector('#' + acctPrefsFld).value = JSON.stringify(userPrefsTmp);
                     }
                 }
             }
@@ -4611,9 +4611,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
 
         return {
-            getRoleNames: function () {
-                return Knack.getUserRoleNames();
-            },
             isDeveloper: function () {
                 return Knack.getUserRoleNames().includes('Developer');
             },
@@ -4626,36 +4623,32 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //iFrameWnd feature
     this.iFrameWnd = (function () {
-        //TODO: Put all this in an object like core:  var cfg = {...
-        var iFrameWnd = null;
-        var iFrameReady = false;
+        var iFrameWnd = null; //The actual object
         var iFrameTimeout = null;
-
-        //Auto-detection of view and field IDs - BEGIN
-        var hbViewId = ktl.core.getViewIdByTitle('Heartbeat', 'iframewnd');
-        var curUserPrefsViewId = ktl.core.getViewIdByTitle('Current User Prefs', 'iframewnd');
-        var updUserPrefsViewId = ktl.core.getViewIdByTitle('Update User Prefs', 'iframewnd');
-        var acctLogsViewId = ktl.core.getViewIdByTitle('Account Logs', 'iframewnd');
-
-        var obj = ktl.core.getObjectIdByName('Accounts');
-        var acctSwVersionFld = ktl.core.getFieldIdByName('SW Version', obj);
-        var acctUtcHbFld = ktl.core.getFieldIdByName('UTC HB', obj);
-        var acctTimeZoneFld = ktl.core.getFieldIdByName('Time Zone', obj);
-        var acctLocHbFld = ktl.core.getFieldIdByName('LOC HB', obj);
-        var acctOnlineFld = ktl.core.getFieldIdByName('Online', obj);
-        var acctUserPrefsFld = ktl.core.getFieldIdByName('User Prefs', obj);
-        var acctUtcLastActFld = ktl.core.getFieldIdByName('UTC Last Activity', obj);
-
-        obj = ktl.core.getObjectIdByName('Account Logs');
-        var alLogTypeFld = ktl.core.getFieldIdByName('Log Type', obj);
-        var alDetailsFld = ktl.core.getFieldIdByName('Details', obj);
-        var alLogIdFld = ktl.core.getFieldIdByName('Log Id', obj);
-        var alEmailFld = ktl.core.getFieldIdByName('Email To', obj);
-        //Auto-detection of view and field IDs - END
-
         var highPriLoggingInterval = null;
         var lowPriLoggingInterval = null;
 
+        var accountsObj = ktl.core.getObjectIdByName('Accounts');
+        var accountLogsObj = ktl.core.getObjectIdByName('Account Logs');
+
+        var cfg = {
+            iFrameReady: false,
+            curUserPrefsViewId: ktl.core.getViewIdByTitle('Current User Prefs', 'iframewnd'),
+            updUserPrefsViewId: ktl.core.getViewIdByTitle('Update User Prefs', 'iframewnd'),
+            hbViewId: ktl.core.getViewIdByTitle('Heartbeat', 'iframewnd'),
+            acctLogsViewId: ktl.core.getViewIdByTitle('Account Logs', 'iframewnd'),
+            acctSwVersionFld: ktl.core.getFieldIdByName('SW Version', accountsObj),
+            acctUtcHbFld: ktl.core.getFieldIdByName('UTC HB', accountsObj),
+            acctTimeZoneFld: ktl.core.getFieldIdByName('Time Zone', accountsObj),
+            acctLocHbFld: ktl.core.getFieldIdByName('LOC HB', accountsObj),
+            acctOnlineFld: ktl.core.getFieldIdByName('Online', accountsObj),
+            acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
+            acctUtcLastActFld: ktl.core.getFieldIdByName('UTC Last Activity', accountsObj),
+            alLogTypeFld: ktl.core.getFieldIdByName('Log Type', accountLogsObj),
+            alDetailsFld: ktl.core.getFieldIdByName('Details', accountLogsObj),
+            alLogIdFld: ktl.core.getFieldIdByName('Log Id', accountLogsObj),
+            alEmailFld: ktl.core.getFieldIdByName('Email To', accountLogsObj),
+        }
 
         //High priority logs, sent every minute.
         var highPriorityLogs = [
@@ -4698,8 +4691,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (view.key === ktl.iFrameWnd.getCfg().acctLogsViewId) {
                 var recId = '';
                 for (var i = 0; i < data.length; i++) {
-                    ktl.log.removeLogById(data[i][alLogIdFld]);
-                    if (data[i][alEmailFld])
+                    ktl.log.removeLogById(data[i][cfg.alLogIdFld]);
+                    if (data[i][cfg.alEmailFld])
                         recId = data[i].id; //Catch oldest email not sent yet.
                 }
 
@@ -4745,12 +4738,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     var viewId = ktl.iFrameWnd.getCfg().acctLogsViewId;
                                     if (viewId) {
                                         var apiData = {};
-                                        apiData[alLogIdFld] = logObj.logId;
-                                        apiData[alLogTypeFld] = el.typeStr;
-                                        apiData[alDetailsFld] = details;
+                                        apiData[cfg.alLogIdFld] = logObj.logId;
+                                        apiData[cfg.alLogTypeFld] = el.typeStr;
+                                        apiData[cfg.alDetailsFld] = details;
                                         if (el.type === ktl.const.LS_CRITICAL) { //When critical, send via email immediately.
-                                            apiData[alEmailFld] = ktl.core.getCfg().developerEmail;
-                                            console.log('Critical error log, sending email to', apiData[alEmailFld]);
+                                            apiData[cfg.alEmailFld] = ktl.core.getCfg().developerEmail;
+                                            console.log('Critical error log, sending email to', apiData[cfg.alEmailFld]);
                                             ktl.views.autoRefresh(false);
                                             clearInterval(highPriLoggingInterval);
                                         }
@@ -4822,9 +4815,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 var viewId = ktl.iFrameWnd.getCfg().acctLogsViewId;
                                                 if (viewId) {
                                                     var apiData = {};
-                                                    apiData[alLogIdFld] = logObj.logId;
-                                                    apiData[alLogTypeFld] = el.typeStr;
-                                                    apiData[alDetailsFld] = details;
+                                                    apiData[cfg.alLogIdFld] = logObj.logId;
+                                                    apiData[cfg.alLogTypeFld] = el.typeStr;
+                                                    apiData[cfg.alDetailsFld] = details;
                                                     ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().acctLogsViewId], false)
                                                         .then(function (result) {
                                                             checkNext = true;
@@ -4862,27 +4855,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         return {
             setCfg: function (cfgObj = {}) {
                 if (cfgObj.iFrameReady) {
-                    iFrameReady = cfgObj.iFrameReady;
+                    cfg.iFrameReady = cfgObj.iFrameReady;
                     clearTimeout(iFrameTimeout);
                 }
             },
 
             getCfg: function () {
-                return {
-                    iFrameWnd,
-                    iFrameReady,
-                    curUserPrefsViewId,
-                    updUserPrefsViewId,
-                    hbViewId,
-                    acctLogsViewId,
-                    acctSwVersionFld,
-                    acctUtcHbFld,
-                    acctLocHbFld,
-                    acctTimeZoneFld,
-                    acctOnlineFld,
-                    acctUserPrefsFld,
-                    acctUtcLastActFld,
-                };
+                return cfg;
             },
 
             create: function () {
@@ -4944,7 +4923,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             getiFrameWnd: function () {
-                return iFrameWnd; //The actual object
+                return iFrameWnd;
             },
         }
     })();
@@ -5227,7 +5206,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var viewAttr = viewModel.attributes;
                 if (viewAttr.type === 'table') {
                     var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
-                    if (ktl.account.getRoleNames().includes('Bulk Delete') || (inlineEditing && ktl.account.getRoleNames().includes('Bulk Edit'))) {
+                    if (Knack.getUserRoleNames().includes('Bulk Delete') || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
                         ktl.bulkOps.enableBulkOperations(view, data);
                         if (bulkOpsInProgress)
                             processBulkOps();
@@ -5492,7 +5471,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //Called upon each view rendering.
             enableBulkOperations: function (view, data) {
                 ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
-                if (ktl.core.getCfg().enabled.bulkOps.bulkDelete && ktl.account.getRoleNames().includes('Bulk Delete'))
+                if (ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
                     addBulkDeleteButtons(view, data);
 
                 function masterCheckBoxCallback(numChecked) {
@@ -5572,6 +5551,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 /*
     --------- Useful code samples ---------
     var start = window.performance.now();
+    //Some code to execute here...
     var end = window.performance.now();
     console.log(`Execution time: ${end - start} ms`);
 */
@@ -5593,5 +5573,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //Replace all forceReload messages to the new reloadAppMsg
 //TODO: replace by a list of last 10 logs and a timestamp
 //ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
-//Delete and replace this:  getRoleNames: function ()
-//TOTEST
+
