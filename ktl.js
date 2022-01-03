@@ -17,14 +17,14 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.3.0';
+    const KTL_VERSION = '0.4.1';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
     var ktl = this;
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1019
+    //KEC stands for "KTL Event Code".  Next:  KEC_1020
 
     /**
     * Exposed constant strings
@@ -628,6 +628,36 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var title = views[j].attributes.title;
                         if (title && exactMatch && (title === srchTitle)) return views[j].id;
                         if (title && !exactMatch && title.includes(srchTitle)) return views[j].id;
+                    }
+                }
+            },
+
+            sortMenu: function () {
+                $('.kn-dropdown-menu').mouseenter(function (e) {
+                    var ul = $(this).find('.kn-dropdown-menu-list');
+                    ul.length && ktl.core.sortUList(ul[0]);
+                })
+            },
+
+            sortUList: function (uListElem) {
+                if (!uListElem) return;
+
+                var i, switching, b, shouldSwitch;
+                switching = true;
+                while (switching) {
+                    switching = false;
+                    b = uListElem.getElementsByTagName("LI");
+                    for (i = 0; i < (b.length - 1); i++) {
+                        shouldSwitch = false;
+                        if (b[i].innerText.toLowerCase() > b[i + 1].innerText.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+
+                    if (shouldSwitch) {
+                        b[i].parentNode.insertBefore(b[i + 1], b[i]);
+                        switching = true;
                     }
                 }
             },
@@ -1943,7 +1973,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         apiData[ufDateTimeFld] = dateTime;
                         apiData[ufFiltersCodeFld] = filters;
 
-                        knAPI(ufCodeViewId, recId, apiData, requestType, [ufCodeViewId])
+                        ktl.core.knAPI(ufCodeViewId, recId, apiData, requestType, [ufCodeViewId])
                             .then(function (response) {
                                 alert('Uploaded Filters to Cloud Successfully!');
                             })
@@ -2872,7 +2902,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
                     if (Knack.views[view.key] && Knack.views[view.key].model && Knack.views[view.key].model.view.options && Knack.views[view.key].model.view.options.cell_editor) {
-                        if (view.title.includes('NO_INLINE'))
+                        if (view.title.includes('NO_INLINE') && !ktl.account.isDeveloper())
                             $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
                         else
                             $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
@@ -3730,6 +3760,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             ktl.views.autoRefresh();
             ktl.scenes.resetIdleWatchdog();
             ktl.fields.convertNumToTel();
+            ktl.core.sortMenu();
 
             //Handle Scene change.
             if (prevScene != scene.key) {
@@ -4548,6 +4579,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 if (logLogin) {
                                     logLogin = false;
                                     ktl.log.addLog(ktl.const.LS_LOGIN, result);
+                                    if (localStorage.length > 1000)
+                                        ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
                                 }
 
                                 ktl.iFrameWnd.create();
@@ -4630,13 +4663,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         var accountsObj = ktl.core.getObjectIdByName('Accounts');
         var accountLogsObj = ktl.core.getObjectIdByName('Account Logs');
+        var appSettingsObj = ktl.core.getObjectIdByName('App Settings');
 
         var cfg = {
             iFrameReady: false,
+
+            appSettingsViewId: ktl.core.getViewIdByTitle('App Settings', 'iframewnd'),
+            appSettingsItemFld: ktl.core.getFieldIdByName('Item', appSettingsObj),
+            appSettingsValueFld: ktl.core.getFieldIdByName('Value', appSettingsObj),
+            appSettingsDateTimeFld: ktl.core.getFieldIdByName('Date/Time', appSettingsObj),
+
             curUserPrefsViewId: ktl.core.getViewIdByTitle('Current User Prefs', 'iframewnd'),
             updUserPrefsViewId: ktl.core.getViewIdByTitle('Update User Prefs', 'iframewnd'),
             hbViewId: ktl.core.getViewIdByTitle('Heartbeat', 'iframewnd'),
             acctLogsViewId: ktl.core.getViewIdByTitle('Account Logs', 'iframewnd'),
+
             acctSwVersionFld: ktl.core.getFieldIdByName('SW Version', accountsObj),
             acctUtcHbFld: ktl.core.getFieldIdByName('UTC HB', accountsObj),
             acctTimeZoneFld: ktl.core.getFieldIdByName('Time Zone', accountsObj),
@@ -4644,6 +4685,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             acctOnlineFld: ktl.core.getFieldIdByName('Online', accountsObj),
             acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
             acctUtcLastActFld: ktl.core.getFieldIdByName('UTC Last Activity', accountsObj),
+
             alLogTypeFld: ktl.core.getFieldIdByName('Log Type', accountLogsObj),
             alDetailsFld: ktl.core.getFieldIdByName('Details', accountLogsObj),
             alLogIdFld: ktl.core.getFieldIdByName('Log Id', accountLogsObj),
@@ -4688,7 +4730,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Logs cleanup and processing of email action.
         $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.key === ktl.iFrameWnd.getCfg().acctLogsViewId) {
+            if (view.key === cfg.acctLogsViewId) {
                 var recId = '';
                 for (var i = 0; i < data.length; i++) {
                     ktl.log.removeLogById(data[i][cfg.alLogIdFld]);
@@ -4712,7 +4754,38 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         })
                         .catch(function () { })
                 }
+            } else if (view.key === cfg.appSettingsViewId) {
+                var ver = APP_KTL_VERSIONS;
+                var recId = '';
+                for (var i = 0; i < data.length; i++) {
+                    if (data[i][cfg.appSettingsItemFld] === 'APP_KTL_VERSIONS' && data[i][cfg.appSettingsValueFld] !== APP_KTL_VERSIONS) {
+                        ver = data[i][cfg.appSettingsValueFld];
+                        recId = data[i].id;
+                        break;
+                    }
+                }
+
+                if (ver !== APP_KTL_VERSIONS) {
+                    if (ktl.account.isDeveloper() && confirm('Proceed with SW update ' + APP_KTL_VERSIONS + '?')) {
+                        var apiData = {};
+                        apiData[cfg.appSettingsValueFld] = APP_KTL_VERSIONS;
+                        apiData[cfg.appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
+
+                        ktl.core.knAPI(cfg.appSettingsViewId, recId, apiData, 'PUT', [cfg.appSettingsViewId])
+                            .then(function (response) {
+                                ktl.log.clog('Updating versions in table', 'purple');
+                                //ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, ver);
+                            })
+                            .catch(function (reason) {
+                                alert('An error occurred while uploading filters to cloud: ' + reason)
+                            })
+                    } else {
+                        console.log('sending reloadAppMsg with ver:', ver);//$$$
+                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, ver);
+                    }
+                }
             }
+
         })
 
         function startHighPriorityLogging() {
@@ -4735,7 +4808,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                     ktl.log.clog('Submitting high priority log for: ' + el.typeStr, 'purple');
 
-                                    var viewId = ktl.iFrameWnd.getCfg().acctLogsViewId;
+                                    var viewId = cfg.acctLogsViewId;
                                     if (viewId) {
                                         var apiData = {};
                                         apiData[cfg.alLogIdFld] = logObj.logId;
@@ -4748,7 +4821,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             clearInterval(highPriLoggingInterval);
                                         }
 
-                                        ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().acctLogsViewId], false)
+                                        ktl.core.knAPI(viewId, null, apiData, 'POST', [cfg.acctLogsViewId], false)
                                             .then(function (result) {
                                                 checkNext = true;
                                             })
@@ -4812,13 +4885,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 logObj.sent = true; //Do not send twice, when many opened windows.
                                                 ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                                                var viewId = ktl.iFrameWnd.getCfg().acctLogsViewId;
+                                                var viewId = cfg.acctLogsViewId;
                                                 if (viewId) {
                                                     var apiData = {};
                                                     apiData[cfg.alLogIdFld] = logObj.logId;
                                                     apiData[cfg.alLogTypeFld] = el.typeStr;
                                                     apiData[cfg.alDetailsFld] = details;
-                                                    ktl.core.knAPI(viewId, null, apiData, 'POST', [ktl.iFrameWnd.getCfg().acctLogsViewId], false)
+                                                    ktl.core.knAPI(viewId, null, apiData, 'POST', [cfg.acctLogsViewId], false)
                                                         .then(function (result) {
                                                             checkNext = true;
                                                         })
@@ -4967,12 +5040,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         case 'iFrameWndReadyMsg':
                             ktl.wndMsg.send('iFrameWndReadyMsg', 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.iFrameWnd.setCfg({ iFrameReady: true });
-
-                            if (event.data.msgData !== APP_KTL_VERSIONS) {
-                                ktl.core.timedPopup('Updating app to new version, please wait...');
-                                ktl.core.waitAndReload(2000);
-                            }
-
                             ktl.wndMsg.startHeartbeat();
 
                             //Delete iFrameWnd and re-create periodically.  This is to check for a SW update.
@@ -4986,15 +5053,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             break;
                         case 'heartbeatMsg':
                             var viewId = ktl.iFrameWnd.getCfg().hbViewId;
-                            if (!viewId) {
-                                ktl.log.clog('Found heartbeatMsg with empty viewId', 'purple');
+                            var fieldId = ktl.iFrameWnd.getCfg().acctUtcHbFld;
+                            if (!viewId || !fieldId) {
+                                ktl.log.clog('Found heartbeatMsg with invalid viewId or fieldId:' + viewId + ', ' + fieldId, 'purple');
                                 return;
                             }
 
                             var utcHb = ktl.core.getCurrentDateTime(true, false, false, true);
                             var locHB = new Date().valueOf();
                             var date = utcHb.substr(0, 10);
-                            var fieldId = ktl.iFrameWnd.getCfg().acctUtcHbFld;
+                            var sel = document.querySelector('#' + viewId + '-' + fieldId);
+                            if (!sel) return; //Happens when logging out or reloading app after a SW update.
+
                             document.querySelector('#' + viewId + '-' + fieldId).value = date;
                             var time = utcHb.substr(11, 5);
                             document.querySelector('#' + viewId + '-' + fieldId + '-time').value = time;
@@ -5015,14 +5085,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('Failure sending heartbeatMsg: ' + failure, 'red');
                                 })
                             break;
-                        case 'reloadAppMsg':
-                            ktl.debugWnd.lsLog('Rxed msg: reloadAppMsg');
-                            setTimeout(() => {
-                                if (typeof Android === 'object')
-                                    Android.restartApplication()
-                                else
-                                    location.reload(true);
-                            }, 200);
+                        case 'reloadAppMsg': //No need to ack this msg.
+                            ktl.debugWnd.lsLog('Rxed reloadAppMsg with: ' + event.data.msgData);
+
+                            if (event.data.msgData !== APP_KTL_VERSIONS) {
+                                ktl.core.timedPopup('Updating app to new version, please wait...');
+                                ktl.core.waitAndReload(2000);
+                            } else {
+                                setTimeout(() => {
+                                    if (typeof Android === 'object')
+                                        Android.restartApplication()
+                                    else
+                                        location.reload(true);
+                                }, 200);
+                            }
                             break;
                         case 'userPrefsChangedMsg':
                             if (window.self.frameElement && (event.data.dst === IFRAME_WND_ID)) { //App to iFrameWnd, when prefs are changed locally by user.
@@ -5566,11 +5642,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //   1) If iframe never acks its presence within X seconds, re - create it(this is done).
 //   2) If after 5 attempts, still not there, refresh app.
 //ktl.wndMsg.removeAllMsgOfType('heartbeatMsg'); //TODO:  change to delete all msg for dst === iFrameWnd.
-//Fails with undefined.value after a log out:  document.querySelector('#' + viewId + '-' + fieldId).value = date;
 //TODO: add getCategoryLogs.  Returns object with array and logId.
 //We need a logs category list, and move all constants from core to log object.
 //Msg is not handled:  parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
 //Replace all forceReload messages to the new reloadAppMsg
 //TODO: replace by a list of last 10 logs and a timestamp
 //ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
+//Test:  ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 
