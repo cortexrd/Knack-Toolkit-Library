@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.1';
+    const KTL_VERSION = '0.4.4';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -633,10 +633,22 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             sortMenu: function () {
-                $('.kn-dropdown-menu').mouseenter(function (e) {
-                    var ul = $(this).find('.kn-dropdown-menu-list');
-                    ul.length && ktl.core.sortUList(ul[0]);
-                })
+                if (Knack.isMobile()) {
+                    $('.kn-mobile-controls').mousedown(function (e) {
+                        ktl.core.waitSelector('#kn-mobile-menu.is-visible')
+                            .then(() => {
+                                var allMenus = $('#kn-mobile-menu').find('.kn-dropdown-menu-list');
+                                for (i = 0; i < (allMenus.length - 1); i++)
+                                    ktl.core.sortUList(allMenus[i]);
+                            })
+                            .catch((err) => { console.log('Failed finding menu.', err); });
+                    })
+                } else {
+                    $('.kn-dropdown-menu').mouseenter(function (e) {
+                        var ul = $(this).find('.kn-dropdown-menu-list');
+                        ul.length && ktl.core.sortUList(ul[0]);
+                    })
+                }
             },
 
             sortUList: function (uListElem) {
@@ -689,7 +701,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             //Returns empty string if key doesn't exist.
-            lsGetItem: function (lsKey) {
+            lsGetItem: function (lsKey) { //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
                 var val = '';
                 if (hasLocalStorage)
                     val = localStorage.getItem(APP_ROOT_NAME + lsKey);
@@ -4766,7 +4778,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 if (ver !== APP_KTL_VERSIONS) {
-                    if (ktl.account.isDeveloper() && confirm('Proceed with SW update ' + APP_KTL_VERSIONS + '?')) {
+                    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName && confirm('Proceed with SW update ' + APP_KTL_VERSIONS + '?')) {
                         var apiData = {};
                         apiData[cfg.appSettingsValueFld] = APP_KTL_VERSIONS;
                         apiData[cfg.appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
@@ -5649,4 +5661,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO: replace by a list of last 10 logs and a timestamp
 //ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
 //Test:  ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
-
+//TODO: lsGetItem - fix and allow returing null if key doesn't exist.
