@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.4';
+    const KTL_VERSION = '0.4.5';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4013,7 +4013,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 if (spinnerCtr < spinnerCtrReload - 5)
                                     ktl.core.timedPopup('Please wait... ' + (spinnerCtr + 1).toString() + ' seconds', 'success', 1100); //Allow a 100ms overlap to prevent blinking.
                             } else {
-                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1010 - Spinner Watchdog Timeout in ' + Knack.router.current_scene_key); //@@@ Replace by a weekly counter.
+                                ktl.log.addLog(ktl.const.LS_INFO, 'KEC_1010 - Spinner Watchdog Timeout in ' + Knack.router.current_scene_key); //@@@ Replace by a weekly counter.
                                 spinnerWatchDogTimeout && spinnerWatchDogTimeout(); //Callback to your App for proper handling.
                             }
                         } else {
