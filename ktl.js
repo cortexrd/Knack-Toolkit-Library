@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.5';
+    const KTL_VERSION = '0.4.6';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -3199,7 +3199,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         $(this).prepend('<td><input type="checkbox"></td>');
                     });
 
-                    if (!Knack.views[viewId].options.model.view.totals) return;
+                    if (!Knack.views[viewId].options.model || !Knack.views[viewId].options.model.view.totals) return;
 
                     var hasSummary = Knack.views[viewId].options.model.view.totals.length;
                     if (hasSummary) {
