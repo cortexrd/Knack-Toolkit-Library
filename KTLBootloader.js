@@ -4,7 +4,7 @@
  * A big advantage of this is that you can work directly from your local hard drive
  * during the development phase, which speeds up significatly each
  * save/refresh iteration cycle.
- * To do so, you need ot install NodeJS as a SSL file server on port 3000. * 
+ * To do so, you need to install NodeJS as a SSL file server on port 3000. * 
  * 
  * See documentation for more details.
  * */
