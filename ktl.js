@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.6';
+    const KTL_VERSION = '0.4.8';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -210,9 +210,16 @@ function Ktl($) {
 
                                         //Process critical failures by forcing a logout or hard reset.
                                         if (jqXHR.status === 401 || jqXHR.status === 403 || jqXHR.status === 500) {
-                                            if (window.self.frameElement)
-                                                alert('Your log-in has expired. Please log-out and back in to continue.'); //Alert is necessary because we can't event notify the parent in this case.
-                                            else {
+                                            if (window.self.frameElement) {
+                                                if (ktl.core.isKiosk()) {
+                                                    if (typeof Android === 'object')
+                                                        Android.restartApplication()
+                                                    else
+                                                        location.reload(true);
+                                                } else {
+                                                    alert('Your log-in has expired. Please log-out and back in to continue.'); //Alert is necessary because we can't even notify the parent in this case.
+                                                }
+                                            } else {
                                                 ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1002 - Forcing logout');
                                                 $('.kn-log-out').trigger('click'); //Token has expired, force logout.
                                                 location.reload(true);
@@ -4591,7 +4598,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 if (logLogin) {
                                     logLogin = false;
                                     ktl.log.addLog(ktl.const.LS_LOGIN, result);
-                                    if (localStorage.length > 1000)
+                                    if (localStorage.length > 500)
                                         ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
                                 }
 
@@ -4789,7 +4796,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 //ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, ver);
                             })
                             .catch(function (reason) {
-                                alert('An error occurred while uploading filters to cloud: ' + reason)
+                                alert('An error occurred while updating versions in table: ' + reason)
                             })
                     } else {
                         console.log('sending reloadAppMsg with ver:', ver);//$$$
@@ -5662,3 +5669,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
 //Test:  ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
+//Update old style:  function postLoginEvent()
