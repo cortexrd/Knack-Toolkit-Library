@@ -66,6 +66,7 @@ var KnackApp = function ($, info = {}) {
 
         ktl.fields.setCfg({
             onKeyPressed: onKeyPressed,
+            fieldValueHasChanged: fieldValueHasChanged,
             textAsNumeric: [],
         })
 

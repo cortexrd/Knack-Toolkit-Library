@@ -857,7 +857,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return sInfo;
             },
         }
-    })();
+    })(); //sysInfo
 
     //====================================================
     //Fields feature
@@ -865,6 +865,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var keyBuffer = '';
         var usingBarcodeReader = false;
         var onKeyPressed = null;
+        var fieldValueHasChanged = null;
         var textAsNumeric = []; //These are text fields that must be converted to numeric.
         var convertNumDone = false;
 
@@ -1066,6 +1067,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
+                cfgObj.fieldValueHasChanged && (fieldValueHasChanged = cfgObj.fieldValueHasChanged);
                 cfgObj.textAsNumeric && (textAsNumeric = cfgObj.textAsNumeric);
             },
 
@@ -1333,8 +1335,54 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     //console.log('sel =', sel);
                 }, 500);
             },
+
+            //Add Change event handlers for Dropdowns, Calendars, etc.
+            addChangeEventHandlers: function () {
+                //Dropdowns
+                $('.chzn-select').chosen().change(function (e, p) {
+                    console.log('...on change triggered');//$$$
+                    if (e.target.id) {
+                        var text = e.target.selectedOptions[0].innerText;
+                        var recId = e.target.selectedOptions[0].value; //@@@ TODO: create a function called hasRecIdFormat() to validate hex and 24 chars.
+                        if (text !== '' && text !== 'Select' && text !== 'Type to search') {
+                            text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
+
+                            processFieldChanged({ text: text, recId: recId, e: e});
+                        }
+                    }
+                });
+
+                function findLongestWord(str) {
+                    var longestWord = str.split(/[^a-zA-Z0-9]/).sort(function (a, b) { return b.length - a.length; });
+                    return longestWord[0];
+                }
+
+                //Calendars
+                $('.knack-date').datepicker().change(function (e) {
+                    processFieldChanged({ text: e.target.value, e: e });
+                })
+
+                //Etc.  TODO:  radio buttons, checkboxes
+
+                function processFieldChanged({ text: text, recId: recId, e: e }) {
+                    try {
+                        var viewId = e.target.closest('.kn-view').id;
+                        var fieldId = document.querySelector('#' + e.target.id).closest('.kn-input').getAttribute('data-input-id')
+                            || document.querySelector('#' + viewId + ' .kn-search-filter #' + e.target.id).getAttribute('name'); //TODO: Need to support multiple search fields.
+
+                        console.log('processFieldChanged:  text =', text, 'viewId =', viewId, 'fieldId =', fieldId, 'recId =', recId);//$$$
+                        var p = { viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e };
+                        ktl.persistentForm.fieldValueHasChanged(p);
+                        ktl.fields.fieldValueHasChanged(p); //Notify app of change
+                    } catch (err) { }
+                }
+            },
+
+            fieldValueHasChanged: function (p = { viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
+                fieldValueHasChanged && fieldValueHasChanged(p);
+            },
         }
-    })();
+    })(); //fields
 
     //====================================================
     //Persistent Form
@@ -1367,7 +1415,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             ktl.fields.convertNumToTel().then(() => {
                 loadFormData()
                     .then(() => {
-                        addChangeEventHandlers();
+                        ktl.fields.addChangeEventHandlers();
                         pfInitDone = true;
                         setTimeout(function () { ktl.fields.enforceNumeric(); }, 1000);
                     })
@@ -1489,19 +1537,23 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         textToFind = textToFind[0];
 
                                         //Start with a first 'rough' pass to populate option records...
-                                        ktl.views.searchDropdown(textToFind, fieldId, false, false)
+                                        ktl.views.searchDropdown(textToFind, fieldId, false, false, '', false)
                                             .then(function () { findRecId(recId); })
                                             .catch(function () { findRecId(recId); })
 
                                         //... then a second pass to find exact match with recId.
                                         function findRecId(recId) {
+                                            console.log('1 - sending trigger change...');//$$$
+
                                             recId && $('#' + view.key + '-' + fieldId).val(recId).trigger('liszt:updated').chosen().trigger('change');
+//Notify app of change
+
                                             numFields--;
                                             var chznContainer = $('[id*="' + fieldId + '"] .chzn-container');
                                             $(chznContainer).find('.chzn-drop').css('left', '-9000px');
                                         }
                                     } else if (fieldType === 'multiple_choice') {
-                                        fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false)
+                                        fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
                                             .then(function () { })
                                             .catch(function () { })
                                     }
@@ -1530,41 +1582,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             })
         }
 
-        //Add Change event handlers for Dropdowns, Calendars, etc.
-        function addChangeEventHandlers() {
-            //Dropdowns
-            $('.chzn-select').chosen().change(function (e, p) {
-                if (e.target.id) {
-                    var text = e.target.selectedOptions[0].innerText;
-                    var recId = e.target.selectedOptions[0].value; //@@@ TODO: create a function called hasRecIdFormat() to validate hex and 24 chars.
-                    if (text !== '' && text !== 'Select' && text !== 'Type to search') {
-                        text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
-                        var fieldId = $('#' + e.target.id).closest('.kn-input').attr('data-input-id');
-                        if (!fieldsToExclude.includes(fieldId)) {
-                            var viewId = e.target.closest('.kn-view').id;
-                            saveFormData(viewId, fieldId, text + '-' + recId);
-                        }
-                    }
-                }
-            });
-
-            function findLongestWord(str) {
-                var longestWord = str.split(/[^a-zA-Z0-9]/).sort(function (a, b) { return b.length - a.length; });
-                return longestWord[0];
-            }
-
-            //Calendars
-            $('.knack-date').datepicker().change(function (e) {
-                var text = e.target.value;
-                var fieldId = $('#' + e.target.id).closest('.kn-input').attr('data-input-id');
-                var viewId = e.target.closest('.kn-view').id;
-                saveFormData(viewId, fieldId, text);
-            })
-
-            //Etc.  TODO:  radio buttons, checkboxes
-        }
-
         //When input field text has changed or has lost focus, save it.
+        //Note that this function only applies to text input fields.  Other field types are saved through fieldValueHasChanged.
         function inputHasChanged(e = null) {
             if (!e || !e.target.type || e.target.id === 'chznBetter'
                 || e.target.className.includes('knack-date') || e.target.className.includes('ui-autocomplete-input'))
@@ -1625,6 +1644,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             setCfg: function (cfgObj = {}) {
                 cfgObj.scenesToExclude && (scenesToExclude = cfgObj.scenesToExclude);
                 cfgObj.fieldsToExclude && (fieldsToExclude = cfgObj.fieldsToExclude);
+            },
+
+            //Add Change event handlers for Dropdowns, Calendars, etc.
+            fieldValueHasChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
+                if (!fieldsToExclude.includes(fieldId)) {
+                    recId && (text += '-' + recId);
+                    saveFormData(viewId, fieldId, text);
+                }
             },
         }
     })(); //persistentForm
@@ -3242,20 +3269,33 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             // onlyExactMatch: if true, only the exact match is returned.  False will return all options containing text.
             //    -> Typically used when scanning a barcode.  When manual entry, user wants to view results and choose.
             // showPopup: True will show a 2-second confirmation message, found or not found.
-            // viewId: 'view_xyz' is optional.  If left empty, the first found field is used. (TODO)
-            searchDropdown: function (srchTxt = '', fieldId = '', onlyExactMatch = true, showPopup = true, viewId = '') {
+            // viewId: 'view_xyz' is used for Search Views, and optional for others.  If left empty, the first found field is used.
+            searchDropdown: function (srchTxt = '', fieldId = '', onlyExactMatch = true, showPopup = true, viewId = '', okToSaveForm = true) {
                 return new Promise(function (resolve, reject) {
                     if (!srchTxt || !fieldId) {
                         reject('');
                         return;
                     }
 
+                    console.log('Entering searchDropdown');//$$$
+                    console.log('fieldId =', fieldId);//$$$
+                    console.log('viewId =', viewId);//$$$
+                    console.log('srchTxt =', srchTxt);//$$$
+                    console.log('okToSaveForm =', okToSaveForm);//$$$
+                    //console.log(ktl.views.searchDropdown.caller);//$$$
+
                     var prefix = document.activeElement.closest('#cell-editor') ? '#cell-editor ' : ''; //Support inline editing.
                     var isSearchForm = false; //Not used yet. TODO...
                     var dropdownObj = $(prefix + '[id$="' + fieldId + '"]'); //Selector: id ends with field_xyz
                     if (dropdownObj.length === 0) { //Try search form
+                        console.log('111');//$$$
                         dropdownObj = $('.kn-search-form [id*="' + fieldId + '"].chzn-select');
+                        if (dropdownObj.length === 0) {
+                            console.log('222');//$$$
+                            dropdownObj = $('.kn-search-form[id*="' + viewId + '-search"] .chzn-select');
+                        }
                         isSearchForm = dropdownObj.length ? true : false;
+                        console.log('isSearchForm =', isSearchForm);//$$$
                     }
 
                     if (dropdownObj.length) {
@@ -3323,7 +3363,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                     if (showPopup)
                                                         ktl.core.timedPopup('Found ' + foundText);
 
-                                                    dropdownObj.trigger('change'); //Required to save persistent form data.
+                                                    if (okToSaveForm) {
+                                                        console.log('2 - sending trigger change...');//$$$
+                                                        dropdownObj.trigger('change'); //Required to save persistent form data.
+                                                    }
 
                                                     if (chznContainer.length) {
                                                         $(chznContainer).find('.chzn-drop').css('left', '-9000px');
@@ -3479,8 +3522,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Uses a Search view to find existing text.
             //Must have a single text input for a field, with exact match.
-            //ALso works with the generic 'Keyword Search' field, but its risky to miss if more than 100 results.
-            //Does not work for a connected field using a dropdown.
+            //Also works with the generic 'Keyword Search' field, but its risky to miss if more than 100 results.
+            //Does not work for a connected field using a dropdown (use ktl.views.searchDropdown if you need this).
             //Always perform an exact match
             //Set display results to 100 items and set sort order to maximize chances of finding target sooner.
             //fieldToCompare must not contain _RAW, as the code will automatically detect this.
