@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.9';
+    const KTL_VERSION = '0.4.10';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1400,9 +1400,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var pfInitDone = false;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key) || ktl.scenes.isiFrameWnd())
-                return;
+            if (ktl.scenes.isiFrameWnd()) return;
 
+            //Always erase potential residual data - for good luck.
             if (previousScene != scene.key) {
                 previousScene = scene.key;
                 for (var i = 0; i < currentViews.length; i++) {
@@ -1410,6 +1410,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 };
                 currentViews = [];
             }
+
+            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key))
+                return;
 
             ktl.fields.convertNumToTel().then(() => {
                 loadFormData()
