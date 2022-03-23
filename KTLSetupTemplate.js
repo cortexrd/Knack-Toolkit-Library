@@ -66,6 +66,7 @@ var KnackApp = function ($, info = {}) {
 
         ktl.fields.setCfg({
             onKeyPressed: onKeyPressed,
+            onFieldValueChanged: onFieldValueChanged,
             textAsNumeric: [],
         })
 
@@ -234,7 +235,7 @@ var KnackApp = function ($, info = {}) {
 
         //You can also reset the idle wd and do something else.
         //ktl.scenes.resetIdleWatchdog();
-        //Some action here...
+        //Your specific code here...
     }
 
     //When the spinner takes too long after a Submit or any other cases, by default reload the page.
@@ -247,6 +248,12 @@ var KnackApp = function ($, info = {}) {
     function onKeyPressed(e) {
         var key = String.fromCharCode(e.which);
         console.log('Key pressed =', key);
+    }
+
+    function onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
+        if (viewId === 'view_xyz') {
+            //Your specific code here...
+        }
     }
 
     //Special app-specific title flags.
