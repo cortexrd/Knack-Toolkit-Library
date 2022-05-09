@@ -61,7 +61,7 @@ var KnackApp = function ($, info = {}) {
         })
 
         ktl.views.setCfg({
-            processTitleFlags: processTitleFlags,
+            processViewFlags: processViewFlags,
         })
 
         ktl.fields.setCfg({
@@ -257,8 +257,10 @@ var KnackApp = function ($, info = {}) {
     }
 
     //Special app-specific title flags.
-    function processTitleFlags(view, data) {
-        if (view.title.includes('MY_APP_FLAG')) {
+    function processViewFlags(view, data) {
+        if (view.title && view.title !== '') {
+            if (view.title.includes('MY_APP_FLAG')) {
+            }
         }
     }
 

@@ -24,7 +24,7 @@ function Ktl($) {
 
     var ktl = this;
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1020
+    //KEC stands for "KTL Event Code".  Next:  KEC_1021
 
     /**
     * Exposed constant strings
@@ -1380,6 +1380,25 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             onFieldValueChanged: function (p = { viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 onFieldValueChanged && onFieldValueChanged(p);
             },
+
+            getViewFieldIdFromDescription: function (descr = '') {
+                try {
+                    var views = Object.entries(Knack.views);
+                    var viewId = '';
+                    for (var v = 0; v < views.length; v++) {
+                        viewId = views[v][0];
+                        if (Knack.views[viewId].model.form_object) {
+                            var fieldsAr = Knack.views[viewId].model.form_object.fields.models;
+                            for (var i = 0; i < fieldsAr.length; i++) {
+                                var fldDescr = fieldsAr[i].attributes.meta && fieldsAr[i].attributes.meta.description;
+                                if (fldDescr && fldDescr.includes(descr))
+                                    return { viewId: viewId, fieldId: fieldsAr[i].attributes.key };
+                            }
+                        }
+                    }
+                }
+                catch (e) { }
+            },
         }
     })(); //fields
 
@@ -1517,43 +1536,45 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (fieldsArray.length > 0) {
                             numFields += fieldsArray.length - 1;
                             fieldsArray.forEach(function (fieldId) {
-                                var fieldText = formDataObj[view.key][fieldId];
-                                var field = Knack.objects.getField(fieldId);
-                                if (field) {
-                                    var fieldType = field.attributes.type;
-                                    if (textDataTypes.includes(fieldType)) {
-                                        var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input')
-                                            || document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
+                                if (!fieldsToExclude.includes(fieldId)) {
+                                    var fieldText = formDataObj[view.key][fieldId];
+                                    var field = Knack.objects.getField(fieldId);
+                                    if (field) {
+                                        var fieldType = field.attributes.type;
+                                        if (textDataTypes.includes(fieldType)) {
+                                            var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input')
+                                                || document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
 
-                                        if (el) {
-                                            //The condition !el.value means 'Write value only if currently empty' 
-                                            //and prevents overwriting fields just populated by code.
-                                            !el.value && (el.value = fieldText);
-                                        }
-
-                                        numFields--;
-                                    } else if (fieldType === 'connection') {
-                                        var textToFind = fieldText.split('-');
-                                        var recId = textToFind.length === 2 ? textToFind[1] : '';
-                                        textToFind = textToFind[0];
-
-                                        //Start with a first 'rough' pass to populate option records...
-                                        ktl.views.searchDropdown(textToFind, fieldId, false, false, '', false)
-                                            .then(function () { findRecId(recId); })
-                                            .catch(function () { findRecId(recId); })
-
-                                        //... then a second pass to find exact match with recId.
-                                        function findRecId(recId) {
-                                            recId && $('#' + view.key + '-' + fieldId).val(recId).trigger('liszt:updated').chosen().trigger('change');
+                                            if (el) {
+                                                //The condition !el.value means 'Write value only if currently empty' 
+                                                //and prevents overwriting fields just populated by code.
+                                                !el.value && (el.value = fieldText);
+                                            }
 
                                             numFields--;
-                                            var chznContainer = $('[id*="' + fieldId + '"] .chzn-container');
-                                            $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                        } else if (fieldType === 'connection') {
+                                            var textToFind = fieldText.split('-');
+                                            var recId = textToFind.length === 2 ? textToFind[1] : '';
+                                            textToFind = textToFind[0];
+
+                                            //Start with a first 'rough' pass to populate option records...
+                                            ktl.views.searchDropdown(textToFind, fieldId, false, false, '', false)
+                                                .then(function () { findRecId(recId); })
+                                                .catch(function () { findRecId(recId); })
+
+                                            //... then a second pass to find exact match with recId.
+                                            function findRecId(recId) {
+                                                recId && $('#' + view.key + '-' + fieldId).val(recId).trigger('liszt:updated').chosen().trigger('change');
+
+                                                numFields--;
+                                                var chznContainer = $('[id*="' + fieldId + '"] .chzn-container');
+                                                $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                            }
+                                        } else if (fieldType === 'multiple_choice') {
+                                            fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
+                                                .then(function () { })
+                                                .catch(function () { })
                                         }
-                                    } else if (fieldType === 'multiple_choice') {
-                                        fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
-                                            .then(function () { })
-                                            .catch(function () { })
                                     }
                                 }
                             })
@@ -2863,7 +2884,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         const PAUSE_REFRESH = 'pause_auto_refresh';
         var autoRefreshViews = {};
         var unPauseTimer = null;
-        var processTitleFlags = null;
+        var processViewFlags = null;
+        var dropdownSearching = {}; //Used to prevent multiple searches on same field.
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
@@ -2884,7 +2906,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            ktlProcessTitleFlags(view, data);
+            ktlProcessViewFlags(view, data);
             ktl.views.addViewId(view);
         })
 
@@ -2914,7 +2936,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         //Process views with special flags in their titles, such as HIDDEN_VIEW and HIDDEN_TITLE, etc.
-        function ktlProcessTitleFlags(view, data) {
+        function ktlProcessViewFlags(view, data) {
             try {
                 //Clean up title first by removing all flags. All flags must be AFTER any title text to be kept.
                 if (view.title && view.title !== '') {
@@ -2955,8 +2977,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (view.title.includes('ADD_TIMESTAMP'))
                         ktl.views.addTimeStampToHeader(view);
                     
-                    processTitleFlags && processTitleFlags(view, data);
                 }
+
+                processViewFlags && processViewFlags(view, data);
 
                 //Put back h2 opacity to normal (see CSS code).
                 //This is to prevent seeing the title flags in headings until they are removed, which happens often on slower devices.
@@ -2967,7 +2990,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         return {
             setCfg: function (cfgObj = {}) {
-                cfgObj.processTitleFlags && (processTitleFlags = cfgObj.processTitleFlags);
+                cfgObj.processViewFlags && (processViewFlags = cfgObj.processViewFlags);
             },
 
             refreshView: function (viewId) {
@@ -3275,6 +3298,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         return;
                     }
 
+                    if (dropdownSearching[fieldId])
+                        return; //Exit if a search is already inprogress.
+
+                    dropdownSearching[fieldId] = fieldId;
+
                     var prefix = document.activeElement.closest('#cell-editor') ? '#cell-editor ' : ''; //Support inline editing.
                     var dropdownObj = $(prefix + '[id$="' + fieldId + '"]'); //Selector: id ends with field_xyz
                     if (dropdownObj.length === 0) { //Try search form
@@ -3358,11 +3386,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 } else { //Multiple options.
                                                     if (onlyExactMatch) {
                                                         ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
+                                                        delete dropdownSearching[fieldId];
                                                         reject(foundText);
                                                         return;
                                                     }
                                                 }
 
+                                                delete dropdownSearching[fieldId];
                                                 resolve(foundText);
                                                 return;
                                             } else { //Nothing found.
@@ -3376,11 +3406,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                     }
                                                 }
 
+                                                delete dropdownSearching[fieldId];
                                                 reject(foundText);
                                                 return;
                                             }
                                         })
                                         .catch(() => {
+                                            delete dropdownSearching[fieldId];
                                             reject('No results!');
                                         })
                                 } else { //Multi selection
@@ -3472,6 +3504,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         searchTimeout = setTimeout(function () { //Failsafe
                             Knack.hideSpinner();
                             clearInterval(intervalId);
+                            delete dropdownSearching[fieldId];
                             reject(foundText);
                             return; //JIC
                         }, 5000);
@@ -4396,7 +4429,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //User Preferences feature
     this.userPrefs = (function () {
-        var userPrefsObj = {
+        const defaultUserPrefsObj = {
             dt: new Date(1970, 0, 1),
             showViewId: false,
             showExtraDebugInfo: false,
@@ -4406,6 +4439,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //TODO:  allow dynamically adding more as per user requirements.
         };
 
+        var userPrefsObj = defaultUserPrefsObj;
+
         var myUserPrefsViewId = ktl.core.getViewIdByTitle('My Preferences');
 
         //App Callbacks
@@ -4413,9 +4448,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var applyUserPrefs = null; //Apply your own prefs.
 
         //Convert old prefs to new ones.
-        var lsPrefsStr = localStorage.getItem(Knack.app.attributes.name + '_' + ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
+        var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
         if (lsPrefsStr) {
             if (lsPrefsStr.includes('showId')) {
+                var oldFormat = lsPrefsStr;
                 userPrefsObj = JSON.parse(lsPrefsStr);
                 userPrefsObj.showViewId = userPrefsObj.showId;
                 userPrefsObj.showExtraDebugInfo = userPrefsObj.allowDebug;
@@ -4427,10 +4463,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 delete userPrefsObj.showIFrame;
 
                 lsPrefsStr = JSON.stringify(userPrefsObj);
-                localStorage.setItem(Knack.app.attributes.name + '_' + ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, lsPrefsStr);
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, lsPrefsStr);
 
-                ktl.debugWnd.lsLog('KTL - Converted old prefs format...');
-                ktl.log.addLog(ktl.const.LS_WRN, 'New app - PREFS_UPGRADE: user preferences have been converted.');
+                ktl.debugWnd.lsLog('KTL PREFS_UPGRADE - Converted old prefs. Old format: ' + oldFormat);
+                ktl.log.addLog(ktl.const.LS_INFO, 'PREFS_UPGRADE_1 : user preferences have been converted.  Old format: ' + oldFormat);
             }
         }
 
@@ -4456,54 +4492,53 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             try {
                 if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId) {
                     var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-                    if (!acctPrefsFld) return;
+                    var prefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
+                    if (!prefsViewId || !acctPrefsFld) {
+                        ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1020 - prefsViewId = "' + prefsViewId + '", acctPrefsFld = "' + acctPrefsFld + '"');
+                        return;
+                    }
 
                     var prefsStr = data[acctPrefsFld];
-                    if (!prefsStr) return;
-                    var prefsTmpObj = JSON.parse(prefsStr);
+                    if (prefsStr) {
+                        var prefsTmpObj = JSON.parse(prefsStr);
 
-                    //Add iFrameRefresh=true to user prefs and this will force a iFrameWnd refresh.
-                    //Can be useful sometimes to trigger on/off views via Page Rules.
-                    if (prefsStr.includes('iFrameRefresh')) {
-                        delete prefsTmpObj['iFrameRefresh'];
-                        var updatedPrefs = JSON.stringify(prefsTmpObj);
-                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
-                            .then(success => { location.reload(true); })
-                            .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
-                    } else if (prefsStr.includes('reloadApp')) {
-                        delete prefsTmpObj['reloadApp'];
-                        var updatedPrefs = JSON.stringify(prefsTmpObj);
-                        ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
-                            .then(success => { ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP); })
-                            .catch(failure => { ktl.log.clog('reloadAppMsg failure: ' + failure, 'red'); })
-                    } else {
-                        if (prefsStr && (prefsStr !== lastUserPrefs)) {
-                            ktl.log.clog('Prefs have changed!!!!', 'blue');
+                        //Add iFrameRefresh=true to user prefs and this will force a iFrameWnd refresh.
+                        //Can be useful sometimes to trigger on/off views via Page Rules.
+                        if (prefsStr.includes('iFrameRefresh')) {
+                            delete prefsTmpObj['iFrameRefresh'];
+                            var updatedPrefs = JSON.stringify(prefsTmpObj);
+                            ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
+                                .then(success => { location.reload(true); })
+                                .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
+                        } else if (prefsStr.includes('reloadApp')) {
+                            delete prefsTmpObj['reloadApp'];
+                            var updatedPrefs = JSON.stringify(prefsTmpObj);
+                            ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
+                                .then(success => { ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP); })
+                                .catch(failure => { ktl.log.clog('reloadAppMsg failure: ' + failure, 'red'); })
+                        } else {
+                            if (prefsStr && (prefsStr !== lastUserPrefs)) {
+                                ktl.log.clog('Prefs have changed!!!!', 'blue');
 
-                            lastUserPrefs = prefsStr;
+                                lastUserPrefs = prefsStr;
 
-                            ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, prefsStr);
-                            ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, prefsStr);
+                                ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
 
-                            ktl.userPrefs.applyUserPrefs();
-                        } else if (!prefsStr || prefsStr.includes('showId')) {
-                            //If nothing yet, or old format, use default object: 1970, etc.
-                            var defaultUserPrefsObj = {
-                                dt: new Date(1970, 0, 1),
-                                showViewId: false,
-                                showExtraDebugInfo: false,
-                                showIframeWnd: false,
-                                showDebugWnd: false,
-                                workShift: 'A'
-                            };
-
-                            var prefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
-                            if (!prefsViewId || !acctPrefsFld) return;
-
-                            document.querySelector('#' + acctPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
-                            document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
-                            ktl.log.clog('Uploading default prefs to cloud', 'green');
+                                ktl.userPrefs.ktlApplyUserPrefs();
+                            } else if (prefsStr.includes('showId')) {
+                                //If old format, wipe all and reset to default object: 1970, etc.
+                                document.querySelector('#' + acctPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
+                                document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
+                                ktl.log.clog('Uploading (upgrading) default prefs to cloud', 'red');
+                                ktl.log.addLog(ktl.const.LS_INFO, 'PREFS_UPGRADE_2 : user preferences have been converted.  Old format: ' + prefsStr);
+                            }
                         }
+                    } else {
+                        //If nothing yet, use default object: 1970, etc.
+                        document.querySelector('#' + acctPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
+                        document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
+                        ktl.log.clog('Uploading default prefs to cloud', 'green');
                     }
                 } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) { //Form for user to update his own prefs
                     var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
@@ -4528,7 +4563,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var showViewIdCb = ktl.fields.addCheckbox(prefsBar, 'Show View ID', userPrefsTmp.showViewId);
                         showViewIdCb.addEventListener('change', e => {
                             userPrefsTmp.showViewId = e.target.checked;
-                            sendPrefsChangedMsg();
+                            updateUserPrefsFormText();
                         });
                     }
 
@@ -4536,7 +4571,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var showIframeWndCb = ktl.fields.addCheckbox(prefsBar, 'Show iFrameWnd', userPrefsTmp.showIframeWnd);
                         showIframeWndCb.addEventListener('change', e => {
                             userPrefsTmp.showIframeWnd = e.target.checked;
-                            sendPrefsChangedMsg();
+                            updateUserPrefsFormText();
                         });
                     }
 
@@ -4544,7 +4579,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var showDebugWndCb = ktl.fields.addCheckbox(prefsBar, 'Show DebugWnd', userPrefsTmp.showDebugWnd);
                         showDebugWndCb.addEventListener('change', e => {
                             userPrefsTmp.showDebugWnd = e.target.checked;
-                            sendPrefsChangedMsg();
+                            updateUserPrefsFormText();
                         });
                     }
 
@@ -4552,11 +4587,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var showExtraDebugCb = ktl.fields.addCheckbox(prefsBar, 'Show Extra Debug', userPrefsTmp.showExtraDebugInfo);
                         showExtraDebugCb.addEventListener('change', e => {
                             userPrefsTmp.showExtraDebugInfo = e.target.checked;
-                            sendPrefsChangedMsg();
+                            updateUserPrefsFormText();
                         });
                     }
 
-                    function sendPrefsChangedMsg() {
+                    function updateUserPrefsFormText() {
                         userPrefsTmp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                         document.querySelector('#' + acctPrefsFld).value = JSON.stringify(userPrefsTmp);
                     }
@@ -4570,7 +4605,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            ktl.userPrefs.applyUserPrefs();
+            ktl.userPrefs.ktlApplyUserPrefs();
         })
 
         return {
@@ -4591,7 +4626,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return userPrefsObj;
             },
 
-            applyUserPrefs: function (refreshScene = false) {
+            ktlApplyUserPrefs: function (refreshScene = false) {
                 ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
                 ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
                 for (var viewId in Knack.views)
@@ -4602,8 +4637,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (refreshScene && !applyUserPrefs)
                     ktl.scenes.refreshScene();
+
                 applyUserPrefs && applyUserPrefs(refreshScene);
             },
+
+            getDefaultUserPrefs: function () {
+                return defaultUserPrefsObj;
+            }
         }
     })(); //User Prefs
 
@@ -5170,7 +5210,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 });
                             } else { //iFrameWnd to App, when prefs changed remotely, by user or Sysop.
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
-                                ktl.userPrefs.applyUserPrefs();
+                                ktl.userPrefs.ktlApplyUserPrefs();
                             }
                             break;
                         default:
