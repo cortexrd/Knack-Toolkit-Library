@@ -2885,7 +2885,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var autoRefreshViews = {};
         var unPauseTimer = null;
         var processViewFlags = null;
-        var dropdownSearching = {}; //Used to prevent multiple searches on same field.
+        var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
