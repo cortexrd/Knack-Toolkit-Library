@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.11';
+    const KTL_VERSION = '0.4.12';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -953,9 +953,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Do we need to add the chznBetter object?
             //chznBetter is ktl's fix to a few chzn dropdown problems.
+            //chzn-container-multi
             if (e.path.length >= 1 && !ktl.fields.getUsingBarcode()) {
                 //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
                 var dropdownId = $(e.target).closest('.chzn-container').attr('id');
+                var isMultiSelect = $(e.target).closest('.chzn-container-multi').length > 0;
+
                 var dropdownNeedsFix = false;
                 if (dropdownId !== undefined && !dropdownId.includes('kn_conn_'))
                     dropdownNeedsFix = $('#' + dropdownId).find('.ui-autocomplete-input').length > 0;
@@ -968,7 +971,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if ($('#chznBetter').length > 0)
                             $('#chznBetter').remove();
 
-                        if (dropdownNeedsFix && dropdownId.length > 0) {
+                        if (dropdownNeedsFix && dropdownId.length > 0 && !isMultiSelect) {
                             if ($('#chznBetter').length === 0)
                                 ktl.fields.addChznBetter(dropdownId);
                         }
@@ -1069,7 +1072,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('knack-scene-render.any', function (event, scene) {
             //Dropdowns
             $('.chzn-select').chosen().change(function (e, p) {
-                if (e.target.id) {
+                if (e.target.id && e.target.selectedOptions[0]) {
                     var text = e.target.selectedOptions[0].innerText;
                     var recId = e.target.selectedOptions[0].value; //@@@ TODO: create a function called hasRecIdFormat() to validate hex and 24 chars.
                     if (text !== '' && text !== 'Select' && text !== 'Type to search') {
@@ -3450,9 +3453,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                                     ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
                                                                     ktl.fields.chznBetterSetFocus();
                                                                 } else {
-                                                                    var lotNb = $(this)[0].innerText;
+                                                                    var tmpText = $(this)[0].innerText;
                                                                     //For some reason, if there's only one current entry under ul class "chzn-choices", we need to exclude that one.
-                                                                    if ($(prefix + '[id$="' + fieldId + '_chzn_c_0"]')[0].innerText !== lotNb) {
+                                                                    if ($(prefix + '[id$="' + fieldId + '_chzn_c_0"]')[0].innerText !== tmpText) {
                                                                         $(this).css({ 'background-color': 'lightgreen', 'padding-top': '8px' });
                                                                         $(this).css('display', 'list-item');
                                                                         foundAtLeastOne = true;
