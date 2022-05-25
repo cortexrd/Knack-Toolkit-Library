@@ -953,7 +953,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Do we need to add the chznBetter object?
             //chznBetter is ktl's fix to a few chzn dropdown problems.
-            //chzn-container-multi
+            //Note that support of multi-selection type has been removed.  Too buggy for now, and need more work.
             if (e.path.length >= 1 && !ktl.fields.getUsingBarcode()) {
                 //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
                 var dropdownId = $(e.target).closest('.chzn-container').attr('id');
@@ -1243,6 +1243,39 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 checkBox.checked = state;
 
                 return checkBox;
+            },
+
+            //====================================================
+            addRadioButton: function (div = null, label = '', name = ''/*group*/, id = '', value = '', rbStyle = '', lbStyle = '') {
+                if (div === null || name === '' || id === '') {
+                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'EC_1024 - Called addRadioButton with invalid parameters');
+                    return null;
+                }
+
+                if (!id) {
+                    id = label.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_"); //Any character other than a-z or 0-9, replace by underscore.
+                }
+
+                var rbLabel = document.getElementById(id + '-label-id');
+                var rbBtn = document.getElementById(id + '-id');
+
+                if (rbBtn === null) {
+                    rbBtn = document.createElement('input');
+                    rbBtn.type = 'radio';
+                    rbBtn.name = name;
+                    rbBtn.id = id + '-id';
+                    rbLabel = document.createElement('label');
+                    rbLabel.htmlFor = id + '-id';
+                    rbLabel.setAttribute('id', id + '-label-id');
+                    rbLabel.appendChild(document.createTextNode(label));
+                }
+
+                rbBtn.setAttribute('style', 'margin-left: 5px; width: 18px; height: 18px; margin-top: 3px; ' + rbStyle);
+                rbLabel.setAttribute('style', 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px; margin-top: 3px; ' + lbStyle);
+                div.append(rbBtn, rbLabel); //Move this up in === null ?
+                rbBtn.value = value;
+
+                return rbBtn;
             },
 
             //Barcode reader specific functions
