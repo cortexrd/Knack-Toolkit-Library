@@ -58,9 +58,9 @@ function Ktl($) {
     }
 
     /**
-     * Core functions
-     * @param  {} function(
-     */
+        * Core functions
+        * @param  {} function(
+        */
     this.core = (function () {
         var cfg = {
             developerName: '',
@@ -364,7 +364,6 @@ function Ktl($) {
 
             splitUrl: function (url) {
                 var urlParts = {};
-
                 var indexParams = url.indexOf('?');
                 if (indexParams === -1)
                     urlParts['path'] = url;
@@ -1503,6 +1502,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
                 return;
 
+            //TODO:  Investigate iOS bug eith userFilters.
             if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
                 var view = e.target.closest('.kn-form.kn-view');
                 if (view) {
@@ -1516,7 +1516,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             }
         })
-    
+
         //Save data for a given view and field.
         function saveFormData(viewId = '', fieldId = '', text = '') {
             if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId))
@@ -1565,7 +1565,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 Knack.router.scene_view.model.views.models.forEach(function (eachView) {
                     var view = eachView.attributes;
                     currentViews.push(view);
-                    
+
                     //Restore stored data
                     if (formDataObj[view.key]) {
                         var fieldsArray = Object.keys(formDataObj[view.key]);
@@ -1817,7 +1817,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
 
             /**
-             * The following color conversion code comes from here: https://gist.github.com/mjackson/5311256
+                * The following color conversion code comes from here: https://gist.github.com/mjackson/5311256
             * Converts an RGB color value to HSL. Conversion formula
             * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
             * Assumes r, g, and b are contained in the set [0, 255] and
@@ -1853,16 +1853,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             /**
-             * Converts an HSL color value to RGB. Conversion formula
-             * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
-             * Assumes h, s, and l are contained in the set [0, 1] and
-             * returns r, g, and b in the set [0, 255].
-             *
-             * @param   Number  h       The hue
-             * @param   Number  s       The saturation
-             * @param   Number  l       The lightness
-             * @return  Array           The RGB representation
-             */
+                * Converts an HSL color value to RGB. Conversion formula
+                * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+                * Assumes h, s, and l are contained in the set [0, 1] and
+                * returns r, g, and b in the set [0, 255].
+                *
+                * @param   Number  h       The hue
+                * @param   Number  s       The saturation
+                * @param   Number  l       The lightness
+                * @return  Array           The RGB representation
+                */
             hslToRgb: function (h, s, l) {
                 var r, g, b;
 
@@ -1890,16 +1890,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             /**
-             * Converts an RGB color value to HSV. Conversion formula
-             * adapted from http://en.wikipedia.org/wiki/HSV_color_space.
-             * Assumes r, g, and b are contained in the set [0, 255] and
-             * returns h, s, and v in the set [0, 1].
-             *
-             * @param   Number  r       The red color value
-             * @param   Number  g       The green color value
-             * @param   Number  b       The blue color value
-             * @return  Array           The HSV representation
-             */
+                * Converts an RGB color value to HSV. Conversion formula
+                * adapted from http://en.wikipedia.org/wiki/HSV_color_space.
+                * Assumes r, g, and b are contained in the set [0, 255] and
+                * returns h, s, and v in the set [0, 1].
+                *
+                * @param   Number  r       The red color value
+                * @param   Number  g       The green color value
+                * @param   Number  b       The blue color value
+                * @return  Array           The HSV representation
+                */
             rgbToHsv: function (r, g, b) {
                 r /= 255, g /= 255, b /= 255;
 
@@ -1925,16 +1925,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             /**
-             * Converts an HSV color value to RGB. Conversion formula
-             * adapted from http://en.wikipedia.org/wiki/HSV_color_space.
-             * Assumes h, s, and v are contained in the set [0, 1] and
-             * returns r, g, and b in the set [0, 255].
-             *
-             * @param   Number  h       The hue
-             * @param   Number  s       The saturation
-             * @param   Number  v       The value
-             * @return  Array           The RGB representation
-             */
+                * Converts an HSV color value to RGB. Conversion formula
+                * adapted from http://en.wikipedia.org/wiki/HSV_color_space.
+                * Assumes h, s, and v are contained in the set [0, 1] and
+                * returns r, g, and b in the set [0, 255].
+                *
+                * @param   Number  h       The hue
+                * @param   Number  s       The saturation
+                * @param   Number  v       The value
+                * @return  Array           The RGB representation
+                */
             hsvToRgb: function (h, s, v) {
                 var r, g, b;
 
@@ -2500,37 +2500,37 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var listPublic = document.createElement('li');
             listPublic.innerHTML = '<i class="fa fa-gift" style="margin-top: 2px;"></i> Public: ';
             listPublic.style.marginBottom = '8px';
-            
+                
             listPublic.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation(); //Required?
-            
+                
                 //console.log('Public');
-            
+                
                 var id = $(e.target).closest('.filterBtn').attr('id');
                 var filterName = $('#' + id);
                 $('.menuDiv').remove();
-            
+                
                 filterName = $('#' + id).text();
                 //console.log('filterName =', filterName);
-            
+                
                 //Toggle on/off
                 listPublic.innerHTML += 'Yes';
-            
+                
                 //var newFilterName = prompt('New Filter Name: ', filterName);
                 //if (newFilterName !== null && newFilterName !== '' && newFilterName !== filterName) {
                 //    var foundFilter = allFiltersObj[viewId].filters.find(function (filter) {
                 //        if (filter.filterName === filterName)
                 //            return filter;
                 //    });
-            
+                
                 //    foundFilter.filterName = newFilterName;
-            
+                
                 //    //Send to iFram so it can save it to System's User Prefs
                 //    saveAllFilters(allFiltersObj, viewId);
                 //}
             });
-
+    
             if (accountCanCreateSystemFilters)
                 ul.appendChild(listPublic);
             */
@@ -3012,7 +3012,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     if (view.title.includes('ADD_TIMESTAMP'))
                         ktl.views.addTimeStampToHeader(view);
-                    
+
                 }
 
                 processViewFlags && processViewFlags(view, data);
@@ -3611,14 +3611,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             /*//////////////////////////////////////////////////////////////////
             Removes or hides any table's columns, including those
             with Action, Edit and Delete.
-            
+                
             Input parameters:
-            
+                
                 - viewId: must be a view.key string, ex: 'view_123'
                 - remove: true removes elements from DOM, false only hides them.  Useful to hide them when you need to access data, but not secure.
                 - columnsArray: must be an array of 1-based integers, ex: [5, 2, 1] to remove 1st, 2nd and 5th columns.  Order MUST be decreasing.
                 - fieldsArray: must be an array of strings, ex: ['field_XXX', 'field_YYY'].  Order is not important.
-            
+                
                 You may use both arrays at same time, but columnsArray has precedence.
             */
             //////////////////////////////////////////////////////////////////
@@ -4329,7 +4329,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var newLog = {
                     dt: ktl.core.getCurrentDateTime(true, true, true, true),
                     type: type,
-                    details: details                    
+                    details: details
                 };
 
                 //Read logs as a string.
@@ -4407,8 +4407,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!logId) return;
 
                 var categories = [ktl.const.LS_LOGIN, ktl.const.LS_ACTIVITY, ktl.const.LS_NAVIGATION,
-                    ktl.const.LS_INFO, ktl.const.LS_DEBUG, ktl.const.LS_WRN, ktl.const.LS_APP_ERROR,
-                    ktl.const.LS_SERVER_ERROR, ktl.const.LS_CRITICAL];
+                ktl.const.LS_INFO, ktl.const.LS_DEBUG, ktl.const.LS_WRN, ktl.const.LS_APP_ERROR,
+                ktl.const.LS_SERVER_ERROR, ktl.const.LS_CRITICAL];
 
                 categories.forEach(category => {
                     var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
@@ -5778,3 +5778,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //Test:  ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
 //Update old style:  function postLoginEvent()
+//TODO:  Investigate iOS bug eith userFilters.
