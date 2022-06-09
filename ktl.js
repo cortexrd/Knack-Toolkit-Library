@@ -17,14 +17,14 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.13';
+    const KTL_VERSION = '0.4.14';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
     var ktl = this;
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1021
+    //KEC stands for "KTL Event Code".  Next:  KEC_1023
 
     /**
     * Exposed constant strings
@@ -3563,10 +3563,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             var failsafe = setTimeout(function () {
                                 ktl.log.clog('waitForOptions timeout', 'purple');
+                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1021 - waitForOptions timeout: ' + Knack.scene_hash + ', ' + dropdownObj[0].id);
                                 clearInterval(intervalId);
                                 reject(foundText);
                                 return; //JIC
-                            }, 5000);
+                            }, 15000);
                         })
                     }
                 });
@@ -4877,7 +4878,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.views.autoRefresh();
                                 startHighPriorityLogging();
                             } else
-                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_10xx - Failed sending email for critical error.  Msg = ' + msg);
+                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1022 - Failed sending email for critical error.  Msg = ' + msg);
                         })
                         .catch(function () { })
                 }
