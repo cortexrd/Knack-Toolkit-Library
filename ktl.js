@@ -209,7 +209,7 @@ function Ktl($) {
                                         jqXHR.viewId = viewId;
 
                                         //Process critical failures by forcing a logout or hard reset.
-                                        if (jqXHR.status === 401 || jqXHR.status === 403 || jqXHR.status === 500) {
+                                        if (jqXHR.status === 401 || jqXHR.status === 403) {
                                             if (window.self.frameElement) {
                                                 if (ktl.core.isKiosk()) {
                                                     if (typeof Android === 'object')
@@ -225,8 +225,13 @@ function Ktl($) {
                                                 location.reload(true);
                                             }
                                         } else {
-                                            if (jqXHR.status)
-                                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1003 - knAPI failure in ' + viewId + ', status: ' + jqXHR.status + ', statusText: ' + jqXHR.statusText);
+                                            if (jqXHR.status) {
+                                                if (jqXHR.status === 500) {
+                                                    console.log('Error 500');//$$$
+                                                    //TODO:  Stop everything related to logging and API calls.
+                                                } else
+                                                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1003 - knAPI failure in ' + viewId + ', status: ' + jqXHR.status + ', statusText: ' + jqXHR.statusText);
+                                            }
                                         }
 
                                         reject(new Error(jqXHR.statusText));
@@ -5779,4 +5784,5 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //Test:  ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
 //Update old style:  function postLoginEvent()
-//TODO:  Investigate iOS bug eith userFilters.
+//TODO:  Investigate iOS bug with userFilters.
+//TODO:  Stop everything related to logging and API calls.
