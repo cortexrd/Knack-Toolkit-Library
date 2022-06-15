@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.14';
+    const KTL_VERSION = '0.4.15';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1126,22 +1126,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (convertNumDone || ktl.scenes.isiFrameWnd())
                         resolve();
                     else {
-                        var fields = document.querySelectorAll('.kn-input');
-                        fields.forEach(function (field) {
-                            var viewId = $(field).closest('.kn-view') || e.target.closest('#cell-editor');
-                            if (viewId && viewId[0]) {
-                                viewId = viewId[0].id;
-                                if (field.closest('.kn-input-number') || textAsNumeric.includes(field.id)) {
-                                    var fieldId = document.querySelector('#' + field.id + ' .control [id]').id;
+                        var forms = document.querySelectorAll('.kn-form');
+                        forms.forEach(form => {
+                            var viewId = form.id;
+                            var fields = document.querySelectorAll('#' + viewId + ' .kn-input:not([data-is-connection])');
+                            fields.forEach(field => {
+                                var fieldId = field.attributes['data-input-id'].value;
+                                if (field.closest('.kn-input-number') || textAsNumeric.includes(fieldId)) {
                                     if (!field.getAttribute('numeric')) {
                                         field.setAttribute('numeric', true);
-                                        $(field).clone().attr('type', 'tel').insertAfter($(field)).prev().remove();
 
                                         //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
                                         $('#' + viewId + ' #' + fieldId).clone().attr('type', 'tel').insertAfter($('#' + viewId + ' #' + fieldId)).prev().remove();
                                     }
                                 }
-                            }
+                            })
                         })
 
                         convertNumDone = true;
