@@ -1510,7 +1510,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
                 var view = e.target.closest('.kn-form.kn-view');
                 if (view) {
-                    view && ktl.views.waitSubmitOutcome(view.id)
+                    ktl.views.waitSubmitOutcome(view.id)
                         .then(success => {
                             eraseFormData(Knack.router.scene_view.model.views._byId[view.id].attributes);
                         })
@@ -3955,29 +3955,29 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (window.self.frameElement || !ktl.core.isKiosk())
                     return;
 
-                var exit = false;
                 var backBtnText = '';
-                for (var viewId in Knack.views) {
-                    var view = Knack.views[viewId];
-                    if (Knack.router.scene_view.model.views._byId[viewId] && view && view.model.view.title) {
-                        //console.log('view.model.view.title =', view.model.view.title);
-                        if (view.model.view.title.includes('NO_BUTTONS'))
-                            exit = true;
-                        else {
-                            if (view.model.view.title.includes('ADD_BACK'))
-                                backBtnText = 'Back';
-                            else if (view.model.view.title.includes('ADD_DONE'))
-                                backBtnText = 'Done';
-                        }
+                var extraButtonBarId = '';
+
+                var views = Knack.router.scene_view.model.attributes.views;
+                for (var i = 0; i < views.length; i++) {
+                    var title = views[i].title;
+                    if (title.includes('NO_BUTTONS'))
+                        return;
+                    else {
+                        if (title.includes('ADD_REFRESH'))
+                            extraButtonBarId = views[i].key;
+
+                        if (title.includes('ADD_BACK'))
+                            backBtnText = 'Back';
+                        else if (title.includes('ADD_DONE'))
+                            backBtnText = 'Done';
                     }
+
+                    if (extraButtonBarId)
+                        break;
                 }
 
-                if (exit) return;
-
-                var addBackBtn = false;
-
-                if (backBtnText !== '')
-                    addBackBtn = true;
+                if (!extraButtonBarId) return;
 
                 //Messaging button    
                 var messagingBtn = null;
@@ -4035,9 +4035,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var hasSubmitButton = true;
                 var submitBar = document.getElementsByClassName('kn-submit');
-                //console.log('submitBar =', submitBar.length);
                 if (submitBar.length === 0) {
-                    submitBar = document.getElementsByTagName('h2'); //Happens with pages without a Submit button.  Ex:  Lamination Terminal.
+                    submitBar = document.getElementsByTagName('h2'); //Happens with pages without a Submit button.  Ex: When you only have a table.
                     if (submitBar.length === 0) {
                         //alert('ERROR - View Header is null'); //Important that someone sees this since it should never happen.
                         return;
