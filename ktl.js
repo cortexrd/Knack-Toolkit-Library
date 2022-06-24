@@ -3955,167 +3955,157 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (window.self.frameElement || !ktl.core.isKiosk())
                     return;
 
-                var backBtnText = '';
-                var extraButtonsBarId = '';
+                try {
+                    var backBtnText = '';
+                    if (typeof Knack.views[viewId].model.view.title === 'undefined')
+                        return;
 
-                var views = Knack.router.scene_view.model.attributes.views;
-                for (var i = 0; i < views.length; i++) {
-                    var title = views[i].title;
+                    var title = Knack.views[viewId].model.view.title;
                     if (title.includes('NO_BUTTONS'))
                         return;
                     else {
-                        if (title.includes('ADD_REFRESH'))
-                            extraButtonsBarId = views[i].key;
+                        if (title.includes('ADD_REFRESH')) {
+                            if (title.includes('ADD_BACK'))
+                                backBtnText = 'Back';
+                            else if (title.includes('ADD_DONE'))
+                                backBtnText = 'Done';
 
-                        if (title.includes('ADD_BACK'))
-                            backBtnText = 'Back';
-                        else if (title.includes('ADD_DONE'))
-                            backBtnText = 'Done';
+                            //Messaging button    
+                            var messagingBtn = null;
+                            if (kioskButtons.ADD_MESSAGING && !kioskButtons.ADD_MESSAGING.scenesToExclude.includes(Knack.router.current_scene_key)) {
+                                var messagingBtn = document.getElementById(kioskButtons.ADD_MESSAGING.id);
+                                if (messagingBtn === null) {
+                                    messagingBtn = document.createElement('BUTTON');
+                                    messagingBtn.classList.add('kn-button', 'kiosk-btn');
+                                    messagingBtn.id = kioskButtons.ADD_MESSAGING.id;
+                                    messagingBtn.innerHTML = kioskButtons.ADD_MESSAGING.html;
+
+                                    messagingBtn.addEventListener('click', function (e) {
+                                        e.preventDefault(); //Required otherwise calls Submit.
+                                        window.location.href = kioskButtons.ADD_MESSAGING.href;
+                                        ktl.storage.lsRemoveItem(ktl.const.LS_SYSOP_MSG_UNREAD);
+                                    });
+                                }
+                            }
+
+                            //Refresh button
+                            var refreshBtn = document.getElementById(kioskButtons.ADD_REFRESH.id);
+                            if (kioskButtons.ADD_REFRESH && !refreshBtn) {
+                                refreshBtn = document.createElement('BUTTON');
+                                refreshBtn.classList.add('kn-button', 'kiosk-btn');
+
+                                refreshBtn.id = kioskButtons.ADD_REFRESH.id;
+                                refreshBtn.innerHTML = kioskButtons.ADD_REFRESH.html;
+
+                                refreshBtn.addEventListener('click', function (e) {
+                                    e.preventDefault();
+                                    kioskButtons.ADD_REFRESH.href();
+                                });
+                            }
+
+                            //Back button
+                            var backBtn = document.getElementById(kioskButtons.ADD_BACK.id);
+                            if (backBtnText && !backBtn) {
+                                backBtn = document.createElement('BUTTON');
+                                backBtn.classList.add('kn-button', 'kiosk-btn');
+                                var backOrDone = backBtnText === 'Back' ? 'ADD_BACK' : 'ADD_DONE';
+                                backBtn.id = kioskButtons[backOrDone].id;
+                                backBtn.innerHTML = kioskButtons[backOrDone].html;
+
+                                backBtn.addEventListener('click', function (e) {
+                                    e.preventDefault();
+
+                                    //Exceptions, where we want to jump to an specific URL.
+                                    var href = $('#' + kioskButtons[backOrDone].id).attr('href');
+                                    if (href)
+                                        window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
+                                    else
+                                        kioskButtons[backOrDone].href();
+                                });
+                            }
+
+                            //Find the Submit bar with the buttons (ADD_BACK or ADD_DONE) or Header 2 if none.
+                            var hasSubmitButton = true;
+                            var submitBar = document.querySelector('#' + viewId + ' .kn-submit');
+                            if (!submitBar) {
+                                submitBar = document.querySelector('#' + viewId + ' h2'); //Happens with pages without a Submit button.  Ex: When you only have a table.
+                                if (!submitBar) {
+                                    //alert('ERROR - View Header is null'); //This since it should never happen.
+                                    return;
+                                } else {
+                                    $('.view-header > h2').css('display', 'inline-flex'); //Prevent Refresh button from being too low due to Block display style.
+                                    hasSubmitButton = false;
+                                }
+                            } else {
+                                //Add shift Button right next to Submit.
+                                var shiftBtn = kioskButtons.ADD_SHIFT && document.getElementById(kioskButtons.ADD_SHIFT.id);
+                                if (kioskButtons.ADD_SHIFT && !shiftBtn && !kioskButtons.ADD_SHIFT.scenesToExclude.includes(Knack.router.current_scene_key)) {
+                                    shiftBtn = document.createElement('BUTTON');
+                                    shiftBtn.classList.add('kn-button');
+                                    shiftBtn.style.marginLeft = '30px';
+                                    shiftBtn.id = kioskButtons.ADD_SHIFT.id;
+
+                                    submitBar.appendChild(shiftBtn);
+                                    kioskButtons.ADD_SHIFT.html(ktl.userPrefs.getUserPrefs().workShift);
+
+                                    shiftBtn.addEventListener('click', function (e) {
+                                        e.preventDefault();
+                                        window.location.href = kioskButtons.ADD_SHIFT.href;
+                                    });
+                                }
+                            }
+
+                            if ($('.kn-menu').length === 0) { //No menu, just a plain terminal.
+                                $('.kn-submit').css('display', 'flex');
+                                var extraButtonsBar = document.querySelector('.extraButtonsBar');
+                                if (!extraButtonsBar) {
+                                    extraButtonsBar = document.createElement('div');
+                                    extraButtonsBar.setAttribute('class', 'extraButtonsBar');
+                                    submitBar.appendChild(extraButtonsBar);
+                                    $('.extraButtonsBar').css({ 'position': 'absolute', 'right': '2%' });
+
+                                    backBtn && extraButtonsBar.appendChild(backBtn); //Then add Menu bar to Submit bar
+                                    refreshBtn && extraButtonsBar.appendChild(refreshBtn);
+                                    messagingBtn && extraButtonsBar.appendChild(messagingBtn);
+                                } else {
+                                    backBtn && extraButtonsBar.appendChild(backBtn); //Then add Menu bar to Submit bar
+                                    refreshBtn && extraButtonsBar.appendChild(refreshBtn);
+                                    messagingBtn && extraButtonsBar.appendChild(messagingBtn);
+                                }
+                            } else { //Page has menu buttons.
+                                var knMenuBar = document.querySelector('.kn-menu');
+                                backBtn && knMenuBar.appendChild(backBtn);
+
+                                //Add Refresh and Messaging at end of menu.
+                                refreshBtn && knMenuBar.appendChild(refreshBtn);
+                                messagingBtn && knMenuBar.appendChild(messagingBtn);
+
+                                //Then add Menu bar to Submit bar, if there's one.
+                                if (submitBar.classList.contains('kn-submit'))
+                                    submitBar.appendChild(knMenuBar);
+
+                                $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
+                                $('.kn-menu').css({ 'display': 'inline-flex', 'position': 'absolute', 'right': '1%' });
+                                $('.kn-menu > div').css({ 'margin-right': '20px' });
+                            }
+
+                            //Make all buttons same size and style.
+                            if (!$.isEmptyObject(style))
+                                $('.kn-button').css(style);
+                            else
+                                $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '40px', 'line-height': '0px' });
+
+                            $('.kiosk-btn').css({ 'margin-left': '20px' });
+
+                            if (!hasSubmitButton)
+                                $('.kn-button').css({ 'height': '33px' });
+                        }
                     }
-
-                    if (extraButtonsBarId)
-                        break;
                 }
-
-                if (!extraButtonsBarId) return;
-
-                console.log('extraButtonsBarId =', extraButtonsBarId);//$$$
-
-
-                //Messaging button    
-                var messagingBtn = null;
-                if (kioskButtons.ADD_MESSAGING && !kioskButtons.ADD_MESSAGING.scenesToExclude.includes(Knack.router.current_scene_key)) {
-                    var messagingBtn = document.getElementById(kioskButtons.ADD_MESSAGING.id);
-                    if (messagingBtn === null) {
-                        messagingBtn = document.createElement('BUTTON');
-                        messagingBtn.classList.add('kn-button', 'kiosk-btn');
-                        messagingBtn.id = kioskButtons.ADD_MESSAGING.id;
-                        messagingBtn.innerHTML = kioskButtons.ADD_MESSAGING.html;
-
-                        messagingBtn.addEventListener('click', function (e) {
-                            e.preventDefault(); //Required otherwise calls Submit.
-                            window.location.href = kioskButtons.ADD_MESSAGING.href;
-                            ktl.storage.lsRemoveItem(ktl.const.LS_SYSOP_MSG_UNREAD);
-                        });
-                    }
+                catch (e) {
+                    ktl.log.clog('addKioskButtons exception:', 'purple');
+                    console.log(e);
                 }
-
-                //Refresh button
-                var refreshBtn = document.getElementById('kn-button-refresh');
-                if (kioskButtons.ADD_REFRESH && !refreshBtn) {
-                    refreshBtn = document.createElement('BUTTON');
-                    refreshBtn.classList.add('kn-button', 'kiosk-btn');
-
-                    refreshBtn.id = kioskButtons.ADD_REFRESH.id;
-                    refreshBtn.innerHTML = kioskButtons.ADD_REFRESH.html;
-
-                    refreshBtn.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        kioskButtons.ADD_REFRESH.href();
-                    });
-                }
-
-                //Back button
-                var backBtn = document.getElementById(kioskButtons.ADD_BACK.id);
-                if (backBtnText && !backBtn) {
-                    backBtn = document.createElement('BUTTON');
-                    backBtn.classList.add('kn-button', 'kiosk-btn');
-                    var backOrDone = backBtnText === 'Back' ? 'ADD_BACK' : 'ADD_DONE';
-                    backBtn.id = kioskButtons[backOrDone].id;
-                    backBtn.innerHTML = kioskButtons[backOrDone].html;
-
-                    backBtn.addEventListener('click', function (e) {
-                        e.preventDefault();
-
-                        //Exceptions, where we want to jump to an specific URL.
-                        var href = $('#' + kioskButtons[backOrDone].id).attr('href');
-                        if (href)
-                            window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
-                        else
-                            kioskButtons[backOrDone].href();
-                    });
-                }
-
-                //Find the Submit bar with the buttons (ADD_BACK or ADD_DONE) or Header 2 if none.
-                var hasSubmitButton = true;
-                var submitBar = document.querySelector('#' + extraButtonsBarId + ' .kn-submit');
-                if (!submitBar) {
-                    submitBar = document.querySelector('h2'); //Happens with pages without a Submit button.  Ex: When you only have a table.
-                    if (!submitBar) {
-                        //alert('ERROR - View Header is null'); //This since it should never happen.
-                        return;
-                    } else {
-                        $('.view-header > h2').css('display', 'inline-flex'); //Prevent Refresh button from being too low due to Block display style.
-                        hasSubmitButton = false;
-                    }
-                } else {
-                    //Add shift Button right next to Submit.
-                    var shiftBtn = kioskButtons.ADD_SHIFT && document.getElementById(kioskButtons.ADD_SHIFT.id);
-                    if (kioskButtons.ADD_SHIFT && !shiftBtn && !kioskButtons.ADD_SHIFT.scenesToExclude.includes(Knack.router.current_scene_key)) {
-                        shiftBtn = document.createElement('BUTTON');
-                        shiftBtn.classList.add('kn-button');
-                        shiftBtn.style.marginLeft = '30px';
-                        shiftBtn.id = kioskButtons.ADD_SHIFT.id;
-
-                        submitBar.appendChild(shiftBtn);
-                        kioskButtons.ADD_SHIFT.html(ktl.userPrefs.getUserPrefs().workShift);
-
-                        shiftBtn.addEventListener('click', function (e) {
-                            e.preventDefault();
-                            window.location.href = kioskButtons.ADD_SHIFT.href;
-                        });
-                    }
-                }
-
-                if ($('.kn-menu').length === 0) { //No menu, just a plain terminal.
-                    $('.kn-submit').css('display', 'flex');
-                    var extraButtonsBar = document.querySelector('.extraButtonsBar');
-                    console.log('extraButtonsBar =', extraButtonsBar);//$$$
-                    if (!extraButtonsBar) {
-                        console.log('111');//$$$
-                        extraButtonsBar = document.createElement('div');
-                        extraButtonsBar.setAttribute('class', 'extraButtonsBar');
-                        console.log('submitBar =', submitBar);//$$$
-                        submitBar.appendChild(extraButtonsBar);
-                        $('.extraButtonsBar').css({ 'position': 'absolute', 'right': '2%' });
-
-                        console.log('Creating extraButtonsBar =', extraButtonsBar);
-
-                        backBtn && extraButtonsBar.appendChild(backBtn); //Then add Menu bar to Submit bar
-                        refreshBtn && extraButtonsBar.appendChild(refreshBtn);
-                        messagingBtn && extraButtonsBar.appendChild(messagingBtn);
-                    } else {
-                        backBtn && extraButtonsBar.appendChild(backBtn); //Then add Menu bar to Submit bar
-                        refreshBtn && extraButtonsBar.appendChild(refreshBtn);
-                        messagingBtn && extraButtonsBar.appendChild(messagingBtn);
-                    }
-                } else { //Page has menu buttons.
-                    var knMenuBar = document.querySelector('.kn-menu');
-                    backBtn && knMenuBar.appendChild(backBtn);
-
-                    //Add Refresh and Messaging at end of menu.
-                    refreshBtn && knMenuBar.appendChild(refreshBtn);
-                    messagingBtn && knMenuBar.appendChild(messagingBtn);
-
-                    //Then add Menu bar to Submit bar, if there's one.
-                    if (submitBar.classList.contains('kn-submit'))
-                        submitBar.appendChild(knMenuBar);
-
-                    $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
-                    $('.kn-menu').css({ 'display': 'inline-flex', 'position': 'absolute', 'right': '1%' });
-                    $('.kn-menu > div').css({ 'margin-right': '20px' });
-                }
-
-                //Make all buttons same size and style.
-                if (!$.isEmptyObject(style))
-                    $('.kn-button').css(style);
-                else
-                    $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '40px', 'line-height': '0px' });
-
-                $('.kiosk-btn').css({ 'margin-left': '20px' });
-
-                if (!hasSubmitButton)
-                    $('.kn-button').css({ 'height': '33px' });
             },
 
             spinnerWatchdog: function (run = true) {
