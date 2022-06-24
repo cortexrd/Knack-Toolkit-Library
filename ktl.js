@@ -3066,8 +3066,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 } else {
                                     Knack.views[viewId].model.fetch({
                                         success: function (model, response, options) {
-                                            if (['details' /*more types?*/].includes(viewType))
+                                            if (['details' /*more types?*/].includes(viewType)) {
                                                 Knack.views[viewId].render();
+                                                Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
+                                            }
 
                                             resolve(model);
                                             return;
@@ -3942,8 +3944,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     autoFocus && autoFocus();
             },
 
-            refreshScene: function () {
-                //console.log('ktl.scenes.refreshScene.caller =', ktl.scenes.refreshScene.caller);
+            //Improved version of Knack.router.scene_view.renderViews() that doesn't screw up all layout.
+            renderViews: function () {
+                //console.log('ktl.scenes.renderViews.caller =', ktl.scenes.renderViews.caller);
                 var views = Object.entries(Knack.views);
                 for (var i = 0; i < views.length; i++)
                     ktl.views.refreshView(views[i][0]);
@@ -4015,7 +4018,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 backBtn.addEventListener('click', function (e) {
                                     e.preventDefault();
 
-                                    //Exceptions, where we want to jump to an specific URL.
+                                    //Exceptions, where we want to jump to a specific URL.
                                     var href = $('#' + kioskButtons[backOrDone].id).attr('href');
                                     if (href)
                                         window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
@@ -4665,7 +4668,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return userPrefsObj;
             },
 
-            ktlApplyUserPrefs: function (refreshScene = false) {
+            ktlApplyUserPrefs: function (renderViews = false) {
                 ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
                 ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
                 for (var viewId in Knack.views)
@@ -4674,10 +4677,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
                 myUserPrefsViewId && ktl.views.refreshView(myUserPrefsViewId);
 
-                if (refreshScene && !applyUserPrefs)
-                    ktl.scenes.refreshScene();
+                if (renderViews && !applyUserPrefs)
+                    ktl.scenes.renderViews();
 
-                applyUserPrefs && applyUserPrefs(refreshScene);
+                applyUserPrefs && applyUserPrefs(renderViews);
             },
 
             getDefaultUserPrefs: function () {
