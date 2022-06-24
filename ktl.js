@@ -3910,7 +3910,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
-            ktl.scenes.addKioskButtons();
+            ktl.scenes.addKioskButtons(view.key, {});
         })
 
         $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
@@ -3951,12 +3951,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Add default extra buttons to facilitate Kiosk mode:  Refresh, Back, Done and Messaging
             //Excludes all iFrames and all view titles must not contain NO_BUTTONS flag.
-            addKioskButtons: function (style = {}) {
+            addKioskButtons: function (viewId = '', style = {}) {
                 if (window.self.frameElement || !ktl.core.isKiosk())
                     return;
 
                 var backBtnText = '';
-                var extraButtonBarId = '';
+                var extraButtonsBarId = '';
 
                 var views = Knack.router.scene_view.model.attributes.views;
                 for (var i = 0; i < views.length; i++) {
@@ -3965,7 +3965,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         return;
                     else {
                         if (title.includes('ADD_REFRESH'))
-                            extraButtonBarId = views[i].key;
+                            extraButtonsBarId = views[i].key;
 
                         if (title.includes('ADD_BACK'))
                             backBtnText = 'Back';
@@ -3973,11 +3973,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             backBtnText = 'Done';
                     }
 
-                    if (extraButtonBarId)
+                    if (extraButtonsBarId)
                         break;
                 }
 
-                if (!extraButtonBarId) return;
+                if (!extraButtonsBarId) return;
+
+                console.log('extraButtonsBarId =', extraButtonsBarId);//$$$
+
 
                 //Messaging button    
                 var messagingBtn = null;
@@ -4033,12 +4036,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     });
                 }
 
+                //Find the Submit bar with the buttons (ADD_BACK or ADD_DONE) or Header 2 if none.
                 var hasSubmitButton = true;
-                var submitBar = document.getElementsByClassName('kn-submit');
-                if (submitBar.length === 0) {
-                    submitBar = document.getElementsByTagName('h2'); //Happens with pages without a Submit button.  Ex: When you only have a table.
-                    if (submitBar.length === 0) {
-                        //alert('ERROR - View Header is null'); //Important that someone sees this since it should never happen.
+                var submitBar = document.querySelector('#' + extraButtonsBarId + ' .kn-submit');
+                if (!submitBar) {
+                    submitBar = document.querySelector('h2'); //Happens with pages without a Submit button.  Ex: When you only have a table.
+                    if (!submitBar) {
+                        //alert('ERROR - View Header is null'); //This since it should never happen.
                         return;
                     } else {
                         $('.view-header > h2').css('display', 'inline-flex'); //Prevent Refresh button from being too low due to Block display style.
@@ -4053,7 +4057,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         shiftBtn.style.marginLeft = '30px';
                         shiftBtn.id = kioskButtons.ADD_SHIFT.id;
 
-                        submitBar[0].appendChild(shiftBtn);
+                        submitBar.appendChild(shiftBtn);
                         kioskButtons.ADD_SHIFT.html(ktl.userPrefs.getUserPrefs().workShift);
 
                         shiftBtn.addEventListener('click', function (e) {
@@ -4065,32 +4069,37 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if ($('.kn-menu').length === 0) { //No menu, just a plain terminal.
                     $('.kn-submit').css('display', 'flex');
-                    var extraButtonsBar = document.getElementsByClassName('extraButtonsBar');
-                    if (extraButtonsBar.length === 0) {
+                    var extraButtonsBar = document.querySelector('.extraButtonsBar');
+                    console.log('extraButtonsBar =', extraButtonsBar);//$$$
+                    if (!extraButtonsBar) {
+                        console.log('111');//$$$
                         extraButtonsBar = document.createElement('div');
                         extraButtonsBar.setAttribute('class', 'extraButtonsBar');
-                        submitBar[0].appendChild(extraButtonsBar);
+                        console.log('submitBar =', submitBar);//$$$
+                        submitBar.appendChild(extraButtonsBar);
                         $('.extraButtonsBar').css({ 'position': 'absolute', 'right': '2%' });
-                        //console.log('Creating extraButtonsBar =', extraButtonsBar);
+
+                        console.log('Creating extraButtonsBar =', extraButtonsBar);
+
                         backBtn && extraButtonsBar.appendChild(backBtn); //Then add Menu bar to Submit bar
                         refreshBtn && extraButtonsBar.appendChild(refreshBtn);
                         messagingBtn && extraButtonsBar.appendChild(messagingBtn);
                     } else {
-                        backBtn && extraButtonsBar[0].appendChild(backBtn); //Then add Menu bar to Submit bar
-                        refreshBtn && extraButtonsBar[0].appendChild(refreshBtn);
-                        messagingBtn && extraButtonsBar[0].appendChild(messagingBtn);
+                        backBtn && extraButtonsBar.appendChild(backBtn); //Then add Menu bar to Submit bar
+                        refreshBtn && extraButtonsBar.appendChild(refreshBtn);
+                        messagingBtn && extraButtonsBar.appendChild(messagingBtn);
                     }
                 } else { //Page has menu buttons.
-                    var knMenuBar = document.getElementsByClassName('kn-menu');
-                    backBtn && knMenuBar[0].appendChild(backBtn);
+                    var knMenuBar = document.querySelector('.kn-menu');
+                    backBtn && knMenuBar.appendChild(backBtn);
 
                     //Add Refresh and Messaging at end of menu.
-                    refreshBtn && knMenuBar[0].appendChild(refreshBtn);
-                    messagingBtn && knMenuBar[0].appendChild(messagingBtn);
+                    refreshBtn && knMenuBar.appendChild(refreshBtn);
+                    messagingBtn && knMenuBar.appendChild(messagingBtn);
 
                     //Then add Menu bar to Submit bar, if there's one.
-                    if (submitBar[0].classList.contains('kn-submit'))
-                        submitBar[0].appendChild(knMenuBar[0]);
+                    if (submitBar.classList.contains('kn-submit'))
+                        submitBar.appendChild(knMenuBar);
 
                     $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
                     $('.kn-menu').css({ 'display': 'inline-flex', 'position': 'absolute', 'right': '1%' });
