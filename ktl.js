@@ -4030,12 +4030,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             //Find the Submit bar with the buttons (ADD_BACK or ADD_DONE) or Header 2 if none.
                             var submitBar = document.querySelector('#' + viewId + ' .kn-submit');
                             if (!submitBar) {
-                                submitBar = document.querySelector('#' + viewId + ' h2'); //Happens with pages without a Submit button.  Ex: When you only have a table.
+                                submitBar = document.querySelector('#' + viewId + ' .view-header'); //Happens with pages without a Submit button.  Ex: When you only have a table.
                                 if (!submitBar) {
                                     //alert('ERROR - View Header is null'); //This since it should never happen.
+                                    ktl.log.clog('ERROR - View Header is null', 'purple');
                                     return;
                                 } else {
-                                    $('.view-header > h2').css('display', 'inline-flex'); //Prevent Refresh button from being too low due to Block display style.
+                                    $('.view-header').css('display', 'inline-flex'); //Prevent Refresh button from being too low due to Block display style.
                                 }
                             } else {
                                 //Add shift Button right next to Submit.
@@ -4074,11 +4075,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             var knMenuBar = document.querySelector('.kn-menu');
                             if (knMenuBar) {
-                                submitBar.appendChild(knMenuBar);
-                                submitBar.appendChild(extraButtonsBar);
+                                //$(extraButtonsBar).prepend($(knMenuBar));
                                 $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
-                                $('.kn-menu').css({ 'display': 'inline-flex', 'position': 'absolute', 'right': '10%' });
-                                $('.kn-menu > div').css({ 'margin-right': '20px' });
+                                $('.kn-menu').css({ 'display': 'inline-flex', 'margin-right': '30px' });
                             } else
                                 $('.kn-submit').css('display', 'flex');
                         }
