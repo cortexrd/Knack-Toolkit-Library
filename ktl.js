@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.16';
+    const KTL_VERSION = '0.4.17';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4028,7 +4028,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
 
                             //Find the Submit bar with the buttons (ADD_BACK or ADD_DONE) or Header 2 if none.
-                            var hasSubmitButton = true;
                             var submitBar = document.querySelector('#' + viewId + ' .kn-submit');
                             if (!submitBar) {
                                 submitBar = document.querySelector('#' + viewId + ' h2'); //Happens with pages without a Submit button.  Ex: When you only have a table.
@@ -4037,7 +4036,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     return;
                                 } else {
                                     $('.view-header > h2').css('display', 'inline-flex'); //Prevent Refresh button from being too low due to Block display style.
-                                    hasSubmitButton = false;
                                 }
                             } else {
                                 //Add shift Button right next to Submit.
@@ -4058,59 +4056,46 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
                             }
 
+                            var extraButtonsBar = document.querySelector('.extraButtonsBar');
+                            if (!extraButtonsBar) {
+                                extraButtonsBar = document.createElement('div');
+                                extraButtonsBar.setAttribute('class', 'extraButtonsBar');
+                                submitBar.appendChild(extraButtonsBar);
+                                $('.extraButtonsBar').css({ 'position': 'absolute', 'right': '2%' });
 
-                            var knMenuBar = document.querySelector('.kn-menu');
-
-                            console.log('viewId =', viewId);//$$$
-                            console.log('knMenuBar  =', knMenuBar);//$$$
-                            console.log('type', Knack.views[viewId].model.view.type);//$$$
-
-                            if (!knMenuBar) { //No menu.
-                                console.log('no menu');//$$$
-                                $('.kn-submit').css('display', 'flex');
-                                var extraButtonsBar = document.querySelector('.extraButtonsBar');
-                                if (!extraButtonsBar) {
-                                    extraButtonsBar = document.createElement('div');
-                                    extraButtonsBar.setAttribute('class', 'extraButtonsBar');
-                                    submitBar.appendChild(extraButtonsBar);
-                                    $('.extraButtonsBar').css({ 'position': 'absolute', 'right': '2%' });
-
-                                    backBtn && extraButtonsBar.appendChild(backBtn);
-                                    refreshBtn && extraButtonsBar.appendChild(refreshBtn);
-                                    messagingBtn && extraButtonsBar.appendChild(messagingBtn);
-                                } else {
-                                    backBtn && extraButtonsBar.appendChild(backBtn);
-                                    refreshBtn && extraButtonsBar.appendChild(refreshBtn);
-                                    messagingBtn && extraButtonsBar.appendChild(messagingBtn);
-                                }
-                            } else { //Page has menu buttons.
-                                console.log('has menu');//$$$
-                                //var knMenuBar = document.querySelector('.kn-menu');
-                                backBtn && knMenuBar.appendChild(backBtn);
-
-                                //Add Refresh and Messaging at end of menu.
-                                refreshBtn && knMenuBar.appendChild(refreshBtn);
-                                messagingBtn && knMenuBar.appendChild(messagingBtn);
-
-                                //Then add Menu bar to Submit bar, if there's one.
-                                if (submitBar.classList.contains('kn-submit'))
-                                    submitBar.appendChild(knMenuBar);
-
-                                $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
-                                $('.kn-menu').css({ 'display': 'inline-flex', 'position': 'absolute', 'right': '1%' });
-                                $('.kn-menu > div').css({ 'margin-right': '20px' });
+                                backBtn && extraButtonsBar.appendChild(backBtn);
+                                refreshBtn && extraButtonsBar.appendChild(refreshBtn);
+                                messagingBtn && extraButtonsBar.appendChild(messagingBtn);
+                            } else {
+                                backBtn && extraButtonsBar.appendChild(backBtn);
+                                refreshBtn && extraButtonsBar.appendChild(refreshBtn);
+                                messagingBtn && extraButtonsBar.appendChild(messagingBtn);
                             }
 
-                            //Make all buttons same size and style.
-                            if (!$.isEmptyObject(style))
-                                $('.kn-button').css(style);
-                            else
-                                $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '40px', 'line-height': '0px' });
+                            var knMenuBar = document.querySelector('.kn-menu');
+                            if (knMenuBar) {
+                                submitBar.appendChild(knMenuBar);
+                                submitBar.appendChild(extraButtonsBar);
+                                $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
+                                $('.kn-menu').css({ 'display': 'inline-flex', 'position': 'absolute', 'right': '10%' });
+                                $('.kn-menu > div').css({ 'margin-right': '20px' });
+                            } else
+                                $('.kn-submit').css('display', 'flex');
+                        }
 
-                            $('.kiosk-btn').css({ 'margin-left': '20px' });
+                        //Make all buttons same size and style.
+                        if (!$.isEmptyObject(style))
+                            $('.kn-button').css(style);
+                        else
+                            $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '33px', 'line-height': '0px' });
 
-                            if (!hasSubmitButton)
-                                $('.kn-button').css({ 'height': '33px' });
+                        $('.kiosk-btn').css({ 'margin-left': '20px' });
+
+                        for (var i = 0; i < Knack.router.scene_view.model.views.length; i++) {
+                            if (Knack.router.scene_view.model.views.models[i].attributes.type === 'form') {
+                                $('.kn-button').css({ 'height': '40px' });
+                                break;
+                            }
                         }
                     }
                 }
