@@ -3965,7 +3965,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 try {
                     var backBtnText = '';
-                    if (typeof Knack.views[viewId].model.view.title === 'undefined')
+                    if (typeof Knack.views[viewId] === 'undefined' || typeof Knack.views[viewId].model.view.title === 'undefined')
                         return;
 
                     var title = Knack.views[viewId].model.view.title;
@@ -4065,7 +4065,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             var knMenuBar = document.querySelector('.kn-menu'); //Get first menu in page.
                             if (knMenuBar) {
                                 var menuSel = '#' + knMenuBar.id + '.kn-menu .control';
-                                ktl.core.waitSelector(menuSel)
+                                ktl.core.waitSelector(menuSel, 15000)
                                     .then(function () {
                                         ktl.core.hideSelector('#' + knMenuBar.id);
                                         var menuCopy = knMenuBar.cloneNode(true);
