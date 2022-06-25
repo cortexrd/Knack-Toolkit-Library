@@ -247,10 +247,15 @@ function Ktl($) {
                 return isKiosk();
             },
 
-            //Param is selector string.
-            hideSelector: function (sel = '') {
+            //Param is selector string and optionally if we want to put back a hidden element as it was.
+            hideSelector: function (sel = '', show = false) {
                 sel && ktl.core.waitSelector(sel)
-                    .then(() => { $(sel).css({ 'position': 'absolute', 'left': '-9000px' }); })
+                    .then(() => {
+                        if (show)
+                            $(sel).css({ 'position': '', 'left': '' });
+                        else
+                            $(sel).css({ 'position': 'absolute', 'left': '-9000px' });
+                    })
                     .catch(() => { ktl.log.clog('hideSelector failed waiting for selector: ' + sel, 'purple'); });
             },
 
@@ -4057,6 +4062,25 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
                             }
 
+                            var knMenuBar = document.querySelector('.kn-menu'); //Get first menu in page.
+                            if (knMenuBar) {
+                                var menuSel = '#' + knMenuBar.id + '.kn-menu .control';
+                                ktl.core.waitSelector(menuSel)
+                                    .then(function () {
+                                        ktl.core.hideSelector('#' + knMenuBar.id);
+                                        var menuCopy = knMenuBar.cloneNode(true);
+                                        menuCopy.id += '_copy';
+                                        $(extraButtonsBar).prepend($(menuCopy));
+                                        ktl.core.hideSelector('#' + menuCopy.id, true);
+                                        $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
+                                        $('.kn-menu').css({ 'display': 'inline-flex', 'margin-right': '30px' });
+                                    })
+                                    .catch(function () {
+                                        ktl.log.clog('menu bar not found', 'purple');
+                                    })
+                            } else
+                                $('.kn-submit').css('display', 'flex');
+
                             var extraButtonsBar = document.querySelector('.extraButtonsBar');
                             if (!extraButtonsBar) {
                                 extraButtonsBar = document.createElement('div');
@@ -4072,14 +4096,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 refreshBtn && extraButtonsBar.appendChild(refreshBtn);
                                 messagingBtn && extraButtonsBar.appendChild(messagingBtn);
                             }
-
-                            var knMenuBar = document.querySelector('.kn-menu');
-                            if (knMenuBar) {
-                                //$(extraButtonsBar).prepend($(knMenuBar));
-                                $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
-                                $('.kn-menu').css({ 'display': 'inline-flex', 'margin-right': '30px' });
-                            } else
-                                $('.kn-submit').css('display', 'flex');
                         }
 
                         //Make all buttons same size and style.
