@@ -4058,7 +4058,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
                             }
 
-                            if ($('.kn-menu').length === 0) { //No menu, just a plain terminal.
+
+                            var knMenuBar = document.querySelector('.kn-menu');
+
+                            console.log('viewId =', viewId);//$$$
+                            console.log('knMenuBar  =', knMenuBar);//$$$
+                            console.log('type', Knack.views[viewId].model.view.type);//$$$
+
+                            if (!knMenuBar) { //No menu.
+                                console.log('no menu');//$$$
                                 $('.kn-submit').css('display', 'flex');
                                 var extraButtonsBar = document.querySelector('.extraButtonsBar');
                                 if (!extraButtonsBar) {
@@ -4067,16 +4075,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     submitBar.appendChild(extraButtonsBar);
                                     $('.extraButtonsBar').css({ 'position': 'absolute', 'right': '2%' });
 
-                                    backBtn && extraButtonsBar.appendChild(backBtn); //Then add Menu bar to Submit bar
+                                    backBtn && extraButtonsBar.appendChild(backBtn);
                                     refreshBtn && extraButtonsBar.appendChild(refreshBtn);
                                     messagingBtn && extraButtonsBar.appendChild(messagingBtn);
                                 } else {
-                                    backBtn && extraButtonsBar.appendChild(backBtn); //Then add Menu bar to Submit bar
+                                    backBtn && extraButtonsBar.appendChild(backBtn);
                                     refreshBtn && extraButtonsBar.appendChild(refreshBtn);
                                     messagingBtn && extraButtonsBar.appendChild(messagingBtn);
                                 }
                             } else { //Page has menu buttons.
-                                var knMenuBar = document.querySelector('.kn-menu');
+                                console.log('has menu');//$$$
+                                //var knMenuBar = document.querySelector('.kn-menu');
                                 backBtn && knMenuBar.appendChild(backBtn);
 
                                 //Add Refresh and Messaging at end of menu.
