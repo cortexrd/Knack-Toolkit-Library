@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.18';
+    const KTL_VERSION = '0.4.19';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4199,15 +4199,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             findViewWithTitle: function (srch = '', exact = false) {
-                var views = Object.entries(Knack.views);
+                var views = Knack.router.scene_view.model.views.models;
                 var title = '';
                 var viewId = '';
                 srch = srch.toLowerCase();
-                for (var i = 0; i < views.length; i++) {
-                    viewId = views[i][0];
-                    title = views[i][1].model.view.title.toLowerCase();
-                    if (exact && title === srch) return viewId;
-                    if (title.includes(srch)) return viewId;
+                try {
+                    for (var i = 0; i < views.length; i++) {
+                        viewId = views[i].attributes.key;
+                        title = views[i].attributes.title.toLowerCase();
+                        if (exact && title === srch) return viewId;
+                        if (title.includes(srch)) return viewId;
+                    }
+                }
+                catch (e) {
+                    ktl.log.clog('Exception in findViewWithTitle:', 'purple');
+                    console.log(e);
                 }
                 return '';
             },
