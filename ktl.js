@@ -876,6 +876,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var onKeyPressed = null;
         var onFieldValueChanged = null;
         var textAsNumeric = []; //These are text fields that must be converted to numeric.
+        var chznBetterThresholds = {};
+        var chznBetterToExclude = [];
+        var chznBetterSetFocus = null;
         var convertNumDone = false;
 
         const DELAY_BEFORE_SEARCH_CHZN = 1500; //Fine-tuned for 'a bit below average' typing speed.
@@ -938,7 +941,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             chznBetterTxt = chznSingle.text().replace('Type to search', chznBetterTxt).replace('Select', chznBetterTxt);
 
                         $('#chznBetter').val(chznBetterTxt);
-                        ktl.fields.chznBetterSetFocus();
+                        ktl.fields.ktlChznBetterSetFocus();
                     }
                 }
             }
@@ -1122,6 +1125,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
                 cfgObj.onFieldValueChanged && (onFieldValueChanged = cfgObj.onFieldValueChanged);
                 cfgObj.textAsNumeric && (textAsNumeric = cfgObj.textAsNumeric);
+                cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
+                cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
+                cfgObj.chznBetterSetFocus && (chznBetterSetFocus = cfgObj.chznBetterSetFocus);
             },
 
             //Converts all applicable fields in the scene from text to numeric (telephone) type to allow numeric keypad on mobile devices.
@@ -1318,8 +1324,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //chznBetter functions
             // Ex. param:  dropdownId = 'view_XXX_field_YYY_chzn';
             addChznBetter: function (dropdownId) {
+                var fieldId = document.querySelector('#' + dropdownId).closest('.kn-input').getAttribute('data-input-id');
+                if (chznBetterToExclude.includes(fieldId))
+                    return;
+
                 //console.log('Entering addChznBetter');
-                var fieldId = $('#' + dropdownId).closest('.kn-input').attr('data-input-id');
                 var srchField = null;
                 if ($('#chznBetter').length === 0) {
                     chznBetterTxt = '';
@@ -1329,10 +1338,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (textAsNumeric.includes(fieldId)) {
                         chznBetter.setAttribute('type', 'tel');
                         chznBetter.setAttribute('numeric', 'true');
-                        chznBetter.setAttribute('threshold', '4'); //Minimum number of characters to be typed before search is triggered.
+                        chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '4'); //Minimum number of characters to be typed before search is triggered.
                     } else {
                         chznBetter.setAttribute('type', 'text');
-                        chznBetter.setAttribute('threshold', '3');
+                        chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '3');
                     }
 
                     chznBetter.setAttribute('id', 'chznBetter');
@@ -1380,8 +1389,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            chznBetterSetFocus: function () {
-                setTimeout(function () { $('#chznBetter').focus(); }, 200);
+            ktlChznBetterSetFocus: function () {
+                setTimeout(function () {
+                    $('#chznBetter').focus();
+                    chznBetterSetFocus && chznBetterSetFocus();
+                }, 200);
             },
 
             searchChznBetterDropdown: function (text = '') {
@@ -1401,7 +1413,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         })
                         .catch(function (foundText) {
                             if (foundText === '')
-                                ktl.fields.chznBetterSetFocus();
+                                ktl.fields.ktlChznBetterSetFocus();
                             else {
                                 setTimeout(function () {
                                     $(chzn).find('.chzn-drop').css('left', ''); //Put back, since was moved to -9000px.
@@ -3495,7 +3507,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                                     $(this).css({ 'background-color': 'lightpink', 'padding-top': '8px' });
                                                                     $(this).css('display', 'list-item');
                                                                     ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
-                                                                    ktl.fields.chznBetterSetFocus();
+                                                                    ktl.fields.ktlChznBetterSetFocus();
                                                                 } else {
                                                                     var tmpText = $(this)[0].innerText;
                                                                     //For some reason, if there's only one current entry under ul class "chzn-choices", we need to exclude that one.
@@ -3531,12 +3543,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                         $('.ui-autocomplete-input').val('');
                                                         $('#chznBetter').val('');
                                                         document.activeElement.blur();
-                                                        //ktl.fields.chznBetterSetFocus();
+                                                        //ktl.fields.ktlChznBetterSetFocus();
                                                     }
                                                 } else {
                                                     Knack.hideSpinner();
                                                     ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
-                                                    ktl.fields.chznBetterSetFocus();
+                                                    ktl.fields.ktlChznBetterSetFocus();
                                                 }
 
                                                 //autoFocus(); <- Leave out in this case!  
