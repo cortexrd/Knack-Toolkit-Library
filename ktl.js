@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.19';
+    const KTL_VERSION = '0.4.20';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1624,7 +1624,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 recId && $('#' + view.key + '-' + fieldId).val(recId).trigger('liszt:updated').chosen().trigger('change');
 
                                                 numFields--;
-                                                var chznContainer = $('[id*="' + fieldId + '"] .chzn-container');
+                                                var chznContainer = $('#' + view.key + ' [data-input-id="' + fieldId + '"] .chzn-container');
                                                 $(chznContainer).find('.chzn-drop').css('left', '-9000px');
                                             }
                                         } else if (fieldType === 'multiple_choice') {
@@ -3365,20 +3365,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var prefix = document.activeElement.closest('#cell-editor') ? '#cell-editor ' : ''; //Support inline editing.
                     var dropdownObj = $(prefix + '[id$="' + fieldId + '"]'); //Selector: id ends with field_xyz
                     if (dropdownObj.length === 0) { //Try search form
-                        dropdownObj = $('.kn-search-form [id*="' + fieldId + '"].chzn-select');
+                        dropdownObj = $('.kn-search-form [data-input-id="' + fieldId + '"].chzn-select');
                         if (dropdownObj.length === 0)
-                            dropdownObj = $('.kn-search-form[id*="' + viewId + '-search"] .chzn-select');
+                            dropdownObj = $('.kn-search-form[data-input-id="' + viewId + '-search"] .chzn-select');
                     }
 
                     if (dropdownObj.length) {
                         //Multiple choice (hard coded entries) drop downs. Ex: Work Shifts
-                        var isMultipleChoice = $(prefix + '[id*="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;;
-                        var chznSearchInput = $(prefix + '[id*="' + fieldId + '"] .chzn-container input').first();
-                        var isSingleSelection = $(prefix + '[id*="' + fieldId + '"] .chzn-container-single').length > 0 ? true : false;
-                        var chznContainer = $(prefix + '[id*="' + fieldId + '"] .chzn-container');
+                        var isMultipleChoice = $(prefix + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
+                        var chznSearchInput = $(prefix + '[data-input-id="' + fieldId + '"] .chzn-container input').first();
+                        var isSingleSelection = $(prefix + '[data-input-id="' + fieldId + '"] .chzn-container-single').length > 0 ? true : false;
+                        var chznContainer = $(prefix + '[data-input-id="' + fieldId + '"] .chzn-container');
 
                         //If the dropdown has a search field, trigger a search on the requested text now.
-                        if ($(prefix + '[id*="' + fieldId + '"] .ui-autocomplete-input').length > 0) {
+                        if ($(prefix + '[data-input-id="' + fieldId + '"] .ui-autocomplete-input').length > 0) {
                             chznSearchInput.focus();
                             chznSearchInput.autocomplete('search', srchTxt); //GO!
                             //Wait for response...
