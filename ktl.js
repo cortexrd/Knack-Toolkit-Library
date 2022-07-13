@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.20';
+    const KTL_VERSION = '0.4.21';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1399,28 +1399,34 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             searchChznBetterDropdown: function (text = '') {
                 if (!text) return;
 
-                chznBetterTxt = text;
-                if (document.querySelector('#chznBetter').getAttribute('valid') === 'false')
-                    return;
+                try {
+                    chznBetterTxt = text;
+                    if (document.querySelector('#chznBetter').getAttribute('valid') === 'false')
+                        return;
 
-                var chzn = document.activeElement.closest('.kn-input') || document.activeElement.closest('.chzn-container').previousElementSibling;
-                var fieldId = chzn.getAttribute('data-input-id') || chzn.getAttribute('name');
-                if (chzn && fieldId) {
-                    ktl.views.searchDropdown(text, fieldId, false, true)
-                        .then(function () {
-                            if (ktl.core.isKiosk())
-                                document.activeElement.blur(); //Remove Virtual Keyboard
-                        })
-                        .catch(function (foundText) {
-                            if (foundText === '')
-                                ktl.fields.ktlChznBetterSetFocus();
-                            else {
-                                setTimeout(function () {
-                                    $(chzn).find('.chzn-drop').css('left', ''); //Put back, since was moved to -9000px.
-                                    chzn.focus(); //Partial Match: Let use chose with up/down arrows and enter.
-                                }, 500);
-                            }
-                        })
+                    var chzn = document.activeElement.closest('.kn-input') || document.activeElement.closest('.chzn-container').previousElementSibling;
+                    var fieldId = chzn.getAttribute('data-input-id') || chzn.getAttribute('name');
+                    if (chzn && fieldId) {
+                        ktl.views.searchDropdown(text, fieldId, false, true)
+                            .then(function () {
+                                if (ktl.core.isKiosk())
+                                    document.activeElement.blur(); //Remove Virtual Keyboard
+                            })
+                            .catch(function (foundText) {
+                                if (foundText === '')
+                                    ktl.fields.ktlChznBetterSetFocus();
+                                else {
+                                    setTimeout(function () {
+                                        $(chzn).find('.chzn-drop').css('left', ''); //Put back, since was moved to -9000px.
+                                        chzn.focus(); //Partial Match: Let use chose with up/down arrows and enter.
+                                    }, 500);
+                                }
+                            })
+                    }
+                }
+                catch (e) {
+                    ktl.log.clog('Exception in searchChznBetterDropdown:', 'red');
+                    console.log(e);
                 }
             },
 
@@ -3358,27 +3364,25 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
 
                     if (dropdownSearching[fieldId])
-                        return; //Exit if a search is already inprogress.
+                        return; //Exit if a search is already in progress for this field.
 
                     dropdownSearching[fieldId] = fieldId;
 
-                    var prefix = document.activeElement.closest('#cell-editor') ? '#cell-editor ' : ''; //Support inline editing.
-                    var dropdownObj = $(prefix + '[id$="' + fieldId + '"]'); //Selector: id ends with field_xyz
-                    if (dropdownObj.length === 0) { //Try search form
-                        dropdownObj = $('.kn-search-form [data-input-id="' + fieldId + '"].chzn-select');
-                        if (dropdownObj.length === 0)
-                            dropdownObj = $('.kn-search-form[data-input-id="' + viewId + '-search"] .chzn-select');
-                    }
+                    //If we're editing a cell, then it becomes our view by default and ignore viewId parameter.
+                    //If viewId not specified, find first fieldId in page.
+                    var viewSel = document.activeElement.closest('#cell-editor') ? '#cell-editor ' : ''; //Support inline editing.
+                    viewSel = viewId ? '#' + viewId + ' ' : viewSel;
+                    var dropdownObj = $(viewSel + '[name="' + fieldId + '"].chzn-select');
 
                     if (dropdownObj.length) {
                         //Multiple choice (hard coded entries) drop downs. Ex: Work Shifts
-                        var isMultipleChoice = $(prefix + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
-                        var chznSearchInput = $(prefix + '[data-input-id="' + fieldId + '"] .chzn-container input').first();
-                        var isSingleSelection = $(prefix + '[data-input-id="' + fieldId + '"] .chzn-container-single').length > 0 ? true : false;
-                        var chznContainer = $(prefix + '[data-input-id="' + fieldId + '"] .chzn-container');
+                        var isMultipleChoice = $(viewSel + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
+                        var isSingleSelection = $(viewSel + '[id$="' + fieldId + '_chzn"].chzn-container-single').length > 0 ? true : false;
+                        var chznSearchInput = $(viewSel + '[id$="' + fieldId + '_chzn"].chzn-container input').first();
+                        var chznContainer = $(viewSel + '[id$="' + fieldId + '_chzn"].chzn-container');
 
                         //If the dropdown has a search field, trigger a search on the requested text now.
-                        if ($(prefix + '[data-input-id="' + fieldId + '"] .ui-autocomplete-input').length > 0) {
+                        if ($(viewSel + '[id$="' + fieldId + '_chzn"] .ui-autocomplete-input').length > 0) {
                             chznSearchInput.focus();
                             chznSearchInput.autocomplete('search', srchTxt); //GO!
                             //Wait for response...
@@ -3511,7 +3515,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                                 } else {
                                                                     var tmpText = $(this)[0].innerText;
                                                                     //For some reason, if there's only one current entry under ul class "chzn-choices", we need to exclude that one.
-                                                                    if ($(prefix + '[id$="' + fieldId + '_chzn_c_0"]')[0].innerText !== tmpText) {
+                                                                    if ($(viewSel + '[id$="' + fieldId + '_chzn_c_0"]')[0].innerText !== tmpText) {
                                                                         $(this).css({ 'background-color': 'lightgreen', 'padding-top': '8px' });
                                                                         $(this).css('display', 'list-item');
                                                                         foundAtLeastOne = true;
