@@ -1089,7 +1089,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var recId = e.target.selectedOptions[0].value; //@@@ TODO: create a function called hasRecIdFormat() to validate hex and 24 chars.
                     if (text !== '' && text !== 'Select' && text !== 'Type to search') {
                         text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
-
                         processFieldChanged({ text: text, recId: recId, e: e });
                     }
                 }
@@ -1763,6 +1762,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             initSystemColors: function () {
+                if (!document.querySelector('#kn-dynamic-styles')) return;
+
                 var dynStylesCssTxt = document.querySelector('#kn-dynamic-styles').innerText;
 
                 //Basic colors
@@ -5817,3 +5818,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //Update old style:  function postLoginEvent()
 //TODO:  Investigate iOS bug with userFilters.
 //TODO:  Stop everything related to logging and API calls.
+//TOTEST:  var isMultipleChoice = $(viewSel + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;

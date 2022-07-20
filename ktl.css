@@ -18,6 +18,26 @@ h2 {
 	display: none !important;
 }
 
+.kn-info-bar {
+	display: none !important;
+}
+
+.show-menu #kn-app-header {
+	display: block !important;
+}
+
+.show-menu .kn-info-bar {
+	display: block !important;
+}
+
+.kn-records-nav {
+	display: none;
+}
+
+.show-menu .kn-records-nav {
+	display: block;
+}
+
 tr:hover {
 	background-color: #fdfdfd !important; /*Make this configurable*/
 	filter: brightness(95%) !important; /*Make this configurable*/
