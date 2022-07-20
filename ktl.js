@@ -3316,22 +3316,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     });
 
                     // Add a checkbox to each row in the table body
-                    $('#' + viewId + '.kn-table tbody tr').each(function () {
+                    //$('#' + viewId + '.kn-table tbody tr:not(.kn-table-totals):not(.kn-table-group)').each(function (i, r) {
+                    $('#' + viewId + '.kn-table tbody tr:not(.kn-table-group)').each(function () {
                         $(this).prepend('<td><input type="checkbox"></td>');
                     });
 
-                    if (!Knack.views[viewId].options.model || !Knack.views[viewId].options.model.view.totals) return;
-
-                    var hasSummary = Knack.views[viewId].options.model.view.totals.length;
-                    if (hasSummary) {
+                    //If there's a summary, add a blank space at left to keep alignment.
+                    if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
                         var sel = '#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals';
-                        ktl.core.waitSelector(sel)
+                        ktl.core.waitSelector(sel, 10000)
                             .then(function () {
-                                $(sel).prepend('<td><input type="checkbox"></td>');
-                                $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals > td:nth-child(1) > input[type=checkbox]').css('display', 'none');
+                                $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
                             })
-                            .catch(function () {
-                            })
+                            .catch(function () { })
                     }
                 }
             },
