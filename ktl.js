@@ -2407,6 +2407,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Extract filter string for this view from URL and decode.
             var newFilterStr = '';
+            var newSortStr = '';
+            var newPerPageStr = '';
+            var newPageStr = '';
             var parts = ktl.core.splitUrl(window.location.href);
             const params = Object.entries(parts['params']);
             if (!$.isEmptyObject(params)) {
