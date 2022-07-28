@@ -2305,7 +2305,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
 
                                 var encodedNewFilter = encodeURIComponent(e.currentTarget.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
-                                var allParams = otherParams + filterDivId + '_filters=' + encodedNewFilter;
+
+                                var encodedNewPerPage = encodeURIComponent(e.currentTarget.filter.perPageString)
+
+                                var encodedNewSort = encodeURIComponent(e.currentTarget.filter.sortString).replace(/'/g, "%27").replace(/"/g, "%22");
+
+                                var encodedNewPage = encodeURIComponent(e.currentTarget.filter.pageString)
+
+                                var allParams = filterDivId + '_filters=' + encodedNewFilter + '&' + filterDivId + '_per_page=' + encodedNewPerPage + '&' + filterDivId + '_sort=' + encodedNewSort + '&' + filterDivId + '_page=' + encodedNewPage;
+
                                 newUrl += allParams;
 
                                 if (window.location.href !== newUrl)
@@ -2406,10 +2414,26 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (param[0].indexOf(filterDivId + '_filters') >= 0)
                         newFilterStr = param[1];
                 });
+                params.forEach(function (param) {
+                    if (param[0].indexOf(filterDivId + '_per_page') >= 0)
+                        newPerPageStr = param[1];
+                });
+
+                params.forEach(function (param) {
+                    if (param[0].indexOf(filterDivId + '_sort') >= 0)
+                        newSortStr = param[1];
+                });
+
+                params.forEach(function (param) {
+                    if (param[0].indexOf(filterDivId + '_page') >= 0)
+                        newPageStr = param[1];
+                });
             }
 
+            if (!newPageStr) return;
+            if (!newSortStr) return;
+            if (!newPerPageStr) return;
             if (!newFilterStr) return;
-
             var filterName = prompt('Filter Name: ', '');
             if (!filterName) return;
 
@@ -2433,15 +2457,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         }
                     } else {
                         //console.log('Adding filter to existing view');
-                        allFiltersObj[filterDivId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr });
+                        allFiltersObj[filterDivId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr, 'pageString': newPageStr });
                     }
                 } else {
                     //console.log('View not found.  Adding view with new filter');
-                    allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr }] };
+                    allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr, 'pageString': newPageStr }] };
                 }
             } else {
                 //console.log('No filters found, creating new');
-                allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr }] };
+                allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr, 'pageString': newPageStr }] };
             }
 
             ktl.userFilters.setActiveFilter(filterName, filterDivId);
