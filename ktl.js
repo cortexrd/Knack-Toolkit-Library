@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.21';
+    const KTL_VERSION = '0.4.22';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -3394,7 +3394,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     //If viewId not specified, find first fieldId in page.
                     var viewSel = document.activeElement.closest('#cell-editor') ? '#cell-editor ' : ''; //Support inline editing.
                     viewSel = viewId ? '#' + viewId + ' ' : viewSel;
-                    var dropdownObj = $(viewSel + '[name="' + fieldId + '"].chzn-select');
+                    var dropdownObj = $(viewSel + '[name="' + fieldId + '"].select');
 
                     if (dropdownObj.length) {
                         //Multiple choice (hard coded entries) drop downs. Ex: Work Shifts
