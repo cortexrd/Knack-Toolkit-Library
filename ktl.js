@@ -1182,6 +1182,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                 inputFld.setAttribute('valid', fieldValid);
                                 $('#' + viewId.id + ' [type=submit]').prop('disabled', !formValid); //Form Submit
+                                console.log('tadam!!!');//$$$
                                 $('#cell-editor > div.submit > a').attr('disabled', !formValid); //Inline Editing Submit
                                 $(inputFld).css('background-color', !fieldValid ? '#fdb0b0' : ''); //Same color as Knack errors.
                                 !formValid && ktl.scenes.spinnerWatchdog(formValid); //Don't let the disabled Submit cause a page reload.
@@ -1545,7 +1546,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Save data for a given view and field.
         function saveFormData(viewId = '', fieldId = '', text = '') {
-            if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId))
+            var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
+            if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId) || action !== 'insert'/*Add only, not Edit or any other type*/)
                 return;
 
             var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
@@ -1593,7 +1595,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     currentViews.push(view);
 
                     //Restore stored data
-                    if (formDataObj[view.key]) {
+                    if (formDataObj[view.key] && view.action === 'insert'/*Add only, not Edit or any other type*/) {
                         var fieldsArray = Object.keys(formDataObj[view.key]);
                         if (fieldsArray.length > 0) {
                             numFields += fieldsArray.length - 1;
@@ -1659,7 +1661,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     clearInterval(intervalId);
                     resolve();
                     return;
-                }, 5000);
+                }, 10000);
             })
         }
 
@@ -2143,7 +2145,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Load all filters from local storage.
         //Returns a temporary object from the localStorage.
-        //updateObj: true will modify the actual placeholder allFiltersObj, and false will not.  Used to merge filters form multiple opened browsers.
+        //updateObj: true will modify the actual placeholder allFiltersObj, and false will not.  Used to merge filters from multiple opened browsers.
         function loadAllFilters(updateObj = true) {
             var allFiltersObjTemp = {};
             var lsFilters = ktl.storage.lsGetItem(LS_FILTERS + Knack.getUserAttributes().id);
@@ -2296,8 +2298,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     params.forEach(function (param) {
                                         if (param[0].indexOf(filterDivId + '_filters') >= 0 || param[0].indexOf(filterDivId + '_page') >= 0) {
                                             //Ignore these
-                                        } else if (param[0].indexOf(filterDivId + '_page') >= 0) {
-                                            //Ignore also
                                         } else {
                                             otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22") + '&';
                                         }
@@ -2306,13 +2306,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                 var encodedNewFilter = encodeURIComponent(e.currentTarget.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
 
-                                var encodedNewPerPage = encodeURIComponent(e.currentTarget.filter.perPageString)
+                                //var encodedNewPerPage = encodeURIComponent(e.currentTarget.filter.perPageString);
+                                //console.log('encodedNewPerPage =', encodedNewPerPage);//$$$
+                                //console.log('e.currentTarget.filter.sortString =', e.currentTarget.filter.sortString);//$$$
+                                //var encodedNewSort = encodeURIComponent(e.currentTarget.filter.sortString).replace(/'/g, "%27").replace(/"/g, "%22").replace(/|/g, "%7C");
+                                //console.log('encodedNewSort =', encodedNewSort);//$$$
+                                var page = '1'; //Get from last URL in case user changed page.
+                                //var allParams = filterDivId + '_filters=' + encodedNewFilter + '&' + filterDivId + '_per_page=' + encodedNewPerPage + '&' + filterDivId + '_sort=' + encodedNewSort + '&' + filterDivId + '_page=' + encodedNewPage;
 
-                                var encodedNewSort = encodeURIComponent(e.currentTarget.filter.sortString).replace(/'/g, "%27").replace(/"/g, "%22");
-
-                                var encodedNewPage = encodeURIComponent(e.currentTarget.filter.pageString)
-
-                                var allParams = filterDivId + '_filters=' + encodedNewFilter + '&' + filterDivId + '_per_page=' + encodedNewPerPage + '&' + filterDivId + '_sort=' + encodedNewSort + '&' + filterDivId + '_page=' + encodedNewPage;
+                                var allParams = filterDivId + '_filters=' + encodedNewFilter + '&' + filterDivId + '_per_page=' + e.currentTarget.filter.perPageString + '&' + filterDivId + '_sort=' + e.currentTarget.filter.sortString + '&' + filterDivId + '_page=' + page;
 
                                 newUrl += allParams;
 
@@ -2403,6 +2405,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //When user saves a filter to a named button
         function saveUserFilter(filterDivId = '') {
+            console.log('filterDivId =', filterDivId);//$$$
             if (!filterDivId) return;
 
             //Extract filter string for this view from URL and decode.
@@ -2414,29 +2417,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             const params = Object.entries(parts['params']);
             if (!$.isEmptyObject(params)) {
                 params.forEach(function (param) {
-                    if (param[0].indexOf(filterDivId + '_filters') >= 0)
+                    if (param[0].includes(filterDivId + '_filters'))
                         newFilterStr = param[1];
-                });
-                params.forEach(function (param) {
-                    if (param[0].indexOf(filterDivId + '_per_page') >= 0)
+
+                    if (param[0].includes(filterDivId + '_per_page'))
                         newPerPageStr = param[1];
-                });
 
-                params.forEach(function (param) {
-                    if (param[0].indexOf(filterDivId + '_sort') >= 0)
+                    if (param[0].includes(filterDivId + '_sort'))
                         newSortStr = param[1];
-                });
-
-                params.forEach(function (param) {
-                    if (param[0].indexOf(filterDivId + '_page') >= 0)
-                        newPageStr = param[1];
                 });
             }
 
-            if (!newPageStr) return;
-            if (!newSortStr) return;
-            if (!newPerPageStr) return;
             if (!newFilterStr) return;
+
             var filterName = prompt('Filter Name: ', '');
             if (!filterName) return;
 
@@ -2457,18 +2450,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (confirm(filterName + ' already exists.  Do you want to overwrite?')) {
                             //console.log('Overwriting filter');
                             allFiltersObj[filterDivId].filters[i].filterString = newFilterStr;
+                            allFiltersObj[filterDivId].filters[i].perPageString = newPerPageStr;
+                            allFiltersObj[filterDivId].filters[i].sortString = newSortStr;
                         }
                     } else {
                         //console.log('Adding filter to existing view');
-                        allFiltersObj[filterDivId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr, 'pageString': newPageStr });
+                        allFiltersObj[filterDivId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr});
                     }
                 } else {
                     //console.log('View not found.  Adding view with new filter');
-                    allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr, 'pageString': newPageStr }] };
+                    allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr}] };
                 }
             } else {
                 //console.log('No filters found, creating new');
-                allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr, 'pageString': newPageStr }] };
+                allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr}] };
             }
 
             ktl.userFilters.setActiveFilter(filterName, filterDivId);
@@ -3349,13 +3344,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     });
 
                     //If there's a summary, add a blank space at left to keep alignment.
-                    if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
-                        var sel = '#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals';
-                        ktl.core.waitSelector(sel, 10000)
-                            .then(function () {
-                                $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                            })
-                            .catch(function () { })
+                    try {
+                        if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
+                            var sel = '#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals';
+                            ktl.core.waitSelector(sel, 10000)
+                                .then(function () {
+                                    $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                })
+                                .catch(function () { })
+                        }
+                    } catch (e) {
+                        ktl.log.clog('Exception in addCheckboxesToTable!', 'purple');
+                        console.log(e);//$$$
                     }
                 }
             },
