@@ -2305,14 +2305,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
 
                                 var encodedNewFilter = encodeURIComponent(e.currentTarget.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
-
-                                //var encodedNewPerPage = encodeURIComponent(e.currentTarget.filter.perPageString);
-                                //console.log('encodedNewPerPage =', encodedNewPerPage);//$$$
-                                //console.log('e.currentTarget.filter.sortString =', e.currentTarget.filter.sortString);//$$$
-                                //var encodedNewSort = encodeURIComponent(e.currentTarget.filter.sortString).replace(/'/g, "%27").replace(/"/g, "%22").replace(/|/g, "%7C");
-                                //console.log('encodedNewSort =', encodedNewSort);//$$$
-                                var page = '1'; //Get from last URL in case user changed page.
-                                //var allParams = filterDivId + '_filters=' + encodedNewFilter + '&' + filterDivId + '_per_page=' + encodedNewPerPage + '&' + filterDivId + '_sort=' + encodedNewSort + '&' + filterDivId + '_page=' + encodedNewPage;
+                                var page = '1'; //TODO:  Get from last URL in case user changed page.
 
                                 var allParams = filterDivId + '_filters=' + encodedNewFilter + '&' + filterDivId + '_per_page=' + e.currentTarget.filter.perPageString + '&' + filterDivId + '_sort=' + e.currentTarget.filter.sortString + '&' + filterDivId + '_page=' + page;
 
@@ -2405,14 +2398,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //When user saves a filter to a named button
         function saveUserFilter(filterDivId = '') {
-            console.log('filterDivId =', filterDivId);//$$$
             if (!filterDivId) return;
 
             //Extract filter string for this view from URL and decode.
             var newFilterStr = '';
             var newSortStr = '';
             var newPerPageStr = '';
-            var newPageStr = '';
             var parts = ktl.core.splitUrl(window.location.href);
             const params = Object.entries(parts['params']);
             if (!$.isEmptyObject(params)) {
