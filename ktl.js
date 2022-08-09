@@ -1174,18 +1174,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     fields.forEach((field) => {
                         var viewId = field.closest('.kn-view') || field.closest('#cell-editor');
                         if (viewId) {
+                            viewId = viewId.id;
                             var inputFld = document.querySelector('#chznBetter[numeric=true]') || document.querySelector('#' + form.id + ' #' + field.getAttribute('data-input-id'));
                             if (inputFld) {
                                 var value = inputFld.value;
                                 var fieldValid = !isNaN(value);
                                 formValid = formValid && fieldValid;
-
                                 inputFld.setAttribute('valid', fieldValid);
-                                $('#' + viewId.id + ' [type=submit]').prop('disabled', !formValid); //Form Submit
-                                console.log('tadam!!!');//$$$
-                                $('#cell-editor > div.submit > a').attr('disabled', !formValid); //Inline Editing Submit
                                 $(inputFld).css('background-color', !fieldValid ? '#fdb0b0' : ''); //Same color as Knack errors.
-                                !formValid && ktl.scenes.spinnerWatchdog(formValid); //Don't let the disabled Submit cause a page reload.
+
+                                var submit = document.querySelector('#' + viewId + ' .is-primary');
+                                var validity = submit.validity ? submit.validity : true;
+
+                                if (formValid)
+                                    validity.invalidItemObj && (delete validity.invalidItemObj.numericValid);
+                                else
+                                    validity.invalidItemObj ? validity.invalidItemObj.numericValid = false : validity.invalidItemObj = { numericValid: false };
+
+                                ktl.views.updateSubmitButtonState(viewId);
                             }
                         }
                     })
@@ -3872,6 +3878,23 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         reject('waitSubmitOutcome timeout error in ' + viewId);
                     }, 20000);
                 })
+            },
+
+            updateSubmitButtonState: function (viewId = '') {
+                if (!viewId) return;
+
+                //var submit = document.querySelector('#' + viewId + ' [type=submit]') || document.querySelector('#cell-editor .is-primary');
+                var submit = document.querySelector('#' + viewId + ' .is-primary');
+                var validity = submit.validity ? submit.validity : true;
+                var submitDisabled = !$.isEmptyObject(validity.invalidItemObj);
+
+                //Inline Editing Submit
+                if (submitDisabled)
+                    submit.setAttribute('disabled', true);
+                else
+                    submit.removeAttribute('disabled');
+
+                submitDisabled && ktl.scenes.spinnerWatchdog(!submitDisabled); //Don't let the disabled Submit cause a page reload.
             },
         }
     })();
