@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.22';
+    const KTL_VERSION = '0.4.23';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -3883,7 +3883,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             updateSubmitButtonState: function (viewId = '') {
                 if (!viewId) return;
 
-                //var submit = document.querySelector('#' + viewId + ' [type=submit]') || document.querySelector('#cell-editor .is-primary');
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
                 var validity = submit.validity ? submit.validity : true;
                 var submitDisabled = !$.isEmptyObject(validity.invalidItemObj);
