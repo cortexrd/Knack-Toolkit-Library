@@ -1445,6 +1445,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }, 500);
             },
 
+            //Handles Change events for Dropdowns, Calendars, etc.
             onFieldValueChanged: function (p = { viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 onFieldValueChanged && onFieldValueChanged(p);
             },
@@ -3123,13 +3124,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                             //Process critical failures by forcing a logout or hard reset.
                                             if (response.status === 401 || response.status === 403 || response.status === 500) {
-                                                if (ktl.scenes.isiFrameWnd())
+
+                                                resolve(); //Temporary patch for bug on August 12, 2022.
+                                                return;
+
+
+                                                if (ktl.scenes.isiFrameWnd()) {
+
+                                                    //ktl.log.clog('ERROR============ ' + response.status + ', view=' + viewId, 'purple');
                                                     parent.postMessage({ msgType: 'forceReload', response: response }, '*');
-                                                else {
+                                                } else {
                                                     if (response.status === 500)
                                                         location.reload(true);
                                                     else {
-                                                        ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1007 - Forcing logout');
+                                                        ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1007 - Forcing logout: ' + response.status);
                                                         $('.kn-log-out').trigger('click'); //Token has expired, force logout.
                                                     }
                                                 }
@@ -3344,7 +3352,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     try {
                         if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
                             var sel = '#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals';
-                            ktl.core.waitSelector(sel, 10000)
+                            ktl.core.waitSelector(sel, 60000)
                                 .then(function () {
                                     $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
                                 })
