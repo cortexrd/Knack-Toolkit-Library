@@ -995,6 +995,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('input', function (e) {
             if (!ktl.fields.getUsingBarcode()) {
                 ktl.fields.enforceNumeric();
+
+                //Process special field flags
+                var fieldDesc = ktl.fields.getFieldDescription(e.target.id);
+                if (fieldDesc && fieldDesc.includes('TO_UPPERCASE'))
+                    e.target.value = e.target.value.toUpperCase();
+
                 if ($(e.target).length > 0) {
                     var inputVal = $(e.target).val();
                     var threshold = 0;
@@ -1161,6 +1167,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Prevents entering non-numeric values in a numeric field.
             //If an error is detected, the Submit button is disabled and the field is colored in pink.
+            //It may seem be inefficient to scan all views and fields, but it must be so in order to support persistent form data.
             enforceNumeric: function () {
                 var forms = document.querySelectorAll('.kn-form') || document.querySelectorAll('#cell-editor');
                 forms.forEach((form) => {
@@ -1468,6 +1475,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
                 catch (e) { }
             },
+
+            getFieldDescription: function (fieldId = '') {
+                {
+                    var descr = '';
+                    try { descr = Knack.fields[fieldId].attributes.meta.description; }
+                    catch (e) { }
+                    return descr;
+                }
+            },
         }
     })(); //fields
 
@@ -1553,6 +1569,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Save data for a given view and field.
         function saveFormData(viewId = '', fieldId = '', text = '') {
+            if (!viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
+
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
             if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId) || action !== 'insert'/*Add only, not Edit or any other type*/)
                 return;
@@ -2290,8 +2308,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 this.classList.add('activeFilter');
 
                                 applyButtonColors();
-                                if (e.currentTarget.save)
-                                    saveAllFilters(filterDivId);
+
+                                var target = e.target || e.currentTarget;
+                                if (target.save)
+                                    saveAllFilters(filterDivId); //Needed to update active index.
 
                                 //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
                                 var parts = ktl.core.splitUrl(window.location.href);
@@ -2299,34 +2319,60 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 var newUrl = parts['path'] + '?';
                                 var otherParams = '';
 
-                                //Get other params from URL.
+                                var page = '1'; //Get from last URL in case user changed page.
+                                var perPage = '';
+
+                                //Get any additional params from URL that could exist but are not related to user filters.
                                 const params = Object.entries(parts['params']);
                                 if (!$.isEmptyObject(params)) {
                                     params.forEach(function (param) {
-                                        if (param[0].indexOf(filterDivId + '_filters') >= 0 || param[0].indexOf(filterDivId + '_page') >= 0) {
-                                            //Ignore these
+                                        if (param[0].includes(filterDivId + '_filters')) {
+                                            //Ignore this one.
+                                        }
+                                        else if (param[0].includes(filterDivId + '_page'))                                            
+                                            page = param[1];
+                                        else if (param[0].includes(filterDivId + '_per_page')) {
+                                            perPage = param[1];
                                         } else {
                                             otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22") + '&';
                                         }
                                     });
                                 }
 
-                                var encodedNewFilter = encodeURIComponent(e.currentTarget.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
-                                var page = '1'; //TODO:  Get from last URL in case user changed page.
+                                if (target.filter) {
+                                    var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
 
-                                var allParams = filterDivId + '_filters=' + encodedNewFilter + '&' + filterDivId + '_per_page=' + e.currentTarget.filter.perPageString + '&' + filterDivId + '_sort=' + e.currentTarget.filter.sortString + '&' + filterDivId + '_page=' + page;
+                                    var allParams = filterDivId + '_filters=' + encodedNewFilter;
 
-                                newUrl += allParams;
+                                    if (target.filter.perPageString !== perPage) {
+                                        target.filter.perPageString = perPage;
+                                        allParams += '&' + filterDivId + '_per_page=' + target.filter.perPageString;
+                                        saveAllFilters(filterDivId); //Save updated per page value.
+                                    }
+                                    //if (target.filter.perPageString)
+                                    //    allParams += '&' + filterDivId + '_per_page=' + target.filter.perPageString;
 
-                                if (window.location.href !== newUrl)
-                                    window.location.href = newUrl;
+                                    if (target.filter.sortString)
+                                        allParams += '&' + filterDivId + '_sort=' + target.filter.sortString;
+
+                                    if (page)
+                                        allParams += '&' + filterDivId + '_page=' + page;
+
+                                    //if (otherParams)
+                                    //    allParams += '&' + otherParams;
+
+                                    newUrl += allParams;
+
+                                    if (window.location.href !== newUrl)
+                                        window.location.href = newUrl;
+                                }
                             });
 
 
                             //===================================================================================================
                             //Right-click to provide Delete and Rename options.
                             filterBtn.addEventListener('contextmenu', function (e) {
-                                contextMenuFilter(e, filterDivId, e.currentTarget.filter);
+                                contextMenuFilter(e, filterDivId, e.target.filter);
                             })
                         }
 
@@ -3112,7 +3158,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         success: function (model, response, options) {
                                             if (['details' /*more types?*/].includes(viewType)) {
                                                 Knack.views[viewId].render();
-                                                Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
+                                                Knack.views[viewId].postRender && Knack.views[viewId].postRender();
                                             }
 
                                             resolve(model);
@@ -3342,26 +3388,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         masterCheckBoxCallback && masterCheckBoxCallback(numChecked);
                     });
 
-                    // Add a checkbox to each row in the table body
-                    //$('#' + viewId + '.kn-table tbody tr:not(.kn-table-totals):not(.kn-table-group)').each(function (i, r) {
-                    $('#' + viewId + '.kn-table tbody tr:not(.kn-table-group)').each(function () {
+                    //Add a checkbox to each row in the table body, but not groups and summary lines.
+                    $('#' + viewId + ' .kn-table tbody tr:not(.kn-table-group,.kn-table-totals)').each(function () {
                         $(this).prepend('<td><input type="checkbox"></td>');
                     });
-
-                    //If there's a summary, add a blank space at left to keep alignment.
-                    try {
-                        if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
-                            var sel = '#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr.kn-table-totals';
-                            ktl.core.waitSelector(sel, 60000)
-                                .then(function () {
-                                    $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                                })
-                                .catch(function () { })
-                        }
-                    } catch (e) {
-                        ktl.log.clog('Exception in addCheckboxesToTable!', 'purple');
-                        console.log(e);//$$$
-                    }
                 }
             },
 
@@ -3393,8 +3423,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         return;
                     }
 
-                    if (dropdownSearching[fieldId])
-                        return; //Exit if a search is already in progress for this field.
+                    //if (dropdownSearching[fieldId])
+                    //    return; //Exit if a search is already in progress for this field.
 
                     dropdownSearching[fieldId] = fieldId;
 
@@ -3620,11 +3650,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             var failsafe = setTimeout(function () {
                                 ktl.log.clog('waitForOptions timeout', 'purple');
-                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1021 - waitForOptions timeout: ' + Knack.scene_hash + ', ' + dropdownObj[0].id);
+                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1021 - waitForOptions timeout: ' + Knack.scene_hash.replace(/[/\/#]+/g, '') + ', ' + dropdownObj[0].id);
                                 clearInterval(intervalId);
                                 reject(foundText);
                                 return; //JIC
-                            }, 15000);
+                            }, 25000);
                         })
                     }
                 });
@@ -5490,15 +5520,28 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var viewModel = Knack.router.scene_view.model.views._byId[view.key];
             if (viewModel) {
                 var viewAttr = viewModel.attributes;
+                //console.log('viewAttr =', viewAttr);//$$$
                 if (viewAttr.type === 'table') {
                     var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
-                    if (Knack.getUserRoleNames().includes('Bulk Delete') || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
+                    var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
+                    if ((canDelete && Knack.getUserRoleNames().includes('Bulk Delete')) || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
                         ktl.bulkOps.enableBulkOperations(view, data);
                         if (bulkOpsInProgress)
                             processBulkOps();
                     }
                 }
             }
+        })
+
+        $(document).on('knack-scene-render.any', function (event, scene) {
+            //In each view having checkboxes and a summary, add a blank space at left of the summary line to fix alignment.
+            //This must be done after scene has completed rendering, not after a view has rendered.
+            var views = document.querySelectorAll('div.kn-table-wrapper thead input[type=checkbox]');
+            views.forEach(function (view) {
+                var viewId = view.closest('.kn-view').id;
+                if (document.querySelector('#' + viewId + ' thead input[type=checkbox]'))
+                    $('#' + viewId + ' tr.kn-table-totals').prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+            })
         })
 
         $(document).on('click', function (e) {
@@ -5756,12 +5799,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
             //Called upon each view rendering.
             enableBulkOperations: function (view, data) {
+                var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
+
                 ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
-                if (ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
+
+                if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
                     addBulkDeleteButtons(view, data);
 
                 function masterCheckBoxCallback(numChecked) {
-                    updateDeleteButtonStatus(view.key, numChecked);
+                    canDelete && updateDeleteButtonStatus(view.key, numChecked);
                     updateBulkOpCheckboxes();
                 }
 
@@ -5864,3 +5910,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO:  Investigate iOS bug with userFilters.
 //TODO:  Stop everything related to logging and API calls.
 //TOTEST:  var isMultipleChoice = $(viewSel + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
+//TODO:  optimize!  Totally inefficient to do all this for every keystroke.  Scan fields only once per view render as set a numeric attribute instead.
