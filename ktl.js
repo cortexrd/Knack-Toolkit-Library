@@ -2190,14 +2190,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Save all filters to local storage. 
         //But before, read back from localStorage and merge with any external updates from another browser.
         function saveAllFilters(filterDivId = '') {
+            console.log('saveAllFilters', filterDivId);//$$$
             if (filterDivId) {
                 var allFiltersObjTemp = loadAllFilters(false);
 
                 var activeIndex = null;
                 var buttons = document.querySelectorAll('#' + filterDivId + '-filterDivId .filterBtn');
+                //console.log('buttons =', buttons);//$$$
                 for (var i = 0; i < buttons.length; i++) {
                     if (buttons[i].classList.contains('activeFilter')) {
                         activeIndex = i;
+                        console.log('FOUND activeIndex =', activeIndex);//$$$
                         break;
                     }
                 }
@@ -2231,14 +2234,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (!document.querySelector('#' + viewId + ' .kn-add-filter') || document.querySelector('#' + viewId + ' .filterCtrlDiv'))
                 return;
 
+            console.log('Entering addFilterButtons');//$$$
             //Prepare div and style
             var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
 
-            var addFiltersBar = document.querySelectorAll('[id^=kn-report-' + viewId + '-] .level-left'); //Report viewx
-            if (!addFiltersBar.length)
-                addFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left'); //Table views
+            var allFiltersBar = document.querySelectorAll('[id^=kn-report-' + viewId + '-] .level-left'); //Report viewx
+            if (!allFiltersBar.length)
+                allFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left'); //Table views
 
-            addFiltersBar.forEach(function (viewFilterDiv, divIndex) {
+            allFiltersBar.forEach(function (viewFilterDiv) {
                 var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]') || viewFilterDiv.closest('#' + viewId);
                 filterDivId = filterDivId ? filterDivId.id : null; //Typically view_123 for tables and kn-report-view_123-1 for reports.
 
@@ -2301,72 +2305,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             //Handle button click: apply filter =================================================================
                             filterBtn.filter = filter;
                             filterBtn.save = true;
-                            filterBtn.addEventListener('click', function (e) {
-                                e.preventDefault();
-
-                                $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
-                                this.classList.add('activeFilter');
-
-                                applyButtonColors();
-
-                                var target = e.target || e.currentTarget;
-                                if (target.save)
-                                    saveAllFilters(filterDivId); //Needed to update active index.
-
-                                //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
-                                var parts = ktl.core.splitUrl(window.location.href);
-
-                                var newUrl = parts['path'] + '?';
-                                var otherParams = '';
-
-                                var page = '1'; //Get from last URL in case user changed page.
-                                var perPage = '';
-
-                                //Get any additional params from URL that could exist but are not related to user filters.
-                                const params = Object.entries(parts['params']);
-                                if (!$.isEmptyObject(params)) {
-                                    params.forEach(function (param) {
-                                        if (param[0].includes(filterDivId + '_filters')) {
-                                            //Ignore this one.
-                                        }
-                                        else if (param[0].includes(filterDivId + '_page'))                                            
-                                            page = param[1];
-                                        else if (param[0].includes(filterDivId + '_per_page')) {
-                                            perPage = param[1];
-                                        } else {
-                                            otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22") + '&';
-                                        }
-                                    });
-                                }
-
-                                if (target.filter) {
-                                    var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
-
-                                    var allParams = filterDivId + '_filters=' + encodedNewFilter;
-
-                                    if (target.filter.perPageString !== perPage) {
-                                        target.filter.perPageString = perPage;
-                                        allParams += '&' + filterDivId + '_per_page=' + target.filter.perPageString;
-                                        saveAllFilters(filterDivId); //Save updated per page value.
-                                    }
-                                    //if (target.filter.perPageString)
-                                    //    allParams += '&' + filterDivId + '_per_page=' + target.filter.perPageString;
-
-                                    if (target.filter.sortString)
-                                        allParams += '&' + filterDivId + '_sort=' + target.filter.sortString;
-
-                                    if (page)
-                                        allParams += '&' + filterDivId + '_page=' + page;
-
-                                    //if (otherParams)
-                                    //    allParams += '&' + otherParams;
-
-                                    newUrl += allParams;
-
-                                    if (window.location.href !== newUrl)
-                                        window.location.href = newUrl;
-                                }
-                            });
+                            filterBtn.addEventListener('click', e => { onFilterBtnClicked(e, filterDivId); });
 
 
                             //===================================================================================================
@@ -2380,10 +2319,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (applyFilter === true) {
                             applyFilter = false;
                             if (activeFilterIndex >= 0) {
+                                console.log('activeFilterIndex =', activeFilterIndex);//$$$
                                 var btn = document.querySelector('#' + filterDivId + ' .activeFilter');
                                 if (btn) {
                                     btn.save = false;
                                     btn.click();
+                                    console.log('btn.click', btn);//$$$
                                 }
                             }
                         }
@@ -2435,19 +2376,144 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 //Enable/disable control buttons (Only save in this case)
-                if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) {
+                if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from Add filters?
                     var saveBtn = document.querySelector('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
                     saveBtn && saveBtn.removeAttribute('disabled');
                 } else {
                     if (!allFiltersObj.isEmpty) {
                         if (allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active !== -1) {
                             $('#' + filterDivId + ' .filterBtn').removeClass('activeFilter');
+                            console.log('removed activeFilter 1');//$$$
                             applyButtonColors();
                         }
                     }
                 }
             })
         }
+
+        function onFilterBtnClicked(e, filterDivId = '') {
+            if (!filterDivId) return;
+            var target = e.target || e.currentTarget;
+            console.log('======= onFilterBtnClicked, target =', target);//$$$
+            console.log('target.save =', target.save);//$$$
+
+            var activeHasChanged = true;
+
+            var activeFilter = document.querySelector('#' + filterDivId + ' .activeFilter');
+            console.log('activeFilter =', activeFilter);//$$$
+            if (activeFilter) {
+                var activeName = activeFilter.filter.filterName;
+                console.log('activeName =', activeName);//$$$
+                var clickedName = e.target.filter.filterName;
+                console.log('clickedName =', clickedName);//$$$
+
+                //if (e.target.classList.contains('activeFilter'))
+                if (activeName === clickedName)
+                    activeHasChanged = false;
+            }
+
+            console.log('activeHasChanged =', activeHasChanged);//$$$
+            e.preventDefault();
+
+            $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
+            target.classList.add('activeFilter');
+            console.log('on click, target.classList =', target.classList);//$$$
+
+
+            //var activeHasChanged = true;
+
+            //if (e.target.classList.contains('activeFilter'))
+            //    activeHasChanged = false;
+
+            //console.log('activeHasChanged =', activeHasChanged);//$$$
+            //e.preventDefault();
+
+            //$('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
+            //target.classList.add('activeFilter');
+            //console.log('on click, target.classList =', target.classList);//$$$
+
+            applyButtonColors();
+
+            if (target.save) //@@@ TODO: Save only if active filter is being changed.
+                saveAllFilters(filterDivId); //Needed to update active index.
+
+            //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
+            var parts = ktl.core.splitUrl(window.location.href);
+
+            var newUrl = parts['path'] + '?';
+            var otherParams = '';
+
+            var page = '1'; //Get from last URL in case user changed page.
+            var perPage = '';
+            var sortString = '';
+
+            //Get any additional params from URL that could exist but are not related to user filters.
+            const params = Object.entries(parts['params']);
+            if (!$.isEmptyObject(params)) {
+                params.forEach(function (param) {
+                    console.log('param =', param);//$$$
+                    if (param[0].includes(filterDivId + '_filters')) {
+                        //Ignore this one.
+                    } else if (param[0].includes(filterDivId + '_page'))
+                        page = param[1];
+                    else if (param[0].includes(filterDivId + '_per_page'))
+                        perPage = param[1];
+                    else if (param[0].includes(filterDivId + '_sort'))
+                        sortString = param[1];
+                    else
+                        otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22");
+                });
+            }
+
+            if (target.filter) {
+                var save = false;
+                var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
+
+                var allParams = filterDivId + '_filters=' + encodedNewFilter;
+
+                if (target.filter.perPageString !== perPage) {
+                    target.filter.perPageString = perPage;
+                    allParams += '&' + filterDivId + '_per_page=' + target.filter.perPageString;
+                    save = true;
+                }
+
+                if (target.filter.sortString !== sortString) {
+                    target.filter.sortString = sortString;
+                    allParams += '&' + filterDivId + '_sort=' + target.filter.sortString;
+                    save = true;
+                }
+
+                if (save) {
+                    console.log('saving');//$$$
+                    saveAllFilters(filterDivId); //Save updated per_page and/or sort new values.
+                }
+
+                //if (target.filter.perPageString)
+                //    allParams += '&' + filterDivId + '_per_page=' + target.filter.perPageString;
+
+                //console.log('target =', target);//$$$
+                //console.log('target.filter =', target.filter);//$$$
+                console.log('page =', page);//$$$
+                console.log('perPage =', perPage);//$$$
+                console.log('sortString =', sortString);//$$$
+                console.log('otherParams =', otherParams);//$$$
+                console.log('target.filter.perPageString =', target.filter.perPageString);//$$$
+
+                if (target.filter.sortString)
+                    allParams += '&' + filterDivId + '_sort=' + target.filter.sortString;
+
+                if (page)
+                    allParams += '&' + filterDivId + '_page=' + page;
+
+                //if (otherParams)
+                //    allParams += '&' + otherParams;
+
+                newUrl += allParams;
+
+                if (activeHasChanged && window.location.href !== newUrl)
+                    window.location.href = newUrl;
+            }
+        };
 
         //When user saves a filter to a named button
         function saveUserFilter(filterDivId = '') {
@@ -2514,6 +2580,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function applyButtonColors() {
+            console.log('applyButtonColors');//$$$
             ktl.systemColors.getSystemColors()
                 .then((sysColors) => {
                     $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr });
@@ -2663,6 +2730,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             setActiveFilter: function (filterName = '', viewId = '') {
+                console.log('111 setActiveFilter caller:', ktl.userFilters.setActiveFilter.Caller);//$$$
                 if (!viewId) return;
 
                 if (filterName) {
@@ -2684,7 +2752,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 } else { //Remove active filter.
                     $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
+                    console.log('removed activeFilter 2');//$$$
                     applyButtonColors();
+                    saveAllFilters(viewId);
+                }
+            },
+
+            saveUserFilters: function (viewId = '') {
+                if (viewId) {
+                    console.log('saveUserFilters', viewId);//$$$
                     saveAllFilters(viewId);
                 }
             },
@@ -3795,6 +3871,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
             modifyTableSort: function (e) {
                 if (e.target.closest('.kn-sort')) {
+                    ktl.userFilters.saveUserFilters(viewId);
                     var alreadySorted = e.target.closest('[class*="sorted-"]');
                     if (alreadySorted)
                         return;
@@ -3811,8 +3888,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var viewId = e.target.closest('.kn-table.kn-view');
                         if (viewId) {
                             viewId = viewId.getAttribute('id');
-
-                            ktl.userFilters.setActiveFilter('', viewId); //Prevent conflict with userFilters by removing current one.
 
                             var href = e.target.closest('[href]');
                             if (href) {
@@ -5911,3 +5986,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO:  Stop everything related to logging and API calls.
 //TOTEST:  var isMultipleChoice = $(viewSel + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
 //TODO:  optimize!  Totally inefficient to do all this for every keystroke.  Scan fields only once per view render as set a numeric attribute instead.
+//if (target.save) //@@@ TODO: Save only if active filter is being changed.
