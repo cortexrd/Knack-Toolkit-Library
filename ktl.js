@@ -2,7 +2,7 @@
  * Knack Toolkit Library (ktl) - Javascript
  * @author  Normand Defayette <nd@ctrnd.com>
  * @license GPLv3
- */
+*/
 
 //Find a better place for these universal values.
 window.APP_ROOT_NAME = Knack.app.attributes.name + '_';
@@ -2282,104 +2282,101 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     $('#' + filterDivId + ' .filterDiv').css({ 'display': 'flex', 'margin-left': '5px' });
                 }
 
-                if (!allFiltersObj.isEmpty) {
-                    if (!$.isEmptyObject(allFiltersObj[filterDivId])) {
-                        var activeFilterIndex = allFiltersObj[filterDivId].active;
+                if (!allFiltersObj.isEmpty && !$.isEmptyObject(allFiltersObj[filterDivId])) {
+                    var activeFilterIndex = allFiltersObj[filterDivId].active;
 
-                        for (var btnIndex = 0; btnIndex < allFiltersObj[filterDivId].filters.length; btnIndex++) {
-                            var filter = allFiltersObj[filterDivId].filters[btnIndex];
+                    for (var btnIndex = 0; btnIndex < allFiltersObj[filterDivId].filters.length; btnIndex++) {
+                        var filter = allFiltersObj[filterDivId].filters[btnIndex];
 
-                            if (filter.filterName === '') break;
-                            var filterBtn = ktl.fields.addButton(filterDiv, filter.filterName, filterBtnStyle,
-                                ['kn-button', 'is-small'],
-                                filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
-                            filterBtn.classList.add('filterBtn', 'draggable');
-                            if (btnIndex === activeFilterIndex)
-                                filterBtn.classList.add('activeFilter');
-                            else
-                                filterBtn.classList.remove('activeFilter');
+                        if (filter.filterName === '') break;
+                        var filterBtn = ktl.fields.addButton(filterDiv, filter.filterName, filterBtnStyle,
+                            ['kn-button', 'is-small'],
+                            filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
+                        filterBtn.classList.add('filterBtn', 'draggable');
+                        if (btnIndex === activeFilterIndex)
+                            filterBtn.classList.add('activeFilter');
+                        else
+                            filterBtn.classList.remove('activeFilter');
 
-                            applyButtonColors();
+                        //===================================================================================================
+                        //Handle button click: apply filter =================================================================
+                        filterBtn.filter = filter;
+                        filterBtn.save = true;
+                        filterBtn.addEventListener('click', e => { onFilterBtnClicked(e, filterDivId); });
 
-                            //===================================================================================================
-                            //Handle button click: apply filter =================================================================
-                            filterBtn.filter = filter;
-                            filterBtn.save = true;
-                            filterBtn.addEventListener('click', e => { onFilterBtnClicked(e, filterDivId); });
+                        //===================================================================================================
+                        //Right-click to provide Delete and Rename options.
+                        filterBtn.addEventListener('contextmenu', function (e) {
+                            contextMenuFilter(e, filterDivId, e.target.filter);
+                        })
+                    }
 
+                    applyButtonColors();
 
-                            //===================================================================================================
-                            //Right-click to provide Delete and Rename options.
-                            filterBtn.addEventListener('contextmenu', function (e) {
-                                contextMenuFilter(e, filterDivId, e.target.filter);
-                            })
-                        }
-
-                        //Apply active filter after loading buttons.
-                        if (applyFilter === true) {
-                            applyFilter = false;
-                            if (activeFilterIndex >= 0) {
-                                console.log('activeFilterIndex =', activeFilterIndex);//$$$
-                                var btn = document.querySelector('#' + filterDivId + ' .activeFilter');
-                                if (btn) {
-                                    btn.save = false;
-                                    btn.click();
-                                    console.log('btn.click', btn);//$$$
-                                }
+                    //Apply active filter after loading buttons.
+                    if (applyFilter === true) {
+                        applyFilter = false;
+                        if (activeFilterIndex >= 0) {
+                            console.log('activeFilterIndex =', activeFilterIndex);//$$$
+                            var btn = document.querySelector('#' + filterDivId + ' .activeFilter');
+                            if (btn) {
+                                btn.save = false;
+                                console.log('btn.click', btn);//$$$
+                                btn.click();
                             }
                         }
+                    }
 
-                        //Setup Drag n Drop for filter buttons.
-                        if (document.getElementById(filterDivId + '-filterDivId')) {
-                            new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
-                                swapThreshold: 0.96,
-                                animation: 250,
-                                easing: "cubic-bezier(1, 0, 0, 1)",
-                                onEnd: function (/**Event*/evt) {
-                                    //When a drag n drop is done, update localStorage for this view.
-                                    var filterDiv = evt.to;
+                    //Setup Drag n Drop for filter buttons.
+                    if (document.getElementById(filterDivId + '-filterDivId')) {
+                        new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
+                            swapThreshold: 0.96,
+                            animation: 250,
+                            easing: "cubic-bezier(1, 0, 0, 1)",
+                            onEnd: function (/**Event*/evt) {
+                                //When a drag n drop is done, update localStorage for this view.
+                                var filterDiv = evt.to;
 
-                                    //Create new entries as copies of sorted filters, but at beginning of array.
-                                    //When done, you get a doubled array, and simply truncate last half to get final version.
-                                    //console.log('filterDiv.children =', filterDiv.children);
-                                    var filterNames = [];
-                                    filterDiv.children.forEach(function (item) {
-                                        filterNames.push(item.innerText);
+                                //Create new entries as copies of sorted filters, but at beginning of array.
+                                //When done, you get a doubled array, and simply truncate last half to get final version.
+                                //console.log('filterDiv.children =', filterDiv.children);
+                                var filterNames = [];
+                                filterDiv.children.forEach(function (item) {
+                                    filterNames.push(item.innerText);
+                                });
+
+                                var initialLength = allFiltersObj[filterDivId].filters.length;
+                                //console.log('initialLength =', initialLength);
+                                filterNames.slice().reverse().forEach(function (item) {
+                                    var foundFilter = allFiltersObj[filterDivId].filters.find(function (filter) {
+                                        if (filter.filterName === item)
+                                            return filter;
                                     });
 
-                                    var initialLength = allFiltersObj[filterDivId].filters.length;
-                                    //console.log('initialLength =', initialLength);
-                                    filterNames.slice().reverse().forEach(function (item) {
-                                        var foundFilter = allFiltersObj[filterDivId].filters.find(function (filter) {
-                                            if (filter.filterName === item)
-                                                return filter;
-                                        });
+                                    allFiltersObj[filterDivId].filters.unshift({ 'filterName': item, 'filterString': foundFilter.filterString });
+                                });
 
-                                        allFiltersObj[filterDivId].filters.unshift({ 'filterName': item, 'filterString': foundFilter.filterString });
-                                    });
+                                //console.log('allFiltersObj[viewId].filters =');
+                                //console.log(JSON.parse(JSON.stringify(allFiltersObj[viewId].filters)))
 
-                                    //console.log('allFiltersObj[viewId].filters =');
-                                    //console.log(JSON.parse(JSON.stringify(allFiltersObj[viewId].filters)))
-
-                                    //New length should (must) be doubled.
-                                    var length = allFiltersObj[filterDivId].filters.length;
-                                    //console.log('length =', length);
-                                    if (length === initialLength * 2) { //JIC.  Should always be true.
-                                        allFiltersObj[filterDivId].filters.length = length / 2;
-                                        saveAllFilters(filterDivId); //Save updated object
-                                    } else
-                                        alert('Unexpected filter length detected.  Filters not saved.'); //@@@ TODO:  handle this somehow.
-                                }
-                            });
-                        }
+                                //New length should (must) be doubled.
+                                var length = allFiltersObj[filterDivId].filters.length;
+                                //console.log('length =', length);
+                                if (length === initialLength * 2) { //JIC.  Should always be true.
+                                    allFiltersObj[filterDivId].filters.length = length / 2;
+                                    saveAllFilters(filterDivId); //Save updated object
+                                } else
+                                    alert('Unexpected filter length detected.  Filters not saved.'); //@@@ TODO:  handle this somehow.
+                            }
+                        });
                     }
                 }
 
                 //Enable/disable control buttons (Only save in this case)
-                if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from Add filters?
+                if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from "Add filters"?
                     var saveBtn = document.querySelector('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
                     saveBtn && saveBtn.removeAttribute('disabled');
-                } else {
+                } else { //"Add filters" not in use, remove highlight.
                     if (!allFiltersObj.isEmpty) {
                         if (allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active !== -1) {
                             $('#' + filterDivId + ' .filterBtn').removeClass('activeFilter');
