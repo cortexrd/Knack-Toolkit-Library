@@ -2047,6 +2047,57 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         loadAllFilters();
 
+
+        var scn = '';
+        setInterval(function () {
+            if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
+                if (Knack.router.current_scene_key !== scn) {
+                    scn = Knack.router.current_scene_key;
+                    assembleFilterURL();
+                }
+            }
+        }, 200);
+
+        function assembleFilterURL() {
+            var views = Knack.router.scene_view.model.views.models;
+            if (!views.length || allFiltersObj.isEmpty) return;
+
+            var parts = ktl.core.splitUrl(window.location.href);
+            var newUrl = parts['path'] + '?';
+            var perPage = '';
+            var sortString = '';
+            var allParams = '';
+
+            for (var i = 0; i < views.length; i++) {
+                var filterDivId = views[i].attributes.key;
+                if (!allFiltersObj[filterDivId]) continue;
+
+                if (!$.isEmptyObject(allFiltersObj[filterDivId])) {
+                    var activeFilterIndex = allFiltersObj[filterDivId].active;
+                    if (activeFilterIndex >= 0) {
+                        var filter = allFiltersObj[filterDivId].filters[activeFilterIndex];
+                        var encodedNewFilter = encodeURIComponent(filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
+
+                        if (allParams)
+                            allParams += '&';
+
+                        allParams += filterDivId + '_filters=' + encodedNewFilter;
+
+                        if (perPage)
+                            allParams += '&' + filterDivId + '_per_page=' + perPage;
+
+                        if (sortString)
+                            allParams += '&' + filterDivId + '_sort=' + sortString;
+
+                        //Add search string
+                    }
+                }
+            }
+
+            if (allParams)
+                window.location.href = newUrl + allParams;
+        }
+
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) return;
 
@@ -2293,10 +2344,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ['kn-button', 'is-small'],
                             filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
                         filterBtn.classList.add('filterBtn', 'draggable');
-                        if (btnIndex === activeFilterIndex)
-                            filterBtn.classList.add('activeFilter');
-                        else
-                            filterBtn.classList.remove('activeFilter');
+                        //if (btnIndex === activeFilterIndex)
+                        //    filterBtn.classList.add('activeFilter');
+                        //else
+                        //    filterBtn.classList.remove('activeFilter');
 
                         //===================================================================================================
                         //Handle button click: apply filter =================================================================
@@ -2379,7 +2430,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 } else { //"Add filters" not in use, remove highlight.
                     if (!allFiltersObj.isEmpty) {
                         if (allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active !== -1) {
-                            $('#' + filterDivId + ' .filterBtn').removeClass('activeFilter');
+                            $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
                             console.log('removed activeFilter 1');//$$$
                             applyButtonColors();
                         }
@@ -2415,19 +2466,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
             target.classList.add('activeFilter');
             console.log('on click, target.classList =', target.classList);//$$$
-
-
-            //var activeHasChanged = true;
-
-            //if (e.target.classList.contains('activeFilter'))
-            //    activeHasChanged = false;
-
-            //console.log('activeHasChanged =', activeHasChanged);//$$$
-            //e.preventDefault();
-
-            //$('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
-            //target.classList.add('activeFilter');
-            //console.log('on click, target.classList =', target.classList);//$$$
 
             applyButtonColors();
 
