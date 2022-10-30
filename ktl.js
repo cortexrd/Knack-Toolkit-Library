@@ -2033,7 +2033,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var allFiltersObj = {}; //The main object that drives the whole feature.
         var applyFilter = true;
         var allowUserFilters = null; //Callback to your app to allow user filters based on specific conditions.
-        var viewToRefreshAfterFilterChg = null;
+        var viewToRefreshAfterFilterChg = null;  //This is necessary to remember the viewId to refresh after we exit filter editing.
 
         var ufMenuViewId = ktl.core.getViewIdByTitle('USER_FILTERS_MENU');
         var ufCodeViewId = ktl.core.getViewIdByTitle('USER_FILTERS_CODE');
@@ -2089,7 +2089,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (sortString)
                             allParams += '&' + filterDivId + '_sort=' + sortString;
 
-                        //Add search string
+                        //Add Search string
                     }
                 }
             }
@@ -2414,13 +2414,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from "Add filters"?
                     var saveBtn = document.querySelector('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
                     saveBtn && saveBtn.removeAttribute('disabled');
-                } else { //"Add filters" not in use, remove highlight.
-                //    if (!allFiltersObj.isEmpty && allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active >= 0) {
-                //        debugger;
-                //        $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
-                //        console.log('removed activeFilter 1');//$$$
-                //        applyButtonColors();
-                //    }
                 }
             })
         }
@@ -2455,7 +2448,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             applyButtonColors();
 
-            if (target.save) //@@@ TODO: Save only if active filter is being changed.
+            if (target.save) //Save only if active filter is being changed.
                 saveAllFilters(filterDivId); //Needed to update active index.
 
             //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
@@ -2751,7 +2744,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             setActiveFilter: function (filterName = '', viewId = '') {
-                console.log('111 setActiveFilter caller:', ktl.userFilters.setActiveFilter.Caller);//$$$
+                console.log('111 setActiveFilter caller:', ktl.userFilters.setActiveFilter.caller);//$$$
                 if (!viewId) return;
 
                 if (filterName) {
