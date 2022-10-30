@@ -2245,7 +2245,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (filterDivId) {
                 var allFiltersObjTemp = loadAllFilters(false);
 
-                var activeIndex = null;
+                var activeIndex = -1; //None by default
                 var buttons = document.querySelectorAll('#' + filterDivId + '-filterDivId .filterBtn');
                 //console.log('buttons =', buttons);//$$$
                 for (var i = 0; i < buttons.length; i++) {
@@ -2256,10 +2256,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
 
+                console.log('activeIndex =', activeIndex);//$$$
                 if (allFiltersObjTemp[filterDivId]) { //Existing view
                     if (allFiltersObj[filterDivId]) { //Modified filter
                         allFiltersObjTemp[filterDivId] = allFiltersObj[filterDivId];
-                        allFiltersObjTemp[filterDivId].active = (activeIndex >= 0) ? activeIndex : allFiltersObj[filterDivId].filters.length - 1;
+                        allFiltersObjTemp[filterDivId].active = activeIndex;
                     } else //Deleted filter.
                         delete allFiltersObjTemp[filterDivId];
 
@@ -2344,10 +2345,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ['kn-button', 'is-small'],
                             filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
                         filterBtn.classList.add('filterBtn', 'draggable');
-                        //if (btnIndex === activeFilterIndex)
-                        //    filterBtn.classList.add('activeFilter');
-                        //else
-                        //    filterBtn.classList.remove('activeFilter');
+                        if (btnIndex === activeFilterIndex)
+                            filterBtn.classList.add('activeFilter');
+                        else
+                            filterBtn.classList.remove('activeFilter');
 
                         //===================================================================================================
                         //Handle button click: apply filter =================================================================
@@ -2363,20 +2364,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
 
                     applyButtonColors();
-
-                    //Apply active filter after loading buttons.
-                    if (applyFilter === true) {
-                        applyFilter = false;
-                        if (activeFilterIndex >= 0) {
-                            console.log('activeFilterIndex =', activeFilterIndex);//$$$
-                            var btn = document.querySelector('#' + filterDivId + ' .activeFilter');
-                            if (btn) {
-                                btn.save = false;
-                                console.log('btn.click', btn);//$$$
-                                btn.click();
-                            }
-                        }
-                    }
 
                     //Setup Drag n Drop for filter buttons.
                     if (document.getElementById(filterDivId + '-filterDivId')) {
@@ -2428,13 +2415,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var saveBtn = document.querySelector('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
                     saveBtn && saveBtn.removeAttribute('disabled');
                 } else { //"Add filters" not in use, remove highlight.
-                    if (!allFiltersObj.isEmpty) {
-                        if (allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active !== -1) {
-                            $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
-                            console.log('removed activeFilter 1');//$$$
-                            applyButtonColors();
-                        }
-                    }
+                //    if (!allFiltersObj.isEmpty && allFiltersObj[filterDivId] && allFiltersObj[filterDivId].active >= 0) {
+                //        debugger;
+                //        $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
+                //        console.log('removed activeFilter 1');//$$$
+                //        applyButtonColors();
+                //    }
                 }
             })
         }
