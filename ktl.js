@@ -2049,11 +2049,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
 
         var scn = '';
+        var url = window.location.href;
         setInterval(function () {
             if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
                 if (Knack.router.current_scene_key !== scn) {
                     scn = Knack.router.current_scene_key;
                     assembleFilterURL();
+                } else if (url !== window.location.href) {
+                    url = window.location.href;
+                    console.log('url has changed:', url);//$$$
+                    //ktl.userFilters.onSaveFilterBtnClicked();
                 }
             }
         }, 200);
@@ -2065,7 +2070,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var parts = ktl.core.splitUrl(window.location.href);
             var newUrl = parts['path'] + '?';
             var perPage = '';
-            var sortString = '';
+            var sort = '';
+            var search = '';
             var allParams = '';
 
             for (var i = 0; i < views.length; i++) {
@@ -2086,10 +2092,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (perPage)
                             allParams += '&' + filterDivId + '_per_page=' + perPage;
 
-                        if (sortString)
-                            allParams += '&' + filterDivId + '_sort=' + sortString;
+                        if (sort)
+                            allParams += '&' + filterDivId + '_sort=' + sort;
 
-                        //Add Search string
+                        if (search)
+                            allParams += '&' + filterDivId + '_search=' + search;
                     }
                 }
             }
@@ -2113,6 +2120,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
                 addFilterButtons(view.key);
+
+            var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
+            if (perPageDropdown) {
+                perPageDropdown.addEventListener('change', function (e) {
+                    console.log('view.key =', view.key);//$$$
+                    console.log('e.target.value =', e.target.value);//$$$
+                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                });
+            }
         })
 
         $(document).on('mousedown click', e => {
@@ -2321,11 +2337,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 saveFilterButton.setAttribute('disabled', 'true');
                 saveFilterButton.classList.add('filterControl', 'tooltip');
                 saveFilterButton.innerHTML = '<i class="fa fa-save fa-lg" id="' + filterDivId + '-' + SAVE_FILTER_BTN_SEL + '"></i><div class="tooltip"><span class="tooltiptext">Name and save your filter.<br>This will create a button.</span ></div>';
-                saveFilterButton.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    saveUserFilter(filterDivId);
-                    ktl.views.refreshView(filterDivId);
-                });
+                saveFilterButton.addEventListener('click', e => { ktl.userFilters.onSaveFilterBtnClicked(e, filterDivId); });
 
                 //Section for draggable user filter buttons.
                 var filterDiv = $('#' + filterDivId + ' .filterDiv');
@@ -2423,20 +2435,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function onFilterBtnClicked(e, filterDivId = '') {
+            e.preventDefault();
             var target = e.target || e.currentTarget;
             if (!filterDivId || !target.filter) return;
-            e.preventDefault();
 
-            var clickedName = e.target.filter.filterName;
-            console.log('clickedName =', clickedName);//$$$
-
-            var activeName = '';
             var activeFilter = document.querySelector('#' + filterDivId + ' .activeFilter');
             if (activeFilter) {
-                activeName = activeFilter.filter.filterName;
-                console.log('activeName =', activeName);//$$$
-
-                if (activeName === clickedName)
+                if (activeFilter.filter.filterName === e.target.filter.filterName)
                     return;
             }
 
@@ -2448,140 +2453,54 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var parts = ktl.core.splitUrl(window.location.href);
             var newUrl = parts['path'] + '?';
             var otherParams = ''; //Usually, this contains params for other views then this one.
-            var page = '1'; //Get from last URL in case user changed page.
-            var perPage = '';
-            var sortString = '';
 
             //Get any additional params from URL.
             const params = Object.entries(parts['params']);
             if (!$.isEmptyObject(params)) {
                 params.forEach(function (param) {
-                    console.log('param =', param);//$$$
-                    if (param[0].includes(filterDivId + '_filters')) {
-                        //Ignore this one.
-                    } else if (param[0].includes(filterDivId + '_page'))
-                        page = param[1];
-                    else if (param[0].includes(filterDivId + '_per_page'))
-                        perPage = param[1];
-                    else if (param[0].includes(filterDivId + '_sort'))
-                        sortString = param[1];
-                    else {
-                        console.log('param[0] =', param[0]);//$$$
-                        console.log('param[1] =', param[1]);//$$$
+                    if (param[0].includes(filterDivId + '_filters') ||
+                        param[0].includes(filterDivId + '_per_page') ||
+                        param[0].includes(filterDivId + '_sort') ||
+                        param[0].includes(filterDivId + '_search') ||
+                        param[0].includes(filterDivId + '_page')) {
+                        //Ignore all these.
+                    } else {
                         if (otherParams)
                             otherParams += '&';
                         otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22");
                     }
-                });
+                })
             }
 
             var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
 
             var allParams = filterDivId + '_filters=' + encodedNewFilter;
 
-            if (target.filter.perPageString !== perPage) {
-                target.filter.perPageString = perPage;
-                allParams += '&' + filterDivId + '_per_page=' + target.filter.perPageString;
-            }
+            if (target.filter.perPage)
+                allParams += '&' + filterDivId + '_per_page=' + target.filter.perPage;
 
-            if (target.filter.sortString !== sortString) {
-                target.filter.sortString = sortString;
-                allParams += '&' + filterDivId + '_sort=' + target.filter.sortString;
-            }
+            if (target.filter.sort)
+                allParams += '&' + filterDivId + '_sort=' + target.filter.sort;
 
-            console.log('saving');//$$$
-            saveAllFilters(filterDivId);
-
-            //if (target.filter.perPageString)
-            //    allParams += '&' + filterDivId + '_per_page=' + target.filter.perPageString;
-
-            //console.log('target =', target);//$$$
-            //console.log('target.filter =', target.filter);//$$$
-            console.log('page =', page);//$$$
-            console.log('perPage =', perPage);//$$$
-            console.log('sortString =', sortString);//$$$
-            console.log('otherParams =', otherParams);//$$$
-            console.log('target.filter.perPageString =', target.filter.perPageString);//$$$
-
-            if (target.filter.sortString)
-                allParams += '&' + filterDivId + '_sort=' + target.filter.sortString;
-
-            if (page)
-                allParams += '&' + filterDivId + '_page=' + page;
+            if (target.filter.search)
+                allParams += '&' + filterDivId + '_search=' + target.filter.search;
 
             if (otherParams)
                 allParams += '&' + otherParams;
 
             newUrl += allParams;
-            console.log('newUrl =', newUrl);//$$$
+
+            //console.log('page =', page);//$$$
+            //console.log('target.filter.perPage =', target.filter.perPage);//$$$
+            //console.log('target.filter.sort =', target.filter.sort);//$$$
+            //console.log('otherParams =', otherParams);//$$$
+            //console.log('newUrl =', newUrl);//$$$
+
+            saveAllFilters(filterDivId);
 
             if (window.location.href !== newUrl)
                 window.location.href = newUrl;
         };
-
-        //When user saves a filter to a named button
-        function saveUserFilter(filterDivId = '') {
-            if (!filterDivId) return;
-
-            //Extract filter string for this view from URL and decode.
-            var newFilterStr = '';
-            var newSortStr = '';
-            var newPerPageStr = '';
-            var parts = ktl.core.splitUrl(window.location.href);
-            const params = Object.entries(parts['params']);
-            if (!$.isEmptyObject(params)) {
-                params.forEach(function (param) {
-                    if (param[0].includes(filterDivId + '_filters'))
-                        newFilterStr = param[1];
-
-                    if (param[0].includes(filterDivId + '_per_page'))
-                        newPerPageStr = param[1];
-
-                    if (param[0].includes(filterDivId + '_sort'))
-                        newSortStr = param[1];
-                });
-            }
-
-            if (!newFilterStr) return;
-
-            var filterName = prompt('Filter Name: ', '');
-            if (!filterName) return;
-
-            if (!allFiltersObj.isEmpty) {
-                var exists = false;
-                if (filterDivId in allFiltersObj) {
-                    var filter = {};
-                    for (var i = 0; i < allFiltersObj[filterDivId].filters.length; i++) {
-                        filter = allFiltersObj[filterDivId].filters[i];
-
-                        if (filterName === filter.filterName) {
-                            exists = true;
-                            break;
-                        }
-                    }
-
-                    if (exists) {
-                        if (confirm(filterName + ' already exists.  Do you want to overwrite?')) {
-                            //console.log('Overwriting filter');
-                            allFiltersObj[filterDivId].filters[i].filterString = newFilterStr;
-                            allFiltersObj[filterDivId].filters[i].perPageString = newPerPageStr;
-                            allFiltersObj[filterDivId].filters[i].sortString = newSortStr;
-                        }
-                    } else {
-                        //console.log('Adding filter to existing view');
-                        allFiltersObj[filterDivId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr});
-                    }
-                } else {
-                    //console.log('View not found.  Adding view with new filter');
-                    allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr}] };
-                }
-            } else {
-                //console.log('No filters found, creating new');
-                allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPageString': newPerPageStr, 'sortString': newSortStr}] };
-            }
-
-            ktl.userFilters.setActiveFilter(filterName, filterDivId);
-        }
 
         function applyButtonColors() {
             console.log('applyButtonColors');//$$$
@@ -2767,6 +2686,86 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     console.log('saveUserFilters', viewId);//$$$
                     saveAllFilters(viewId);
                 }
+            },
+
+            //When user saves a filter to a named button
+            onSaveFilterBtnClicked: function (e, filterDivId = '', updateSame = false) {
+                e && e.preventDefault();
+                if (!filterDivId) return;
+
+                //Extract filter string for this view from URL and decode.
+                var newFilterStr = '';
+                var newSortStr = '';
+                var newPerPageStr = '';
+                var newSearchStr = '';
+                var parts = ktl.core.splitUrl(window.location.href);
+                const params = Object.entries(parts['params']);
+                if (!$.isEmptyObject(params)) {
+                    params.forEach(function (param) {
+                        if (param[0].includes(filterDivId + '_filters'))
+                            newFilterStr = param[1];
+
+                        if (param[0].includes(filterDivId + '_per_page'))
+                            newPerPageStr = param[1];
+
+                        if (param[0].includes(filterDivId + '_sort'))
+                            newSortStr = param[1];
+
+                        if (param[0].includes(filterDivId + '_search'))
+                            newSearchStr = param[1];
+                    });
+                }
+
+                if (!newFilterStr) return;
+
+                var filterName = '';
+                if (!updateSame) {
+                    filterName = prompt('Filter Name: ', '');
+                    if (!filterName) return;
+                }
+
+                if (!allFiltersObj.isEmpty) {
+                    var exists = false;
+                    if (filterDivId in allFiltersObj) {
+                        var i = 0;
+                        if (updateSame) {
+                            i = allFiltersObj[filterDivId].active;
+                            filterName = allFiltersObj[filterDivId].filters[i].filterName;
+                            exists = true;
+                        } else {
+                            var filter = {};
+                            for (i = 0; i < allFiltersObj[filterDivId].filters.length; i++) {
+                                filter = allFiltersObj[filterDivId].filters[i];
+                                if (filterName === filter.filterName) {
+                                    exists = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (exists) {
+                            if (updateSame || confirm(filterName + ' already exists.  Do you want to overwrite?')) {
+                                //console.log('Overwriting filter');
+                                allFiltersObj[filterDivId].filters[i].filterString = newFilterStr;
+                                allFiltersObj[filterDivId].filters[i].perPage = newPerPageStr;
+                                allFiltersObj[filterDivId].filters[i].sort = newSortStr;
+                                allFiltersObj[filterDivId].filters[i].search = newSearchStr;
+                            }
+                        } else {
+                            //console.log('Adding filter to existing view');
+                            allFiltersObj[filterDivId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr });
+                        }
+                    } else {
+                        //console.log('View not found.  Adding view with new filter');
+                        allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
+                    }
+                } else {
+                    //console.log('No filters found, creating new');
+                    allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
+                }
+
+                ktl.userFilters.setActiveFilter(filterName, filterDivId);
+                ktl.views.refreshView(filterDivId);
             },
         }
     })();
@@ -3875,23 +3874,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
             modifyTableSort: function (e) {
                 if (e.target.closest('.kn-sort')) {
-                    ktl.userFilters.saveUserFilters(viewId);
-                    var alreadySorted = e.target.closest('[class*="sorted-"]');
-                    if (alreadySorted)
-                        return;
+                    var viewId = e.target.closest('.kn-table.kn-view');
+                    if (viewId) {
+                        viewId = viewId.getAttribute('id');
 
-                    var fieldId = e.target.closest('th').className;
-                    if (Knack.objects.getField(fieldId)) {
-                        e.preventDefault();
+                        ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
 
-                        var fieldAttr = Knack.objects.getField(fieldId).attributes;
-                        var invert = false;
-                        if (e.ctrlKey)
-                            invert = true;
+                        var alreadySorted = e.target.closest('[class*="sorted-"]');
+                        if (alreadySorted)
+                            return;
 
-                        var viewId = e.target.closest('.kn-table.kn-view');
-                        if (viewId) {
-                            viewId = viewId.getAttribute('id');
+                        var fieldId = e.target.closest('th').className;
+                        if (Knack.objects.getField(fieldId)) {
+                            e.preventDefault();
+
+                            var fieldAttr = Knack.objects.getField(fieldId).attributes;
+                            var invert = false;
+                            if (e.ctrlKey)
+                                invert = true;
 
                             var href = e.target.closest('[href]');
                             if (href) {
@@ -3918,6 +3918,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             .then(function () {
                                                 Knack.hideSpinner();
                                                 jQuery.unblockUI();
+                                                ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
                                             })
                                     })
                             }
