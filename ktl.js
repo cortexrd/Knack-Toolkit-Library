@@ -2089,21 +2089,23 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var activeFilterIndex = allFiltersObj[filterDivId].active;
                     if (activeFilterIndex >= 0) {
                         var filter = allFiltersObj[filterDivId].filters[activeFilterIndex];
-                        var encodedNewFilter = encodeURIComponent(filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
+                        if (filter) {
+                            var encodedNewFilter = encodeURIComponent(filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
 
-                        if (allParams)
-                            allParams += '&';
+                            if (allParams)
+                                allParams += '&';
 
-                        allParams += filterDivId + '_filters=' + encodedNewFilter;
+                            allParams += filterDivId + '_filters=' + encodedNewFilter;
 
-                        if (perPage)
-                            allParams += '&' + filterDivId + '_per_page=' + perPage;
+                            if (perPage)
+                                allParams += '&' + filterDivId + '_per_page=' + perPage;
 
-                        if (sort)
-                            allParams += '&' + filterDivId + '_sort=' + sort;
+                            if (sort)
+                                allParams += '&' + filterDivId + '_sort=' + sort;
 
-                        if (search)
-                            allParams += '&' + filterDivId + '_search=' + search;
+                            if (search)
+                                allParams += '&' + filterDivId + '_search=' + search;
+                        }
                     }
                 }
             }
