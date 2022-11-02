@@ -2050,18 +2050,25 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         var scn = '';
         var url = window.location.href;
+        //var scanUrlChange = false;
         setInterval(function () {
             if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
                 if (Knack.router.current_scene_key !== scn) {
                     scn = Knack.router.current_scene_key;
                     assembleFilterURL();
-                } else if (url !== window.location.href) {
-                    url = window.location.href;
-                    console.log('url has changed:', url);//$$$
-                    //ktl.userFilters.onSaveFilterBtnClicked();
+                } else if (false && url !== window.location.href) {
+                //    ktl.log.clog('URL change - STOP SCAN', 'purple');
+                //    console.log('old =', url);//$$$
+                //    console.log('new =', window.location.href);//$$$
+                //    updateActiveFiltersFromUrl();
+
+                //    ktl.log.clog('URL change - START SCAN', 'purple');
+                //    url = window.location.href;
                 }
+
+                //!scanUrlChange && console.log('scanUrlChange =', scanUrlChange);//$$$
             }
-        }, 200);
+        }, 500);
 
         function assembleFilterURL() {
             var views = Knack.router.scene_view.model.views.models;
@@ -2101,8 +2108,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             }
 
-            if (allParams)
+            if (allParams) {
+                //url = newUrl + allParams; //Start URL scanning
+                //ktl.log.clog('assembleFilterURL START SCAN', 'purple');
                 window.location.href = newUrl + allParams;
+            }
         }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -2110,6 +2120,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             applyFilter = true;
             loadAllFilters();
+            //scanUrlChange = true;
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -2124,11 +2135,37 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
             if (perPageDropdown) {
                 perPageDropdown.addEventListener('change', function (e) {
-                    console.log('view.key =', view.key);//$$$
-                    console.log('e.target.value =', e.target.value);//$$$
-                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    //ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    ktl.userFilters.updateActiveFiltersFromUrl();
                 });
             }
+
+            var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function (e) {
+                    //console.log('search', view.key);//$$$
+                    //ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    ktl.userFilters.updateActiveFiltersFromUrl();
+                });
+            }
+
+
+            //$(document).keydown(function (e) {
+            var searchForm = document.querySelector('#' + view.key + ' .table-keyword-search');
+            if (searchForm) {
+                searchForm.addEventListener('submit', function (e) {
+                    //console.log('enter!!!', view.key, e.target);//$$$
+                    ktl.userFilters.updateActiveFiltersFromUrl();
+                })
+            }
+
+        //    $('#' + view.key + ' .table-keyword-search input').on('keydown', function (e) {
+        //        if (e.keyCode === 13) { //Enter
+        //            console.log('2 enter');//$$$
+        //            if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword')
+        //                console.log('Enter on', document.activeElement, e.target);//$$$
+        //        }
+        //    })
         })
 
         $(document).on('mousedown click', e => {
@@ -2257,7 +2294,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Save all filters to local storage. 
         //But before, read back from localStorage and merge with any external updates from another browser.
         function saveAllFilters(filterDivId = '') {
-            console.log('saveAllFilters', filterDivId);//$$$
+            //console.log('saveAllFilters filterDivId', filterDivId);//$$$
             if (filterDivId) {
                 var allFiltersObjTemp = loadAllFilters(false);
 
@@ -2267,12 +2304,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 for (var i = 0; i < buttons.length; i++) {
                     if (buttons[i].classList.contains('activeFilter')) {
                         activeIndex = i;
-                        console.log('FOUND activeIndex =', activeIndex);//$$$
+                        //console.log('FOUND activeIndex =', activeIndex);//$$$
                         break;
                     }
                 }
 
-                console.log('activeIndex =', activeIndex);//$$$
+                //console.log('saveAllFilters activeIndex =', activeIndex);//$$$
                 if (allFiltersObjTemp[filterDivId]) { //Existing view
                     if (allFiltersObj[filterDivId]) { //Modified filter
                         allFiltersObjTemp[filterDivId] = allFiltersObj[filterDivId];
@@ -2306,7 +2343,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (!document.querySelector('#' + viewId + ' .kn-add-filter') || document.querySelector('#' + viewId + ' .filterCtrlDiv'))
                 return;
 
-            console.log('Entering addFilterButtons');//$$$
+            //console.log('Entering addFilterButtons');//$$$
             //Prepare div and style
             var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
 
@@ -2498,12 +2535,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             saveAllFilters(filterDivId);
 
-            if (window.location.href !== newUrl)
+            if (window.location.href !== newUrl) {
+                //scanUrlChange = false;
+                //ktl.log.clog('Filter Click RE-START SCAN', 'purple');
+                //url = newUrl;
                 window.location.href = newUrl;
+            }
         };
 
         function applyButtonColors() {
-            console.log('applyButtonColors');//$$$
             ktl.systemColors.getSystemColors()
                 .then((sysColors) => {
                     $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr });
@@ -2653,7 +2693,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             setActiveFilter: function (filterName = '', viewId = '') {
-                console.log('111 setActiveFilter caller:', ktl.userFilters.setActiveFilter.caller);//$$$
+                //console.log('111 setActiveFilter caller:', ktl.userFilters.setActiveFilter.caller);//$$$
                 if (!viewId) return;
 
                 if (filterName) {
@@ -2675,7 +2715,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 } else { //Remove active filter.
                     $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
-                    console.log('removed activeFilter 2');//$$$
                     applyButtonColors();
                     saveAllFilters(viewId);
                 }
@@ -2695,8 +2734,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 //Extract filter string for this view from URL and decode.
                 var newFilterStr = '';
-                var newSortStr = '';
                 var newPerPageStr = '';
+                var newSortStr = '';
                 var newSearchStr = '';
                 var parts = ktl.core.splitUrl(window.location.href);
                 const params = Object.entries(parts['params']);
@@ -2766,6 +2805,66 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 ktl.userFilters.setActiveFilter(filterName, filterDivId);
                 ktl.views.refreshView(filterDivId);
+            },
+
+            updateActiveFiltersFromUrl: function () {
+
+                return; //TODO:  debug later why this function overrides other filters in same view.
+
+
+                var views = Knack.router.scene_view.model.views.models;
+                if (!views.length || allFiltersObj.isEmpty) return;
+
+                setTimeout(function () {
+                    var parts = ktl.core.splitUrl(window.location.href);
+                    const params = Object.entries(parts['params']);
+
+                    for (var i = 0; i < views.length; i++) {
+                        var filterDivId = views[i].attributes.key;
+                        if (!allFiltersObj[filterDivId]) continue;
+
+                        if (!$.isEmptyObject(allFiltersObj[filterDivId])) {
+                            var activeFilterIndex = allFiltersObj[filterDivId].active;
+                            //console.log('updateActiveFiltersFromUrl activeFilterIndex =', filterDivId, activeFilterIndex);//$$$
+                            if (activeFilterIndex >= 0) {
+                                var newFilterStr = '';
+                                var newPerPageStr = '';
+                                var newSortStr = '';
+                                var newSearchStr = '';
+                                if (!$.isEmptyObject(params)) {
+                                    params.forEach(function (param) {
+                                        if (param[0].includes(filterDivId + '_filters'))
+                                            newFilterStr = param[1];
+
+                                        if (param[0].includes(filterDivId + '_per_page'))
+                                            newPerPageStr = param[1];
+
+                                        if (param[0].includes(filterDivId + '_sort'))
+                                            newSortStr = param[1];
+
+                                        if (param[0].includes(filterDivId + '_search'))
+                                            newSearchStr = param[1];
+                                    });
+                                }
+
+                                if (newFilterStr) {
+                                    allFiltersObj[filterDivId].filters[i].filterString = newFilterStr;
+
+                                    if (newPerPageStr)
+                                        allFiltersObj[filterDivId].filters[i].perPage = newPerPageStr;
+
+                                    if (newSortStr)
+                                        allFiltersObj[filterDivId].filters[i].sort = newSortStr;
+
+                                    if (newSearchStr)
+                                        allFiltersObj[filterDivId].filters[i].search = newSearchStr;
+
+                                    ktl.userFilters.onSaveFilterBtnClicked(null, filterDivId, true);
+                                }
+                            }
+                        }
+                    }
+                }, 1000);
             },
         }
     })();
@@ -3878,7 +3977,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (viewId) {
                         viewId = viewId.getAttribute('id');
 
-                        ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                        //ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                        ktl.userFilters.updateActiveFiltersFromUrl();
 
                         var alreadySorted = e.target.closest('[class*="sorted-"]');
                         if (alreadySorted)
@@ -3918,7 +4018,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             .then(function () {
                                                 Knack.hideSpinner();
                                                 jQuery.unblockUI();
-                                                ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                                                //ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                                                ktl.userFilters.updateActiveFiltersFromUrl();
                                             })
                                     })
                             }
@@ -5991,4 +6092,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO:  Stop everything related to logging and API calls.
 //TOTEST:  var isMultipleChoice = $(viewSel + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
 //TODO:  optimize!  Totally inefficient to do all this for every keystroke.  Scan fields only once per view render as set a numeric attribute instead.
-//if (target.save) //@@@ TODO: Save only if active filter is being changed.
+//TODO:  debug later why this function overrides other filters in same view.
