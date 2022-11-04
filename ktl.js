@@ -2097,14 +2097,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             allParams += filterDivId + '_filters=' + encodedNewFilter;
 
-                            if (perPage)
-                                allParams += '&' + filterDivId + '_per_page=' + perPage;
+                            if (filter.perPage)
+                                allParams += '&' + filterDivId + '_per_page=' + filter.perPage;
 
-                            if (sort)
-                                allParams += '&' + filterDivId + '_sort=' + sort;
+                            if (filter.sort)
+                                allParams += '&' + filterDivId + '_sort=' + filter.sort;
 
-                            if (search)
-                                allParams += '&' + filterDivId + '_search=' + search;
+                            if (filter.search)
+                                allParams += '&' + filterDivId + '_search=' + filter.search;
                         }
                     }
                 }
@@ -2137,8 +2137,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
             if (perPageDropdown) {
                 perPageDropdown.addEventListener('change', function (e) {
-                    //ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    ktl.userFilters.updateActiveFiltersFromUrl();
+                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    //ktl.userFilters.updateActiveFiltersFromUrl();
                 });
             }
 
@@ -2146,28 +2146,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (searchBtn) {
                 searchBtn.addEventListener('click', function (e) {
                     //console.log('search', view.key);//$$$
-                    //ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    ktl.userFilters.updateActiveFiltersFromUrl();
+                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    //ktl.userFilters.updateActiveFiltersFromUrl();
                 });
             }
 
 
-            //$(document).keydown(function (e) {
             var searchForm = document.querySelector('#' + view.key + ' .table-keyword-search');
             if (searchForm) {
                 searchForm.addEventListener('submit', function (e) {
-                    //console.log('enter!!!', view.key, e.target);//$$$
-                    ktl.userFilters.updateActiveFiltersFromUrl();
+                    console.log('enter!!!', view.key, e.target);//$$$
+                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
                 })
             }
 
-        //    $('#' + view.key + ' .table-keyword-search input').on('keydown', function (e) {
-        //        if (e.keyCode === 13) { //Enter
-        //            console.log('2 enter');//$$$
-        //            if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword')
-        //                console.log('Enter on', document.activeElement, e.target);//$$$
-        //        }
-        //    })
+            var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
+            if (resetSearch) {
+                resetSearch.addEventListener('click', function (e) {
+                    console.log('reset!!!', view.key, e.target);//$$$
+                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                })
+            }            
         })
 
         $(document).on('mousedown click', e => {
@@ -2731,6 +2730,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //When user saves a filter to a named button
             onSaveFilterBtnClicked: function (e, filterDivId = '', updateSame = false) {
+                console.log('Entering onSaveFilterBtnClicked');//$$$
                 e && e.preventDefault();
                 if (!filterDivId) return;
 
@@ -2788,9 +2788,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             if (updateSame || confirm(filterName + ' already exists.  Do you want to overwrite?')) {
                                 //console.log('Overwriting filter');
                                 allFiltersObj[filterDivId].filters[i].filterString = newFilterStr;
-                                allFiltersObj[filterDivId].filters[i].perPage = newPerPageStr;
-                                allFiltersObj[filterDivId].filters[i].sort = newSortStr;
-                                allFiltersObj[filterDivId].filters[i].search = newSearchStr;
+
+                                if (newPerPageStr)
+                                    allFiltersObj[filterDivId].filters[i].perPage = newPerPageStr;
+
+                                if (newSortStr)
+                                    allFiltersObj[filterDivId].filters[i].sort = newSortStr;
+
+                                if (newSearchStr)
+                                    allFiltersObj[filterDivId].filters[i].search = newSearchStr;
                             }
                         } else {
                             //console.log('Adding filter to existing view');
@@ -3979,8 +3985,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (viewId) {
                         viewId = viewId.getAttribute('id');
 
-                        //ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
-                        ktl.userFilters.updateActiveFiltersFromUrl();
+                        ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                        //ktl.userFilters.updateActiveFiltersFromUrl();
 
                         var alreadySorted = e.target.closest('[class*="sorted-"]');
                         if (alreadySorted)
@@ -4020,8 +4026,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             .then(function () {
                                                 Knack.hideSpinner();
                                                 jQuery.unblockUI();
-                                                //ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
-                                                ktl.userFilters.updateActiveFiltersFromUrl();
+                                                ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                                                //ktl.userFilters.updateActiveFiltersFromUrl();
                                             })
                                     })
                             }
