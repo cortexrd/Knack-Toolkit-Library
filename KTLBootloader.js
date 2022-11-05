@@ -4,7 +4,7 @@
  * A big advantage of this is that you can work directly from your local hard drive
  * during the development phase, which speeds up significatly each
  * save/refresh iteration cycle.
- * To do so, you need to install NodeJS as a SSL file server on port 3000. * 
+ * To do so, you need to install NodeJS and run a simple file server script on port 3000. * 
  * 
  * See documentation for more details.
  * */
@@ -14,10 +14,10 @@ KnackInitAsync = function ($, callback) {
     window.LazyLoad = LazyLoad;
 
     //Two options when using local file server: 
-    // 1) simple localhost, non-secure
-    // 2) Secure SSL file server.  In this case, use your development workstation's IP and it will allow you to test across several devices on your local network.
-    var svrURL = 'http://localhost:3000/';
-    //var svrURL = 'https://192.168.1.106:3000/';
+    // 1) Basic file server on localhost.  This is simple and only allows testing on your development workstation - which is ok 99% of the time.
+    // 2) Secure SSL file server.  This allows you to test on other devices connected to your LAN.  You will need to find your development workstation's IP.
+    var svrURL = 'http://localhost:3000/'; //Basic server
+    //var svrURL = 'https://192.168.1.106:3000/'; //SSL server
 
     var appPath = 'KnackApps/';
     var appName = Knack.app.attributes.name;
@@ -43,7 +43,8 @@ KnackInitAsync = function ($, callback) {
             location.reload(true);
         }
     } else {
-        //fileName += '_Beta'; //Optional, if you need to use a different filename.
+        if (typeof KnackApp === 'function') //First, wipe any existing production code from memory.
+            delete KnackApp;
 
         //The App does a first pass of detecting and saving the code location, so the iFrameWnd doesn't have to do it again.
         //This also prevents repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
