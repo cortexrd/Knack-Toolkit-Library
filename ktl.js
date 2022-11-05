@@ -4000,7 +4000,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var failsafe = setTimeout(function () {
                         clearInterval(intervalId);
                         reject('waitSubmitOutcome timeout error in ' + viewId);
-                    }, 20000);
+                    }, 30000);
                 })
             },
 
@@ -4025,14 +4025,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //Scenes feature
     this.scenes = (function () {
-        var spinnerCtrReload = 30;
-
-        //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
-        //Anyways... no one is getting impatient at an invisible window!
-        if (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID))
-            spinnerCtrReload = 60;
-
-        var spinnerCtr = spinnerCtrReload;
+        var spinnerCtrDelay = 30;
+        var spinnerCtr = 0;
         var spinnerInterval = null;
         var spinnerWdExcludeScn = [];
         var spinnerWdRunning = false;
@@ -4052,6 +4046,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 alert('ERROR - Scene keys do not match!');
                 return;
             }
+
+            //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
+            //Anyways... no one is getting impatient at an invisible window!
+            if (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID))
+                spinnerCtrDelay = 60;
 
             if (ktl.core.isKiosk()) {
                 //Add extra space at bottom of screen in kiosk mode, to allow editing with the 
@@ -4105,12 +4104,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.idleWatchDogDelay && (idleWatchDogDelay = cfgObj.idleWatchDogDelay);
+                cfgObj.idleWatchDogTimeout && (idleWatchDogTimeout = cfgObj.idleWatchDogTimeout);
+                cfgObj.spinnerWdExcludeScn && (spinnerWdExcludeScn = cfgObj.spinnerWdExcludeScn);
+                cfgObj.spinnerWatchDogTimeout && (spinnerWatchDogTimeout = cfgObj.spinnerWatchDogTimeout);
+                cfgObj.spinnerCtrDelay && (spinnerCtrDelay = cfgObj.spinnerCtrDelay);
                 cfgObj.autoFocus && (autoFocus = cfgObj.autoFocus);
                 cfgObj.kioskButtons && (kioskButtons = cfgObj.kioskButtons);
-                cfgObj.spinnerWdExcludeScn && (spinnerWdExcludeScn = cfgObj.spinnerWdExcludeScn);
                 cfgObj.onSceneRender && (onSceneRender = cfgObj.onSceneRender);
-                cfgObj.idleWatchDogTimeout && (idleWatchDogTimeout = cfgObj.idleWatchDogTimeout);
-                cfgObj.spinnerWatchDogTimeout && (spinnerWatchDogTimeout = cfgObj.spinnerWatchDogTimeout);
             },
 
             getCfg: function () {
@@ -4305,20 +4305,22 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (run) {
                     //ktl.log.clog('WD running ' + Knack.router.current_scene_key, 'green');
                     clearInterval(spinnerInterval);
-                    spinnerCtr = spinnerCtrReload;
+                    spinnerCtr = spinnerCtrDelay;
                     spinnerInterval = setInterval(function () {
+                        console.log('spinnerCtr =', spinnerCtr);//$$$
+
                         if ($('#kn-loading-spinner').is(':visible') ||
                             $('.kn-spinner').is(':visible') ||
                             $('.kn-button.is-primary').is(':disabled')) {
                             if (spinnerCtr-- > 0) {
-                                if (spinnerCtr < spinnerCtrReload - 5)
+                                if (spinnerCtr < spinnerCtrDelay - 5)
                                     ktl.core.timedPopup('Please wait... ' + (spinnerCtr + 1).toString() + ' seconds', 'success', 1100); //Allow a 100ms overlap to prevent blinking.
                             } else {
                                 ktl.log.addLog(ktl.const.LS_INFO, 'KEC_1010 - Spinner Watchdog Timeout in ' + Knack.router.current_scene_key); //@@@ Replace by a weekly counter.
-                                spinnerWatchDogTimeout && spinnerWatchDogTimeout(); //Callback to your App for proper handling.
+                                spinnerWatchDogTimeout && spinnerWatchDogTimeout(); //Callback to your App for specific handling.
                             }
                         } else {
-                            spinnerCtr = spinnerCtrReload;
+                            spinnerCtr = spinnerCtrDelay;
                         }
                     }, 1000);
                 } else {

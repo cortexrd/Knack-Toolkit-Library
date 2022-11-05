@@ -28,11 +28,11 @@ var KnackApp = function ($, info = {}) {
                 autoFocus: true,
                 persistentForm: true,
                 debugWnd: true,
-                idleWatchDog: true,
                 spinnerWatchDog: true,
+                idleWatchDog: true,
+                userFilters: true,
 
                 //Those below nust also be properly setup to have any effect.  See documentation.
-                userFilters: true,
                 iFrameWnd: true,
                 bulkOps: {
                     bulkEdit: true,
@@ -44,19 +44,23 @@ var KnackApp = function ($, info = {}) {
             isKiosk: isKiosk,
         })
 
-        //For Idle timeout delay, you can use a fixed value, or change it depending on the use case.
+        //For Idle timeout delay in milliseconds, you can use a fixed value, or change it depending on the use case.
         //As an example, below I change it if it's a kiosk device.
-        //Zero means disabled, so idleWatchDogTimout() will never be called.
-        var idleWatchDogDelay = 7.2e+6;
-        if (isKiosk())
+        //Zero means disabled, so idleWatchDogTimeout() will never be called.
+        var idleWatchDogDelay = 120 * 60000; //120 minutes (2 hours) by default.
+        var spinnerCtrDelay = 60; //60 seconds of waiting is a good starting point.
+        if (isKiosk()) {
             idleWatchDogDelay = 0; //Inactivity timeout is disabled by default for kiosks.
+            spinnerCtrDelay = 45; //If ever Kiosks users are a bit less patient.
+        }
 
         ktl.scenes.setCfg({
             onSceneRender: onSceneRender,
             autoFocus: autoFocus,
             idleWatchDogDelay: idleWatchDogDelay,
-            idleWatchDogTimout: idleWatchDogTimout,
+            idleWatchDogTimeout: idleWatchDogTimeout,
             spinnerWatchDogTimeout: spinnerWatchDogTimeout,
+            spinnerCtrDelay: spinnerCtrDelay,
             spinnerWdExcludeScn: [],
         })
 
@@ -230,7 +234,7 @@ var KnackApp = function ($, info = {}) {
 
     //When there is no keypress or mouse click for a certin time, by default reload the page.
     //But you can put any code you want there.
-    function idleWatchDogTimout() {
+    function idleWatchDogTimeout() {
         location.reload(true);
 
         //You can also reset the idle wd and do something else.
