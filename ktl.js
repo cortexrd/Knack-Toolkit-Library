@@ -3969,7 +3969,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var failsafe = setTimeout(function () {
                             clearInterval(intervalId);
                             reject('submitAndWait timeout error');
-                        }, 20000);
+                        }, 30000);
                     } catch (e) {
                         reject(e);
                     }
