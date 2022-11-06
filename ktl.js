@@ -17,7 +17,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.25';
+    const KTL_VERSION = '0.4.26';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4307,8 +4307,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     clearInterval(spinnerInterval);
                     spinnerCtr = spinnerCtrDelay;
                     spinnerInterval = setInterval(function () {
-                        console.log('spinnerCtr =', spinnerCtr);//$$$
-
                         if ($('#kn-loading-spinner').is(':visible') ||
                             $('.kn-spinner').is(':visible') ||
                             $('.kn-button.is-primary').is(':disabled')) {
