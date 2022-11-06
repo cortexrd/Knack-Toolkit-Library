@@ -4,7 +4,6 @@
  * @license GPLv3
 */
 
-//Find a better place for these universal values.
 window.APP_ROOT_NAME = Knack.app.attributes.name + '_';
 const APP_ROOT_NAME = window.APP_ROOT_NAME;
 
@@ -65,18 +64,21 @@ function Ktl($) {
         var cfg = {
             developerName: '',
             developerEmail: '',
-            showAppInfo: false,
-            showKtlInfo: false,
-            showMenuInTitle: false,
             enabled: { //Main KTL feature switches.  By default, all is disabled and your App enables what is desired in ktl.core.setCfg.
+                showAppInfo: false,
+                showKtlInfo: false,
+                showMenuInTitle: false,
                 selTextOnFocus: false,
+                chznBetter: false,
                 autoFocus: false,
                 userFilters: false,
                 persistentForm: false,
                 debugWnd: false,
-                iFrameWnd: false,
                 idleWatchDog: false,
                 spinnerWatchDog: false,
+
+                //Those below nust also be properly setup to have any effect.  See documentation.
+                iFrameWnd: false,
                 bulkOps: {
                     bulkEdit: false,
                     bulkDelete: false,
@@ -102,9 +104,6 @@ function Ktl($) {
             setCfg: function (cfgObj = {}) {
                 cfgObj.developerName && (cfg.developerName = cfgObj.developerName);
                 cfgObj.developerEmail && (cfg.developerEmail = cfgObj.developerEmail);
-                cfgObj.showAppInfo && (cfg.showAppInfo = cfgObj.showAppInfo);
-                cfgObj.showKtlInfo && (cfg.showKtlInfo = cfgObj.showKtlInfo);
-                cfgObj.showMenuInTitle && (cfg.showMenuInTitle = cfgObj.showMenuInTitle);
                 cfgObj.enabled && (cfg.enabled = cfgObj.enabled);
                 cfgObj.isKiosk && (isKiosk = cfgObj.isKiosk);
             },
@@ -965,8 +964,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Do we need to add the chznBetter object?
             //chznBetter is ktl's fix to a few chzn dropdown problems.
-            //Note that support of multi-selection type has been removed.  Too buggy for now, and need more work.
-            if (e.path.length >= 1 && !ktl.fields.getUsingBarcode()) {
+            //Note that support of multi-selection type has been removed.  Too buggy for now, and needs more work.
+            if (ktl.core.getCfg().enabled.chznBetter && e.path.length >= 1 && !ktl.fields.getUsingBarcode()) {
                 //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
                 var dropdownId = $(e.target).closest('.chzn-container').attr('id');
                 var isMultiSelect = $(e.target).closest('.chzn-container-multi').length > 0;
@@ -4074,7 +4073,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //Handle Scene change.
             if (prevScene != scene.key) {
                 var menu = ktl.core.getMenuInfo().menu;
-                (ktl.core.getCfg().showMenuInTitle && menu) && (document.title = Knack.app.attributes.name + ' - ' + menu); //Add menu to browser's tab.
+                (ktl.core.getCfg().enabled.showMenuInTitle && menu) && (document.title = Knack.app.attributes.name + ' - ' + menu); //Add menu to browser's tab.
 
                 if (prevScene) //Do not log navigation on first page - useless and excessive.  We only want transitions.
                     ktl.log.addLog(ktl.const.LS_NAVIGATION, scene.key + ', ' + JSON.stringify(ktl.core.getMenuInfo()), false);
@@ -4402,11 +4401,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             addVersionNumber: function (info, style = '') {
-                if (!ktl.core.getCfg().showAppInfo || window.self.frameElement) return;
+                if (!ktl.core.getCfg().enabled.showAppInfo || window.self.frameElement) return;
 
                 //By default, version numbers are added at top right of screen
                 if ($('#verButtonId').length === 0) {
-                    var ktlVer = ktl.core.getCfg().showKtlInfo ? '    KTL v' + KTL_VERSION : '';
+                    var ktlVer = ktl.core.getCfg().enabled.showKtlInfo ? '    KTL v' + KTL_VERSION : '';
                     var appName = Knack.app.attributes.name.toUpperCase();
                     var versionInfo = appName + '    v' + APP_VERSION + ktlVer + '    ' + info.hostname;
 
@@ -4802,7 +4801,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         });
                     }
 
-                    if (allow.showIframe) {
+                    if (ktl.core.getCfg().enabled.iFrameWnd && allow.showIframe) {
                         var showIframeWndCb = ktl.fields.addCheckbox(prefsBar, 'Show iFrameWnd', userPrefsTmp.showIframeWnd);
                         showIframeWndCb.addEventListener('change', e => {
                             userPrefsTmp.showIframeWnd = e.target.checked;
@@ -5997,4 +5996,3 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 //TODO:  Stop everything related to logging and API calls.
 //TOTEST:  var isMultipleChoice = $(viewSel + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
 //TODO:  optimize!  Totally inefficient to do all this for every keystroke.  Scan fields only once per view render as set a numeric attribute instead.
-//TODO:  debug later why this function overrides other filters in same view.

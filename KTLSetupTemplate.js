@@ -20,17 +20,18 @@ var KnackApp = function ($, info = {}) {
         ktl.core.setCfg({
             developerName: 'Firstname Lastname', //Put your name here to get super powers!
             developerEmail: '', //yourmail@provider.com
-            showAppInfo: true,
-            showKtlInfo: true,
-            showMenuInTitle: true,
             enabled: { //Main KTL feature switches.  Here is where your App can override the defaults (all is disabled) and enables what is desired.
+                showAppInfo: true,
+                showKtlInfo: true,
+                showMenuInTitle: true,
                 selTextOnFocus: true,
+                chznBetter: true,
                 autoFocus: true,
+                userFilters: true,
                 persistentForm: true,
                 debugWnd: true,
-                spinnerWatchDog: true,
                 idleWatchDog: true,
-                userFilters: true,
+                spinnerWatchDog: true,
 
                 //Those below nust also be properly setup to have any effect.  See documentation.
                 iFrameWnd: true,
@@ -88,23 +89,6 @@ var KnackApp = function ($, info = {}) {
         ktl.userPrefs.setCfg({
             allowShowPrefs: allowShowPrefs,
             applyUserPrefs: applyUserPrefs,
-        })
-
-        ktl.iFrameWnd.setCfg({
-            //Fields below must match those in the Account object.
-            acctSwVersionFld: 'field_',
-            acctUtcHbFld: 'field_',
-            acctTimeZoneFld: 'field_',
-            acctLocHbFld: 'field_',
-            acctOnlineFld: 'field_',
-            acctUserPrefsFld: 'field_',
-            acctWorkShiftFld: 'field_',
-
-            //Fields below must match those in the Account Logs object.
-            alLogTypeFld: 'field_',
-            alDetailsFld: 'field_',
-            alLogIdFld: 'field_',
-            alEmailFld: 'field_',
         })
 
         ktl.wndMsg.setCfg({
