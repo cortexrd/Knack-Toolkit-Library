@@ -34,10 +34,10 @@ var KnackApp = function ($, info = {}) {
                 spinnerWatchDog: true,
 
                 //Those below nust also be properly setup to have any effect.  See documentation.
-                iFrameWnd: true,
+                iFrameWnd: false,
                 bulkOps: {
-                    bulkEdit: true,
-                    bulkDelete: true,
+                    bulkEdit: false,
+                    bulkDelete: false,
                 },
             },
 
@@ -159,10 +159,12 @@ var KnackApp = function ($, info = {}) {
     //Same as $(document).on('knack-scene-render.any')
     //Called by KTL
     function onSceneRender(event, scene) {
-        if (ktl.core.isKiosk())
+        if (ktl.core.isKiosk()) {
             ktl.scenes.addVersionNumber(info, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
-        else
+        } else {
+            document.body.classList.add('show-menu');
             ktl.scenes.addVersionNumber(info);
+        }
     }
 
     //Positions the cursor at a convenient place for the user to enter the next data.

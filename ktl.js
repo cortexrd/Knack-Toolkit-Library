@@ -16,6 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
+    console.log('KTL loaded xxx');//$$$
     const KTL_VERSION = '0.4.26';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
@@ -243,7 +244,7 @@ function Ktl($) {
             },
 
             isKiosk: function () {
-                return isKiosk();
+                return isKiosk ? isKiosk() : false;
             },
 
             //Param is selector string and optionally if we want to put back a hidden element as it was.
@@ -638,11 +639,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 } else {
                     var sceneObj = Knack.scenes._byId[sceneId];
-                    var views = sceneObj.views.models;
-                    for (var j = 0; j < views.length; j++) {
-                        var title = views[j].attributes.title;
-                        if (title && exactMatch && (title === srchTitle)) return views[j].id;
-                        if (title && !exactMatch && title.includes(srchTitle)) return views[j].id;
+                    if (sceneObj) {
+                        var views = sceneObj.views.models;
+                        for (var j = 0; j < views.length; j++) {
+                            var title = views[j].attributes.title;
+                            if (title && exactMatch && (title === srchTitle)) return views[j].id;
+                            if (title && !exactMatch && title.includes(srchTitle)) return views[j].id;
+                        }
                     }
                 }
             },
@@ -1788,57 +1791,57 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             initSystemColors: function () {
-                if (!document.querySelector('#kn-dynamic-styles')) return;
+                ktl.core.waitSelector('#kn-dynamic-styles')
+                    .then(function () {
+                        var dynStylesCssTxt = document.querySelector('#kn-dynamic-styles').innerText;
 
-                var dynStylesCssTxt = document.querySelector('#kn-dynamic-styles').innerText;
+                        //Basic colors
+                        sysColors.header = extractSysElClr(/\#kn-app-header {\s+background-color: #/gm); //Header background color
+                        sysColors.button = extractSysElClr(/\.is-primary {\s+background-color: #/gm); //Buttons background color
+                        sysColors.buttonText = extractSysElClr(/\.kn-navigation-bar a {\s+color: #/gm); //Buttons text color
+                        sysColors.text = extractSysElClr(/\.kn-content a {\s+color: #/gm); //Text color
 
-                //Basic colors
-                sysColors.header = extractSysElClr(/\#kn-app-header {\s+background-color: #/gm); //Header background color
-                sysColors.button = extractSysElClr(/\.is-primary {\s+background-color: #/gm); //Buttons background color
-                sysColors.buttonText = extractSysElClr(/\.kn-navigation-bar a {\s+color: #/gm); //Buttons text color
-                sysColors.text = extractSysElClr(/\.kn-content a {\s+color: #/gm); //Text color
+                        //Additional colors, usually derived from basic colors, or hard-coded.
+                        var newS, newV = 1.0;
+                        var newRGB = '';
 
-                //Additional colors, usually derived from basic colors, or hard-coded.
-                var newS, newV = 1.0;
-                var newRGB = '';
+                        //User Filter buttons
+                        newS = Math.min(1, sysColors.header.hsv[1] * 0.1);
+                        newV = 0.8;
+                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                        sysColors.filterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                //User Filter buttons
-                newS = Math.min(1, sysColors.header.hsv[1] * 0.1);
-                newV = 0.8;
-                newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                sysColors.filterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                        newS = Math.min(1, sysColors.header.hsv[1] * 0.2);
+                        newV = 1.0;
+                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                        sysColors.activeFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                newS = Math.min(1, sysColors.header.hsv[1] * 0.2);
-                newV = 1.0;
-                newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                sysColors.activeFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                        newS = 1.0;
+                        newV = 1.0;
+                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                        sysColors.borderClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                newS = 1.0;
-                newV = 1.0;
-                newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                sysColors.borderClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                        //Just a generic pale washed-out color for various items.  Ex: background color of debug window.
+                        newS = 0.1;
+                        newV = 1.0;
+                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                        sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                //Just a generic pale washed-out color for various items.  Ex: background color of debug window.
-                newS = 0.1;
-                newV = 1.0;
-                newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                        initDone = true;
+                        //console.log('Init complete, sysColors =', sysColors);
 
-                initDone = true;
-
-                //console.log('Init complete, sysColors =', sysColors);
-
-                function extractSysElClr(cssSearchStr = '') {
-                    var index = 0, clrIdx = 0;
-                    var hsl = [], hsv = [], rgbClr = [];
-                    index = dynStylesCssTxt.search(cssSearchStr);
-                    clrIdx = dynStylesCssTxt.indexOf('#', index + 1);
-                    var color = dynStylesCssTxt.substr(clrIdx, 7); //Format is #rrggbb
-                    rgbClr = ktl.systemColors.hexToRgb(color);
-                    hsl = ktl.systemColors.rgbToHsl(rgbClr[0], rgbClr[1], rgbClr[2]);
-                    hsv = ktl.systemColors.rgbToHsv(rgbClr[0], rgbClr[1], rgbClr[2]);
-                    return { rgb: color, hsl: hsl, hsv: hsv };
-                }
+                        function extractSysElClr(cssSearchStr = '') {
+                            var index = 0, clrIdx = 0;
+                            var hsl = [], hsv = [], rgbClr = [];
+                            index = dynStylesCssTxt.search(cssSearchStr);
+                            clrIdx = dynStylesCssTxt.indexOf('#', index + 1);
+                            var color = dynStylesCssTxt.substr(clrIdx, 7); //Format is #rrggbb
+                            rgbClr = ktl.systemColors.hexToRgb(color);
+                            hsl = ktl.systemColors.rgbToHsl(rgbClr[0], rgbClr[1], rgbClr[2]);
+                            hsv = ktl.systemColors.rgbToHsv(rgbClr[0], rgbClr[1], rgbClr[2]);
+                            return { rgb: color, hsl: hsl, hsv: hsv };
+                        }
+                    })
             },
 
             getSystemColors: function () {
@@ -2132,7 +2135,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var searchForm = document.querySelector('#' + view.key + ' .table-keyword-search');
             if (searchForm) {
                 searchForm.addEventListener('submit', function (e) {
-                    console.log('enter!!!', view.key, e.target);//$$$
                     ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
                 })
             }
@@ -2140,7 +2142,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
             if (resetSearch) {
                 resetSearch.addEventListener('click', function (e) {
-                    console.log('reset!!!', view.key, e.target);//$$$
                     ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
                 })
             }            
@@ -4409,12 +4410,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var appName = Knack.app.attributes.name.toUpperCase();
                     var versionInfo = appName + '    v' + APP_VERSION + ktlVer + '    ' + info.hostname;
 
-                    if (!style) {
-                        var style = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
-                        style += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
-                    }
 
-                    ktl.fields.addButton(document.body, versionInfo, style, [], 'verButtonId');
+                    var versionStyle = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
+                    if (localStorage.getItem(Knack.app.attributes.name + '_dev') === null) { //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
+                        if (style) //If style already exist, use it as is.
+                            versionStyle = style;
+                        else //Otherwise, use KTL's default.
+                            versionStyle += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
+                    } else //Dev mode, make version bright yellow/red font.
+                        versionStyle += '; background-color:gold; color:red; font-weight: bold';
+
+                    ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
 
                     $('#verButtonId').on('click touchstart', function (e) {
                         e.preventDefault();
