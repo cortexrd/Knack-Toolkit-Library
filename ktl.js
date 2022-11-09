@@ -16,7 +16,6 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    console.log('KTL loaded xxx');//$$$
     const KTL_VERSION = '0.4.26';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
@@ -2124,28 +2123,44 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 });
             }
 
+            //When the Search button is clicked in table.
             var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
             if (searchBtn) {
-                searchBtn.addEventListener('click', function (e) {
+                searchBtn.addEventListener('click', function () {
                     ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    var searchString = document.querySelector('#' + view.key + ' .table-keyword-search input').value;
+                    if (!searchString)
+                        eraseSearchInFilter(view.key);
                 });
             }
 
-
+            //When Enter is pressed in Search table field.
             var searchForm = document.querySelector('#' + view.key + ' .table-keyword-search');
             if (searchForm) {
-                searchForm.addEventListener('submit', function (e) {
+                searchForm.addEventListener('submit', function () {
                     ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    var searchString = document.querySelector('#' + view.key + ' .table-keyword-search input').value;
+                    if (!searchString)
+                        eraseSearchInFilter(view.key);
                 })
             }
 
             var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
             if (resetSearch) {
-                resetSearch.addEventListener('click', function (e) {
-                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                resetSearch.addEventListener('click', function () {
+                    eraseSearchInFilter(view.key);
                 })
             }            
         })
+
+        function eraseSearchInFilter(viewId = '') {
+            if (!viewId) return;
+            var activeFilter = allFiltersObj[viewId].active;
+            if (activeFilter >= 0) {
+                allFiltersObj[viewId].filters[activeFilter].search = '';
+                saveAllFilters(viewId);
+            }
+        }
 
         $(document).on('mousedown click', e => {
             if (ktl.scenes.isiFrameWnd()) return;
@@ -2690,7 +2705,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //When user saves a filter to a named button
             onSaveFilterBtnClicked: function (e, filterDivId = '', updateSame = false) {
-                e && e.preventDefault();
                 if (!filterDivId) return;
 
                 //Extract filter string for this view from URL and decode.
