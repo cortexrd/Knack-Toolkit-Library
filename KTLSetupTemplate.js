@@ -237,7 +237,7 @@ var KnackApp = function ($, info = {}) {
     //Keypress event handler
     function onKeyPressed(e) {
         var key = String.fromCharCode(e.which);
-        console.log('Key pressed =', key);
+        //console.log('Key pressed =', key);
     }
 
     function onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {

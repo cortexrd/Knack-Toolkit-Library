@@ -1569,11 +1569,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         //Save data for a given view and field.
-        function saveFormData(viewId = '', fieldId = '', text = '') {
+        function saveFormData(viewId = '', fieldId = '', subField = '', text = '') {
+            //console.log('saveFormData', viewId, fieldId, subField, text);//$$$
+
             if (!viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
-            if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId) || action !== 'insert'/*Add only, not Edit or any other type*/)
+            if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
                 return;
 
             var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
@@ -1584,7 +1586,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
 
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
-            formDataObj[viewId][fieldId] = text;
+
+
+            console.log('saveFormData', viewId, fieldId, subField, text);//$$$
+            console.log('formDataObj =', formDataObj);//$$$
+
+            if (!subField)
+                formDataObj[viewId][fieldId] = text;
+            else { //Some field types like Name and Address have sub-fields.
+                formDataObj[viewId][fieldId] = formDataObj[viewId][fieldId] ? formDataObj[viewId][fieldId] : {};
+                formDataObj[viewId][fieldId][subField] = text;
+            }
 
             formDataObjStr = JSON.stringify(formDataObj);
             ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, formDataObjStr);
@@ -1620,28 +1632,45 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var view = eachView.attributes;
                     currentViews.push(view);
 
-                    //Restore stored data
-                    if (formDataObj[view.key] && view.action === 'insert'/*Add only, not Edit or any other type*/) {
+                    //Reload stored data
+                    if (formDataObj[view.key] && (view.action === 'insert' || view.action === 'create')/*Add only, not Edit or any other type*/) {
                         var fieldsArray = Object.keys(formDataObj[view.key]);
                         if (fieldsArray.length > 0) {
                             numFields += fieldsArray.length - 1;
                             fieldsArray.forEach(function (fieldId) {
                                 if (!fieldsToExclude.includes(fieldId)) {
                                     var fieldText = formDataObj[view.key][fieldId];
+
+                                    //If we have an object instead of plain text, we need to recurse into it for each subField.
                                     var field = Knack.objects.getField(fieldId);
                                     if (field) {
                                         var fieldType = field.attributes.type;
                                         if (textDataTypes.includes(fieldType)) {
-                                            var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input')
-                                                || document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
 
-                                            if (el) {
-                                                //The condition !el.value means 'Write value only if currently empty' 
-                                                //and prevents overwriting fields just populated by code.
-                                                !el.value && (el.value = fieldText);
+                                            if (typeof fieldText === 'object') {
+                                                var subFields = Object.keys(formDataObj[view.key][fieldId])
+                                                subFields.forEach(function (subField) {
+                                                    fieldText = formDataObj[view.key][fieldId][subField];
+                                                    setFieldText(subField);
+                                                })
+                                            } else {
+                                                setFieldText();
                                             }
 
                                             numFields--;
+
+
+                                            function setFieldText(subField) {
+                                                var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] #' + subField + '.input') ||
+                                                    document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input') ||
+                                                    document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
+
+                                                if (el) {
+                                                    //The condition !el.value means 'Write value only if currently empty' 
+                                                    //and prevents overwriting fields just populated by code.
+                                                    !el.value && (el.value = fieldText);
+                                                }
+                                            }
                                         } else if (fieldType === 'connection') {
                                             var textToFind = fieldText.split('-');
                                             var recId = textToFind.length === 2 ? textToFind[1] : '';
@@ -1666,6 +1695,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 .catch(function () { })
                                         }
                                     }
+
+
+
+
                                 }
                             })
                         }
@@ -1710,6 +1743,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             clearTimeout(keyTimeout);
 
+
             if ((e.type === 'focusout' && e.relatedTarget) || (e.type === 'input' && e.target.type === 'select-one'))
                 saveText();
             else {
@@ -1719,18 +1753,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
 
             function saveText() {
+                var subField = '';
+                var knInput = e.target.closest('.kn-input');
+                var fieldId = knInput.getAttribute('data-input-id');
                 var text = e.target.value;
+
+                if (fieldId !== e.target.id)
+                    subField = e.target.id;
+
                 var viewId = e.target.closest('.kn-form.kn-view');
                 if (viewId) {
                     viewId = viewId.id;
-
-                    //For the fieldId, sometimes we get view_XXX-field_YYY (ex: multiple-choices dropdowns).  Keep only field info.
-                    var fieldIndex = e.target.id.indexOf('field_');
-                    if (fieldIndex >= 0) {
-                        var fieldId = e.target.id.substr(fieldIndex);
-                        if (!viewId || !fieldId) return;
-                        saveFormData(viewId, fieldId, text);
-                    }
+                    if (viewId && fieldId)
+                        saveFormData(viewId, fieldId, subField, text);
                 }
             }
         }
@@ -2128,9 +2163,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (searchBtn) {
                 searchBtn.addEventListener('click', function () {
                     ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    var searchString = document.querySelector('#' + view.key + ' .table-keyword-search input').value;
-                    if (!searchString)
-                        eraseSearchInFilter(view.key);
+                    updateSearchInFilter(view.key);
                 });
             }
 
@@ -2139,25 +2172,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (searchForm) {
                 searchForm.addEventListener('submit', function () {
                     ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    var searchString = document.querySelector('#' + view.key + ' .table-keyword-search input').value;
-                    if (!searchString)
-                        eraseSearchInFilter(view.key);
+                    updateSearchInFilter(view.key);
                 })
             }
 
+            //When the Reset button is clicked in table's search.
             var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
             if (resetSearch) {
                 resetSearch.addEventListener('click', function () {
-                    eraseSearchInFilter(view.key);
+                    document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
+                    updateSearchInFilter(view.key);
                 })
             }            
         })
 
-        function eraseSearchInFilter(viewId = '') {
+        function updateSearchInFilter(viewId = '') {
             if (!viewId) return;
+
             var activeFilter = allFiltersObj[viewId].active;
             if (activeFilter >= 0) {
-                allFiltersObj[viewId].filters[activeFilter].search = '';
+                var searchString = document.querySelector('#' + viewId + ' .table-keyword-search input').value;
+                allFiltersObj[viewId].filters[activeFilter].search = searchString;
                 saveAllFilters(viewId);
             }
         }
@@ -3235,7 +3270,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             var viewType = view.attributes.type;
                             var formAction = view.attributes.action;
-                            var useFetch = (formAction === 'insert') ? false : true;
+                            var useFetch = (formAction === 'insert' || formAction === 'create') ? false : true;
 
                             //This generates a bit too much logs sometimes.  Uncomment if you really need it.
                             //if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo) {
