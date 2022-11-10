@@ -1519,9 +1519,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key))
                 return;
 
+            console.log('111');//$$$
             ktl.fields.convertNumToTel().then(() => {
+                console.log('222');//$$$
                 loadFormData()
                     .then(() => {
+                        console.log('pfInitDone = true');//$$$
                         pfInitDone = true;
                         setTimeout(function () { ktl.fields.enforceNumeric(); }, 1000);
                     })
@@ -1529,6 +1532,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         document.addEventListener('input', function (e) {
+            console.log('input event - pfInitDone =', pfInitDone);//$$$
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
                 return;
 
@@ -1615,6 +1619,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             return new Promise(function (resolve) {
                 formDataObj = {};
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
+                console.log('formDataObjStr =', formDataObjStr);//$$$
                 if (formDataObjStr)
                     formDataObj = JSON.parse(formDataObjStr);
                 else {
@@ -1627,6 +1632,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var intervalId = null;
                 var numFields = Knack.router.scene_view.model.views.models.length;
+console.log('1 numFields =', numFields);//$$$
                 currentViews = [];
                 Knack.router.scene_view.model.views.models.forEach(function (eachView) {
                     var view = eachView.attributes;
@@ -1637,6 +1643,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var fieldsArray = Object.keys(formDataObj[view.key]);
                         if (fieldsArray.length > 0) {
                             numFields += fieldsArray.length - 1;
+console.log('2 numFields =', numFields);//$$$
                             fieldsArray.forEach(function (fieldId) {
                                 if (!fieldsToExclude.includes(fieldId)) {
                                     var fieldText = formDataObj[view.key][fieldId];
@@ -1646,7 +1653,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     if (field) {
                                         var fieldType = field.attributes.type;
                                         if (textDataTypes.includes(fieldType)) {
-
                                             if (typeof fieldText === 'object') {
                                                 var subFields = Object.keys(formDataObj[view.key][fieldId])
                                                 subFields.forEach(function (subField) {
@@ -1658,10 +1664,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             }
 
                                             numFields--;
+                                            console.log('3 numFields =', numFields);//$$$
 
 
                                             function setFieldText(subField) {
-                                                var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] #' + subField + '.input') ||
+                                                var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] #' + subField + '.input') || //Must be first.
                                                     document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input') ||
                                                     document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
 
@@ -1686,24 +1693,31 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 recId && $('#' + view.key + '-' + fieldId).val(recId).trigger('liszt:updated').chosen().trigger('change');
 
                                                 numFields--;
+                                                console.log('4 numFields =', numFields);//$$$
+
                                                 var chznContainer = $('#' + view.key + ' [data-input-id="' + fieldId + '"] .chzn-container');
                                                 $(chznContainer).find('.chzn-drop').css('left', '-9000px');
                                             }
                                         } else if (fieldType === 'multiple_choice') {
+                                            if (typeof fieldText === 'object')
+                                                fieldText = formDataObj[view.key][fieldId][Object.keys(formDataObj[view.key][fieldId])];
+
                                             fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
                                                 .then(function () { })
                                                 .catch(function () { })
+                                        } else if (fieldType === 'boolean') {
+                                            document.querySelector('#' + view.key + ' .kn-input-boolean input').checked = (fieldText === 'Yes') ? true : false;
+                                        } else {
+                                            ktl.log.clog('Unsupported field type: ' + fieldId + ', ' + fieldType, 'purple');
                                         }
                                     }
-
-
-
-
                                 }
                             })
                         }
                     }
                     numFields--;
+                    console.log('5 numFields =', numFields);//$$$
+
                 })
 
                 //Wait until all views and fields are processed.
@@ -1757,6 +1771,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var knInput = e.target.closest('.kn-input');
                 var fieldId = knInput.getAttribute('data-input-id');
                 var text = e.target.value;
+
+                if (e.target.type === 'checkbox')
+                    text = e.target.checked;
 
                 if (fieldId !== e.target.id)
                     subField = e.target.id;
