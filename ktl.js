@@ -1498,7 +1498,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var scenesToExclude = [];
         var fieldsToExclude = [];
 
-        var currentViews = [];
+        var currentViews = []; //Needed to cleanup form data from previous views, when scene changes.
         var previousScene = '';
         var formDataObj = {};
         var keyTimeout = null;
@@ -1519,12 +1519,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key))
                 return;
 
-            console.log('111');//$$$
             ktl.fields.convertNumToTel().then(() => {
-                console.log('222');//$$$
                 loadFormData()
                     .then(() => {
-                        console.log('pfInitDone = true');//$$$
                         pfInitDone = true;
                         setTimeout(function () { ktl.fields.enforceNumeric(); }, 1000);
                     })
@@ -1573,10 +1570,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         //Save data for a given view and field.
-        function saveFormData(viewId = '', fieldId = '', subField = '', text = '') {
-            //console.log('saveFormData', viewId, fieldId, subField, text);//$$$
-
-            if (!viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
+        function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
+            //console.log('saveFormData', text, viewId, fieldId, subField);//$$$
+            if (!text || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
             if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
@@ -1590,10 +1586,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
 
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
-
-
-            console.log('saveFormData', viewId, fieldId, subField, text);//$$$
-            console.log('formDataObj =', formDataObj);//$$$
 
             if (!subField)
                 formDataObj[viewId][fieldId] = text;
@@ -1617,112 +1609,131 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //After loading, re-validates numeric fields and put errors in pink.
         function loadFormData() {
             return new Promise(function (resolve) {
-                formDataObj = {};
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
-                console.log('formDataObjStr =', formDataObjStr);//$$$
-                if (formDataObjStr)
-                    formDataObj = JSON.parse(formDataObjStr);
-                else {
+
+                if (!formDataObjStr || $.isEmptyObject(JSON.parse(formDataObjStr))) {
+                    ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA); //Wipe out if empty object, JIC.
                     resolve();
                     return;
                 }
 
                 //To see all data types:  console.log(Knack.config);
-                var textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text'];
+                const textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text'];
 
-                var intervalId = null;
-                var numFields = Knack.router.scene_view.model.views.models.length;
-console.log('1 numFields =', numFields);//$$$
+                formDataObj = {};
                 currentViews = [];
-                Knack.router.scene_view.model.views.models.forEach(function (eachView) {
-                    var view = eachView.attributes;
-                    currentViews.push(view);
+                var intervalId = null;
 
-                    //Reload stored data
-                    if (formDataObj[view.key] && (view.action === 'insert' || view.action === 'create')/*Add only, not Edit or any other type*/) {
+                //Reload stored data, but only for Form type of views.
+                var views = Knack.router.scene_view.model.views.models;
+                for (var v = 0; v < views.length; v++) {
+                    var view = views[v].attributes;
+                    if (view.action === 'insert' || view.action === 'create') { //Add only, not Edit or any other type
+                        currentViews.push(view);
+
+                        formDataObj[view.key] = JSON.parse(formDataObjStr)[view.key];
+                        if (!formDataObj[view.key]) continue;
+
                         var fieldsArray = Object.keys(formDataObj[view.key]);
-                        if (fieldsArray.length > 0) {
-                            numFields += fieldsArray.length - 1;
-console.log('2 numFields =', numFields);//$$$
-                            fieldsArray.forEach(function (fieldId) {
-                                if (!fieldsToExclude.includes(fieldId)) {
-                                    var fieldText = formDataObj[view.key][fieldId];
+                        for (var f = 0; f < fieldsArray.length; f++) {
+                            var fieldId = fieldsArray[f];
+                            if (fieldsToExclude.includes(fieldId)) {
+                                ktl.log.clog('Skipped field for PF: ' + fieldId, 'purple');
+                                continue; //JIC - should never happen since fieldsToExclude are never saved in the first place.
+                            }
 
-                                    //If we have an object instead of plain text, we need to recurse into it for each subField.
-                                    var field = Knack.objects.getField(fieldId);
-                                    if (field) {
-                                        var fieldType = field.attributes.type;
-                                        if (textDataTypes.includes(fieldType)) {
-                                            if (typeof fieldText === 'object') {
-                                                var subFields = Object.keys(formDataObj[view.key][fieldId])
-                                                subFields.forEach(function (subField) {
-                                                    fieldText = formDataObj[view.key][fieldId][subField];
-                                                    setFieldText(subField);
-                                                })
-                                            } else {
-                                                setFieldText();
-                                            }
+                            var fieldText = formDataObj[view.key][fieldId];
 
-                                            numFields--;
-                                            console.log('3 numFields =', numFields);//$$$
-
-
-                                            function setFieldText(subField) {
-                                                var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] #' + subField + '.input') || //Must be first.
-                                                    document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input') ||
-                                                    document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
-
-                                                if (el) {
-                                                    //The condition !el.value means 'Write value only if currently empty' 
-                                                    //and prevents overwriting fields just populated by code.
-                                                    !el.value && (el.value = fieldText);
-                                                }
-                                            }
-                                        } else if (fieldType === 'connection') {
-                                            var textToFind = fieldText.split('-');
-                                            var recId = textToFind.length === 2 ? textToFind[1] : '';
-                                            textToFind = textToFind[0];
-
-                                            //Start with a first 'rough' pass to populate option records...
-                                            ktl.views.searchDropdown(textToFind, fieldId, false, false, '', false)
-                                                .then(function () { findRecId(recId); })
-                                                .catch(function () { findRecId(recId); })
-
-                                            //... then a second pass to find exact match with recId.
-                                            function findRecId(recId) {
-                                                recId && $('#' + view.key + '-' + fieldId).val(recId).trigger('liszt:updated').chosen().trigger('change');
-
-                                                numFields--;
-                                                console.log('4 numFields =', numFields);//$$$
-
-                                                var chznContainer = $('#' + view.key + ' [data-input-id="' + fieldId + '"] .chzn-container');
-                                                $(chznContainer).find('.chzn-drop').css('left', '-9000px');
-                                            }
-                                        } else if (fieldType === 'multiple_choice') {
-                                            if (typeof fieldText === 'object')
-                                                fieldText = formDataObj[view.key][fieldId][Object.keys(formDataObj[view.key][fieldId])];
-
-                                            fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
-                                                .then(function () { })
-                                                .catch(function () { })
-                                        } else if (fieldType === 'boolean') {
-                                            document.querySelector('#' + view.key + ' .kn-input-boolean input').checked = (fieldText === 'Yes') ? true : false;
-                                        } else {
-                                            ktl.log.clog('Unsupported field type: ' + fieldId + ', ' + fieldType, 'purple');
-                                        }
+                            //If we have an object instead of plain text, we need to recurse into it for each sub-field.
+                            var field = Knack.objects.getField(fieldId);
+                            if (field) {
+                                var subField = '';
+                                var fieldType = field.attributes.type;
+                                if (textDataTypes.includes(fieldType)) {
+                                    if (typeof fieldText === 'object') {
+                                        var subFields = Object.keys(formDataObj[view.key][fieldId])
+                                        subFields.forEach(function (subField) {
+                                            fieldText = formDataObj[view.key][fieldId][subField];
+                                            setFieldText(subField);
+                                        })
+                                    } else {
+                                        setFieldText();
                                     }
+
+                                    function setFieldText(subField) {
+                                        var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] #' + subField + '.input') || //Must be first.
+                                            document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input') ||
+                                            document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
+
+                                        if (el) {
+                                            //The condition !el.value means 'Write value only if currently empty' 
+                                            //and prevents overwriting fields just populated by code.
+                                            !el.value && (el.value = fieldText);
+                                        }
+
+                                        removeEntry(view.key, fieldId, subField);
+                                    }
+                                } else if (fieldType === 'connection') {
+                                    if (typeof fieldText === 'object') {
+                                        subField = Object.keys(formDataObj[view.key][fieldId]);
+                                        fieldText = formDataObj[view.key][fieldId][subField];
+                                    }
+
+                                    var textToFind = fieldText.split('-');
+                                    var recId = textToFind.length === 2 ? textToFind[1] : '';
+                                    textToFind = textToFind[0];
+
+                                    //Start with a first 'rough' pass to populate option records...
+                                    ktl.views.searchDropdown(textToFind, fieldId, false, false, '', false)
+                                        .then(function () { findRecId(recId); })
+                                        .catch(function () { findRecId(recId); })
+
+                                    //... then a second pass to find exact match with recId.
+                                    function findRecId(recId) {
+                                        recId && $('#' + view.key + '-' + fieldId).val(recId).trigger('liszt:updated').chosen().trigger('change');
+
+                                        var chznContainer = $('#' + view.key + ' [data-input-id="' + fieldId + '"] .chzn-container');
+                                        $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                    }
+                                } else if (fieldType === 'multiple_choice') {
+                                    if (typeof fieldText === 'object') {
+                                        subField = Object.keys(formDataObj[view.key][fieldId]);
+                                        fieldText = formDataObj[view.key][fieldId][subField];
+                                    }
+
+                                    fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
+                                        .then(function () { })
+                                        .catch(function () { })
+                                } else if (fieldType === 'boolean') {
+                                    document.querySelector('#' + view.key + ' [data-input-id="' + fieldId + '"] input').checked = fieldText;
+                                } else {
+                                    ktl.log.clog('Unsupported field type: ' + fieldId + ', ' + fieldType, 'purple');
                                 }
-                            })
+
+                                removeEntry(view.key, fieldId, subField);
+                            }
                         }
                     }
-                    numFields--;
-                    console.log('5 numFields =', numFields);//$$$
+                }
 
-                })
+                function removeEntry(viewId, fieldId, subField) {
+                    if ($.isEmptyObject(formDataObj) || !viewId || !fieldId) return;
+
+                    if (subField)
+                        delete formDataObj[viewId][fieldId][subField];
+                    else
+                        delete formDataObj[viewId][fieldId];
+
+                    if ($.isEmptyObject(formDataObj[viewId][fieldId]))
+                        delete formDataObj[viewId][fieldId];
+
+                    if ($.isEmptyObject(formDataObj[viewId]))
+                        delete formDataObj[viewId]
+                }
 
                 //Wait until all views and fields are processed.
                 intervalId = setInterval(function () {
-                    if (numFields <= 0) {
+                    if ($.isEmptyObject(formDataObj)) {
                         clearInterval(intervalId);
                         intervalId = null;
                         resolve();
@@ -1775,14 +1786,17 @@ console.log('2 numFields =', numFields);//$$$
                 if (e.target.type === 'checkbox')
                     text = e.target.checked;
 
-                if (fieldId !== e.target.id)
+                if (fieldId !== e.target.id) {
+                    console.log('fieldId =', fieldId);//$$$
+                    console.log('e.target.id =', e.target.id);//$$$
                     subField = e.target.id;
+                }
 
                 var viewId = e.target.closest('.kn-form.kn-view');
                 if (viewId) {
                     viewId = viewId.id;
                     if (viewId && fieldId)
-                        saveFormData(viewId, fieldId, subField, text);
+                        saveFormData(text, viewId, fieldId, subField);
                 }
             }
         }
@@ -1811,7 +1825,7 @@ console.log('2 numFields =', numFields);//$$$
             onFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 if (!fieldsToExclude.includes(fieldId)) {
                     recId && (text += '-' + recId);
-                    saveFormData(viewId, fieldId, text);
+                    saveFormData(text, viewId, fieldId);
                 }
             },
         }
