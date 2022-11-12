@@ -1529,7 +1529,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         document.addEventListener('input', function (e) {
-            console.log('input event - pfInitDone =', pfInitDone);//$$$
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
                 return;
 
@@ -1719,16 +1718,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 function removeEntry(viewId, fieldId, subField) {
                     if ($.isEmptyObject(formDataObj) || !viewId || !fieldId) return;
 
-                    if (subField)
-                        delete formDataObj[viewId][fieldId][subField];
-                    else
-                        delete formDataObj[viewId][fieldId];
+                    try {
+                        if (subField)
+                            delete formDataObj[viewId][fieldId][subField];
+                        else
+                            delete formDataObj[viewId][fieldId];
 
-                    if ($.isEmptyObject(formDataObj[viewId][fieldId]))
-                        delete formDataObj[viewId][fieldId];
+                        if ($.isEmptyObject(formDataObj[viewId][fieldId]))
+                            delete formDataObj[viewId][fieldId];
 
-                    if ($.isEmptyObject(formDataObj[viewId]))
-                        delete formDataObj[viewId]
+                        if ($.isEmptyObject(formDataObj[viewId]))
+                            delete formDataObj[viewId];
+                    }
+                    catch (e) {
+                        console.log('e =', e);
+                    }
                 }
 
                 //Wait until all views and fields are processed.
