@@ -21,7 +21,7 @@ KnackInitAsync = function ($, callback) {
 
     var appPath = 'KnackApps/';
     var appName = Knack.app.attributes.name;
-    var fileName = appName; //Or any other specific name you'd prefer to use.
+    var fileName = appName + '.js' ; //Or any other specific name you'd prefer to use.
     var ktlPath = 'Lib/KTL/';
     var ktlUrl = '';
 
@@ -46,17 +46,20 @@ KnackInitAsync = function ($, callback) {
         if (typeof KnackApp === 'function') //First, wipe any existing production code from memory.
             delete KnackApp;
 
+        if (typeof KnackApp === 'function') //This happens on some servers - under investigation with Knack support, ticket #166218.
+            console.log('ERROR - unable to delete functions.');
+
         //The App does a first pass of detecting and saving the code location, so the iFrameWnd doesn't have to do it again.
         //This also prevents repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
         if (!window.self.frameElement) { //CLS development mode
-            LazyLoad.js([svrURL + appPath + fileName + '.js'], () => {
+            LazyLoad.js([svrURL + appPath + fileName], () => {
                 if (typeof KnackApp === 'function') {
                     runApp();
                 } else {
                     //Put your favorite CDN and set paths accordingly
                     svrURL = 'https://ctrnd.com/';
                     appPath = 'KnackApps/';
-                    LazyLoad.js([svrURL + appPath + fileName + '.js'], () => {
+                    LazyLoad.js([svrURL + appPath + fileName], () => {
                         if (typeof KnackApp === 'function') { //CDN Dev
                             ktlPath = 'jsLibs/KTL/';
                         } else { //ACB Prod
@@ -73,7 +76,7 @@ KnackInitAsync = function ($, callback) {
             svrURL = localStorage.getItem(appName + '_svrURL');
             appPath = localStorage.getItem(appName + '_appPath');
             ktlPath = localStorage.getItem(appName + '_ktlPath');
-            svrURL && LazyLoad.js([svrURL + appPath + fileName + '.js'], () => { runApp(); })
+            svrURL && LazyLoad.js([svrURL + appPath + fileName], () => { runApp(); })
         }
     }
 
