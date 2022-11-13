@@ -1,8 +1,11 @@
 /**
  * Knack Toolkit Library (ktl) - Javascript
+ * See documentation for more details on github:  https://github.com/cortexrd/Knack-Toolkit-Library
+ *
  * @author  Normand Defayette <nd@ctrnd.com>
  * @license GPLv3
-*/
+ * 2019-2022
+ * */
 
 window.APP_ROOT_NAME = Knack.app.attributes.name + '_';
 const APP_ROOT_NAME = window.APP_ROOT_NAME;
@@ -6038,36 +6041,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         sysInfo: this.sysInfo,
         systemColors: this.systemColors,
     };
-}; //ktl end
+};
 
-/*
-    --------- Useful code samples ---------
-    var start = window.performance.now();
-    //Some code to execute here...
-    var end = window.performance.now();
-    console.log(`Execution time: ${end - start} ms`);
-*/
+////////////////  End of KTL /////////////////////
 
-//TODO:
-//Need to find a way to apply user filters to view where there are many reports (columns).  Currently, filters cause lots of refreshes.  Maybe pre-format URL once, then apply?
-//Experiment with this to render reports only, not all view:  Knack.router.scene_view.model.views._byId['view_838'].attributes.rows[0].reports[0].this.renderReports()
-//inlineEditChangeStyle: function () {
-//necessary?... var msgId = event.data.msgId; //Keep a copy for ack.
-//Wait until Submit is completed and ack parent - convert to use submitAndWait
-//After app startup...
-//   1) If iframe never acks its presence within X seconds, re - create it(this is done).
-//   2) If after 5 attempts, still not there, refresh app.
-//ktl.wndMsg.removeAllMsgOfType('heartbeatMsg'); //TODO:  change to delete all msg for dst === iFrameWnd.
-//TODO: add getCategoryLogs.  Returns object with array and logId.
-//We need a logs category list, and move all constants from core to log object.
-//Msg is not handled:  parent.postMessage({ msgType: 'forceReload', response: jqXHR }, '*');
-//Replace all forceReload messages to the new reloadAppMsg
-//TODO: replace by a list of last 10 logs and a timestamp
-//ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
-//Test:  ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
-//TODO: lsGetItem - fix and allow returing null if key doesn't exist.
-//Update old style:  function postLoginEvent()
-//TODO:  Investigate iOS bug with userFilters.
-//TODO:  Stop everything related to logging and API calls.
-//TOTEST:  var isMultipleChoice = $(viewSel + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
-//TODO:  optimize!  Totally inefficient to do all this for every keystroke.  Scan fields only once per view render as set a numeric attribute instead.
+
