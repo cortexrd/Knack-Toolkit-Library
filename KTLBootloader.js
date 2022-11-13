@@ -6,7 +6,11 @@
  * save/refresh iteration cycle.
  * To do so, you need to install NodeJS and run a simple file server script on port 3000. * 
  * 
- * See documentation for more details.
+ * See documentation for more details on github:  https://github.com/cortexrd/Knack-Toolkit-Library
+ * 
+ * @author  Normand Defayette <nd@ctrnd.com>
+ * @license GPLv3
+ * 2019-2022
  * */
 
 KnackInitAsync = function ($, callback) {
@@ -19,35 +23,50 @@ KnackInitAsync = function ($, callback) {
     var svrURL = 'http://localhost:3000/'; //Basic server
     //var svrURL = 'https://192.168.1.106:3000/'; //SSL server
 
-    var appPath = 'KnackApps/';
+    //This is the actual Knack app name, used by the bootloader only, in local storage to store paths and other stuff.
+    var lsAppName = Knack.app.attributes.name;
+
+    //This is the name from the developer's standpoint: folder name and potentially the .js file name.
+    //Spaces are not allowed (yet), due to a limitation of the basic file server (NodeJS_FileServer.js).
     var appName = Knack.app.attributes.name;
-    var fileName = appName + '.js' ; //Or any other specific name you'd prefer to use.
+
+    //Must match the folder structure as descripbed in the documentation.
+    var appPath = 'KnackApps/' + appName + '/';
+
+    //By default, fileName is the same as your App's name.
+    //But you can change it by passing a command-line parameter -filename=MyFile.js
+    var fileName = appName + '.js';
+    if (fileName.includes(' '))
+        alert('Filename can\'t have spaces');
+
     var ktlPath = 'Lib/KTL/';
     var ktlUrl = '';
 
-    //If appname_dev exists, run development code.  If does not exist, run prod code.
+    //If lsAppName_dev exists, run development code.  If does not exist, run prod code.
     //This is to avoid error 404 not found in console output when using CLS mode, and faster startup time.
-    var prod = (localStorage.getItem(appName + '_dev') === null);
+    var prod = (localStorage.getItem(lsAppName + '_dev') === null);
 
     //Assume Prod ACB mode by default.
     if (prod) {
         if (typeof KnackApp === 'function') { //ACB Prod
-            localStorage.removeItem(appName + '_svrURL');
-            localStorage.removeItem(appName + '_appPath');
-            localStorage.removeItem(appName + '_ktlPath');
+            localStorage.removeItem(lsAppName + '_svrURL');
+            localStorage.removeItem(lsAppName + '_appPath');
+            localStorage.removeItem(lsAppName + '_ktlPath');
             svrURL = '';
             runApp();
         } else {
             if (confirm('Error - Cannot find Knack application...\nSwitch to development mode?'))
-                localStorage.setItem(appName + '_dev', '');
+                localStorage.setItem(lsAppName + '_dev', '');
             location.reload(true);
         }
     } else {
         if (typeof KnackApp === 'function') //First, wipe any existing production code from memory.
             delete KnackApp;
 
-        if (typeof KnackApp === 'function') //This happens on some servers - under investigation with Knack support, ticket #166218.
-            console.log('ERROR - unable to delete functions.');
+        if (typeof KnackApp === 'function') { //This happens on some servers - under investigation with Knack support, ticket #166218.
+            alert('\nERROR - operation "delete KnackApp" has failed.\nCLS mode will not work unless you delete all code after "End of Bootloader" in the Javascript pane.');
+            location.reload(true);
+        }
 
         //The App does a first pass of detecting and saving the code location, so the iFrameWnd doesn't have to do it again.
         //This also prevents repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
@@ -63,9 +82,9 @@ KnackInitAsync = function ($, callback) {
                         if (typeof KnackApp === 'function') { //CDN Dev
                             ktlPath = 'jsLibs/KTL/';
                         } else { //ACB Prod
-                            localStorage.removeItem(appName + '_svrURL');
-                            localStorage.removeItem(appName + '_appPath');
-                            localStorage.removeItem(appName + '_ktlPath');
+                            localStorage.removeItem(lsAppName + '_svrURL');
+                            localStorage.removeItem(lsAppName + '_appPath');
+                            localStorage.removeItem(lsAppName + '_ktlPath');
                             svrURL = '';
                         }
                         runApp();
@@ -73,9 +92,9 @@ KnackInitAsync = function ($, callback) {
                 }
             })
         } else { //iframe
-            svrURL = localStorage.getItem(appName + '_svrURL');
-            appPath = localStorage.getItem(appName + '_appPath');
-            ktlPath = localStorage.getItem(appName + '_ktlPath');
+            svrURL = localStorage.getItem(lsAppName + '_svrURL');
+            appPath = localStorage.getItem(lsAppName + '_appPath');
+            ktlPath = localStorage.getItem(lsAppName + '_ktlPath');
             svrURL && LazyLoad.js([svrURL + appPath + fileName], () => { runApp(); })
         }
     }
@@ -86,9 +105,9 @@ KnackInitAsync = function ($, callback) {
         lib.insertLibrary('Sortable', 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js'); // Comes from here:  https://github.com/SortableJS/Sortable
 
         if (svrURL) {
-            localStorage.setItem(appName + '_svrURL', svrURL);
-            localStorage.setItem(appName + '_appPath', appPath);
-            localStorage.setItem(appName + '_ktlPath', ktlPath);
+            localStorage.setItem(lsAppName + '_svrURL', svrURL);
+            localStorage.setItem(lsAppName + '_appPath', appPath);
+            localStorage.setItem(lsAppName + '_ktlPath', ktlPath);
             ktlUrl = svrURL + ktlPath + 'ktl.js';
             lib.insertLibrary('ktl', ktlUrl);
             LazyLoad.css([svrURL + ktlPath + 'ktl.css'], () => { });
@@ -214,5 +233,7 @@ libLoader.prototype.librariesRequired = function () {
         self.assert(window[library.objectName], 'Library "' + libraryName + '" is required');
     });
 };
+
+////////////////  End of Bootloader  /////////////////////
 
 
