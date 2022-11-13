@@ -1628,10 +1628,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 for (var v = 0; v < views.length; v++) {
                     var view = views[v].attributes;
                     if (view.action === 'insert' || view.action === 'create') { //Add only, not Edit or any other type
-                        currentViews.push(view);
+                        var viewData = JSON.parse(formDataObjStr)[view.key];
+                        if (!viewData) continue;
 
-                        formDataObj[view.key] = JSON.parse(formDataObjStr)[view.key];
-                        if (!formDataObj[view.key]) continue;
+                        currentViews.push(view);
+                        formDataObj[view.key] = viewData;
 
                         var fieldsArray = Object.keys(formDataObj[view.key]);
                         for (var f = 0; f < fieldsArray.length; f++) {
@@ -1645,18 +1646,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             //If we have an object instead of plain text, we need to recurse into it for each sub-field.
                             var field = Knack.objects.getField(fieldId);
+//Move this IF with continue at top.
                             if (field) {
                                 var subField = '';
                                 var fieldType = field.attributes.type;
                                 if (textDataTypes.includes(fieldType)) {
-                                    if (typeof fieldText === 'object') {
-                                        var subFields = Object.keys(formDataObj[view.key][fieldId])
-                                        subFields.forEach(function (subField) {
-                                            fieldText = formDataObj[view.key][fieldId][subField];
-                                            setFieldText(subField);
+                                    if (typeof fieldText === 'object') { //Ex: name and address field types.
+                                        var allSubFields = Object.keys(formDataObj[view.key][fieldId])
+                                        allSubFields.forEach(function (eachSubField) {
+                                            fieldText = formDataObj[view.key][fieldId][eachSubField];
+                                            setFieldText(eachSubField);
+                                            delete formDataObj[view.key][fieldId][eachSubField];
                                         })
                                     } else {
                                         setFieldText();
+                                        delete formDataObj[view.key][fieldId];
                                     }
 
                                     function setFieldText(subField) {
@@ -1666,11 +1670,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                         if (el) {
                                             //The condition !el.value means 'Write value only if currently empty' 
-                                            //and prevents overwriting fields just populated by code.
+                                            //and prevents overwriting fields just populated by code elsewhere.
                                             !el.value && (el.value = fieldText);
                                         }
-
-                                        removeEntry(view.key, fieldId, subField);
                                     }
                                 } else if (fieldType === 'connection') {
                                     if (typeof fieldText === 'object') {
@@ -1694,6 +1696,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         var chznContainer = $('#' + view.key + ' [data-input-id="' + fieldId + '"] .chzn-container');
                                         $(chznContainer).find('.chzn-drop').css('left', '-9000px');
                                     }
+
                                 } else if (fieldType === 'multiple_choice') {
                                     if (typeof fieldText === 'object') {
                                         subField = Object.keys(formDataObj[view.key][fieldId]);
@@ -1709,29 +1712,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     ktl.log.clog('Unsupported field type: ' + fieldId + ', ' + fieldType, 'purple');
                                 }
 
-                                removeEntry(view.key, fieldId, subField);
+                                delete formDataObj[view.key][fieldId];
                             }
                         }
-                    }
-                }
 
-                function removeEntry(viewId, fieldId, subField) {
-                    if ($.isEmptyObject(formDataObj) || !viewId || !fieldId) return;
-
-                    try {
-                        if (subField)
-                            delete formDataObj[viewId][fieldId][subField];
-                        else
-                            delete formDataObj[viewId][fieldId];
-
-                        if ($.isEmptyObject(formDataObj[viewId][fieldId]))
-                            delete formDataObj[viewId][fieldId];
-
-                        if ($.isEmptyObject(formDataObj[viewId]))
-                            delete formDataObj[viewId];
-                    }
-                    catch (e) {
-                        console.log('e =', e);
+                        delete formDataObj[view.key];
                     }
                 }
 
