@@ -8,7 +8,7 @@ http.createServer(function (req, res) {
 		console.log('__dirname =',__dirname);
 		console.log('req.url =',req.url);
 
-        if (err) {
+        if (err) {	
             res.writeHead(404);
             res.end(JSON.stringify(err));
             return;
