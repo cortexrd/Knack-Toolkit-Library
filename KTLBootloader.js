@@ -34,10 +34,8 @@ KnackInitAsync = function ($, callback) {
     var appPath = 'KnackApps/' + appName + '/';
 
     //By default, fileName is the same as your App's name.
-    //But you can change it by passing a command-line parameter -filename=MyFile.js
+    //But you can change it by passing a command-line parameter -filename=MyFile.js to the NodeJS_ACB_MergeFiles.js script.
     var fileName = appName + '.js';
-    if (fileName.includes(' '))
-        alert('Filename can\'t have spaces');
 
     var ktlPath = 'Lib/KTL/';
     var ktlUrl = '';
@@ -71,6 +69,11 @@ KnackInitAsync = function ($, callback) {
         //The App does a first pass of detecting and saving the code location, so the iFrameWnd doesn't have to do it again.
         //This also prevents repeated net::ERR_CONNECTION_REFUSED errors due to iFrameWnd refreshing periodically.
         if (!window.self.frameElement) { //CLS development mode
+            if (fileName.includes(' ')) {
+                alert('Filename can\'t have spaces');
+                return;
+            }
+
             LazyLoad.js([svrURL + appPath + fileName], () => {
                 if (typeof KnackApp === 'function') {
                     runApp();
