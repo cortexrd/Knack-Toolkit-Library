@@ -38,6 +38,12 @@ var KnackApp = function ($, info = {}) {
 
                 //Those below nust also be properly setup to have any effect.  See documentation.
                 iFrameWnd: false,
+                logging: {
+                    logins: false,
+                    navigation: false,
+                    activity: false,
+                },
+
                 bulkOps: {
                     bulkEdit: false,
                     bulkDelete: false,

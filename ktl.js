@@ -82,15 +82,15 @@ function Ktl($) {
 
                 //Those below nust also be properly setup to have any effect.  See documentation.
                 iFrameWnd: false,
-                bulkOps: {
-                    bulkEdit: false,
-                    bulkDelete: false,
-                },
-
                 logging: {
                     logins: false,
                     navigation: false,
                     activity: false,
+                },
+
+                bulkOps: {
+                    bulkEdit: false,
+                    bulkDelete: false,
                 },
             },
         };
@@ -1777,23 +1777,25 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             function saveText() {
                 var subField = '';
                 var knInput = e.target.closest('.kn-input');
-                var fieldId = knInput.getAttribute('data-input-id');
-                var text = e.target.value;
+                if (knInput) {
+                    var fieldId = knInput.getAttribute('data-input-id');
+                    var text = e.target.value;
 
-                if (e.target.type === 'checkbox')
-                    text = e.target.checked;
+                    if (e.target.type === 'checkbox')
+                        text = e.target.checked;
 
-                if (fieldId !== e.target.id) {
-                    console.log('fieldId =', fieldId);//$$$
-                    console.log('e.target.id =', e.target.id);//$$$
-                    subField = e.target.id;
-                }
+                    if (fieldId !== e.target.id) {
+                        console.log('fieldId =', fieldId);//$$$
+                        console.log('e.target.id =', e.target.id);//$$$
+                        subField = e.target.id;
+                    }
 
-                var viewId = e.target.closest('.kn-form.kn-view');
-                if (viewId) {
-                    viewId = viewId.id;
-                    if (viewId && fieldId)
-                        saveFormData(text, viewId, fieldId, subField);
+                    var viewId = e.target.closest('.kn-form.kn-view');
+                    if (viewId) {
+                        viewId = viewId.id;
+                        if (viewId && fieldId)
+                            saveFormData(text, viewId, fieldId, subField);
+                    }
                 }
             }
         }
@@ -4524,7 +4526,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var lastDetails = ''; //Prevent multiple duplicated logs.  //TODO: replace by a list of last 10 logs and a timestamp
         var mouseClickCtr = 0;
         var keyPressCtr = 0;
-        var isActive = false;
+        var isActive = false; //Start monitoring activity only once.
         var logCategoryAllowed = null; //Callback function in your app that returns whether or not a category is to be logged, based on specific conditions.
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -4576,7 +4578,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             // These logs are stored in localStorage, and each new one is inserted
             // at the beginning of the array to get the most recent at top.
             addLog: function (category = '', details = '', showInConsole = true) {
-                if (category === '' || details === '' || lastDetails === details)
+                if (!ktl.core.getCfg().enabled.iFrameWnd || category === '' || details === '' || lastDetails === details)
+                    return;
+
+                if ((category === ktl.const.LS_LOGIN && !ktl.core.getCfg().enabled.logging.logins) ||
+                    (category === ktl.const.LS_ACTIVITY && !ktl.core.getCfg().enabled.logging.activity) ||
+                    (category === ktl.const.LS_NAVIGATION && !ktl.core.getCfg().enabled.logging.navigation))
                     return;
 
                 //Use app's callback to check if log category is allowed.
@@ -4710,6 +4717,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             updateActivity: function () {
+                if (!ktl.core.getCfg().enabled.logging.activity) return;
+
                 //Important to read again every 5 seconds in case some other opened pages would add to shared counters.
                 var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
                 try {
