@@ -5,12 +5,15 @@ const fs = require('fs');
 
 var fileName = ''; //Required, must include the .js extension and have no spaces.
 var appName = ''; //Optional, must and have no spaces.  If omitted, will use same as Knack app.
+var ktlPath = '..\\..\\Lib\\KTL'; //Optional, used when calling from a directory other than KnackApps.  If omitted, will use same default as per docs.
 
 process.argv.forEach(function (val, index, array) {
     if (val.includes('-filename=')) {
         fileName = val.replace('-filename=', '');
     } else if (val.includes('-appname=')) {
         appName = val.replace('-appname=', '');
+    } else if (val.includes('-ktlpath=')) {
+        ktlPath = val.replace('-ktlpath=', '');
     }
 });
 
@@ -70,8 +73,8 @@ function mergeFiles(mergedFile, filesToMerge = []) {
 
 
 mergeFiles(mergedFile, [
-    '..\\..\\Lib\\KTL\\KTLBootloader.js', //Order is important!
-    '..\\..\\Lib\\KTL\\ktl.js',
+    ktlPath + '\\KTLBootloader.js', //Order is important!
+    ktlPath + '\\ktl.js',
     (fileName || (appName ? (appName + '.js') : ''))
 
 ]);
