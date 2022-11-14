@@ -86,6 +86,12 @@ function Ktl($) {
                     bulkEdit: false,
                     bulkDelete: false,
                 },
+
+                logging: {
+                    logins: false,
+                    navigation: false,
+                    activity: false,
+                },
             },
         };
 
@@ -1649,8 +1655,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             //If we have an object instead of plain text, we need to recurse into it for each sub-field.
                             var field = Knack.objects.getField(fieldId);
-//Move this IF with continue at top.
-                            if (field) {
+                            if (field) { //TODO: Move this IF with continue at top.
                                 var subField = '';
                                 var fieldType = field.attributes.type;
                                 if (textDataTypes.includes(fieldType)) {
