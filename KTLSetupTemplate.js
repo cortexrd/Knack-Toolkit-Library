@@ -1,12 +1,15 @@
 //====================================================
 //====================================================
+//Your App ID:  xxxxxxxxxxxxxxxxxxxxxxxx
 var KnackApp = function ($, info = {}) {
     window.$ = $;
 
-    //Your App ID:  xxxxxxxxxxxxxxxxxxxxxxxx
     window.APP_VERSION = '0.1.0'; //Your App version.
 
+    const IFRAME_WND_ID = 'iFrameWnd';
+
     var ktl = new Ktl($);
+    window.ktl = ktl;
 
     //====================================================
     //App constants - BEGIN
@@ -38,6 +41,12 @@ var KnackApp = function ($, info = {}) {
                 bulkOps: {
                     bulkEdit: false,
                     bulkDelete: false,
+                },
+
+                logging: {
+                    logins: false,
+                    navigation: false,
+                    activity: false,
                 },
             },
 
@@ -73,6 +82,11 @@ var KnackApp = function ($, info = {}) {
             onKeyPressed: onKeyPressed,
             onFieldValueChanged: onFieldValueChanged,
             textAsNumeric: [],
+            chznBetterThresholds: {
+                'field_x': '4',
+            },
+            chznBetterToExclude: [],
+            chznBetterSetFocus: chznBetterSetFocus,
         })
 
         ktl.persistentForm.setCfg({
@@ -240,6 +254,21 @@ var KnackApp = function ($, info = {}) {
         //console.log('Key pressed =', key);
     }
 
+    function chznBetterSetFocus() {
+        try {
+            var chzn = document.activeElement.closest('.kn-input') || document.activeElement.closest('.chzn-container').previousElementSibling;
+            var fieldId = chzn.getAttribute('data-input-id') || chzn.getAttribute('name');
+
+            if (fieldId === 'field_xxxx') {
+                //Your specific code here...
+            }
+        }
+        catch (e) {
+            ktl.log.clog('Exception in chznBetterSetFocus:', 'red');
+            console.log(e);
+        }
+    }
+
     function onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
         if (viewId === 'view_xyz') {
             //Your specific code here...
@@ -364,7 +393,13 @@ var KnackApp = function ($, info = {}) {
 
     //Setup default preferences - BEGIN
     var userPrefs = ktl.userPrefs.getUserPrefs();
-    userPrefs.showViewId = true;
+
+    //Typically, only the developer is interested in seeing the view IDs.
+    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
+        userPrefs.showViewId = true;
+    else
+        userPrefs.showViewId = false;
+
     userPrefs.showExtraDebugInfo = false;
     userPrefs.showIframeWnd = false;
     userPrefs.showDebugWnd = false;
@@ -372,7 +407,7 @@ var KnackApp = function ($, info = {}) {
 
     //Save back to localStorage.
     ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefs));
-    console.log('userPrefs =', userPrefs);
+    //console.log('userPrefs =', userPrefs);
     //Setup default preferences - END
 
 
