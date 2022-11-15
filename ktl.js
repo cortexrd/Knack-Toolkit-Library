@@ -852,21 +852,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             sInfo.mobile = Knack.isMobile().toString();
 
-            getPublicIP().then((ip) => { sInfo.ip = ip; });
+            getPublicIP()
+                .then((ip) => { sInfo.ip = ip; })
+                .catch(() => { console.log('getPublicIP failed.  Make sure uBlock not active.'); })
         })();
 
 
         function getPublicIP() {
             return new Promise(function (resolve, reject) {
-                $.get('https://www.cloudflare.com/cdn-cgi/trace', function (data) {
-                    var index = data.indexOf('ip=') + 3;
-                    var publicIP = data.substr(index);
-                    index = publicIP.indexOf('\n');
-                    publicIP = publicIP.substr(0, index);
-                    if (ktl.core.ipFormatOk(publicIP))
-                        resolve(publicIP);
-                    else
-                        reject(publicIP);
+                //NOTE:  This will not work if browser has uBlock Origin extension enabled.
+                $.get('https://www.cloudflare.com/cdn-cgi/trace', function (data, status) {
+                    if (status === 'success') {
+                        var index = data.indexOf('ip=') + 3;
+                        var publicIP = data.substr(index);
+                        index = publicIP.indexOf('\n');
+                        publicIP = publicIP.substr(0, index);
+                        if (ktl.core.ipFormatOk(publicIP))
+                            resolve(publicIP);
+                        else
+                            reject();
+                    } else
+                        reject();
                 });
             });
         }
@@ -2216,6 +2222,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }            
         })
 
+        //Retrieves the searched string form the field and saves it in the localStorage's filter entry.
         function updateSearchInFilter(viewId = '') {
             if (!viewId) return;
 
@@ -2239,8 +2246,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             filterDivId && ktl.userFilters.setActiveFilter('', filterDivId);
             */
 
-            //When user clicks on Add Filters button or edits the current filter, we must remember the view we're in 
-            //because when we click Submit in the filter's edit pop-up, it's not be possible to retrieve it.
+            //When user clicks on Add Filters button or edits the current filter, we must:
+            // 1) remember the view we're in because when we click Submit in the filter's edit pop-up, it's not be possible to retrieve it.
+            // 2) remove the current filter because it doesn't match anymore.
             if (e.type === 'mousedown' && e.target.closest('.kn-filters-nav,.kn-filters,.kn-remove-filter')) {
                 setViewToRefresh(getViewToRefresh() || viewId);
                 if (e.target.closest('.kn-remove-filter')) {
@@ -2447,7 +2455,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     for (var btnIndex = 0; btnIndex < allFiltersObj[filterDivId].filters.length; btnIndex++) {
                         var filter = allFiltersObj[filterDivId].filters[btnIndex];
 
-                        if (filter.filterName === '') break;
+                        if (!filter || filter.filterName === '') { //JIC - delete junk.
+                            allFiltersObj[filterDivId].filters.splice(btnIndex, 1);
+                            saveAllFilters(filterDivId);
+                            continue;
+                        }
+
                         var filterBtn = ktl.fields.addButton(filterDiv, filter.filterName, filterBtnStyle,
                             ['kn-button', 'is-small'],
                             filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
@@ -2763,11 +2776,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            saveUserFilters: function (viewId = '') {
-                if (viewId)
-                    saveAllFilters(viewId);
-            },
-
             //When user saves a filter to a named button
             onSaveFilterBtnClicked: function (e, filterDivId = '', updateSame = false) {
                 if (!filterDivId) return;
@@ -2845,9 +2853,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
                     }
                 } else {
-                    //console.log('No filters found, creating new');
+                    //console.log('No filters found, creating new from scratch.');
                     allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
                 }
+
+                //console.log('allFiltersObj =', allFiltersObj);//$$$
+                //console.log('Filters info:', filterName, newFilterStr, newPerPageStr, newSortStr, newSearchStr);
 
                 ktl.userFilters.setActiveFilter(filterName, filterDivId);
                 ktl.views.refreshView(filterDivId);
