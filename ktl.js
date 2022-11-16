@@ -1589,7 +1589,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Save data for a given view and field.
         function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
             //console.log('saveFormData', text, viewId, fieldId, subField);
-            if (!text || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
+            if (!viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
             if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
@@ -1604,9 +1604,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
 
-            if (!subField)
-                formDataObj[viewId][fieldId] = text;
-            else { //Some field types like Name and Address have sub-fields.
+            if (!subField) {
+                if (!text)
+                    delete formDataObj[viewId][fieldId];
+                else
+                    formDataObj[viewId][fieldId] = text;
+            } else { //Some field types like Name and Address have sub-fields.
                 formDataObj[viewId][fieldId] = formDataObj[viewId][fieldId] ? formDataObj[viewId][fieldId] : {};
                 formDataObj[viewId][fieldId][subField] = text;
             }
@@ -1812,8 +1815,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //If viewId is empty, erase all current scene's views.
         function eraseFormData(viewId = '') {
             if (viewId) {
-                delete formDataObj[viewId];
-                ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
+                var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
+                if (formDataObjStr) {
+                    formDataObj = JSON.parse(formDataObjStr);
+                    delete formDataObj[viewId];
+                    ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
+                }
             } else {
                 Knack.router.scene_view.model.views.models.forEach(function (eachView) {
                     var view = eachView.attributes;
