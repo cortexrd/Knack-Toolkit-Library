@@ -1803,7 +1803,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
                 return;
 
-            eraseFormData(view);
+            eraseFormData(view.key);
         });
 
         $(document).on('click', function (e) {
@@ -1816,7 +1816,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (view) {
                     ktl.views.waitSubmitOutcome(view.id)
                         .then(success => {
-                            eraseFormData(Knack.router.scene_view.model.views._byId[view.id].attributes);
+                            eraseFormData(view.id);
                         })
                         .catch(failure => {
                             ktl.log.clog('Persistent Form - waitSubmitOutcome failed: ' + failure, 'red');
@@ -1888,7 +1888,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var viewData = JSON.parse(formDataObjStr)[view.key];
                         if (!viewData) continue;
 
-                        currentViews.push(view);
+                        currentViews.push(view.key);
                         formDataObj[view.key] = viewData;
 
                         var fieldsArray = Object.keys(formDataObj[view.key]);
@@ -2033,8 +2033,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         text = e.target.checked;
 
                     if (fieldId !== e.target.id) {
-                        console.log('fieldId =', fieldId);//$$$
-                        console.log('e.target.id =', e.target.id);//$$$
                         subField = e.target.id;
                     }
 
@@ -2049,15 +2047,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         //Remove all saved data for this view after a submit 
-        //If changing scene (view param is null), then erase for all views.
-        function eraseFormData(view = null) {
-            if (view) {
-                delete formDataObj[view.key];
+        //If changing scene, erase for all previous scene's views.
+        //If viewId is empty, erase all current scene's views.
+        function eraseFormData(viewId = '') {
+            if (viewId) {
+                delete formDataObj[viewId];
                 ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
             } else {
                 Knack.router.scene_view.model.views.models.forEach(function (eachView) {
                     var view = eachView.attributes;
-                    eraseFormData(view);
+                    eraseFormData(view.key);
                 })
             }
         }
