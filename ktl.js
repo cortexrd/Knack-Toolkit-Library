@@ -235,7 +235,7 @@ function Ktl($) {
                                         } else {
                                             if (jqXHR.status) {
                                                 if (jqXHR.status === 500) {
-                                                    console.log('Error 500');//$$$
+                                                    console.log('Error 500');
                                                     //TODO:  Stop everything related to logging and API calls.
                                                 } else
                                                     ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1003 - knAPI failure in ' + viewId + ', status: ' + jqXHR.status + ', statusText: ' + jqXHR.statusText);
@@ -1126,9 +1126,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 processFieldChanged({ text: e.target.value, e: e });
             })
 
-            //Etc.  TODO:  radio buttons, checkboxes
+            //More to come...
+            //TODO: radio buttons, multiple selection dropdowns
 
+            //For text input changes, see inputHasChanged
             function processFieldChanged({ text: text, recId: recId, e: e }) {
+                //console.log('processFieldChanged', text, recId, e);
                 try {
                     var viewId = e.target.closest('.kn-view').id;
                     var fieldId = document.querySelector('#' + e.target.id).closest('.kn-input').getAttribute('data-input-id')
@@ -1585,7 +1588,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Save data for a given view and field.
         function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
-            //console.log('saveFormData', text, viewId, fieldId, subField);//$$$
+            //console.log('saveFormData', text, viewId, fieldId, subField);
             if (!text || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
@@ -2392,7 +2395,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             try {
                 ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, JSON.stringify(allFiltersObj));
             } catch (e) {
-                console.log('Error while saving filters:', e);//$$$
+                console.log('Error while saving filters:', e);
             }
 
             if (getViewToRefresh() && filterDivId) {
@@ -2856,7 +2859,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     allFiltersObj[filterDivId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
                 }
 
-                //console.log('allFiltersObj =', allFiltersObj);//$$$
+                //console.log('allFiltersObj =', allFiltersObj);
                 //console.log('Filters info:', filterName, newFilterStr, newPerPageStr, newSortStr, newSearchStr);
 
                 ktl.userFilters.setActiveFilter(filterName, filterDivId);
@@ -3493,7 +3496,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             addViewId: function (view, fontStyle = 'color: red; font-weight: bold; font-size:small') {
                 if (ktl.userPrefs.getUserPrefs().showViewId && $('#' + view.key + '-label-id').length === 0/*Add once only*/) {
-                    //console.log('viewId =', viewId);//$$$
                     var label = document.createElement('label');
                     label.setAttribute('id', view.key + '-label-id');
                     label.appendChild(document.createTextNode('    ' + view.key));
@@ -5207,7 +5209,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 alert('An error occurred while updating versions in table: ' + reason)
                             })
                     } else {
-                        console.log('sending reloadAppMsg with ver:', ver);//$$$
+                        console.log('sending reloadAppMsg with ver:', ver);
                         ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, ver);
                     }
                 }
@@ -5707,7 +5709,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var viewModel = Knack.router.scene_view.model.views._byId[view.key];
             if (viewModel) {
                 var viewAttr = viewModel.attributes;
-                //console.log('viewAttr =', viewAttr);//$$$
                 if (viewAttr.type === 'table') {
                     var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
                     var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
