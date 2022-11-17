@@ -65,6 +65,7 @@ function Ktl($) {
         */
     this.core = (function () {
         var cfg = {
+            //IMPORTANT!!! DO NOT EDIT THIS SECTION.  Instead, use the ktl.core.setCfg function.
             developerName: '',
             developerEmail: '',
             enabled: { //Main KTL feature switches.  By default, all is disabled and your App enables what is desired in ktl.core.setCfg.

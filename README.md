@@ -1,4 +1,5 @@
 -   [Introduction](#introduction)
+-   [Overview](#overview)
 -   [Features](#features)
     -   [Bootloader](#bootloader)
     -   [Core](#core)
@@ -33,7 +34,7 @@
 
 **Knack Toolkit Library**
 
-v0.1.0 - pre-release
+v0.4.26 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -45,11 +46,49 @@ never exposed.
 pre-release phase. Thank you for being patient and understanding that
 everything may not be complete or perfectly organized.
 
+# Overview
+
+Right out of the box, without any coding or complex setup, the KTL will
+provide many nice additions to your app:
+
+-   user filters to save your filters to named buttons
+
+-   form data persistence that saves as you type, and will load back
+    your data if a page is reloaded after a submit failure or power
+    outage
+
+-   special keywords in the view's title to trigger
+
+    -   auto-refresh of tables, details view or other views
+
+    -   hidden views
+
+    -   hidden titles
+
+    -   disable inline editing
+
+-   debug window for embedded devices
+
+-   idle timeout watchdog
+
+-   spinner timeout watchdog
+
+-   numeric pre-validation
+
+-   auto-focus
+
+-   dropdown selector improvements
+
+-   kiosk mode
+
+All you need to do is copy two files: **KTL_ZeroConfig_ACB.js** and
+**ktl.css** to their respective panes in your Builder. If you already
+have your own code, it will not conflict with the KTL.
+
 # Features
 
-The code is categorized in different general features:
-
-Here\'s a quick list:
+The code is organized by specific feature categories, and here\'s the
+complete list:
 
 -   Bootloader
 
@@ -85,31 +124,32 @@ Here\'s a quick list:
 
 -   System Colors
 
-Now, let\'s go through each one and see what they can do, with the list
-of all available functions.
+In the next section, we'll go through each one and see what they can do,
+with the list of all available functions to you as a developer, if ever
+you're interested in trying out the more advanced features.
 
 ## Bootloader
 
-The bootloader is the entry point of all code, including KTL and your
-app-specific code, and does two things:
+The bootloader is the entry point of all code, including the KTL and
+your app-specific code. It is very technical, and the average user will
+not really need to understand most of it. Basically, it does two things:
 
 ### External library loading
 
-First, I wish to say a big ***\"thank you\"*** to **Soluntech** for
-their gracious permission to use a portion of their code to manage the
-dynamic library loading. To be honest, I don\'t fully understand it, but
-it sure does a wonderful job, and allowed me to start the KTL project.
-In short, it uses a list of libraries your App will need, and
-automatically loads them with the Lazyload function. Don\'t worry, you
-don\'t need to understand all of this since the setup is already done.
+First, I wish to say a big *\"thank you\"* to **Soluntech** for their
+gracious permission to use a portion of their code to manage the dynamic
+library loading. To be honest, I don\'t fully understand it, but it sure
+does a wonderful job, and allowed me to start the KTL project. In short,
+it uses a list of libraries your App will need, and automatically loads
+them with the Lazyload function. Don\'t worry, you don\'t need to
+understand all of this since the setup is already done.
 
 Normally, without the Bootloader, all your App code resides in the the
 Builder\'s Javascript pane. But when using it, you have another cool
-option of loading **MyAppCode.js** (for example) file locally, from your
-hard drive, just as if it was another library, being loaded at run-time.
-This means you can now code and save directly on your workstation,
-without having to copy/paste the code to the Builder every few seconds,
-for every change you make.
+option of loading **MyAppCode.js** (for example) file locally from your
+hard drive at run-time. This means you can now code and save directly on
+your workstation, without having to copy/paste the code to the Builder
+every time you want to test a change.
 
 ### Developing code locally
 
@@ -133,7 +173,8 @@ changes whenever he/she chooses to do so.
 
 ## Core
 
-This contains generic utility functions, not related to any category.
+This contains generic utility functions, used by most other features
+internally, but also available to your app.
 
 ### Functions
 
@@ -146,13 +187,16 @@ This contains generic utility functions, not related to any category.
 -   **isKiosk**: For support of kiosk mode applications. You decide the
     trigger conditions for kiosk mode in a callback function.
 
--   **hideSelector**: To move away elements off the screen to hide or
-    save real-estate.
+-   **hideSelector**: To move away elements off the screen to hide them
+    or save real-estate.
 
 -   **waitSelector**: When you need to wait until an element exists or
     is visible.
 
--   **waitAndReload**: Waits for a specific delay, then reloads app
+-   **waitAndReload**: Waits for a specific delay, then reloads page.
+
+-   **switchVersion**: To quickly toggle between production and
+    development versions.
 
 -   **enableDragElement**: To add basic drag and drop to an element.
 
@@ -161,7 +205,7 @@ This contains generic utility functions, not related to any category.
 
 -   **getMenuInfo**: Retrieves the menu and sub-menu items.
 
--   **isHex**: For valdation of hex characters only.
+-   **isHex**: For validation of hexadecimal strings.
 
 -   **ipFormatOk**: For IP format validation.
 
@@ -184,10 +228,12 @@ This contains generic utility functions, not related to any category.
 
 -   **removeTimedPopup**: To remove the timedPopup.
 
--   **infoPopup**: Similar to timedPopup, but without a delay. Removal
-    must be done manually. Useful for progress indicator.
+-   **infoPopup**: Similar to timedPopup, but without an expiration
+    delay. Removal must be done manually. Useful for progress
+    indicators.
 
--   **setInfoPopupText**: To indicate progress in infoPopup.
+-   **setInfoPopupText**: To indicate general information, status or
+    progress in infoPopup.
 
 -   **removeInfoPopup**: To remove infoPopup.
 
@@ -196,6 +242,20 @@ This contains generic utility functions, not related to any category.
 
 -   **setContextMenuPostion**: Upon right-click, ensures that a context
     menu follows the mouse, but without overflowing outside of window.
+
+-   **getObjectIdByName**: Pass the object's name and will return the
+    object's ID.
+
+-   **getFieldIdByName**: Pass the field name and object ID and will
+    return the field's ID.
+
+-   **getViewIdByTitle:** Pass the view title (and scene ID optionally)
+    and will return the view ID.
+
+-   **sortMenu**: Will sort the menus in alphabetical order, when
+    top-menu is clicked.
+
+-   **sortUList**: Will sort any un-ordered list in alphabetical order.
 
 ## Storage
 
@@ -219,35 +279,43 @@ Provides scene-related features.
 
 ### Functions
 
--   **setCfg**: To setup your parameters and callbacks to your app.
+-   **setCfg**: To set up your parameters and callbacks to your App.
 
--   **autoFocus**: By default, Knack does not set the focus to a field.
-    But this enables you to choose when and how to do it.
+-   **autoFocus**: Callback to your app\'s handler of autoFocus. By
+    default, Knack does not set the focus to a field. But this enables
+    you to choose when and how to do it -- your way.
+
+-   **renderViews**: Renders all views in the current scene.
 
 -   **addKioskButtons**: In kiosk mode, most of the time there is no
     mouse or keyboard. This enables adding specific buttons, typically
     for navigation: Back, Done, Refresh. I\'ve also added Work Shift and
-    Messaging buttons, if ever you need them.
+    Messaging buttons, if ever you need them (more information provided
+    upon request).
 
 -   **spinnerWatchdog**: This is a timer that checks if the App is in a
     waiting state. If the spinner takes more than a specified amount of
     time (default is 30s), you can gain back control, typically by
     reloading the page. Most of the time, this solves the \"infinite
-    waiting\" problem after a Submit, especially for kiosks without a
-    keyboard, where users would otherwise have to reboot the device.
+    waiting\" problem after a Submit or any page load/refresh,
+    especially for kiosks without a keyboard, where users would
+    otherwise have to reboot the device.
 
--   **getSpinnerWdStatus**: Returns true if page is busy and spinner is
+-   **isSpinnerWdRunning**: Returns true if page is busy and spinner is
     shown.
 
 -   **flashBackground**: Simple attention getter, useful on small
     devices monitored from a distant area, to show status like success
     or failure.
 
--   **resetIdleWatchdog**: The idle watchdog is an inactivity timer.
+-   **resetIdleWatchdog**: The idle watchdog is an "inactivity timer".
     Each time a mouse click/move or a key press is detected, this is
-    called. After a given amount of time without activity, a callback in
-    your App is called and an action can be taken, like reloading the
-    page.
+    called. After a given amount of time without activity, a callback
+    (idleWatchDogTimeout below) in your App is called and an action can
+    be taken, like reloading the page.
+
+-   **idleWatchDogTimeout**: The callback to your app, where the
+    appropriate action is taken when idle timeout is detected.
 
 -   **findViewWithTitle**: Returns the first view id containing specific
     text in its title.
@@ -434,11 +502,11 @@ message will pop-up after completion.
 \*\* Important note\*\* the table\'s sort may cause your changes to
 disappear due to being out of scope. This is normal. You can prevent
 this by first choosing a sort that will not cause this, or filtering as
-much as possible to show a very restricted number or records, including
-the ones you need. Experimenting with only a few records at a time (less
-than 10) is recommended as a starting point. If you\'ve made an error,
-the process can be interrupted (but not undone) at any time be pressing
-F5 to reload the page.
+much as possible to show a very restricted number of records, but still
+including the ones you need. Experimenting with only a few records at a
+time (less than 10) is recommended as a starting point. If you\'ve made
+an error, the process can be interrupted (but not undone) at any time be
+pressing F5 to reload the page.
 
 ### Bulk Delete
 
@@ -671,17 +739,17 @@ variations for KTL features.
 
 # How to use KTL
 
-There are two methods to use KTL: ACB and CLS modes. If you\'re in hurry
-to test it, and experiment with all the features, you should go for the
-ACB mode.
+There are two methods to use KTL: ACB and CLS modes. If you\'re in a
+hurry to test it, and experiment with all the features, you should go
+for the ACB mode.
 
 ## ACB Mode - All Code in Builder
 
-This is the traditionnal mode that we\'re used to, i.e. when all the
-code resides in the Builder\'s Javascript pane. In this mode, the
-Bootloader will load the external library files required, but not your
-App and KTL\'s code since they will be included inside the Javascript
-pane itself.
+This is the traditional mode that we\'re used to, i.e. when all the code
+resides in the Builder\'s Javascript pane. In this mode, the Bootloader
+will load the external library files required, but not your App and
+KTL\'s code since they will be included inside the Javascript pane
+itself.
 
 ### Pros
 
@@ -695,12 +763,13 @@ pane itself.
 ### Cons
 
 -   Slower and more tedious to work when using an external editor, due
-    to the copy/paste of the code required each time you make a change.
+    to the copy/paste/save of the code required each time you make a
+    change.
 
 -   Can be risky if used in production - which means the App is being
-    used in a live and \"serious\" context - since your development code
-    always take effect immediately. You must have good coding experience
-    and know exactly what you\'re doing.
+    used in a live and consequential context - since your development
+    code always take effect immediately. You must have good coding
+    experience and know exactly what you\'re doing.
 
 -   If you want to keep multiple separate files (App and KTL) for
     independent revision control, it won\'t be so trivial. Whenever you
@@ -790,7 +859,7 @@ back and forth between the ACB and CLS modes. See Switching Modes below.
 
 -   Requires a one-time Node.js installation and setup.
 
--   Requires a temporary copy of the actual project for development.
+-   Requires a temporary copy of your actual Knack app for development.
 
 -   Other developers can\'t see your changes unless they pull/merge your
     new code with theirs.
@@ -970,10 +1039,10 @@ Here\'s the list:
 
 # Advanced Features
 
-These features are considered \"advanced\" in the sense that they are
-not trivial and require some additional setup. Also, some of them can
-provide communication between various parts of your App, thus leveraging
-quite powerful administration features.
+These features are considered \"advanced\" in the sense that they
+require additional setup. Also, some of them can provide communication
+between various parts of your App, thus leveraging quite powerful
+administration features.
 
 Here\'s the list:
 
