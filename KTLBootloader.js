@@ -2,8 +2,7 @@
 /**
  * This offers you the option of loading all your libraries and your app code from separate files.
  * A big advantage of this is that you can work directly from your local hard drive
- * during the development phase, which speeds up significatly each
- * save/refresh iteration cycle.
+ * during the development phase, which speeds up significatly each save/refresh iteration cycle.
  * To do so, you need to install NodeJS and run a simple file server script on port 3000. * 
  * 
  * See documentation for more details on github:  https://github.com/cortexrd/Knack-Toolkit-Library
