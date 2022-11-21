@@ -2,8 +2,7 @@
 /**
  * This offers you the option of loading all your libraries and your app code from separate files.
  * A big advantage of this is that you can work directly from your local hard drive
- * during the development phase, which speeds up significatly each
- * save/refresh iteration cycle.
+ * during the development phase, which speeds up significatly each save/refresh iteration cycle.
  * To do so, you need to install NodeJS and run a simple file server script on port 3000. * 
  * 
  * See documentation for more details on github:  https://github.com/cortexrd/Knack-Toolkit-Library
@@ -307,6 +306,7 @@ function Ktl($) {
         */
     this.core = (function () {
         var cfg = {
+            //IMPORTANT!!! DO NOT EDIT THIS SECTION.  Instead, use the ktl.core.setCfg function.
             developerName: '',
             developerEmail: '',
             enabled: { //Main KTL feature switches.  By default, all is disabled and your App enables what is desired in ktl.core.setCfg.
@@ -1300,7 +1300,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         document.addEventListener('click', function (e) {
-            //Work in progress:  When user clicks on a cell for inline editing, provide a mthod to change its style, to make it wider for example.
+            //Work in progress:  When user clicks on a cell for inline editing, provide a method to change its style, to make it wider for example.
             //console.log('e.target =', e.target);
 
             var popover = e.target.closest('.kn-popover');
@@ -1582,17 +1582,40 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //TODO removeDropdownEntries: function...
             /////////////////////////////////////////////////////////////////////////////////////
-            //Remove restricted entries from a dropdown.  In this case, high-level Account Roles.
-            //$(document).on('mousedown keyup',
-            //    '#view_313_field_25_chzn' + //Roles field for Add account
-            //    ', #view_232_field_25_chzn' //Roles field for Edit account
-            //    //', #view_XXX_field_YYY_chzn' //Add more here as needed.  Don't forget the + at end of line!
-            //    , function () {
-            //        //$("ul.chzn-results li:contains('Supervisor')").remove();
-            //        //$("ul.chzn-results li:contains('Admin')").remove();
-            //        $("ul.chzn-results li:contains('SuperAdmin')").remove();
+            /////////////////////////////////////////////////////////////////////////////////////
+            //Remove restricted entries from a dropdown.
+            //In this case, only high-level SuperAdmin, Admin and Developer can change a role.
+            //This works with regular dropdowns and within an inline editing table.
+            //$(document).on('mousedown keyup', function (e) {
+            //    var knInput = e.target.closest('.kn-input') || e.target.closest('.cell-edit');
+            //    if (!knInput) return;
+
+            //    var fieldId = knInput.getAttribute('data-input-id') || knInput.getAttribute('data-field-key');
+            //    if (!fieldId) return;
+
+            //    var fieldObj = Knack.objects.getField(fieldId);
+            //    if (!fieldObj) return;
+
+            //    var fieldType = fieldObj.attributes.type;
+            //    if (fieldType === 'user_roles') {
+            //        ktl.core.waitSelector('ul.chzn-results') //Wait for options list to be populated.
+            //            .then(function () {
+            //                if (Knack.getUserRoleNames().includes('SuperAdmin') ||
+            //                    Knack.getUserRoleNames().includes('Admin') ||
+            //                    Knack.getUserRoleNames().includes('Developer'))
+            //                    return;
+
+            //                $("ul.chzn-results li:contains('SuperAdmin')").remove();
+            //                $("ul.chzn-results li:contains('Admin')").remove();
+            //                $("ul.chzn-results li:contains('Manager')").remove();
+            //                $("ul.chzn-results li:contains('Supervisor')").remove();
+            //            })
+            //            .catch(() => {
+            //                console.log('Failed waiting for results');
+            //            });
             //    }
-            //);
+            //});
+
 
 
             //chznBetter functions
@@ -1847,6 +1870,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
 
             if (!subField) {
+                var fieldObj = Knack.objects.getField(fieldId);
+                if (fieldObj) {
+                    if (text === 'Select' && (fieldObj.attributes.type === 'connection' || fieldObj.attributes.type === 'user_roles'))
+                        text = ''; //Do not save the placeholder 'Select';
+                }
+
                 if (!text)
                     delete formDataObj[viewId][fieldId];
                 else
@@ -4673,7 +4702,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return spinnerWdRunning;
             },
 
-            //Attention gatherer or status outcome indicator.
+            //Attention getter or status outcome indicator.
             //Useful on small devices, when monitoring from far away, ex: flash green/white upon success.
             flashBackground: function (color1 = null, color2 = null, delayBetweenColors = 0, duration = 0) {
                 if (color1 === null || delayBetweenColors === 0 || duration === 0)
