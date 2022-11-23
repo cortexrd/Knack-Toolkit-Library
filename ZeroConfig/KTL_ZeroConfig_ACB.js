@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.4.26';
+    const KTL_VERSION = '0.4.27';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2504,7 +2504,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Retrieves the searched string form the field and saves it in the localStorage's filter entry.
         function updateSearchInFilter(viewId = '') {
-            if (!viewId) return;
+            if (!viewId || $.isEmptyObject(allFiltersObj) || $.isEmptyObject(allFiltersObj[viewId])) return;
 
             var activeFilter = allFiltersObj[viewId].active;
             if (activeFilter >= 0) {
