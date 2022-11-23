@@ -2263,7 +2263,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Retrieves the searched string form the field and saves it in the localStorage's filter entry.
         function updateSearchInFilter(viewId = '') {
-            if (!viewId) return;
+            if (!viewId || $.isEmptyObject(allFiltersObj) || $.isEmptyObject(allFiltersObj[viewId])) return;
 
             var activeFilter = allFiltersObj[viewId].active;
             if (activeFilter >= 0) {
