@@ -5804,27 +5804,26 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             } else if (e.target.getAttribute('type') === 'checkbox') {
                 //If check boxes spread across more than one view, discard all and start again in latest view.
                 var thisView = e.target.closest('.kn-table.kn-view');
-                console.log('thisView =', thisView);//$$$
                 if (thisView) {
                     var viewId = thisView.getAttribute('id');
-                    console.log('viewId =', viewId);//$$$
-
                     if (e.target.closest('td')) //If click in td row, uncheck master checkbox in th.
                         $('.' + viewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
 
-                    if (bulkOpsViewId && bulkOpsViewId !== viewId) { //Uncheck all currently checked in old view.
-                        $('.' + bulkOpsViewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
-                        $('.' + bulkOpsViewId + '.kn-table tbody tr input[type=checkbox]').each(function () {
-                            $(this).prop('checked', false);
-                        });
+                    if (bulkOpsViewId !== viewId) {
+                        if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
+                            $('.' + bulkOpsViewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
+                            $('.' + bulkOpsViewId + '.kn-table tbody tr input[type=checkbox]').each(function () {
+                                $(this).prop('checked', false);
+                            });
 
-                        updateDeleteButtonStatus(bulkOpsViewId, 0);
+                            updateDeleteButtonStatus(bulkOpsViewId, 0);
+                        }
+
+                        bulkOpsViewId = viewId;
                     }
 
-                    bulkOpsViewId = viewId;
+                    updateBulkOpCheckboxes();
                 }
-
-                updateBulkOpCheckboxes();
             }
         })
 
