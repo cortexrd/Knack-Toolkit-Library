@@ -3583,7 +3583,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            //Params: callback is the function to be called when the top checkbox is clicked.
+            //Params: masterCheckBoxCallback is the function to be called when the top checkbox is clicked.
             //        It is used to do an action upon change like ena/disable a button or show number of items checked.
             addCheckboxesToTable: function (viewId, masterCheckBoxCallback = null) {
                 var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
@@ -3601,11 +3601,30 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         masterCheckBoxCallback && masterCheckBoxCallback(numChecked);
                     });
 
-                    //Add a checkbox to each row in the table body, but not groups and summary lines.
-                    $('#' + viewId + ' .kn-table tbody tr:not(.kn-table-group,.kn-table-totals)').each(function () {
-                        $(this).prepend('<td><input type="checkbox"></td>');
+                    //Add a checkbox to each row in the table body
+                    //For summary lines, prepend a space.
+                    //For groups, extend line up to end.
+                    var sel = '';
+                    $('#' + viewId + ' .kn-table tbody tr').each(function () {
+                        if (this.classList.contains('kn-table-totals')) {
+                            sel = '#' + viewId + ' tr.kn-table-totals';
+                            ktl.views.adjustTotalsAlignment(viewId, sel);
+                        } else if (this.classList.contains('kn-table-group')) {
+                            $(this).find('td').attr('colspan', '15');
+                        } else
+                            $(this).prepend('<td><input type="checkbox"></td>');
                     });
                 }
+            },
+
+            adjustTotalsAlignment: function (viewId, sel) {
+                ktl.core.waitSelector(sel, 10000)
+                    .then(function () {
+                        $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                    })
+                    .catch(function () {
+                        console.log('failed');
+                    })
             },
 
             addTimeStampToHeader: function (view) {
@@ -3935,6 +3954,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (columnsArray && columnsArray.length > 0) {
                     columnsArray.forEach(function (el) {
+                        console.log('el =', el);//$$$
 
                         //Remove Header
                         header = $('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(' + el + ')');
@@ -5741,7 +5761,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var bulkOpsDeleteAll = false;
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            if (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete) return;
+            if (ktl.scenes.isiFrameWnd() || (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
+                return;
 
             var viewModel = Knack.router.scene_view.model.views._byId[view.key];
             if (viewModel) {
@@ -5756,17 +5777,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
             }
-        })
-
-        $(document).on('knack-scene-render.any', function (event, scene) {
-            //In each view having checkboxes and a summary, add a blank space at left of the summary line to fix alignment.
-            //This must be done after scene has completed rendering, not after a view has rendered.
-            var views = document.querySelectorAll('div.kn-table-wrapper thead input[type=checkbox]');
-            views.forEach(function (view) {
-                var viewId = view.closest('.kn-view').id;
-                if (document.querySelector('#' + viewId + ' thead input[type=checkbox]'))
-                    $('#' + viewId + ' tr.kn-table-totals').prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-            })
         })
 
         $(document).on('click', function (e) {
@@ -5794,23 +5804,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             } else if (e.target.getAttribute('type') === 'checkbox') {
                 //If check boxes spread across more than one view, discard all and start again in latest view.
                 var thisView = e.target.closest('.kn-table.kn-view');
+                console.log('thisView =', thisView);//$$$
                 if (thisView) {
                     var viewId = thisView.getAttribute('id');
-                    if (bulkOpsViewId !== viewId) {
-                        if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
-                            $('.' + bulkOpsViewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
-                            $('.' + bulkOpsViewId + '.kn-table tbody tr input[type=checkbox]').each(function () {
-                                $(this).prop('checked', false);
-                            });
+                    console.log('viewId =', viewId);//$$$
 
-                            updateDeleteButtonStatus(bulkOpsViewId, 0);
-                        }
+                    if (e.target.closest('td')) //If click in td row, uncheck master checkbox in th.
+                        $('.' + viewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
 
-                        bulkOpsViewId = viewId;
+                    if (bulkOpsViewId && bulkOpsViewId !== viewId) { //Uncheck all currently checked in old view.
+                        $('.' + bulkOpsViewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
+                        $('.' + bulkOpsViewId + '.kn-table tbody tr input[type=checkbox]').each(function () {
+                            $(this).prop('checked', false);
+                        });
+
+                        updateDeleteButtonStatus(bulkOpsViewId, 0);
                     }
 
-                    updateBulkOpCheckboxes();
+                    bulkOpsViewId = viewId;
                 }
+
+                updateBulkOpCheckboxes();
             }
         })
 
