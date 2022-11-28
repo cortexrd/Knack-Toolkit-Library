@@ -3608,23 +3608,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     $('#' + viewId + ' .kn-table tbody tr').each(function () {
                         if (this.classList.contains('kn-table-totals')) {
                             sel = '#' + viewId + ' tr.kn-table-totals';
-                            ktl.views.adjustTotalsAlignment(viewId, sel);
+                            ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
+                                .then(function () { $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); })
+                                .catch(function () { ktl.log.clog('Failed waiting for table totals.', 'purple'); })
                         } else if (this.classList.contains('kn-table-group')) {
                             $(this).find('td').attr('colspan', '15');
                         } else
                             $(this).prepend('<td><input type="checkbox"></td>');
                     });
                 }
-            },
-
-            adjustTotalsAlignment: function (viewId, sel) {
-                ktl.core.waitSelector(sel, 10000)
-                    .then(function () {
-                        $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                    })
-                    .catch(function () {
-                        console.log('failed');
-                    })
             },
 
             addTimeStampToHeader: function (view) {
