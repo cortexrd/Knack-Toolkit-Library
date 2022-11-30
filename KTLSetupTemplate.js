@@ -82,6 +82,7 @@ var KnackApp = function ($, info = {}) {
             onKeyPressed: onKeyPressed,
             onFieldValueChanged: onFieldValueChanged,
             textAsNumeric: [],
+            //chznBetterSrchDelay: 2000, //Uncomment if you prefer longer delay.
             chznBetterThresholds: {
                 'field_x': '4',
             },
