@@ -5764,7 +5764,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
                     var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
                     if ((canDelete && Knack.getUserRoleNames().includes('Bulk Delete')) || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
-                        ktl.bulkOps.enableBulkOperations(view, data);
+                        enableBulkOperations(view, data);
                         if (bulkOpsInProgress)
                             processBulkOps();
                     }
@@ -5819,6 +5819,35 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             }
         })
+
+        //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
+        //Called upon each view rendering.
+        function enableBulkOperations(view, data) {
+            var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
+
+            ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
+
+            if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
+                addBulkDeleteButtons(view, data);
+
+            function masterCheckBoxCallback(numChecked) {
+                canDelete && updateDeleteButtonStatus(view.key, numChecked);
+                updateBulkOpCheckboxes();
+            }
+
+            //Put back checkboxes that were checked before view refresh.
+            if (view.key === bulkOpsViewId) {
+                var arrayLen = bulkOpsRecIdArray.length;
+                if (arrayLen > 0) {
+                    for (var i = bulkOpsRecIdArray.length - 1; i >= 0; i--) {
+                        var sel = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"]');
+                        if (sel.length > 0) {
+                            $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] > td:nth-child(1) > input[type=checkbox]').prop('checked', true);
+                        }
+                    }
+                }
+            }
+        }
 
         //Called to refresh the record array to be modified.
         //Can be changed by user clicks, table filtering change, view refresh.
@@ -5921,8 +5950,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var deleteArray = [];
                     $('#' + view.key + ' tbody input[type=checkbox]:checked').each(function () {
                         if (!$(this).closest('.kn-table-totals').length) {
-                            var id = $(this).closest('tr').attr('id');
-                            deleteArray.push(id);
+                            deleteArray.push($(this).closest('tr').attr('id'));
                         }
                     });
 
@@ -6031,36 +6059,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         return {
-            //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
-            //Called upon each view rendering.
-            enableBulkOperations: function (view, data) {
-                var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
-
-                ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
-
-                if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
-                    addBulkDeleteButtons(view, data);
-
-                function masterCheckBoxCallback(numChecked) {
-                    canDelete && updateDeleteButtonStatus(view.key, numChecked);
-                    updateBulkOpCheckboxes();
-                }
-
-                //Put back checkboxes that were checked before view refresh.
-                if (view.key === bulkOpsViewId) {
-                    var arrayLen = bulkOpsRecIdArray.length;
-                    if (arrayLen > 0) {
-                        for (var i = bulkOpsRecIdArray.length - 1; i >= 0; i--) {
-                            var sel = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"]');
-                            if (sel.length > 0) {
-                                $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] > td:nth-child(1) > input[type=checkbox]').prop('checked', true);
-                            }
-                        }
-                    }
-                }
-            },
-
-            //View param is view object, not view.key.
+            //View param is view object, not view.key.  deleteArray is an array of record IDs.
             deleteRecords: function (deleteArray, view) {
                 return new Promise(function (resolve, reject) {
                     var arrayLen = deleteArray.length;
