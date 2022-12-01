@@ -39,8 +39,8 @@ v0.4.27 - pre-release
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
 application development and add several features that are not easily
-created from the ground up. It is 100% view-based, so your API key is
-never exposed.
+created from the ground up. Those features that involve using the Knack
+API are 100% view-based, so your API key is never exposed.
 
 \*\*\* NOTE\*\*\* The code and documentation are currently in a
 pre-release phase. Thank you for being patient and understanding that
@@ -74,6 +74,8 @@ provide many nice additions to your app:
 -   spinner timeout watchdog
 
 -   numeric pre-validation
+
+-   force uppercase
 
 -   auto-focus
 
@@ -618,14 +620,16 @@ Account Settings page. See the User Preferences setup procedure below.
 
 Referred to as the **iFrameWnd**, it\'s a hidden utility page at the
 bottom of the main App page that contains various views for the support
-of user preferences, system status and logging features. You may also
-add your own tables there if you need any. The idea is to be at two
-places at the same time: The main App page that changes as the user
-navigates around, and that invisible iFrameWnd that stays with us to
-serve various functions in the background. When the user logs-in, the
-authentication token is conveniently shared with the iFrameWnd, allowing
-us to log-in seamlessly and do API calls. See the iFrameWnd setup
-procedure below.
+of user preferences, system status, remote SW update and logging
+features. You may also add your own tables there if you need any. The
+idea is to be at two places at the same time: The main App page that
+changes as the user navigates around, and that invisible iFrameWnd that
+stays with us to serve various functions in the background. When the
+user logs-in, the authentication token is conveniently shared with the
+iFrameWnd, allowing us to log-in seamlessly and do API calls. If
+desired, it is possible to send/receive information to/from both windows
+using the powerful wndMsg feature. See the iFrameWnd setup procedure
+[below](#iframewnd).
 
 ### Usage
 
@@ -1283,3 +1287,5 @@ Normand Defayette
 Cortex R&D Inc.
 
 Blainville, Québec, Canada
+
+\_\_x\_\_
