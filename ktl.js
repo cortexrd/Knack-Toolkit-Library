@@ -558,8 +558,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             removeTimedPopup: function () {
+                clearTimeout(timedPopupTimer);
                 if (timedPopupEl) {
-                    clearTimeout(timedPopupTimer);
                     timedPopupEl.parentNode.removeChild(timedPopupEl);
                     timedPopupEl = null;
                 }
@@ -893,12 +893,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var onKeyPressed = null;
         var onFieldValueChanged = null;
         var textAsNumeric = []; //These are text fields that must be converted to numeric.
+        var chznBetterSrchDelay = 1500; //Default is fine-tuned experimentally, for 'a bit below average' typing speed.
         var chznBetterThresholds = {};
         var chznBetterToExclude = [];
         var chznBetterSetFocus = null;
         var convertNumDone = false;
 
-        const DELAY_BEFORE_SEARCH_CHZN = 1500; //Fine-tuned for 'a bit below average' typing speed.
         var chznBetterTxt = '';
         var chznChoicesIntervalId = null;
         var chznLastKeyTimer = null;
@@ -1035,7 +1035,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 inputVal = $(e.target).val().replace(' ', ''); //Get a last update in case user was quick and entered more than threshold chars.
                                 ktl.fields.searchChznBetterDropdown(inputVal);
                             }
-                        }, DELAY_BEFORE_SEARCH_CHZN);
+                        }, chznBetterSrchDelay);
                     } else if ($(e.target)[0].className.includes('ui-autocomplete-input')) {
                         var chznBetter = $(e.target).parent().find('#chznBetter');
                         if (chznBetter.length > 0) {
@@ -1051,7 +1051,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     inputVal = $(e.target).val().replace(' ', ''); //Get a last update in case user was quick and entered more than 4 chars.
                                     ktl.fields.searchChznBetterDropdown(inputVal);
                                 }
-                            }, DELAY_BEFORE_SEARCH_CHZN);
+                            }, chznBetterSrchDelay);
                         }
                     }
                 }
@@ -1150,6 +1150,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
                 cfgObj.onFieldValueChanged && (onFieldValueChanged = cfgObj.onFieldValueChanged);
                 cfgObj.textAsNumeric && (textAsNumeric = cfgObj.textAsNumeric);
+                cfgObj.chznBetterSrchDelay && (chznBetterSrchDelay = cfgObj.chznBetterSrchDelay);
                 cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
                 cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
                 cfgObj.chznBetterSetFocus && (chznBetterSetFocus = cfgObj.chznBetterSetFocus);
@@ -4443,7 +4444,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     return;
 
                 if (run) {
-                    //ktl.log.clog('WD running ' + Knack.router.current_scene_key, 'green');
+                    //ktl.log.clog('SWD running ' + Knack.router.current_scene_key, 'green');
                     clearInterval(spinnerInterval);
                     spinnerCtr = spinnerCtrDelay;
                     spinnerInterval = setInterval(function () {
@@ -4463,7 +4464,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }, 1000);
                 } else {
                     clearInterval(spinnerInterval);
-                    //ktl.log.clog('WD stopped ' + Knack.router.current_scene_key, 'purple');
+                    //ktl.log.clog('SWD stopped ' + Knack.router.current_scene_key, 'purple');
                 }
 
                 spinnerWdRunning = run;
@@ -5763,7 +5764,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
                     var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
                     if ((canDelete && Knack.getUserRoleNames().includes('Bulk Delete')) || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
-                        ktl.bulkOps.enableBulkOperations(view, data);
+                        enableBulkOperations(view, data);
                         if (bulkOpsInProgress)
                             processBulkOps();
                     }
@@ -5819,6 +5820,35 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         })
 
+        //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
+        //Called upon each view rendering.
+        function enableBulkOperations(view, data) {
+            var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
+
+            ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
+
+            if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
+                addBulkDeleteButtons(view, data);
+
+            function masterCheckBoxCallback(numChecked) {
+                canDelete && updateDeleteButtonStatus(view.key, numChecked);
+                updateBulkOpCheckboxes();
+            }
+
+            //Put back checkboxes that were checked before view refresh.
+            if (view.key === bulkOpsViewId) {
+                var arrayLen = bulkOpsRecIdArray.length;
+                if (arrayLen > 0) {
+                    for (var i = bulkOpsRecIdArray.length - 1; i >= 0; i--) {
+                        var sel = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"]');
+                        if (sel.length > 0) {
+                            $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] > td:nth-child(1) > input[type=checkbox]').prop('checked', true);
+                        }
+                    }
+                }
+            }
+        }
+
         //Called to refresh the record array to be modified.
         //Can be changed by user clicks, table filtering change, view refresh.
         function updateBulkOpCheckboxes() {
@@ -5864,12 +5894,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             //console.log('updated recId =', recId);
                             recIdArray.shift();
                             if (recIdArray.length === 0) {
+                                Knack.showSpinner();
                                 ktl.core.removeInfoPopup();
                                 ktl.views.refreshView(bulkOpsViewId).then(function () {
+                                    ktl.core.removeTimedPopup(); //Remove residual SWD pop up.
+
+                                    ktl.scenes.spinnerWatchdog();
                                     setTimeout(function () {
                                         ktl.views.autoRefresh();
-                                        ktl.scenes.spinnerWatchdog();
-                                        alert('Operation completed successfully');
+                                        Knack.hideSpinner();
+                                        alert('Bulk operation completed successfully');
                                     }, 1000);
                                 })
                             } else {
@@ -5916,8 +5950,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var deleteArray = [];
                     $('#' + view.key + ' tbody input[type=checkbox]:checked').each(function () {
                         if (!$(this).closest('.kn-table-totals').length) {
-                            var id = $(this).closest('tr').attr('id');
-                            deleteArray.push(id);
+                            deleteArray.push($(this).closest('tr').attr('id'));
                         }
                     });
 
@@ -6026,36 +6059,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         return {
-            //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
-            //Called upon each view rendering.
-            enableBulkOperations: function (view, data) {
-                var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
-
-                ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
-
-                if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
-                    addBulkDeleteButtons(view, data);
-
-                function masterCheckBoxCallback(numChecked) {
-                    canDelete && updateDeleteButtonStatus(view.key, numChecked);
-                    updateBulkOpCheckboxes();
-                }
-
-                //Put back checkboxes that were checked before view refresh.
-                if (view.key === bulkOpsViewId) {
-                    var arrayLen = bulkOpsRecIdArray.length;
-                    if (arrayLen > 0) {
-                        for (var i = bulkOpsRecIdArray.length - 1; i >= 0; i--) {
-                            var sel = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"]');
-                            if (sel.length > 0) {
-                                $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] > td:nth-child(1) > input[type=checkbox]').prop('checked', true);
-                            }
-                        }
-                    }
-                }
-            },
-
-            //View param is view object, not view.key.
+            //View param is view object, not view.key.  deleteArray is an array of record IDs.
             deleteRecords: function (deleteArray, view) {
                 return new Promise(function (resolve, reject) {
                     var arrayLen = deleteArray.length;

@@ -34,7 +34,7 @@
 
 **Knack Toolkit Library**
 
-v0.4.26 - pre-release
+v0.4.27 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -257,10 +257,18 @@ internally, but also available to your app.
 
 -   **sortUList**: Will sort any un-ordered list in alphabetical order.
 
+### A note about knAPI
+
+While Inline editing is mandatory for PUT operations on a table, it may
+not be desirable to let users modify data manually. You can disable
+these edits dynamically by adding the view title flag **NO_INLINE**.
+This allows the API calls to work properly, while disabling the mouse
+actions.
+
 ## Storage
 
 Provides non-volatile storage utilities using the localStorage and
-cookies objects. It is the base of most other features.
+cookies objects. It is the base of several other features.
 
 ### Functions
 
@@ -321,8 +329,9 @@ Provides scene-related features.
 -   **idleWatchDogTimeout**: The idle callback to your app, typically
     for reloading the page or logging out the user.
 
--   **findViewWithTitle**: Returns the first view id containing specific
-    text in its title, with optional exact match.
+-   **findViewWithTitle**: Searches through each view in the current
+    scene and returns the first view id containing specific text in its
+    title, with optional exact match.
 
 -   **scrollToTop**: Scrolls the page all the way up.
 
@@ -332,8 +341,8 @@ Provides scene-related features.
 -   **onSceneRender**: Callback to your app\'s handler of a scene
     render.
 
--   **isiFrameWnd**: returns whether the window is the top level app or
-    the hidden child iFrameWnd.
+-   **isiFrameWnd**: returns whether the window is the top-level app or
+    the hidden child utility page called iFrameWnd.
 
 ## Views
 
@@ -370,8 +379,8 @@ Provides view-related features.
     date/time occurred and assess that all is working fine.
 
 -   **ktlProcessViewFlags**: This is an internal function that is not
-    exposed. But it\'s worth explaining nonetheless. It parses the
-    view\'s title for special flags. Here\'s the list:
+    exposed. But worth some additional explaining, nonetheless. It
+    parses the view\'s title for special flags. Here\'s the list:
 
     -   AUTOREFRESH=\[value\] To refresh the view every \[value\] in
         seconds
@@ -404,9 +413,10 @@ Provides view-related features.
 -   **searchDropdown**: Searches text in a dropdown or a multiple
     choices object, with these options: exact match, show popup for
     outcome. Supports all 4 states of the dropdown: single selection,
-    multiple selections, less than 500 and more than 500 entries.
-    Auto-selects item if found is an exact match. Otherwise returns
-    found items and lets you manually choose from the results list.
+    multiple selections, less than 500 and more than 500 entries. Will
+    auto select the found result it it's an exact match. Otherwise
+    returns all found items and lets you manually choose from the
+    results list.
 
 -   **findInSearchView**: Uses a Search view to find text, with exact
     match. Very useful to prevent duplicate entries on a connected
@@ -437,13 +447,13 @@ convert form text to numeric and enforce numeric validation.
 
 -   **convertNumToTel**: All numeric fields will automatically be
     converted to telephone type. This has no negative or perceptible
-    impact by all users, except that it allows mobile devices to switch
+    impact for all users, except that it allows mobile devices to switch
     the keyboard to telephone type for a more convenient numeric layout
     and also auto-selection of all text upon focus.
 
 -   **enforceNumeric**: For all numeric fields, plus some specified by
     user (optional), validation will be performed. If non-numeric values
-    are found, the submit button will be disabled and grayed-out, and
+    are found, the submit button will be disabled and grayed out, and
     the field will be colorized with Knack\'s \"pink\" error indicator.
 
 -   **addButton**: Will add a button to a specified div element. You can
@@ -459,13 +469,16 @@ convert form text to numeric and enforce numeric validation.
 -   **addChznBetter**: The chznBetter object is a custom solution that
     fixes a few problems with the Knack dropdown object. The most
     annoying being the following: When you have more than 500 items in
-    the list, the dropdown switches mode and offers a search field. But
-    most of the time, when 3 or 4 characters are typed, the last one or
-    two are erased, rendering the selection very tedious. I got so many
-    complaints about this that I decided to code my own solution. The
-    other problems are that you can\'t set the threshold delay time nor
-    the number of characters to type before the search starts. Now, you
-    have control over both.
+    the list, the dropdown switches mode and displays a search field.
+    But most of the time, when 3 or 4 characters are typed, the last one
+    or two are erased, rendering the selection very tedious. I got so
+    many complaints about this that I decided to code my own solution.
+    As a bonus, you can now customize the delay before the search starts
+    (common to all dropdowns), and for individual dropdowns, the
+    threshold number of characters to type before the search starts.
+    Defaults are 1.5 seconds delay, and 3 characters for text and and .
+    Use the ktl.fields.setCfg function to modify chznBetterSrchDelay and
+    chznBetterThresholds to match your needs.
 
 -   **searchChznBetterDropdown**: chznBetter\'s wrapper to
     searchDropdown.
@@ -474,38 +487,41 @@ convert form text to numeric and enforce numeric validation.
 
 In the Builder, when you edit a field in the schema view, there's a
 Description text box, where you can put your own notes, as a developer.
-This can also be used by the KTL to trigger special behavior. Here's the
-list:
+Now, this can also be used by the KTL to trigger special behavior. You
+can add the flag at the end of your description, or on a separate line,
+as you wish. Here's the list:
 
 -   **TO_UPPERCASE**: to convert text to uppercase in real-time
 
 ## Bulk Operations
 
-Provides the ability to perform several record modifications or delete
-operations in batches. There are two types of bulk operations: Bulk
-Delete and Bulk Edit. Both work with table views, and have a global flag
-to enable each of them separately.
+There are two types of bulk operations: Bulk Edit and Bulk Delete. As
+their names imply, they provide the ability to perform several record
+modifications or delete operations in batches. Both work with table
+views and have a global flag to enable each of them separately.
 
 ### Bulk Edit
 
-You must enable the bulkEdit flag in the ktl.core.setCfg function. Then
-create an account role named \"Bulk Edit\" and assign it diligently to
-very trusty and liable users.
+To use this feature, you must:
 
-For each applicable table, enable Inline editing and be sure to disable
-all the fields that should be protected against unintended
-modifications. Where Inline Editing would not be desirable, you can
-disable it for any given table adding the view title flag **NO_INLINE**.
-This allows the API to work properly, while disabling the mouse actions.
+1)  Enable the bulkEdit flag in the ktl.core.setCfg function
+
+2)  Create an account role named \"Bulk Edit\" and assign it diligently
+    to very trusty and liable users.
+
+3)  For each applicable table, enable Inline editing and be sure to
+    disable all the fields that should be protected against unintended
+    modifications.
 
 These field types are supported: all text fields, connected fields, date
-time picker, checkboxes, radio buttons and multiple choices.
+time picker, Yes/No, multiple choices (single selection and radio
+buttons only at this time).
 
 Usage: In the table, select all the checkboxes for the records to be
-modified. Then click on a cell to edit its value (inline). After
+modified. Then click on any cell to edit its value (inline). After
 submitting the change, a prompt will ask you if the value should also
 apply to all selected records. Click yes to apply to all. A confirmation
-message will pop-up after completion.
+message will pop up after completion.
 
 \*\* Important note\*\* the table\'s sort may cause your changes to
 disappear due to being out of scope. This is normal. You can prevent
@@ -518,10 +534,16 @@ pressing F5 to reload the page.
 
 ### Bulk Delete
 
-You must enable the bulkDelete flag in the ktl.core.setCfg function.
-Then create an account role named \"Bulk Delete\" and assign it
-diligently to very trusty and liable users. For each applicable table, a
-Delete action link must be added. You will see two buttons appear:
+To use this feature, you must:
+
+1)  Enable the bulkDelete flag in the ktl.core.setCfg function
+
+2)  Create an account role named \"Bulk Delete\" and assign it
+    diligently to very trusty and liable users.
+
+3)  For each applicable table, a Delete action link must be added.
+
+You will see two buttons appear:
 
 -   **Delete Selected**: Is enabled when at least one record is selected
 
@@ -529,24 +551,22 @@ Delete action link must be added. You will see two buttons appear:
     checkboxes are ignored, and the process will keep deleting records
     until none is left, flipping through pages automatically.
 
+If you\'ve made an error, the process can be interrupted (but not
+undone) at any time be pressing F5 to reload the page.
+
 ### Functions
 
--   **enableBulkOperations**: If the user has one of the special roles
-    above, then Bulk Ops are automatically enabled for all table views.
-    Note that Bulk Edit will only be possible when Inline Edit is
-    enabled for the table and for each field of interest.
-
--   **deleteRecords**: To delete and array of records. Used internally
-    by bulk delete, but may be used elsewhere by your App if ever
-    needed.
+-   **deleteRecords**: Used internally by bulk delete to delete an array
+    of records but may be used elsewhere by your App if ever needed.
 
 ## User Filters
 
-When \"Add filters\" is used in tables, it is possible to save them to a
-named button. Your configuration is save in localStorage, but can be
-saved/restored to/from Knack for backup or migration to other devices.
-The button colors will have matching variations based on the App\'s
-theme.
+When \"Add filters\" is used in tables, it is possible to save each one
+you create to a named button. Your filters are saved in localStorage,
+but can be saved/restored to/from Knack for backup or migration to other
+devices. The button colors will have matching variations based on the
+App\'s theme. You can also drag and drop the buttons to re-order them at
+your convenience.
 
 ### Functions
 
@@ -557,8 +577,8 @@ theme.
 
 When user types-in data in a form, values are saved to localStorage and
 restored in case of power outage, accidental refresh, loss of network or
-other mishaps. Data is erased when the form is submitted or user
-navigates away from page.
+other mishaps. **Data is erased** when the form is **submitted**
+**successfully** or user **navigates away** from page.
 
 ### Functions
 
