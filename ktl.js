@@ -3307,8 +3307,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     //Hide the view title only, typically used to save space when real estate is critical.
                     if (view.title.includes('HIDDEN_TITLE')) {
-                        $('#' + view.key + ' > div.view-header > h1').css({ 'display': 'none' }); //Search Views use H1 instead of H2.
-                        $('#' + view.key + ' > div.view-header > h2').css({ 'display': 'none' });
+                        $('#' + view.key + ' > div.view-header > h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
+                        $('#' + view.key + ' > div.view-header > h2').css({ 'position': 'absolute', 'left': '-9000px' });
                     }
 
                     //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
@@ -4202,7 +4202,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     $('body').css({ 'padding-bottom': '500px' });
             } else {
                 if (!window.self.frameElement) //If not an iFrame, put back header hidden by CSS.
-                    document.querySelector("#kn-app-header").style.display = 'block';
+                    (document.querySelector("#kn-app-header") || document.querySelector('.knHeader')).setAttribute('style', 'display:block !important');
             }
 
             ktl.scenes.spinnerWatchdog();
