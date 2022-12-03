@@ -673,41 +673,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             .catch((err) => { console.log('Failed finding menu.', err); });
                     })
                 } else {
-
-
-                    var allMenus = document.querySelectorAll('#app-menu-list .kn-dropdown-menu');
-                    console.log('allMenus =', allMenus);//$$$
+                    var legacy = Knack.app.attributes.design.regions.header.isLegacy;
+                    var allMenus = legacy ? document.querySelectorAll('#app-menu-list li.kn-dropdown-menu') : document.querySelectorAll('ul.knHeader__menu-list li.knHeader__menu-list-item--dropdown');
                     allMenus.forEach(menu => {
-                        console.log('menu =', menu);//$$$
-                        var subMenusList = menu.querySelector('ul.kn-dropdown-menu-list');
-                        console.log('subMenusList =', subMenusList);//$$$
-                        
+                        var subMenusList = menu.querySelector(legacy ? 'ul.kn-dropdown-menu-list' : 'ul.knHeader__menu-dropdown-list');
                         ktl.core.sortUList(subMenusList);
                     })
-
-
-
-                //    $('.kn-dropdown-menu').mouseenter(function (e) {
-                //        var ul = $(this).find('.kn-dropdown-menu-list');
-                //        ul.length && ktl.core.sortUList(ul[0]);
-                //    })
-
-                //    //New Modern style
-                //    $('.knHeader__menu-dropdown-toggle').mousedown(function (e) {
-                //        var sel = 'ul.knHeader__menu-dropdown-list--open';
-                //        ktl.core.waitSelector(sel)
-                //            .then(() => {
-                //                var ul = $(sel);
-                //                ul.length && ktl.core.sortUList(ul[0]);
-
-                //            })
-                //            .catch((err) => { console.log('Failed finding menu.', err); });
-                //    })
                 }
             },
 
             sortUList: function (uListElem) {
-                console.log('uListElem =', uListElem);//$$$
                 if (!uListElem) return;
 
                 var i, switching, allListElements, shouldSwitch;
@@ -715,9 +690,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 while (switching) {
                     switching = false;
                     allListElements = uListElem.getElementsByTagName("LI");
-                    console.log('allListElements =', allListElements);//$$$
                     for (i = 0; i < (allListElements.length - 1); i++) {
-                        console.log('allListElements[i].innerText =', allListElements[i].innerText);//$$$
                         shouldSwitch = false;
                         if (allListElements[i].innerText.toLowerCase() > allListElements[i + 1].innerText.toLowerCase()) {
                             shouldSwitch = true;
