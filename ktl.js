@@ -64,6 +64,11 @@ function Ktl($) {
         * @param  {} function(
         */
     this.core = (function () {
+        window.addEventListener("resize", (event) => {
+            console.log('resized', event);//$$$
+            ktl.core.sortMenu();
+        });
+
         var cfg = {
             //IMPORTANT!!! DO NOT EDIT THIS SECTION.  Instead, use the ktl.core.setCfg function.
             developerName: '',
@@ -678,6 +683,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     allMenus.forEach(menu => {
                         var subMenusList = menu.querySelector(legacy ? 'ul.kn-dropdown-menu-list' : 'ul.knHeader__menu-dropdown-list');
                         ktl.core.sortUList(subMenusList);
+
+                        //If using modern style, fix menu height to allow access to overflowing item, below page.
+                        if (!legacy && Knack.app.attributes.design.regions.header.options.sticky) {
+                            var windowHeight = window.innerHeight;
+                            menu.querySelector('.knHeader__menu-dropdown-list').style.maxHeight = (windowHeight * 0.8) + 'px';
+                            menu.querySelector('.knHeader__menu-dropdown-list').style.overflow = 'auto';
+                        }
                     })
                 }
             },
