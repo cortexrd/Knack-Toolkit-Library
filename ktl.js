@@ -660,6 +660,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             sortMenu: function () {
+                if (ktl.scenes.isiFrameWnd()) return;
+
                 if (Knack.isMobile()) {
                     $('.kn-mobile-controls').mousedown(function (e) {
                         ktl.core.waitSelector('#kn-mobile-menu.is-visible')
@@ -671,31 +673,60 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             .catch((err) => { console.log('Failed finding menu.', err); });
                     })
                 } else {
-                    $('.kn-dropdown-menu').mouseenter(function (e) {
-                        var ul = $(this).find('.kn-dropdown-menu-list');
-                        ul.length && ktl.core.sortUList(ul[0]);
+
+
+                    var allMenus = document.querySelectorAll('#app-menu-list .kn-dropdown-menu');
+                    console.log('allMenus =', allMenus);//$$$
+                    allMenus.forEach(menu => {
+                        console.log('menu =', menu);//$$$
+                        var subMenusList = menu.querySelector('ul.kn-dropdown-menu-list');
+                        console.log('subMenusList =', subMenusList);//$$$
+                        
+                        ktl.core.sortUList(subMenusList);
                     })
+
+
+
+                //    $('.kn-dropdown-menu').mouseenter(function (e) {
+                //        var ul = $(this).find('.kn-dropdown-menu-list');
+                //        ul.length && ktl.core.sortUList(ul[0]);
+                //    })
+
+                //    //New Modern style
+                //    $('.knHeader__menu-dropdown-toggle').mousedown(function (e) {
+                //        var sel = 'ul.knHeader__menu-dropdown-list--open';
+                //        ktl.core.waitSelector(sel)
+                //            .then(() => {
+                //                var ul = $(sel);
+                //                ul.length && ktl.core.sortUList(ul[0]);
+
+                //            })
+                //            .catch((err) => { console.log('Failed finding menu.', err); });
+                //    })
                 }
             },
 
             sortUList: function (uListElem) {
+                console.log('uListElem =', uListElem);//$$$
                 if (!uListElem) return;
 
-                var i, switching, b, shouldSwitch;
+                var i, switching, allListElements, shouldSwitch;
                 switching = true;
                 while (switching) {
                     switching = false;
-                    b = uListElem.getElementsByTagName("LI");
-                    for (i = 0; i < (b.length - 1); i++) {
+                    allListElements = uListElem.getElementsByTagName("LI");
+                    console.log('allListElements =', allListElements);//$$$
+                    for (i = 0; i < (allListElements.length - 1); i++) {
+                        console.log('allListElements[i].innerText =', allListElements[i].innerText);//$$$
                         shouldSwitch = false;
-                        if (b[i].innerText.toLowerCase() > b[i + 1].innerText.toLowerCase()) {
+                        if (allListElements[i].innerText.toLowerCase() > allListElements[i + 1].innerText.toLowerCase()) {
                             shouldSwitch = true;
                             break;
                         }
                     }
 
                     if (shouldSwitch) {
-                        b[i].parentNode.insertBefore(b[i + 1], b[i]);
+                        allListElements[i].parentNode.insertBefore(allListElements[i + 1], allListElements[i]);
                         switching = true;
                     }
                 }
