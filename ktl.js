@@ -1582,7 +1582,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var scenesToExclude = [];
         var fieldsToExclude = [];
 
-        var currentViews = []; //Needed to cleanup form data from previous views, when scene changes.
+        var currentViews = {}; //Needed to cleanup form data from previous views, when scene changes.
         var previousScene = '';
         var formDataObj = {};
         var keyTimeout = null;
@@ -1591,16 +1591,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) return;
 
-            console.log('scene rendered', previousScene, scene.key);//$$$
-            console.log('currentViews =', currentViews);//$$$
-
             //Always erase potential residual data - for good luck.
             if (previousScene != scene.key) {
                 previousScene = scene.key;
-                for (var i = 0; i < currentViews.length; i++) {
-                    eraseFormData(currentViews[i]);
-                };
-                currentViews = [];
+
+                for (var viewId in currentViews)
+                    eraseFormData(viewId);
+
+                currentViews = {};
             }
 
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key))
@@ -1644,7 +1642,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (view) {
                     ktl.views.waitSubmitOutcome(view.id)
                         .then(() => {
-                            console.log('eraseFormData from click', view.id);//$$$
                             eraseFormData(view.id);
                         })
                         .catch(failure => {
@@ -1656,7 +1653,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Save data for a given view and field.
         function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
-            console.log('saveFormData', text, viewId, fieldId, subField);
+            //console.log('saveFormData', text, viewId, fieldId, subField);
 
             if (!viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
@@ -1692,12 +1689,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             formDataObjStr = JSON.stringify(formDataObj);
             ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, formDataObjStr);
 
-            //TODO change to object instead.
-            //if (!currentViews[view.key]) {
-            //    currentViews.push(view.key);
-            //}
-            currentViews.push(viewId);
-            console.log('Save form data, currentViews =', currentViews);//$$$
+            currentViews[viewId] = viewId;
 
             //Colorize fields that have been modified.
             //Unfinished, need to compare with original value and colorize only if different.
@@ -1713,8 +1705,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             return new Promise(function (resolve) {
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
 
-                console.log('loadFormData', formDataObjStr);//$$$
-
                 if (!formDataObjStr || $.isEmptyObject(JSON.parse(formDataObjStr))) {
                     ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA); //Wipe out if empty object, JIC.
                     resolve();
@@ -1725,7 +1715,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 const textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text'];
 
                 formDataObj = {};
-                currentViews = [];
+                currentViews = {};
                 var intervalId = null;
 
                 //Reload stored data, but only for Form type of views.
@@ -1736,8 +1726,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var viewData = JSON.parse(formDataObjStr)[view.key];
                         if (!viewData) continue;
 
-                        currentViews.push(view.key);
-                        console.log('Load form data, currentViews =', currentViews);//$$$
+                        currentViews[view.key] = view.key;
                         formDataObj[view.key] = viewData;
 
                         var fieldsArray = Object.keys(formDataObj[view.key]);
@@ -1899,8 +1888,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //If changing scene, erase for all previous scene's views.
         //If viewId is empty, erase all current scene's views.
         function eraseFormData(viewId = '') {
-            console.log('eraseFormData', viewId);//$$$
-
             if (viewId) {
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
                 if (formDataObjStr) {
