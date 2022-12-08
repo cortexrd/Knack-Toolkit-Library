@@ -65,8 +65,7 @@ function Ktl($) {
         */
     this.core = (function () {
         window.addEventListener("resize", (event) => {
-            console.log('resized', event);//$$$
-            ktl.core.sortMenu();
+            ktl.core.sortMenu(); //To resize menu and prevent overflowing out of screen bottom when Sticky is used.
         });
 
         var cfg = {
@@ -684,10 +683,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var subMenusList = menu.querySelector(legacy ? 'ul.kn-dropdown-menu-list' : 'ul.knHeader__menu-dropdown-list');
                         ktl.core.sortUList(subMenusList);
 
-                        //If using modern style, fix menu height to allow access to overflowing item, below page.
+                        //If using modern style with Sticky option, fix menu height to allow access to overflowing items, below page.
                         if (!legacy && Knack.app.attributes.design.regions.header.options.sticky) {
-                            var windowHeight = window.innerHeight;
-                            menu.querySelector('.knHeader__menu-dropdown-list').style.maxHeight = (windowHeight * 0.8) + 'px';
+                            menu.querySelector('.knHeader__menu-dropdown-list').style.maxHeight = (window.innerHeight * 0.8) + 'px';
                             menu.querySelector('.knHeader__menu-dropdown-list').style.overflow = 'auto';
                         }
                     })
@@ -823,6 +821,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             mobile: ''
         };
 
+        var cfg = {
+            swUpdateViewId: ktl.core.getViewIdByTitle('SW_UPDATE', '', true),
+            swUpdateBcstViewId: ktl.core.getViewIdByTitle('SW_UPDATE_BCST', '', true),
+        };
+
         //Comes from here:  https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
         (function detectSysInfo() {
             // Opera 8.0+
@@ -894,7 +897,29 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             });
         }
 
+        //SW Update
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            if (view.key === cfg.swUpdateViewId) {
+                console.log('data.field_1885 =', data[0].field_1885);//$$$
+                
+            } else if (view.key === cfg.swUpdateBcstViewId) {
+                console.log('cfg.swUpdateBcstViewId =', cfg.swUpdateBcstViewId);//$$$
+
+                $('#' + cfg.swUpdateBcstViewId + ' .is-primary').on('click', function (e) {
+                    e.preventDefault();
+                    console.log('click');//$$$
+                })
+            }
+        })
+
         return {
+            setCfg: function (cfgObj = {}) {
+            },
+
+            getCfg: function () {
+                return cfg;
+            },
+
             getSysInfo: function () {
                 return sInfo;
             },
@@ -1566,6 +1591,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) return;
 
+            console.log('scene rendered', previousScene, scene.key);//$$$
+            console.log('currentViews =', currentViews);//$$$
+
             //Always erase potential residual data - for good luck.
             if (previousScene != scene.key) {
                 previousScene = scene.key;
@@ -1602,9 +1630,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }, true);
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
-            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
-                return;
-
+            if (ktl.scenes.isiFrameWnd()) return;
             eraseFormData(view.key);
         });
 
@@ -1617,7 +1643,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var view = e.target.closest('.kn-form.kn-view');
                 if (view) {
                     ktl.views.waitSubmitOutcome(view.id)
-                        .then(success => {
+                        .then(() => {
+                            console.log('eraseFormData from click', view.id);//$$$
                             eraseFormData(view.id);
                         })
                         .catch(failure => {
@@ -1629,7 +1656,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Save data for a given view and field.
         function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
-            //console.log('saveFormData', text, viewId, fieldId, subField);
+            console.log('saveFormData', text, viewId, fieldId, subField);
+
             if (!viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
@@ -1664,6 +1692,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             formDataObjStr = JSON.stringify(formDataObj);
             ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, formDataObjStr);
 
+            //TODO change to object instead.
+            //if (!currentViews[view.key]) {
+            //    currentViews.push(view.key);
+            //}
+            currentViews.push(viewId);
+            console.log('Save form data, currentViews =', currentViews);//$$$
+
             //Colorize fields that have been modified.
             //Unfinished, need to compare with original value and colorize only if different.
             //$('#' + viewId + ' #' + fieldId).css({ 'background-color': '#fff0d0' });
@@ -1677,6 +1712,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         function loadFormData() {
             return new Promise(function (resolve) {
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
+
+                console.log('loadFormData', formDataObjStr);//$$$
 
                 if (!formDataObjStr || $.isEmptyObject(JSON.parse(formDataObjStr))) {
                     ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA); //Wipe out if empty object, JIC.
@@ -1700,6 +1737,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (!viewData) continue;
 
                         currentViews.push(view.key);
+                        console.log('Load form data, currentViews =', currentViews);//$$$
                         formDataObj[view.key] = viewData;
 
                         var fieldsArray = Object.keys(formDataObj[view.key]);
@@ -1861,6 +1899,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //If changing scene, erase for all previous scene's views.
         //If viewId is empty, erase all current scene's views.
         function eraseFormData(viewId = '') {
+            console.log('eraseFormData', viewId);//$$$
+
             if (viewId) {
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
                 if (formDataObjStr) {
@@ -3307,7 +3347,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.core.getSubstringPosition(view.title, 'NO_INLINE', 1),
                         ktl.core.getSubstringPosition(view.title, 'USER_FILTERS_', 1),
                         ktl.core.getSubstringPosition(view.title, 'ADD_', 1),
-                        ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1)
+                        ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1),
+                        ktl.core.getSubstringPosition(view.title, 'SW_UPDATE', 1)
                     );
 
                     //Truncate all title characters beyond the lowest index found.
@@ -3337,7 +3378,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     if (view.title.includes('ADD_TIMESTAMP'))
                         ktl.views.addTimeStampToHeader(view);
-
                 }
 
                 processViewFlags && processViewFlags(view, data);
@@ -4167,8 +4207,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
                 var validity = submit.validity ? submit.validity : true;
                 var submitDisabled = !$.isEmptyObject(validity.invalidItemObj);
-
-                //Inline Editing Submit
                 if (submitDisabled)
                     submit.setAttribute('disabled', true);
                 else
@@ -5261,6 +5299,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 if (ver !== APP_KTL_VERSIONS) {
+                    return;
                     if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName && confirm('Proceed with SW update ' + APP_KTL_VERSIONS + '?')) {
                         var apiData = {};
                         apiData[cfg.appSettingsValueFld] = APP_KTL_VERSIONS;
