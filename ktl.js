@@ -206,8 +206,8 @@ function Ktl($) {
                                         })
                                     }
                                 },
-                                error: function (jqXHR) {
-                                    //console.log('knAPI failure, retries:', this.retryLimit, 'status:', jqXHR.status, 'statusText:', jqXHR.statusText);
+                                error: function (response /*jqXHR*/) {
+                                    //console.log('knAPI failure, retries:', this.retryLimit, 'status:', response.status, 'statusText:', response.statusText);
 
                                     if (this.retryLimit-- > 0) {
                                         var ajaxParams = this; //Backup 'this' otherwise this will become the Window object in the setTimeout.
@@ -218,36 +218,19 @@ function Ktl($) {
                                     } else {
                                         Knack.hideSpinner();
 
-                                        jqXHR.caller = 'knAPI';
-                                        jqXHR.viewId = viewId;
+                                        response.caller = 'knAPI';
+                                        response.viewId = viewId;
 
                                         //Process critical failures by forcing a logout or hard reset.
-                                        if (jqXHR.status === 401 || jqXHR.status === 403) {
-                                            if (window.self.frameElement) {
-                                                if (ktl.core.isKiosk()) {
-                                                    if (typeof Android === 'object')
-                                                        Android.restartApplication()
-                                                    else
-                                                        location.reload(true);
-                                                } else {
-                                                    alert('Your log-in has expired. Please log-out and back in to continue.'); //Alert is necessary because we can't even notify the parent in this case.
-                                                }
-                                            } else {
-                                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1002 - Forcing logout');
-                                                $('.kn-log-out').trigger('click'); //Token has expired, force logout.
-                                                location.reload(true);
-                                            }
-                                        } else {
-                                            if (jqXHR.status) {
-                                                if (jqXHR.status === 500) {
-                                                    console.log('Error 500');
-                                                    //TODO:  Stop everything related to logging and API calls.
-                                                } else
-                                                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1003 - knAPI failure in ' + viewId + ', status: ' + jqXHR.status + ', statusText: ' + jqXHR.statusText);
-                                            }
-                                        }
+                                        ktl.wndMsg.ktlProcessServerError({
+                                            reason: 'KNACK_API_ERROR',
+                                            status: response.status,
+                                            statusText: response.statusText,
+                                            caller: response.caller,
+                                            viewId: response.viewId,
+                                        });
 
-                                        reject(new Error(jqXHR.statusText));
+                                        reject(new Error(response.statusText));
                                     }
                                 },
                             });
@@ -326,7 +309,7 @@ function Ktl($) {
 
                 setTimeout(() => {
                     if (ktl.scenes.isiFrameWnd())
-                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'MANUAL_REFRESH' });
                     else
                         location.reload(true);
                 }, 2000);
@@ -642,16 +625,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            getViewIdByTitle: function (srchTitle = '', sceneId = ''/*Empty to search all (but takes longer)*/, exactMatch = false) {
+            getViewIdByTitle: function (srchTitle = '', pageUrl = ''/*Empty to search all (but takes longer)*/, exactMatch = false) {
                 if (!srchTitle) return;
-                if (!sceneId) {
+                if (!pageUrl) {
                     var scenes = Knack.scenes.models;
                     for (var i = 0; i < scenes.length; i++) {
                         var foundView = this.getViewIdByTitle(srchTitle, scenes[i].id, exactMatch);
                         if (foundView) return foundView;
                     }
                 } else {
-                    var sceneObj = Knack.scenes._byId[sceneId];
+                    var sceneObj = Knack.scenes._byId[pageUrl];
                     if (sceneObj) {
                         var views = sceneObj.views.models;
                         for (var j = 0; j < views.length; j++) {
@@ -808,123 +791,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
         }
     })();
-
-    //====================================================
-    //System Info feature
-    this.sysInfo = (function () {
-        var sInfo = {
-            os: 'Unknown',
-            browser: 'Unknown',
-            ip: 'Unknown',
-            model: 'Unknown',
-            processor: 'Unknown',
-            mobile: ''
-        };
-
-        var cfg = {
-            swUpdateViewId: ktl.core.getViewIdByTitle('SW_UPDATE', '', true),
-            swUpdateBcstViewId: ktl.core.getViewIdByTitle('SW_UPDATE_BCST', '', true),
-        };
-
-        //Comes from here:  https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
-        (function detectSysInfo() {
-            // Opera 8.0+
-            var isOpera = ((!!window.opr && !!opr.addons) || !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0) ? 'Opera' : '';
-            // Firefox 1.0+
-            var isFirefox = (typeof InstallTrigger !== 'undefined') ? 'Firefox' : '';
-            // Safari 3.0+ "[object HTMLElementConstructor]" 
-            var isSafari = (/constructor/i.test(window.HTMLElement) || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!window['safari'] || (typeof safari !== 'undefined' && window['safari'].pushNotification))) ? 'Safari' : '';
-            // Internet Explorer 6-11
-            var isIE = (/*@cc_on!@*/false || !!document.documentMode) ? 'IE' : '';
-            // Edge 20+
-            var isEdge = (!isIE && !!window.StyleMedia) ? 'Edge' : '';
-            // Chrome 1 - 79
-            var isChrome = (!!window.chrome && (!!window.chrome.webstore || !!window.chrome.runtime)) ? 'Chrome' : '';
-            // Edge (based on chromium) detection
-            var isEdgeChromium = (isChrome && (navigator.userAgent.indexOf("Edg") != -1)) ? 'Edge Chromium' : '';
-
-            sInfo.browser = (isEdgeChromium || isChrome) + isOpera + isFirefox + isEdge + isIE + isSafari;
-
-            // Engine type detection - Blink or Unknown
-            var engineType = ((isChrome || isOpera) && !!window.CSS) ? 'Blink' : 'Unknown';
-            sInfo.engine = engineType;
-
-            if (navigator.userAgent.indexOf('Android') >= 0)
-                sInfo.os = 'Android';
-            else if (navigator.userAgent.indexOf('Windows') >= 0)
-                sInfo.os = 'Windows';
-            else if (navigator.userAgent.indexOf('Linux') >= 0)
-                sInfo.os = 'Linux';
-            else if (navigator.userAgent.indexOf('Mac OS') >= 0)
-                sInfo.os = 'Mac OS';
-
-            if (navigator.userAgent.indexOf('T2lite') >= 0)
-                sInfo.model = 'T2Lite';
-            else if (navigator.userAgent.indexOf('D1-G') >= 0)
-                sInfo.model = 'D1-G';
-
-            if (navigator.userAgent.indexOf('x64') >= 0)
-                sInfo.processor = 'x64';
-            else if (navigator.userAgent.indexOf('armv7') >= 0)
-                sInfo.processor = 'armv7';
-            else if (navigator.userAgent.indexOf('x86') >= 0)
-                sInfo.processor = 'x86';
-
-            sInfo.mobile = Knack.isMobile().toString();
-
-            getPublicIP()
-                .then((ip) => { sInfo.ip = ip; })
-                .catch(() => { console.log('getPublicIP failed.  Make sure uBlock not active.'); })
-        })();
-
-
-        function getPublicIP() {
-            return new Promise(function (resolve, reject) {
-                //NOTE:  This will not work if browser has uBlock Origin extension enabled.
-                $.get('https://www.cloudflare.com/cdn-cgi/trace', function (data, status) {
-                    if (status === 'success') {
-                        var index = data.indexOf('ip=') + 3;
-                        var publicIP = data.substr(index);
-                        index = publicIP.indexOf('\n');
-                        publicIP = publicIP.substr(0, index);
-                        if (ktl.core.ipFormatOk(publicIP))
-                            resolve(publicIP);
-                        else
-                            reject();
-                    } else
-                        reject();
-                });
-            });
-        }
-
-        //SW Update
-        $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.key === cfg.swUpdateViewId) {
-                console.log('data.field_1885 =', data[0].field_1885);//$$$
-                
-            } else if (view.key === cfg.swUpdateBcstViewId) {
-                console.log('cfg.swUpdateBcstViewId =', cfg.swUpdateBcstViewId);//$$$
-
-                $('#' + cfg.swUpdateBcstViewId + ' .is-primary').on('click', function (e) {
-                    e.preventDefault();
-                    console.log('click');//$$$
-                })
-            }
-        })
-
-        return {
-            setCfg: function (cfgObj = {}) {
-            },
-
-            getCfg: function () {
-                return cfg;
-            },
-
-            getSysInfo: function () {
-                return sInfo;
-            },
-        }
-    })(); //sysInfo
 
     //====================================================
     //Fields feature
@@ -1542,23 +1408,67 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 onFieldValueChanged && onFieldValueChanged(p);
             },
 
-            getViewFieldIdFromDescription: function (descr = '') {
-                try {
-                    var views = Object.entries(Knack.views);
-                    var viewId = '';
-                    for (var v = 0; v < views.length; v++) {
-                        viewId = views[v][0];
-                        if (Knack.views[viewId].model.form_object) {
-                            var fieldsAr = Knack.views[viewId].model.form_object.fields.models;
-                            for (var i = 0; i < fieldsAr.length; i++) {
-                                var fldDescr = fieldsAr[i].attributes.meta && fieldsAr[i].attributes.meta.description;
-                                if (fldDescr && fldDescr.includes(descr))
-                                    return { viewId: viewId, fieldId: fieldsAr[i].attributes.key };
-                            }
-                        }
+            //Returns an object with the fieldId and viewId of a field containing specified text in its description.
+            //If viewId is not specified, will search through all views in current scene, which takes a bit longer.
+            //Supported view types are 'form' and 'table'.
+            getFieldFromDescription: function (descr = '', viewId = '', viewType = 'form') {
+                return new Promise(function (resolve, reject) {
+                    if (!descr || (!['form', 'table'].includes(viewType))) {
+                        ktl.log.clog('getFieldFromDescription called with bad parameters.', 'purple');
+                        console.log('descr =', descr, '\nviewId =', viewId, '\nviewType =', viewType);//$$$
+                        reject();
+                        return;
                     }
-                }
-                catch (e) { }
+
+                    try {
+                        var views = [];
+                        var intervalId = setInterval(function () {
+                            if (typeof Knack.router.scene_view.model.views.models === 'object') {
+                                clearInterval(intervalId);
+                                clearTimeout(failsafeTimeout);
+
+                                if (viewId) {
+                                    views.push(Knack.router.scene_view.model.views._byId[viewId]);
+                                } else
+                                    views = Knack.router.scene_view.model.views.models;
+
+                                for (var v = 0; v < views.length; v++) {
+                                    var type = views[v].attributes.type;
+                                    if (type === viewType) {
+                                        viewId = views[v].id;
+                                        if (!Knack.views[viewId]) continue; //Happens for views that are hidden by rules.
+                                        var fieldsAr = [];
+                                        if (type === 'form')
+                                            fieldsAr = Knack.views[viewId].getInputs();
+                                        else
+                                            fieldsAr = Knack.views[viewId].model.view.fields;
+
+                                        if (typeof fieldsAr === 'object') {
+                                            for (var i = 0; i < fieldsAr.length; i++) {
+                                                var field = Knack.objects.getField(type === 'form' ? fieldsAr[i].id : fieldsAr[i].key);
+                                                if (typeof field.attributes.meta === 'object') {
+                                                    var fldDescr = field.attributes.meta && field.attributes.meta.description;
+                                                    if (fldDescr && fldDescr.includes(descr)) {
+                                                        resolve({ viewId: viewId, fieldId: field.attributes.key });
+                                                        return;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }, 100);
+
+                        var failsafeTimeout = setTimeout(function () {
+                            clearInterval(intervalId);
+                            reject();
+                        }, 15000);
+                    } catch (e) {
+                        console.log('getViewFieldIdFromDescription exception\n', e);//$$$
+                        reject();
+                    }
+                })
             },
 
             getFieldDescription: function (fieldId = '') {
@@ -1654,7 +1564,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Save data for a given view and field.
         function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
             //console.log('saveFormData', text, viewId, fieldId, subField);
-
             if (!viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
@@ -3423,28 +3332,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             return;
                                         },
                                         error: function (model, response, options) {
+                                            console.log('refreshView error response =', response);//$$$
+                                            console.log('model =', model);//$$$
+                                            console.log('options =', options);//$$$
+                                            
                                             response.caller = 'refreshView';
                                             response.viewId = viewId;
 
                                             //Process critical failures by forcing a logout or hard reset.
                                             if (response.status === 401 || response.status === 403 || response.status === 500) {
-
-                                                resolve(); //Temporary patch for bug on August 12, 2022.
+                                                ktl.wndMsg.ktlProcessServerError({
+                                                    reason: 'REFRESH_VIEW_ERROR',
+                                                    status: response.status,
+                                                    statusText: response.statusText,
+                                                    caller: response.caller,
+                                                    viewId: response.viewId,
+                                                });
+                                                resolve();
                                                 return;
-
-
-                                                if (ktl.scenes.isiFrameWnd()) {
-
-                                                    //ktl.log.clog('ERROR============ ' + response.status + ', view=' + viewId, 'purple');
-                                                    parent.postMessage({ msgType: 'forceReload', response: response }, '*');
-                                                } else {
-                                                    if (response.status === 500)
-                                                        location.reload(true);
-                                                    else {
-                                                        ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1007 - Forcing logout: ' + response.status);
-                                                        $('.kn-log-out').trigger('click'); //Token has expired, force logout.
-                                                    }
-                                                }
                                             } else {
                                                 if (Knack.router.scene_view.model.views._byId[viewId].attributes.title.includes('AUTOREFRESH')) {
                                                     resolve(); //Just ignore, we'll try again shortly anyways.
@@ -3458,13 +3363,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                             tryRefresh(retryCtr);
                                                         }, 1000);
                                                     } else {
-                                                        if (response.status === 0 && ktl.scenes.isiFrameWnd())
-                                                            parent.postMessage({ msgType: 'forceReload', response: response }, '*');
-                                                        else {
-                                                            ktl.log.addLog(ktl.const.LS_SERVER_ERROR, 'KEC_1008 - refreshView failure in ' + viewId + ', status: ' + response.status + ', statusText: ' + response.statusText);
-                                                            resolve(model);
-                                                            return;
-                                                        }
+                                                        ktl.wndMsg.ktlProcessServerError({
+                                                            reason: 'REFRESH_VIEW_ERROR',
+                                                            status: response.status,
+                                                            statusText: response.statusText,
+                                                            caller: response.caller,
+                                                            viewId: response.viewId,
+                                                        });
                                                     }
                                                 }
                                             }
@@ -4943,7 +4848,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             delete prefsTmpObj['reloadApp'];
                             var updatedPrefs = JSON.stringify(prefsTmpObj);
                             ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
-                                .then(success => { ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP); })
+                                .then(success => { ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'MANUAL_REFRESH' }); })
                                 .catch(failure => { ktl.log.clog('reloadAppMsg failure: ' + failure, 'red'); })
                         } else {
                             if (prefsStr && (prefsStr !== lastUserPrefs)) {
@@ -5276,34 +5181,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             } else if (view.key === cfg.appSettingsViewId) {
                 var ver = APP_KTL_VERSIONS;
-                var recId = '';
                 for (var i = 0; i < data.length; i++) {
                     if (data[i][cfg.appSettingsItemFld] === 'APP_KTL_VERSIONS' && data[i][cfg.appSettingsValueFld] !== APP_KTL_VERSIONS) {
                         ver = data[i][cfg.appSettingsValueFld];
-                        recId = data[i].id;
                         break;
                     }
                 }
 
-                if (ver !== APP_KTL_VERSIONS) {
-                    return;
-                    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName && confirm('Proceed with SW update ' + APP_KTL_VERSIONS + '?')) {
-                        var apiData = {};
-                        apiData[cfg.appSettingsValueFld] = APP_KTL_VERSIONS;
-                        apiData[cfg.appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
-
-                        ktl.core.knAPI(cfg.appSettingsViewId, recId, apiData, 'PUT', [cfg.appSettingsViewId])
-                            .then(function (response) {
-                                ktl.log.clog('Updating versions in table', 'purple');
-                                //ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, ver);
-                            })
-                            .catch(function (reason) {
-                                alert('An error occurred while updating versions in table: ' + reason)
-                            })
-                    } else {
-                        console.log('sending reloadAppMsg with ver:', ver);
-                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, ver);
-                    }
+                if (ver !== APP_KTL_VERSIONS && Knack.getUserAttributes().name !== ktl.core.getCfg().developerName) {
+                    console.log('sending reloadAppMsg with ver:', ver);
+                    ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: ver });
                 }
             }
 
@@ -5312,6 +5199,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         function startHighPriorityLogging() {
             clearInterval(highPriLoggingInterval);
             highPriLoggingInterval = setInterval(() => {
+                console.log('highPriLoggingInterval');//$$$
+
                 //Send high-priority logs immediately, as these are not accumulated like low-priority logs.
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
@@ -5383,6 +5272,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             // - Submit to Knack if activity or other log accumulator has changed.
             clearInterval(lowPriLoggingInterval);
             lowPriLoggingInterval = setInterval(() => {
+                console.log('lowPriLoggingInterval');//$$$
+
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
                     var el = lowPriorityLogs[ix];
@@ -5536,6 +5427,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var processFailedMessages = null; //Process failed app-specific messages.
         var processAppMsg = null; //Process app-specific messages.
         var sendAppMsg = null; //To tx/rx app-specific messages to/from iFrames or child windows.
+        var processServerError = null; //Process server-related errors like 401, 403, 500, and all others.
 
         function Msg(type, subtype, src, dst, id, data, expiration, retryCnt = SEND_RETRIES) {
             this.msgType = type;
@@ -5606,11 +5498,23 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('Failure sending heartbeatMsg: ' + failure, 'red');
                                 })
                             break;
-                        case 'reloadAppMsg': //No need to ack this msg.
-                            ktl.debugWnd.lsLog('Rxed reloadAppMsg with: ' + event.data.msgData);
 
-                            if (event.data.msgData !== APP_KTL_VERSIONS) {
+
+                        case 'processServerErrorMsg': //Forward any errors from iFrameWnd to app.
+                            console.log('Rxed processServerErrorMsg:', event.data.msgData);//$$$
+                            processServerError && processServerError(event.data.msgData);
+                            break;
+
+
+                        case 'reloadAppMsg': //No need to ack this msg.  This msg destination must always be App, never iFrameWnd.
+                            var msg = event.data.msgData;
+                            ktl.debugWnd.lsLog('Rxed reloadAppMsg with: ' + JSON.stringify(msg));
+
+                            if (msg.reason === 'SW_UPDATE') {
                                 ktl.core.timedPopup('Updating app to new version, please wait...');
+                                ktl.core.waitAndReload(2000);
+                            } else if (msg.reason === 'MANUAL_REFRESH') {
+                                ktl.core.timedPopup('Reloading app, please wait...');
                                 ktl.core.waitAndReload(2000);
                             } else {
                                 setTimeout(() => {
@@ -5621,6 +5525,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }, 200);
                             }
                             break;
+
+
+
                         case 'userPrefsChangedMsg':
                             if (window.self.frameElement && (event.data.dst === IFRAME_WND_ID)) { //App to iFrameWnd, when prefs are changed locally by user.
                                 //Upload new prefs so other opened browsers can see the changes.
@@ -5719,6 +5626,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.processFailedMessages && (processFailedMessages = cfgObj.processFailedMessages);
                 cfgObj.processAppMsg && (processAppMsg = cfgObj.processAppMsg);
                 cfgObj.sendAppMsg && (sendAppMsg = cfgObj.sendAppMsg);
+                cfgObj.processServerError && (processServerError = cfgObj.processServerError);
             },
 
             send: function (msgType = '', msgSubType = '', src = '', dst = '', msgId = 0, msgData = null) {
@@ -5738,7 +5646,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     msgQueue[msg.msgId] = msg;
                     //ktl.log.objSnapshot('msgQueue', msgQueue);
                 }
-
 
                 if (src === ktl.const.MSG_APP && dst === IFRAME_WND_ID && ktl.iFrameWnd.getiFrameWnd())
                     ktl.iFrameWnd.getiFrameWnd().contentWindow.postMessage(msg, '*');
@@ -5779,6 +5686,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
                 return numRemoved;
+            },
+
+            ktlProcessServerError: function (msg = {}) {
+                if (ktl.scenes.isiFrameWnd())
+                    ktl.wndMsg.send('processServerErrorMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, msg);
+                else
+                    processServerError && processServerError(msg);
             },
         }
     })();
@@ -6134,6 +6048,123 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
         }
     })();
+
+    //====================================================
+    //System Info feature
+    this.sysInfo = (function () {
+        var sInfo = {
+            os: 'Unknown',
+            browser: 'Unknown',
+            ip: 'Unknown',
+            model: 'Unknown',
+            processor: 'Unknown',
+            mobile: ''
+        };
+
+        var cfg = {
+            appSettingsViewId: ktl.core.getViewIdByTitle('BROADCAST_SW_UPDATE', Knack.router.current_scene_key, true),
+        };
+
+        //Comes from here:  https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
+        (function detectSysInfo() {
+            // Opera 8.0+
+            var isOpera = ((!!window.opr && !!opr.addons) || !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0) ? 'Opera' : '';
+            // Firefox 1.0+
+            var isFirefox = (typeof InstallTrigger !== 'undefined') ? 'Firefox' : '';
+            // Safari 3.0+ "[object HTMLElementConstructor]" 
+            var isSafari = (/constructor/i.test(window.HTMLElement) || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!window['safari'] || (typeof safari !== 'undefined' && window['safari'].pushNotification))) ? 'Safari' : '';
+            // Internet Explorer 6-11
+            var isIE = (/*@cc_on!@*/false || !!document.documentMode) ? 'IE' : '';
+            // Edge 20+
+            var isEdge = (!isIE && !!window.StyleMedia) ? 'Edge' : '';
+            // Chrome 1 - 79
+            var isChrome = (!!window.chrome && (!!window.chrome.webstore || !!window.chrome.runtime)) ? 'Chrome' : '';
+            // Edge (based on chromium) detection
+            var isEdgeChromium = (isChrome && (navigator.userAgent.indexOf("Edg") != -1)) ? 'Edge Chromium' : '';
+
+            sInfo.browser = (isEdgeChromium || isChrome) + isOpera + isFirefox + isEdge + isIE + isSafari;
+
+            // Engine type detection - Blink or Unknown
+            var engineType = ((isChrome || isOpera) && !!window.CSS) ? 'Blink' : 'Unknown';
+            sInfo.engine = engineType;
+
+            if (navigator.userAgent.indexOf('Android') >= 0)
+                sInfo.os = 'Android';
+            else if (navigator.userAgent.indexOf('Windows') >= 0)
+                sInfo.os = 'Windows';
+            else if (navigator.userAgent.indexOf('Linux') >= 0)
+                sInfo.os = 'Linux';
+            else if (navigator.userAgent.indexOf('Mac OS') >= 0)
+                sInfo.os = 'Mac OS';
+
+            if (navigator.userAgent.indexOf('T2lite') >= 0)
+                sInfo.model = 'T2Lite';
+            else if (navigator.userAgent.indexOf('D1-G') >= 0)
+                sInfo.model = 'D1-G';
+
+            if (navigator.userAgent.indexOf('x64') >= 0)
+                sInfo.processor = 'x64';
+            else if (navigator.userAgent.indexOf('armv7') >= 0)
+                sInfo.processor = 'armv7';
+            else if (navigator.userAgent.indexOf('x86') >= 0)
+                sInfo.processor = 'x86';
+
+            sInfo.mobile = Knack.isMobile().toString();
+
+            getPublicIP()
+                .then((ip) => { sInfo.ip = ip; })
+                .catch(() => { console.log('getPublicIP failed.  Make sure uBlock not active.'); })
+        })();
+
+
+        function getPublicIP() {
+            return new Promise(function (resolve, reject) {
+                //NOTE:  This will not work if browser has uBlock Origin extension enabled.
+                $.get('https://www.cloudflare.com/cdn-cgi/trace', function (data, status) {
+                    if (status === 'success') {
+                        var index = data.indexOf('ip=') + 3;
+                        var publicIP = data.substr(index);
+                        index = publicIP.indexOf('\n');
+                        publicIP = publicIP.substr(0, index);
+                        if (ktl.core.ipFormatOk(publicIP))
+                            resolve(publicIP);
+                        else
+                            reject();
+                    } else
+                        reject();
+                });
+            });
+        }
+
+        //SW Update
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            if (view.key === cfg.appSettingsViewId) {
+                var appSettingsObj = ktl.core.getObjectIdByName('App Settings');
+                appSettingsValueFld = ktl.core.getFieldIdByName('Value', appSettingsObj);
+                appSettingsDateTimeFld = ktl.core.getFieldIdByName('Date/Time', appSettingsObj);
+
+                var bcstAction = $('#' + cfg.appSettingsViewId + ' .kn-action-link:contains("BROADCAST NOW")');
+                if (bcstAction.length) {
+                    bcstAction.on('click', function (e) {
+                        var apiData = {};
+                        apiData[appSettingsValueFld] = APP_KTL_VERSIONS;
+                        apiData[appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
+
+                        ktl.log.clog('Updating versions in table...', 'orange');
+                        ktl.core.knAPI(cfg.appSettingsViewId, data[0].id, apiData, 'PUT', [cfg.appSettingsViewId])
+                            .then(function (response) { ktl.log.clog('Versions updated successfully!', 'green'); })
+                            .catch(function (reason) { alert('An error occurred while updating versions in table: ' + reason) })
+                    });
+                }
+            }
+        })
+
+        return {
+            getSysInfo: function () {
+                return sInfo;
+            },
+        }
+    })(); //sysInfo
 
     return { //KTL exposed objects
         const: this.const,
