@@ -222,7 +222,7 @@ function Ktl($) {
                                         response.viewId = viewId;
 
                                         //Process critical failures by forcing a logout or hard reset.
-                                        ktl.wndMsg.ktlProcessServerError({
+                                        ktl.wndMsg.ktlProcessServerErrors({
                                             reason: 'KNACK_API_ERROR',
                                             status: response.status,
                                             statusText: response.statusText,
@@ -3244,7 +3244,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.core.getSubstringPosition(view.title, 'USER_FILTERS_', 1),
                         ktl.core.getSubstringPosition(view.title, 'ADD_', 1),
                         ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1),
-                        ktl.core.getSubstringPosition(view.title, 'SW_UPDATE', 1)
+                        ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1)
                     );
 
                     //Truncate all title characters beyond the lowest index found.
@@ -3332,22 +3332,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             return;
                                         },
                                         error: function (model, response, options) {
-                                            console.log('refreshView error response =', response);//$$$
-                                            console.log('model =', model);//$$$
-                                            console.log('options =', options);//$$$
+                                            //console.log('refreshView error response =', response);//$$$
+                                            //console.log('model =', model);//$$$
+                                            //console.log('options =', options);//$$$
                                             
                                             response.caller = 'refreshView';
                                             response.viewId = viewId;
 
                                             //Process critical failures by forcing a logout or hard reset.
                                             if (response.status === 401 || response.status === 403 || response.status === 500) {
-                                                ktl.wndMsg.ktlProcessServerError({
-                                                    reason: 'REFRESH_VIEW_ERROR',
-                                                    status: response.status,
-                                                    statusText: response.statusText,
-                                                    caller: response.caller,
-                                                    viewId: response.viewId,
-                                                });
+                                                refreshViewSvrErr(response);
                                                 resolve();
                                                 return;
                                             } else {
@@ -3362,21 +3356,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                         setTimeout(function () {
                                                             tryRefresh(retryCtr);
                                                         }, 1000);
-                                                    } else {
-                                                        ktl.wndMsg.ktlProcessServerError({
-                                                            reason: 'REFRESH_VIEW_ERROR',
-                                                            status: response.status,
-                                                            statusText: response.statusText,
-                                                            caller: response.caller,
-                                                            viewId: response.viewId,
-                                                        });
-                                                    }
+                                                    } else
+                                                        refreshViewSvrErr(response);
                                                 }
                                             }
                                         }
                                     });
                                 }
                             })(10); //Retries
+
+                            function refreshViewSvrErr(response) {
+                                ktl.wndMsg.ktlProcessServerErrors({
+                                    reason: 'REFRESH_VIEW_ERROR',
+                                    status: response.status,
+                                    statusText: response.statusText,
+                                    caller: response.caller,
+                                    viewId: response.viewId,
+                                });
+                            }
                         }
                     } else {
                         var callerInfo = refreshView.caller.toString().replace(/\s+/g, ' ');
@@ -5188,9 +5185,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
 
-                if (ver !== APP_KTL_VERSIONS && Knack.getUserAttributes().name !== ktl.core.getCfg().developerName) {
-                    console.log('sending reloadAppMsg with ver:', ver);
-                    ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: ver });
+                if (ver !== APP_KTL_VERSIONS) {
+                    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
+                        alert(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.');
+                    else {
+                        console.log('sending reloadAppMsg with ver:', ver);
+                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: ver });
+                    }
                 }
             }
 
@@ -5427,7 +5428,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var processFailedMessages = null; //Process failed app-specific messages.
         var processAppMsg = null; //Process app-specific messages.
         var sendAppMsg = null; //To tx/rx app-specific messages to/from iFrames or child windows.
-        var processServerError = null; //Process server-related errors like 401, 403, 500, and all others.
+        var processServerErrors = null; //Process server-related errors like 401, 403, 500, and all others.
 
         function Msg(type, subtype, src, dst, id, data, expiration, retryCnt = SEND_RETRIES) {
             this.msgType = type;
@@ -5502,7 +5503,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                         case 'processServerErrorMsg': //Forward any errors from iFrameWnd to app.
                             console.log('Rxed processServerErrorMsg:', event.data.msgData);//$$$
-                            processServerError && processServerError(event.data.msgData);
+                            processServerErrors && processServerErrors(event.data.msgData);
                             break;
 
 
@@ -5626,7 +5627,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.processFailedMessages && (processFailedMessages = cfgObj.processFailedMessages);
                 cfgObj.processAppMsg && (processAppMsg = cfgObj.processAppMsg);
                 cfgObj.sendAppMsg && (sendAppMsg = cfgObj.sendAppMsg);
-                cfgObj.processServerError && (processServerError = cfgObj.processServerError);
+                cfgObj.processServerErrors && (processServerErrors = cfgObj.processServerErrors);
             },
 
             send: function (msgType = '', msgSubType = '', src = '', dst = '', msgId = 0, msgData = null) {
@@ -5688,11 +5689,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return numRemoved;
             },
 
-            ktlProcessServerError: function (msg = {}) {
+            ktlProcessServerErrors: function (msg = {}) {
                 if (ktl.scenes.isiFrameWnd())
                     ktl.wndMsg.send('processServerErrorMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, msg);
                 else
-                    processServerError && processServerError(msg);
+                    processServerErrors && processServerErrors(msg);
             },
         }
     })();
