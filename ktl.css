@@ -15,7 +15,7 @@ h2 {
 }
 
 /* Hide header and scene render will put it back if not an iFrame. */
-#kn-app-header {
+#kn-app-header, .knHeader {
 	display: none !important;
 }
 
