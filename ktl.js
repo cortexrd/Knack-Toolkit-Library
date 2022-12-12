@@ -26,7 +26,8 @@ function Ktl($) {
 
     var ktl = this;
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1023
+    //KEC stands for "KTL Event Code".  Next:  KEC_1024
+    //
 
     /**
     * Exposed constant strings
@@ -161,22 +162,7 @@ function Ktl($) {
                             if (recId)
                                 apiURL += recId;
 
-                            //@@@ TODO:  support GET requests with filter.
-                            //if (requestType === 'GET') {
-                            //    var filters = {
-                            //        'match': 'or',
-                            //        'rules': [
-                            //            {
-                            //                'field': 'field_x',
-                            //                'operator': 'is',
-                            //                'value': 'recordIdxxxxxxxxxxxxxxx'
-                            //            }
-                            //        ]
-                            //    };
-
-                            //    apiURL += '?filters=' + encodeURIComponent(JSON.stringify(filters));
-                            //}
-
+                            //TODO: Support GET requests with filter.
 
                             if (showSpinner)
                                 Knack.showSpinner();
@@ -207,7 +193,8 @@ function Ktl($) {
                                     }
                                 },
                                 error: function (response /*jqXHR*/) {
-                                    //console.log('knAPI failure, retries:', this.retryLimit, 'status:', response.status, 'statusText:', response.statusText);
+                                    ktl.log.clog('knAPI error:', 'purple');
+                                    console.log('retries:\n', this.retryLimit, 'response:\n', response);
 
                                     if (this.retryLimit-- > 0) {
                                         var ajaxParams = this; //Backup 'this' otherwise this will become the Window object in the setTimeout.
@@ -215,7 +202,7 @@ function Ktl($) {
                                             $.ajax(ajaxParams);
                                         }, 500);
                                         return;
-                                    } else {
+                                    } else { //All retries have failed, log this.
                                         Knack.hideSpinner();
 
                                         response.caller = 'knAPI';
@@ -838,7 +825,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return;
             }
 
-            if ($('.kn-login').length > 0) //All passthrough in login screen.
+            if ($('.kn-login').length > 0) //Let all keys pass through in login screen.
                 return;
 
             //In a chznBetter, pressing enter submits the current text without waiting.
@@ -2443,6 +2430,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (!allFiltersObj.isEmpty && !$.isEmptyObject(allFiltersObj[filterDivId])) {
                     var activeFilterIndex = allFiltersObj[filterDivId].active;
+                    if (activeFilterIndex === null) { //Fix potential null (JIC), change to -1 and save.
+                        activeFilterIndex = -1;
+                        allFiltersObj[filterDivId].active = -1;
+                        saveAllFilters(filterDivId);
+                    }
 
                     for (var btnIndex = 0; btnIndex < allFiltersObj[filterDivId].filters.length; btnIndex++) {
                         var filter = allFiltersObj[filterDivId].filters[btnIndex];
@@ -3340,11 +3332,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             response.viewId = viewId;
 
                                             //Process critical failures by forcing a logout or hard reset.
-                                            if (response.status === 401 || response.status === 403 || response.status === 500) {
-                                                refreshViewSvrErr(response);
-                                                resolve();
-                                                return;
-                                            } else {
+                                            if (response.status === 401 || response.status === 403 || response.status === 500)
+                                                procRefreshViewSvrErr(response);
+                                            else {
                                                 if (Knack.router.scene_view.model.views._byId[viewId].attributes.title.includes('AUTOREFRESH')) {
                                                     resolve(); //Just ignore, we'll try again shortly anyways.
                                                     return;
@@ -3357,7 +3347,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                             tryRefresh(retryCtr);
                                                         }, 1000);
                                                     } else
-                                                        refreshViewSvrErr(response);
+                                                        procRefreshViewSvrErr(response);
                                                 }
                                             }
                                         }
@@ -3365,7 +3355,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
                             })(10); //Retries
 
-                            function refreshViewSvrErr(response) {
+                            function procRefreshViewSvrErr(response) {
                                 ktl.wndMsg.ktlProcessServerErrors({
                                     reason: 'REFRESH_VIEW_ERROR',
                                     status: response.status,
@@ -3373,6 +3363,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     caller: response.caller,
                                     viewId: response.viewId,
                                 });
+
+                                resolve();
+                                return;
                             }
                         }
                     } else {
@@ -4987,23 +4980,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         const LOGIN_TIMEOUT = 'Timeout';
 
         //Handle log-in/out events.
-        var logLogin = true; //Get rid of this
         $(document).on('click', function (e) {
             if (e.target.value === 'Sign In' && e.target.type === 'submit') {
                 var sel = $('.kn-login-form > form > input');
                 if (sel && sel.length > 0) {
-                    //lsLog('User attempting to log-in...');
                     postLoginEvent()
                         .then(function (result) {
                             var menuInfo = ktl.core.getMenuInfo();
                             if (result === LOGIN_SUCCESSFUL) {
                                 result = JSON.stringify({ result: result, APP_KTL_VERSIONS: APP_KTL_VERSIONS, page: menuInfo, agent: navigator.userAgent });
-                                if (logLogin) {
-                                    logLogin = false;
-                                    ktl.log.addLog(ktl.const.LS_LOGIN, result);
-                                    if (localStorage.length > 500)
-                                        ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
-                                }
+
+                                ktl.storage.lsRemoveItem('PAUSE_SERVER_ERROR_LOGS');
+                                ktl.log.addLog(ktl.const.LS_LOGIN, result);
+
+                                if (localStorage.length > 500)
+                                    ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 
                                 ktl.iFrameWnd.create();
                             } else {
@@ -5200,8 +5191,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         function startHighPriorityLogging() {
             clearInterval(highPriLoggingInterval);
             highPriLoggingInterval = setInterval(() => {
-                console.log('highPriLoggingInterval');//$$$
-
                 //Send high-priority logs immediately, as these are not accumulated like low-priority logs.
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
@@ -5273,8 +5262,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             // - Submit to Knack if activity or other log accumulator has changed.
             clearInterval(lowPriLoggingInterval);
             lowPriLoggingInterval = setInterval(() => {
-                console.log('lowPriLoggingInterval');//$$$
-
                 (function sequentialSubmit(ix) {
                     var checkNext = false;
                     var el = lowPriorityLogs[ix];
@@ -5381,7 +5368,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.iFrameWnd.delete();
                             ktl.iFrameWnd.create();
                         }
-                    }, 30000);
+                    }, 60000);
                 }
             },
 
@@ -5501,11 +5488,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             break;
 
 
-                        case 'processServerErrorMsg': //Forward any errors from iFrameWnd to app.
-                            console.log('Rxed processServerErrorMsg:', event.data.msgData);//$$$
-                            processServerErrors && processServerErrors(event.data.msgData);
+                        case 'ktlProcessServerErrorsMsg': //Forward any server errors from iFrameWnd to app.
+                            ktl.wndMsg.ktlProcessServerErrors(event.data.msgData);
                             break;
-
 
                         case 'reloadAppMsg': //No need to ack this msg.  This msg destination must always be App, never iFrameWnd.
                             var msg = event.data.msgData;
@@ -5690,10 +5675,42 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             ktlProcessServerErrors: function (msg = {}) {
-                if (ktl.scenes.isiFrameWnd())
-                    ktl.wndMsg.send('processServerErrorMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, msg);
-                else
-                    processServerErrors && processServerErrors(msg);
+                if ($.isEmptyObject(msg)) return;
+
+                if (ktl.scenes.isiFrameWnd()) { //If an error id detect in the iFrameWnd, redirect it to the app for processing, since all desicions are taken there.
+                    ktl.wndMsg.send('ktlProcessServerErrorsMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, msg);
+                    return;
+                }
+
+                if (!ktl.core.isKiosk())
+                    ktl.log.clog('SERVER ERROR, status=' + msg.status + ', reason=' + msg.reason + ', view=' + msg.viewId + ', caller=' + msg.caller, 'purple');
+
+                //Log first one only, then pause all subsequent ones of same type.  Will be reset upon next login.
+                if (!ktl.storage.lsGetItem('PAUSE_SERVER_ERROR_LOGS')) {
+                    ktl.log.addLog(ktl.const.LS_SERVER_ERROR, 'KEC_1023 - Server Error: ' + JSON.stringify(msg));
+                    ktl.storage.lsSetItem('PAUSE_SERVER_ERROR_LOGS', JSON.stringify({ [msg.status]: true }));
+                }
+
+                if ([401, 500].includes(msg.status)) {
+                    if (msg.status == 401) {
+                        if (typeof Android === 'object') {
+                            if (confirm('A reboot is needed, do you want to do it now?'))
+                                Android.restartApplication();
+                        } else {
+                            ktl.core.timedPopup('Your log-in has expired. Please log back in to continue.', 'warning', 4000);
+                            $('.kn-log-out').trigger('click'); //Login has expired, force logout.
+                        }
+                    } else if (msg.status == 500) {
+                        ktl.core.timedPopup('Error 500 has occurred - reloading page...', 'warning');
+                        ktl.core.waitAndReload(2000);
+                        //TODO: 1-Add stats counter here   2-Reboot after 3+ times in 3 minutes if Android.
+                    } else {
+                        //Future errors here.
+                    }
+                }
+
+                //Now give control to app's callback for further processing if needed.
+                processServerErrors && processServerErrors(msg);
             },
         }
     })();
