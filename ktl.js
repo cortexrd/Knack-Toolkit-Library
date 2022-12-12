@@ -5177,9 +5177,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 if (ver !== APP_KTL_VERSIONS) {
-                    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
-                        alert(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.');
-                    else {
+                    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
+                        if (document.querySelector('#' + ktl.sysInfo.getCfg().appBcstSWUpdateViewId))
+                            alert(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.');
+                        else {
+                            ktl.core.timedPopup('Updating app to new version, please wait...', 'warning', 9500);
+                            ktl.core.waitAndReload(10000);
+                        }
+                    } else {
                         console.log('sending reloadAppMsg with ver:', ver);
                         ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: ver });
                     }
@@ -5685,7 +5690,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!ktl.core.isKiosk())
                     ktl.log.clog('SERVER ERROR, status=' + msg.status + ', reason=' + msg.reason + ', view=' + msg.viewId + ', caller=' + msg.caller, 'purple');
 
-                //Log first one only, then pause all subsequent ones of same type.  Will be reset upon next login.
+                //Log first one only, then pause all subsequent server error logs until next login.
                 if (!ktl.storage.lsGetItem('PAUSE_SERVER_ERROR_LOGS')) {
                     ktl.log.addLog(ktl.const.LS_SERVER_ERROR, 'KEC_1023 - Server Error: ' + JSON.stringify(msg));
                     ktl.storage.lsSetItem('PAUSE_SERVER_ERROR_LOGS', JSON.stringify({ [msg.status]: true }));
@@ -6080,7 +6085,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         };
 
         var cfg = {
-            appSettingsViewId: ktl.core.getViewIdByTitle('BROADCAST_SW_UPDATE', Knack.router.current_scene_key, true),
+            appBcstSWUpdateViewId: ktl.core.getViewIdByTitle('BROADCAST_SW_UPDATE', Knack.router.current_scene_key, true),
         };
 
         //Comes from here:  https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
@@ -6156,20 +6161,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //SW Update
         $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.key === cfg.appSettingsViewId) {
+            if (view.key === cfg.appBcstSWUpdateViewId) {
                 var appSettingsObj = ktl.core.getObjectIdByName('App Settings');
-                appSettingsValueFld = ktl.core.getFieldIdByName('Value', appSettingsObj);
-                appSettingsDateTimeFld = ktl.core.getFieldIdByName('Date/Time', appSettingsObj);
-
-                var bcstAction = $('#' + cfg.appSettingsViewId + ' .kn-action-link:contains("BROADCAST NOW")');
+                var bcstAction = $('#' + cfg.appBcstSWUpdateViewId + ' .kn-action-link:contains("BROADCAST NOW")');
                 if (bcstAction.length) {
                     bcstAction.on('click', function (e) {
                         var apiData = {};
-                        apiData[appSettingsValueFld] = APP_KTL_VERSIONS;
-                        apiData[appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
-
+                        apiData[ktl.core.getFieldIdByName('Value', appSettingsObj)] = APP_KTL_VERSIONS;
+                        apiData[ktl.core.getFieldIdByName('Date/Time', appSettingsObj)] = ktl.core.getCurrentDateTime(true, true, false, true);
                         ktl.log.clog('Updating versions in table...', 'orange');
-                        ktl.core.knAPI(cfg.appSettingsViewId, data[0].id, apiData, 'PUT', [cfg.appSettingsViewId])
+                        ktl.core.knAPI(cfg.appBcstSWUpdateViewId, data[0].id, apiData, 'PUT', [cfg.appBcstSWUpdateViewId])
                             .then(function (response) { ktl.log.clog('Versions updated successfully!', 'green'); })
                             .catch(function (reason) { alert('An error occurred while updating versions in table: ' + reason) })
                     });
@@ -6181,6 +6182,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             getSysInfo: function () {
                 return sInfo;
             },
+            getCfg: function () {
+                return cfg;
+            }
         }
     })(); //sysInfo
 
