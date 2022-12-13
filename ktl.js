@@ -5177,14 +5177,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 if (ver !== APP_KTL_VERSIONS) {
-                    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
-                        if (document.querySelector('#' + ktl.sysInfo.getCfg().appBcstSWUpdateViewId))
-                            alert(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.');
-                        else {
-                            ktl.core.timedPopup('Updating app to new version, please wait...', 'warning', 9500);
-                            ktl.core.waitAndReload(10000);
-                        }
-                    } else {
+                    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
+                        alert(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.');
+                    else {
                         console.log('sending reloadAppMsg with ver:', ver);
                         ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: ver });
                     }
