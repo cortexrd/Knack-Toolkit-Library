@@ -1402,7 +1402,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return new Promise(function (resolve, reject) {
                     if (!descr || (!['form', 'table'].includes(viewType))) {
                         ktl.log.clog('getFieldFromDescription called with bad parameters.', 'purple');
-                        console.log('descr =', descr, '\nviewId =', viewId, '\nviewType =', viewType);//$$$
+                        console.log('descr =', descr, '\nviewId =', viewId, '\nviewType =', viewType);
                         reject();
                         return;
                     }
@@ -1452,7 +1452,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             reject();
                         }, 15000);
                     } catch (e) {
-                        console.log('getViewFieldIdFromDescription exception\n', e);//$$$
+                        console.log('getViewFieldIdFromDescription exception\n', e);
                         reject();
                     }
                 })
@@ -3324,9 +3324,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                             return;
                                         },
                                         error: function (model, response, options) {
-                                            //console.log('refreshView error response =', response);//$$$
-                                            //console.log('model =', model);//$$$
-                                            //console.log('options =', options);//$$$
+                                            //console.log('refreshView error response =', response);
+                                            //console.log('model =', model);
+                                            //console.log('options =', options);
                                             
                                             response.caller = 'refreshView';
                                             response.viewId = viewId;
@@ -3885,8 +3885,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (columnsArray && columnsArray.length > 0) {
                     columnsArray.forEach(function (el) {
-                        console.log('el =', el);//$$$
-
                         //Remove Header
                         header = $('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(' + el + ')');
                         if (remove)
