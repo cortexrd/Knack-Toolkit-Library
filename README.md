@@ -34,7 +34,7 @@
 
 **Knack Toolkit Library**
 
-v0.4.27 - pre-release
+v0.5.0 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -57,6 +57,10 @@ provide many nice additions to your app:
     your data if a page is reloaded after a submit failure or power
     outage
 
+-   sorted menus
+
+-   lightly colorized inline-editable fields for easy identification
+
 -   special keywords in the view's title to trigger
 
     -   auto-refresh of tables, details view or other views
@@ -67,7 +71,7 @@ provide many nice additions to your app:
 
     -   disable inline editing
 
--   debug window for embedded devices
+-   Ctrl+Click on a table header to invert the default sort
 
 -   idle timeout watchdog
 
@@ -75,16 +79,18 @@ provide many nice additions to your app:
 
 -   numeric pre-validation
 
--   force uppercase
+-   force uppercase on desired fields
 
--   auto-focus
+-   auto-focus on first field of a form or search field in a table
 
 -   dropdown selector improvements
 
 -   kiosk mode
 
-All you need to do is copy two files: **KTL_ZeroConfig_ACB.js** and
-**ktl.css** to their respective panes in your Builder. If you already
+-   debug window for embedded devices
+
+All you need to do is copy two files: **KTL_KnackApp_ACB.js** and
+**KTL.css** to their respective panes in your Builder. If you already
 have your own code, it will not conflict with the KTL.
 
 # Features
@@ -143,31 +149,41 @@ gracious permission to use a portion of their code to manage the dynamic
 library loading. To be honest, I don\'t fully understand it, but it sure
 does a wonderful job, and allowed me to start the KTL project. In short,
 it uses a list of libraries your App will need, and automatically loads
-them with the Lazyload function. Don\'t worry, you don\'t need to
+them with the LazyLoad function. Don\'t worry, you don\'t need to
 understand all of this since the setup is already done.
 
-Normally, without the Bootloader, all your App code resides in the the
-Builder\'s Javascript pane. But when using it, you have another cool
-option of loading **MyAppCode.js** (for example) file locally from your
-hard drive at run-time. This means you can now code and save directly on
-your workstation, without having to copy/paste the code to the Builder
-every time you want to test a change.
+### Developing your code locally -- aka CLS mode
 
-### Developing code locally
+Traditionally, i.e. without the Bootloader, all your App code resides in
+the Builder\'s Javascript and CSS panes. But if you enable the
+Bootloader, you'll be able to load your Javascript and CSS code from
+your hard drive instead, at run-time. This means you can now code and
+save directly on your workstation, without having to copy/paste the code
+to the Builder every time you want to test a change.
 
 This mode enables you (the developer) to work more efficiently by using
 your favorite code editor with all its bells and whistles, instead of
-the Builder\'s Javascript pane. You must install **Node.js** on your
-computer and run the **NodeJS_FileServer.js** script provided. Then,
-each time you save your code, all you have to do is refresh the browser
-to see the changes take effect immediately. In this mode, writing and
-testing code simply doesn't get any faster.
+the basic Builder\'s Javascript pane editor. You must install
+**Node.js** (<https://nodejs.org>) on your computer and run the
+**NodeJS_FileServer.js** script provided. Then, each time you save your
+code, all you have to do is refresh the browser to see the changes take
+effect immediately. In this mode, writing and testing code simply won't
+ever get any faster.
 
 Another great advantage is that it opens the possibility of teamwork.
 Currently, only one developer at a time can edit the code. With the
-bootloader and Node.js server, there is no conflict because each
-developer works with his own \"sandboxed\" copy and pulls external
+bootloader and Node.js file server, there is no conflict because each
+developer works with his own \"sandboxed\" local copy and pulls external
 changes whenever he/she chooses to do so.
+
+**Furthermore and most importantly**, you can simultaneously work on a
+production App, running officially released and tested code, while you
+run development code locally -- yes, two different code revisions at the
+same time, without conflicting! This means that the classic method of
+going in Knack's Builder to create a sandbox copy of your app to develop
+and experiment with new code is not required anymore - or a lot less
+often. When your app becomes huge, creating a copy can take a whole day
+sometimes.
 
 ### Functions
 
@@ -220,7 +236,7 @@ internally, but also available to your app.
 -   **getCurrentDateTime**: Generates a local or UTC date/time string.
 
 -   **dateInPast**: Compares the first date to the second one and
-    returns true if it\'s in the past, but ignore the time component. If
+    returns true if it\'s in the past, ignoring the time component. If a
     second date is not provided, it uses today.
 
 -   **selectElementContents**: Selects all element\'s text.
@@ -234,7 +250,7 @@ internally, but also available to your app.
     delay. Removal must be done manually. Useful for progress
     indicators.
 
--   **setInfoPopupText**: To indicate general information, status or
+-   **setInfoPopupText**: To indicate general information, status, or
     progress in infoPopup.
 
 -   **removeInfoPopup**: To remove infoPopup.
@@ -245,17 +261,18 @@ internally, but also available to your app.
 -   **setContextMenuPostion**: Upon right-click, ensures that a context
     menu follows the mouse, but without overflowing outside of window.
 
--   **getObjectIdByName**: Pass the object's name and will return the
+-   **getObjectIdByName**: Pass the object's name and returns the
     object's ID.
 
 -   **getFieldIdByName**: Pass the field name and object ID and will
     return the field's ID.
 
--   **getViewIdByTitle:** Pass the view title (and scene ID optionally)
-    and will return the view ID.
+-   **getViewIdByTitle:** Pass the view title (and Page URL optionally)
+    and returns the first view ID containing specific text in its title,
+    with optional exact match.
 
--   **sortMenu**: Will sort the menus in alphabetical order, when
-    top-menu is clicked.
+-   **sortMenu**: Will sort the menus in alphabetical order when
+    top-menu is opened.
 
 -   **sortUList**: Will sort any un-ordered list in alphabetical order.
 
@@ -270,14 +287,14 @@ actions.
 ## Storage
 
 Provides non-volatile storage utilities using the localStorage and
-cookies objects. It is the base of several other features.
+cookies objects. It is the cornerstone of several other features.
 
 ### Functions
 
 -   **hasLocalStorage**: Returns whether or not localStorage is
     supported.
 
--   **lsSetItem, lsGetItem, lsRemoveItem**: Saves, loads and deletes
+-   **lsSetItem, lsGetItem, lsRemoveItem**: Saves, loads, and deletes
     text item in app-specific keys.
 
 -   **saveUserSetting, loadUserSetting, setCookie, getCookie,
@@ -332,7 +349,7 @@ Provides scene-related features.
     for reloading the page or logging out the user.
 
 -   **findViewWithTitle**: Searches through each view in the current
-    scene and returns the first view id containing specific text in its
+    scene and returns the first view ID containing specific text in its
     title, with optional exact match.
 
 -   **scrollToTop**: Scrolls the page all the way up.
@@ -343,7 +360,7 @@ Provides scene-related features.
 -   **onSceneRender**: Callback to your app\'s handler of a scene
     render.
 
--   **isiFrameWnd**: returns whether the window is the top-level app or
+-   **isiFrameWnd**: returns whether the window is the top-level app, or
     the hidden child utility page called iFrameWnd.
 
 ## Views
@@ -358,10 +375,11 @@ Provides view-related features.
 
 -   **refreshView**: Robust view refresh function with retries and error
     handling. Supports most types of views including tables, details,
-    searches, forms, rich text and menus.
+    searches, forms, rich text, and menus.
 
--   **refreshViewArray**: Calls refreshView in sequence from an array of
-    view ids as parameter.
+-   **refreshViewArray**: Calls refreshView for each view in the array
+    of view ids as parameter, and returns (resolve from promise) only
+    when all are done refreshing.
 
 -   **autoRefresh**: You can now add auto refresh to any view without a
     single line of code. It is done from the Builder, by simply adding
@@ -439,13 +457,17 @@ Provides view-related features.
 ## Fields
 
 Provides field-related features like auto-select all text on focus,
-convert form text to numeric and enforce numeric validation.
+convert from text to numeric and enforce numeric validation or uppercase
+letters.
 
 ### Functions
 
--   **setCfg**: Set a callback to your keypress event handler. Specify
-    which fields must be considered as numeric even though Knack sets
-    them as text.
+-   **setCfg**: Set a callback to your keypress event handler. Use the
+    textAsNumeric array to specify which fields must be considered as
+    numeric even though you have set them up as Short Text in Knack.
+    This can be very useful in some special use cases. For example, you
+    can dynamically change this to allow a unique Account Role to enter
+    letters, while all others can only enter digits.
 
 -   **convertNumToTel**: All numeric fields will automatically be
     converted to telephone type. This has no negative or perceptible
@@ -453,13 +475,13 @@ convert form text to numeric and enforce numeric validation.
     the keyboard to telephone type for a more convenient numeric layout
     and also auto-selection of all text upon focus.
 
--   **enforceNumeric**: For all numeric fields, plus some specified by
-    user (optional), validation will be performed. If non-numeric values
+-   **enforceNumeric**: For all numeric fields, and any specified in
+    textAsNumeric, validation will be performed. If non-numeric values
     are found, the submit button will be disabled and grayed out, and
     the field will be colorized with Knack\'s \"pink\" error indicator.
 
 -   **addButton**: Will add a button to a specified div element. You can
-    specify the label, style, classes, id, etc., and it will return a
+    specify the label, style, classes and ID, and it will return a
     button object to which you can attach your event handlers.
 
 -   **addCheckbox**: Similar to addButton, but for a checkbox.
@@ -478,12 +500,14 @@ convert form text to numeric and enforce numeric validation.
     As a bonus, you can now customize the delay before the search starts
     (common to all dropdowns), and for individual dropdowns, the
     threshold number of characters to type before the search starts.
-    Defaults are 1.5 seconds delay, and 3 characters for text and and .
-    Use the ktl.fields.setCfg function to modify chznBetterSrchDelay and
-    chznBetterThresholds to match your needs.
+    Defaults are 1.5 seconds delay, and 3 characters for short text
+    fields and 4 for textAsNumeric fields. Use the ktl.fields.setCfg
+    function to modify chznBetterSrchDelay and chznBetterThresholds to
+    match your needs.
 
 -   **searchChznBetterDropdown**: chznBetter\'s wrapper to
-    searchDropdown.
+    searchDropdown. Mainly used internally, but accessible to your app
+    in case of specific needs.
 
 ### Using field description text box as flags to trigger special behavior
 
@@ -605,7 +629,8 @@ Provides features for the currently logged-in account.
 Provides various settings for the currently logged-in account. Some are
 built-in, and more can be added by your app. You can control which
 settings can be modified by the user and they can access them in the
-Account Settings page. See the User Preferences setup procedure below.
+Account Settings page. See the [User Preferences setup
+procedure](#user-preferences-1).
 
 ### Functions
 
@@ -816,11 +841,11 @@ itself.
     will need that the file name matches your App name in order to
     recognize it.
 
-2)  Add code from file KTLBootloader.js.
+2)  Add code from file KTL_Bootloader.js.
 
-3)  Add code from file ktl.js.
+3)  Add code from file KTL.js.
 
-4)  Add the code from file KTLSetupTemplate.js
+4)  Add the code from file KTL_KnackApp.js.
 
 5)  Copy your existing code from the Builder at the end, where you see
     ***//My App code*** (between the begin and end markers). Save
@@ -851,7 +876,7 @@ itself.
         to ACB modes eventually. Keeping this file will save you from
         going through this merge procedure everytime.
 
-7)  In the CSS pane, add the CSS code from file ktl.css to yours.
+7)  In the CSS pane, add the CSS code from file KTL.css to yours.
 
 8)  Copy all that CSS code to another file named **ACB\_*AppName*.css**
     and save it, for the same reasons as stated above for .js.
@@ -917,7 +942,7 @@ terminal window. You should see the version number displayed.
     actual name of your App is required for the Bootloader to recognize
     it.
 
-2)  Add the code from file KTLSetupTemplate.js
+2)  Add the code from file KTL_KnackApp.js.
 
 3)  Copy your existing code from the Builder at the end, where you see
     ***//My App code*** (between the begin and end markers). Save
@@ -927,9 +952,9 @@ terminal window. You should see the version number displayed.
 
     a.  Wipe all code
 
-    b.  Add the code from file KTLBootloader.js
+    b.  Add the code from file KTL_Bootloader.js
 
-5)  Copy the ktl.js and ktl.css files to the folder as per
+5)  Copy the KTL.js and KTL.css files to the folder as per
     recommendation below (Lib\\KTL).
 
 6)  Back in *AppName*.js
@@ -947,7 +972,7 @@ terminal window. You should see the version number displayed.
         through all the flags and settings to match your needs.
 
 7)  Open command prompt or a terminal window, go to the **code** folder
-    (see folder sdtructure below) and launch **node
+    (see folder structure below) and launch **node
     NodeJS_FileServer.js**. Each time you refresh your app\'s page, you
     will see logs showing the path and file name requested.
 
@@ -967,11 +992,17 @@ maintain with a revision control tool like GIT.
 
 .code\\MyKnackApps\\App3\\App3.js
 
-.code\\Lib\\KTL\\KTLBootloader.js
+.code\\Lib\\KTL\\KTL_Bootloader.js
 
-.code\\Lib\\KTL\\ktl.css
+.code\\Lib\\KTL\\KTL.js
 
-.code\\Lib\\KTL\\KTLSetupTemplate.js
+.code\\Lib\\KTL\\KTL.css
+
+.code\\Lib\\KTL\\KTL_KnackApp.js
+
+.code\\Lib\\KTL\\NodeJS\\NodeJS_ACB_MergeFiles.js
+
+.code\\Lib\\KTL\\NodeJS\\NodeJS_FileServer.js
 
 .code\\Lib\\SomeOtherCoolLib\\CoolCode.js
 
@@ -1008,7 +1039,7 @@ development copy of the app, using the fast CLS mode.
     that and save.
 
 4)  You probably want to migrate (and remove) any new KTL-related CSS
-    code to the ktl.css file.
+    code to the KTL.css file.
 
 5)  Run **node FileServe.js**
 
@@ -1287,5 +1318,3 @@ Normand Defayette
 Cortex R&D Inc.
 
 Blainville, Québec, Canada
-
-\_\_x\_\_
