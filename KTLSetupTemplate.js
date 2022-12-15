@@ -97,6 +97,7 @@ var KnackApp = function ($, info = {}) {
 
         ktl.systemColors.setCfg({
         })
+
         ktl.systemColors.getSystemColors()
             .then(() => { })
             .catch((err) => { ktl.log.clog('App getSystemColors error: ' + err, 'red'); })
