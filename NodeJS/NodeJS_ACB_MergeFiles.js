@@ -73,8 +73,8 @@ function mergeFiles(mergedFile, filesToMerge = []) {
 
 
 mergeFiles(mergedFile, [
-    ktlPath + '\\KTLBootloader.js', //Order is important!
-    ktlPath + '\\ktl.js',
+    ktlPath + '\\KTL_Bootloader.js', //Order is important!
+    ktlPath + '\\KTL.js',
     (fileName || (appName ? (appName + '.js') : ''))
 
 ]);
