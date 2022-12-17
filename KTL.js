@@ -1340,7 +1340,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            ktlChznBetterSetFocus: function () {
+            ktlChznBetterSetFocus: function () { //For KTL internal KTL use.
                 setTimeout(function () {
                     $('#chznBetter').focus();
                     chznBetterSetFocus && chznBetterSetFocus();
@@ -1805,7 +1805,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.fieldsToExclude && (fieldsToExclude = cfgObj.fieldsToExclude);
             },
 
-            //Add Change event handlers for Dropdowns, Calendars, etc.
+            //For KTL internal KTL use.  Add Change event handlers for Dropdowns, Calendars, etc.
             onFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 if (!fieldsToExclude.includes(fieldId)) {
                     recId && (text += '-' + recId);
@@ -3931,7 +3931,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            //Pass a list of fields and returns the first found.
+            //Pass a list of field IDs and returns the first found.
             findFirstExistingField: function (fieldArray = []) {
                 if (fieldArray.length === 0)
                     return '';
@@ -4010,7 +4010,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            submitAndWait: function (viewId = '', formData = {}) {
+            submitAndWait: function (viewId = '', formData = {/*fieldId: value*/}) {
                 return new Promise(function (resolve, reject) {
                     if (!viewId || $.isEmptyObject(formData)) return;
 
@@ -4553,7 +4553,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 console.log('%c' + msg, 'color:' + color + ';font-weight:bold');
             },
 
-            clog2: function (color = 'black', ...msgArray) {
+            clog2: function (color = 'purple', ...msgArray) {
                 var msg = '';
                 for (var i = 0; i < msgArray.length; i++)
                     msg += msgArray[i] + ', ';
@@ -4561,7 +4561,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 console.log('%c' + msg, 'color:' + color + ';font-weight:bold');
             },
 
-            objSnapshot: function (logMsg, obj) {
+            //Converts an object to a string and back to an object to freeze it in time and allow easy visualization.
+            objSnapshot: function (logMsg = 'Object Snapshot:\n', obj) {
                 try {
                     console.log(logMsg, JSON.parse(JSON.stringify(obj)));
                 }
@@ -6185,12 +6186,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         const: this.const,
         core: this.core,
         storage: this.storage,
-        scenes: this.scenes,
-        views: this.views,
         fields: this.fields,
-        bulkOps: this.bulkOps,
-        userFilters: this.userFilters,
+        views: this.views,
+        scenes: this.scenes,
         persistentForm: this.persistentForm,
+        userFilters: this.userFilters,
+        bulkOps: this.bulkOps,
         account: this.account,
         userPrefs: this.userPrefs,
         iFrameWnd: this.iFrameWnd,
