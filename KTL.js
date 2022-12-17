@@ -4549,15 +4549,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.logCategoryAllowed && (logCategoryAllowed = cfgObj.logCategoryAllowed);
             },
 
-            clog: function (color = 'purple', msg = '') {
-                console.log('%c' + msg, 'color:' + color + ';font-weight:bold');
-            },
-
-            clog2: function (color = 'purple', ...msgArray) {
+            //Colorized log with multiple parameters.
+            clog: function (color = 'purple', ...logArray) {
                 var msg = '';
-                for (var i = 0; i < msgArray.length; i++)
-                    msg += msgArray[i] + ', ';
-                msg = msg.slice(0, -2);
+                for (var i = 0; i < logArray.length; i++)
+                    msg += logArray[i] + ' ';
+                msg = msg.slice(0, -1);
                 console.log('%c' + msg, 'color:' + color + ';font-weight:bold');
             },
 
