@@ -1,15 +1,17 @@
 -   [Introduction](#introduction)
 -   [Overview](#overview)
+-   [No time for now, I'll read this later. How about a quick
+    try?](#no-time-for-now-ill-read-this-later.-how-about-a-quick-try)
 -   [Features](#features)
     -   [Bootloader](#bootloader)
     -   [Core](#core)
     -   [Storage](#storage)
-    -   [Scenes](#scenes)
-    -   [Views](#views)
     -   [Fields](#fields)
-    -   [Bulk Operations](#bulk-operations)
-    -   [User Filters](#user-filters)
+    -   [Views](#views)
+    -   [Scenes](#scenes)
     -   [Form Persistence](#form-persistence)
+    -   [User Filters](#user-filters)
+    -   [Bulk Operations](#bulk-operations)
     -   [Account](#account)
     -   [User Preferences](#user-preferences)
     -   [iFrame Window](#iframe-window)
@@ -89,9 +91,21 @@ provide many nice additions to your app:
 
 -   debug window for embedded devices
 
-All you need to do is copy two files: **KTL_KnackApp_ACB.js** and
-**KTL.css** to their respective panes in your Builder. If you already
-have your own code, it will not conflict with the KTL.
+# No time for now, I'll read this later. How about a quick try?
+
+If you want to try/use the basic, default setup version of the KTL, all
+you need to do is copy the content of those two files:
+**KTL_KnackApp_ACB.js** and **KTL.css** to their respective panes in
+your Builder. If you already have your own code, it will not conflict
+with the KTL. Just move it between these lines at the end:
+
+//My App code - BEGIN
+
+// \.....your code here\....
+
+//My App code -- END
+
+For your CSS vs KTL's, the placement does not matter.
 
 # Features
 
@@ -138,6 +152,8 @@ you're interested in trying out the more advanced features.
 
 ## Bootloader
 
+### Usage
+
 The bootloader is the entry point of all code, including the KTL and
 your app-specific code. It is very technical, and the average user will
 not really need to understand most of it. Basically, it does two things:
@@ -146,16 +162,16 @@ not really need to understand most of it. Basically, it does two things:
 
 First, I wish to say a big *\"thank you\"* to **Soluntech** for their
 gracious permission to use a portion of their code to manage the dynamic
-library loading. To be honest, I don\'t fully understand it, but it sure
-does a wonderful job, and allowed me to start the KTL project. In short,
-it uses a list of libraries your App will need, and automatically loads
-them with the LazyLoad function. Don\'t worry, you don\'t need to
-understand all of this since the setup is already done.
+library loading. This is the cornerstone that allowed kickstarting the
+KTL project. In short, it uses a list of libraries your app will need,
+and automatically loads them with the LazyLoad function. Don\'t worry,
+you don\'t need to understand all of this since the setup is already
+done.
 
 ### Developing your code locally -- aka CLS mode
 
-Traditionally, i.e. without the Bootloader, all your App code resides in
-the Builder\'s Javascript and CSS panes. But if you enable the
+Traditionally, i.e. without the Bootloader, all your app code resides in
+the Builder\'s Javascript and CSS panes. But if you leverage the
 Bootloader, you'll be able to load your Javascript and CSS code from
 your hard drive instead, at run-time. This means you can now code and
 save directly on your workstation, without having to copy/paste the code
@@ -177,7 +193,7 @@ developer works with his own \"sandboxed\" local copy and pulls external
 changes whenever he/she chooses to do so.
 
 **Furthermore and most importantly**, you can simultaneously work on a
-production App, running officially released and tested code, while you
+production app, running officially released and tested code, while you
 run development code locally -- yes, two different code revisions at the
 same time, without conflicting! This means that the classic method of
 going in Knack's Builder to create a sandbox copy of your app to develop
@@ -190,6 +206,8 @@ sometimes.
 -   Bootloader has no exposed functions.
 
 ## Core
+
+### Usage
 
 This contains generic utility functions, used by most other features
 internally, but also available to your app.
@@ -286,6 +304,8 @@ actions.
 
 ## Storage
 
+### Usage
+
 Provides non-volatile storage utilities using the localStorage and
 cookies objects. It is the cornerstone of several other features.
 
@@ -300,70 +320,94 @@ cookies objects. It is the cornerstone of several other features.
 -   **saveUserSetting, loadUserSetting, setCookie, getCookie,
     deleteCookie, deleteAllCookies**: Same but using cookies.
 
-## Scenes
+## Fields
 
-Provides scene-related features.
+### Usage
+
+Provides field-related features like auto-select all text on focus,
+convert from text to numeric and enforce numeric validation or uppercase
+letters.
 
 ### Functions
 
--   **setCfg**: To set up your parameters and callbacks to your App.
+-   **setCfg**: Set all callbacks to your app, like keypress event
+    handler and field value changed. Use the textAsNumeric array to
+    specify which fields must be considered as numeric even though you
+    have set them up as Short Text in Knack. This can be very useful in
+    some special use cases. For example, you can dynamically change this
+    to allow a unique Account Role to enter letters, while all others
+    can only enter digits.
 
--   **autoFocus**: Callback to your app\'s handler of autoFocus. By
-    default, Knack does not set the focus to a field. But this enables
-    you to choose when and how to do it -- your way.
+-   **convertNumToTel**: All numeric fields will automatically be
+    converted to telephone type. This has no negative or perceptible
+    impact for all users, except that it allows mobile devices to switch
+    the keyboard to telephone type for a more convenient numeric layout
+    and also auto-selection of all text upon focus.
 
--   **renderViews**: Renders all views in the current scene.
+-   **enforceNumeric**: For all numeric fields, and any specified in
+    textAsNumeric, validation will be performed. If non-numeric values
+    are found, the submit button will be disabled and grayed out, and
+    the field will be colorized with Knack\'s \"pink\" error indicator.
 
--   **addKioskButtons**: In kiosk mode, most of the time there is no
-    mouse or keyboard. This enables adding specific buttons, typically
-    for navigation: Back, Done, Refresh. I\'ve also added Work Shift and
-    Messaging buttons, if ever you need them (more information provided
-    upon request).
+-   **addButton**: Will add a button to a specified div element. You can
+    specify the label, style, classes and ID, and it will return a
+    button object to which you can attach your event handlers.
 
--   **spinnerWatchdog**: This is a timer that checks if the App is in a
-    waiting state. If the spinner takes more than a specified amount of
-    time (default is 30s), you can gain back control, typically by
-    reloading the page. Most of the time, this solves the \"infinite
-    waiting\" problem after a Submit or any page load/refresh,
-    especially for kiosks without a keyboard, where users would
-    otherwise have to reboot the device. After quite a bit of
-    experimentation, I was surprised to observe that a submitted form
-    was indeed sent successfully, but it was the screen refresh that
-    never came back. This forced refresh solved the problem at least 90%
-    of the time.
+-   **addCheckbox**: Similar to addButton, but for a checkbox.
 
--   **isSpinnerWdRunning**: Returns true if page is busy and spinner is
-    shown.
+-   **addRadioButton**: Similar to addButton, but for radio buttons.
 
--   **flashBackground**: Simple attention getter, useful on small
-    devices monitored from a distant area, to show status like success
-    or failure.
+-   **Barcode reader specific functions**: **addChar, clearBuffer,
+    getBuffer, setUsingBarcode,** and **getUsingBarcode**. Useful in the
+    context of business and industrial projects.
 
--   **resetIdleWatchdog**: The idle watchdog is an "inactivity timer".
-    Each time a mouse click/move or a key press is detected, this is
-    called. After a given amount of time without activity, the
-    idleWatchDogTimeout callback (below) in your App allows a specific
-    action to take place.
+-   **addChznBetter**: The chznBetter object is a custom solution that
+    fixes a few problems with the Knack dropdown object. The most
+    annoying being the following: When you have more than 500 items in
+    the list, the dropdown switches mode and displays a search field.
+    But most of the time, when 3 or 4 characters are typed, the last one
+    or two are erased, rendering the selection very tedious. I got so
+    many complaints about this that I decided to code my own solution.
+    As a bonus, you can now customize the delay before the search starts
+    (common to all dropdowns), and for individual dropdowns, the
+    threshold number of characters to type before the search starts.
+    Defaults are 1.5 seconds delay, and 3 characters for short text
+    fields and 4 for textAsNumeric fields. Use the ktl.fields.setCfg
+    function to modify chznBetterSrchDelay and chznBetterThresholds to
+    match your needs.
 
--   **idleWatchDogTimeout**: The idle callback to your app, typically
-    for reloading the page or logging out the user.
+-   **searchChznBetterDropdown**: chznBetter\'s wrapper to
+    searchDropdown. Mainly used internally, but accessible to your app
+    in case of specific needs.
 
--   **findViewWithTitle**: Searches through each view in the current
-    scene and returns the first view ID containing specific text in its
-    title, with optional exact match.
+-   **inlineEditChangeStyle**: To dynamically modify of an inline edit
+    cell, typically to make it wider to more text. Not completed, work
+    in progress.
 
--   **scrollToTop**: Scrolls the page all the way up.
+-   **onFieldValueChanged**: Callback to your app to process value
+    change events for Dropdowns and Calendars. Driven by
+    processFieldChanged function. More field types will be added
+    eventually.
 
--   **addVersionNumber**: Adds the App and optionally the KTL version
-    numbers on the page.
+-   **getFieldFromDescription**: Returns an object with the field ID and
+    view ID of a field containing specified text in its description.
 
--   **onSceneRender**: Callback to your app\'s handler of a scene
-    render.
+-   **getFieldDescription**: Returns the description text from the field
+    ID parameter.
 
--   **isiFrameWnd**: returns whether the window is the top-level app, or
-    the hidden child utility page called iFrameWnd.
+### Using field's Description text box as flags to trigger special behavior
+
+In the Builder, when you edit a field in the schema view, there's a
+Description text box, where you can put your own notes, as a developer.
+Now, this can also be used by the KTL to trigger special behavior. You
+can add the flag at the end of your description, or on a separate line,
+as you wish. Here's the list:
+
+-   **TO_UPPERCASE**: to convert text to uppercase in real-time
 
 ## Views
+
+### Usage
 
 Provides view-related features.
 
@@ -386,7 +430,9 @@ Provides view-related features.
     AUTOREFRESH=30 at the end of your view\'s title and it will refresh
     itself every 30 seconds. Values from 5 (seconds) to 86500 (24 hours)
     are accepted. Of course, the flag is truncated so only your title
-    remains visible. Also, you can start and stop the process at will.
+    remains visible. Also, you can start and stop the process at will by
+    setting the run parameter to true/false. Note that this will apply
+    to all views in scene.
 
 -   **addViewId**: Convenient for developers who want to see the view id
     next to or near the title.
@@ -396,7 +442,52 @@ Provides view-related features.
     operations.
 
 -   **addTimeStampToHeader**: Useful to see when the last refresh
-    date/time occurred and assess that all is working fine.
+    date/time occurred and assess that your app is running smoothly.
+
+-   **hideField**: Moves a field away from the screen to hide it or save
+    space.
+
+-   **searchDropdown**: Searches text in a dropdown or a multiple
+    choices object, with these options: exact match, show popup for
+    outcome. Currently supports 3 different states of the dropdown:
+    single selection, less than 500 and more than 500 entries. Will auto
+    select the found result it it's an exact match. Otherwise returns
+    all found items and lets you manually choose from the results list.
+    Multiple selections are more complex and will be supported
+    eventually.
+
+-   **findInSearchView**: Uses a Search view to find text, with exact
+    match. Very useful to prevent duplicate entries on a connected
+    field, for example, by doing a hidden search on that view before
+    submitting a new connected record.
+
+-   **removeTableColumns**: Will hide or remove columns from a table.
+    Pass it an array of field ids, and/or array of columns indexes to
+    remove. Also works with action links, which is useful to remove a
+    Delete action if the logged-in role shouldn\'t be allowed for
+    example.
+
+-   **findFirstExistingField**: Pass a list of field IDs and returns the
+    first found in scene.
+
+-   **modifyTableSort**: Inverts the sort order if the data type is
+    Date/Time. In several apps, I found that users always need to click
+    the header twice because they want to see the most recent entries.
+    You can also do a Ctrl+Click to sort it ascending like it is now.
+
+-   **submitAndWait**: Pass a form's view ID and an object containing
+    pairs of field IDs and values. It will fill in the form and submit
+    automatically, then return with a success or failure outcome. If
+    successful, the resulting record is also returned and can be used
+    for further processing.
+
+-   **updateSubmitButtonState**: Used to perform real-time form
+    validation, i.e. before Submit is clicked, by enabling or disabling
+    the button based on your criteria. Pass the form's view ID and it
+    will enable or disable the Submit button. This status extends the
+    existing **validity** property of the button, by adding the
+    **invalidItemObj** object to it. When this object is empty, Submit
+    is enabled, if it contains any key, it will be disabled.
 
 -   **ktlProcessViewFlags**: This is an internal function that is not
     exposed. But worth some additional explaining, nonetheless. It
@@ -427,99 +518,114 @@ Provides view-related features.
 > You can also add your own app-specific flags in the callback function
 > processViewFlags.
 
--   **hideField**: Moves a field away from the screen to hide it or save
-    space.
+## Scenes
 
--   **searchDropdown**: Searches text in a dropdown or a multiple
-    choices object, with these options: exact match, show popup for
-    outcome. Supports all 4 states of the dropdown: single selection,
-    multiple selections, less than 500 and more than 500 entries. Will
-    auto select the found result it it's an exact match. Otherwise
-    returns all found items and lets you manually choose from the
-    results list.
+### Usage
 
--   **findInSearchView**: Uses a Search view to find text, with exact
-    match. Very useful to prevent duplicate entries on a connected
-    field, for example, by doing a hidden search on that view before
-    submitting a new connected record.
-
--   **removeTableColumns**: Will hide or remove columns from a table.
-    Pass it an array of field ids, and/or array of columns indexes to
-    remove. Also works with action links, which is useful to remove a
-    Delete action if the logged-in role shouldn\'t be allowed for
-    example.
-
--   **modifyTableSort**: Inverts the sort order if the data type is
-    Date/Time. In several apps, I found that users always need to click
-    the header twice because they want to see the most recent entries.
-    You can also do a Ctrl+Click to sort it ascending like it is now.
-
-## Fields
-
-Provides field-related features like auto-select all text on focus,
-convert from text to numeric and enforce numeric validation or uppercase
-letters.
+Provides scene-related features.
 
 ### Functions
 
--   **setCfg**: Set a callback to your keypress event handler. Use the
-    textAsNumeric array to specify which fields must be considered as
-    numeric even though you have set them up as Short Text in Knack.
-    This can be very useful in some special use cases. For example, you
-    can dynamically change this to allow a unique Account Role to enter
-    letters, while all others can only enter digits.
+-   **setCfg**: To set up your parameters and callbacks to your app.
 
--   **convertNumToTel**: All numeric fields will automatically be
-    converted to telephone type. This has no negative or perceptible
-    impact for all users, except that it allows mobile devices to switch
-    the keyboard to telephone type for a more convenient numeric layout
-    and also auto-selection of all text upon focus.
+-   **getCfg**: To read the idle watchdog delay value.
 
--   **enforceNumeric**: For all numeric fields, and any specified in
-    textAsNumeric, validation will be performed. If non-numeric values
-    are found, the submit button will be disabled and grayed out, and
-    the field will be colorized with Knack\'s \"pink\" error indicator.
+-   **autoFocus**: Callback to your app\'s handler of autoFocus. By
+    default, Knack does not set the focus to a field. But this enables
+    you to choose when and how to do it -- your way.
 
--   **addButton**: Will add a button to a specified div element. You can
-    specify the label, style, classes and ID, and it will return a
-    button object to which you can attach your event handlers.
+-   **renderViews**: Renders all views in the current scene.
 
--   **addCheckbox**: Similar to addButton, but for a checkbox.
+-   **addKioskButtons**: In kiosk mode, most of the time there is no
+    mouse or keyboard. This enables adding specific buttons, typically
+    for navigation: Back, Done, Refresh. I\'ve also added Work Shift and
+    Messaging buttons, if ever you need them (more information provided
+    upon request).
 
--   **Barcode reader specific functions**: **addChar, clearBuffer,
-    getBuffer, setUsingBarcode,** and **getUsingBarcode**. Useful in the
-    context of business and industrial projects.
+-   **spinnerWatchdog**: This is a timer that checks if the app is in a
+    waiting state. If the spinner takes more than a specified amount of
+    time (default is 30s), you can gain back control, typically by
+    reloading the page. Most of the time, this solves the \"infinite
+    waiting\" problem after a Submit or any page load/refresh,
+    especially for kiosks without a keyboard, where users would
+    otherwise have to reboot the device. After quite a bit of
+    experimentation, I was surprised to observe that a submitted form
+    was indeed sent successfully, but it was the screen refresh that
+    never came back. This forced refresh solved the problem at least 90%
+    of the time.
 
--   **addChznBetter**: The chznBetter object is a custom solution that
-    fixes a few problems with the Knack dropdown object. The most
-    annoying being the following: When you have more than 500 items in
-    the list, the dropdown switches mode and displays a search field.
-    But most of the time, when 3 or 4 characters are typed, the last one
-    or two are erased, rendering the selection very tedious. I got so
-    many complaints about this that I decided to code my own solution.
-    As a bonus, you can now customize the delay before the search starts
-    (common to all dropdowns), and for individual dropdowns, the
-    threshold number of characters to type before the search starts.
-    Defaults are 1.5 seconds delay, and 3 characters for short text
-    fields and 4 for textAsNumeric fields. Use the ktl.fields.setCfg
-    function to modify chznBetterSrchDelay and chznBetterThresholds to
-    match your needs.
+-   **isSpinnerWdRunning**: Returns true if page is busy and spinner is
+    shown.
 
--   **searchChznBetterDropdown**: chznBetter\'s wrapper to
-    searchDropdown. Mainly used internally, but accessible to your app
-    in case of specific needs.
+-   **flashBackground**: Simple attention getter, useful on small
+    devices monitored from a distant area, to show status like success
+    or failure.
 
-### Using field description text box as flags to trigger special behavior
+-   **resetIdleWatchdog**: The idle watchdog is an "inactivity timer".
+    Each time a mouse click/move or a key press is detected, this is
+    called. After a given amount of time without activity, the
+    idleWatchDogTimeout callback (below) in your app allows a specific
+    action to take place.
 
-In the Builder, when you edit a field in the schema view, there's a
-Description text box, where you can put your own notes, as a developer.
-Now, this can also be used by the KTL to trigger special behavior. You
-can add the flag at the end of your description, or on a separate line,
-as you wish. Here's the list:
+-   **idleWatchDogTimeout**: The idle callback to your app, typically
+    for reloading the page or logging out the user.
 
--   **TO_UPPERCASE**: to convert text to uppercase in real-time
+-   **findViewWithTitle**: Searches through each view in the current
+    scene and returns the first view ID containing specific text in its
+    title, with optional exact match.
+
+-   **scrollToTop**: Scrolls the page all the way up.
+
+-   **addVersionNumber**: Adds the app and optionally the KTL version
+    numbers on the page.
+
+-   **isiFrameWnd**: returns whether the window is the top-level app, or
+    the hidden child utility page called iFrameWnd.
+
+-   **onSceneRender**: Callback to your app\'s handler of a
+    "knack-scene-render.any" event.
+
+## Form Persistence
+
+### Usage
+
+When user types-in data in a form, values are saved to localStorage and
+restored in case of power outage, accidental refresh, loss of network or
+other mishaps. **Data is erased** when the form is **submitted**
+**successfully,** or user **navigates away** from page.
+
+### Functions
+
+-   **setCfg**: To define scenes and fields to exclude, i.e. that are
+    never saved.
+
+## User Filters
+
+### Usage
+
+When \"Add filters\" is used in tables, it is possible to save each one
+you create to a named button by clicking on the yellow diskette save
+icon. Your filters are saved in localStorage but can be saved/restored
+to/from Knack for backup or migration to other devices, provided some
+additional setup. See the [User Filters setup
+procedure](#user-filters-1).
+
+The button colors will have matching variations based on the app\'s
+theme. You can also drag and drop the buttons to re-order them at your
+convenience.
+
+The User Filters feature is enabled by default, but you can disable it
+by setting the userFilters flag to false in the ktl.core.setCfg
+function.
+
+### Functions
+
+-   **setCfg**: Sets the allowUserFilters callback to your app to allow
+    user filters based on specific conditions.
 
 ## Bulk Operations
+
+### Usage
 
 There are two types of bulk operations: Bulk Edit and Bulk Delete. As
 their names imply, they provide the ability to perform several record
@@ -583,34 +689,11 @@ undone) at any time be pressing F5 to reload the page.
 ### Functions
 
 -   **deleteRecords**: Used internally by bulk delete to delete an array
-    of records but may be used elsewhere by your App if ever needed.
-
-## User Filters
-
-When \"Add filters\" is used in tables, it is possible to save each one
-you create to a named button. Your filters are saved in localStorage,
-but can be saved/restored to/from Knack for backup or migration to other
-devices. The button colors will have matching variations based on the
-App\'s theme. You can also drag and drop the buttons to re-order them at
-your convenience.
-
-### Functions
-
--   **setCfg**: Sets the allowUserFilters callback to your App to allow
-    user filters based on specific conditions.
-
-## Form Persistence
-
-When user types-in data in a form, values are saved to localStorage and
-restored in case of power outage, accidental refresh, loss of network or
-other mishaps. **Data is erased** when the form is **submitted**
-**successfully** or user **navigates away** from page.
-
-### Functions
-
--   **setCfg**: To define scenes and fields to exclude.
+    of records but may be used elsewhere by your app if ever needed.
 
 ## Account
+
+### Usage
 
 Provides features for the currently logged-in account.
 
@@ -625,6 +708,8 @@ Provides features for the currently logged-in account.
     \"No user found\" (not logged-in).
 
 ## User Preferences
+
+### Usage
 
 Provides various settings for the currently logged-in account. Some are
 built-in, and more can be added by your app. You can control which
@@ -643,18 +728,18 @@ procedure](#user-preferences-1).
 
 ## iFrame Window
 
-Referred to as the **iFrameWnd**, it\'s a hidden utility page at the
-bottom of the main App page that contains various views for the support
-of user preferences, system status, remote SW update and logging
-features. You may also add your own tables there if you need any. The
-idea is to be at two places at the same time: The main App page that
-changes as the user navigates around, and that invisible iFrameWnd that
-stays with us to serve various functions in the background. When the
-user logs-in, the authentication token is conveniently shared with the
-iFrameWnd, allowing us to log-in seamlessly and do API calls. If
-desired, it is possible to send/receive information to/from both windows
-using the powerful wndMsg feature. See the iFrameWnd setup procedure
-[below](#iframewnd).
+Referred to as the **iFrameWnd**, it\'s a hidden utility page that is
+dynamically created at the bottom of the main app page. It contains
+various views to implement system status, user preferences, remote SW
+updates and logging features. You may even add your own views in there
+if you need any. The idea is to be at two places at the same time: The
+main app page that changes as the user navigates around, and that
+invisible iFrameWnd that stays with us to serve various functions in the
+background. When the user logs-in, the authentication token is
+conveniently shared with the iFrameWnd, allowing us to log-in seamlessly
+and do API calls. If desired, it is possible to send/receive information
+to/from both windows using the powerful [wndMsg](#windows-messaging)
+feature.
 
 ### Usage
 
@@ -662,24 +747,26 @@ using the powerful wndMsg feature. See the iFrameWnd setup procedure
     remote SW updates, send UTC timestamps called *heartbeats* from
     devices to the system to assess sanity/presence.
 
--   The user preferences are also read here, for various flags and the
-    work shift.
+-   The user preferences are also read/modified here, including various
+    debug flags and the work shift.
 
 -   A logging table is used to send all logs to Knack via an API call.
     It contains the 5 most recent logs with a unique identifier (Log ID)
     to confirm the transaction.
 
--   To enable the iFrameWnd feature, see the procedure described in the
-    section Advanced Features.
+-   To enable and configure the iFrameWnd feature, see the [iFrameWnd
+    setup procedure](#iframewnd).
 
 ### Functions
 
--   **setCfg**: Your App calls this at startup to specify the field IDs
+-   **setCfg**: Your app calls this at startup to specify the field IDs
     that are required to do their functions, as taken from the Builder.
 
 -   **getCfg**: Returns the iFrameWnd config about field and view IDs.
 
 ## Debug Window
+
+### Usage
 
 Provides a window to see local logs on mobile devices where we don\'t
 have the luxury of a console log output. Useful for simple
@@ -698,16 +785,31 @@ stored in a ring buffer of 100 elements.
 
 ## Logging
 
-Provides enhanced local logging functions, but also remote recording of
-user activity information and system status. Logs are aways saved in
-localStorage, with their timestamp. This is to prevent losing any of
-them in case of power loss or other reason. At certain intervals, they
-are sent to Knack and upon confirmation (todo...), they are erased from
+### Usage
+
+Provides comprehensive logging functionalities for just about anything
+you want to monitor, such as user activity, navigation, system status,
+errors, or simply traces for development and debugging.
+
+To use this feature, you must set the iFrameWnd and all desired logging
+flags to true in the ktl.core.setCfg function, then follow the [Account
+Logs setup procedure](#account-logging).
+
+All logs are aways saved in localStorage, with their timestamp. This is
+to prevent losing any of them in case of power outage or other reason.
+
+Then, at certain intervals, the logs are inserted to the Account Logs
+object with an API call, and upon confirmation, they are erased from
 localStorage.
 
-Logging categories: User login, Navigation, Activity (count of
-keypresses and mouse clicks), Critial Events, App Errors, Server Errors,
-Warnings, Info and Debug.
+To minimize record consumption and API calls usage, navigation logs are
+agglomerated over an hour and sent only once as a single stringified
+object. A custom viewer then disassembles them for display in
+chronological order.
+
+The logging categories are: User login, Navigation, Activity (count of
+keypresses and mouse clicks), Critical Events, App Errors, Server
+Errors, Warnings, Info and Debug.
 
 ### Functions
 
@@ -715,8 +817,8 @@ Warnings, Info and Debug.
     returns whether or not a category should be logged, based on
     specific conditions.
 
--   **clog**: Just an enhanced version of console.log(), with colorized,
-    bold font text
+-   **clog**: Provides an enhanced version of console.log(), with custom
+    color and bold font text.
 
 -   **objSnapshot**: Converts an object to a string and back to an
     object. This is used to *freeze* the content of an object in time.
@@ -727,30 +829,33 @@ Warnings, Info and Debug.
     -   Critical: Sent to Knack within 1 minute. An email is also sent
         to the Sysop.
 
-    -   Login, Warning, App Error: Sent to Knack within 1 minute.
+    -   Login, Info, Debug, Warning, App Error, Server Error: Sent to
+        Knack within 1 minute.
 
-    -   Activity, Navigation, Server Error: Data is accumulated in an
-        object in localStorage, then sent as a single bundle to Knack
-        every 3 hours to reduce API calls.
-
-    -   Info, Debug: in progress... to be determined.
+    -   Activity, Navigation: Data is accumulated in an object in
+        localStorage, then sent as a single bundle to Knack every hour
+        to reduce record usage and API calls.
 
 -   **getLogArrayAge**: Used internally by iFrameWnd and returns the
-    oldest log\'s date/time from array within a resolution of 1 hour.
+    oldest log\'s date/time from array within a resolution of 1 minute.
 
 -   **monitorActivity**: Entry point that starts the user activity
     logging. Every 5 seconds, the mouse clicks and key presses counters
     are updated in localStorage, and counters from all opened pages and
     tabs are merged (added) together.
 
--   **resetActivityCtr**: Resets both counters.
+-   **resetActivityCtr**: Resets mouse and keyboard activity counters.
+
+-   **removeLogById**: todo
+
+-   **updateActivity**: todo
 
 ## Windows Messaging
 
 Provides a framework that handles messaging between windows. It uses a
 queue and supports automatic retries and error handling. The windows can
-be App window, the iFramWnd, or any other window that the App creates
-and needs to communicate with. This is where your App can implement a
+be app window, the iFramWnd, or any other window that the app creates
+and needs to communicate with. This is where your app can implement a
 heartbeat message that notifies Knack about your account (or device)
 being online and running properly.
 
@@ -766,7 +871,7 @@ being online and running properly.
 -   **removeAllMsgOfType**: Cleans up the msg queue of all those of a
     specific type.
 
--   **processFailedMessages**: Callback to your App to handle failed
+-   **processFailedMessages**: Callback to your app to handle failed
     msg.
 
 ## System Info
@@ -804,7 +909,7 @@ for the ACB mode.
 
 This is the traditional mode that we\'re used to, i.e. when all the code
 resides in the Builder\'s Javascript pane. In this mode, the Bootloader
-will load the external library files required, but not your App and
+will load the external library files required, but not your app and
 KTL\'s code since they will be included inside the Javascript pane
 itself.
 
@@ -823,12 +928,12 @@ itself.
     to the copy/paste/save of the code required each time you make a
     change.
 
--   Can be risky if used in production - which means the App is being
+-   Can be risky if used in production - which means the app is being
     used in a live and consequential context - since your development
     code always take effect immediately. You must have good coding
     experience and know exactly what you\'re doing.
 
--   If you want to keep multiple separate files (App and KTL) for
+-   If you want to keep multiple separate files (app and KTL) for
     independent revision control, it won\'t be so trivial. Whenever you
     want to go switch from ACB to CLS Mode (more on this later), you
     will need to migrate your changes back and forth to each files.
@@ -836,9 +941,9 @@ itself.
 ### Setup
 
 1)  In a code editor, create a new file named *AppName*.js. Using the
-    actual name of your App is strongly recommended. This is because, if
+    actual name of your app is strongly recommended. This is because, if
     ever you want to switch to the CLS mode eventually, the Bootloader
-    will need that the file name matches your App name in order to
+    will need that the file name matches your app name in order to
     recognize it.
 
 2)  Add code from file KTL_Bootloader.js.
@@ -881,7 +986,7 @@ itself.
 8)  Copy all that CSS code to another file named **ACB\_*AppName*.css**
     and save it, for the same reasons as stated above for .js.
 
-9)  Open a browser to your Knack App.
+9)  Open a browser to your Knack app.
 
 10) Check console logs to see if all is looking good.
 
@@ -892,7 +997,7 @@ cycles and is typically used for longer stretches of code development,
 where you won\'t need to show your results to others until a milestone
 is reached. It requires the installation of Node.js as a basic local
 file server that the Bootloader uses to fetch the KTL files and your
-App\'s code. The Builder\'s Javascript pane only contains the
+app\'s code. The Builder\'s Javascript pane only contains the
 Bootloader.
 
 IMPORTANT: Only use this mode in a temporary copy of the production app,
@@ -908,7 +1013,7 @@ back and forth between the ACB and CLS modes. See Switching Modes below.
 
 -   Allows multi-developer collaboration without conflict.
 
--   Allows keeping separate files, one for the App and two for the KTL
+-   Allows keeping separate files, one for the app and two for the KTL
     (.js and .css). This is useful if you want to add features or debug
     while maintaining independent revision control on each file.
 
@@ -939,7 +1044,7 @@ Validate installation by typing **node -v** in a command prompt or
 terminal window. You should see the version number displayed.
 
 1)  In a code editor, create a new file named *AppName*.js. Using the
-    actual name of your App is required for the Bootloader to recognize
+    actual name of your app is required for the Bootloader to recognize
     it.
 
 2)  Add the code from file KTL_KnackApp.js.
@@ -976,7 +1081,7 @@ terminal window. You should see the version number displayed.
     NodeJS_FileServer.js**. Each time you refresh your app\'s page, you
     will see logs showing the path and file name requested.
 
-8)  Open a browser to your Knack App.
+8)  Open a browser to your Knack app.
 
 9)  Check console logs to see if all is looking good.
 
@@ -1043,7 +1148,7 @@ development copy of the app, using the fast CLS mode.
 
 5)  Run **node FileServe.js**
 
-6)  Open your browser to your Knack App.
+6)  Open your browser to your Knack app.
 
 7)  Check console logs to see if all is looking good.
 
@@ -1063,7 +1168,7 @@ and it\'s time to show the cool updates to your client.
 3)  In the Javascript pane, comment the three lines below **//Un-comment
     the three lines below to switch to CLS mode** to enable ACB mode.
 
-4)  Open a browser to your Knack App.
+4)  Open a browser to your Knack app.
 
 5)  Check console logs to see if all is looking good.
 
@@ -1076,7 +1181,7 @@ the **//KTL Setup** section.
 
 Here\'s the list:
 
-1)  **showAppInfo**: Displays the App version number.
+1)  **showAppInfo**: Displays the app version number.
 
 2)  **showKtlInfo**: Displays the KTL version number.
 
@@ -1097,14 +1202,14 @@ Here\'s the list:
     Form Persistence.
 
 8)  **spinnerWatchDog**: Will detect when the spinner runs for too long,
-    based on your timeout value, and allows your App to take action -
+    based on your timeout value, and allows your app to take action -
     typically reload the page.
 
 # Advanced Features
 
 These features are considered \"advanced\" in the sense that they
 require additional setup. Also, some of them can provide communication
-between various parts of your App, thus leveraging quite powerful
+between various parts of your app, thus leveraging quite powerful
 administration features.
 
 Here\'s the list:
@@ -1136,6 +1241,9 @@ For now, the iFrameWnd will be its first resident.
 
 ### iFrameWnd
 
+To use this feature, you must set the iFrameWnd flag to true in the
+ktl.core.setCfg function.
+
 Create a new Login Page and give permission to all users. Set Page Name
 to: **iFrameWnd**. Its URL should automatically be set to **iframewnd**.
 This page will be the placeholder for the next features. For now, leave
@@ -1144,7 +1252,7 @@ Invisible Menu and move the iFrameWnd to it.
 
 #### Heartbeat Monitoring and SW Update
 
-If your App requires Heartbeat Monitoring to assess an account\'s
+If your app requires Heartbeat Monitoring to assess an account\'s
 presence and generate alarms, or perform remote SW updates, follow this
 procedure:
 
@@ -1173,7 +1281,7 @@ procedure:
 
 #### User Preferences
 
-If your App requires User Preferences, there are some already built-in,
+If your app requires User Preferences, there are some already built-in,
 and you can also add your own. Follow this procedure:
 
 1)  In the Accounts object, add a Paragraph Text field named User Prefs.
@@ -1206,7 +1314,7 @@ and you can also add your own. Follow this procedure:
 
 #### Account Logging
 
-If your App requires Account Logging, follow this procedure:
+If your app requires Account Logging, follow this procedure:
 
 1)  Create an object named Account Logs and add these fields:
 
@@ -1244,7 +1352,7 @@ If your App requires Account Logging, follow this procedure:
 
 #### Bulk Operations
 
-If your App requires Bulk Edit and Bulk Delete operations, follow the
+If your app requires Bulk Edit and Bulk Delete operations, follow the
 procedure described in this section: Bulk Operations.
 
 #### User Filters
@@ -1253,7 +1361,7 @@ In addition to be able to create named buttons for the User Filters that
 are save in localStorage, it is possible to upload the settings to Knack
 and download them back wherever and whenever needed. This can be seen as
 a backup method, or also to migrate them to other devices. Note that if
-you migrate filters from one App to another, typically a temporary
+you migrate filters from one app to another, typically a temporary
 development copy, some filters will not work due to the record IDs that
 have changed for connected fields. This is a normal behavior, and the
 only way to fix this is to redo their settings and save back to the same

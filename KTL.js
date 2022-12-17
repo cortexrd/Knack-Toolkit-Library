@@ -1340,7 +1340,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            ktlChznBetterSetFocus: function () { //For KTL internal KTL use.
+            //For KTL internal KTL use.
+            ktlChznBetterSetFocus: function () {
                 setTimeout(function () {
                     $('#chznBetter').focus();
                     chznBetterSetFocus && chznBetterSetFocus();
@@ -4654,8 +4655,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            // Returns the oldest log's date/time from array.
-            // Resolution is 1 minute.
+            //For KTL internal KTL use.  Returns the oldest log's date/time from array.  Resolution is 1 minute.
             getLogArrayAge: function (category = '') {
                 if (category === '') return null;
 
@@ -4668,9 +4668,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (logArray.length > 0) {
                         var oldestLogDT = Date.parse(logArray[logArray.length - 1].dt);
                         var nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
-                        var hoursElapsed = Math.round((nowUTC - oldestLogDT) / 60000);
-                        //console.log('hoursElapsed =', hoursElapsed);
-                        return hoursElapsed;
+                        var minutesElapsed = Math.round((nowUTC - oldestLogDT) / 60000);
+                        //console.log('minutesElapsed =', minutesElapsed);
+                        return minutesElapsed;
                     } else
                         return null;
                 }
@@ -5105,17 +5105,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var highPriorityLogs = [
             { type: ktl.const.LS_CRITICAL, typeStr: 'Critical' },
             { type: ktl.const.LS_APP_ERROR, typeStr: 'App Error' },
+            { type: ktl.const.LS_SERVER_ERROR, typeStr: 'Server Error' },
             { type: ktl.const.LS_WRN, typeStr: 'Warning' },
             { type: ktl.const.LS_INFO, typeStr: 'Info' },
             { type: ktl.const.LS_DEBUG, typeStr: 'Debug' },
             { type: ktl.const.LS_LOGIN, typeStr: 'Login' },
         ];
 
-        //Lower priority logs, accumulated in localStorage and sent every 3 hours.
+        //Lower priority logs, accumulated in localStorage and sent every hour.
         var lowPriorityLogs = [
             { type: ktl.const.LS_ACTIVITY, typeStr: 'Activity' },
             { type: ktl.const.LS_NAVIGATION, typeStr: 'Navigation' },
-            { type: ktl.const.LS_SERVER_ERROR, typeStr: 'Server Error' }
         ];
 
         $(document).on('knack-scene-render.any', function (event, scene) {
