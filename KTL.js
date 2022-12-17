@@ -3299,7 +3299,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             //This generates a bit too much logs sometimes.  Uncomment if you really need it.
                             //if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo) {
-                            //    ktl.log.clog('refreshView: ' + viewId, 'purple');
+                            //    ktl.log.clog('purple, 'refreshView: ' + viewId);
                             //    console.log('viewType:', viewType, '  formAction:', formAction, '  useFetch:', useFetch);
                             //}
 
@@ -4649,7 +4649,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         showInConsole = true;
                     }
 
-                    showInConsole && ktl.log.clog(type + ' - ' + details, color);
+                    showInConsole && ktl.log.clog(color, type + ' - ' + details);
                 }
                 catch (e) {
                     ktl.log.addLog(ktl.const.LS_INFO, 'addLog, deleted log having obsolete format: ' + category + ', ' + e);
@@ -4841,7 +4841,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 .catch(failure => { ktl.log.clog('red', 'reloadAppMsg failure: ' + failure); })
                         } else {
                             if (prefsStr && (prefsStr !== lastUserPrefs)) {
-                                ktl.log.clog('Prefs have changed!!!!', 'blue');
+                                ktl.log.clog('blue', 'Prefs have changed!!!!');
 
                                 lastUserPrefs = prefsStr;
 
@@ -5434,7 +5434,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var msgId = event.data.msgId; //Keep a copy for ack.
 
                 if (event.data.msgSubType === 'req') {
-                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('REQ: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt, 'darkcyan');
+                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('darkcyan', 'REQ: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt);
 
                     switch (event.data.msgType) {
                         case 'iFrameWndReadyMsg':
@@ -5444,7 +5444,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             //Delete iFrameWnd and re-create periodically.  This is to check for a SW update.
                             setTimeout(function () {
-                                //ktl.log.clog('Reloading frame', 'purple');
+                                //ktl.log.clog('purple', 'Reloading frame);
                                 if (ktl.iFrameWnd.getiFrameWnd()) {
                                     ktl.iFrameWnd.delete();
                                     ktl.iFrameWnd.create();
