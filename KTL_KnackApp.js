@@ -100,7 +100,7 @@ var KnackApp = function ($, info = {}) {
 
         ktl.systemColors.getSystemColors()
             .then(() => { })
-            .catch((err) => { ktl.log.clog('App getSystemColors error: ' + err, 'red'); })
+            .catch((err) => { ktl.log.clog('red', 'App getSystemColors error: ' + err); })
 
         ktl.userPrefs.setCfg({
             allowShowPrefs: allowShowPrefs,
@@ -266,7 +266,7 @@ var KnackApp = function ($, info = {}) {
             }
         }
         catch (e) {
-            ktl.log.clog('Exception in chznBetterSetFocus:', 'red');
+            ktl.log.clog('red', 'Exception in chznBetterSetFocus:');
             console.log(e);
         }
     }
@@ -348,7 +348,7 @@ var KnackApp = function ($, info = {}) {
             //Ack is always handled by ktl.
         }
         catch (e) {
-            ktl.log.clog('App message handler error:', 'purple');
+            ktl.log.clog('purple', 'App message handler error:');
             console.log(e);
         }
     }
@@ -356,7 +356,7 @@ var KnackApp = function ($, info = {}) {
     //External Apps data exchange and communication - just a test as a proof of concept - BEGIN
     function sendAppMsg(msg = {}) {
         if (!msg.msgType || !msg.msgSubType) {
-            ktl.log.clog('Called sendAppMsg with invalid parameters', 'purple');
+            ktl.log.clog('purple', 'Called sendAppMsg with invalid parameters');
             return;
         }
 

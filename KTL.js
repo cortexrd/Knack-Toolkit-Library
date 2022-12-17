@@ -193,7 +193,7 @@ function Ktl($) {
                                     }
                                 },
                                 error: function (response /*jqXHR*/) {
-                                    ktl.log.clog('knAPI error:', 'purple');
+                                    ktl.log.clog('purple', 'knAPI error:');
                                     console.log('retries:\n', this.retryLimit, 'response:\n', response);
 
                                     if (this.retryLimit-- > 0) {
@@ -239,7 +239,7 @@ function Ktl($) {
                         else
                             $(sel).css({ 'position': 'absolute', 'left': '-9000px' });
                     })
-                    .catch(() => { ktl.log.clog('hideSelector failed waiting for selector: ' + sel, 'purple'); });
+                    .catch(() => { ktl.log.clog('purple', 'hideSelector failed waiting for selector: ' + sel); });
             },
 
             //Param: sel is a string, not the jquery object.
@@ -1223,7 +1223,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //Barcode reader specific functions
             addChar: function (char = '') {
                 if (!char) {
-                    ktl.log.clog('addChar - invalid', 'purple');
+                    ktl.log.clog('purple', 'addChar - invalid');
                     return;
                 }
 
@@ -1376,7 +1376,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
                 catch (e) {
-                    ktl.log.clog('Exception in searchChznBetterDropdown:', 'red');
+                    ktl.log.clog('red', 'Exception in searchChznBetterDropdown:');
                     console.log(e);
                 }
             },
@@ -1401,7 +1401,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             getFieldFromDescription: function (descr = '', viewId = '', viewType = 'form') {
                 return new Promise(function (resolve, reject) {
                     if (!descr || (!['form', 'table'].includes(viewType))) {
-                        ktl.log.clog('getFieldFromDescription called with bad parameters.', 'purple');
+                        ktl.log.clog('purple', 'getFieldFromDescription called with bad parameters.');
                         console.log('descr =', descr, '\nviewId =', viewId, '\nviewType =', viewType);
                         reject();
                         return;
@@ -1542,7 +1542,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             eraseFormData(view.id);
                         })
                         .catch(failure => {
-                            ktl.log.clog('Persistent Form - waitSubmitOutcome failed: ' + failure, 'red');
+                            ktl.log.clog('red', 'Persistent Form - waitSubmitOutcome failed: ' + failure);
                         });
                 }
             }
@@ -1629,7 +1629,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         for (var f = 0; f < fieldsArray.length; f++) {
                             var fieldId = fieldsArray[f];
                             if (fieldsToExclude.includes(fieldId)) {
-                                ktl.log.clog('Skipped field for PF: ' + fieldId, 'purple');
+                                ktl.log.clog('purple', 'Skipped field for PF: ' + fieldId);
                                 continue; //JIC - should never happen since fieldsToExclude are never saved in the first place.
                             }
 
@@ -1699,7 +1699,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 } else if (fieldType === 'boolean') {
                                     document.querySelector('#' + view.key + ' [data-input-id="' + fieldId + '"] input').checked = fieldText;
                                 } else {
-                                    ktl.log.clog('Unsupported field type: ' + fieldId + ', ' + fieldType, 'purple');
+                                    ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
                                 }
 
                                 delete formDataObj[view.key][fieldId];
@@ -2750,7 +2750,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 }
                             })
                             .catch(function () {
-                                ktl.log.clog('Failed waiting for ' + btnSelector, 'purple');
+                                ktl.log.clog('purple', 'Failed waiting for ' + btnSelector);
                             })
                     }
                 } else { //Remove active filter.
@@ -3052,7 +3052,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (sendToConsole)
                         console.log(logStr);
                 } else
-                    ktl.log.clog('Error - lsLog called without storage.', 'purple');
+                    ktl.log.clog('purple', 'Error - lsLog called without storage.');
             },
 
             deleteDebugWnd: function () {
@@ -3341,7 +3341,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 } else {
                                                     if (retryCtr-- > 0) {
                                                         var responseTxt = JSON.stringify(response);
-                                                        ktl.log.clog('refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr, 'purple');
+                                                        ktl.log.clog('purple', 'refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr);
 
                                                         setTimeout(function () {
                                                             tryRefresh(retryCtr);
@@ -3388,22 +3388,22 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             promisesArray.push(
                                 ktl.views.refreshView(viewId)
                                     .then(() => {
-                                        //ktl.log.clog('View refreshed successfully: ' + viewId, 'green');
+                                        //ktl.log.clog('green', 'View refreshed successfully: ' + viewId);
                                     })
                                     .catch(() => {
-                                        ktl.log.clog('Error refreshing view:' + viewId, 'red');
+                                        ktl.log.clog('red', 'Error refreshing view:' + viewId);
                                     })
                             )
                         })
 
                         Promise.all(promisesArray)
                             .then(() => {
-                                //ktl.log.clog('All views refreshed!', 'green');
+                                //ktl.log.clog('green', 'All views refreshed!');
                                 Knack.hideSpinner();
                                 resolve();
                             })
                             .catch(() => {
-                                ktl.log.clog('Error refreshing views!', 'red');
+                                ktl.log.clog('red', 'Error refreshing views!');
                                 reject()
                             })
                             .finally(() => {
@@ -3412,7 +3412,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
 
                     var failsafe = setTimeout(() => {
-                        ktl.log.clog('Failsafe timeout in refreshViewArray!', 'red');
+                        ktl.log.clog('red', 'Failsafe timeout in refreshViewArray!');
                         reject();
                     }, 30000);
                 })
@@ -3549,7 +3549,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             sel = '#' + viewId + ' tr.kn-table-totals';
                             ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
                                 .then(function () { $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); })
-                                .catch(function () { ktl.log.clog('Failed waiting for table totals.', 'purple'); })
+                                .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.'); })
                         } else if (this.classList.contains('kn-table-group')) {
                             $(this).find('td').attr('colspan', '15');
                         } else
@@ -3795,7 +3795,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             return; //JIC
                         }, 5000);
                     } else {
-                        //ktl.log.clog('Called searchDropdown with a field that does not exist: ' + fieldId, 'purple');
+                        //ktl.log.clog('purple, 'Called searchDropdown with a field that does not exist: ' + fieldId);
                     }
 
                     function waitForOptions(dropdownObj) {
@@ -3812,7 +3812,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }, 200);
 
                             var failsafe = setTimeout(function () {
-                                ktl.log.clog('waitForOptions timeout', 'purple');
+                                ktl.log.clog('purple', 'waitForOptions timeout');
                                 ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1021 - waitForOptions timeout: ' + Knack.scene_hash.replace(/[/\/#]+/g, '') + ', ' + dropdownObj[0].id);
                                 clearInterval(intervalId);
                                 reject(foundText);
@@ -3879,7 +3879,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var column;
 
                 if (!viewId || ((fieldsArray && fieldsArray.length === 0) && (columnsArray && columnsArray.length === 0))) {
-                    ktl.log.clog('Called removeTableColumns with invalid parameters.', 'purple');
+                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
                     return;
                 }
 
@@ -4291,7 +4291,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 submitBar = document.querySelector('#' + viewId + ' .view-header'); //Happens with pages without a Submit button.  Ex: When you only have a table.
                                 if (!submitBar) {
                                     //alert('ERROR - View Header is null'); //This since it should never happen.
-                                    ktl.log.clog('ERROR - View Header is null', 'purple');
+                                    ktl.log.clog('purple', 'ERROR - View Header is null');
                                     return;
                                 } else {
                                     $('.view-header').css('display', 'inline-flex'); //Prevent Refresh button from being too low due to Block display style.
@@ -4329,7 +4329,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         $('.kn-menu').css({ 'display': 'inline-flex', 'margin-right': '30px' });
                                     })
                                     .catch(function () {
-                                        ktl.log.clog('menu bar not found', 'purple');
+                                        ktl.log.clog('purple', 'menu bar not found');
                                     })
                             } else
                                 $('.kn-submit').css('display', 'flex');
@@ -4368,7 +4368,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
                 catch (e) {
-                    ktl.log.clog('addKioskButtons exception:', 'purple');
+                    ktl.log.clog('purple', 'addKioskButtons exception:');
                     console.log(e);
                 }
             },
@@ -4378,7 +4378,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     return;
 
                 if (run) {
-                    //ktl.log.clog('SWD running ' + Knack.router.current_scene_key, 'green');
+                    //ktl.log.clog('green', 'SWD running ' + Knack.router.current_scene_key);
                     clearInterval(spinnerInterval);
                     spinnerCtr = spinnerCtrDelay;
                     spinnerInterval = setInterval(function () {
@@ -4398,7 +4398,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }, 1000);
                 } else {
                     clearInterval(spinnerInterval);
-                    //ktl.log.clog('SWD stopped ' + Knack.router.current_scene_key, 'purple');
+                    //ktl.log.clog('purple', 'SWD stopped ' + Knack.router.current_scene_key);
                 }
 
                 spinnerWdRunning = run;
@@ -4465,7 +4465,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
                 catch (e) {
-                    ktl.log.clog('Exception in findViewWithTitle:', 'purple');
+                    ktl.log.clog('purple', 'Exception in findViewWithTitle:');
                     console.log(e);
                 }
                 return '';
@@ -4549,7 +4549,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.logCategoryAllowed && (logCategoryAllowed = cfgObj.logCategoryAllowed);
             },
 
-            clog: function (msg = '', color = 'black') {
+            clog: function (color = 'purple', msg = '') {
                 console.log('%c' + msg, 'color:' + color + ';font-weight:bold');
             },
 
@@ -4567,7 +4567,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     console.log(logMsg, JSON.parse(JSON.stringify(obj)));
                 }
                 catch (e) {
-                    ktl.log.clog('objSnapshot exception: ' + e, 'purple');
+                    ktl.log.clog('purple', 'objSnapshot exception: ' + e);
                 }
             },
 
@@ -4585,7 +4585,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 //Use app's callback to check if log category is allowed.
                 if (logCategoryAllowed && !logCategoryAllowed(category, details)) {
-                    //ktl.log.clog('Skipped log category ' + category, 'purple');
+                    //ktl.log.clog('purple, 'Skipped log category ' + category);
                     return;
                 }
 
@@ -4605,7 +4605,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 //console.log('type =', type);
 
                 if (!type) {
-                    ktl.log.clog('Error in addLog: Found invalid type.', 'purple');
+                    ktl.log.clog('purple', 'Error in addLog: Found invalid type.');
                     return;
                 }
 
@@ -4805,7 +4805,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return lsPrefsStr; //Return string version.
             }
             catch (e) {
-                ktl.log.clog('Exception in readUserPrefsFromLs: ' + e, 'purple');
+                ktl.log.clog('purple', 'Exception in readUserPrefsFromLs: ' + e);
             }
 
             return '';
@@ -4832,13 +4832,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             var updatedPrefs = JSON.stringify(prefsTmpObj);
                             ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
                                 .then(success => { location.reload(true); })
-                                .catch(failure => { ktl.log.clog('iFrameRefresh failure: ' + failure, 'red'); })
+                                .catch(failure => { ktl.log.clog('red', 'iFrameRefresh failure: ' + failure); })
                         } else if (prefsStr.includes('reloadApp')) {
                             delete prefsTmpObj['reloadApp'];
                             var updatedPrefs = JSON.stringify(prefsTmpObj);
                             ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
                                 .then(success => { ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'MANUAL_REFRESH' }); })
-                                .catch(failure => { ktl.log.clog('reloadAppMsg failure: ' + failure, 'red'); })
+                                .catch(failure => { ktl.log.clog('red', 'reloadAppMsg failure: ' + failure); })
                         } else {
                             if (prefsStr && (prefsStr !== lastUserPrefs)) {
                                 ktl.log.clog('Prefs have changed!!!!', 'blue');
@@ -4853,7 +4853,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 //If old format, wipe all and reset to default object: 1970, etc.
                                 document.querySelector('#' + acctPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
                                 document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
-                                ktl.log.clog('Uploading (upgrading) default prefs to cloud', 'red');
+                                ktl.log.clog('red', 'Uploading (upgrading) default prefs to cloud');
                                 ktl.log.addLog(ktl.const.LS_INFO, 'PREFS_UPGRADE_2 : user preferences have been converted.  Old format: ' + prefsStr);
                             }
                         }
@@ -4861,7 +4861,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         //If nothing yet, use default object: 1970, etc.
                         document.querySelector('#' + acctPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
                         document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
-                        ktl.log.clog('Uploading default prefs to cloud', 'green');
+                        ktl.log.clog('green', 'Uploading default prefs to cloud');
                     }
                 } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) { //Form for user to update his own prefs
                     var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
@@ -4921,7 +4921,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             }
             catch (e) {
-                ktl.log.clog('On render view for User Prefs error: ' + e, 'purple');
+                ktl.log.clog('purple', 'On render view for User Prefs error: ' + e);
                 console.log('view =', view);
                 console.log('data =', data);
             }
@@ -5135,7 +5135,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var timeout = setTimeout(function () { //Failsafe
                     clearInterval(intervalId);
-                    ktl.log.clog('iFrameWndReadyMsg timeout', 'purple');
+                    ktl.log.clog('purple', 'iFrameWndReadyMsg timeout');
                 }, 30000);
             }
         })
@@ -5205,7 +5205,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     logObj.sent = true; //Do not send twice, when many opened windows.
                                     ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
 
-                                    ktl.log.clog('Submitting high priority log for: ' + el.typeStr, 'purple');
+                                    ktl.log.clog('purple', 'Submitting high priority log for: ' + el.typeStr);
 
                                     var viewId = cfg.acctLogsViewId;
                                     if (viewId) {
@@ -5341,7 +5341,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var URL = Knack.scenes._byId[IFRAME_WND_ID.toLowerCase()];
                 if (!URL) {
-                    ktl.log.clog('Attempted to create iFrameWnd, but could not find page.', 'red');
+                    ktl.log.clog('red', 'Attempted to create iFrameWnd, but could not find page.');
                     return;
                 }
                 //console.log('URL =', URL);
@@ -5358,11 +5358,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     document.body.appendChild(iFrameWnd);
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
 
-                    //ktl.log.clog('Created iFrameWnd', 'blue');
+                    //ktl.log.clog('blue', 'Created iFrameWnd');
 
                     //If creation fails, re-create.
                     iFrameTimeout = setTimeout(() => {
-                        ktl.log.clog('ERROR - iFrameWnd creation failed with timeout!', 'purple');
+                        ktl.log.clog('purple', 'ERROR - iFrameWnd creation failed with timeout!');
                         if (ktl.iFrameWnd.getiFrameWnd()) {
                             ktl.iFrameWnd.delete();
                             ktl.iFrameWnd.create();
@@ -5455,7 +5455,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             var viewId = ktl.iFrameWnd.getCfg().hbViewId;
                             var fieldId = ktl.iFrameWnd.getCfg().acctUtcHbFld;
                             if (!viewId || !fieldId) {
-                                ktl.log.clog('Found heartbeatMsg with invalid viewId or fieldId:' + viewId + ', ' + fieldId, 'purple');
+                                ktl.log.clog('purple', 'Found heartbeatMsg with invalid viewId or fieldId:' + viewId + ', ' + fieldId);
                                 return;
                             }
 
@@ -5482,7 +5482,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         console.log('Missed HB, diff:', diff);
                                 })
                                 .catch(failure => {
-                                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('Failure sending heartbeatMsg: ' + failure, 'red');
+                                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('red', 'Failure sending heartbeatMsg: ' + failure);
                                 })
                             break;
 
@@ -5523,7 +5523,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 $(document).off('knack-form-submit.' + formId); //Prevent multiple re-entry.
                                 document.querySelector('#' + fieldId).value = event.data.msgData;
                                 document.querySelector('#' + formId + ' .kn-button.is-primary').click();
-                                ktl.log.clog('Uploading prefs to cloud', 'green');
+                                ktl.log.clog('green', 'Uploading prefs to cloud');
 
                                 //Wait until Submit is completed and ack parent
                                 $(document).on('knack-form-submit.' + formId, function (event, view, record) {
@@ -5540,7 +5540,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             break;
                     }
                 } else if (event.data.msgSubType === 'ack') {
-                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('ACK: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt, 'darkcyan');
+                    ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('darkcyan', 'ACK: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt);
 
                     if (event.data.msgType === 'heartbeatMsg')
                         ktl.wndMsg.removeAllMsgOfType('heartbeatMsg');
@@ -5549,7 +5549,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             }
             catch (e) {
-                ktl.log.clog('KTL message handler error:', 'purple');
+                ktl.log.clog('purple', 'KTL message handler error:');
                 console.log(e);
             }
         })
@@ -5574,11 +5574,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         function retryMsg(msgId = '') {
             if (--msgQueue[msgId].retryCnt > 0) {
-                ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('RETRY MSG: ' + msgQueue[msgId].msgType + ', ' + msgId + ', ' + msgQueue[msgId].retryCnt, 'red');
+                ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('red', 'RETRY MSG: ' + msgQueue[msgId].msgType + ', ' + msgId + ', ' + msgQueue[msgId].retryCnt);
                 msgQueue[msgId].expiration = new Date().valueOf() + MSG_EXP_DELAY;
                 ktl.wndMsg.send(msgQueue[msgId].msgType, msgQueue[msgId].msgSubType, msgQueue[msgId].src, msgQueue[msgId].dst, msgId, msgQueue[msgId].msgData);
             } else {
-                ktl.log.clog('Msg Send MAX RETRIES Failed!!!', 'red');
+                ktl.log.clog('red', 'Msg Send MAX RETRIES Failed!!!');
                 ktlProcessFailedMessages(msgId);
             }
         }
@@ -5596,7 +5596,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             if (msgType === 'heartbeatMsg') {
                 if (ktl.iFrameWnd.getiFrameWnd()) {
-                    ktl.log.clog('iFrameWnd stopped responding.  Re-creating...', 'red');
+                    ktl.log.clog('red', 'iFrameWnd stopped responding.  Re-creating...');
                     ktl.iFrameWnd.delete();
                     ktl.iFrameWnd.create();
                 }
@@ -5616,7 +5616,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             send: function (msgType = '', msgSubType = '', src = '', dst = '', msgId = 0, msgData = null) {
                 if (!msgType || !msgSubType) {
-                    ktl.log.clog('Called Send with invalid parameters', 'purple');
+                    ktl.log.clog('purple', 'Called Send with invalid parameters');
                     return;
                 }
 
@@ -5682,7 +5682,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 if (!ktl.core.isKiosk())
-                    ktl.log.clog('SERVER ERROR, status=' + msg.status + ', reason=' + msg.reason + ', view=' + msg.viewId + ', caller=' + msg.caller, 'purple');
+                    ktl.log.clog('purple', 'SERVER ERROR, status=' + msg.status + ', reason=' + msg.reason + ', view=' + msg.viewId + ', caller=' + msg.caller);
 
                 //Log first one only, then pause all subsequent server error logs until next login.
                 if (!ktl.storage.lsGetItem('PAUSE_SERVER_ERROR_LOGS')) {
@@ -6163,9 +6163,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var apiData = {};
                         apiData[ktl.core.getFieldIdByName('Value', appSettingsObj)] = APP_KTL_VERSIONS;
                         apiData[ktl.core.getFieldIdByName('Date/Time', appSettingsObj)] = ktl.core.getCurrentDateTime(true, true, false, true);
-                        ktl.log.clog('Updating versions in table...', 'orange');
+                        ktl.log.clog('orange', 'Updating versions in table...');
                         ktl.core.knAPI(cfg.appBcstSWUpdateViewId, data[0].id, apiData, 'PUT', [cfg.appBcstSWUpdateViewId])
-                            .then(function (response) { ktl.log.clog('Versions updated successfully!', 'green'); })
+                            .then(function (response) { ktl.log.clog('green', 'Versions updated successfully!'); })
                             .catch(function (reason) { alert('An error occurred while updating versions in table: ' + reason) })
                     });
                 }
