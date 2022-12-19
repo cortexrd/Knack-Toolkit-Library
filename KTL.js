@@ -150,7 +150,7 @@ function Ktl($) {
                     var sceneKey = Knack.router.scene_view.model.views._byId[viewId];
                     var intervalId = setInterval(function () {
                         if (!sceneKey)
-                            sceneKey = Knack.router.scene_view.model.views._byId[viewId]
+                            sceneKey = Knack.router.scene_view.model.views._byId[viewId];
                         else {
                             clearInterval(intervalId);
                             intervalId = null;
@@ -1340,7 +1340,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            //For KTL internal KTL use.
+            //For KTL internal use.
             ktlChznBetterSetFocus: function () {
                 setTimeout(function () {
                     $('#chznBetter').focus();
@@ -1806,7 +1806,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 cfgObj.fieldsToExclude && (fieldsToExclude = cfgObj.fieldsToExclude);
             },
 
-            //For KTL internal KTL use.  Add Change event handlers for Dropdowns, Calendars, etc.
+            //For KTL internal use.  Add Change event handlers for Dropdowns, Calendars, etc.
             onFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 if (!fieldsToExclude.includes(fieldId)) {
                     recId && (text += '-' + recId);
@@ -1837,9 +1837,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         return {
             setCfg: function (cfgObj = {}) {
-                //TODO scenesToExclude
+                //TODO: Support custom colors or variations.
             },
 
+            //For KTL internal use.
             initSystemColors: function () {
                 ktl.core.waitSelector('#kn-dynamic-styles')
                     .then(function () {
@@ -2662,12 +2663,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             });
 
             /*  TODO...
-            //Public Filters (system-wide)
-            var listPublic = document.createElement('li');
-            listPublic.innerHTML = '<i class="fa fa-gift" style="margin-top: 2px;"></i> Public: ';
-            listPublic.style.marginBottom = '8px';
+            //App Filters (visible to all users)
+            var listAppFilters = document.createElement('li');
+            listAppFilters.innerHTML = '<i class="fa fa-gift" style="margin-top: 2px;"></i> Public: ';
+            listAppFilters.style.marginBottom = '8px';
                 
-            listPublic.addEventListener('click', function (e) {
+            listAppFilters.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation(); //Required?
                 
@@ -2681,7 +2682,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 //console.log('filterName =', filterName);
                 
                 //Toggle on/off
-                listPublic.innerHTML += 'Yes';
+                listAppFilters.innerHTML += 'Yes';
                 
                 //var newFilterName = prompt('New Filter Name: ', filterName);
                 //if (newFilterName !== null && newFilterName !== '' && newFilterName !== filterName) {
@@ -2698,7 +2699,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             });
     
             if (accountCanCreateSystemFilters)
-                ul.appendChild(listPublic);
+                ul.appendChild(listAppFilters);
             */
 
             ul.appendChild(listDelete);
@@ -3056,13 +3057,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     ktl.log.clog('purple', 'Error - lsLog called without storage.');
             },
 
-            deleteDebugWnd: function () {
-                if (debugWnd) {
-                    debugWnd.parentNode.removeChild(debugWnd);
-                    debugWnd = null;
-                }
-            },
-
             showDebugWnd: function (show = false) {
                 if (show) {
                     create().then((debugWnd) => {
@@ -3077,11 +3071,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 } else {
                     clearInterval(dbgWndRefreshInterval);
                     dbgWndRefreshInterval = null;
-                    ktl.debugWnd.deleteDebugWnd();
+                    if (debugWnd) {
+                        debugWnd.parentNode.removeChild(debugWnd);
+                        debugWnd = null;
+                    }
                 }
             },
 
-            // Does three things:
+            //For KTL internal use. Does three things:
             //  1) Ensures max length of rotating logs buffer is not exceeded.  If length is exceeded,
             //     start from oldest logs and delete going up until only max entries remains.
             //  2) Erases all data or only the logs with a timestamp, keeping the special accumulators.
@@ -3117,8 +3114,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return ls;
             },
 
-            //Display all logs in the debugWnd.
-            //TODO: enable scroll and lock to a position.
+            //For KTL internal use.  Display all logs in the debugWnd.
+            //TODO: enable scroll and freeze to a position.
             //** Consider a makeover where we'd use a string array instead (one string per line), for more control.
             showLogsInDebugWnd: function () {
                 if (debugWnd && debugWnd.style.display === 'block') {
@@ -4496,14 +4493,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     } else //Dev mode, make version bright yellow/red font.
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
 
-                    ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
+                    if (ktl.account.isDeveloper()) {
+                        ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
 
-                    $('#verButtonId').on('click touchstart', function (e) {
-                        e.preventDefault();
-                        var ver = prompt('Which version to run, "prod" or "dev"?', 'prod');
-                        if (ver === 'prod' || ver === 'dev')
-                            ktl.core.switchVersion(ver);
-                    })
+                        $('#verButtonId').on('click touchstart', function (e) {
+                            e.preventDefault();
+                            var ver = prompt('Which version to run, "prod" or "dev"?', 'prod');
+                            if (ver === 'prod' || ver === 'dev')
+                                ktl.core.switchVersion(ver);
+                        })
+
+                    }
 
                     //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
                     if (ktl.core.isKiosk() && !ktl.scenes.isiFrameWnd())
@@ -4655,7 +4655,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            //For KTL internal KTL use.  Returns the oldest log's date/time from array.  Resolution is 1 minute.
+            //For KTL internal use.  Returns the oldest log's date/time from array.  Resolution is 1 minute.
             getLogArrayAge: function (category = '') {
                 if (category === '') return null;
 
@@ -4685,6 +4685,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 keyPressCtr = 0;
             },
 
+            //For KTL internal use.
             removeLogById: function (logId = '') {
                 if (!logId) return;
 
@@ -5051,7 +5052,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             })
         }
 
-
         return {
             isDeveloper: function () {
                 return Knack.getUserRoleNames().includes('Developer');
@@ -5154,7 +5154,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         .then(function () {
                             selToast = '#toast-container > div > div > p';
                             var msg = $(selToast).text();
-                            if (msg.includes('ACC_LOGS_EMAIL_SENT')) {
+                            if (msg.includes('Account Logs - Email sent successfully')) {
                                 //console.log('Email sent, re-starting autorefresh and logging loop');
                                 ktl.views.autoRefresh();
                                 startHighPriorityLogging();
@@ -5333,6 +5333,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return cfg;
             },
 
+            //For KTL internal use.
             create: function () {
                 if (!ktl.core.getCfg().enabled.iFrameWnd) return;
 
@@ -5368,6 +5369,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
+            //For KTL internal use.
             delete: function () {
                 if (iFrameWnd) {
                     ktl.wndMsg.removeAllMsgOfType('heartbeatMsg'); //TODO:  change to delete all msg for dst === iFrameWnd.
@@ -5637,6 +5639,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     sendAppMsg && sendAppMsg(msg);
             },
 
+
+            //For KTL internal use.
             startHeartbeat: function (run = true) {
                 if (!run) {
                     clearInterval(heartbeatInterval);
@@ -5670,6 +5674,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return numRemoved;
             },
 
+            //For KTL internal use.
             ktlProcessServerErrors: function (msg = {}) {
                 if ($.isEmptyObject(msg)) return;
 
@@ -6173,9 +6178,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             getSysInfo: function () {
                 return sInfo;
             },
-            getCfg: function () {
-                return cfg;
-            }
         }
     })(); //sysInfo
 
