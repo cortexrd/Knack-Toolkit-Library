@@ -1,7 +1,9 @@
 -   [Introduction](#introduction)
 -   [Overview](#overview)
--   [No time for now, I'll read this later. How about a quick
-    try?](#no-time-for-now-ill-read-this-later.-how-about-a-quick-try)
+    -   [Zero config needed for Basic
+        Features](#zero-config-needed-for-basic-features)
+-   [No time to read all this now. How about a quick
+    tryout?](#no-time-to-read-all-this-now.-how-about-a-quick-tryout)
 -   [Features](#features)
     -   [Bootloader](#bootloader)
     -   [Core](#core)
@@ -21,12 +23,12 @@
     -   [System Info](#system-info)
     -   [System Colors](#system-colors)
 -   [How to use KTL](#how-to-use-ktl)
-    -   [ACB Mode - All Code in
-        Builder](#acb-mode---all-code-in-builder)
-    -   [CLS Mode - Code in Local
-        Server](#cls-mode---code-in-local-server)
+    -   [ACB Mode -- "All Code in
+        Builder"](#acb-mode-all-code-in-builder)
+    -   [CLS Mode -- "Code on Local
+        Server"](#cls-mode-code-on-local-server)
     -   [Switching Modes](#switching-modes)
--   [Basic Features](#basic-features)
+-   [Editing KTL_KnackApp.js](#editing-ktl_knackapp.js)
 -   [Advanced Features](#advanced-features)
     -   [Setup](#setup-2)
 -   [Future Improvements](#future-improvements)
@@ -49,6 +51,8 @@ pre-release phase. Thank you for being patient and understanding that
 everything may not be complete or perfectly organized.
 
 # Overview
+
+## Zero config needed for Basic Features
 
 Right out of the box, without any coding or complex setup, the KTL will
 provide many nice additions to your app:
@@ -91,13 +95,19 @@ provide many nice additions to your app:
 
 -   debug window for embedded devices
 
-# No time for now, I'll read this later. How about a quick try?
+Click the following link if you're interested to know more about
+[Advanced Features](#advanced-features).
+
+# No time to read all this now. How about a quick tryout?
 
 If you want to try/use the basic, default setup version of the KTL, all
 you need to do is copy the content of those two files:
-**KTL_KnackApp_ACB.js** and **KTL.css** to their respective panes in
-your Builder. If you already have your own code, it will not conflict
-with the KTL. Just move it between these lines at the end:
+[**KTL_KnackApp_ACB.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp_ACB.js)
+and
+[**KTL.css**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL.css)
+to their respective panes in your Builder. If you already have your own
+code, it will not conflict with the KTL. Just move it between these
+lines at the end:
 
 //My App code - BEGIN
 
@@ -105,7 +115,13 @@ with the KTL. Just move it between these lines at the end:
 
 //My App code -- END
 
-For your CSS vs KTL's, the placement does not matter.
+For your CSS code vs KTL's, the placement does not matter. But it is
+recommended to keep each of them grouped together, with clearly
+identified delimiters.
+
+If you don't like a feature, don't worry. It's possible to turn it off
+by setting its flag to false in the function **ktl.core.setCfg**, in the
+**//KTL Setup** section of the **KTL_KnackApp.js** file.
 
 # Features
 
@@ -156,19 +172,19 @@ you're interested in trying out the more advanced features.
 
 The bootloader is the entry point of all code, including the KTL and
 your app-specific code. It is very technical, and the average user will
-not really need to understand most of it. Basically, it does two things:
+not really need to understand it. Basically, it does two things:
 
 ### External library loading
 
-First, I wish to say a big *\"thank you\"* to **Soluntech** for their
-gracious permission to use a portion of their code to manage the dynamic
-library loading. This is the cornerstone that allowed kickstarting the
-KTL project. In short, it uses a list of libraries your app will need,
-and automatically loads them with the LazyLoad function. Don\'t worry,
-you don\'t need to understand all of this since the setup is already
-done.
+First, I wish to say a big *\"thank you\"* to
+[**Soluntech**](https://www.soluntech.com/) for their gracious
+permission to use a portion of their code to manage the dynamic library
+loading. This is the cornerstone that allowed kickstarting the KTL
+project. In short, it uses a list of libraries your app will need, and
+automatically loads them with the LazyLoad function. Again, you won\'t
+need to understand how it works since the setup is already done.
 
-### Developing your code locally -- aka CLS mode
+### Developing your code locally -- aka [CLS mode](#how-to-use-ktl)
 
 Traditionally, i.e. without the Bootloader, all your app code resides in
 the Builder\'s Javascript and CSS panes. But if you leverage the
@@ -610,9 +626,12 @@ to/from Knack for backup or migration to other devices, provided some
 additional setup. See the [User Filters setup
 procedure](#user-filters-1).
 
-The button colors will have matching variations based on the app\'s
-theme. You can also drag and drop the buttons to re-order them at your
-convenience.
+Each active filter will not only remember its filter parameters, but
+also the column selected for sorting, the sort order, and the searched
+text. You can rename and delete buttons at will, and you can also drag
+and drop the buttons to re-order them at your convenience. The button
+colors will have matching variations based on the app\'s theme. Each
+scene remembers the last active filter when you go back to it.
 
 The User Filters feature is enabled by default, but you can disable it
 by setting the userFilters flag to false in the ktl.core.setCfg
@@ -620,8 +639,10 @@ function.
 
 ### Functions
 
--   **setCfg**: Sets the allowUserFilters callback to your app to allow
-    user filters based on specific conditions.
+-   **setCfg**: When User Filters are enabled with the main flag, it is
+    possible to use the allowUserFilters callback to your app to disable
+    it based on specific conditions. Ex: Kiosk mode devices usually
+    don't have filters enabled, while all others do.
 
 ## Bulk Operations
 
@@ -699,8 +720,6 @@ Provides features for the currently logged-in account.
 
 ### Functions
 
--   **getRoleNames**: Returns a list of all roles, in text format.
-
 -   **isDeveloper**: Check if the list of role names contains
     \"Developer\"
 
@@ -715,14 +734,15 @@ Provides various settings for the currently logged-in account. Some are
 built-in, and more can be added by your app. You can control which
 settings can be modified by the user and they can access them in the
 Account Settings page. See the [User Preferences setup
-procedure](#user-preferences-1).
+procedure](#account-logging).
 
 ### Functions
 
--   **setCfg**: Creates a callback allowShowPrefs() where you can
-    control what preferences you give access to specific roles.
-    Typically, this is used to give access to more advanced flags to
-    developers.
+-   **setCfg**: To set up your parameters and callbacks to your app. The
+    allowShowPrefs() callback is where you can control what preferences
+    you give access to specific roles. Typically, this is used to give
+    access to more advanced flags to developers. The applyUserPrefs
+    callback is where you can process your own custom preferences.
 
 -   **getUserPrefs**: Reads the user preferences from localStorage.
 
@@ -731,14 +751,14 @@ procedure](#user-preferences-1).
 Referred to as the **iFrameWnd**, it\'s a hidden utility page that is
 dynamically created at the bottom of the main app page. It contains
 various views to implement system status, user preferences, remote SW
-updates and logging features. You may even add your own views in there
-if you need any. The idea is to be at two places at the same time: The
-main app page that changes as the user navigates around, and that
-invisible iFrameWnd that stays with us to serve various functions in the
+updates and logging features. You may even add your own views if you
+need any. The idea is to be at two places at the same time: The main app
+page that changes as the user navigates around, and that invisible
+iFrameWnd that stays with us to serve various functions in the
 background. When the user logs-in, the authentication token is
 conveniently shared with the iFrameWnd, allowing us to log-in seamlessly
-and do API calls. If desired, it is possible to send/receive information
-to/from both windows using the powerful [wndMsg](#windows-messaging)
+and do API calls. If desired, it is possible to exchange information
+between both windows using the powerful [wndMsg](#windows-messaging)
 feature.
 
 ### Usage
@@ -759,10 +779,14 @@ feature.
 
 ### Functions
 
--   **setCfg**: Your app calls this at startup to specify the field IDs
-    that are required to do their functions, as taken from the Builder.
+-   **setCfg**: Called when the iFrameWnd is ready.
 
 -   **getCfg**: Returns the iFrameWnd config about field and view IDs.
+
+-   **showIFrame**: To show or hide the iFrameWnd.
+
+-   **getiFrameWnd**: Returns the iFrameWnd object. Mainly used by
+    sendAppMsg but also available to your app for any use.
 
 ## Debug Window
 
@@ -789,14 +813,15 @@ stored in a ring buffer of 100 elements.
 
 Provides comprehensive logging functionalities for just about anything
 you want to monitor, such as user activity, navigation, system status,
-errors, or simply traces for development and debugging.
+errors, or simply traces for development and debugging. All logs are
+connected to a given account.
 
 To use this feature, you must set the iFrameWnd and all desired logging
 flags to true in the ktl.core.setCfg function, then follow the [Account
 Logs setup procedure](#account-logging).
 
 All logs are aways saved in localStorage, with their timestamp. This is
-to prevent losing any of them in case of power outage or other reason.
+to prevent losing any of them in case of power outage or browser crash.
 
 Then, at certain intervals, the logs are inserted to the Account Logs
 object with an API call, and upon confirmation, they are erased from
@@ -807,7 +832,7 @@ agglomerated over an hour and sent only once as a single stringified
 object. A custom viewer then disassembles them for display in
 chronological order.
 
-The logging categories are: User login, Navigation, Activity (count of
+The logging categories are: User Login, Navigation, Activity (count of
 keypresses and mouse clicks), Critical Events, App Errors, Server
 Errors, Warnings, Info and Debug.
 
@@ -846,24 +871,33 @@ Errors, Warnings, Info and Debug.
 
 -   **resetActivityCtr**: Resets mouse and keyboard activity counters.
 
--   **removeLogById**: todo
-
--   **updateActivity**: todo
+-   **updateActivity**: Updates the keyboard and mouse activity counters
+    in localStorage. Mainly used by KTL internally, but available to
+    your app, for specific use.
 
 ## Windows Messaging
 
-Provides a framework that handles messaging between windows. It uses a
-queue and supports automatic retries and error handling. The windows can
-be app window, the iFramWnd, or any other window that the app creates
-and needs to communicate with. This is where your app can implement a
-heartbeat message that notifies Knack about your account (or device)
-being online and running properly.
+Provides a framework to exchange data between windows. It uses a queue
+and supports automatic retries and error handling. The windows can be
+app window, the iFrameWnd, or any other window that the app creates and
+needs to communicate with. For example, this is how your app can
+implement a heartbeat message that notifies Knack about your account (or
+device) being online and running properly.
 
 ### Functions
 
--   **setCfg:** Allows setting a callback to your app\'s handler of
-    failed message types. (TODO: Allow setting number of retries and msg
-    timeout delay before ack.)
+-   **setCfg:** Used to set callbacks to your app.
+
+    -   **processFailedMessages** to handle messages that were never
+        acknowledged.
+
+    -   **processAppMsg** to implement your own messages.
+
+    -   **processServerErrors** to implement your own processing of
+        server errors.
+
+    -   **sendAppMsg**: Experimental feature still under development.
+        Will be used to exchange messages across different Knack apps.
 
 -   **send**: To send a msg to a specific window. May contain a payload
     or not.
@@ -871,18 +905,18 @@ being online and running properly.
 -   **removeAllMsgOfType**: Cleans up the msg queue of all those of a
     specific type.
 
--   **processFailedMessages**: Callback to your app to handle failed
-    msg.
-
 ## System Info
 
 Retrieves information about the operating system, browser, device model,
 processor, whether or not we are on a mobile device, and public IP
 address.
 
+This is also where the SW Update broadcast takes place.
+
 ### Functions
 
--   **getSysInfo**: Returns an object with the mentioned properties.
+-   **getSysInfo**: Returns an object with the above-mentioned
+    properties.
 
 ## System Colors
 
@@ -891,31 +925,77 @@ variations for KTL features.
 
 ### Functions
 
--   **initSystemColors**: Parses the Knack colors and generates a
-    sysColors object.
-
 -   **getSystemColors**: Get the sysColors object.
 
--   **rgbToHsl**, hslToRgb, rgbToHsv, hsvToRgb, hexToRgb: Various color
-    conversion routines.
+-   **rgbToHsl**, **hslToRgb**, **rgbToHsv**, **hsvToRgb**,
+    **hexToRgb**: Various color conversion utilities.
 
 # How to use KTL
 
-There are two methods to use KTL: ACB and CLS modes. If you\'re in a
-hurry to test it, and experiment with all the features, you should go
-for the ACB mode.
+There are two methods to use KTL: **ACB** and **CLS** modes. If you\'re
+in a hurry to test it, and experiment with all the features, you should
+go for the ACB mode. [See this section for a quick
+tryout](#no-time-to-read-all-this-now.-how-about-a-quick-tryout).
 
-## ACB Mode - All Code in Builder
+## ACB Mode -- "All Code in Builder"
 
-This is the traditional mode that we\'re used to, i.e. when all the code
-resides in the Builder\'s Javascript pane. In this mode, the Bootloader
-will load the external library files required, but not your app and
-KTL\'s code since they will be included inside the Javascript pane
-itself.
+This is the traditional mode that we\'re all used to, i.e. when all the
+code resides in the Builder\'s Javascript and CSS panes.
+
+To use this mode, you have two options:
+
+1)  Use the default, basic, ready-to-use setup
+    [here](#no-time-to-read-all-this-now.-how-about-a-quick-tryout)
+
+2)  Use your custom app code and generate the ACB file yourself. This is
+    described in the following section.
+
+### How to generate your own ACB file
+
+First, you'll need to install **Node.js** (<https://nodejs.org>) on your
+workstation. Just the basic installation, no optional component is
+needed.
+
+Then, the custom ACB file can be generated using the
+[NodeJS_ACB_MergeFiles.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/NodeJS/NodeJS_ACB_MergeFiles.js)
+merge utility provided in the NodeJS folder.
+
+This script can be invoked from the batch file provided:
+[Merge_ACB.bat](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Merge_ACB.bat)
+(for Windows only) You can also run it manually in a command prompt
+(shell). See batch file for parameters.
+
+These three files will be merged together:
+
+1)  [KTL_Bootloader.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Bootloader.js)
+
+2)  [KTL.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL.js)
+
+3)  [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js)
+
+The output file is
+[KTL_KnackApp_ACB](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp_ACB.js).
+
+\*Note about **KTL_KnackApp.js**: throughout the document, we'll refer
+to the app code file as this one, but you can substitute it to anything
+that would better match your app name. As long as you modify the merge
+utilities accordingly. See the **-filename** parameter in the batch
+file.
+
+Open the KTL_KnackApp_ACB.js file, copy its content to your Javascript
+pane in the Builder and save.
+
+Open the KTL.css file, copy its content to your CSS pane in the Builder
+and save.
+
+\*Note that eventually, when we reach the first official release, these
+two files will be hosted on my Cortex R&D's CDN, and all these copy
+operations won't be required anymore.
 
 ### Pros
 
--   Easy and quick to setup, no need to install anything.
+-   Easier and faster setup, no need to install anything for default
+    ACB.
 
 -   Other users can always see your changes.
 
@@ -924,88 +1004,56 @@ itself.
 
 ### Cons
 
--   Slower and more tedious to work when using an external editor, due
-    to the copy/paste/save of the code required each time you make a
-    change.
+-   Slower than CLS mode and more tedious to work, due to the redundant
+    merge/copy/paste/save sequence required each time you make a change.
 
--   Can be risky if used in production - which means the app is being
-    used in a live and consequential context - since your development
-    code always take effect immediately. You must have good coding
-    experience and know exactly what you\'re doing.
-
--   If you want to keep multiple separate files (app and KTL) for
-    independent revision control, it won\'t be so trivial. Whenever you
-    want to go switch from ACB to CLS Mode (more on this later), you
-    will need to migrate your changes back and forth to each files.
+-   Can be risky if used in production (when the app is being used in a
+    live and consequential context) since your development code always
+    takes effect immediately. You must have good coding experience and
+    know exactly what you\'re doing.
 
 ### Setup
 
-1)  In a code editor, create a new file named *AppName*.js. Using the
-    actual name of your app is strongly recommended. This is because, if
-    ever you want to switch to the CLS mode eventually, the Bootloader
-    will need that the file name matches your app name in order to
-    recognize it.
+You will need to modify the KTL_KnackApp.js file to match your needs if
+you want to go beyond the basic default setup. [Follow the procedure
+here](#editing-ktl_knackapp.js).
 
-2)  Add code from file KTL_Bootloader.js.
+## CLS Mode -- "Code on Local Server"
 
-3)  Add code from file KTL.js.
+This mode provides much faster code-save-test cycles and is typically
+used when you have frequent code changes, and where you don\'t need to
+show your results to others until a milestone is reached. It requires
+the installation of Node.js as a basic local file server that the
+Bootloader uses to fetch the KTL files and your app\'s code. The
+Builder\'s Javascript pane only needs to contain the Bootloader (\~240
+lines of code!), though it can also have the full ACB code without
+conflicting.
 
-4)  Add the code from file KTL_KnackApp.js.
+### Multi-Developers Collaboration
 
-5)  Copy your existing code from the Builder at the end, where you see
-    ***//My App code*** (between the begin and end markers). Save
-    *AppName*.js.
+With the CLS mode, it is now possible to have many developers write code
+independently on the same app. Of course, for other developers to see
+your changes, they need to pull/merge your new code with theirs, and
+vice-versa for you to see their changes. GitHub is excellent at that.
 
-6)  In the Builder\'s Javascript pane
+### Hybrid Mode for Production and Development at same time!
 
-    a.  Wipe all code.
+Traditionally, Knack developers have to create a temporary copy of their
+production app to experiment freely without fearing serious consequences
+or disruption. While this is still desirable in many cases, you now have
+another option: **Hybrid Mode**. Thanks to the Bootloader, a hybrid
+setup is possible with both the ACB and CLS modes at same time. This
+enables you to run development code in a production environment without
+users being affected by it.
 
-    b.  Add code from *AppName*.js.
+What happens is that the Bootloader will use the stable and released
+code from the ACB in the Javascript pane by default for remote users.
+But if it detects a development flag in your localStorage, it will
+switch you to the CLS code on your workstation.
 
-    c.  Locate the **//App constants** section and add any const
-        (scenes, views, field IDs) that KTL may need. If not sure, just
-        ignore for now.
-
-    d.  Locate the **//KTL Setup** section and go through all the flags
-        and settings to match your needs.
-
-    e.  Locate the **//KTL callbacks to your App** section and go
-        through each function, adapting them to match your needs.
-
-    f.  Locate the **//Setup default preferences** section and go
-        through all the flags and settings to match your needs.
-
-    g.  Copy all that code to another file named **ACB\_*AppName*.js**
-        and save it. This will be your daily work file for code updates,
-        used for revision control, and when you want to switch from CLS
-        to ACB modes eventually. Keeping this file will save you from
-        going through this merge procedure everytime.
-
-7)  In the CSS pane, add the CSS code from file KTL.css to yours.
-
-8)  Copy all that CSS code to another file named **ACB\_*AppName*.css**
-    and save it, for the same reasons as stated above for .js.
-
-9)  Open a browser to your Knack app.
-
-10) Check console logs to see if all is looking good.
-
-## CLS Mode - Code in Local Server
-
-This mode is for advanced users and provides much faster code-save-test
-cycles and is typically used for longer stretches of code development,
-where you won\'t need to show your results to others until a milestone
-is reached. It requires the installation of Node.js as a basic local
-file server that the Bootloader uses to fetch the KTL files and your
-app\'s code. The Builder\'s Javascript pane only contains the
-Bootloader.
-
-IMPORTANT: Only use this mode in a temporary copy of the production app,
-where the developers can freely experiment without the fear of serious
-consequence or disruption. Using it in a production environment is not
-possible, and would simply defeat the purpose anyways. On the other
-hand, it is possible at any point in time (though not trivial) to switch
-back and forth between the ACB and CLS modes. See Switching Modes below.
+With Hybrid Mode, it is also possible to switch back and forth between
+the ACB and CLS modes instantly. See [Switching
+Modes](#switching-modes).
 
 ### Pros
 
@@ -1013,21 +1061,11 @@ back and forth between the ACB and CLS modes. See Switching Modes below.
 
 -   Allows multi-developer collaboration without conflict.
 
--   Allows keeping separate files, one for the app and two for the KTL
-    (.js and .css). This is useful if you want to add features or debug
-    while maintaining independent revision control on each file.
+-   Allows Hybrid Mode for dev and prod code running at same time.
 
 ### Cons
 
 -   Requires a one-time Node.js installation and setup.
-
--   Requires a temporary copy of your actual Knack app for development.
-
--   Other developers can\'t see your changes unless they pull/merge your
-    new code with theirs.
-
--   If you are working with collaborators and want to see their updates,
-    you must pull and merge their code with yours.
 
 -   Other users or clients can\'t see the updates until you merge all
     code and switch to the ACB Mode.
@@ -1037,8 +1075,8 @@ back and forth between the ACB and CLS modes. See Switching Modes below.
 
 ### Setup
 
-Install **Node.js** on your workstation. Just the basic install, no
-optional component is needed.
+Install **Node.js** (<https://nodejs.org>) on your workstation. Just the
+basic installation, no optional component is needed.
 
 Validate installation by typing **node -v** in a command prompt or
 terminal window. You should see the version number displayed.
@@ -1113,97 +1151,50 @@ maintain with a revision control tool like GIT.
 
 ## Switching Modes
 
-If you plan to be switching modes at least once in a while, which is
-likely, you should go with the ACB mode since it is easier to start with
-and is more versatile.
+Once you've mastered both modes, you'll typically spend 95% of the time
+in CLS mode for its efficiency and speed, and 5% in ACB mode to show
+updates to your client.
 
-Don\'t worry, if this procedure sounds complicated and tedious, it\'s a
-bit normal, but it\'s not that bad either. Typically, I have to switch
-modes about once or twice a month, and it takes about five minutes. But
-the effort is absolutely worth it, just to fully benefit from the CLS
-mode.
+Switching modes can be done two ways:
 
-### From ACB to CLS
+1)  If you have the showAppInfo flag enabled, it will add the version
+    info on the top-right of the screen. Clicking on it will show a
+    prompt with this: *Which version to run, \"prod\" or \"dev\"?* Type
+    in the desired mode and click ok. Note that this is possible only
+    for accounts having the "Developer" role.
 
-Let\'s assume that you\'re curently in ACB mode, i.e. you\'ve merged all
-the code in two files from the procedure above - *AppName*.js and
-*AppName*.css, you\'ve copy/pasted them to the Builder. You can show
-your updates to external users, or test on various devices. All fine.
+2)  Add a key to the localStorage for your app with the name followed by
+    **\_dev** like this: **KTL_KnackApp_dev**. Leave the value empty
+    since it is not used. Refresh the page and you'll see the version
+    now shown with bright yellow/red attention getter that indicates
+    you're in CLS development mode.
 
-But now, you want to pull the plug and work locally in a sandboxed
-development copy of the app, using the fast CLS mode.
+# Editing KTL_KnackApp.js
 
-1)  Go to the Builder\'s Javascript pane and uncomment the three lines
-    below this line: **//Un-comment the three lines below to switch to
-    CLS mode.**
+1)  Open the **KTL_KnackApp.js** file in your favorite editor.
 
-2)  Make sure that all file names and paths match your system\'s, as per
-    CLS mode instructions above.
+2)  Locate the **//App constants** section and add any const (scenes,
+    views, field IDs) that KTL may need. If not sure, just ignore for
+    now.
 
-3)  Locate **//End of KTL\'s Bootloader** and delete all code beyond
-    that and save.
+3)  Locate the **//KTL Setup** section and go through all the flags and
+    settings to match your needs.
 
-4)  You probably want to migrate (and remove) any new KTL-related CSS
-    code to the KTL.css file.
+4)  Locate the **//KTL callbacks to your App** section and go through
+    each function, adapting them to match your needs.
 
-5)  Run **node FileServe.js**
+5)  Locate the **//Setup default preferences** section and go through
+    all the flags and settings to match your needs.
 
-6)  Open your browser to your Knack app.
+6)  In the CSS pane, add the CSS code from file KTL.css to yours.
 
-7)  Check console logs to see if all is looking good.
+7)  Open a browser to your Knack app.
 
-### From CLS to ACB
+8)  Check console logs to see if all is looking good.
 
-Let\'s assume that you\'ve been in CLS mode for a while, the files
-*AppName*.js and *AppName*.css contain your latest and greatest code,
-and it\'s time to show the cool updates to your client.
-
-1)  Migrate any changes you\'ve made during the CLS mode session to
-    their respective ACB counterparts: **ACB\_*AppName*.js** and
-    **ACB\_*AppName*.css**.
-
-2)  Copy the files contents to their respective Javascript and CSS
-    panes.
-
-3)  In the Javascript pane, comment the three lines below **//Un-comment
-    the three lines below to switch to CLS mode** to enable ACB mode.
-
-4)  Open a browser to your Knack app.
-
-5)  Check console logs to see if all is looking good.
-
-# Basic Features
-
-KTL offers a set of ready to use, out of the box features that require
-no setup. They are disabled by default, but you can enable them easily
-by setting their flag to true in the function **ktl.core.setCfg**, in
-the **//KTL Setup** section.
-
-Here\'s the list:
-
-1)  **showAppInfo**: Displays the app version number.
-
-2)  **showKtlInfo**: Displays the KTL version number.
-
-3)  **showMenuInTitle**: Adds the menu to the browser\'s tab title.
-
-4)  **selTextOnFocus**: Selects all text in an input field when a mouse
-    or keyboard sets focus on it.
-
-5)  **autoFocus**: When a scene is rendered, a field will be selected to
-    automatically place the focus on it, ready for text input. You can
-    have control of the logic with the callback **function autoFocus()**
-    in the **//KTL callbacks to your App** section.
-
-6)  **userFilters**: Allows saving the Add filters settings to a button.
-    See User Filters.
-
-7)  **persistentForm**: Allows saving the form data to localStorage. See
-    Form Persistence.
-
-8)  **spinnerWatchDog**: Will detect when the spinner runs for too long,
-    based on your timeout value, and allows your app to take action -
-    typically reload the page.
+\*Note: If you're using the ACB mode, you should never edit the
+generated ACB file directly. Always edit the KTL_KnackApp.js file and
+merge again.
 
 # Advanced Features
 
@@ -1212,28 +1203,38 @@ require additional setup. Also, some of them can provide communication
 between various parts of your app, thus leveraging quite powerful
 administration features.
 
-Here\'s the list:
+Namely:
 
-1)  **iFrameWnd**
+1)  iFrameWnd
 
-    a.  **Heartbeat Monitoring**
+    a.  Heartbeat Monitoring
 
-    b.  **User Preferences**
+    b.  User Preferences
 
-    c.  **Account Logging**
+    c.  Account Logging
 
-    d.  TODO... System Info (SW version, Sys Filters, more...)
+    d.  Remote SW Updates
 
-2)  **Bulk Operations**
+    e.  App Filters (in progress)
 
-3)  **User Filters**
+2)  Bulk Operations
+
+    a.  Edit
+
+    b.  Delete
+
+3)  User Filters Upload and Download (save/restore)
 
 ## Setup
+
+In this section, when you see a name for an object, a field or a view
+title, it must be written **exactly** as shown, case sensitive, spaces,
+everything. It is recommended to copy/paste to avoid any typos.
 
 ### Invisible Menu
 
 This shall be your default place for any future utility hidden pages.
-For now, the iFrameWnd will be its first resident.
+For now, the iFrameWnd page will be its first resident.
 
 1)  Create a menu named Invisible Menu.
 
@@ -1247,127 +1248,179 @@ ktl.core.setCfg function.
 Create a new Login Page and give permission to all users. Set Page Name
 to: **iFrameWnd**. Its URL should automatically be set to **iframewnd**.
 This page will be the placeholder for the next features. For now, leave
-it blank as we need to create a few objects first. Now, go back in the
-Invisible Menu and move the iFrameWnd to it.
+it blank as we need to create a few objects first. Now, go back to the
+Invisible Menu and assign the iFrameWnd to it.
+
+#### User Preferences
+
+If you want to add User Preferences to your app, there are some already
+built-in, and you can also add your own. Follow this procedure:
+
+1)  In the Accounts object, add a Paragraph Text field named **User
+    Prefs**.
+
+2)  In the iFrameWnd page, add a view: Type: Details, For: Logged-in
+    Account. Once the view is added, remove all fields, then add User
+    Prefs. Set the view title to **Current User Prefs AUTOREFRESH=10**.
+
+3)  Add a Form view that updates the currently logged-in account. Once
+    the view is added, remove all fields, then add User Prefs. Set the
+    view title to **Update User Prefs**. Enable the form\'s auto-reload
+    in the Submit rule.
+
+4)  Align both views on the same row to save space.
+
+5)  Go to User Pages (at the bottom of the Pages view) and edit the
+    Account Settings page.
+
+6)  Add a menu named **My Settings** and move it to the top of the page.
+
+7)  Add a link to a new page named **My Preferences** and enter to edit
+    that page.
+
+8)  Add a Form view that updates the currently logged-in account. Once
+    the view is added, remove all fields, then add User Prefs. Set the
+    view title to **My Preferences**.
+
+9)  Refresh your app and click on the - Account Settings link, then on
+    My Preferences button in top menu.
+
+10) You will see 4 new checkboxes (dynamically generated by code): Show
+    View ID, Show iFrameWnd, Show DebugWnd and Show Extra Debug.
+
+11) Check all 4, submit and view the result: view IDs will be shown in
+    red next to each view, the iFrameWnd will appear at the bottom of
+    the app, the DebugWnd will show up, and some new logs about WndMsg
+    processing (REQ, ACK, etc.) will be shown in the console output.
+
+12) Uncheck all those you don't want and submit. It is recommended to
+    leave Show iFrameWnd on if you're planning to set up the User
+    Preferences that follow.
 
 #### Heartbeat Monitoring and SW Update
 
-If your app requires Heartbeat Monitoring to assess an account\'s
-presence and generate alarms, or perform remote SW updates, follow this
-procedure:
+If you want to add Heartbeat Monitoring to your app to assess an
+account\'s presence and generate alerts, or perform remote SW updates,
+follow this procedure:
 
-1)  In the Accounts object, add these fields:
+1)  Add the [User Preferences](#user-preferences-1) feature from the
+    above procedure.
+
+2)  In the Accounts object, add these fields:
 
     a.  **SW Version**: Type: Short text
 
     b.  **UTC HB**: Type: Date/Time, Date Format: mm/dd/yyyy, Default
         Date: none, Time Format: military, Default Time: none.
 
-    c.  **TimeZoneOffset**: Type: Equation, Equation Type: Date, Date
-        Type: hours, Result Type: number, Equation Editor:
-        currentTime()-{UTC HB}
+    c.  **Time Zone**: Type: Number, no decimals.
 
     d.  **LOC HB**: Type: Equation, Equation Type: Date, Date Type:
-        hours, Result Type: Date, Equation Editor: {UTC
-        HB}+{TimeZoneOffset}, Date Format: mm/dd/yyy, Time Format:
-        military
+        hours, Result Type: Date, Equation Editor: {UTC HB}+{Time Zone},
+        Date Format: mm/dd/yyyy, Time Format: military
 
-2)  In the iFrameWnd page created above, add a Form view that updates
+    e.  **Online**: Type: Yes/No, Default No, Input: Checkbox
+
+    f.  **UTC Last Activity**: Type: Date/Time, Date Format: mm/dd/yyyy,
+        Time Format: military
+
+3)  Create a new object called **App Settings** with these fields:
+
+    a.  **Item**: Type: Short Text, set as object's Display Field and
+        Sort in Alphabetic order
+
+    b.  **Value**: Type: Short Text
+
+    c.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time
+        Format: military
+
+4)  In the iFrameWnd page created above, add a Form view that updates
     the currently logged-in account. Once the view is added, remove all
-    fields, then add: SW Version, UTC HB, LOC HB (set as read-only).
-    Move all 3 fields on a single line to save space. Set the view title
-    to **UTC_HEARTBEAT**. Enable the form\'s auto reload in the Submit
-    rule.
+    fields, then add on a first line: SW Version, UTC HB and LOC HB (set
+    as read-only). Then on a second line: Online, UTC Last Activity and
+    Time Zone. Set the view title to **Heartbeat**. In the form's Submit
+    rules, enable auto-reload and set the Confirmation message to
+    "Heartbeat sent successfully."
 
-#### User Preferences
+5)  Be sure you have the Show iFrameWnd checkbox on in [User
+    Prefs](#user-preferences-1) above.
 
-If your app requires User Preferences, there are some already built-in,
-and you can also add your own. Follow this procedure:
-
-1)  In the Accounts object, add a Paragraph Text field named User Prefs.
-
-2)  In the iFrameWnd page, add a view: Type: Details, For: Logged-in
-    Account. Once the view is added, remove all fields, then add User
-    Prefs. Set the view title to **USER_PREFS_CUR AUTOREFRESH=10**.
-
-3)  Add a Form view that updates the currently logged-in account. Once
-    the view is added, remove all fields, then add User Prefs. Set the
-    view title to **USER_PREFS_UPD**. Enable the form\'s auto reload in
-    the Submit rule.
-
-4)  Align both view on same row to save space.
-
-5)  Go to User Pages and edit the Account Settings page.
-
-6)  Add a menu named My Settings and move it at the top of the page.
-
-7)  Add a link to a new page named My Preferences, and enter to edit
-    that page.
-
-8)  Add view that displays Details connected to the logged-in account.
-    Set the view title to **My Preferences USER_PREFS_SET**.
-
-9)  Delete all fields to leave view empty.
-
-10) In your app, locate the function ktl.iFrameWnd.setCfg and set all
-    required fields to match those in your Account object.
+6)  Refresh the app and you should see in the iFrameWnd the heartbeat
+    being submitted every minute and the Online being set to Yes.
 
 #### Account Logging
 
-If your app requires Account Logging, follow this procedure:
+If you want to add Account Logging to your app, follow this procedure:
 
 1)  Create an object named Account Logs and add these fields:
 
-    a.  **Account**: Type: Connection to Accounts, all settings at
+    a.  **Log Nb**: Type: Auto-Increment
+
+    b.  **Account**: Type: Connection to Accounts, all settings at
         default.
 
-    b.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default
+    c.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default
         Date: Current Date, Time Format: military, Default Time: Current
         Time.
 
-    c.  **Log Type**: Type: Short Text
+    d.  **Log Type**: Type: Short Text
 
-    d.  **Details**: Type: Paragraph Text
+    e.  **Details**: Type: Paragraph Text
 
-    e.  **Log Id**: Type: Short Text
+    f.  **Log Id**: Type: Short Text. See note below for details.
 
-    f.  **Log Nb**: Type: Auto-Increment
+    g.  **Email To**: Type: Email
+
+    h.  In the Object Settings: Display Field: Account, Sort Order: Log
+        Nb, low to high
 
 2)  In the iFrameWnd, add a view: Type: Table, For: Account Logs,
     connected to the logged-in Account.
 
-    a.  Once the view is added, remove all fields, then add Log Type,
-        Date/Time, Details, Log ID and an Custom Email action with these
-        settings, as from the screen capture **KTL Account Logs Email
-        Settings.jpg**
+    a.  Once the view is added, remove all fields, then add Date/Time,
+        Log Type, Details, Log ID, Email To and an Custom Email action
+        with these settings, as from the screen capture [**KTL Account
+        Logs Email
+        Settings.jpg**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Docs/KTL%20Account%20Logs%20Email%20Settings.jpg).
 
-    b.  Set the view title to **ACCOUNT_LOGS AUTOREFRESH=30**, disable
+    b.  The blank value to Email To in Action #2 is intended. This field
+        is also acts as a flag and resetting it to blank prevents
+        sending the email more than once.
+
+    c.  The Outcome phrase "Account Logs - Email sent successfully" is
+        also used in the code to confirm completion, so it must be
+        exactly the same.
+
+    d.  Set the view title to **Account Logs AUTOREFRESH=30**, disable
         keyword search, enable Inline editing, 10 records at a time, no
-        filter,
+        filter.
 
-    c.  Sort by Log Nb: high to low, limit to 5 records.
+    e.  Sort by Log Nb: high to low, limit to 5 records.
 
-3)  In your app, locate the function ktl.iFrameWnd.setCfg and set all
-    required fields to match those in your Account Logs object.
+\*Note about the **Log Id** field: This is a unique ID that is a UTC
+millisecond timestamp. It is generated by the code at the moment the log
+is sent via the API call. Its purpose is to validate that the log has
+been sent and received properly. With that confirmation, the log can
+safely be deleted from localStorage.
 
 #### Bulk Operations
 
-If your app requires Bulk Edit and Bulk Delete operations, follow the
-procedure described in this section: Bulk Operations.
+If you want to add Bulk Edit and Bulk Delete to your app, follow this
+procedure described in this section [Bulk Operations](#bulk-operations).
 
 #### User Filters
 
-In addition to be able to create named buttons for the User Filters that
-are save in localStorage, it is possible to upload the settings to Knack
-and download them back wherever and whenever needed. This can be seen as
-a backup method, or also to migrate them to other devices. Note that if
-you migrate filters from one app to another, typically a temporary
-development copy, some filters will not work due to the record IDs that
-have changed for connected fields. This is a normal behavior, and the
-only way to fix this is to redo their settings and save back to the same
-button name.
+In addition to being able to create named buttons for the User Filters
+that are saved in localStorage, it is possible to upload your settings
+to Knack and download them back wherever and whenever needed. This can
+be seen as a backup method, but also to migrate them to other devices
+(or browsers, see note below). Note that if you migrate filters from one
+app to another, typically a temporary development copy, some filters may
+not work due to the record IDs that have changed for connected fields.
+This is a normal behavior, and the only way to fix this is to redo their
+settings and save back to the same button name.
 
-To support upload and download, follow this procedure:
+To support Upload and Download, follow this procedure:
 
 1)  Create an object named Filters and add these fields:
 
@@ -1401,6 +1454,12 @@ To support upload and download, follow this procedure:
 
 8)  In your app, locate the function ktl.userFilters.setCfg and set all
     required fields to match those in your Account object
+
+\*Note about browsers: since the localStorage is not shared across
+different browsers (and even the same browser in private or incognito
+mode), you should remember that it's normal that you won't see your
+filters when you change browsers. The Upload/Download feature then comes
+to the rescue, by allowing this transfer to occur.
 
 # Future Improvements
 
