@@ -26,7 +26,7 @@ function Ktl($) {
 
     var ktl = this;
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1024
+    //KEC stands for "KTL Event Code".  Next:  KEC_1025
     //
 
     /**
@@ -193,8 +193,11 @@ function Ktl($) {
                                     }
                                 },
                                 error: function (response /*jqXHR*/) {
+                                    //Example of the data format in response:
+                                    //{ "readyState": 4, "responseText": "{\"errors\":[\"Invalid Record Id\"]}", "status": 400, "statusText": "Bad Request" }
+
                                     ktl.log.clog('purple', 'knAPI error:');
-                                    console.log('retries:\n', this.retryLimit, 'response:\n', response);
+                                    console.log('retries:', this.retryLimit, '\nresponse:', response);
 
                                     if (this.retryLimit-- > 0) {
                                         var ajaxParams = this; //Backup 'this' otherwise this will become the Window object in the setTimeout.
@@ -217,7 +220,7 @@ function Ktl($) {
                                             viewId: response.viewId,
                                         });
 
-                                        reject(new Error(response.statusText));
+                                        reject(response);
                                     }
                                 },
                             });
@@ -2286,7 +2289,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 alert('Uploaded Filters to Cloud Successfully!');
                             })
                             .catch(function (reason) {
-                                alert('An error occurred while uploading filters to cloud: ' + reason)
+                                alert('An error occurred while uploading filters to cloud, reason: ' + JSON.stringify(reason));
                             })
                     }
                 }
@@ -5222,7 +5225,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                 checkNext = true;
                                             })
                                             .catch(function (reason) {
-                                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1015 - Failed posting high-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
+                                                ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1015 - Failed posting high-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + JSON.stringify(reason));
                                                 delete logObj.sent;
                                                 ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
                                                 ktl.views.autoRefresh(); //JIC it was stopped by critical email not sent.
@@ -5292,7 +5295,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                                             checkNext = true;
                                                         })
                                                         .catch(function (reason) {
-                                                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1016 - Failed posting low-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + reason);
+                                                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1016 - Failed posting low-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + JSON.stringify(reason));
                                                             delete logObj.sent;
                                                             ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
                                                         })
@@ -5886,7 +5889,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                         })
                         .catch(function (reason) {
-                            alert('Error code KEC_1017 while processing bulk operations: ' + reason);
+                            alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
                             ktl.core.removeInfoPopup();
                             ktl.views.autoRefresh();
                             ktl.scenes.spinnerWatchdog();
@@ -5962,6 +5965,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         })
                         .catch(function (response) {
                             jQuery.unblockUI();
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1024 - Bulk Delete failed, reason: ' + response);
                             alert('Failed deleting record.\n' + response);
                         })
                 });
@@ -6060,7 +6064,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             })
                             .catch(function (reason) {
                                 ktl.core.removeInfoPopup();
-                                reject('knAPI - Failed to delete record ' + id + ' with reason: ' + reason);
+                                reject('deleteRecords - Failed to delete record ' + id + ', reason: ' + JSON.stringify(reason));
                             })
                     })(deleteArray);
                 })
@@ -6168,7 +6172,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.log.clog('orange', 'Updating versions in table...');
                         ktl.core.knAPI(cfg.appBcstSWUpdateViewId, data[0].id, apiData, 'PUT', [cfg.appBcstSWUpdateViewId])
                             .then(function (response) { ktl.log.clog('green', 'Versions updated successfully!'); })
-                            .catch(function (reason) { alert('An error occurred while updating versions in table: ' + reason) })
+                            .catch(function (reason) { alert('An error occurred while updating versions in table, reason: ' + JSON.stringify(reason)); })
                     });
                 }
             }
