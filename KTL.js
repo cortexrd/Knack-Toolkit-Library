@@ -4498,17 +4498,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     } else //Dev mode, make version bright yellow/red font.
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
 
-                    if (ktl.account.isDeveloper()) {
-                        ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
-
-                        $('#verButtonId').on('click touchstart', function (e) {
+                    ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
+                    $('#verButtonId').on('click touchstart', function (e) {
+                        if (ktl.account.isDeveloper()) {
                             e.preventDefault();
                             var ver = prompt('Which version to run, "prod" or "dev"?', 'prod');
                             if (ver === 'prod' || ver === 'dev')
                                 ktl.core.switchVersion(ver);
-                        })
-
-                    }
+                        }
+                    })
 
                     //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
                     if (ktl.core.isKiosk() && !ktl.scenes.isiFrameWnd())
