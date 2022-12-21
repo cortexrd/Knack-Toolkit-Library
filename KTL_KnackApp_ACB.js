@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.5.1';
+    const KTL_VERSION = '0.5.2';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1083,7 +1083,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             onKeyPressed(e);
         })
 
-        $(document).on('click', function (e) {
+        document.addEventListener('click', function (e) {
             //Chzn dropdown bug fix.
             //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field.
             var chzn = $(e.target).closest('.chzn-container');
@@ -1100,6 +1100,49 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
             }
+
+            /*
+            //Work in progress:  When user clicks on a cell for inline editing, provide a method to change its style, to make it wider for example.
+            console.log('e.target =', e.target);
+
+            var popover = e.target.closest('.kn-popover');
+            if (popover) {
+                console.log('popover =', popover);
+                console.log('e.target.parentElement =', e.target.parentElement);
+            }
+
+            if (e.target.classList) {
+                console.log('e.target.classList =', e.target.classList);
+                var target = e.target;
+                if (e.target.classList.value.includes('col-'))
+                    target = e.target.parentElement;
+
+                console.log('target =', target);
+                if (target.classList && target.classList.value.includes('cell-edit')) {
+                    var fieldId = target.attributes['data-field-key'].value;
+                    console.log('fieldId =', fieldId);
+                    if (true || fieldId === 'field_x') { //TODO provide an array of fields and their style to apply.
+                        ktl.core.waitSelector('#cell-editor ' + ' #' + fieldId)
+                            .then(() => {
+                                console.log('Found inline 1');
+                                ktl.fields.inlineEditChangeStyle();
+                            })
+                            .catch(() => {
+                                console.log('1 - Failed waiting for cell editor.');
+                            });
+
+                        ktl.core.waitSelector('#cell-editor ' + ' #kn-input-' + fieldId)
+                            .then(() => {
+                                console.log('Found inline 2');
+                                ktl.fields.inlineEditChangeStyle();
+                            })
+                            .catch(() => {
+                                console.log('2 - Failed waiting for cell editor.');
+                            });
+                    }
+                }
+            }
+            */
         })
 
         document.addEventListener('focus', function (e) {
@@ -1194,51 +1237,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
             }
-        })
-
-        document.addEventListener('click', function (e) {
-            //Work in progress:  When user clicks on a cell for inline editing, provide a method to change its style, to make it wider for example.
-            //console.log('e.target =', e.target);
-
-            var popover = e.target.closest('.kn-popover');
-            if (popover) {
-                //console.log('popover =', popover);
-                //console.log('e.target.parentElement =', e.target.parentElement);
-            }
-            return;
-
-            if (e.target.classList) {
-                //console.log('e.target.classList =', e.target.classList);
-                var target = e.target;
-                if (e.target.classList.value.includes('col-'))
-                    target = e.target.parentElement;
-
-                //console.log('target =', target);
-                if (target.classList && target.classList.value.includes('cell-edit')) {
-                    var fieldId = target.attributes['data-field-key'].value;
-                    //console.log('fieldId =', fieldId);
-                    if (true || fieldId === 'field_x') { //TODO provide an array of fields and their style to apply.
-                        ktl.core.waitSelector('#cell-editor ' + ' #' + fieldId)
-                            .then(() => {
-                                //console.log('Found inline 1');
-                                ktl.fields.inlineEditChangeStyle();
-                            })
-                            .catch(() => {
-                                console.log('1 - Failed waiting for cell editor.');
-                            });
-
-                        ktl.core.waitSelector('#cell-editor ' + ' #kn-input-' + fieldId)
-                            .then(() => {
-                                //console.log('Found inline 2');
-                                ktl.fields.inlineEditChangeStyle();
-                            })
-                            .catch(() => {
-                                console.log('2 - Failed waiting for cell editor.');
-                            });
-                    }
-                }
-            }
-
         })
 
         //Add Change event handlers for Dropdowns, Calendars, etc.
@@ -1513,8 +1511,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //            });
             //    }
             //});
-
-
 
             //chznBetter functions
             // Ex. param:  dropdownId = 'view_XXX_field_YYY_chzn';
@@ -3441,6 +3437,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('knack-view-render.any', function (event, view, data) {
             ktlProcessViewFlags(view, data);
             ktl.views.addViewId(view);
+            disableFilterOnFields(view);
         })
 
         $(document).on('click', function (e) {
@@ -3512,6 +3509,32 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.views.addTimeStampToHeader(view);
                 }
 
+                //Remove unwanted columns, as specified in Builder, when _HIDE and _REMOVE is found in header.
+                if (view.type === 'table' /*TODO: add more view types*/) {
+                    var columns = view.columns;
+                    var hiddenFieldsAr = [];
+                    var removedFieldsAr = [];
+                    var header = '';
+                    var fieldId = '';
+                    columns.forEach(col => {
+                        header = col.header;
+                        if (col.type === 'field')
+                            fieldId = col.id;
+                        else if (col.type === 'link')
+                            fieldId = col.field.key;
+
+                        if (header.includes('_HIDE'))
+                            hiddenFieldsAr.push(fieldId);
+                        if (header.includes('_REMOVE'))
+                            removedFieldsAr.push(fieldId);
+                    })
+
+                    if (hiddenFieldsAr.length)
+                        ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr);
+                    if (removedFieldsAr.length)
+                        ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr);
+                }
+
                 processViewFlags && processViewFlags(view, data);
 
                 //Put back h2 opacity to normal (see CSS code).
@@ -3519,6 +3542,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 $('h2').css('opacity', '1');
             }
             catch (err) { console.log('err', err); };
+        }
+
+        //Filter Restriction Rules from view's Description.
+        function disableFilterOnFields(view) {
+            const NF = 'NO_FILTER=';
+            var descr = view.description;
+            var index = descr.indexOf(NF);
+            if (index >= 0) {
+                descr = descr.substr(index + NF.length);
+                var realDescr = view.description.substr(0, index - 1);
+                document.querySelector('#' + view.key + ' .kn-description').innerText = realDescr;
+                descr = descr.replace(/\s/g, '')
+                var fieldsAr = descr.split(',');
+                $('.kn-add-filter,.kn-filters').on('click', function (e) {
+                    var filterFields = document.querySelectorAll('.field.kn-select select option');
+                    filterFields.forEach(field => {
+                        if (fieldsAr.includes(field.value))
+                            field.remove();
+                    })
+                })
+            }
         }
 
         return {
@@ -4739,17 +4783,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     } else //Dev mode, make version bright yellow/red font.
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
 
-                    if (ktl.account.isDeveloper()) {
-                        ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
-
-                        $('#verButtonId').on('click touchstart', function (e) {
+                    ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
+                    $('#verButtonId').on('click touchstart', function (e) {
+                        if (ktl.account.isDeveloper()) {
                             e.preventDefault();
                             var ver = prompt('Which version to run, "prod" or "dev"?', 'prod');
                             if (ver === 'prod' || ver === 'dev')
                                 ktl.core.switchVersion(ver);
-                        })
-
-                    }
+                        }
+                    })
 
                     //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
                     if (ktl.core.isKiosk() && !ktl.scenes.isiFrameWnd())

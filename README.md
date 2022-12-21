@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.5.1 - pre-release
+v0.5.2 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -76,6 +76,14 @@ provide many nice additions to your app:
     -   hidden titles
 
     -   disable inline editing
+
+-   special keywords in the view's description to trigger
+
+    -   filter restriction for specified fields
+
+-   special keywords in the table's column headers to trigger
+
+    -   hidden or deleted columns
 
 -   Ctrl+Click on a table header to invert the default sort
 
@@ -535,6 +543,31 @@ Provides view-related features.
 
 > You can also add your own app-specific flags in the callback function
 > processViewFlags.
+
+### Using view's Description text box as flags to trigger special behavior
+
+In the Builder, when you edit a view, there's a Description text box,
+where you can put additional information to the user. Now, this can also
+be used by the KTL to trigger special behavior. You can add your flags
+at the end of your description, or on a separate line, as you wish, as
+long as it's at the end of your text. Currently, only tables are
+supported. Here's the list:
+
+-   **NO_FILTER=field_x, field_y, field_z** This will prevent from
+    filtering on these fields, even if they are visible in the table.
+    Each must have a comma separator, spaces are allowed.
+
+### Adding flags to the tables header text to trigger special behavior
+
+In the Builder, when you edit a table view, you can these flags at the
+end of your header text to trigger special behavior:
+
+-   **\_HIDE**: To hide the column. The columns are only hidden and
+    still exists in DOM. The visibility is reversible (hide/show) on the
+    fly if needed.
+
+-   **\_REMOVE**: To complete delete de column from the DOM. Safer since
+    it's not possible to peek at data by showing the columns manually.
 
 ## Scenes
 
