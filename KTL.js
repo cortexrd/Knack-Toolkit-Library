@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.5.0';
+    const KTL_VERSION = '0.5.1';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -418,7 +418,7 @@ function Ktl($) {
                     return false;
             },
 
-            ipFormatOk: function (ipAddress) {
+            isIPFormat: function (ipAddress) {
                 var ipformat = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
                 if (ipAddress.match(ipformat)) {
                     return true;
@@ -2248,10 +2248,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         })
 
+        //User Filters Upload and Download menu
         $(document).on('knack-view-render.' + ufMenuViewId, function (event, view, data) {
             var allFiltersObjTemp = {};
 
-            //UPLOAD menu button
+            //Upload menu button
             var filters = ktl.storage.lsGetItem(LS_FILTERS + Knack.getUserAttributes().id);
             var uploadDisabled = true;
             if (filters) {
@@ -2259,9 +2260,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!$.isEmptyObject(allFiltersObjTemp))
                     uploadDisabled = false;
             }
-            $('#' + ufMenuViewId + ' > div > a.kn-link.kn-link-1.kn-button').attr('disabled', uploadDisabled);
 
-            $('#' + ufMenuViewId + ' > div > a.kn-link.kn-link-1.kn-button').click(function () {
+            var uploadBtn = $('#' + ufMenuViewId + ' .kn-link.kn-button:contains("Upload")');
+            uploadBtn.attr('disabled', uploadDisabled);
+
+            uploadBtn.click(function () {
                 //Get latest LS_FILTERS object's state.
                 filters = ktl.storage.lsGetItem(LS_FILTERS + Knack.getUserAttributes().id);
                 if (filters) {
@@ -2295,8 +2298,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             });
 
-            //DOWNLOAD menu button
-            $('#' + ufMenuViewId + ' > div > a.kn-link.kn-link-2.kn-button').click(function () {
+            //Download menu button
+            var downloadBtn = $('#' + ufMenuViewId + ' .kn-link.kn-button:contains("Download")');
+
+            downloadBtn.click(function () {
                 //Check if record exists.  If so, get filter string and parse it to trap any errors.
                 var allFiltersString = $('#' + ufCodeViewId + ' > div.kn-table-wrapper > table > tbody > tr > td.' + ufFiltersCodeFld + '.cell-edit').text();
                 try {
@@ -2314,12 +2319,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         });
 
         $(document).on('knack-view-render.' + ufCodeViewId, function (event, view, data) {
-            ktl.core.waitSelector('#' + ufMenuViewId + ' > div > a.kn-link.kn-link-2.kn-button')
+            ktl.core.waitSelector('#' + ufMenuViewId + ' .kn-link.kn-button:contains("Download")')
                 .then(function () {
-                    if (data.length > 0)
-                        $('#' + ufMenuViewId + ' > div > a.kn-link.kn-link-2.kn-button').attr('disabled', false);
-                    else
-                        $('#' + ufMenuViewId + ' > div > a.kn-link.kn-link-2.kn-button').attr('disabled', true);
+                    $('#' + ufMenuViewId + ' .kn-link.kn-button:contains("Download")').attr('disabled', !data.length);
                 })
         });
 
@@ -6139,7 +6141,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 .catch(() => { console.log('getPublicIP failed.  Make sure uBlock not active.'); })
         })();
 
-
         function getPublicIP() {
             return new Promise(function (resolve, reject) {
                 //NOTE:  This will not work if browser has uBlock Origin extension enabled.
@@ -6149,7 +6150,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var publicIP = data.substr(index);
                         index = publicIP.indexOf('\n');
                         publicIP = publicIP.substr(0, index);
-                        if (ktl.core.ipFormatOk(publicIP))
+                        if (ktl.core.isIPFormat(publicIP))
                             resolve(publicIP);
                         else
                             reject();
