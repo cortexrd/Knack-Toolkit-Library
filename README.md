@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.5.2 - pre-release
+v0.5.3 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
