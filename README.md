@@ -42,17 +42,13 @@
 
 **Knack Toolkit Library**
 
-v0.5.0 - pre-release
+v0.5.1 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
 application development and add several features that are not easily
 created from the ground up. Those features that involve using the Knack
 API are 100% view-based, so your API key is never exposed.
-
-\*\*\* NOTE\*\*\* The code and documentation are currently in a
-pre-release phase. Thank you for being patient and understanding that
-everything may not be complete or perfectly organized.
 
 # Overview
 
@@ -251,8 +247,8 @@ internally, but also available to your app.
 
 -   **waitAndReload**: Waits for a specific delay, then reloads page.
 
--   **switchVersion**: To quickly toggle between production and
-    development versions.
+-   **switchVersion**: To toggle between production and development
+    versions.
 
 -   **enableDragElement**: To add basic drag and drop to an element.
 
@@ -261,9 +257,9 @@ internally, but also available to your app.
 
 -   **getMenuInfo**: Retrieves the menu and sub-menu items.
 
--   **isHex**: For validation of hexadecimal strings.
+-   **isHex**: For hexadecimal format validation.
 
--   **ipFormatOk**: For IP format validation.
+-   **isIPFormat**: For IP format validation.
 
 -   **getSubstringPosition**: Returns the index of the Nth occurrence of
     a string within a string.
@@ -309,18 +305,17 @@ internally, but also available to your app.
     and returns the first view ID containing specific text in its title,
     with optional exact match.
 
--   **sortMenu**: Will sort the menus in alphabetical order when
-    top-menu is opened.
+-   **sortMenu**: Will sort the sub-menus in alphabetical order.
 
 -   **sortUList**: Will sort any un-ordered list in alphabetical order.
 
 ### A note about knAPI
 
-While Inline editing is mandatory for PUT operations on a table, it may
-not be desirable to let users modify data manually. You can disable
-these edits dynamically by adding the view title flag **NO_INLINE**.
-This allows the API calls to work properly, while disabling the mouse
-actions.
+While Inline editing is mandatory for PUT (edit) operations on a table,
+it may not be desirable to let users modify data manually. You can
+disable these edits dynamically by adding the view title flag
+**NO_INLINE**. This allows the API calls to work properly, while
+disabling the mouse actions.
 
 ## Storage
 
@@ -683,14 +678,15 @@ submitting the change, a prompt will ask you if the value should also
 apply to all selected records. Click yes to apply to all. A confirmation
 message will pop up after completion.
 
-\*\* Important note\*\* the table\'s sort may cause your changes to
-disappear due to being out of scope. This is normal. You can prevent
-this by first choosing a sort that will not cause this, or filtering as
-much as possible to show a very restricted number of records, but still
-including the ones you need. Experimenting with only a few records at a
-time (less than 10) is recommended as a starting point. If you\'ve made
-an error, the process can be interrupted (but not undone) at any time by
-pressing F5 to reload the page.
+\*\* Important note\*\* the table\'s sort+filter combination may cause
+your changes to disappear due to being out of scope. This is normal. You
+can prevent this by first choosing a sort+filter combination that will
+not cause this. Ideally set the filtering to show only a very restricted
+number of records, but still include the ones you need. Experimenting
+with only a few records at a time (less than 10) or even better "test
+records" is recommended as a starting point. If you\'ve made an error,
+the process can be interrupted (but not undone) at any time by pressing
+F5 to reload the page.
 
 ### Bulk Delete
 
@@ -983,6 +979,26 @@ There are three possible modes for using KTL: **ACB, CLS** and
 This is the traditional mode that we\'re all used to, i.e. when all the
 code resides in the Builder\'s Javascript and CSS panes.
 
+### Pros
+
+-   Easier and faster setup, no need to install anything for default
+    ACB.
+
+-   Other users can always see your changes.
+
+-   You can test your code on any device, not limited to your
+    workstation.
+
+### Cons
+
+-   Slower than CLS mode and more tedious to work, due to the redundant
+    merge/copy/paste/save sequence required each time you make a change.
+
+-   Can be risky if used in production (when the app is being used in a
+    live and consequential context) since your development code always
+    takes effect immediately. You must have good coding experience and
+    know exactly what you\'re doing.
+
 To use this mode, you have two options:
 
 1)  Use the default, basic, ready-to-use setup
@@ -1035,26 +1051,6 @@ and save.
 two files will be hosted on my Cortex R&D's CDN, and all these copy
 operations won't be required anymore.
 
-### Pros
-
--   Easier and faster setup, no need to install anything for default
-    ACB.
-
--   Other users can always see your changes.
-
--   You can test your code on any device, not limited to your
-    workstation.
-
-### Cons
-
--   Slower than CLS mode and more tedious to work, due to the redundant
-    merge/copy/paste/save sequence required each time you make a change.
-
--   Can be risky if used in production (when the app is being used in a
-    live and consequential context) since your development code always
-    takes effect immediately. You must have good coding experience and
-    know exactly what you\'re doing.
-
 ### Setup
 
 You will need to modify the KTL_KnackApp.js file to match your needs if
@@ -1065,29 +1061,25 @@ here](#switching-modes).
 
 This mode provides much faster code-save-test cycles and is typically
 used when you have frequent code changes, and where you don\'t need to
-show your results to others until a milestone is reached. It requires
-the installation of Node.js as a basic local file server that the
-Bootloader uses to fetch the KTL files and your app\'s code. The
-Builder\'s Javascript pane only needs to contain the Bootloader code
+show your results to others until a milestone is reached. It also
+enables collaborative coding on the same app.
+
+It requires the installation of Node.js as a basic local file server
+that the Bootloader uses to fetch the KTL files and your app\'s code.
+The Builder\'s Javascript pane only needs to contain the Bootloader code
 (\~240 lines!). You can also have the full ACB code without conflict.
 Although this means a few extra milliseconds of loading time, it allows
 you to leverage the powerful [Hybrid
 Mode](#hybrid-mode---for-production-and-development-at-same-time).
 
-### Multi-Developers Collaboration
-
-With the CLS mode, it is now possible to have many developers write code
-independently on the same app. Of course, for other developers to see
-your changes, they need to pull/merge your new code with theirs, and
-vice-versa for you to see their changes. GitHub is excellent at that.
-
 ### Pros
 
 -   Allows very fast \"code-save-test\" cycles.
 
--   Allows multi-developer collaboration without conflict.
+-   Allows multi-developer coding collaboration without conflict.
 
--   Allows Hybrid Mode for dev and prod code running at same time.
+-   Allows Hybrid Mode for development and production code running at
+    same time.
 
 ### Cons
 
@@ -1098,6 +1090,14 @@ vice-versa for you to see their changes. GitHub is excellent at that.
 
 -   You can\'t test on devices other than your workstation, running the
     file server.
+
+### Multi-Developers Collaboration
+
+With the CLS mode, it is now possible to have many developers write code
+independently on the same app since they are working on a "sandboxed"
+copy of their code. Of course, for other developers to see your changes,
+they need to pull/merge your new code with theirs, and vice-versa for
+you to see their changes. GitHub is excellent at that.
 
 ### Setup
 
@@ -1137,8 +1137,8 @@ But if it detects a development flag in your localStorage, it will
 switch to the CLS code **on your workstation only**.
 
 With Hybrid Mode, it is also possible to switch back and forth between
-the ACB and CLS modes instantly. See Switching Modes in the next
-section.
+the ACB and CLS modes instantly. See [Switching Modes](#switching-modes)
+in the next section.
 
 ## Switching Modes
 
@@ -1204,7 +1204,7 @@ Namely:
 
     c.  Account Logging
 
-    d.  Remote SW Updates
+    d.  Remote SW Updates (the page and view setup will come soon)
 
     e.  App Filters (in progress)
 
@@ -1449,7 +1449,7 @@ To support Upload and Download, follow this procedure:
     to edit that page.
 
 5)  Add a menu titled **USER_FILTERS_MENU** and add two links to a URL
-    named **Upload** and **Download**. The left-right order is
+    named **Upload** and **Download**. The left-right order is not
     important. Both URLs are: **javascript:void(0);** This unusual URL
     is actually a method that means \"do nothing\" and lets the KTL
     handle click events with special processing.
