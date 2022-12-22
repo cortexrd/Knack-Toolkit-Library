@@ -2663,45 +2663,43 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             });
 
-            /*  TODO...
-            //App Filters (visible to all users)
-            var listAppFilters = document.createElement('li');
-            listAppFilters.innerHTML = '<i class="fa fa-gift" style="margin-top: 2px;"></i> Public: ';
-            listAppFilters.style.marginBottom = '8px';
-                
-            listAppFilters.addEventListener('click', function (e) {
+            //Public Filters, visible to all users.
+            var listPublicFilters = document.createElement('li');
+            listPublicFilters.innerHTML = '<i class="fa fa-gift" style="margin-top: 2px;"></i> Public: ';
+            listPublicFilters.style.marginBottom = '8px';
+
+            console.log('filter =', filter);
+            if (filter.public)
+                listPublicFilters.innerHTML += 'Yes';
+            else
+                listPublicFilters.innerHTML += 'No';
+
+            listPublicFilters.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation(); //Required?
-                
-                //console.log('Public');
-                
+
                 var id = $(e.target).closest('.filterBtn').attr('id');
-                var filterName = $('#' + id);
                 $('.menuDiv').remove();
-                
-                filterName = $('#' + id).text();
-                //console.log('filterName =', filterName);
-                
+                var filterName = $('#' + id).text();
+                var index = getFilterIndex(allFiltersObj, filterName, viewId);
+
                 //Toggle on/off
-                listAppFilters.innerHTML += 'Yes';
-                
-                //var newFilterName = prompt('New Filter Name: ', filterName);
-                //if (newFilterName !== null && newFilterName !== '' && newFilterName !== filterName) {
-                //    var foundFilter = allFiltersObj[viewId].filters.find(function (filter) {
-                //        if (filter.filterName === filterName)
-                //            return filter;
-                //    });
-                
-                //    foundFilter.filterName = newFilterName;
-                
-                //    //Send to iFram so it can save it to System's User Prefs
-                //    saveAllFilters(allFiltersObj, viewId);
-                //}
+                if (filter.public) {
+                    delete filter.public;
+                    delete allFiltersObj[viewId].filters[index].public;
+                } else {
+                    filter.public = true;
+                    allFiltersObj[viewId].filters[index].public = true;
+                }
+
+                saveAllFilters(viewId);
+
+                //Send to iFrameWnd so it can save it to App Settings object.
+                ktl.wndMsg.send('savePublicFilters', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
             });
     
-            if (accountCanCreateSystemFilters)
-                ul.appendChild(listAppFilters);
-            */
+            if (Knack.getUserRoleNames().includes('Create Filters'))
+                ul.appendChild(listPublicFilters);
 
             ul.appendChild(listDelete);
             ul.appendChild(listRename);
@@ -2850,6 +2848,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 ktl.userFilters.setActiveFilter(filterName, filterDivId);
                 ktl.views.refreshView(filterDivId);
             },
+
+            savePublicFilters: function () {
+                console.log('entering savePublicFilters');
+
+                var viewId = ktl.iFrameWnd.getCfg().appSettingsViewId;
+                var publicFilters = {};
+
+                var appSettingsObj = ktl.core.getObjectIdByName('App Settings');
+                var apiData = {};
+                apiData[ktl.core.getFieldIdByName('Value', appSettingsObj)] = 'test PF';
+                apiData[ktl.core.getFieldIdByName('Date/Time', appSettingsObj)] = ktl.core.getCurrentDateTime(true, true, false, true);
+                var recId = $('#' + viewId + ' tbody tr:contains("APP_PUBLIC_FILTERS")')[0].id;
+
+                ktl.log.clog('orange', 'Updating public filters...');
+                ktl.core.knAPI(viewId, recId, apiData, 'PUT', [viewId])
+                    .then(function (response) { ktl.log.clog('green', 'Public filters updated successfully!'); })
+                    .catch(function (reason) { alert('An error occurred while updating Public filters in table, reason: ' + JSON.stringify(reason)); })
+            }
         }
     })();
 
@@ -5534,7 +5550,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 })
                             break;
 
-
                         case 'ktlProcessServerErrorsMsg': //Forward any server errors from iFrameWnd to app.
                             ktl.wndMsg.ktlProcessServerErrors(event.data.msgData);
                             break;
@@ -5559,8 +5574,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                             break;
 
-
-
                         case 'userPrefsChangedMsg':
                             if (window.self.frameElement && (event.data.dst === IFRAME_WND_ID)) { //App to iFrameWnd, when prefs are changed locally by user.
                                 //Upload new prefs so other opened browsers can see the changes.
@@ -5582,6 +5595,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                                 ktl.userPrefs.ktlApplyUserPrefs();
                             }
+                            break;
+                        case 'savePublicFilters':
+                            console.log('rxed savePublicFilters');
+                            ktl.wndMsg.send('userPrefsChangedMsg', 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
+                            ktl.userFilters.savePublicFilters();
                             break;
                         default:
                             processAppMsg && processAppMsg(event);
