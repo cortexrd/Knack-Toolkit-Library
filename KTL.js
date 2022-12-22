@@ -3305,22 +3305,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Filter Restriction Rules from view's Description.
         function disableFilterOnFields(view) {
-            const NF = 'NO_FILTER=';
-            var descr = view.description;
-            var index = descr.indexOf(NF);
-            if (index >= 0) {
-                descr = descr.substr(index + NF.length);
-                var realDescr = view.description.substr(0, index - 1);
-                document.querySelector('#' + view.key + ' .kn-description').innerText = realDescr;
-                descr = descr.replace(/\s/g, '')
-                var fieldsAr = descr.split(',');
-                $('.kn-add-filter,.kn-filters').on('click', function (e) {
-                    var filterFields = document.querySelectorAll('.field.kn-select select option');
-                    filterFields.forEach(field => {
-                        if (fieldsAr.includes(field.value))
-                            field.remove();
+            if (view.type === 'table' /*TODO: add more view types*/) {
+                const NF = 'NO_FILTER=';
+                var descr = view.description;
+                var index = descr.indexOf(NF);
+                if (index >= 0) {
+                    descr = descr.substr(index + NF.length);
+                    var realDescr = view.description.substr(0, index - 1);
+                    document.querySelector('#' + view.key + ' .kn-description').innerText = realDescr;
+                    descr = descr.replace(/\s/g, '')
+                    var fieldsAr = descr.split(',');
+                    $('.kn-add-filter,.kn-filters').on('click', function (e) {
+                        var filterFields = document.querySelectorAll('.field.kn-select select option');
+                        filterFields.forEach(field => {
+                            if (fieldsAr.includes(field.value))
+                                field.remove();
+                        })
                     })
-                })
+                }
             }
         }
 
