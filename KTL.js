@@ -3418,16 +3418,23 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (index >= 0) {
                     descr = descr.substr(index + NF.length);
                     var realDescr = view.description.substr(0, index - 1);
-                    document.querySelector('#' + view.key + ' .kn-description').innerText = realDescr;
-                    descr = descr.replace(/\s/g, '')
-                    var fieldsAr = descr.split(',');
-                    $('.kn-add-filter,.kn-filters').on('click', function (e) {
-                        var filterFields = document.querySelectorAll('.field.kn-select select option');
-                        filterFields.forEach(field => {
-                            if (fieldsAr.includes(field.value))
-                                field.remove();
+                    var sel = '#' + view.key + ' .kn-description';
+                    ktl.core.waitSelector(sel, 5000)
+                        .then(function () {
+                            document.querySelector(sel).innerText = realDescr;
+                            descr = descr.replace(/\s/g, '')
+                            var fieldsAr = descr.split(',');
+                            $('.kn-add-filter,.kn-filters').on('click', function (e) {
+                                var filterFields = document.querySelectorAll('.field.kn-select select option');
+                                filterFields.forEach(field => {
+                                    if (fieldsAr.includes(field.value))
+                                        field.remove();
+                                })
+                            })
                         })
-                    })
+                        .catch(function () {
+                            ktl.log.clog('purple', 'disableFilterOnFields failed waiting for description.');
+                        })
                 }
             }
         }
