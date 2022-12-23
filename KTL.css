@@ -107,6 +107,9 @@ tr:hover {
 	width: 30px;
 }
 
+.filterBtn.public {
+	filter: grayscale(75%);
+}
 
 /************ Improved Chzn Dropdown **************/
 #chznBetter {

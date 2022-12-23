@@ -2457,7 +2457,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var filterBtn = ktl.fields.addButton(filterDiv, filter.filterName, filterBtnStyle,
                             ['kn-button', 'is-small'],
                             filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
-                        filterBtn.classList.add('filterBtn', 'draggable');
+
+                        filterBtn.classList.add('filterBtn');
+                        if (filter.public)
+                            filterBtn.classList.add('public');
+                        else
+                            filterBtn.classList.add('draggable');
+
                         if (btnIndex === activeFilterIndex)
                             filterBtn.classList.add('activeFilter');
                         else
@@ -2481,6 +2487,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     //Setup Drag n Drop for filter buttons.
                     if (document.getElementById(filterDivId + '-filterDivId')) {
                         new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
+                            draggable: '.draggable',
                             swapThreshold: 0.96,
                             animation: 250,
                             easing: "cubic-bezier(1, 0, 0, 1)",
@@ -2488,36 +2495,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 //When a drag n drop is done, update localStorage for this view.
                                 var filterDiv = evt.to;
 
-                                //Create new entries as copies of sorted filters, but at beginning of array.
-                                //When done, you get a doubled array, and simply truncate last half to get final version.
-                                //console.log('filterDiv.children =', filterDiv.children);
-                                var filterNames = [];
+                                var fltAr = [];
                                 filterDiv.children.forEach(function (item) {
-                                    filterNames.push(item.innerText);
+                                    var filterName = item.innerText;
+                                    var filterIndex = getFilterIndex(allFiltersObj, filterName, filterDivId);
+                                    fltAr.push(allFiltersObj[filterDivId].filters[filterIndex]);
                                 });
 
-                                var initialLength = allFiltersObj[filterDivId].filters.length;
-                                //console.log('initialLength =', initialLength);
-                                filterNames.slice().reverse().forEach(function (item) {
-                                    var foundFilter = allFiltersObj[filterDivId].filters.find(function (filter) {
-                                        if (filter.filterName === item)
-                                            return filter;
-                                    });
-
-                                    allFiltersObj[filterDivId].filters.unshift({ 'filterName': item, 'filterString': foundFilter.filterString });
-                                });
-
-                                //console.log('allFiltersObj[viewId].filters =');
-                                //console.log(JSON.parse(JSON.stringify(allFiltersObj[viewId].filters)))
-
-                                //New length should (must) be doubled.
-                                var length = allFiltersObj[filterDivId].filters.length;
-                                //console.log('length =', length);
-                                if (length === initialLength * 2) { //JIC.  Should always be true.
-                                    allFiltersObj[filterDivId].filters.length = length / 2;
-                                    saveAllFilters(filterDivId); //Save updated object
-                                } else
-                                    alert('Unexpected filter length detected.  Filters not saved.'); //@@@ TODO:  handle this somehow.
+                                allFiltersObj[filterDivId].filters = fltAr;
+                                console.log('allFiltersObj =', allFiltersObj);
+                                saveAllFilters(filterDivId); //Save updated object
                             }
                         });
                     }
@@ -2609,10 +2596,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var id = $(e.target).closest('.filterBtn').attr('id');
             var filterName = $('#' + id).text();
             var filterIndex = getFilterIndex(allFiltersObj, filter.filterName, viewId);
-
             var isPublic = allFiltersObj[viewId].filters[filterIndex].public;
-            console.log('isPublic =', isPublic);
-
             if (isPublic && !Knack.getUserRoleNames().includes('Create Filters')) {
                 $('.menuDiv').remove(); //JIC
                 return;
@@ -2644,7 +2628,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 $('.menuDiv').remove();
 
                 var activeFilter = allFiltersObj[viewId].active;
-                var activeFilterName = activeFilter >= 0 ? allFiltersObj[viewId].filters[activeFilter].filterName : '';
+                var activeFilterName = (activeFilter >= 0 && activeFilter < allFiltersObj[viewId].filters.length) ? allFiltersObj[viewId].filters[activeFilter].filterName : '';
                 console.log('activeFilterName =', activeFilterName);
 
                 if (confirm('Are you sure you want to delete filter "' + filterName + '" ?')) {
