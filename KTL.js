@@ -2459,9 +2459,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
 
                         filterBtn.classList.add('filterBtn');
-                        if (filter.public)
+                        if (filter.public) {
                             filterBtn.classList.add('public');
-                        else
+                            if (Knack.getUserRoleNames().includes('Create Filters'))
+                                filterBtn.classList.add('draggable');
+                        } else
                             filterBtn.classList.add('draggable');
 
                         if (btnIndex === activeFilterIndex)
@@ -2491,10 +2493,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             swapThreshold: 0.96,
                             animation: 250,
                             easing: "cubic-bezier(1, 0, 0, 1)",
-                            onEnd: function (/**Event*/evt) {
+                            onEnd: function (evt) {
                                 //When a drag n drop is done, update localStorage for this view.
                                 var filterDiv = evt.to;
-
                                 var fltAr = [];
                                 filterDiv.children.forEach(function (item) {
                                     var filterName = item.innerText;
@@ -2503,8 +2504,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 });
 
                                 allFiltersObj[filterDivId].filters = fltAr;
-                                console.log('allFiltersObj =', allFiltersObj);
                                 saveAllFilters(filterDivId); //Save updated object
+                                if (evt.item.filter.public)
+                                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                             }
                         });
                     }
@@ -2629,13 +2631,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var activeFilter = allFiltersObj[viewId].active;
                 var activeFilterName = (activeFilter >= 0 && activeFilter < allFiltersObj[viewId].filters.length) ? allFiltersObj[viewId].filters[activeFilter].filterName : '';
-                console.log('activeFilterName =', activeFilterName);
 
                 if (confirm('Are you sure you want to delete filter "' + filterName + '" ?')) {
                     allFiltersObj[viewId].filters.splice(filterIndex, 1);
-                    if (allFiltersObj[viewId].filters.length === 0) {
+                    if (allFiltersObj[viewId].filters.length === 0)
                         delete allFiltersObj[viewId];
-                    }
 
                     if (activeFilter === filterIndex)
                         ktl.userFilters.setActiveFilter('', viewId);
@@ -2658,15 +2658,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var newFilterName = prompt('New Filter Name: ', filterName);
                 if (newFilterName && newFilterName !== filterName) {
+                    var exists = getFilterIndex(allFiltersObj, newFilterName, viewId);
+                    console.log('exists =', exists);
+                    if (exists >= 0) {
+                        alert('Filter name already exists.  Please use another one.');
+                        return;
+                    }
+
                     var foundFilter = allFiltersObj[viewId].filters.find(function (filter) {
                         if (filter.filterName === filterName)
                             return filter;
                     });
 
-                    foundFilter.filterName = newFilterName;
+                    if (foundFilter) {
+                        foundFilter.filterName = newFilterName;
 
-                    saveAllFilters(viewId);
-                    ktl.views.refreshView(viewId);
+                        saveAllFilters(viewId);
+                        ktl.views.refreshView(viewId);
+                    }
                 }
             });
 
@@ -2702,7 +2711,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     saveAllFilters(viewId);
 
                     //Send to iFrameWnd so it can save it to App Settings object.
-                    ktl.wndMsg.send('savePublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                 });
             }
     
@@ -2721,7 +2730,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         function getFilterIndex(allFiltersObj, filterName, viewId) {
             var filterIndex = allFiltersObj[viewId].filters.findIndex(function (filter) {
-                if (filter && filter.filterName === filterName) {
+                if (filter && filter.filterName.toLowerCase() === filterName.toLowerCase()) {
                     return filter;
                 }
             });
@@ -5335,7 +5344,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         needUpdate = true;
 
                     if (needUpdate)
-                        ktl.wndMsg.send('updatePublicFiltersMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters, newPublicFiltersDate: newPublicFiltersDate });
+                        ktl.wndMsg.send('publicFiltersHaveChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters, newPublicFiltersDate: newPublicFiltersDate });
                 }
             }
         })
@@ -5687,11 +5696,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.userPrefs.ktlApplyUserPrefs();
                             }
                             break;
-                        case 'savePublicFiltersMsg':
+                        case 'broadcastPublicFiltersMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
                             ktl.userFilters.uploadPublicFilters();
                             break;
-                        case 'updatePublicFiltersMsg':
+                        case 'publicFiltersHaveChangedMsg':
                             //When users need to fetch and update/merge their local copy with the new public filters.
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadPublicFilters(event.data.msgData);
