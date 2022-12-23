@@ -3385,7 +3385,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         header = col.header;
                         if (col.type === 'field')
                             fieldId = col.id;
-                        else if (col.type === 'link')
+                        else if (col.type === 'link' && col.link_type === 'field')
                             fieldId = col.field.key;
 
                         if (header.includes('_HIDE'))
