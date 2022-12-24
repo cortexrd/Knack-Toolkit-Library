@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.5.3 - pre-release
+v0.6.1 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -58,6 +58,9 @@ Right out of the box, without any coding or complex setup, the KTL will
 provide many nice additions to your app:
 
 -   user filters to save your filters to named buttons
+
+-   public filters, which are similar to user filters, but created by an
+    administrator and visible to all users
 
 -   form data persistence that saves as you type, and will load back
     your data if a page is reloaded after a submit failure or power
@@ -665,12 +668,29 @@ Each active filter will not only remember its filter parameters, but
 also the column selected for sorting, the sort order, and the searched
 text. You can rename and delete buttons at will, and you can also drag
 and drop the buttons to re-order them at your convenience. The button
-colors will have matching variations based on the app\'s theme. Each
-scene remembers the last active filter when you go back to it.
+colors will have matching variations based on the app\'s header color.
+Each view remembers the last active filter when you go back to its page.
 
 The User Filters feature is enabled by default, but you can disable it
 by setting the userFilters flag to false in the ktl.core.setCfg
 function.
+
+### Public Filters
+
+If you are annoyed by the limitations of **filter menus** that only have
+one field and without AND/OR operators, then you will find Public
+Filters very useful. They are the same as User Filters but created by
+special users and that are visible to everyone.
+
+First, you need to create the **Public Filters** **role** and assign it
+to the privileged users of your choice. When they create their filters,
+they can right-click the assigned button to open the popup menu, where
+an option is shown: **Public: Yes/No**. Clicking on it will broadcast
+the new filter to all users. Within about 10 seconds, you will see it
+appear on all opened pages with that view. The Public Filters are always
+located to the left of the other filters with a slightly increased
+contrast and kept in the same order as the creator's. They can't be
+renamed, deleted or re-ordered by regular users.
 
 ### Functions
 
