@@ -680,17 +680,21 @@ function.
 If you are annoyed by the limitations of **filter menus** that only have
 one field and without AND/OR operators, then you will find Public
 Filters very useful. They are the same as User Filters but created by
-special users and that are visible to everyone.
+special users and visible to everyone.
 
-First, you need to create the **Public Filters** **role** and assign it
-to the privileged users of your choice. When they create their filters,
-they can right-click the assigned button to open the popup menu, where
-an option is shown: **Public: Yes/No**. Clicking on it will broadcast
-the new filter to all users. Within about 10 seconds, you will see it
-appear on all opened pages with that view. The Public Filters are always
-located to the left of the other filters with a slightly increased
-contrast and kept in the same order as the creator's. They can't be
-renamed, deleted or re-ordered by regular users.
+First, you need to perform the setup of the [iFrameWnd](#iframewnd) and
+the [Heartbeat Monitoring and SW
+Update](#heartbeat-monitoring-and-sw-update).
+
+Then, create a **Public Filters** role and assign it to the privileged
+users of your choice. When they create their filters, they can
+right-click the assigned button to open the popup menu, where an option
+is shown: **Public: Yes/No**. Clicking on it will broadcast the new
+filter to all users. Within about 10 seconds, they will see it appear on
+all opened pages with that view. The Public Filters are always located
+to the left of the other filters with a slightly increased contrast and
+kept in the same order as the creator's. They can't be renamed, deleted
+or re-ordered by regular users.
 
 ### Functions
 
