@@ -5723,7 +5723,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             break;
                         case 'swVersionsDifferentMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
-                            ktl.core.timedPopup(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.', 'warning', 4000);
+                            ktl.core.timedPopup(Knack.getUserAttributes().name + ' - Versions are different!  Please refresh and Broadcast new version.', 'warning', 4000);
                             break;
                         default:
                             processAppMsg && processAppMsg(event);
