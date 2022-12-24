@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.5.4';
+    const KTL_VERSION = '0.5.5';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -5338,7 +5338,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var newSWVersion = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_KTL_VERSIONS") .field_1885')[0].innerText;
                 if (newSWVersion !== APP_KTL_VERSIONS) {
                     if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
-                        ktl.core.timedPopup(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.', 'warning', 4000);
+                        ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
                     else {
                         console.log('sending reloadAppMsg with ver:', newSWVersion);
                         ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: currentSWVersion });
@@ -5720,6 +5720,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             //When users need to fetch and update/merge their local copy with the new public filters.
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadPublicFilters(event.data.msgData);
+                            break;
+                        case 'swVersionsDifferentMsg':
+                            ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
+                            ktl.core.timedPopup(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.', 'warning', 4000);
                             break;
                         default:
                             processAppMsg && processAppMsg(event);
