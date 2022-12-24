@@ -2486,6 +2486,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     //Setup Drag n Drop for filter buttons.
                     if (document.getElementById(filterDivId + '-filterDivId')) {
+                        var sortableTimer;
                         new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
                             swapThreshold: 0.96,
                             animation: 250,
@@ -2494,9 +2495,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 if (evt.dragged.filter.public && !Knack.getUserRoleNames().includes('Public Filters'))
                                     return false; //Cancel
                             },
-                            onChange: function (/**Event*/evt) {
+                            onEnd: function (evt) {
                                 //For public filters, when a drag n drop is done, update localStorage for this view, if order has changed.
-                                if (evt.item.filter && evt.item.filter.public) {
+                                if (evt.oldIndex !== evt.newIndex && evt.item.filter && evt.item.filter.public) {
                                     var filterDiv = evt.to;
                                     var fltAr = [];
                                     filterDiv.children.forEach(function (item) {
@@ -2506,11 +2507,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     });
 
                                     allFiltersObj[filterDivId].filters = fltAr;
-                                    saveAllFilters(filterDivId); //Save updated object
-                                    if (evt.item.filter.public)
+                                    saveAllFilters(filterDivId);
+
+                                    clearTimeout(sortableTimer);
+                                    sortableTimer = setTimeout(function () { //To prevent broadcasting for every quick order change.
                                         ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                                    }, 5000);
                                 }
-                            },
+                            }
                         });
                     }
                 }
@@ -2897,11 +2901,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var apiData = {};
                 apiData[ktl.iFrameWnd.getCfg().appSettingsValueFld] = pfObjStr;
                 apiData[ktl.iFrameWnd.getCfg().appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
-                var recId = $('#' + viewId + ' tbody tr:contains("APP_PUBLIC_FILTERS")')[0].id;
-                ktl.log.clog('blue', 'Updating public filters...');
-                ktl.core.knAPI(viewId, recId, apiData, 'PUT', [viewId])
-                    .then(function (response) { ktl.log.clog('green', 'Public filters updated successfully!'); })
-                    .catch(function (reason) { alert('An error occurred while updating Public filters in table, reason: ' + JSON.stringify(reason)); })
+                var recId = $('#' + viewId + ' tbody tr:contains("APP_PUBLIC_FILTERS")');
+                if (recId.length) {
+                    recId = recId[0].id;
+                    ktl.log.clog('blue', 'Updating public filters...');
+                    ktl.core.knAPI(viewId, recId, apiData, 'PUT', [viewId])
+                        .then(function (response) { ktl.log.clog('green', 'Public filters updated successfully!'); })
+                        .catch(function (reason) { alert('An error occurred while updating Public filters in table, reason: ' + JSON.stringify(reason)); })
+                }
             },
 
             //This is where local and public filters are merged together.
