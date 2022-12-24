@@ -108,7 +108,7 @@ tr:hover {
 }
 
 .filterBtn.public {
-	filter: brightness(80%);
+	filter: contrast(1.6);
 }
 
 /************ Improved Chzn Dropdown **************/
