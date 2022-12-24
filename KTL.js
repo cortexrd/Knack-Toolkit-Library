@@ -2511,8 +2511,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                         ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                                 }
                             },
-                            onEnd: function (evt) {
-                            }
                         });
                     }
                 }
