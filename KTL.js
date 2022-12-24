@@ -2459,14 +2459,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             filterDivId + '_' + btnIndex + '_' + FILTER_BTN_SUFFIX);
 
                         filterBtn.classList.add('filterBtn');
-                        if (filter.public) {
+                        if (filter.public)
                             filterBtn.classList.add('public');
-                            if (Knack.getUserRoleNames().includes('Create Filters'))
-                                filterBtn.classList.add('draggable');
-                        } else {
-                            filterBtn.classList.add('draggable');
+                        else
                             filterBtn.classList.remove('public');
-                        }
 
                         if (btnIndex === activeFilterIndex)
                             filterBtn.classList.add('activeFilter');
@@ -2491,24 +2487,31 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     //Setup Drag n Drop for filter buttons.
                     if (document.getElementById(filterDivId + '-filterDivId')) {
                         new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
-                            draggable: '.draggable',
                             swapThreshold: 0.96,
                             animation: 250,
                             easing: "cubic-bezier(1, 0, 0, 1)",
-                            onEnd: function (evt) {
-                                //When a drag n drop is done, update localStorage for this view.
-                                var filterDiv = evt.to;
-                                var fltAr = [];
-                                filterDiv.children.forEach(function (item) {
-                                    var filterName = item.innerText;
-                                    var filterIndex = getFilterIndex(allFiltersObj, filterName, filterDivId);
-                                    fltAr.push(allFiltersObj[filterDivId].filters[filterIndex]);
-                                });
+                            onMove: function (/**Event*/evt, /**Event*/originalEvent) {
+                                if (evt.dragged.filter.public && !Knack.getUserRoleNames().includes('Public Filters'))
+                                    return false; //Cancel
+                            },
+                            onChange: function (/**Event*/evt) {
+                                //For public filters, when a drag n drop is done, update localStorage for this view, if order has changed.
+                                if (evt.item.filter && evt.item.filter.public) {
+                                    var filterDiv = evt.to;
+                                    var fltAr = [];
+                                    filterDiv.children.forEach(function (item) {
+                                        var filterName = item.innerText;
+                                        var filterIndex = getFilterIndex(allFiltersObj, filterName, filterDivId);
+                                        fltAr.push(allFiltersObj[filterDivId].filters[filterIndex]);
+                                    });
 
-                                allFiltersObj[filterDivId].filters = fltAr;
-                                saveAllFilters(filterDivId); //Save updated object
-                                if (evt.item.filter.public)
-                                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                                    allFiltersObj[filterDivId].filters = fltAr;
+                                    saveAllFilters(filterDivId); //Save updated object
+                                    if (evt.item.filter.public)
+                                        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                                }
+                            },
+                            onEnd: function (evt) {
                             }
                         });
                     }
@@ -2601,7 +2604,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var filterName = $('#' + id).text();
             var filterIndex = getFilterIndex(allFiltersObj, filter.filterName, viewId);
             var isPublic = allFiltersObj[viewId].filters[filterIndex].public;
-            if (isPublic && !Knack.getUserRoleNames().includes('Create Filters')) {
+            if (isPublic && !Knack.getUserRoleNames().includes('Public Filters')) {
                 $('.menuDiv').remove(); //JIC
                 return;
             }
@@ -2683,7 +2686,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //Public Filters, visible to all users.
             var listPublicFilters;
-            if (Knack.getUserRoleNames().includes('Create Filters')) {
+            if (Knack.getUserRoleNames().includes('Public Filters')) {
                 listPublicFilters = document.createElement('li');
                 listPublicFilters.innerHTML = '<i class="fa fa-gift" style="margin-top: 2px;"></i> Public: ';
                 listPublicFilters.style.marginBottom = '8px';
