@@ -2469,17 +2469,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         else
                             filterBtn.classList.remove('activeFilter');
 
-                        //===================================================================================================
-                        //Handle button click: apply filter =================================================================
                         filterBtn.filter = filter;
                         filterBtn.save = true;
+
+                        //================================================================
+                        //Handle button click: apply filter
                         filterBtn.addEventListener('click', e => { onFilterBtnClicked(e, filterDivId); });
 
-                        //===================================================================================================
-                        //Right-click to provide Delete and Rename options.
-                        filterBtn.addEventListener('contextmenu', function (e) {
-                            contextMenuFilter(e, filterDivId, e.target.filter);
-                        })
+                        //================================================================
+                        //Right-click to provide Public Delete, Rename options in a popup.
+                        filterBtn.addEventListener('contextmenu', function (e) { contextMenuFilter(e, filterDivId, e.target.filter); })
                     }
 
                     applyButtonColors();
@@ -5341,7 +5340,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
                     else {
                         console.log('sending reloadAppMsg with ver:', newSWVersion);
-                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: currentSWVersion });
+                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: newSWVersion });
                     }
                 }
 
