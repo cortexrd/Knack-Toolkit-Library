@@ -5338,7 +5338,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var newSWVersion = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_KTL_VERSIONS") .field_1885')[0].innerText;
                 if (newSWVersion !== APP_KTL_VERSIONS) {
                     if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
-                        alert(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.');
+                        ktl.core.timedPopup(Knack.getUserAttributes().name + ' - Versions are different!  Please update the Apps settings.', 'warning', 4000);
                     else {
                         console.log('sending reloadAppMsg with ver:', newSWVersion);
                         ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: currentSWVersion });
