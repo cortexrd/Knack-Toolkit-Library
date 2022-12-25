@@ -27,6 +27,10 @@ h2 {
 	display: block !important;
 }
 
+.show-menu .knHeader {
+	display: block !important;
+}
+
 .show-menu .kn-info-bar {
 	display: block !important;
 }
@@ -161,3 +165,7 @@ tr:hover {
 }
 
 /**** KTL_RELATED - END ****/
+
+
+
+
