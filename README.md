@@ -59,9 +59,6 @@ provide many nice additions to your app:
 
 -   user filters to save your filters to named buttons
 
--   public filters, which are similar to user filters, but created by an
-    administrator and visible to all users
-
 -   form data persistence that saves as you type, and will load back
     your data if a page is reloaded after a submit failure or power
     outage
