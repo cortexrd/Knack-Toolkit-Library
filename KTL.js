@@ -2681,6 +2681,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                         saveAllFilters(viewId);
                         ktl.views.refreshView(viewId);
+
+                        if (filter.public)
+                            ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                     }
                 }
             });
@@ -2912,42 +2915,39 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //This is where local and public filters are merged together.
             downloadPublicFilters: function (newPublicFiltersData = {}) {
-                if (!newPublicFiltersData.newPublicFilters ||
-                    !newPublicFiltersData.newPublicFiltersDate ||
-                    newPublicFiltersData.newPublicFilters.length <= 1) return;
+                if (!newPublicFiltersData.newPublicFilters || newPublicFiltersData.newPublicFilters.length <= 1) return;
 
                 loadAllFilters();
 
                 try {
                     var pubFiltersObj = JSON.parse(newPublicFiltersData.newPublicFilters);
-
-                    const views = Object.entries(allFiltersObj);
+                    const views = Object.entries(pubFiltersObj);
                     views.forEach(function (view) {
+                        var arNew = []; //Start with a fresh new array, and rebuild it.
                         var viewId = view[0];
+                        if (allFiltersObj[viewId]) {
+                            var filters = allFiltersObj[viewId].filters;
 
-                        var actFilterIdx = view[1].active;
-                        if (actFilterIdx === null) actFilterIdx = -1; //To fix old bug.
+                            //Get active filter name in case we need to put it back when done.
+                            var actFilterName = '';
+                            var actFilterIdx = allFiltersObj[viewId].active;
+                            if (actFilterIdx === null) actFilterIdx = -1; //To fix old bug.
+                            if (actFilterIdx >= 0)
+                                actFilterName = allFiltersObj[viewId].filters[actFilterIdx].filterName;
 
-                        var actFilterName = '';
-                        if (actFilterIdx >= 0)
-                            actFilterName = view[1].filters[actFilterIdx].filterName;
-
-                        //Delete any existing public filters for that view.
-                        var filters = view[1].filters;
-                        var arNew = [];
-                        for (var j = 0; j < filters.length; j++) {
-                            var filter = filters[j];
-                            if (filter && !filter.public) {
-                                arNew.push(filter);
+                            for (var j = 0; j < filters.length; j++) {
+                                var filter = filters[j];
+                                if (filter && !filter.public) {
+                                    arNew.push(filter);
+                                }
                             }
-                        }
+                        } else
+                            allFiltersObj[viewId] = { filters: [] };
 
-                        //If that view exists in the pubFiltersObj, insert public filters at head of array.
-                        if (pubFiltersObj[viewId]) {
-                            var fltAr = pubFiltersObj[viewId].filters;
-                            for (var i = fltAr.length - 1; i >= 0; i--)
-                                arNew.unshift(fltAr[i]);
-                        }
+                        //Insert public filters at head of array.
+                        var fltAr = pubFiltersObj[viewId].filters;
+                        for (var i = fltAr.length - 1; i >= 0; i--)
+                            arNew.unshift(fltAr[i]);
 
                         allFiltersObj[viewId].filters = arNew;
                         saveAllFilters(viewId);
@@ -2955,10 +2955,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         //Put back the active filter, if any.
                         ktl.userFilters.setActiveFilter(actFilterName, viewId);
                         ktl.views.refreshView(viewId);
-
-                        //Set last date to same as in the table.
-                        ktl.storage.lsSetItem('PUBLIC_FILTERS_LAST_UPDATE' + Knack.getUserAttributes().id, newPublicFiltersData.newPublicFiltersDate);
                     })
+
+                    //Set last value to same as in the table.
+                    ktl.storage.lsSetItem('PUBLIC_FILTERS_LAST_UPDATE' + Knack.getUserAttributes().id, newPublicFiltersData.newPublicFilters);
                 }
                 catch (e) {
                     console.log('Exception in downloadPublicFilters:', e);
@@ -5346,20 +5346,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var newPublicFilters = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_PUBLIC_FILTERS") .field_1885')[0].innerText;
                 if (newPublicFilters) {
-                    var newPublicFiltersDate = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_PUBLIC_FILTERS") .field_1886')[0].innerText;
-                    var dt = Date.parse(newPublicFiltersDate);
-
                     var needUpdate = false;
-                    var psLastDtStr = ktl.storage.lsGetItem('PUBLIC_FILTERS_LAST_UPDATE' + Knack.getUserAttributes().id);
-                    if (psLastDtStr) {
-                        var lastPfDate = Date.parse(psLastDtStr);
-                        if (ktl.core.isMoreRecent(dt, lastPfDate))
-                            needUpdate = true;
-                    } else
+                    var pubFiltersLastStr = ktl.storage.lsGetItem('PUBLIC_FILTERS_LAST_UPDATE' + Knack.getUserAttributes().id);
+                    if (pubFiltersLastStr !== newPublicFilters)
                         needUpdate = true;
 
                     if (needUpdate)
-                        ktl.wndMsg.send('publicFiltersHaveChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters, newPublicFiltersDate: newPublicFiltersDate });
+                        ktl.wndMsg.send('publicFiltersHaveChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters });
                 }
             }
         })
