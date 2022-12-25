@@ -284,6 +284,9 @@ internally, but also available to your app.
     returns true if it\'s in the past, ignoring the time component. If a
     second date is not provided, it uses today.
 
+-   **isMoreRecent**: Compares two dates and returns true is first
+    parameter is more recent than second one. Resolution is one minute.
+
 -   **selectElementContents**: Selects all element\'s text.
 
 -   **timedPopup**: Generates a brief, auto-delete popup with status
@@ -1263,7 +1266,7 @@ Namely:
 
     d.  Remote SW Updates (the page and view setup will come soon)
 
-    e.  App Filters (in progress)
+    e.  Public Filters
 
 2)  Bulk Operations
 
