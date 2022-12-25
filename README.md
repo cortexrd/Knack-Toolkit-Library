@@ -2,8 +2,8 @@
 -   [Overview](#overview)
     -   [Zero config needed for Basic
         Features](#zero-config-needed-for-basic-features)
--   [No time to read all this now. How about a quick
-    tryout?](#no-time-to-read-all-this-now.-how-about-a-quick-tryout)
+-   [No time to read all this now - How about a quick
+    tryout?](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
 -   [Features](#features)
     -   [Bootloader](#bootloader)
     -   [Core](#core)
@@ -109,7 +109,7 @@ provide many nice additions to your app:
 Click the following link if you're interested to know more about
 [Advanced Features](#advanced-features).
 
-# No time to read all this now. How about a quick tryout?
+# No time to read all this now - How about a quick tryout?
 
 If you want to try/use the basic, default setup version of the KTL, all
 you need to do is copy the content of those two files:
@@ -1059,7 +1059,7 @@ code resides in the Builder\'s Javascript and CSS panes.
 To use this mode, you have two options:
 
 1)  Use the default, basic, ready-to-use setup
-    [here](#no-time-to-read-all-this-now.-how-about-a-quick-tryout)
+    [here](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
 
 2)  Use your custom app code and generate the ACB file yourself. This is
     described in the following section.
