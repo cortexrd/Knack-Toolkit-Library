@@ -3,6 +3,7 @@
 //Version 1.0
 
 const fs = require('fs');
+const path = require("path");
 
 var fileName = ''; //Required, without extension and no spaces.
 var appName = ''; //Optional, must and have no spaces.  If omitted, will use same as Knack app.
@@ -19,7 +20,7 @@ process.argv.forEach(function (val, index, array) {
 });
 
 function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
-    if (!fileName || fileName.includes('.')) {
+    if (!fileName || fileName.includes('.js') || fileName.includes('.css')) {
         console.log('\n\nERROR: filename must be specified, without extension.');
         return;
     }
@@ -34,7 +35,7 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
         return;
     }
 
-    console.log('ext =', ext);
+    console.log('STARTING MERGE...........');
 
     if (ext !== 'js' && ext !== 'css') {
         console.log('\n\nERROR: extension must be js or css, without the dot.');
@@ -42,24 +43,23 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
     }
 
 
+    var folder = process.cwd();
+    console.log('folder =', folder);
 
     const mergedFile = fileName + '_ACB.' + ext;
     fileName += '.' + ext;
 
-    console.log('filename =', fileName);
-    console.log('ktlPath =', ktlPath);
-    console.log('appname =', appName ? appName : 'Same as Knack');
+    console.log('extension:\t', ext);
+    console.log('filename:\t', fileName);
+    console.log('ktlPath:\t', ktlPath);
+    console.log('appname:\t', appName ? appName : 'Same as Knack');
 
     if (filesToMerge.length) {
         try {
             if (fs.existsSync(mergedFile))
                 fs.truncateSync(mergedFile, 0);
-
-            if (!fs.existsSync(fileName)) {
-                console.log('\n\nERROR: ' + fileName + ' - File not found.');
-                return;
-            }
         } catch (err) {
+            console.log('222', err);
             console.error(err)
         }
 
@@ -69,7 +69,17 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
         var data = '';
         for (var index = 0; index < filesToMerge.length; index++) {
             var fileToMerge = filesToMerge[index];
-            console.log('Merging file', fileToMerge);
+            console.log('Merging file\t', fileToMerge);
+
+            if (!fs.existsSync(fileToMerge)) {
+                if (ext === 'css') //css can be omitted legitimately, when not needed.
+                    continue;
+                else {
+                    console.log('\n\nERROR: ' + fileToMerge + ' - File not found.');
+                    return;
+                }
+            }
+
             data = fs.readFileSync(fileToMerge, 'utf8');
 
             if (ext === 'js') {
@@ -83,12 +93,20 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
             }
 
             fs.appendFileSync(mergedFile, data);
-            console.log('\nMerged file =', mergedFile);
+        }
+
+        try {
+            var absolutePath = path.resolve(mergedFile);
+            const stats = fs.statSync(absolutePath)
+            console.log('\x1b[36m%s\x1b[0m', '\nMerged file:\t ' + absolutePath);
+            console.log('\x1b[33m%s\x1b[0m', 'File size:\t ' + stats.size + ' bytes\n\n');
+        } catch (err) {
+            console.log(err)
         }
     }
-
 }
 
+console.clear();
 
 mergeFiles(fileName, 'js', [
     ktlPath + '\\KTL_Bootloader.js', //Order is important!
@@ -99,3 +117,7 @@ mergeFiles(fileName, 'css', [
     ktlPath + '\\KTL.css'
 ]);
 
+console.log('Press any key to exit');
+process.stdin.setRawMode(true);
+process.stdin.resume();
+process.stdin.on('data', process.exit.bind(process, 0));
