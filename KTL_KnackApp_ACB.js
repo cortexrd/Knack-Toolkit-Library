@@ -2326,8 +2326,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
     this.userFilters = (function () {
         const SAVE_FILTER_BTN = 'Save';
+        const STOP_FILTER_BTN = 'Stop';
         const FILTER_BTN_SUFFIX = 'filterBtn';
         const SAVE_FILTER_BTN_SEL = SAVE_FILTER_BTN + '-' + FILTER_BTN_SUFFIX; //ex: view_1234-SaveFilter-filterBtn
+        const STOP_FILTER_BTN_SEL = STOP_FILTER_BTN + '-' + FILTER_BTN_SUFFIX; //ex: view_1234-StopFilter-filterBtn
 
         var allFiltersObj = {}; //The main object that drives the whole feature.
         var applyFilter = true;
@@ -2674,6 +2676,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 saveFilterButton.innerHTML = '<i class="fa fa-save fa-lg" id="' + filterDivId + '-' + SAVE_FILTER_BTN_SEL + '"></i><div class="tooltip"><span class="tooltiptext">Name and save your filter.<br>This will create a button.</span ></div>';
                 saveFilterButton.addEventListener('click', e => { ktl.userFilters.onSaveFilterBtnClicked(e, filterDivId); });
 
+                //Remove all active filters button
+                var stopFilterButton = ktl.fields.addButton(filterCtrlDiv, 'Stop Filter', filterBtnStyle + '; background-color: #e0cccc',
+                    ['kn-button', 'is-small'],
+                    filterDivId + '_' + STOP_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
+
+                stopFilterButton.setAttribute('disabled', 'true');
+                stopFilterButton.classList.add('filterControl', 'tooltip');
+                stopFilterButton.innerHTML = '<i class="fa fa-times fa-lg" id="' + filterDivId + '-' + STOP_FILTER_BTN_SEL + '"></i><div class="tooltip"><span class="tooltiptext">Remove all filtering and show all records.</span ></div>';
+                stopFilterButton.addEventListener('click', e => { onStopFilterBtnClicked(e, filterDivId); });
+
                 //Section for draggable user filter buttons.
                 var filterDiv = $('#' + filterDivId + ' .filterDiv');
                 if (filterDiv.length === 0) {
@@ -2768,8 +2780,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 //Enable/disable control buttons (Only save in this case)
                 if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from "Add filters"?
-                    var saveBtn = document.querySelector('#' + filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
-                    saveBtn && saveBtn.removeAttribute('disabled');
+                    saveFilterButton.removeAttribute('disabled');
+                    stopFilterButton.removeAttribute('disabled');
                 }
             })
         }
@@ -2835,6 +2847,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             if (window.location.href !== newUrl)
                 window.location.href = newUrl;
+        };
+
+        function onStopFilterBtnClicked(e, filterDivId) {
+            var closeFilters = document.querySelectorAll('#' + filterDivId + ' .kn-remove-filter');
+            closeFilters.forEach(closeBtn => { closeBtn.click(); });
+            ktl.userFilters.setActiveFilter('', filterDivId);
         };
 
         function applyButtonColors() {
