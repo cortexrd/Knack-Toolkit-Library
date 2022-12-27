@@ -2214,11 +2214,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             var activeFilter = allFiltersObj[viewId].active;
             if (activeFilter >= 0) {
-                var searchString = document.querySelector('#' + viewId + ' .table-keyword-search input').value;
-                allFiltersObj[viewId].filters[activeFilter].search = searchString;
-                saveAllFilters(viewId);
-                if (allFiltersObj[viewId].filters[activeFilter].public && Knack.getUserRoleNames().includes('Public Filters'))
-                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                var isPublic = allFiltersObj[viewId].filters[activeFilter].public;
+                if (!isPublic || (isPublic && Knack.getUserRoleNames().includes('Public Filters'))) {
+                    var searchString = document.querySelector('#' + viewId + ' .table-keyword-search input').value;
+                    allFiltersObj[viewId].filters[activeFilter].search = searchString;
+
+                    saveAllFilters(viewId);
+
+                    if (allFiltersObj[viewId].filters[activeFilter].public && Knack.getUserRoleNames().includes('Public Filters'))
+                        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                }
             }
         }
 
@@ -2350,7 +2355,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Save all filters to local storage. 
         //But before, read back from localStorage and merge with any external updates from another browser.
-        function saveAllFilters(filterDivId = '', forceActiveIndex) {
+        function saveAllFilters(filterDivId = '') {
             if (filterDivId) {
                 var allFiltersObjTemp = loadAllFilters(false);
 
@@ -2366,7 +2371,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (allFiltersObjTemp[filterDivId]) { //Existing view
                     if (allFiltersObj[filterDivId]) { //Modified filter
                         allFiltersObjTemp[filterDivId] = allFiltersObj[filterDivId];
-                        allFiltersObjTemp[filterDivId].active = forceActiveIndex ? forceActiveIndex : activeIndex;
+                        allFiltersObjTemp[filterDivId].active = activeIndex;
                     } else //Deleted filter.
                         delete allFiltersObjTemp[filterDivId];
 
@@ -2380,22 +2385,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 allFiltersObj = allFiltersObjTemp;
             }
 
-            activeIndex = allFiltersObjTemp[filterDivId].active;
-            var isPublic = false;
-            var filterName = '';
-            if (activeIndex >= 0) {
-                isPublic = allFiltersObj[filterDivId].filters[activeIndex].public;
-                filterName = allFiltersObj[filterDivId].filters[activeIndex].filterName;
-            }
-
-            console.log('isPublic =', filterDivId, filterName, isPublic);
-
-
             try {
-                if (!isPublic || (isPublic && Knack.getUserRoleNames().includes('Public Filters'))) {
-                    console.log('saving filters');
-                    ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, JSON.stringify(allFiltersObj));
-                }
+                ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, JSON.stringify(allFiltersObj));
             } catch (e) {
                 console.log('Error while saving filters:', e);
             }
@@ -2549,7 +2540,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             var activeFilter = document.querySelector('#' + filterDivId + ' .activeFilter');
             if (activeFilter) {
-                if (activeFilter.filter.filterName === e.target.filter.filterName)
+                //Don't re-apply same filter, unless it is public, since those can be updated in the background.
+                if (!activeFilter.filter.public && (activeFilter.filter.filterName === e.target.filter.filterName))
                     return;
             }
 
@@ -2794,7 +2786,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             setActiveFilter: function (filterName = '', viewId = '') {
                 if (!viewId) return;
-
                 if (filterName) {
                     var filterIndex = getFilterIndex(allFiltersObj, filterName, viewId);
                     if (filterIndex >= 0) {
@@ -2866,6 +2857,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             i = allFiltersObj[filterDivId].active;
                             if (i < 0) return;
                             filterName = allFiltersObj[filterDivId].filters[i].filterName;
+
+                            var isPublic = allFiltersObj[filterDivId].filters[i].public;
+                            if (isPublic && !Knack.getUserRoleNames().includes('Public Filters'))
+                                return;
+
                             exists = true;
                         } else {
                             var filter = {};
@@ -5386,11 +5382,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var newPublicFilters = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_PUBLIC_FILTERS") .' + cfg.appSettingsValueFld)[0].innerText;
                 if (newPublicFilters) {
                     var needUpdate = false;
-                    var pubFiltersLastStr = ktl.storage.lsGetItem('PUBLIC_FILTERS_LAST_UPDATE' + Knack.getUserAttributes().id);
-                    if (pubFiltersLastStr !== newPublicFilters)
+                    if (!ktl.storage.lsGetItem(LS_FILTERS + Knack.getUserAttributes().id))
                         needUpdate = true;
+                    else {
+                        var pubFiltersLastStr = ktl.storage.lsGetItem('PUBLIC_FILTERS_LAST_UPDATE' + Knack.getUserAttributes().id);
+                        if (pubFiltersLastStr !== newPublicFilters)
+                            needUpdate = true;
+                    }
 
-                    console.log('needUpdate =', needUpdate);
                     if (needUpdate)
                         ktl.wndMsg.send('publicFiltersHaveChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters });
                 }
