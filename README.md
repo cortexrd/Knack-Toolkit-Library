@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.1 - pre-release
+v0.6.4 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -659,9 +659,10 @@ other mishaps. **Data is erased** when the form is **submitted**
 
 When \"Add filters\" is used in tables, it is possible to save each one
 you create to a named button by clicking on the yellow diskette save
-icon. Your filters are saved in localStorage but can be saved/restored
-to/from Knack for backup or migration to other devices, provided some
-additional setup. See the [User Filters setup
+icon. The \[X\] icon with a pink color is to remove the active filter
+and see all records. Your filters are saved in localStorage but can be
+saved/restored to/from Knack for backup or migration to other devices,
+provided some additional setup. See the [User Filters setup
 procedure](#user-filters-1).
 
 Each active filter will not only remember its filter parameters, but
@@ -736,14 +737,14 @@ apply to all selected records. Click yes to apply to all. A confirmation
 message will pop up after completion.
 
 \*\* Important note\*\* the table\'s sort+filter combination may cause
-your changes to disappear due to being out of scope. This is normal. You
-can prevent this by first choosing a sort+filter combination that will
-not cause this. Ideally set the filtering to show only a very restricted
-number of records, but still include the ones you need. Experimenting
-with only a few records at a time (less than 10) or even better "test
-records" is recommended as a starting point. If you\'ve made an error,
-the process can be interrupted (but not undone) at any time by pressing
-F5 to reload the page.
+your changes to disappear due to becoming out of scope. This is normal.
+You can prevent this by first choosing a sort+filter combination that
+will not cause this. Ideally set the filtering to show only a very
+restricted number of records, but still include the ones you need.
+Experimenting with only a few records at a time (less than 10) or even
+better "test records" is recommended as a starting point. If you\'ve
+made an error, the process can be interrupted (but not undone) at any
+time by pressing F5 to reload the page.
 
 ### Bulk Delete
 
@@ -1372,7 +1373,7 @@ follow this procedure:
     f.  **UTC Last Activity**: Type: Date/Time, Date Format: mm/dd/yyyy,
         Time Format: military.
 
-3)  Create a new object called **App Settings** with these fields:
+3)  Create a **new object** called **App Settings** with these fields:
 
     a.  **Item**: Type: Short Text, set as object's Display Field and
         Sort in Alphabetic order.
@@ -1382,7 +1383,10 @@ follow this procedure:
     c.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time
         Format: military.
 
-4)  In the iFrameWnd page created above, add a Form view that updates
+4)  Add two records with Item set to **APP_KTL_VERSIONS** and
+    **APP_PUBLIC_FILTERS**. Leave Value and Date/Time blank.
+
+5)  In the iFrameWnd page created above, add a Form view that updates
     the currently logged-in account. Once the view is added, remove all
     fields, then add on a first line: SW Version, UTC HB and LOC HB (set
     as read-only). Then on a second line: Online, UTC Last Activity and
@@ -1390,13 +1394,19 @@ follow this procedure:
     rules, enable auto-reload and set the Confirmation message to
     "Heartbeat sent successfully.".
 
-5)  Be sure you have the Show iFrameWnd checkbox on in [User
+6)  Still in the iFrameWnd, add a table view that displays App Settings,
+    with title: **App Settings AUTOREFRESH=15**. Source filter: **Item
+    Starting with APP**, sorted alphabetically A to Z. No Search, inline
+    editing = On, 10 records at a time, no filtering allowed. Add all
+    fields.
+
+7)  Be sure you have the Show iFrameWnd checkbox on in [User
     Prefs](#user-preferences-1) above.
 
-6)  Refresh the app and you should see in the iFrameWnd the heartbeat
+8)  Refresh the app and you should see in the iFrameWnd the heartbeat
     being submitted every minute and the Online being set to Yes.
 
-7)  **VIEWER**: To view the heartbeats, online status, latest activity,
+9)  **VIEWER**: To view the heartbeats, online status, latest activity,
     SW Version, etc., create a Sysop Dashboard page accessible to
     Developer role only, with a table view that shows the Accounts
     having an Active status. Title: **Account Status AUTOREFRESH=60**.
@@ -1405,7 +1415,7 @@ follow this procedure:
     can assess the presence, latest activity and SW Version for each
     account.
 
-8)  **Note**: The Online status flag is set, but never reset
+10) **Note**: The Online status flag is set, but never reset
     automatically. You'll need to create a daily task to reset it. I
     also have some existing code that does it with API calls, but need
     to add it to the KTL soon. TODO: provide code for Online update,
