@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.1';
+    const KTL_VERSION = '0.6.2';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2217,6 +2217,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var searchString = document.querySelector('#' + viewId + ' .table-keyword-search input').value;
                 allFiltersObj[viewId].filters[activeFilter].search = searchString;
                 saveAllFilters(viewId);
+                if (allFiltersObj[viewId].filters[activeFilter].public && Knack.getUserRoleNames().includes('Public Filters'))
+                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
             }
         }
 
@@ -2378,8 +2380,22 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 allFiltersObj = allFiltersObjTemp;
             }
 
+            activeIndex = allFiltersObjTemp[filterDivId].active;
+            var isPublic = false;
+            var filterName = '';
+            if (activeIndex >= 0) {
+                isPublic = allFiltersObj[filterDivId].filters[activeIndex].public;
+                filterName = allFiltersObj[filterDivId].filters[activeIndex].filterName;
+            }
+
+            console.log('isPublic =', filterDivId, filterName, isPublic);
+
+
             try {
-                ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, JSON.stringify(allFiltersObj));
+                if (!isPublic || (isPublic && Knack.getUserRoleNames().includes('Public Filters'))) {
+                    console.log('saving filters');
+                    ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, JSON.stringify(allFiltersObj));
+                }
             } catch (e) {
                 console.log('Error while saving filters:', e);
             }
@@ -2807,7 +2823,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            //When user saves a filter to a named button
+            //When user saves a filter to a named button, or when a filter's parameter is modified, like the sort order.
             onSaveFilterBtnClicked: function (e, filterDivId = '', updateSame = false) {
                 if (!filterDivId) return;
 
@@ -2875,6 +2891,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                 if (newSearchStr)
                                     allFiltersObj[filterDivId].filters[i].search = newSearchStr;
+
+                                if (allFiltersObj[filterDivId].filters[i].public && Knack.getUserRoleNames().includes('Public Filters'))
+                                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                             }
                         } else {
                             //console.log('Adding filter to existing view');
@@ -4126,6 +4145,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
             modifyTableSort: function (e) {
+                //This is buggy.  For some reason, the sort order does not always reflect the data displayed.
+                //Leave is for developers to debug, but stop annoying users until we find a solution.
+                //Code is ispired from function handleClickSort in Knack.views.view_x.handleClickSort
+                if (!ktl.account.isDeveloper()) return;
+
                 if (e.target.closest('.kn-sort')) {
                     var viewId = e.target.closest('.kn-table.kn-view');
                     if (viewId) {
@@ -4137,43 +4161,58 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (alreadySorted)
                             return;
 
+                        console.log('e =', e);
                         var fieldId = e.target.closest('th').className;
                         if (Knack.objects.getField(fieldId)) {
-                            e.preventDefault();
+                           //e.preventDefault();
 
                             var fieldAttr = Knack.objects.getField(fieldId).attributes;
-                            var invert = false;
+                            var ctrlClickInvert = false;
                             if (e.ctrlKey)
-                                invert = true;
+                                ctrlClickInvert = true;
 
                             var href = e.target.closest('[href]');
                             if (href) {
-                                Knack.views[viewId].model.view.source.sort[0].field = href.getAttribute('href').split(/[#|]/)[1];
+                                var newHref = e.target.closest('.kn-sort').href;
+                                console.log('newHref =', newHref);
+                                var order = newHref.split('|')[1];
+                                console.log('original order =', order);
+                                var newField = newHref.split('|')[0].split('#')[1];
+                                console.log('newField =', newField);
+
+                                var viewObj = Knack.views[viewId];
+                                console.log('viewObj =', viewObj);
 
                                 if (fieldAttr.type === 'date_time')
-                                    Knack.views[viewId].model.view.source.sort[0].order = invert ? 'asc' : 'desc';
-                                else
-                                    Knack.views[viewId].model.view.source.sort[0].order = invert ? 'desc' : 'asc';
+                                    ctrlClickInvert ^= ctrlClickInvert;
 
-                                Knack.showSpinner();
-                                jQuery.blockUI({
-                                    message: '',
-                                    overlayCSS: {
-                                        backgroundColor: '#ddd',
-                                        opacity: 0.2,
-                                    },
-                                })
+                                console.log('ctrlClickInvert =', ctrlClickInvert);
 
-                                ktl.views.refreshView(viewId)
-                                    .then(function () {
-                                        //For some reason, we need a second refresh, otherwise order is wrong.  TODO: Need to find a better solution.
-                                        ktl.views.refreshView(viewId)
-                                            .then(function () {
-                                                Knack.hideSpinner();
-                                                jQuery.unblockUI();
-                                                ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
-                                            })
-                                    })
+                                order = ctrlClickInvert ? 'desc' : 'asc';
+                                console.log('new order =', order);
+
+                                viewObj.model.view.source.sort = [{
+                                    field: newField,
+                                    order: order
+                                }];
+
+                                var i = {};
+                                i[viewObj.model.view.key + "_sort"] = newField + "|" + order;
+                                var r = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
+
+                                e.preventDefault(),
+                                    viewObj.showLoading();
+
+                                Knack.router.navigate(r),
+                                    Knack.setHashVars(),
+                                    viewObj.model.setDataAPI(),
+                                    viewObj.model.fetch();
+
+                                setTimeout(function () {
+                                    ktl.views.refreshView(viewId);
+                                    ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                                }, 2000);
+
                             }
                         }
                     }
@@ -5334,7 +5373,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         .catch(function () { })
                 }
             } else if (view.key === cfg.appSettingsViewId) {
-                var newSWVersion = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_KTL_VERSIONS") .field_1885')[0].innerText;
+                var newSWVersion = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_KTL_VERSIONS") .' + cfg.appSettingsValueFld)[0].innerText;
                 if (newSWVersion !== APP_KTL_VERSIONS) {
                     if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
                         ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
@@ -5344,13 +5383,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
 
-                var newPublicFilters = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_PUBLIC_FILTERS") .field_1885')[0].innerText;
+                var newPublicFilters = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_PUBLIC_FILTERS") .' + cfg.appSettingsValueFld)[0].innerText;
                 if (newPublicFilters) {
                     var needUpdate = false;
                     var pubFiltersLastStr = ktl.storage.lsGetItem('PUBLIC_FILTERS_LAST_UPDATE' + Knack.getUserAttributes().id);
                     if (pubFiltersLastStr !== newPublicFilters)
                         needUpdate = true;
 
+                    console.log('needUpdate =', needUpdate);
                     if (needUpdate)
                         ktl.wndMsg.send('publicFiltersHaveChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters });
                 }
