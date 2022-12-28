@@ -2092,7 +2092,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //New format
     const LS_UF = 'UF_';
     const LS_UFP = 'UFP_';
-    const LS_ACT_FILTERS = 'UF_ACTIVE_';
+    const LS_UF_ACT = 'UF_ACTIVE_';
 
 
     this.userFilters = (function () {
@@ -2104,7 +2104,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         var userFiltersObj = {}; //The main user filters object that drives the whole feature.
         var publicFiltersObj = {}; //The main public filters object that drives the whole feature.
-
         var activeFilterNameObj = {}; //To keep the name of the curently active filter for each view.
 
         var applyFilter = true;
@@ -2378,6 +2377,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             return fltObjTemp;
         }
 
+        function loadActiveFilters() {
+            var lsStr = ktl.storage.lsGetItem(LS_UF_ACT + Knack.getUserAttributes().id);
+            if (lsStr) {
+                try {
+                    var fltObjTemp = JSON.parse(lsStr);
+                    activeFilterNameObj = fltObjTemp;
+                } catch (e) {
+                    alert('loadActiveFilters - Error Found Parsing object:', e);
+                }
+            }
+        }
+
         //Save all filters to local storage.
         //But before, read back from localStorage and merge with any external updates from another browser.
         function saveFilters(type = '', viewId = '') {
@@ -2440,10 +2451,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //The entry point of the User Filters and Public Filters.
         var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
         function addFilterButtons(viewId = '') {
-            if (!document.querySelector('#' + viewId + ' .kn-add-filter') || document.querySelector('#' + viewId + ' .filterCtrlDiv'))
+            if (!document.querySelector('#' + viewId + ' .kn-add-filter'))
                 return;
 
-            var allFiltersBar = document.querySelectorAll('[id^=kn-report-' + viewId + '-] .level-left'); //Report viewx
+            var allFiltersBar = document.querySelectorAll('[id^=kn-report-' + viewId + '-] .level-left'); //Report views
             if (!allFiltersBar.length)
                 allFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left'); //Table views
 
@@ -2456,6 +2467,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     else
                         return;
                 }
+
+                //Force re-creation each time to get clean button order.
+                $('#' + filterDivId + ' .filterCtrlDiv').remove();
 
                 //Section for non-draggable control buttons.
                 var filterCtrlDiv = $('#' + filterDivId + ' .filterCtrlDiv');
@@ -2499,7 +2513,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     $('#' + filterDivId + ' .filterDiv').css({ 'display': 'flex', 'margin-left': '5px' });
                 }
 
-                loadFilterButtons(filterDivId, fltBtnsDivId);
+                createFilterButtons(filterDivId, fltBtnsDivId);
 
                 //Enable/disable control buttons (Only save in this case)
                 if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from "Add filters"?
@@ -2509,9 +2523,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             })
         }
 
-        function loadFilterButtons(filterDivId = '', fltBtnsDivId = '') {
+        function createFilterButtons(filterDivId = '', fltBtnsDivId = '') {
             if (!filterDivId) return;
-            
+
             if (!userFiltersObj.isEmpty && !$.isEmptyObject(userFiltersObj[filterDivId])) {
                 var errorFound = false;
                 var activeFilterIndex = getActiveFilterIndex(filterDivId);
@@ -2550,43 +2564,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     filterBtn.addEventListener('contextmenu', e => { contextMenuFilter(e, filterDivId, e.target.filter); })
                 }
 
-                if (errorFound) loadFilterButtons(filterDivId, fltBtnsDivId);
+                if (errorFound) createFilterButtons(filterDivId, fltBtnsDivId);
 
                 applyButtonColors();
-
-                //Setup Drag n Drop for filter buttons.
-                if (document.getElementById(filterDivId + '-filterDivId')) {
-                    var sortableTimer;
-                    new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
-                        swapThreshold: 0.96,
-                        animation: 250,
-                        easing: "cubic-bezier(1, 0, 0, 1)",
-                        onMove: function (/**Event*/evt, /**Event*/originalEvent) {
-                            if (evt.dragged.filter.public && !Knack.getUserRoleNames().includes('Public Filters'))
-                                return false; //Cancel
-                        },
-                        onEnd: function (evt) {
-                            //For public filters, when a drag n drop is done, update localStorage for this view, if order has changed.
-                            if (evt.oldIndex !== evt.newIndex && evt.item.filter && evt.item.filter.public) {
-                                var filterDiv = evt.to;
-                                var fltAr = [];
-                                filterDiv.children.forEach(function (item) {
-                                    var filterName = item.innerText;
-                                    var filterIndex = getFilterIndex(filterName, filterDivId);
-                                    fltAr.push(userFiltersObj[filterDivId].filters[filterIndex]);
-                                });
-
-                                userFiltersObj[filterDivId].filters = fltAr;
-                                saveFilters(LS_UF, filterDivId);
-
-                                clearTimeout(sortableTimer);
-                                sortableTimer = setTimeout(function () { //To prevent broadcasting for every quick order change.
-                                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
-                                }, 5000);
-                            }
-                        }
-                    });
-                }
+                setupFiltersDragAndDrop(filterDivId);
             }
         }
 
@@ -2716,10 +2697,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (activeFilterName === filterName)
                             ktl.userFilters.removeActiveFilter(viewId);
                         else {
-                            console.log('activeFilterName =', activeFilterName);
+                            console.log('removing activeFilterName =', activeFilterName);
                             ktl.userFilters.setActiveFilter(activeFilterName, viewId);
                         }
 
+                        saveFilters(LS_UF, viewId);
                         ktl.views.refreshView(viewId);
                     }
                 });
@@ -2821,7 +2803,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         function getActiveFilterName(viewId = '') {
             if (!viewId) return;
-            var lsStr = ktl.storage.lsGetItem(LS_ACT_FILTERS + Knack.getUserAttributes().id);
+            var lsStr = ktl.storage.lsGetItem(LS_UF_ACT + Knack.getUserAttributes().id);
             if (lsStr) {
                 try {
                     var fltObjTemp = JSON.parse(lsStr);
@@ -2833,11 +2815,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     alert('getActiveFilterName - Error Found Parsing Filters:', e);
                 }
             }
+            return '';
         }
 
         function getActiveFilterIndex(viewId = '') {
             var filterName = getActiveFilterName(viewId);
-            return getFilterIndex(filterName, viewId);
+            var activeIndex = getFilterIndex(filterName, viewId);
+            return activeIndex;
         }
 
         function readPublicFiltersFromLs() {
@@ -2862,6 +2846,43 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             return pfObj;
         }
 
+        function setupFiltersDragAndDrop(filterDivId = '') {
+            //Setup Drag n Drop for filter buttons.
+            if (document.getElementById(filterDivId + '-filterDivId')) {
+                var sortableTimer;
+                new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
+                    swapThreshold: 0.96,
+                    animation: 250,
+                    easing: "cubic-bezier(1, 0, 0, 1)",
+                    onMove: function (/**Event*/evt, /**Event*/originalEvent) {
+                        if (evt.dragged.filter.public && !Knack.getUserRoleNames().includes('Public Filters'))
+                            return false; //Cancel
+                    },
+                    onEnd: function (evt) {
+                        if (evt.oldIndex !== evt.newIndex && evt.item.filter) {
+                            var fltAr = [];
+                            evt.to.children.forEach(function (item) {
+                                var filterName = item.innerText;
+                                var filterIndex = getFilterIndex(filterName, filterDivId);
+                                fltAr.push(userFiltersObj[filterDivId].filters[filterIndex]);
+                            });
+
+                            userFiltersObj[filterDivId].filters = fltAr;
+                            saveFilters(LS_UF, filterDivId);
+                            addFilterButtons(filterDivId); //Refresh to see new button.
+
+                            if (evt.item.filter.public) {
+                                clearTimeout(sortableTimer);
+                                sortableTimer = setTimeout(function () { //To prevent broadcasting for every quick order change.
+                                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                                }, 5000);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.allowUserFilters && (allowUserFilters = cfgObj.allowUserFilters);
@@ -2875,21 +2896,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             setActiveFilter: function (filterName = '', viewId = '') {
                 if (!viewId || !filterName) return;
-
                 $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
-
                 var filterIndex = getFilterIndex(filterName, viewId);
-                console.log('filterIndex =', filterIndex);
                 if (filterIndex >= 0) {
                     var btnSelector = '#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(filterName);
                     ktl.core.waitSelector(btnSelector, 20000)
                         .then(function () {
-                            console.log('wait over for', btnSelector);
                             var filterBtn = document.querySelector(btnSelector);
                             if (filterBtn) {
                                 filterBtn.classList.add('activeFilter');
+                                loadActiveFilters();
                                 activeFilterNameObj[viewId] = filterName;
-                                ktl.storage.lsSetItem(LS_ACT_FILTERS + Knack.getUserAttributes().id, JSON.stringify(activeFilterNameObj));
+                                ktl.storage.lsSetItem(LS_UF_ACT + Knack.getUserAttributes().id, JSON.stringify(activeFilterNameObj));
                             }
                         })
                         .catch(function () {
@@ -2905,8 +2923,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!viewId) return;
                 $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
                 applyButtonColors();
+
+                loadActiveFilters();
                 delete activeFilterNameObj[viewId];
-                ktl.storage.lsSetItem(LS_ACT_FILTERS + Knack.getUserAttributes().id, JSON.stringify(activeFilterNameObj));
+                ktl.storage.lsSetItem(LS_UF_ACT + Knack.getUserAttributes().id, JSON.stringify(activeFilterNameObj));
             },
 
             //When user saves a filter to a named button, or when a filter's parameter is modified, like the sort order.
@@ -2950,13 +2970,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var i = 0;
                         if (updateSame) {
                             i = getActiveFilterIndex(viewId);
-                            if (!i) return;
-                            
-                            filterName = userFiltersObj[viewId].filters[i].filterName;
+                            if (i < 0 || i === null) return;
+                            if (!userFiltersObj[viewId].filters[i]) return;
+                            if (userFiltersObj[viewId].filters[i])
+                                filterName = userFiltersObj[viewId].filters[i].filterName;
 
                             var isPublic = userFiltersObj[viewId].filters[i].public;
-                            if (isPublic && !Knack.getUserRoleNames().includes('Public Filters'))
-                                return;
+                            if (isPublic && !Knack.getUserRoleNames().includes('Public Filters')) return;
 
                             exists = true;
                         } else {
@@ -3001,8 +3021,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 userFiltersObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                //console.log('userFiltersObj =', userFiltersObj);
-                //console.log('Filters info:', filterName, newFilterStr, newPerPageStr, newSortStr, newSearchStr);
 
                 saveFilters(LS_UF, viewId);
                 addFilterButtons(viewId); //Refresh to see new button.
@@ -4276,11 +4294,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (alreadySorted)
                             return;
 
-                        console.log('e =', e);
                         var fieldId = e.target.closest('th').className;
                         if (Knack.objects.getField(fieldId)) {
-                           //e.preventDefault();
-
                             var fieldAttr = Knack.objects.getField(fieldId).attributes;
                             var ctrlClickInvert = false;
                             if (e.ctrlKey)
@@ -4289,23 +4304,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             var href = e.target.closest('[href]');
                             if (href) {
                                 var newHref = e.target.closest('.kn-sort').href;
-                                console.log('newHref =', newHref);
                                 var order = newHref.split('|')[1];
-                                console.log('original order =', order);
                                 var newField = newHref.split('|')[0].split('#')[1];
-                                console.log('newField =', newField);
-
                                 var viewObj = Knack.views[viewId];
-                                console.log('viewObj =', viewObj);
-
                                 if (fieldAttr.type === 'date_time')
                                     ctrlClickInvert ^= ctrlClickInvert;
 
-                                console.log('ctrlClickInvert =', ctrlClickInvert);
-
                                 order = ctrlClickInvert ? 'desc' : 'asc';
-                                console.log('new order =', order);
-
                                 viewObj.model.view.source.sort = [{
                                     field: newField,
                                     order: order
