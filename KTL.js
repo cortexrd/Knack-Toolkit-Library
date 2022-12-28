@@ -2385,10 +2385,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
 
                 allFiltersObj = allFiltersObjTemp;
+                allFiltersObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
             }
 
             try {
                 ktl.storage.lsSetItem(LS_FILTERS + Knack.getUserAttributes().id, JSON.stringify(allFiltersObj));
+                ktl.wndMsg.send('uploadUserFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
             } catch (e) {
                 console.log('Error while saving filters:', e);
             }
@@ -2943,6 +2945,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     ktl.core.knAPI(viewId, recId, apiData, 'PUT', [viewId])
                         .then(function (response) { ktl.log.clog('green', 'Public filters updated successfully!'); })
                         .catch(function (reason) { alert('An error occurred while updating Public filters in table, reason: ' + JSON.stringify(reason)); })
+                }
+            },
+
+            uploadUserFilters: function () {
+                var viewId = ktl.iFrameWnd.getCfg().userFiltersViewId;
+
+                var lsFilters = ktl.storage.lsGetItem(LS_FILTERS + Knack.getUserAttributes().id);
+                if (lsFilters) {
+                    var apiData = {};
+                    apiData[ktl.iFrameWnd.getCfg().userFiltersCodeFld] = lsFilters;
+                    apiData[ktl.iFrameWnd.getCfg().userFiltersDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
+                    var recId = $('#' + viewId + ' tbody tr');
+                    if (recId.length) {
+                        recId = recId[0].id;
+                        console.log('recId =', recId); //6390e1d99ddfc2074e39193d
+
+                        ktl.log.clog('blue', 'Updating user filters...');
+                        ktl.core.knAPI(viewId, recId, apiData, 'PUT', [viewId])
+                            .then(function (response) { ktl.log.clog('green', 'User filters updated successfully!'); })
+                            .catch(function (reason) { alert('An error occurred while updating User filters in table, reason: ' + JSON.stringify(reason)); })
+                    }
                 }
             },
 
@@ -5296,6 +5319,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var accountsObj = ktl.core.getObjectIdByName('Accounts');
         var accountLogsObj = ktl.core.getObjectIdByName('Account Logs');
         var appSettingsObj = ktl.core.getObjectIdByName('App Settings');
+        var userFiltersObj = ktl.core.getObjectIdByName('User Filters');
 
         var cfg = {
             iFrameReady: false,
@@ -5304,6 +5328,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             appSettingsItemFld: ktl.core.getFieldIdByName('Item', appSettingsObj),
             appSettingsValueFld: ktl.core.getFieldIdByName('Value', appSettingsObj),
             appSettingsDateTimeFld: ktl.core.getFieldIdByName('Date/Time', appSettingsObj),
+            userFiltersViewId: ktl.core.getViewIdByTitle('User Filters', 'iframewnd'),
+            userFiltersCodeFld: ktl.core.getFieldIdByName('Filters Code', userFiltersObj),
+            userFiltersDateTimeFld: ktl.core.getFieldIdByName('Date/Time', userFiltersObj),
 
             curUserPrefsViewId: ktl.core.getViewIdByTitle('Current User Prefs', 'iframewnd'),
             updUserPrefsViewId: ktl.core.getViewIdByTitle('Update User Prefs', 'iframewnd'),
@@ -5769,6 +5796,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             //When users need to fetch and update/merge their local copy with the new public filters.
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadPublicFilters(event.data.msgData);
+                            break;
+                        case 'uploadUserFiltersMsg':
+                            console.log('rxed uploadUserFiltersMsg');
+                            ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
+                            ktl.userFilters.uploadUserFilters();
                             break;
                         case 'swVersionsDifferentMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
