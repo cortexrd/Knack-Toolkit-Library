@@ -2148,7 +2148,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!userFiltersObj[filterDivId]) continue;
 
                 if (!$.isEmptyObject(userFiltersObj[filterDivId])) {
-                    var activeFilterIndex = getActiveFilterIndex(filterDivId);
+                    var activeFilterIndex = getFilter(filterDivId).index;
                     if (activeFilterIndex >= 0) {
                         var filter = userFiltersObj[filterDivId].filters[activeFilterIndex];
                         if (filter) {
@@ -2231,7 +2231,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         function updateSearchInFilter(viewId = '') {
             if (!viewId || $.isEmptyObject(userFiltersObj) || $.isEmptyObject(userFiltersObj[viewId])) return;
 
-            var activeFilter = getActiveFilterIndex(viewId);
+            var activeFilter = getFilter(viewId).index;
             if (activeFilter >= 0) {
                 var isPublic = userFiltersObj[viewId].filters[activeFilter].public;
                 if (!isPublic || (isPublic && Knack.getUserRoleNames().includes('Public Filters'))) {
@@ -2442,7 +2442,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             try {
                 ktl.storage.lsSetItem(type + Knack.getUserAttributes().id, JSON.stringify(type === LS_UF ? userFiltersObj : publicFiltersObj));
-                //ktl.wndMsg.send('uploadUserFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+
+            //    if (type === LS_UF)
+            //        ktl.wndMsg.send('uploadUserFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+            //    else
+            //        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
             } catch (e) {
                 console.log('Error while saving filters:', e);
             }
@@ -2458,7 +2462,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             if (!userFiltersObj.isEmpty && !$.isEmptyObject(userFiltersObj[filterDivId])) {
                 var errorFound = false;
-                var activeFilterIndex = getActiveFilterIndex(filterDivId);
+                var activeFilterIndex = getFilter(filterDivId).index;
                 for (var btnIndex = 0; btnIndex < userFiltersObj[filterDivId].filters.length; btnIndex++) {
                     var filter = userFiltersObj[filterDivId].filters[btnIndex];
 
@@ -2585,8 +2589,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             loadFilters(LS_UFP);
 
             var filterName = filter.filterName;
-            var filterIndex = getFilterIndex(filterName, viewId).index;
-            var isPublic = userFiltersObj[viewId].filters[filterIndex].public;
+            var thisFilter = getFilter(viewId, filterName);
+            console.log('thisFilter =', thisFilter);
+            var filterIndex = thisFilter.index;
+            console.log('filterIndex =', filterIndex);
+            var isPublic = thisFilter.filterObj.public;
+            console.log('isPublic =', isPublic);
+
+            return;
             if (isPublic && !Knack.getUserRoleNames().includes('Public Filters')) {
                 $('.menuDiv').remove(); //JIC
                 return;
@@ -2623,7 +2633,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (userFiltersObj[viewId].filters.length === 0)
                             delete userFiltersObj[viewId];
 
-                        var activeFilterName = getActiveFilterName(viewId);
+                        var activeFilterName = getFilter(viewId).filterObj.filterName;
                         if (activeFilterName === filterName)
                             ktl.userFilters.removeActiveFilter(viewId);
                         else {
@@ -2648,8 +2658,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var newFilterName = prompt('New Filter Name: ', filterName);
                 if (newFilterName && newFilterName !== filterName) {
-                    var foundFilter = getFilterIndex(newFilterName, viewId);
-                    console.log('rename, foundFilter =', foundFilter);
+                    var foundFilter = getFilter(viewId, newFilterName);
+                    console.log('rename foundFilter =', foundFilter);
                     if (foundFilter.index >= 0) {
                         alert('Filter name already exists.  Please use another one.');
                         return;
@@ -2680,7 +2690,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     e.preventDefault();
                     $('.menuDiv').remove();
 
-                    var index = getFilterIndex(filterName, viewId);
+                    var index = getFilter(viewId, filterName).index;
                     console.log('index =', index);
                     console.log('filterName =', filterName);
 
@@ -2746,77 +2756,38 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             return viewToRefreshAfterFilterChg;
         }
 
-        function getFilterIndex(filterName, viewId, type) {
-            if (!filterName || !viewId || (type && (type !== LS_UF && type !== LS_UFP))) return;
-
-            var result = {};
-            if (type) {
-                result = searchObj(viewId, type);
-            } else {
-                result = searchObj(filterName, LF_UF);
-                if (result.filterIndex === -1) {
-                    result = searchObj(filterName, LF_UFP);
-                }
-            }
-
-            function searchObj(viewId, type) {
-                var object = {};
-                if (type === LS_UF) {
-                    object = userFiltersObj;
-                } else if (type === LS_UFP) {
-                    object = publicFiltersObj;
-                    var index = object[viewId].filters.findIndex(function (filter) {
-                        if (filter && filter.filterName.toLowerCase() === filterName.toLowerCase()) {
-                            return filter;
-                        }
-                    });
-                    return { index: index, type: type, object: object };
-                }
-            }
-
-            return result;
-        }
-
         //Returns the filter found: container object, filter object, name, index, type.
-        function getFilter(viewId = '', filterName = '', active = false, type) {
+        //If filterName is blank, it will find the active filter.
+        function getFilter(viewId = '', filterName = '', type) {
             if (!viewId || (type && (type !== LS_UF && type !== LS_UFP))) return;
 
             var result = {};
-            var index = -1;
 
-            if (active) {
+            if (!filterName)
                 filterName = getActiveFilterName();
-                index = getActiveFilterIndex();
-            }
 
             if (type) {
-                result = searchObj(viewId, type);
-            } else {
-                result = searchObj(filterName, LF_UF);
-                if (result.filterIndex === -1) {
-                    result = searchObj(filterName, LF_UFP);
+                result = searchObj(type);
+            } else { //If type is not specified, search both.
+                result = searchObj(LS_UF);
+                if (result.index === -1) {
+                    result = searchObj(LS_UFP);
                 }
             }
 
-            function searchObj(viewId, type) {
-                var object = {};
-                if (type === LS_UF) {
-                    object = userFiltersObj;
-                } else if (type === LS_UFP) {
-                    object = publicFiltersObj;
-                    var index = object[viewId].filters.findIndex(function (filter) {
-                        if (filter && filter.filterName.toLowerCase() === filterName.toLowerCase()) {
-                            return filter;
-                        }
-                    });
-                    return { index: index, type: type, object: object };
-                }
-            }
+            function searchObj(type) {
+                if (!type) return {};
+                var objectSrc = userFiltersObj;
+                if (type === LS_UFP)
+                    objectSrc = publicFiltersObj;
 
-            function getActiveFilterIndex() {
-                var filterName = getActiveFilterName(viewId);
-                var res = getFilterIndex(filterName, viewId);
-                return res.index;
+                var index = objectSrc[viewId].filters.findIndex(function (filter) {
+                    if (filter && filter.filterName.toLowerCase() === filterName.toLowerCase()) {
+                        return filter;
+                    }
+                });
+
+                return { index: index, type: type, objectSrc: objectSrc, filterObj: objectSrc[viewId].filters[index] };
             }
 
             function getActiveFilterName() {
@@ -2835,6 +2806,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return '';
             }
 
+            console.log('getFilter result =', result);
             return result;
         }
 
@@ -2852,16 +2824,29 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     },
                     onEnd: function (evt) {
                         if (evt.oldIndex !== evt.newIndex && evt.item.filter) {
-                            var fltAr = [];
+                            var userFiltersAr = [];
+                            var publicFiltersAr = [];
                             evt.to.children.forEach(function (item) {
-                                var filterName = item.innerText;
-                                var filterIndex = getFilterIndex(filterName, filterDivId);
-                                fltAr.push(userFiltersObj[filterDivId].filters[filterIndex]);
+                                var filterObj = getFilter(filterDivId, item.innerText);
+                                if (filterObj.filterObj.isPublic)
+                                    publicFiltersAr.push(filterObj.objectSrc[filterDivId].filters[filterObj.index]);
+                                else
+                                    userFiltersAr.push(filterObj.objectSrc[filterDivId].filters[filterObj.index]);
                             });
 
-                            userFiltersObj[filterDivId].filters = fltAr;
-                            saveFilters(LS_UF, filterDivId);
-                            addFilterButtons(filterDivId); //Refresh to see new button.
+                            console.log('userFiltersAr =', userFiltersAr);
+                            if (userFiltersAr.length) {
+                                userFiltersObj[filterDivId].filters = userFiltersAr;
+                                saveFilters(LS_UF, filterDivId);
+                            }
+
+                            console.log('publicFiltersAr =', publicFiltersAr);
+                            if (publicFiltersAr.length) {
+                                publicFiltersObj[filterDivId].filters = publicFiltersAr;
+                                saveFilters(LS_UFP, filterDivId);
+                            }
+
+                            ktl.userFilters.addFilterButtons(filterDivId); //Refresh to see new buttons order.
 
                             if (evt.item.filter.public) {
                                 clearTimeout(sortableTimer);
@@ -2963,7 +2948,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             setActiveFilter: function (filterName = '', viewId = '') {
                 if (!viewId || !filterName) return;
                 $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
-                var filterIndex = getFilterIndex(filterName, viewId);
+                var filterIndex = getFilter(viewId, filterName).index;
                 if (filterIndex >= 0) {
                     var btnSelector = '#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(filterName);
                     ktl.core.waitSelector(btnSelector, 20000)
@@ -3027,8 +3012,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var filterName = '';
                 var fltObj = userFiltersObj;
                 if (updateSame) {
-                    var actName = getActiveFilterName(viewId);
-                    fltObj = getFilterIndex(actName, viewId).object;
+                    fltObj = getFilter(viewId).filterSrc;
                 } else {
                     filterName = prompt('Filter Name: ', '');
                     if (!filterName) return;
@@ -3040,7 +3024,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (viewId in fltObj) {
                         var i = 0;
                         if (updateSame) {
-                            i = getActiveFilterIndex(viewId);
+                            i = getFilter(viewId).index;
                             if (i < 0 || i === null) return;
                             if (!fltObj[viewId].filters[i]) return;
                             if (fltObj[viewId].filters[i])
@@ -3094,7 +3078,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 fltObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
                 saveFilters(LS_UF, viewId);
-                addFilterButtons(viewId); //Refresh to see new button.
+                ktl.userFilters.addFilterButtons(viewId); //Refresh to see new button.
                 ktl.userFilters.setActiveFilter(filterName, viewId);
             },
 
@@ -3170,7 +3154,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             //Get active filter name in case we need to put it back when done.
                             var actFilterName = '';
-                            var actFilterIdx = getActiveFilterIndex(viewId);
+                            var actFilterIdx = getFilter(viewId).index;
                             if (actFilterIdx === null) actFilterIdx = -1; //To fix old bug.
                             if (actFilterIdx >= 0)
                                 actFilterName = userFiltersObj[viewId].filters[actFilterIdx].filterName;
