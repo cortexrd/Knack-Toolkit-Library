@@ -487,7 +487,10 @@ function Ktl($) {
                 return false;
             },
 
+            //Params must be strings.
             isMoreRecent: function (thisDate, refDate = new Date()) {
+                thisDate = new Date(thisDate);
+                refDate = refDate ? new Date(refDate) : refDate;
                 if ((!isNaN(thisDate) && !isNaN(refDate)) && (thisDate > refDate))
                     return true;
                 return false;
@@ -2239,8 +2242,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var searchString = document.querySelector('#' + viewId + ' .table-keyword-search input').value;
                     filterSrc[viewId].filters[filterIndex].search = searchString;
                     saveFilters(filterType, viewId);
-                //    if (userFiltersObj[viewId].filters[filterIndex].public && Knack.getUserRoleNames().includes('Public Filters'))
-                //        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                 }
             }
         }
@@ -2363,10 +2364,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     try {
                         ktl.storage.lsSetItem(type + Knack.getUserAttributes().id, JSON.stringify(type === LS_UF ? userFiltersObj : publicFiltersObj));
-                        //    if (type === LS_UF)
-                        //        ktl.wndMsg.send('uploadUserFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
-                        //    else
-                        //        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                     } catch (e) {
                         console.log('Error while saving filters:', e);
                     }
@@ -2597,9 +2594,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         saveFilters(filterType, viewId);
                         ktl.userFilters.addFilterButtons(viewId);
                         ktl.userFilters.setActiveFilter(activeFilterName, viewId);
-
-                    //    if (filter.public)
-                    //        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                     }
                 }
             });
@@ -2664,9 +2658,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         saveFilters(LS_UFP, viewId);
                         ktl.userFilters.addFilterButtons(viewId);
                         ktl.userFilters.setActiveFilter(activeFilterName, viewId);
-
-                        //Send to iFrameWnd so it can save it to App Settings object.
-                        //ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                     } else
                         ktl.log.clog('purple', 'Public Filter toggle, bad index found:', filterIndex);
                 });
@@ -2774,13 +2765,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
 
                             ktl.userFilters.addFilterButtons(filterDivId);
-
-                        //    if (evt.item.filter.public) {
-                        //        clearTimeout(sortableTimer);
-                        //        sortableTimer = setTimeout(function () { //To prevent broadcasting for every quick order change.
-                        //            ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
-                        //        }, 5000);
-                        //    }
                         }
                     }
                 });
@@ -2984,9 +2968,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                                 if (newSearchStr)
                                     fltObj[viewId].filters[i].search = newSearchStr;
-
-                            //    if (fltObj[viewId].filters[i].public && Knack.getUserRoleNames().includes('Public Filters'))
-                            //        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                             }
                         } else {
                             //console.log('Adding filter to existing view');
@@ -3059,7 +3040,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //This is where local and public filters are merged together.
             downloadPublicFilters: function (newPublicFiltersData = {}) {
-                console.log('newPublicFiltersData =', newPublicFiltersData);
+                console.log('downloadPublicFilters newPublicFiltersData =\n', newPublicFiltersData);
                 if (!newPublicFiltersData.newPublicFilters || newPublicFiltersData.newPublicFilters.length <= 1) return;
                 
                 loadFilters(LS_UFP);
@@ -5524,10 +5505,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (lastPfStr) {
                             try {
                                 var lastPfTempObj = JSON.parse(lastPfStr);
-                                //console.log('lastPfTempObj =', lastPfTempObj);
                                 if (!$.isEmptyObject(lastPfTempObj)) {
                                     var localDt = lastPfTempObj.dt;
-                                    //console.log('localDt =', localDt);
                                     if (ktl.core.isMoreRecent(cloudDt, localDt))
                                         pubFiltersNeedUpdate = true;
                                 }
@@ -5538,8 +5517,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             pubFiltersNeedUpdate = true;
 
                         if (pubFiltersNeedUpdate) {
-                            //console.log('pubFiltersNeedUpdate =', pubFiltersNeedUpdate);
-                            //ktl.wndMsg.send('publicFiltersHaveChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters });
+                            console.log('pubFiltersNeedUpdate =', pubFiltersNeedUpdate);
+                            ktl.wndMsg.send('publicFiltersHaveChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters });
                         }
                     }
                     catch (e) {
@@ -5896,10 +5875,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.userPrefs.ktlApplyUserPrefs();
                             }
                             break;
-                        case 'broadcastPublicFiltersMsg':
-                            ktl.wndMsg.send(event.data.msgType, 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
-                            ktl.userFilters.uploadPublicFilters();
-                            break;
+                        //case 'broadcastPublicFiltersMsg':
+                        //    ktl.wndMsg.send(event.data.msgType, 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
+                        //    ktl.userFilters.uploadPublicFilters();
+                        //    break;
                         case 'publicFiltersHaveChangedMsg':
                             //When users need to fetch and update/merge their local copy with the new public filters.
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
@@ -6583,5 +6562,4 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 };
 
 ////////////////  End of KTL /////////////////////
-
 
