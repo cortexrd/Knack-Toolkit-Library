@@ -2437,10 +2437,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 filtersObjTemp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
-                if (type === LS_UF) {
+                if (type === LS_UF)
                     userFiltersObj = filtersObjTemp;
-                    delete userFiltersObj[viewId].active; //Cleanup old format.
-                } else
+                else
                     publicFiltersObj = filtersObjTemp;
             }
 
@@ -2608,6 +2607,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var isPublic = thisFilter.filterObj.public;
             var objectSrc = thisFilter.objectSrc;
             var filterType = thisFilter.type;
+            var activeFilterName = getFilter(viewId).filterObj.filterName;
 
             if (isPublic && !Knack.getUserRoleNames().includes('Public Filters')) {
                 $('.menuDiv').remove(); //JIC
@@ -2642,17 +2642,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                     if (confirm('Are you sure you want to delete filter "' + filterName + '" ?')) {
                         objectSrc[viewId].filters.splice(filterIndex, 1);
-                        if (objectSrc[viewId].filters.length === 0)
+                        if (!objectSrc[viewId].filters.length)
                             delete objectSrc[viewId];
 
-                        var activeFilterName = getFilter(viewId).filterObj.filterName;
+                        saveFilters(filterType, viewId);
+                        ktl.userFilters.addFilterButtons(viewId); //Refresh to see new button.
+
                         if (activeFilterName === filterName)
                             ktl.userFilters.removeActiveFilter(viewId);
                         else
                             ktl.userFilters.setActiveFilter(activeFilterName, viewId);
-
-                        saveFilters(filterType, viewId);
-                        ktl.userFilters.addFilterButtons(viewId); //Refresh to see new button.
                     }
                 });
             }
@@ -2676,8 +2675,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var updatedFilter = getFilter(viewId, filter.filterName).filterObj;
                         updatedFilter.filterName = newFilterName;
                         saveFilters(filterType, viewId);
-                        ktl.userFilters.setActiveFilter(newFilterName, viewId);
                         ktl.userFilters.addFilterButtons(viewId); //Refresh to see new button.
+                        ktl.userFilters.setActiveFilter(activeFilterName, viewId);
 
                         if (filter.public)
                             ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
