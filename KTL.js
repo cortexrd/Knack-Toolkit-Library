@@ -2434,7 +2434,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 else
                     delete filtersObjTemp.dt;
 
-                console.log('filtersObjTemp =', filtersObjTemp);
+                //console.log('filtersObjTemp =', filtersObjTemp);
 
                 if ($.isEmptyObject(filtersObjTemp))
                     ktl.storage.lsRemoveItem(type + Knack.getUserAttributes().id);
@@ -2477,7 +2477,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!$.isEmptyObject(fltSrc) && !$.isEmptyObject(fltSrc[filterDivId])) {
                     var errorFound = false;
                     var activeFilterIndex = getFilter(filterDivId, '', type).index;
-                    console.log('activeFilterIndex =', activeFilterIndex, type);
                     for (var btnIndex = 0; btnIndex < fltSrc[filterDivId].filters.length; btnIndex++) {
                         var filter = fltSrc[filterDivId].filters[btnIndex];
 
@@ -2779,16 +2778,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (!filterName)
                 filterName = getActiveFilterName();
 
-            //console.log('active filterName =', filterName);
-
-            if (type) {
+            if (type)
                 result = searchObj(type);
-            } else { //If type is not specified, search both.
+            else { //If type is not specified, search both.
                 result = searchObj(LS_UF);
-                console.log('result =', type, result);
-                if (result.index === -1) {
+                if (result.index === -1)
                     result = searchObj(LS_UFP);
-                }
             }
 
             function searchObj(type) {
@@ -2797,15 +2792,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (type === LS_UFP)
                     filterSrc = publicFiltersObj;
 
-                //console.log('filterSrc[viewId] =', filterSrc[viewId]);
                 if (filterSrc[viewId]) {
                     var index = filterSrc[viewId].filters.findIndex(function (filter) {
-                        //console.log('filter =', filter);
-                        //console.log('filter.filterName =', filter.filterName);
-                        //console.log('filterName =', filterName);
-                        if (filter && filterName && (filter.filterName.toLowerCase() === filterName.toLowerCase())) {
+                        if (filter && filterName && (filter.filterName.toLowerCase() === filterName.toLowerCase()))
                             return filter;
-                        }
                     });
                 } else
                     return { index: -1 };
@@ -2828,7 +2818,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return '';
             }
 
-            //console.log('getFilter result =', result);
             return result;
         }
 
