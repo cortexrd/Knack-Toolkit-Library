@@ -2106,15 +2106,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var publicFiltersObj = {}; //The main public filters object that drives the whole feature.
         var activeFilterNameObj = {}; //To keep the name of the curently active filter for each view.
 
-        var applyFilter = true;
         var allowUserFilters = null; //Callback to your app to allow user filters based on specific conditions.
         var viewToRefreshAfterFilterChg = null;  //This is necessary to remember the viewId to refresh after we exit filter editing.
-
-        var ufMenuViewId = ktl.core.getViewIdByTitle('USER_FILTERS_MENU');
-        var ufCodeViewId = ktl.core.getViewIdByTitle('USER_FILTERS_CODE');
-        var obj = ktl.core.getObjectIdByName('User Filters');
-        var ufDateTimeFld = ktl.core.getFieldIdByName('Date/Time', obj);
-        var ufFiltersCodeFld = ktl.core.getFieldIdByName('Filters Code', obj);
 
         var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
 
@@ -2183,8 +2176,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) return;
 
-            applyFilter = true;
-            loadFilters(LS_UF);
+            //loadFilters(LS_UF);
+            //loadFilters(LS_UFP);
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -2233,19 +2226,21 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         //Retrieves the searched string form the field and saves it in the localStorage's filter entry.
         function updateSearchInFilter(viewId = '') {
-            if (!viewId || $.isEmptyObject(userFiltersObj) || $.isEmptyObject(userFiltersObj[viewId])) return;
+            var actFlt = getFilter(viewId);
+            var filterSrc = actFlt.filterSrc;
+            if (!viewId || $.isEmptyObject(filterSrc) || $.isEmptyObject(filterSrc[viewId])) return;
 
-            var activeFilter = getFilter(viewId).index;
-            if (activeFilter >= 0) {
-                var isPublic = userFiltersObj[viewId].filters[activeFilter].public;
+            var filterIndex = actFlt.index;
+            var isPublic = actFlt.filterObj.public;
+            var filterType = actFlt.type;
+
+            if (filterIndex >= 0) {
                 if (!isPublic || (isPublic && Knack.getUserRoleNames().includes('Public Filters'))) {
                     var searchString = document.querySelector('#' + viewId + ' .table-keyword-search input').value;
-                    userFiltersObj[viewId].filters[activeFilter].search = searchString;
-
-                    saveFilters(LS_UF, viewId);
-
-                    if (userFiltersObj[viewId].filters[activeFilter].public && Knack.getUserRoleNames().includes('Public Filters'))
-                        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                    filterSrc[viewId].filters[filterIndex].search = searchString;
+                    saveFilters(filterType, viewId);
+                //    if (userFiltersObj[viewId].filters[filterIndex].public && Knack.getUserRoleNames().includes('Public Filters'))
+                //        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                 }
             }
         }
@@ -2279,84 +2274,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             }
         })
-
-        //User Filters Upload and Download menu
-        $(document).on('knack-view-render.' + ufMenuViewId, function (event, view, data) {
-            var allFiltersObjTemp = {};
-
-            //Upload menu button
-            var filters = ktl.storage.lsGetItem(LS_UF + Knack.getUserAttributes().id);
-            var uploadDisabled = true;
-            if (filters) {
-                var allFiltersObjTemp = JSON.parse(filters);
-                if (!$.isEmptyObject(allFiltersObjTemp))
-                    uploadDisabled = false;
-            }
-
-            var uploadBtn = $('#' + ufMenuViewId + ' .kn-link.kn-button:contains("Upload")');
-            uploadBtn.attr('disabled', uploadDisabled);
-
-            uploadBtn.click(function () {
-                //Get latest LS_FILTERS object's state.
-                filters = ktl.storage.lsGetItem(LS_UF + Knack.getUserAttributes().id);
-                if (filters) {
-                    var allFiltersObjTemp = JSON.parse(filters);
-                    if (!$.isEmptyObject(allFiltersObjTemp)) {
-                        //Check if record already exists.  If so, get its Id for an update (PUT), instead of new (POST).
-                        var recId = $('#' + ufCodeViewId + ' > div.kn-table-wrapper > table > tbody > tr').attr('id'); //
-                        var requestType = 'POST';
-                        if (recId !== undefined && recId.length === 24) //Quick valid check
-                            requestType = 'PUT';
-                        else
-                            recId = null;
-
-                        var today = new Date();
-                        var date = (today.getMonth() + 1) + '/' + today.getDate() + '/' + today.getFullYear();
-                        var time = today.getHours() + ':' + today.getMinutes();
-                        var dateTime = date + ' ' + time;
-
-                        var apiData = {};
-                        apiData[ufDateTimeFld] = dateTime;
-                        apiData[ufFiltersCodeFld] = filters;
-
-                        ktl.core.knAPI(ufCodeViewId, recId, apiData, requestType, [ufCodeViewId])
-                            .then(function (response) {
-                                alert('Uploaded Filters to Cloud Successfully!');
-                            })
-                            .catch(function (reason) {
-                                alert('An error occurred while uploading filters to cloud, reason: ' + JSON.stringify(reason));
-                            })
-                    }
-                }
-            });
-
-            //Download menu button
-            var downloadBtn = $('#' + ufMenuViewId + ' .kn-link.kn-button:contains("Download")');
-
-            downloadBtn.click(function () {
-                //Check if record exists.  If so, get filter string and parse it to trap any errors.
-                var allFiltersString = $('#' + ufCodeViewId + ' > div.kn-table-wrapper > table > tbody > tr > td.' + ufFiltersCodeFld + '.cell-edit').text();
-                try {
-                    var allFiltersObjTemp = JSON.parse(allFiltersString);
-                    if (!$.isEmptyObject(allFiltersObjTemp)) {
-                        //Downloading and parsing of temporary copy went well, ok to copy to official object and save.
-                        userFiltersObj = allFiltersObjTemp;
-                        saveFilters(LS_UF);
-                        alert('Filters have been downloaded successfully.  Refresh all opened pages.');
-                    }
-                } catch (e) {
-                    alert('downloadBtn - Error Found Parsing Filters:', e);
-                }
-            });
-        });
-
-        $(document).on('knack-view-render.' + ufCodeViewId, function (event, view, data) {
-            ktl.core.waitSelector('#' + ufMenuViewId + ' .kn-link.kn-button:contains("Download")')
-                .then(function () {
-                    $('#' + ufMenuViewId + ' .kn-link.kn-button:contains("Download")').attr('disabled', !data.length);
-                })
-        });
-
 
         //Load all filters from local storage.
         function loadAllFilters() {
@@ -2681,8 +2598,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.userFilters.addFilterButtons(viewId);
                         ktl.userFilters.setActiveFilter(activeFilterName, viewId);
 
-                        if (filter.public)
-                            ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                    //    if (filter.public)
+                    //        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                     }
                 }
             });
@@ -2830,34 +2747,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     animation: 250,
                     easing: "cubic-bezier(1, 0, 0, 1)",
                     onMove: function (/**Event*/evt, /**Event*/originalEvent) {
-                        console.log('evt.dragged.filter.public =', evt.dragged.filter.public);
                         if (evt.dragged.filter.public && !Knack.getUserRoleNames().includes('Public Filters')) {
-                            console.log('cancel');
-                            //return false; //Cancel
+                            return false; //Cancel
                         }
                     },
                     onEnd: function (evt) {
-                        console.log('evt.oldIndex =', evt.oldIndex);
-                        console.log('evt.newIndex =', evt.newIndex);
                         if (evt.oldIndex !== evt.newIndex && evt.item.filter) {
                             var userFiltersAr = [];
                             var publicFiltersAr = [];
                             evt.to.children.forEach(function (item) {
                                 var filterObj = getFilter(filterDivId, item.innerText);
-                                console.log('filterObj =', JSON.stringify(filterObj));
-                                if (filterObj.filterObj.isPublic)
+                                if (filterObj.filterObj.public)
                                     publicFiltersAr.push(filterObj.filterSrc[filterDivId].filters[filterObj.index]);
                                 else
                                     userFiltersAr.push(filterObj.filterSrc[filterDivId].filters[filterObj.index]);
                             });
 
-                            console.log('userFiltersAr =', userFiltersAr);
                             if (userFiltersAr.length) {
                                 userFiltersObj[filterDivId].filters = userFiltersAr;
                                 saveFilters(LS_UF, filterDivId);
                             }
 
-                            console.log('publicFiltersAr =', publicFiltersAr);
                             if (publicFiltersAr.length) {
                                 publicFiltersObj[filterDivId].filters = publicFiltersAr;
                                 saveFilters(LS_UFP, filterDivId);
@@ -2865,12 +2775,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                             ktl.userFilters.addFilterButtons(filterDivId);
 
-                            if (evt.item.filter.public) {
-                                clearTimeout(sortableTimer);
-                                sortableTimer = setTimeout(function () { //To prevent broadcasting for every quick order change.
-                                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
-                                }, 5000);
-                            }
+                        //    if (evt.item.filter.public) {
+                        //        clearTimeout(sortableTimer);
+                        //        sortableTimer = setTimeout(function () { //To prevent broadcasting for every quick order change.
+                        //            ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                        //        }, 5000);
+                        //    }
                         }
                     }
                 });
@@ -3035,7 +2945,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (!filterName) return;
                 }
 
-                console.log('fltObj =', fltObj);
                 if (!$.isEmptyObject(fltObj)) {
                     var exists = false;
                     if (viewId in fltObj) {
@@ -3076,8 +2985,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 if (newSearchStr)
                                     fltObj[viewId].filters[i].search = newSearchStr;
 
-                                if (fltObj[viewId].filters[i].public && Knack.getUserRoleNames().includes('Public Filters'))
-                                    ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                            //    if (fltObj[viewId].filters[i].public && Knack.getUserRoleNames().includes('Public Filters'))
+                            //        ktl.wndMsg.send('broadcastPublicFiltersMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                             }
                         } else {
                             //console.log('Adding filter to existing view');
