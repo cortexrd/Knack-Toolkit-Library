@@ -2352,8 +2352,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 else
                     delete filtersObjTemp.dt;
 
-                //console.log('filtersObjTemp =', filtersObjTemp);
-
                 if ($.isEmptyObject(filtersObjTemp))
                     ktl.storage.lsRemoveItem(type + Knack.getUserAttributes().id);
                 else {
@@ -2361,18 +2359,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         userFiltersObj = filtersObjTemp;
                     else
                         publicFiltersObj = filtersObjTemp;
-
-                    try {
-                        ktl.storage.lsSetItem(type + Knack.getUserAttributes().id, JSON.stringify(type === LS_UF ? userFiltersObj : publicFiltersObj));
-                    } catch (e) {
-                        console.log('Error while saving filters:', e);
-                    }
-
-                    if (getViewToRefresh() && viewId) {
-                        viewId = viewId.split('-')[2] || viewId.split('-')[0];
-                        viewId && ktl.views.refreshView(viewId);
-                    }
                 }
+            }
+
+            try {
+                ktl.storage.lsSetItem(type + Knack.getUserAttributes().id, JSON.stringify(type === LS_UF ? userFiltersObj : publicFiltersObj));
+            } catch (e) {
+                console.log('Error while saving filters:', e);
+            }
+
+            if (getViewToRefresh() && viewId) {
+                viewId = viewId.split('-')[2] || viewId.split('-')[0];
+                viewId && ktl.views.refreshView(viewId);
             }
         }
 
@@ -3040,55 +3038,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             //This is where local and public filters are merged together.
             downloadPublicFilters: function (newPublicFiltersData = {}) {
-                console.log('downloadPublicFilters newPublicFiltersData =\n', newPublicFiltersData);
                 if (!newPublicFiltersData.newPublicFilters || newPublicFiltersData.newPublicFilters.length <= 1) return;
                 
+                console.log('downloadPublicFilters newPublicFiltersData =\n', newPublicFiltersData);
                 loadFilters(LS_UFP);
-                console.log('111');
                 try {
-                    var dt = newPublicFiltersData.newPublicFilters.dt;
-                    console.log('dt =', dt);
-                    var pubFiltersObj = newPublicFiltersData.newPublicFilters;
-                    console.log('pubFiltersObj =', pubFiltersObj);
-
-
-                    const views = Object.keys(pubFiltersObj);
-                    views.forEach(function (view) {
-                        console.log('view =', view);
-                    })
-
-                    return;
-
-                    //const views = Object.entries(pubFiltersObj);
-                    views.forEach(function (view) {
-                        var arNew = []; //Start with a fresh new array, and rebuild it.
-                        var viewId = view[0];
-                        if (userFiltersObj[viewId]) {
-                            var filters = userFiltersObj[viewId].filters;
-
-                            //Get active filter name in case we need to put it back when done.
-                            var actFilterName = '';
-                            var actFilterIdx = getFilter(viewId).index;
-                            if (actFilterIdx === null) actFilterIdx = -1; //To fix old bug.
-                            if (actFilterIdx >= 0)
-                                actFilterName = userFiltersObj[viewId].filters[actFilterIdx].filterName;
-
-                            for (var j = 0; j < filters.length; j++) {
-                                var filter = filters[j];
-                                if (filter && !filter.public) {
-                                    arNew.push(filter);
-                                }
-                            }
-                        } else
-                            userFiltersObj[viewId] = { filters: [] };
-
-                        //Insert public filters at head of array.
-                        var fltAr = pubFiltersObj[viewId].filters;
-                        for (var i = fltAr.length - 1; i >= 0; i--)
-                            arNew.unshift(fltAr[i]);
-
-                        userFiltersObj[viewId].filters = arNew;
-                        saveFilters(LS_UF, viewId);
+                    publicFiltersObj = newPublicFiltersData.newPublicFilters;
+                    saveFilters(LS_UFP);
+                    ktl.userFilters.addFilterButtons(viewId);
+                    ktl.userFilters.setActiveFilter(activeFilterName, viewId);
 
                         //Put back the active filter, if any.
                         ktl.userFilters.setActiveFilter(actFilterName, viewId);
