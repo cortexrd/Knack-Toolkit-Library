@@ -5522,10 +5522,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     } else
                         pubFiltersNeedDownload = true;
 
-                    if (pubFiltersNeedDownload) {
-                        console.log('pubFiltersNeedDownload =', pubFiltersNeedDownload);
+                    if (pubFiltersNeedDownload)
                         ktl.wndMsg.send('publicFiltersNeedDownloadMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters });
-                    } else if (pubFiltersNeedUpload)
+                    else if (pubFiltersNeedUpload)
                         ktl.userFilters.uploadPublicFilters();
                 }
                 catch (e) {
@@ -5882,12 +5881,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                             break;
                         case 'userFiltersNeedDownloadMsg':
-                            //When users need to fetch and update/merge their local copy with the new public filters.
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadUserFilters(event.data.msgData);
                             break;
                         case 'publicFiltersNeedDownloadMsg':
-                            //When users need to fetch and update/merge their local copy with the new public filters.
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadPublicFilters(event.data.msgData);
                             break;

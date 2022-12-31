@@ -681,7 +681,7 @@ function.
 If you are annoyed by the limitations of **filter menus** that only have
 one field and without AND/OR operators, then you will find Public
 Filters very useful. They are the same as User Filters but created by
-special users and visible to everyone.
+special users, yet visible to everyone.
 
 First, you need to perform the setup of the [iFrameWnd](#iframewnd) and
 the [Heartbeat Monitoring and SW
@@ -1378,7 +1378,7 @@ follow this procedure:
     a.  **Item**: Type: Short Text, set as object's Display Field and
         Sort in Alphabetic order.
 
-    b.  **Value**: Type: Short Text.
+    b.  **Value**: Type: Paragraph Text.
 
     c.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time
         Format: military.
@@ -1394,11 +1394,11 @@ follow this procedure:
     rules, enable auto-reload and set the Confirmation message to
     "Heartbeat sent successfully.".
 
-6)  Still in the iFrameWnd, add a table view that displays App Settings,
-    with title: **App Settings AUTOREFRESH=15**. Source filter: **Item
-    Starting with APP**, sorted alphabetically A to Z. No Search, inline
-    editing = On, 10 records at a time, no filtering allowed. Add all
-    fields.
+6)  Still in the iFrameWnd, add a table view that displays **App
+    Settings**, with title: **App Settings AUTOREFRESH=15**. Source
+    filter: **Item Starting with APP**, sorted alphabetically A to Z. No
+    Search, inline editing = On, 10 records at a time, no filtering
+    allowed. Add all fields. Set Value's Truncate Text to 75 characters.
 
 7)  Be sure you have the Show iFrameWnd checkbox on in [User
     Prefs](#user-preferences-1) above.
@@ -1485,17 +1485,18 @@ procedure described in this section [Bulk Operations](#bulk-operations).
 
 In addition to being able to create named buttons for the User Filters
 that are saved in localStorage, it is possible to upload your settings
-to Knack and download them back wherever and whenever needed. This can
-be seen as a backup method, but also to migrate them to other devices
-(or browsers, see note below). Note that if you migrate filters from one
-app to another, typically a temporary development copy, some filters may
-not work due to the record IDs that have changed for connected fields.
-This is a normal behavior, and the only way to fix this is to redo their
+to Knack and download them back wherever and whenever needed. This
+two-way process is automatically done in the background, and can be seen
+as a backup method, but also to migrate them to other devices (or
+browsers, see note below). Note that if you migrate filters from one app
+to another, typically a temporary development copy, some filters may not
+work due to the record IDs that have changed for connected fields. This
+is a normal behavior, and the only way to fix this is to redo their
 settings and save back to the same button name.
 
-To support Upload and Download, follow this procedure:
+To support automatic Upload and Download, follow this procedure:
 
-1)  Create an object named Filters and add these fields:
+1)  Create an object named **User Filters** and add these fields:
 
     a.  **Account**: Type: Connection to Accounts, all settings at
         default.
@@ -1506,31 +1507,33 @@ To support Upload and Download, follow this procedure:
 
     c.  **Filters Code**: Type: Paragraph Text.
 
-2)  Go to User Pages and edit the Account Settings page.
+2)  Go to the **iFrameWnd** page and add a new Table that displays
+    **User Filters** connected to the logged-in account. Call it User
+    Filters, remove the Account column and leave only the Date/Time and
+    Filters Code. Set Filters Code's Truncate Text to 75 characters.
 
-3)  If not already done from the [User Preferences procedure
-    above](#user-preferences-1), add a menu named **My Settings** and
-    move it at the top of the page.
+3)  Source: Limit number of records to 1.
 
-4)  Add a link to a new page named **Filters Backup and Restore**. Enter
-    to edit that page.
+4)  Settings: no search, Inline Editing = On, 10 records at a time, no
+    filtering. Title: **User Filters AUTOREFRESH=30** (you can change
+    the 30 for 10 seconds temporarily for quicker testing, then put back
+    to 30)
 
-5)  Add a menu titled **USER_FILTERS_MENU** and add two links to a URL
-    named **Upload** and **Download**. The left-right order is not
-    important. Both URLs are: **javascript:void(0);** This unusual URL
-    is actually a method that means \"do nothing\" and lets the KTL
-    handle click events with special processing.
+**To test this feature:**
 
-6)  Add a table view that displays User Filters connected to the
-    logged-in account. Title: **My Filters** **USER_FILTERS_CODE**.
-    Fields: Date/Time and Filters Code. Enable Inline Editing, disable
-    filtering and search, 10 records at a time.
+Open two different browsers (ex: Chrome and Edge) and log-in with the
+same account - yours. Open both to the same page, where there's a table
+with filtering enabled. Create a couple of filters in the first browser,
+wait about 30 seconds and you will see those filters appear in the
+second browser. Same applies for Public Filters: set a filter to Public,
+make changes to it, and all will be reflected in the other browser, but
+also for all users of that view.
 
-\*Note about browsers: since the localStorage is not shared across
-different browsers (and even the same browser in private/incognito
-mode), you should remember that it's normal that you won't see your
-filters when you change browsers. The Upload/Download feature then comes
-to the rescue, by allowing this transfer to occur.
+\*Note about browsers: the localStorage is not shared across different
+browsers (and also within the same browser but in private/incognito
+mode). This is when the automatic Upload/Download feature then comes to
+the rescue, by allowing this transfer to occur in real-time, within
+about 30 seconds.
 
 # Future Improvements
 
