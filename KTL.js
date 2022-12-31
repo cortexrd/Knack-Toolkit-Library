@@ -2436,13 +2436,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var target = e.target || e.currentTarget;
             if (!filterDivId || !target.filter) return;
 
-            var activeFilter = document.querySelector('#' + filterDivId + ' .activeFilter');
-            if (activeFilter) {
-                //Don't re-apply same filter, unless it is public, since those can be updated in the background.
-                if (!activeFilter.filter.public && (activeFilter.filter.filterName === e.target.filter.filterName))
-                    return;
-            }
-
             $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
             target.classList.add('activeFilter');
             applyButtonColors();
@@ -2681,7 +2674,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var result = {};
 
             if (!filterName)
-                filterName = getActiveFilterName();
+                filterName = getActiveFilterName(viewId);
 
             if (type)
                 result = searchObj(type);
@@ -2708,22 +2701,23 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return { index: index, type: type, filterSrc: filterSrc, filterObj: filterSrc[viewId].filters[index] };
             }
 
-            function getActiveFilterName() {
-                var lsStr = ktl.storage.lsGetItem(LS_UF_ACT + Knack.getUserAttributes().id);
-                if (lsStr) {
-                    try {
-                        var actFltObj = JSON.parse(lsStr);
-                        if (!$.isEmptyObject(actFltObj)) {
-                            return actFltObj[viewId];
-                        }
-                    } catch (e) {
-                        alert('getActiveFilterName - Error Found Parsing Filters:', e);
-                    }
-                }
-                return '';
-            }
-
             return result;
+        }
+
+        function getActiveFilterName(viewId = '') {
+            if (!viewId) return;
+            var lsStr = ktl.storage.lsGetItem(LS_UF_ACT + Knack.getUserAttributes().id);
+            if (lsStr) {
+                try {
+                    var actFltObj = JSON.parse(lsStr);
+                    if (!$.isEmptyObject(actFltObj)) {
+                        return actFltObj[viewId];
+                    }
+                } catch (e) {
+                    alert('getActiveFilterName - Error Found Parsing Filters: ' + viewId + ', reason: ' + e);
+                }
+            }
+            return '';
         }
 
         function setupFiltersDragAndDrop(filterDivId = '') {
@@ -2989,6 +2983,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 ktl.userFilters.setActiveFilter(filterName, viewId);
             },
 
+            //Uploads the updated user filters.
             uploadUserFilters: function () {
                 var viewId = ktl.iFrameWnd.getCfg().userFiltersViewId;
                 loadFilters(LS_UF);
@@ -3007,6 +3002,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
+            //This is where local and user filters are merged together.
             downloadUserFilters: function (newUserFiltersData = {}) {
                 if (!newUserFiltersData.newUserFilters || $.isEmptyObject(newUserFiltersData.newUserFilters)) return;
                 loadFilters(LS_UF);
@@ -3019,7 +3015,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     views.forEach(function (viewId) {
                         if (viewId.startsWith('view_') && document.querySelector('#' + viewId)) {
                             ktl.userFilters.addFilterButtons(viewId);
-                            //ktl.userFilters.setActiveFilter(activeFilterName, viewId);
+                            var filterBtn = document.querySelector('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(getActiveFilterName(viewId)));
+                            filterBtn && filterBtn.click();
                         }
                     })
                 }
@@ -3028,7 +3025,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            //Will broadcast the updated public filters to all users.
+            //Uploads the updated public filters to all users.
             uploadPublicFilters: function () {
                 var viewId = ktl.iFrameWnd.getCfg().appSettingsViewId;
                 loadFilters(LS_UFP);
@@ -3060,7 +3057,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     views.forEach(function (viewId) {
                         if (viewId.startsWith('view_') && document.querySelector('#' + viewId)) {
                             ktl.userFilters.addFilterButtons(viewId);
-                            //ktl.userFilters.setActiveFilter(activeFilterName, viewId);
+                            var filterBtn = document.querySelector('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(getActiveFilterName(viewId)));
+                            filterBtn && filterBtn.click();
                         }
                     })
                 }
