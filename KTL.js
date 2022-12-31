@@ -2918,33 +2918,36 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!newFilterStr) return;
 
                 var filterName = '';
-                var fltObj = userFiltersObj;
+                var flt = getFilter(viewId);
+                var filterSrc = userFiltersObj;
+                var type = LS_UF;
                 if (updateSame) {
-                    fltObj = getFilter(viewId).filterSrc;
+                    filterSrc = flt.filterSrc;
+                    type = flt.type;
                 } else {
                     filterName = prompt('Filter Name: ', '');
                     if (!filterName) return;
                 }
 
-                if (!$.isEmptyObject(fltObj)) {
+                if (!$.isEmptyObject(filterSrc)) {
                     var exists = false;
-                    if (viewId in fltObj) {
+                    if (viewId in filterSrc) {
                         var i = 0;
                         if (updateSame) {
-                            i = getFilter(viewId).index;
+                            i = flt.index;
                             if (i < 0 || i === null) return;
-                            if (!fltObj[viewId].filters[i]) return;
-                            if (fltObj[viewId].filters[i])
-                                filterName = fltObj[viewId].filters[i].filterName;
+                            if (!filterSrc[viewId].filters[i]) return;
+                            if (filterSrc[viewId].filters[i])
+                                filterName = filterSrc[viewId].filters[i].filterName;
 
-                            var isPublic = fltObj[viewId].filters[i].public;
+                            var isPublic = filterSrc[viewId].filters[i].public;
                             if (isPublic && !Knack.getUserRoleNames().includes('Public Filters')) return;
 
                             exists = true;
                         } else {
                             var filter = {};
-                            for (i = 0; i < fltObj[viewId].filters.length; i++) {
-                                filter = fltObj[viewId].filters[i];
+                            for (i = 0; i < filterSrc[viewId].filters.length; i++) {
+                                filter = filterSrc[viewId].filters[i];
                                 if (filterName === filter.filterName) {
                                     exists = true;
                                     break;
@@ -2955,33 +2958,33 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (exists) {
                             if (updateSame || confirm(filterName + ' already exists.  Do you want to overwrite?')) {
                                 //console.log('Overwriting filter');
-                                fltObj[viewId].filters[i].filterString = newFilterStr;
+                                filterSrc[viewId].filters[i].filterString = newFilterStr;
 
                                 if (newPerPageStr)
-                                    fltObj[viewId].filters[i].perPage = newPerPageStr;
+                                    filterSrc[viewId].filters[i].perPage = newPerPageStr;
 
                                 if (newSortStr)
-                                    fltObj[viewId].filters[i].sort = newSortStr;
+                                    filterSrc[viewId].filters[i].sort = newSortStr;
 
                                 if (newSearchStr)
-                                    fltObj[viewId].filters[i].search = newSearchStr;
+                                    filterSrc[viewId].filters[i].search = newSearchStr;
                             }
                         } else {
                             //console.log('Adding filter to existing view');
-                            fltObj[viewId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr });
+                            filterSrc[viewId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr });
                         }
                     } else {
                         //console.log('View not found.  Adding view with new filter');
-                        fltObj[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
+                        filterSrc[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
                     }
                 } else {
                     //console.log('No filters found, creating new from scratch.');
-                    fltObj[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
+                    filterSrc[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
                 }
 
-                fltObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
-                saveFilters(LS_UF, viewId);
+                saveFilters(type, viewId);
                 ktl.userFilters.addFilterButtons(viewId);
                 ktl.userFilters.setActiveFilter(filterName, viewId);
             },
@@ -3006,7 +3009,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             downloadUserFilters: function (newUserFiltersData = {}) {
                 if (!newUserFiltersData.newUserFilters || $.isEmptyObject(newUserFiltersData.newUserFilters)) return;
-                loadFilters(LS_UFP);
+                loadFilters(LS_UF);
                 try {
                     userFiltersObj = newUserFiltersData.newUserFilters;
                     saveFilters(LS_UF);
