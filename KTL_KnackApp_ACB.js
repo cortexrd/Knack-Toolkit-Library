@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.4';
+    const KTL_VERSION = '0.6.5';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2677,13 +2677,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var target = e.target || e.currentTarget;
             if (!filterDivId || !target.filter) return;
 
-            var activeFilter = document.querySelector('#' + filterDivId + ' .activeFilter');
-            if (activeFilter) {
-                //Don't re-apply same filter, unless it is public, since those can be updated in the background.
-                if (!activeFilter.filter.public && (activeFilter.filter.filterName === e.target.filter.filterName))
-                    return;
-            }
-
             $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
             target.classList.add('activeFilter');
             applyButtonColors();
@@ -2922,7 +2915,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var result = {};
 
             if (!filterName)
-                filterName = getActiveFilterName();
+                filterName = getActiveFilterName(viewId);
 
             if (type)
                 result = searchObj(type);
@@ -2949,22 +2942,23 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 return { index: index, type: type, filterSrc: filterSrc, filterObj: filterSrc[viewId].filters[index] };
             }
 
-            function getActiveFilterName() {
-                var lsStr = ktl.storage.lsGetItem(LS_UF_ACT + Knack.getUserAttributes().id);
-                if (lsStr) {
-                    try {
-                        var actFltObj = JSON.parse(lsStr);
-                        if (!$.isEmptyObject(actFltObj)) {
-                            return actFltObj[viewId];
-                        }
-                    } catch (e) {
-                        alert('getActiveFilterName - Error Found Parsing Filters:', e);
-                    }
-                }
-                return '';
-            }
-
             return result;
+        }
+
+        function getActiveFilterName(viewId = '') {
+            if (!viewId) return;
+            var lsStr = ktl.storage.lsGetItem(LS_UF_ACT + Knack.getUserAttributes().id);
+            if (lsStr) {
+                try {
+                    var actFltObj = JSON.parse(lsStr);
+                    if (!$.isEmptyObject(actFltObj)) {
+                        return actFltObj[viewId];
+                    }
+                } catch (e) {
+                    alert('getActiveFilterName - Error Found Parsing Filters: ' + viewId + ', reason: ' + e);
+                }
+            }
+            return '';
         }
 
         function setupFiltersDragAndDrop(filterDivId = '') {
@@ -3159,33 +3153,36 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!newFilterStr) return;
 
                 var filterName = '';
-                var fltObj = userFiltersObj;
+                var flt = getFilter(viewId);
+                var filterSrc = userFiltersObj;
+                var type = LS_UF;
                 if (updateSame) {
-                    fltObj = getFilter(viewId).filterSrc;
+                    filterSrc = flt.filterSrc;
+                    type = flt.type;
                 } else {
                     filterName = prompt('Filter Name: ', '');
                     if (!filterName) return;
                 }
 
-                if (!$.isEmptyObject(fltObj)) {
+                if (!$.isEmptyObject(filterSrc)) {
                     var exists = false;
-                    if (viewId in fltObj) {
+                    if (viewId in filterSrc) {
                         var i = 0;
                         if (updateSame) {
-                            i = getFilter(viewId).index;
+                            i = flt.index;
                             if (i < 0 || i === null) return;
-                            if (!fltObj[viewId].filters[i]) return;
-                            if (fltObj[viewId].filters[i])
-                                filterName = fltObj[viewId].filters[i].filterName;
+                            if (!filterSrc[viewId].filters[i]) return;
+                            if (filterSrc[viewId].filters[i])
+                                filterName = filterSrc[viewId].filters[i].filterName;
 
-                            var isPublic = fltObj[viewId].filters[i].public;
+                            var isPublic = filterSrc[viewId].filters[i].public;
                             if (isPublic && !Knack.getUserRoleNames().includes('Public Filters')) return;
 
                             exists = true;
                         } else {
                             var filter = {};
-                            for (i = 0; i < fltObj[viewId].filters.length; i++) {
-                                filter = fltObj[viewId].filters[i];
+                            for (i = 0; i < filterSrc[viewId].filters.length; i++) {
+                                filter = filterSrc[viewId].filters[i];
                                 if (filterName === filter.filterName) {
                                     exists = true;
                                     break;
@@ -3196,37 +3193,38 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (exists) {
                             if (updateSame || confirm(filterName + ' already exists.  Do you want to overwrite?')) {
                                 //console.log('Overwriting filter');
-                                fltObj[viewId].filters[i].filterString = newFilterStr;
+                                filterSrc[viewId].filters[i].filterString = newFilterStr;
 
                                 if (newPerPageStr)
-                                    fltObj[viewId].filters[i].perPage = newPerPageStr;
+                                    filterSrc[viewId].filters[i].perPage = newPerPageStr;
 
                                 if (newSortStr)
-                                    fltObj[viewId].filters[i].sort = newSortStr;
+                                    filterSrc[viewId].filters[i].sort = newSortStr;
 
                                 if (newSearchStr)
-                                    fltObj[viewId].filters[i].search = newSearchStr;
+                                    filterSrc[viewId].filters[i].search = newSearchStr;
                             }
                         } else {
                             //console.log('Adding filter to existing view');
-                            fltObj[viewId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr });
+                            filterSrc[viewId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr });
                         }
                     } else {
                         //console.log('View not found.  Adding view with new filter');
-                        fltObj[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
+                        filterSrc[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
                     }
                 } else {
                     //console.log('No filters found, creating new from scratch.');
-                    fltObj[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
+                    filterSrc[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
                 }
 
-                fltObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
-                saveFilters(LS_UF, viewId);
+                saveFilters(type, viewId);
                 ktl.userFilters.addFilterButtons(viewId);
                 ktl.userFilters.setActiveFilter(filterName, viewId);
             },
 
+            //Uploads the updated user filters.
             uploadUserFilters: function () {
                 var viewId = ktl.iFrameWnd.getCfg().userFiltersViewId;
                 loadFilters(LS_UF);
@@ -3245,9 +3243,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
+            //This is where local and user filters are merged together.
             downloadUserFilters: function (newUserFiltersData = {}) {
                 if (!newUserFiltersData.newUserFilters || $.isEmptyObject(newUserFiltersData.newUserFilters)) return;
-                loadFilters(LS_UFP);
+                loadFilters(LS_UF);
                 try {
                     userFiltersObj = newUserFiltersData.newUserFilters;
                     saveFilters(LS_UF);
@@ -3257,7 +3256,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     views.forEach(function (viewId) {
                         if (viewId.startsWith('view_') && document.querySelector('#' + viewId)) {
                             ktl.userFilters.addFilterButtons(viewId);
-                            //ktl.userFilters.setActiveFilter(activeFilterName, viewId);
+                            var filterBtn = document.querySelector('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(getActiveFilterName(viewId)));
+                            filterBtn && filterBtn.click();
                         }
                     })
                 }
@@ -3266,7 +3266,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
-            //Will broadcast the updated public filters to all users.
+            //Uploads the updated public filters to all users.
             uploadPublicFilters: function () {
                 var viewId = ktl.iFrameWnd.getCfg().appSettingsViewId;
                 loadFilters(LS_UFP);
@@ -3298,7 +3298,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     views.forEach(function (viewId) {
                         if (viewId.startsWith('view_') && document.querySelector('#' + viewId)) {
                             ktl.userFilters.addFilterButtons(viewId);
-                            //ktl.userFilters.setActiveFilter(activeFilterName, viewId);
+                            var filterBtn = document.querySelector('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(getActiveFilterName(viewId)));
+                            filterBtn && filterBtn.click();
                         }
                     })
                 }
@@ -5686,6 +5687,43 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         })
                         .catch(function () { })
                 }
+            } else if (view.key === cfg.userFiltersViewId) {
+                var newUserFilters = $('#' + cfg.userFiltersViewId + ' tbody tr .' + cfg.userFiltersCodeFld)[0].innerText;
+                try {
+                    var usrFiltersNeedDownload = false;
+                    var usrFiltersNeedUpload = false;
+                    if (newUserFilters && newUserFilters.length > 1)
+                        newUserFilters = JSON.parse(newUserFilters);
+
+                    var cloudDt = '';
+                    if (!$.isEmptyObject(newUserFilters))
+                        var cloudDt = newUserFilters.dt;
+
+                    var lastUfStr = ktl.storage.lsGetItem(LS_UF + Knack.getUserAttributes().id);
+                    if (lastUfStr) {
+                        try {
+                            var lastUfTempObj = JSON.parse(lastUfStr);
+                            if (!$.isEmptyObject(lastUfTempObj)) {
+                                var localDt = lastUfTempObj.dt;
+                                if (ktl.core.isMoreRecent(cloudDt, localDt))
+                                    usrFiltersNeedDownload = true;
+                                else if (ktl.core.isMoreRecent(localDt, cloudDt))
+                                    usrFiltersNeedUpload = true;
+                            }
+                        } catch (e) {
+                            alert('Read User Filters - Error Found Parsing Filters:', e);
+                        }
+                    } else
+                        usrFiltersNeedDownload = true;
+
+                    if (usrFiltersNeedDownload)
+                        ktl.wndMsg.send('userFiltersNeedDownloadMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newUserFilters: newUserFilters });
+                    else if (usrFiltersNeedUpload)
+                        ktl.userFilters.uploadUserFilters();
+                }
+                catch (e) {
+                    console.log('Error parsing newUserFilters\n', e);
+                }
             } else if (view.key === cfg.appSettingsViewId) {
                 var newSWVersion = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_KTL_VERSIONS") .' + cfg.appSettingsValueFld)[0].innerText;
                 if (newSWVersion !== APP_KTL_VERSIONS) {
@@ -5725,51 +5763,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     } else
                         pubFiltersNeedDownload = true;
 
-                    if (pubFiltersNeedDownload) {
-                        console.log('pubFiltersNeedDownload =', pubFiltersNeedDownload);
+                    if (pubFiltersNeedDownload)
                         ktl.wndMsg.send('publicFiltersNeedDownloadMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters });
-                    } else if (pubFiltersNeedUpload)
+                    else if (pubFiltersNeedUpload)
                         ktl.userFilters.uploadPublicFilters();
                 }
                 catch (e) {
                     console.log('Error parsing newPublicFilters\n', e);
-                }
-            } else if (view.key === cfg.userFiltersViewId) {
-                var newUserFilters = $('#' + cfg.userFiltersViewId + ' tbody tr .' + cfg.userFiltersCodeFld)[0].innerText;
-                try {
-                    var usrFiltersNeedDownload = false;
-                    var usrFiltersNeedUpload = false;
-                    if (newUserFilters && newUserFilters.length > 1)
-                        newUserFilters = JSON.parse(newUserFilters);
-
-                    var cloudDt = '';
-                    if (!$.isEmptyObject(newUserFilters))
-                        var cloudDt = newUserFilters.dt;
-
-                    var lastUfStr = ktl.storage.lsGetItem(LS_UF + Knack.getUserAttributes().id);
-                    if (lastUfStr) {
-                        try {
-                            var lastUfTempObj = JSON.parse(lastUfStr);
-                            if (!$.isEmptyObject(lastUfTempObj)) {
-                                var localDt = lastUfTempObj.dt;
-                                if (ktl.core.isMoreRecent(cloudDt, localDt))
-                                    usrFiltersNeedDownload = true;
-                                else if (ktl.core.isMoreRecent(localDt, cloudDt))
-                                    usrFiltersNeedUpload = true;
-                            }
-                        } catch (e) {
-                            alert('Read User Filters - Error Found Parsing Filters:', e);
-                        }
-                    } else
-                        usrFiltersNeedDownload = true;
-
-                    if (usrFiltersNeedDownload)
-                        ktl.wndMsg.send('userFiltersNeedDownloadMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newUserFilters: newUserFilters });
-                    else if (usrFiltersNeedUpload)
-                        ktl.userFilters.uploadUserFilters();
-                }
-                catch (e) {
-                    console.log('Error parsing newUserFilters\n', e);
                 }
             }
         })
@@ -6122,12 +6122,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             }
                             break;
                         case 'userFiltersNeedDownloadMsg':
-                            //When users need to fetch and update/merge their local copy with the new public filters.
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadUserFilters(event.data.msgData);
                             break;
                         case 'publicFiltersNeedDownloadMsg':
-                            //When users need to fetch and update/merge their local copy with the new public filters.
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadPublicFilters(event.data.msgData);
                             break;
