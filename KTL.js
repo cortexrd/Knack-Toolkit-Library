@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.5';
+    const KTL_VERSION = '0.6.8';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -657,7 +657,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         ktl.core.waitSelector('#kn-mobile-menu.is-visible')
                             .then(() => {
                                 var allMenus = $('#kn-mobile-menu').find('.kn-dropdown-menu-list');
-                                for (i = 0; i < (allMenus.length - 1); i++)
+                                for (i = 0; i < allMenus.length - 1; i++)
                                     ktl.core.sortUList(allMenus[i]);
                             })
                             .catch((err) => { console.log('Failed finding menu.', err); });
@@ -686,7 +686,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 while (switching) {
                     switching = false;
                     allListElements = uListElem.getElementsByTagName("LI");
-                    for (i = 0; i < (allListElements.length - 1); i++) {
+                    for (i = 0; i < allListElements.length - 1; i++) {
                         shouldSwitch = false;
                         if (allListElements[i].innerText.toLowerCase() > allListElements[i + 1].innerText.toLowerCase()) {
                             shouldSwitch = true;
@@ -2089,10 +2089,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //User Filters feature
 
-    //Old format
-    const LS_FILTERS = 'FILTERS_';
-
-    //New format
     const LS_UF = 'UF_';
     const LS_UFP = 'UFP_';
     const LS_UF_ACT = 'UF_ACTIVE_';
@@ -2292,9 +2288,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 try {
                     var fltObjTemp = JSON.parse(lsStr);
                     if (updateObj && !$.isEmptyObject(fltObjTemp)) {
-                        if (type === LS_UF)
+                        if (type === LS_UF) {
                             userFiltersObj = fltObjTemp;
-                        else
+                            checkForPublicInUser();
+                        } else
                             publicFiltersObj = fltObjTemp;
                     }
                 } catch (e) {
@@ -2303,6 +2300,29 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
 
             return fltObjTemp;
+        }
+
+        //Jan 01, 2023:  Temporary function just to be sure all works fine with new code.  Delete this eventually.
+        function checkForPublicInUser() {
+            try {
+                const views = Object.keys(userFiltersObj);
+                var viewError = '';
+                views.forEach(function (viewId) {
+                    if (viewId.startsWith('view_')) {
+                        for (i = 0; i < userFiltersObj[viewId].filters.length; i++) {
+                            if (userFiltersObj[viewId].filters[i].public) {
+                                viewError = viewId;
+                                break;
+                            }
+                        }
+                    }
+                })
+
+                if (viewError)
+                    console.log('KTL Error - Found a Public Filter in User Filter object, viewId =', viewError);
+            } catch (e) {
+                console.log('error', e);
+            }
         }
 
         function loadActiveFilters() {
@@ -2883,7 +2903,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             //When user saves a filter to a named button, or when a filter's parameter is modified, like the sort order.
-            onSaveFilterBtnClicked: function (e, viewId = '', updateSame = false) {
+            onSaveFilterBtnClicked: function (e, viewId = '', updateActiveFilter = false) {
                 if (!viewId) return;
 
                 //Extract filter string for this view from URL and decode.
@@ -2915,7 +2935,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var flt = getFilter(viewId);
                 var filterSrc = userFiltersObj;
                 var type = LS_UF;
-                if (updateSame) {
+                if (updateActiveFilter) {
                     filterSrc = flt.filterSrc;
                     type = flt.type;
                 } else {
@@ -2923,11 +2943,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (!filterName) return;
                 }
 
+                //console.log('filterSrc =', filterSrc);
+                //console.log('type =', type);
+
                 if (!$.isEmptyObject(filterSrc)) {
                     var exists = false;
                     if (viewId in filterSrc) {
                         var i = 0;
-                        if (updateSame) {
+                        if (updateActiveFilter) {
                             i = flt.index;
                             if (i < 0 || i === null) return;
                             if (!filterSrc[viewId].filters[i]) return;
@@ -2950,7 +2973,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         }
 
                         if (exists) {
-                            if (updateSame || confirm(filterName + ' already exists.  Do you want to overwrite?')) {
+                            if (updateActiveFilter || confirm(filterName + ' already exists.  Do you want to overwrite?')) {
                                 //console.log('Overwriting filter');
                                 filterSrc[viewId].filters[i].filterString = newFilterStr;
 
@@ -3007,6 +3030,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!newUserFiltersData.newUserFilters || $.isEmptyObject(newUserFiltersData.newUserFilters)) return;
                 loadFilters(LS_UF);
                 try {
+                    ktl.log.clog('blue', 'Downloading user filters...');
                     userFiltersObj = newUserFiltersData.newUserFilters;
                     saveFilters(LS_UF);
 
@@ -3036,7 +3060,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     apiData[ktl.iFrameWnd.getCfg().appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
                     var recId = $('#' + viewId + ' tbody tr:contains("APP_PUBLIC_FILTERS")');
                     if (recId.length) {
-                        ktl.log.clog('blue', 'Uploading public filters...');
+                        ktl.log.clog('cyan', 'Uploading public filters...');
                         ktl.core.knAPI(viewId, recId[0].id, apiData, 'PUT', [viewId])
                             .then(function (response) { ktl.log.clog('green', 'Public filters uploaded successfully!'); })
                             .catch(function (reason) { alert('An error occurred while uploading Public filters in table, reason: ' + JSON.stringify(reason)); })
@@ -3049,8 +3073,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!newPublicFiltersData.newPublicFilters || $.isEmptyObject(newPublicFiltersData.newPublicFilters)) return;
                 loadFilters(LS_UFP);
                 try {
+                    ktl.log.clog('cyan', 'Downloading Public filters...');
                     publicFiltersObj = newPublicFiltersData.newPublicFilters;
                     saveFilters(LS_UFP);
+
+                    fixConflictWithUserFilters();
 
                     //Live update of any relevant views.
                     const views = Object.keys(publicFiltersObj);
@@ -3064,6 +3091,31 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
                 catch (e) {
                     console.log('Exception in downloadPublicFilters:', e);
+                }
+
+                function fixConflictWithUserFilters() {
+                    loadFilters(LS_UF);
+                    const views = Object.keys(userFiltersObj);
+                    var foundConflict = false;
+                    views.forEach(function (viewId) {
+                        if (viewId.startsWith('view_')) {
+                            for (i = 0; i < userFiltersObj[viewId].filters.length; i++) {
+                                var flt = userFiltersObj[viewId].filters[i];
+                                var fn = flt.filterName;
+                                var fnp = getFilter(viewId, fn, LS_UFP);
+                                if (fnp.index >= 0) {
+                                    if (fn === fnp.filterObj.filterName) {
+                                        console.log('Found conflict:', viewId, i, fn);
+                                        foundConflict = true;
+                                        flt.filterName += '_';
+                                    }
+                                }
+                            }
+                        }
+                    })
+
+                    if (foundConflict)
+                        saveFilters(LS_UF);
                 }
             },
         }
@@ -4226,13 +4278,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 }
             },
 
+            //When a table is rendered, pass its data to this function along with the field and a value to search.
+            //It returns the record found, or undefined if nothing is found.
+            findRecord: function (data = [], fieldId = '', value = '') {
+                if (!data.length || !fieldId || !value) return;
+                for (i = 0; i < data.length; i++) {
+                    if (data[i][fieldId] === value)
+                        return data[i];
+                }
+            },
+
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
             modifyTableSort: function (e) {
-                //This is buggy.  For some reason, the sort order does not always reflect the data displayed.
-                //Leave is for developers to debug, but stop annoying users until we find a solution.
-                //Code is ispired from function handleClickSort in Knack.views.view_x.handleClickSort
-                if (!ktl.account.isDeveloper()) return;
-
                 if (e.target.closest('.kn-sort')) {
                     var viewId = e.target.closest('.kn-table.kn-view');
                     if (viewId) {
@@ -4243,6 +4300,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         var alreadySorted = e.target.closest('[class*="sorted-"]');
                         if (alreadySorted)
                             return;
+
+                        //The rest of this feature is buggy.  For some reason, the sort order does not always reflect the data displayed.
+                        //Leave is for developers to debug, but stop annoying users until we find a solution.
+                        //Code is ispired from function handleClickSort in Knack.views.view_x.handleClickSort
+                        if (!ktl.account.isDeveloper()) return;
 
                         var fieldId = e.target.closest('th').className;
                         if (Knack.objects.getField(fieldId)) {
@@ -5070,8 +5132,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         }
 
-        readUserPrefsFromLs();
-        var lastUserPrefs = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id); //Used to detect prefs changes.
+        var lastUserPrefs = readUserPrefsFromLs(); //Used to detect prefs changes.
 
         function readUserPrefsFromLs() {
             try {
@@ -5447,26 +5508,29 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         .catch(function () { })
                 }
             } else if (view.key === cfg.userFiltersViewId) {
-                var newUserFilters = $('#' + cfg.userFiltersViewId + ' tbody tr .' + cfg.userFiltersCodeFld)[0].innerText;
+                if (!data.length) return;
+                var newUserFilters = data[0][cfg.userFiltersCodeFld];
                 try {
                     var usrFiltersNeedDownload = false;
                     var usrFiltersNeedUpload = false;
                     if (newUserFilters && newUserFilters.length > 1)
                         newUserFilters = JSON.parse(newUserFilters);
 
-                    var cloudDt = '';
+                    var cloudUfDt = '';
                     if (!$.isEmptyObject(newUserFilters))
-                        var cloudDt = newUserFilters.dt;
+                        cloudUfDt = newUserFilters.dt;
 
                     var lastUfStr = ktl.storage.lsGetItem(LS_UF + Knack.getUserAttributes().id);
                     if (lastUfStr) {
                         try {
                             var lastUfTempObj = JSON.parse(lastUfStr);
                             if (!$.isEmptyObject(lastUfTempObj)) {
-                                var localDt = lastUfTempObj.dt;
-                                if (ktl.core.isMoreRecent(cloudDt, localDt))
+                                var localUfDt = lastUfTempObj.dt;
+                                //console.log('localUfDt =', localUfDt);
+                                //console.log('cloudUfDt =', cloudUfDt);
+                                if (ktl.core.isMoreRecent(cloudUfDt, localUfDt))
                                     usrFiltersNeedDownload = true;
-                                else if (ktl.core.isMoreRecent(localDt, cloudDt))
+                                else if (ktl.core.isMoreRecent(localUfDt, cloudUfDt))
                                     usrFiltersNeedUpload = true;
                             }
                         } catch (e) {
@@ -5484,6 +5548,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     console.log('Error parsing newUserFilters\n', e);
                 }
             } else if (view.key === cfg.appSettingsViewId) {
+                //TODO: Change below to use findRecord instead.
                 var newSWVersion = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_KTL_VERSIONS") .' + cfg.appSettingsValueFld)[0].innerText;
                 if (newSWVersion !== APP_KTL_VERSIONS) {
                     if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
@@ -5494,26 +5559,29 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
 
-                var newPublicFilters = $('#' + cfg.appSettingsViewId + ' tbody tr:contains("APP_PUBLIC_FILTERS") .' + cfg.appSettingsValueFld)[0].innerText;
+                var rec = ktl.views.findRecord(data, cfg.appSettingsItemFld, 'APP_PUBLIC_FILTERS');
+                var newPublicFilters = rec[cfg.appSettingsValueFld];
                 try {
                     var pubFiltersNeedDownload = false;
                     var pubFiltersNeedUpload = false;
                     if (newPublicFilters && newPublicFilters.length > 1)
                         newPublicFilters = JSON.parse(newPublicFilters);
 
-                    var cloudDt = '';
+                    var cloudPfDt = '';
                     if (!$.isEmptyObject(newPublicFilters))
-                        cloudDt = newPublicFilters.dt;
+                        cloudPfDt = newPublicFilters.dt;
 
                     var lastPfStr = ktl.storage.lsGetItem(LS_UFP + Knack.getUserAttributes().id);
                     if (lastPfStr) {
                         try {
                             var lastPfTempObj = JSON.parse(lastPfStr);
                             if (!$.isEmptyObject(lastPfTempObj)) {
-                                var localDt = lastPfTempObj.dt;
-                                if (ktl.core.isMoreRecent(cloudDt, localDt))
+                                var localPfDt = lastPfTempObj.dt;
+                                //console.log('localPfDt =', localPfDt);
+                                //console.log('cloudPfDt =', cloudPfDt);
+                                if (ktl.core.isMoreRecent(cloudPfDt, localPfDt))
                                     pubFiltersNeedDownload = true;
-                                else if (ktl.core.isMoreRecent(localDt, cloudDt))
+                                else if (ktl.core.isMoreRecent(localPfDt, cloudPfDt))
                                     pubFiltersNeedUpload = true;
                             }
                         } catch (e) {
