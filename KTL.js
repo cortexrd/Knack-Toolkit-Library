@@ -2133,7 +2133,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         function assembleFilterURL() {
             var views = Knack.router.scene_view.model.views.models;
-            if (!views.length || $.isEmptyObject(userFiltersObj)) return;
+            if (!views.length || ($.isEmptyObject(userFiltersObj) && $.isEmptyObject(publicFiltersObj))) return;
 
             var parts = ktl.core.splitUrl(window.location.href);
             var newUrl = parts['path'] + '?';
@@ -2141,29 +2141,27 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             for (var i = 0; i < views.length; i++) {
                 var filterDivId = views[i].attributes.key;
-                if (!userFiltersObj[filterDivId]) continue;
 
-                if (!$.isEmptyObject(userFiltersObj[filterDivId])) {
-                    var activeFilterIndex = getFilter(filterDivId).index;
-                    if (activeFilterIndex >= 0) {
-                        var filter = userFiltersObj[filterDivId].filters[activeFilterIndex];
-                        if (filter) {
-                            var encodedNewFilter = encodeURIComponent(filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
+                var flt = getFilter(filterDivId);
+                var actFltIdx = flt.index;
+                if (actFltIdx >= 0) {
+                    var filter = flt.filterSrc[filterDivId].filters[actFltIdx];
+                    if (filter) {
+                        var encodedNewFilter = encodeURIComponent(filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
 
-                            if (allParams)
-                                allParams += '&';
+                        if (allParams)
+                            allParams += '&';
 
-                            allParams += filterDivId + '_filters=' + encodedNewFilter;
+                        allParams += filterDivId + '_filters=' + encodedNewFilter;
 
-                            if (filter.perPage)
-                                allParams += '&' + filterDivId + '_per_page=' + filter.perPage;
+                        if (filter.perPage)
+                            allParams += '&' + filterDivId + '_per_page=' + filter.perPage;
 
-                            if (filter.sort)
-                                allParams += '&' + filterDivId + '_sort=' + filter.sort;
+                        if (filter.sort)
+                            allParams += '&' + filterDivId + '_sort=' + filter.sort;
 
-                            if (filter.search)
-                                allParams += '&' + filterDivId + '_search=' + filter.search;
-                        }
+                        if (filter.search)
+                            allParams += '&' + filterDivId + '_search=' + filter.search;
                     }
                 }
             }
@@ -2260,7 +2258,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 setViewToRefresh(getViewToRefresh() || viewId);
                 if (e.target.closest('.kn-remove-filter')) {
                     setViewToRefresh(null);
-                    ktl.userFilters.removeActiveFilter('', viewId);
+                    ktl.userFilters.removeActiveFilter(viewId);
                 }
             } else if (e.target.id && e.target.id === 'kn-submit-filters') {
                 var viewToRefresh = getViewToRefresh();
@@ -2608,7 +2606,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         alert('Filter name already exists.  Please use another one.');
                         return;
                     } else {
-                        var updatedFilter = getFilter(viewId, filter.filterName).filterObj;
+                        if (activeFilterName === filterName)
+                            activeFilterName = newFilterName;
+
+                        var updatedFilter = getFilter(viewId, filterName).filterObj;
                         updatedFilter.filterName = newFilterName;
                         saveFilters(filterType, viewId);
                         ktl.userFilters.addFilterButtons(viewId);
@@ -2636,14 +2637,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     if (filterIndex >= 0) {
                         //Toggle on/off
                         if (filter.public) {
-                            //Check if already exists in user filters.
-                            //Note that this use case is not possible in theory, so it just for good luck.
-                            var existsIdx = getFilter(viewId, filterName, LS_UF).index;
-                            if (existsIdx >= 0) {
-                                alert('A user filter with that name already exists.');
-                                return;
-                            }
-
                             delete filterSrc[viewId].filters[filterIndex].public;
                             if (userFiltersObj[viewId]) {
                                 userFiltersObj[viewId].filters.push(filterSrc[viewId].filters[filterIndex]);
@@ -2654,13 +2647,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 userFiltersObj[viewId] = { filters: ar };
                             }
                         } else {
-                            //Check if already exists in public filters.
-                            var existsIdx = getFilter(viewId, filterName, LS_UFP).index;
-                            if (existsIdx >= 0) {
-                                alert('A public filter with that name already exists.');
-                                return;
-                            }
-
                             var curFlt = filterSrc[viewId].filters[filterIndex];
                             curFlt.public = true;
                             if (publicFiltersObj[viewId]) {
@@ -2896,7 +2882,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.log.clog('purple', 'setActiveFilter, Failed waiting for ' + btnSelector);
                         })
                 } else
-                    ktl.userFilters.removeActiveFilter();
+                    ktl.userFilters.removeActiveFilter(viewId);
 
                 applyButtonColors();
             },
