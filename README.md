@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.5 - pre-release
+v0.6.8 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -112,7 +112,7 @@ If you want to try/use the basic, default setup version of the KTL, all
 you need to do is copy the content of those two files:
 [**KTL_KnackApp_ACB.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp_ACB.js)
 and
-[**KTL.css**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL.css)
+[**KTL_Knack_ACB.css**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp_ACB.css)
 to their respective panes in your Builder. If you already have your own
 code, it will not conflict with the KTL. Just move it between these
 lines at the end:
@@ -1102,8 +1102,8 @@ file.
 Open the KTL_KnackApp_ACB.js file, copy its content to your Javascript
 pane in the Builder and save.
 
-Open the KTL.css file, copy its content to your CSS pane in the Builder
-and save.
+Open the KTL_KnackApp_ACB.css file, copy its content to your CSS pane in
+the Builder and save.
 
 \*Note that eventually, when we reach the first official release, these
 two files will be hosted on my Cortex R&D's CDN, and all these copy
