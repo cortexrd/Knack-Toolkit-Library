@@ -2286,7 +2286,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var lsStr = ktl.storage.lsGetItem(type + Knack.getUserAttributes().id);
             if (lsStr) {
                 try {
-                    var fltObjTemp = JSON.parse(lsStr);
+                    fltObjTemp = JSON.parse(lsStr);
                     if (updateObj && !$.isEmptyObject(fltObjTemp)) {
                         if (type === LS_UF) {
                             userFiltersObj = fltObjTemp;
@@ -2343,41 +2343,38 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (type !== LS_UF && type !== LS_UFP) return;
 
             if (viewId) {
-                var filtersObjTemp = loadFilters(type, false);
+                var fltObjFromLs = loadFilters(type, false);
 
-                var fltObj = {};
+                var currentFltObj = {};
                 if (type === LS_UF)
-                    fltObj = userFiltersObj;
+                    currentFltObj = userFiltersObj;
                 else
-                    fltObj = publicFiltersObj;
+                    currentFltObj = publicFiltersObj;
 
-                if (filtersObjTemp[viewId]) { //Existing view
-                    if (fltObj[viewId]) { //Modified filter
-                        if ($.isEmptyObject(fltObj[viewId].filters))
-                            delete filtersObjTemp[viewId];
+                if (fltObjFromLs[viewId]) { //Existing view
+                    if (currentFltObj[viewId]) { //Modified filter
+                        if ($.isEmptyObject(currentFltObj[viewId]))
+                            delete fltObjFromLs[viewId];
                         else
-                            filtersObjTemp[viewId] = fltObj[viewId];
-                    } else //Deleted filter.
-                        delete filtersObjTemp[viewId];
-
+                            fltObjFromLs[viewId] = currentFltObj[viewId];
+                    } else //Deleted view.
+                        delete fltObjFromLs[viewId];
                 } else { //Non-existing view
-                    if (fltObj[viewId]) { //Added view and filter.
-                        filtersObjTemp[viewId] = fltObj[viewId];
+                    if (currentFltObj[viewId]) { //Added view and filter.
+                        fltObjFromLs[viewId] = currentFltObj[viewId];
                     }
                 }
 
-                if (filtersObjTemp[viewId])
-                    filtersObjTemp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                else
-                    delete filtersObjTemp.dt;
-
-                if ($.isEmptyObject(filtersObjTemp))
+                delete fltObjFromLs.dt;
+                if ($.isEmptyObject(fltObjFromLs)) {
                     ktl.storage.lsRemoveItem(type + Knack.getUserAttributes().id);
-                else {
+                    return;
+                } else {
+                    fltObjFromLs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                     if (type === LS_UF)
-                        userFiltersObj = filtersObjTemp;
+                        userFiltersObj = fltObjFromLs;
                     else
-                        publicFiltersObj = filtersObjTemp;
+                        publicFiltersObj = fltObjFromLs;
                 }
             }
 
@@ -2408,11 +2405,23 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!$.isEmptyObject(fltSrc) && !$.isEmptyObject(fltSrc[filterDivId])) {
                     var errorFound = false;
                     var activeFilterIndex = getFilter(filterDivId, '', type).index;
+
+                    //JIC - delete junk.
+                    if (!fltSrc[filterDivId].filters.length) {
+                        delete fltSrc[filterDivId];
+                        saveFilters(type, filterDivId);
+                        return;
+                    }
+
+
                     for (var btnIndex = 0; btnIndex < fltSrc[filterDivId].filters.length; btnIndex++) {
                         var filter = fltSrc[filterDivId].filters[btnIndex];
 
-                        if (!filter || filter.filterName === '') { //JIC - delete junk.
+                        //JIC - delete junk.
+                        if (!filter || filter.filterName === '') {
                             fltSrc[filterDivId].filters.splice(btnIndex, 1);
+                            if (!fltSrc[filterDivId].filters.length)
+                                delete fltSrc[filterDivId];
                             saveFilters(type, filterDivId);
                             errorFound = true;
                             console.log('errorFound =', errorFound, JSON.stringify(filter));
@@ -2716,7 +2725,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             return filter;
                     });
                 } else
-                    return { index: -1 };
+                    return { index: -1, type: LS_UF, filterSrc: userFiltersObj};
 
                 return { index: index, type: type, filterSrc: filterSrc, filterObj: filterSrc[viewId].filters[index] };
             }
@@ -2933,6 +2942,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var filterName = '';
                 var flt = getFilter(viewId);
+                console.log('flt =', flt);
                 var filterSrc = userFiltersObj;
                 var type = LS_UF;
                 if (updateActiveFilter) {
@@ -2942,6 +2952,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     filterName = prompt('Filter Name: ', '');
                     if (!filterName) return;
                 }
+
+                console.log('filterSrc =', filterSrc);
+                console.log('type =', type);
 
                 //console.log('filterSrc =', filterSrc);
                 //console.log('type =', type);
