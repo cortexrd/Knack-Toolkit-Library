@@ -2738,7 +2738,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         function setupFiltersDragAndDrop(filterDivId = '') {
             //Setup Drag n Drop for filter buttons.
             if (document.getElementById(filterDivId + '-filterDivId')) {
-                var sortableTimer;
                 new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
                     swapThreshold: 0.96,
                     animation: 250,
@@ -2752,20 +2751,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (evt.oldIndex !== evt.newIndex && evt.item.filter) {
                             var userFiltersAr = [];
                             var publicFiltersAr = [];
+
                             evt.to.children.forEach(function (item) {
-                                var filterObj = getFilter(filterDivId, item.innerText);
-                                if (filterObj.filterObj.public)
-                                    publicFiltersAr.push(filterObj.filterSrc[filterDivId].filters[filterObj.index]);
-                                else
-                                    userFiltersAr.push(filterObj.filterSrc[filterDivId].filters[filterObj.index]);
+                                var flt = getFilter(filterDivId, item.innerText);
+                                if (evt.item.filter.public && flt.filterObj.public)
+                                    publicFiltersAr.push(flt.filterSrc[filterDivId].filters[flt.index]);
+                                else if (!evt.item.filter.public && !flt.filterObj.public)
+                                    userFiltersAr.push(flt.filterSrc[filterDivId].filters[flt.index]);
                             });
 
                             if (userFiltersAr.length) {
                                 userFiltersObj[filterDivId].filters = userFiltersAr;
                                 saveFilters(LS_UF, filterDivId);
-                            }
-
-                            if (publicFiltersAr.length) {
+                            } else if (publicFiltersAr.length) {
                                 publicFiltersObj[filterDivId].filters = publicFiltersAr;
                                 saveFilters(LS_UFP, filterDivId);
                             }
@@ -2898,7 +2896,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             //When user saves a filter to a named button, or when a filter's parameter is modified, like the sort order.
-            onSaveFilterBtnClicked: function (e, viewId = '', updateActiveFilter = false) {
+            onSaveFilterBtnClicked: function (e, viewId = '', updateActive = false) {
                 if (!viewId) return;
 
                 //Extract filter string for this view from URL and decode.
@@ -2912,13 +2910,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     params.forEach(function (param) {
                         if (param[0].includes(viewId + '_filters'))
                             newFilterStr = param[1];
-
                         if (param[0].includes(viewId + '_per_page'))
                             newPerPageStr = param[1];
-
                         if (param[0].includes(viewId + '_sort'))
                             newSortStr = param[1];
-
                         if (param[0].includes(viewId + '_search'))
                             newSearchStr = param[1];
                     });
@@ -2926,77 +2921,44 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 if (!newFilterStr) return;
 
+                var flt = {};
+                var filterSrc = {};
                 var filterName = '';
-                var flt = getFilter(viewId);
-                console.log('flt =', flt);
-                var filterSrc = userFiltersObj;
-                var type = LS_UF;
-                if (updateActiveFilter) {
-                    filterSrc = flt.filterSrc;
-                    type = flt.type;
+
+                if (updateActive) {
+                    flt = getFilter(viewId);
+                    if (flt.index >= 0)
+                        filterName = flt.filterObj.filterName;
                 } else {
                     filterName = prompt('Filter Name: ', '');
                     if (!filterName) return;
-                }
 
-                console.log('filterSrc =', filterSrc);
-                console.log('type =', type);
-
-                //console.log('filterSrc =', filterSrc);
-                //console.log('type =', type);
-
-                if (!$.isEmptyObject(filterSrc)) {
-                    var exists = false;
-                    if (viewId in filterSrc) {
-                        var i = 0;
-                        if (updateActiveFilter) {
-                            i = flt.index;
-                            if (i < 0 || i === null) return;
-                            if (!filterSrc[viewId].filters[i]) return;
-                            if (filterSrc[viewId].filters[i])
-                                filterName = filterSrc[viewId].filters[i].filterName;
-
-                            var isPublic = filterSrc[viewId].filters[i].public;
-                            if (isPublic && !Knack.getUserRoleNames().includes('Public Filters')) return;
-
-                            exists = true;
-                        } else {
-                            var filter = {};
-                            for (i = 0; i < filterSrc[viewId].filters.length; i++) {
-                                filter = filterSrc[viewId].filters[i];
-                                if (filterName === filter.filterName) {
-                                    exists = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (exists) {
-                            if (updateActiveFilter || confirm(filterName + ' already exists.  Do you want to overwrite?')) {
-                                //console.log('Overwriting filter');
-                                filterSrc[viewId].filters[i].filterString = newFilterStr;
-
-                                if (newPerPageStr)
-                                    filterSrc[viewId].filters[i].perPage = newPerPageStr;
-
-                                if (newSortStr)
-                                    filterSrc[viewId].filters[i].sort = newSortStr;
-
-                                if (newSearchStr)
-                                    filterSrc[viewId].filters[i].search = newSearchStr;
-                            }
-                        } else {
-                            //console.log('Adding filter to existing view');
-                            filterSrc[viewId].filters.push({ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr });
-                        }
-                    } else {
-                        //console.log('View not found.  Adding view with new filter');
-                        filterSrc[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
+                    flt = getFilter(viewId, filterName);
+                    if (flt.index >= 0) {
+                        if (!confirm(filterName + ' already exists.  Do you want to overwrite?'))
+                            return;
                     }
-                } else {
-                    //console.log('No filters found, creating new from scratch.');
-                    filterSrc[viewId] = { filters: [{ 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr }] };
                 }
+
+                var type = flt.type;
+                filterSrc = flt.filterSrc;
+
+                var fltObj = { 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr };
+
+                if (type === LS_UFP && Knack.getUserRoleNames().includes('Public Filters')) {
+                    fltObj.public = true;
+                } else { //Force back to user filters, if not allowed.
+                    type = LS_UF;
+                    filterSrc = userFiltersObj;
+                }
+
+                if ($.isEmptyObject(filterSrc) || !filterSrc[viewId])
+                    filterSrc[viewId] = { filters: [] };
+
+                if (flt.index >= 0)
+                    filterSrc[viewId].filters[flt.index] = fltObj;
+                else
+                    filterSrc[viewId].filters.push(fltObj);
 
                 filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
@@ -3059,7 +3021,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     apiData[ktl.iFrameWnd.getCfg().appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
                     var recId = $('#' + viewId + ' tbody tr:contains("APP_PUBLIC_FILTERS")');
                     if (recId.length) {
-                        ktl.log.clog('cyan', 'Uploading public filters...');
+                        ktl.log.clog('darkcyan', 'Uploading public filters...');
                         ktl.core.knAPI(viewId, recId[0].id, apiData, 'PUT', [viewId])
                             .then(function (response) { ktl.log.clog('green', 'Public filters uploaded successfully!'); })
                             .catch(function (reason) { alert('An error occurred while uploading Public filters in table, reason: ' + JSON.stringify(reason)); })
@@ -3072,7 +3034,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!newPublicFiltersData.newPublicFilters || $.isEmptyObject(newPublicFiltersData.newPublicFilters)) return;
                 loadFilters(LS_UFP);
                 try {
-                    ktl.log.clog('cyan', 'Downloading Public filters...');
+                    ktl.log.clog('darkcyan', 'Downloading Public filters...');
                     publicFiltersObj = newPublicFiltersData.newPublicFilters;
                     saveFilters(LS_UFP);
 
