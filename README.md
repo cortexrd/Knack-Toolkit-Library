@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.8 - pre-release
+v0.6.10 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -1383,10 +1383,7 @@ follow this procedure:
     c.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time
         Format: military.
 
-4)  Add two records with Item set to **APP_KTL_VERSIONS** and
-    **APP_PUBLIC_FILTERS**. Leave Value and Date/Time blank.
-
-5)  In the iFrameWnd page created above, add a Form view that updates
+4)  In the iFrameWnd page created above, add a Form view that updates
     the currently logged-in account. Once the view is added, remove all
     fields, then add on a first line: SW Version, UTC HB and LOC HB (set
     as read-only). Then on a second line: Online, UTC Last Activity and
@@ -1394,19 +1391,19 @@ follow this procedure:
     rules, enable auto-reload and set the Confirmation message to
     "Heartbeat sent successfully.".
 
-6)  Still in the iFrameWnd, add a table view that displays **App
-    Settings**, with title: **App Settings AUTOREFRESH=15**. Source
+5)  Still in the iFrameWnd, add a table view that displays **App
+    Settings**, with title: **App Settings AUTOREFRESH=20**. Source
     filter: **Item Starting with APP**, sorted alphabetically A to Z. No
     Search, inline editing = On, 10 records at a time, no filtering
     allowed. Add all fields. Set Value's Truncate Text to 75 characters.
 
-7)  Be sure you have the Show iFrameWnd checkbox on in [User
+6)  Be sure you have the Show iFrameWnd checkbox on in [User
     Prefs](#user-preferences-1) above.
 
-8)  Refresh the app and you should see in the iFrameWnd the heartbeat
+7)  Refresh the app and you should see in the iFrameWnd the heartbeat
     being submitted every minute and the Online being set to Yes.
 
-9)  **VIEWER**: To view the heartbeats, online status, latest activity,
+8)  **VIEWER**: To view the heartbeats, online status, latest activity,
     SW Version, etc., create a Sysop Dashboard page accessible to
     Developer role only, with a table view that shows the Accounts
     having an Active status. Title: **Account Status AUTOREFRESH=60**.
@@ -1415,7 +1412,7 @@ follow this procedure:
     can assess the presence, latest activity and SW Version for each
     account.
 
-10) **Note**: The Online status flag is set, but never reset
+9)  **Note**: The Online status flag is set, but never reset
     automatically. You'll need to create a daily task to reset it. I
     also have some existing code that does it with API calls, but need
     to add it to the KTL soon. TODO: provide code for Online update,

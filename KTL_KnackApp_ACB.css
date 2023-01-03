@@ -103,16 +103,12 @@ tr:hover {
 
 /************ User Filters **************/
 .activeFilter {
-	border-width: 2px;
+	outline:double;
 }
 
 .filterControl {
 	display: flex;
 	width: 30px;
-}
-
-.filterBtn.public {
-	filter: contrast(1.6);
 }
 
 /************ Improved Chzn Dropdown **************/
