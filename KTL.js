@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.10';
+    const KTL_VERSION = '0.6.11';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -5541,14 +5541,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     newUserFilters = data[0][cfg.userFiltersCodeFld];
 
                 try {
+                    var cloudUfDt = '';
                     var usrFiltersNeedDownload = false;
                     var usrFiltersNeedUpload = false;
-                    if (newUserFilters && newUserFilters.length > 1)
+                    if (newUserFilters && newUserFilters.length > 1) {
                         newUserFilters = JSON.parse(newUserFilters);
+                        if ($.isEmptyObject(newUserFilters)) return;
+                        cloudUfDt = newUserFilters.dt;
+                    }
 
-                    if ($.isEmptyObject(newUserFilters)) return;
-
-                    var cloudUfDt = newUserFilters.dt;
                     var lastUfStr = ktl.storage.lsGetItem(LS_UF + Knack.getUserAttributes().id);
                     if (lastUfStr) {
                         try {
@@ -5603,14 +5604,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (rec) {
                     var newPublicFilters = rec[cfg.appSettingsValueFld];
                     try {
+                        var cloudPfDt = '';
                         var pubFiltersNeedDownload = false;
                         var pubFiltersNeedUpload = false;
-                        if (newPublicFilters && newPublicFilters.length > 1)
+                        if (newPublicFilters && newPublicFilters.length > 1) {
                             newPublicFilters = JSON.parse(newPublicFilters);
+                            if ($.isEmptyObject(newPublicFilters)) return;
+                            cloudPfDt = newPublicFilters.dt;
+                        }
 
-                        if ($.isEmptyObject(newPublicFilters)) return;
-
-                        var cloudPfDt = newPublicFilters.dt;
                         var lastPfStr = ktl.storage.lsGetItem(LS_UFP + Knack.getUserAttributes().id);
                         if (lastPfStr) {
                             try {
