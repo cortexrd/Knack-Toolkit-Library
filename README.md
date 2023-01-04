@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.10 - pre-release
+v0.6.11 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -1418,6 +1418,75 @@ follow this procedure:
     to add it to the KTL soon. TODO: provide code for Online update,
     email and audio alerts, custom status colorizing, etc.
 
+10) **For SW Updates**: In the Status Monitoring page, add a table view
+    for App Settings object. Title: **BROADCAST_SW_UPDATE**. Filter
+    Source on Item contains APP_KTL_VERSIONS. Settings: no search,
+    Inline Edit = On, 10 records, no filtering. Leave three fields Item,
+    Value and Date/Time.
+
+11) Add an action column: Header: Broadcast SW Update, Link Text:
+    BROADCAST NOW. Action is Update this record, Item to a field value
+    Item. Confirmation msg: SW Update in progress\.... You can set the
+    text style in bold red with the display rule: when Item is not
+    blank.
+
+#### User Filters
+
+In addition to being able to create named buttons for the User Filters
+that are saved in localStorage, it is possible to upload your settings
+to Knack and download them back wherever and whenever needed. This
+two-way process is automatically done in the background, and can be seen
+as a backup method, but also to migrate them to other devices (or
+browsers, see note below). Note that if you migrate filters from one app
+to another, typically a temporary development copy, some filters may not
+work due to the record IDs that have changed for connected fields. This
+is a normal behavior, and the only way to fix this is to redo their
+settings and save back to the same button name.
+
+To support automatic Upload and Download, follow this procedure:
+
+1)  Create an object named **User Filters** and add these fields:
+
+    a.  **Account**: Type: Connection to Accounts, all settings at
+        default.
+
+    b.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default
+        Date: Current Date, Time Format: military, Default Time: Current
+        Time.
+
+    c.  **Filters Code**: Type: Paragraph Text.
+
+    d.  Object Settings : Display Field: Account, Sort Order: Account, a
+        to z.
+
+2)  Go to the **iFrameWnd** page and add a new Table that displays
+    **User Filters** connected to the logged-in account. Call it User
+    Filters, remove the Account column and leave only the Date/Time and
+    Filters Code. Set Filters Code's Truncate Text to 75 characters.
+
+3)  Source: Limit number of records to 1.
+
+4)  Settings: no search, Inline Editing = On, 10 records at a time, no
+    filtering. Title: **User Filters AUTOREFRESH=30** (you can change
+    the 30 for 10 seconds temporarily for quicker testing, then put back
+    to 30)
+
+**To test this feature:**
+
+Open two different browsers (ex: Chrome and Edge) and log-in with the
+same account - yours. Open both to the same page, where there's a table
+with filtering enabled. Create a couple of filters in the first browser,
+wait about 30 seconds and you will see those filters appear in the
+second browser. Same applies for Public Filters: set a filter to Public,
+make changes to it, and all will be reflected in the other browser, but
+also for all users of that view.
+
+\*Note about browsers: the localStorage is not shared across different
+browsers (and also within the same browser but in private/incognito
+mode). This is when the automatic Upload/Download feature then comes to
+the rescue, by allowing this transfer to occur in real-time, within
+about 30 seconds.
+
 #### Account Logging
 
 If you want to add Account Logging to your app, follow this procedure:
@@ -1477,60 +1546,6 @@ safely be deleted from localStorage.
 
 If you want to add Bulk Edit and Bulk Delete to your app, follow this
 procedure described in this section [Bulk Operations](#bulk-operations).
-
-#### User Filters
-
-In addition to being able to create named buttons for the User Filters
-that are saved in localStorage, it is possible to upload your settings
-to Knack and download them back wherever and whenever needed. This
-two-way process is automatically done in the background, and can be seen
-as a backup method, but also to migrate them to other devices (or
-browsers, see note below). Note that if you migrate filters from one app
-to another, typically a temporary development copy, some filters may not
-work due to the record IDs that have changed for connected fields. This
-is a normal behavior, and the only way to fix this is to redo their
-settings and save back to the same button name.
-
-To support automatic Upload and Download, follow this procedure:
-
-1)  Create an object named **User Filters** and add these fields:
-
-    a.  **Account**: Type: Connection to Accounts, all settings at
-        default.
-
-    b.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default
-        Date: Current Date, Time Format: military, Default Time: Current
-        Time.
-
-    c.  **Filters Code**: Type: Paragraph Text.
-
-2)  Go to the **iFrameWnd** page and add a new Table that displays
-    **User Filters** connected to the logged-in account. Call it User
-    Filters, remove the Account column and leave only the Date/Time and
-    Filters Code. Set Filters Code's Truncate Text to 75 characters.
-
-3)  Source: Limit number of records to 1.
-
-4)  Settings: no search, Inline Editing = On, 10 records at a time, no
-    filtering. Title: **User Filters AUTOREFRESH=30** (you can change
-    the 30 for 10 seconds temporarily for quicker testing, then put back
-    to 30)
-
-**To test this feature:**
-
-Open two different browsers (ex: Chrome and Edge) and log-in with the
-same account - yours. Open both to the same page, where there's a table
-with filtering enabled. Create a couple of filters in the first browser,
-wait about 30 seconds and you will see those filters appear in the
-second browser. Same applies for Public Filters: set a filter to Public,
-make changes to it, and all will be reflected in the other browser, but
-also for all users of that view.
-
-\*Note about browsers: the localStorage is not shared across different
-browsers (and also within the same browser but in private/incognito
-mode). This is when the automatic Upload/Download feature then comes to
-the rescue, by allowing this transfer to occur in real-time, within
-about 30 seconds.
 
 # Future Improvements
 
