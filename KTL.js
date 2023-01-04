@@ -3603,6 +3603,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (view.type === 'table' /*TODO: add more view types*/) {
                 const NF = 'NO_FILTER=';
                 var descr = view.description;
+                if (!descr) return;
                 var index = descr.indexOf(NF);
                 if (index >= 0) {
                     descr = descr.substr(index + NF.length);
@@ -4347,7 +4348,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 var newField = newHref.split('|')[0].split('#')[1];
                                 var viewObj = Knack.views[viewId];
                                 if (fieldAttr.type === 'date_time')
-                                    ctrlClickInvert ^= ctrlClickInvert;
+                                    ctrlClickInvert = !ctrlClickInvert;
 
                                 order = ctrlClickInvert ? 'desc' : 'asc';
                                 viewObj.model.view.source.sort = [{
