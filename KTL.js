@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.11';
+    const KTL_VERSION = '0.6.12';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2184,18 +2184,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 window.location.href = newUrl + allParams;
         }
 
-        $(document).on('knack-scene-render.any', function (event, scene) {
-            if (ktl.scenes.isiFrameWnd()) return;
-
-            //loadFilters(LS_UF);
-            //loadFilters(LS_UFP);
-        })
-
-        $(document).on('knack-view-render.any', function (event, view, data) {
+        $(document).on('knack-records-render.report knack-records-render.table', function (e, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
-            //Report views are much more complex, thus not well supported yet.  Sorry :(
-            if (document.querySelector('#' + view.key + '.kn-report')) return;
+            console.log('view.key =', view.key);
+            console.log('view.type =', view.type);
 
             if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
                 ktl.userFilters.addFilterButtons(view.key);
@@ -2217,9 +2210,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
 
             //When Enter is pressed in Search table field.
-            var searchForm = document.querySelector('#' + view.key + ' .table-keyword-search');
-            if (searchForm) {
-                searchForm.addEventListener('submit', function () {
+            var searchField = document.querySelector('#' + view.key + ' .table-keyword-search');
+            if (searchField) {
+                searchField.addEventListener('submit', function () {
                     ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
                     updateSearchInFilter(view.key);
                 })
@@ -2232,8 +2225,52 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
                     updateSearchInFilter(view.key);
                 })
-            }            
+            }
         })
+
+        //$(document).on('knack-view-render.any', function (event, view, data) {
+        //    if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
+
+            //Report views are much more complex, thus not well supported yet.  Sorry :(
+            //if (document.querySelector('#' + view.key + '.kn-report')) return;
+
+            //if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
+            //    ktl.userFilters.addFilterButtons(view.key);
+
+        //    var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
+        //    if (perPageDropdown) {
+        //        perPageDropdown.addEventListener('change', function (e) {
+        //            ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+        //        });
+        //    }
+
+        //    //When the Search button is clicked in table.
+        //    var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
+        //    if (searchBtn) {
+        //        searchBtn.addEventListener('click', function () {
+        //            ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+        //            updateSearchInFilter(view.key);
+        //        });
+        //    }
+
+        //    //When Enter is pressed in Search table field.
+        //    var searchField = document.querySelector('#' + view.key + ' .table-keyword-search');
+        //    if (searchField) {
+        //        searchField.addEventListener('submit', function () {
+        //            ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+        //            updateSearchInFilter(view.key);
+        //        })
+        //    }
+
+        //    //When the Reset button is clicked in table's search.
+        //    var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
+        //    if (resetSearch) {
+        //        resetSearch.addEventListener('click', function () {
+        //            document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
+        //            updateSearchInFilter(view.key);
+        //        })
+        //    }            
+        //})
 
         //Retrieves the searched string form the field and saves it in the localStorage's filter entry.
         function updateSearchInFilter(viewId = '') {
@@ -2414,7 +2451,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             function createFltBtns(filterDivId, type) {
                 var fltSrc = type === LS_UF ? userFiltersObj : publicFiltersObj;
-                
+
+                if (filterDivId.includes('view_2924'))
+                    console.log('stop');
+
                 if (!$.isEmptyObject(fltSrc) && !$.isEmptyObject(fltSrc[filterDivId])) {
                     var errorFound = false;
                     var activeFilterIndex = getFilter(filterDivId, '', type).index;
@@ -2823,6 +2863,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 allFiltersBar.forEach(function (viewFilterDiv) {
                     var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]') || viewFilterDiv.closest('#' + viewId);
                     filterDivId = filterDivId ? filterDivId.id : null; //Typically view_123 for tables and kn-report-view_123-1 for reports.
+
+                    console.log('filterDivId =', filterDivId);
+
                     if (filterDivId === null) {
                         if (ktl.account.isDeveloper())
                             alert('filterDivId is null for ' + viewFilterDiv + ', ' + viewId);
@@ -2842,6 +2885,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         viewFilterDiv.appendChild(filterCtrlDiv);
                         $('#' + filterDivId + ' .filterCtrlDiv').css({ 'display': 'flex', 'margin-left': '15px' });
                     }
+
+                    if (filterDivId === 'kn-report-view_2924-1') {
+                        console.log('filterDivId =', filterDivId);
+                    }
+
 
                     /////////////////////////////
                     //Save Filter button - always create, but enable/disable depending on filter state.
@@ -2898,6 +2946,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             setActiveFilter: function (filterName = '', viewId = '') {
                 if (!viewId || !filterName) return;
+
+                //TODO: handle multiple report charts per view.
+
                 $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
                 var filterIndex = getFilter(viewId, filterName).index;
                 if (filterIndex >= 0) {
@@ -2935,6 +2986,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             onSaveFilterBtnClicked: function (e, viewId = '', updateActive = false) {
                 if (!viewId) return;
 
+                var filterDivId = viewId.replace('kn-report-', ''); //kn-report-view_2924-1
+                var vrAr = filterDivId.split('-');
+                console.log('vrAr =', vrAr);
+                var idx = parseInt(vrAr[1].replace('-', '')) - 1;
+                console.log('idx =', idx);
+                filterDivId = vrAr[0] + '_' + idx.toString();
+                console.log('filterDivId =', filterDivId);
+
                 //Extract filter string for this view from URL and decode.
                 var newFilterStr = '';
                 var newPerPageStr = '';
@@ -2944,13 +3003,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 const params = Object.entries(parts['params']);
                 if (!$.isEmptyObject(params)) {
                     params.forEach(function (param) {
-                        if (param[0].includes(viewId + '_filters'))
+                        if (param[0].includes(filterDivId + '_filters'))
                             newFilterStr = param[1];
-                        if (param[0].includes(viewId + '_per_page'))
+                        if (param[0].includes(filterDivId + '_per_page'))
                             newPerPageStr = param[1];
-                        if (param[0].includes(viewId + '_sort'))
+                        if (param[0].includes(filterDivId + '_sort'))
                             newSortStr = param[1];
-                        if (param[0].includes(viewId + '_search'))
+                        if (param[0].includes(filterDivId + '_search'))
                             newSearchStr = param[1];
                     });
                 }
@@ -2963,12 +3022,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var type = '';
 
                 if (updateActive) {
-                    flt = getFilter(viewId);
+                    flt = getFilter(filterDivId);
                     filterSrc = flt.filterSrc;
                     type = flt.type;
 
                     //If it's a public filter, exit if the unlocked icon is not present.  This covers all cases, i.e. when you don't have the right to modify it, or if you do but PFs are locked.
-                    if (type === LS_UFP && !document.querySelector('#' + viewId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX + ' .fa-unlock-alt'))
+                    if (type === LS_UFP && !document.querySelector('#' + filterDivId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX + ' .fa-unlock-alt'))
                         return;
 
                     if (flt.index >= 0)
@@ -2977,7 +3036,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     filterName = prompt('Filter Name: ', '');
                     if (!filterName) return;
 
-                    flt = getFilter(viewId, filterName);
+                    flt = getFilter(filterDivId, filterName);
                     filterSrc = flt.filterSrc;
                     type = flt.type;
                     if (flt.index >= 0) {
@@ -2994,21 +3053,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var fltObj = { 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr };
 
-                if (type === LS_UFP) {
+                if (type === LS_UFP)
                     fltObj.public = true;
-                }
 
-                if ($.isEmptyObject(filterSrc) || !filterSrc[viewId])
-                    filterSrc[viewId] = { filters: [] };
+                if ($.isEmptyObject(filterSrc) || !filterSrc[filterDivId])
+                    filterSrc[filterDivId] = { filters: [] };
 
                 if (flt.index >= 0)
-                    filterSrc[viewId].filters[flt.index] = fltObj;
+                    filterSrc[filterDivId].filters[flt.index] = fltObj;
                 else
-                    filterSrc[viewId].filters.push(fltObj);
+                    filterSrc[filterDivId].filters.push(fltObj);
 
                 filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
-                saveFilters(type, viewId);
+                saveFilters(type, filterDivId);
                 ktl.userFilters.addFilterButtons(viewId);
                 ktl.userFilters.setActiveFilter(filterName, viewId);
             },
@@ -4331,7 +4389,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                         //The rest of this feature is buggy.  For some reason, the sort order does not always reflect the data displayed.
                         //Leave is for developers to debug, but stop annoying users until we find a solution.
-                        //Code is ispired from function handleClickSort in Knack.views.view_x.handleClickSort
+                        //Code is inspired from function handleClickSort in Knack.views.view_x.handleClickSort
                         if (!ktl.account.isDeveloper()) return;
 
                         var fieldId = e.target.closest('th').className;
