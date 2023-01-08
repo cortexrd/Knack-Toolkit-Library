@@ -3894,18 +3894,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     //Add a checkbox to each row in the table body
                     //For summary lines, prepend a space.
                     //For groups, extend line up to end.
-                    var sel = '';
-                    $('#' + viewId + ' .kn-table tbody tr').each(function () {
-                        if (this.classList.contains('kn-table-totals')) {
-                            sel = '#' + viewId + ' tr.kn-table-totals';
-                            ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
-                                .then(function () { $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); })
-                                .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.'); })
-                        } else if (this.classList.contains('kn-table-group')) {
-                            $(this).find('td').attr('colspan', '15');
-                        } else
-                            $(this).prepend('<td><input type="checkbox"></td>');
-                    });
+                    var sel = '#' + viewId + ' tr.kn-table-totals';
+                    ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
+                        .then(function () {
+                            $('#' + viewId + ' .kn-table tbody tr').each(function () {
+                                if (this.classList.contains('kn-table-totals')) {
+                                    $(this).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                } else if (this.classList.contains('kn-table-group')) {
+                                    $(this).find('td').attr('colspan', document.querySelectorAll('#' + viewId + ' thead th').length);
+                                } else
+                                    $(this).prepend('<td><input type="checkbox"></td>');
+                            });
+                        })
+                        .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.'); })
                 }
             },
 
@@ -6199,21 +6200,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var bulkOpsInProgress = false; //Needed to prevent re-entering because pressing Enter on Sumbit causes two Click events.
         var bulkOpsDeleteAll = false;
 
-        $(document).on('knack-view-render.any', function (event, view, data) {
+        $(document).on('knack-view-render.table', function (event, view, data) {
             if (ktl.scenes.isiFrameWnd() || (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
                 return;
 
             var viewModel = Knack.router.scene_view.model.views._byId[view.key];
             if (viewModel) {
                 var viewAttr = viewModel.attributes;
-                if (viewAttr.type === 'table') {
-                    var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
-                    var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
-                    if ((canDelete && Knack.getUserRoleNames().includes('Bulk Delete')) || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
-                        enableBulkOperations(view, data);
-                        if (bulkOpsInProgress)
-                            processBulkOps();
-                    }
+                var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
+                var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
+                if ((canDelete && Knack.getUserRoleNames().includes('Bulk Delete')) || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
+                    enableBulkOperations(view, data);
+                    if (bulkOpsInProgress)
+                        processBulkOps();
                 }
             }
         })
