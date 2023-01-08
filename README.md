@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.11 - pre-release
+v0.6.13 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -556,9 +556,9 @@ at the end of your description, or on a separate line, as you wish, as
 long as it's at the end of your text. Currently, only tables are
 supported. Here's the list:
 
--   **NO_FILTER=field_x, field_y, field_z** This will prevent from
-    filtering on these fields, even if they are visible in the table.
-    Each must have a comma separator, spaces are allowed.
+-   **NO_FILTER=field_x, field_y, field_z** This will prevent filtering
+    on these fields, even if they are visible in the table. Each must
+    have a comma separator, spaces are allowed.
 
 ### Adding flags to the tables header text to trigger special behavior
 
@@ -657,13 +657,13 @@ other mishaps. **Data is erased** when the form is **submitted**
 
 ### Usage
 
-When \"Add filters\" is used in tables, it is possible to save each one
-you create to a named button by clicking on the yellow diskette save
-icon. The \[X\] icon with a pink color is to remove the active filter
-and see all records. Your filters are saved in localStorage but can be
-saved/restored to/from Knack for backup or migration to other devices,
-provided some additional setup. See the [User Filters setup
-procedure](#user-filters-1).
+When \"Add filters\" is used in tables and reports, it is possible to
+save each one you create to a named button by clicking on the yellow
+diskette save icon. The \[X\] icon with a pink color is to remove the
+active filter and see all records. Your filters are saved in
+localStorage but can be saved/restored to/from Knack for backup or
+migration to other devices, provided some additional setup. See the
+[User Filters setup procedure](#user-filters-1).
 
 Each active filter will not only remember its filter parameters, but
 also the column selected for sorting, the sort order, and the searched
@@ -678,7 +678,7 @@ function.
 
 ### Public Filters
 
-If you are annoyed by the limitations of **filter menus** that only have
+If you are annoyed by the limitations of **Filter menus** that only have
 one field and without AND/OR operators, then you will find Public
 Filters very useful. They are the same as User Filters but created by
 special users, yet visible to everyone.
@@ -691,9 +691,9 @@ Then, create a **Public Filters** role and assign it to the privileged
 users of your choice. When they create their filters, they can
 right-click the assigned button to open the popup menu, where an option
 is shown: **Public: Yes/No**. Clicking on it will broadcast the new
-filter to all users. Within about 10 seconds, they will see it appear on
+filter to all users. Within about 20 seconds, they will see it appear on
 all opened pages with that view. The Public Filters are always located
-to the left of the other filters with a slightly increased contrast and
+to the left of the other filters with a slightly increased color and
 kept in the same order as the creator's. They can't be renamed, deleted
 or re-ordered by regular users.
 
@@ -1412,7 +1412,7 @@ follow this procedure:
     can assess the presence, latest activity and SW Version for each
     account.
 
-9)  **Note**: The Online status flag is set, but never reset
+9)  **Note**: The Online status flag is set, but not reset
     automatically. You'll need to create a daily task to reset it. I
     also have some existing code that does it with API calls, but need
     to add it to the KTL soon. TODO: provide code for Online update,
@@ -1433,15 +1433,15 @@ follow this procedure:
 #### User Filters
 
 In addition to being able to create named buttons for the User Filters
-that are saved in localStorage, it is possible to upload your settings
-to Knack and download them back wherever and whenever needed. This
-two-way process is automatically done in the background, and can be seen
-as a backup method, but also to migrate them to other devices (or
-browsers, see note below). Note that if you migrate filters from one app
-to another, typically a temporary development copy, some filters may not
-work due to the record IDs that have changed for connected fields. This
-is a normal behavior, and the only way to fix this is to redo their
-settings and save back to the same button name.
+that are saved in localStorage, it is possible with a bit of setup to
+upload your settings to Knack and download them back wherever and
+whenever needed. This two-way process is automatically done in the
+background, and can be seen as a backup method, but also to migrate them
+to other devices (or browsers, see note below). Note that if you migrate
+filters from one app to another, typically a temporary development copy,
+some filters may not work due to the record IDs that have changed for
+connected fields. This is a normal behavior, and the only way to fix
+this is to redo their settings and save back to the same button name.
 
 To support automatic Upload and Download, follow this procedure:
 

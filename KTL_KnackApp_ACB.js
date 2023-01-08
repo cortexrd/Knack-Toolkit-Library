@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.10';
+    const KTL_VERSION = '0.6.13';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2375,7 +2375,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         loadAllFilters();
 
-
+        //Early detection of scene change to prevent multi-rendering of views and flickering.
         var scn = '';
         setInterval(function () {
             if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
@@ -2396,7 +2396,33 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             for (var i = 0; i < views.length; i++) {
                 var filterDivId = views[i].attributes.key;
+                var filterType = views[i].attributes.type;
 
+                //Reports are risky, since they don't have an absolute ID.  Instead, they have an index and if they are moved around
+                //in the builder, the filters won't know about it and will stop working.
+                //TODO:  Check if the source object is the good one at least, and if not, delete the filter.  A missing filter is better than a bad one.
+                if (filterType === 'report') {
+                    var rows = views[i].attributes.rows;
+                    var reportIdx = 0;
+                    rows.forEach((obj) => {
+                        var ar = obj.reports;
+                        if (ar.length) {
+                            ar.forEach(() => {
+                                filterDivId = 'kn-report-' + views[i].attributes.key + '-' + (reportIdx + 1).toString();
+                                tableOrReportAssy(filterDivId);
+                                reportIdx++;
+                            })
+                        }
+                    })
+                } else
+                    tableOrReportAssy(filterDivId);
+            }
+
+            if (allParams)
+                window.location.href = newUrl + allParams;
+
+            function tableOrReportAssy(filterDivId) {
+                var filterUrlPart = filterDivIdToUrl(filterDivId);
                 var flt = getFilter(filterDivId);
                 var actFltIdx = flt.index;
                 if (actFltIdx >= 0) {
@@ -2407,73 +2433,73 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (allParams)
                             allParams += '&';
 
-                        allParams += filterDivId + '_filters=' + encodedNewFilter;
+                        allParams += filterUrlPart + '_filters=' + encodedNewFilter;
 
                         if (filter.perPage)
-                            allParams += '&' + filterDivId + '_per_page=' + filter.perPage;
+                            allParams += '&' + filterUrlPart + '_per_page=' + filter.perPage;
 
                         if (filter.sort)
-                            allParams += '&' + filterDivId + '_sort=' + filter.sort;
+                            allParams += '&' + filterUrlPart + '_sort=' + filter.sort;
 
                         if (filter.search)
-                            allParams += '&' + filterDivId + '_search=' + filter.search;
+                            allParams += '&' + filterUrlPart + '_search=' + filter.search;
                     }
                 }
             }
-
-            if (allParams)
-                window.location.href = newUrl + allParams;
         }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            if (ktl.scenes.isiFrameWnd()) return;
-
-            //loadFilters(LS_UF);
-            //loadFilters(LS_UFP);
-        })
-
-        $(document).on('knack-view-render.any', function (event, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
-            //Report views are much more complex, thus not well supported yet.  Sorry :(
-            if (document.querySelector('#' + view.key + '.kn-report')) return;
+            //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
+            var cols = document.querySelectorAll('.view-column');
+            cols.forEach(col => {
+                if (!col.childElementCount)
+                    col.remove();
+            })
+        })
+
+        $(document).on('knack-records-render.report knack-records-render.table', function (e, view, data) {
+            if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
                 ktl.userFilters.addFilterButtons(view.key);
 
-            var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
-            if (perPageDropdown) {
-                perPageDropdown.addEventListener('change', function (e) {
-                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                });
-            }
+            if (view.type == 'table') {
+                var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
+                if (perPageDropdown) {
+                    perPageDropdown.addEventListener('change', function (e) {
+                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    });
+                }
 
-            //When the Search button is clicked in table.
-            var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
-            if (searchBtn) {
-                searchBtn.addEventListener('click', function () {
-                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    updateSearchInFilter(view.key);
-                });
-            }
+                //When the Search button is clicked in table.
+                var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
+                if (searchBtn) {
+                    searchBtn.addEventListener('click', function () {
+                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                        updateSearchInFilter(view.key);
+                    });
+                }
 
-            //When Enter is pressed in Search table field.
-            var searchForm = document.querySelector('#' + view.key + ' .table-keyword-search');
-            if (searchForm) {
-                searchForm.addEventListener('submit', function () {
-                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    updateSearchInFilter(view.key);
-                })
-            }
+                //When Enter is pressed in Search table field.
+                var searchField = document.querySelector('#' + view.key + ' .table-keyword-search');
+                if (searchField) {
+                    searchField.addEventListener('submit', function () {
+                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                        updateSearchInFilter(view.key);
+                    })
+                }
 
-            //When the Reset button is clicked in table's search.
-            var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
-            if (resetSearch) {
-                resetSearch.addEventListener('click', function () {
-                    document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
-                    updateSearchInFilter(view.key);
-                })
-            }            
+                //When the Reset button is clicked in table's search.
+                var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
+                if (resetSearch) {
+                    resetSearch.addEventListener('click', function () {
+                        document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
+                        updateSearchInFilter(view.key);
+                    })
+                }
+            }
         })
 
         //Retrieves the searched string form the field and saves it in the localStorage's filter entry.
@@ -2498,23 +2524,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('mousedown click', e => {
             if (ktl.scenes.isiFrameWnd()) return;
 
+            //For Table views
             var viewId = e.target.closest('.kn-view');
             viewId = viewId ? viewId.id : null;
 
-            /* Maybe use this later, when Report views are better supported.
+            //For Report views
             var filterDivId = e.target.closest('div[id^=kn-report-' + viewId + '-]:not(.filterDiv)');
-            filterDivId = filterDivId ? filterDivId.id : viewId; //Typically view_123 for tables and kn-report-view_123-1 for reports.
-            filterDivId && ktl.userFilters.removeActiveFilter(filterDivId);
-            */
+            filterDivId = filterDivId ? filterDivId.id : viewId;
+
+            //At this point we end up with either something like view_123 for tables or kn-report-view_123-1 for reports.
 
             //When user clicks on Add Filters button or edits the current filter, we must:
             // 1) remember the view we're in because when we click Submit in the filter's edit pop-up, it's not be possible to retrieve it.
             // 2) remove the current filter because it doesn't match anymore.
             if (e.type === 'mousedown' && e.target.closest('.kn-filters-nav,.kn-filters,.kn-remove-filter')) {
-                setViewToRefresh(getViewToRefresh() || viewId);
+                setViewToRefresh(getViewToRefresh() || filterDivId);
                 if (e.target.closest('.kn-remove-filter')) {
                     setViewToRefresh(null);
-                    ktl.userFilters.removeActiveFilter(viewId);
+                    ktl.userFilters.removeActiveFilter(filterDivId);
                 }
             } else if (e.target.id && e.target.id === 'kn-submit-filters') {
                 var viewToRefresh = getViewToRefresh();
@@ -2654,8 +2681,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             createFltBtns(filterDivId, LS_UF);
 
             function createFltBtns(filterDivId, type) {
-                var fltSrc = type === LS_UF ? userFiltersObj : publicFiltersObj;
-                
+                var fltSrc = (type === LS_UF) ? userFiltersObj : publicFiltersObj;
+
                 if (!$.isEmptyObject(fltSrc) && !$.isEmptyObject(fltSrc[filterDivId])) {
                     var errorFound = false;
                     var activeFilterIndex = getFilter(filterDivId, '', type).index;
@@ -2723,6 +2750,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             target.classList.add('activeFilter');
             applyButtonColors();
 
+            var filterUrlPart = filterDivIdToUrl(filterDivId);
+
             //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
             var parts = ktl.core.splitUrl(window.location.href);
             var newUrl = parts['path'] + '?';
@@ -2732,11 +2761,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             const params = Object.entries(parts['params']);
             if (!$.isEmptyObject(params)) {
                 params.forEach(function (param) {
-                    if (param[0].includes(filterDivId + '_filters') ||
-                        param[0].includes(filterDivId + '_per_page') ||
-                        param[0].includes(filterDivId + '_sort') ||
-                        param[0].includes(filterDivId + '_search') ||
-                        param[0].includes(filterDivId + '_page')) {
+                    if (param[0].includes(filterUrlPart + '_filters') ||
+                        param[0].includes(filterUrlPart + '_per_page') ||
+                        param[0].includes(filterUrlPart + '_sort') ||
+                        param[0].includes(filterUrlPart + '_search') ||
+                        param[0].includes(filterUrlPart + '_page')) {
                         //Ignore all these.
                     } else {
                         if (otherParams)
@@ -2748,16 +2777,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
 
-            var allParams = filterDivId + '_filters=' + encodedNewFilter;
+            var allParams = filterUrlPart + '_filters=' + encodedNewFilter;
 
             if (target.filter.perPage)
-                allParams += '&' + filterDivId + '_per_page=' + target.filter.perPage;
+                allParams += '&' + filterUrlPart + '_per_page=' + target.filter.perPage;
 
             if (target.filter.sort)
-                allParams += '&' + filterDivId + '_sort=' + target.filter.sort;
+                allParams += '&' + filterUrlPart + '_sort=' + target.filter.sort;
 
             if (target.filter.search)
-                allParams += '&' + filterDivId + '_search=' + target.filter.search;
+                allParams += '&' + filterUrlPart + '_search=' + target.filter.search;
 
             if (otherParams)
                 allParams += '&' + otherParams;
@@ -3041,6 +3070,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         }
 
+        //Used to reformat the report div ID to the URL. Ex: kn-report-view_2924-1 becomes view_2924_0.
+        function filterDivIdToUrl(filterDivId = '') {
+            if (!filterDivId) return;
+
+            var filterUrlPart = filterDivId.replace('kn-report-', '');
+            var vrAr = filterUrlPart.split('-');
+            if (vrAr.length < 2)
+                return filterUrlPart;
+
+            var idx = parseInt(vrAr[1]) - 1;
+            filterUrlPart = vrAr[0] + '_' + idx.toString();
+            return filterUrlPart;
+        }
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.allowUserFilters && (allowUserFilters = cfgObj.allowUserFilters);
@@ -3062,8 +3105,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     allFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left'); //Table views
 
                 allFiltersBar.forEach(function (viewFilterDiv) {
-                    var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]') || viewFilterDiv.closest('#' + viewId);
+                    var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]');
+
+                    var adjustReportId = false;
+                    if (filterDivId) 
+                        adjustReportId = true;
+                    else
+                        filterDivId = viewFilterDiv.closest('#' + viewId);
+
                     filterDivId = filterDivId ? filterDivId.id : null; //Typically view_123 for tables and kn-report-view_123-1 for reports.
+                    if (adjustReportId)
+                        filterUrlPart = filterDivIdToUrl(filterDivId);
+
                     if (filterDivId === null) {
                         if (ktl.account.isDeveloper())
                             alert('filterDivId is null for ' + viewFilterDiv + ', ' + viewId);
@@ -3137,19 +3190,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             },
 
-            setActiveFilter: function (filterName = '', viewId = '') {
-                if (!viewId || !filterName) return;
-                $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
-                var filterIndex = getFilter(viewId, filterName).index;
+            setActiveFilter: function (filterName = '', filterDivId = '') {
+                if (!filterDivId || !filterName) return;
+
+                $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
+                var filterIndex = getFilter(filterDivId, filterName).index;
                 if (filterIndex >= 0) {
-                    var btnSelector = '#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(filterName);
+                    var btnSelector = '#' + filterDivId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(filterName);
                     ktl.core.waitSelector(btnSelector, 20000)
                         .then(function () {
                             var filterBtn = document.querySelector(btnSelector);
                             if (filterBtn) {
                                 filterBtn.classList.add('activeFilter');
                                 loadActiveFilters();
-                                activeFilterNameObj[viewId] = filterName;
+                                activeFilterNameObj[filterDivId] = filterName;
                                 ktl.storage.lsSetItem(LS_UF_ACT + Knack.getUserAttributes().id, JSON.stringify(activeFilterNameObj));
                             }
                         })
@@ -3157,7 +3211,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.log.clog('purple', 'setActiveFilter, Failed waiting for ' + btnSelector);
                         })
                 } else
-                    ktl.userFilters.removeActiveFilter(viewId);
+                    ktl.userFilters.removeActiveFilter(filterDivId);
 
                 applyButtonColors();
             },
@@ -3173,8 +3227,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             //When user saves a filter to a named button, or when a filter's parameter is modified, like the sort order.
-            onSaveFilterBtnClicked: function (e, viewId = '', updateActive = false) {
-                if (!viewId) return;
+            onSaveFilterBtnClicked: function (e, filterDivId = '', updateActive = false) {
+                if (!filterDivId) return;
+
+                var filterUrlPart = filterDivIdToUrl(filterDivId);
+                console.log('2 filterUrlPart =', filterUrlPart);
 
                 //Extract filter string for this view from URL and decode.
                 var newFilterStr = '';
@@ -3185,13 +3242,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 const params = Object.entries(parts['params']);
                 if (!$.isEmptyObject(params)) {
                     params.forEach(function (param) {
-                        if (param[0].includes(viewId + '_filters'))
+                        if (param[0].includes(filterUrlPart + '_filters'))
                             newFilterStr = param[1];
-                        if (param[0].includes(viewId + '_per_page'))
+                        if (param[0].includes(filterUrlPart + '_per_page'))
                             newPerPageStr = param[1];
-                        if (param[0].includes(viewId + '_sort'))
+                        if (param[0].includes(filterUrlPart + '_sort'))
                             newSortStr = param[1];
-                        if (param[0].includes(viewId + '_search'))
+                        if (param[0].includes(filterUrlPart + '_search'))
                             newSearchStr = param[1];
                     });
                 }
@@ -3204,12 +3261,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 var type = '';
 
                 if (updateActive) {
-                    flt = getFilter(viewId);
+                    flt = getFilter(filterDivId);
                     filterSrc = flt.filterSrc;
                     type = flt.type;
 
                     //If it's a public filter, exit if the unlocked icon is not present.  This covers all cases, i.e. when you don't have the right to modify it, or if you do but PFs are locked.
-                    if (type === LS_UFP && !document.querySelector('#' + viewId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX + ' .fa-unlock-alt'))
+                    if (type === LS_UFP && !document.querySelector('#' + filterDivId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX + ' .fa-unlock-alt'))
                         return;
 
                     if (flt.index >= 0)
@@ -3218,7 +3275,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     filterName = prompt('Filter Name: ', '');
                     if (!filterName) return;
 
-                    flt = getFilter(viewId, filterName);
+                    flt = getFilter(filterDivId, filterName);
                     filterSrc = flt.filterSrc;
                     type = flt.type;
                     if (flt.index >= 0) {
@@ -3235,23 +3292,22 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                 var fltObj = { 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr };
 
-                if (type === LS_UFP) {
+                if (type === LS_UFP)
                     fltObj.public = true;
-                }
 
-                if ($.isEmptyObject(filterSrc) || !filterSrc[viewId])
-                    filterSrc[viewId] = { filters: [] };
+                if ($.isEmptyObject(filterSrc) || !filterSrc[filterDivId])
+                    filterSrc[filterDivId] = { filters: [] };
 
                 if (flt.index >= 0)
-                    filterSrc[viewId].filters[flt.index] = fltObj;
+                    filterSrc[filterDivId].filters[flt.index] = fltObj;
                 else
-                    filterSrc[viewId].filters.push(fltObj);
+                    filterSrc[filterDivId].filters.push(fltObj);
 
                 filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
-                saveFilters(type, viewId);
-                ktl.userFilters.addFilterButtons(viewId);
-                ktl.userFilters.setActiveFilter(filterName, viewId);
+                saveFilters(type, filterDivId);
+                ktl.userFilters.addFilterButtons(filterDivId);
+                ktl.userFilters.setActiveFilter(filterName, filterDivId);
             },
 
             //Uploads the updated user filters.
@@ -3844,6 +3900,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (view.type === 'table' /*TODO: add more view types*/) {
                 const NF = 'NO_FILTER=';
                 var descr = view.description;
+                if (!descr) return;
                 var index = descr.indexOf(NF);
                 if (index >= 0) {
                     descr = descr.substr(index + NF.length);
@@ -4133,20 +4190,44 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     });
 
                     //Add a checkbox to each row in the table body
-                    //For summary lines, prepend a space.
-                    //For groups, extend line up to end.
-                    var sel = '';
                     $('#' + viewId + ' .kn-table tbody tr').each(function () {
-                        if (this.classList.contains('kn-table-totals')) {
-                            sel = '#' + viewId + ' tr.kn-table-totals';
-                            ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
-                                .then(function () { $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); })
-                                .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.'); })
-                        } else if (this.classList.contains('kn-table-group')) {
-                            $(this).find('td').attr('colspan', '15');
-                        } else
+                        if (!this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group'))
                             $(this).prepend('<td><input type="checkbox"></td>');
                     });
+
+
+                    //For summary lines, prepend a space.
+                    if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
+                        var sel = '#' + viewId + ' tr.kn-table-totals';
+                        ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
+                            .then(function () {
+                                $('#' + viewId + ' tr.kn-table-totals').each(function () {
+                                    $(this).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                });
+                            })
+                            .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
+                    }
+
+                    //For groups, extend line up to end.
+                    var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
+                    var groupingFound = false;
+                    for (i = 0; i < cols.length; i++) {
+                        if (cols[i].grouping) {
+                            groupingFound = true;
+                            break;
+                        }
+                    }
+
+                    if (groupingFound) {
+                        var sel = '#' + viewId + ' tr.kn-table-group';
+                        ktl.core.waitSelector(sel, 10000) //Totals may need extra wait time due to delayed server response.
+                            .then(function () {
+                                $('#' + viewId + ' tr.kn-table-group').each(function () {
+                                    $(this).find('td').attr('colspan', document.querySelectorAll('#' + viewId + ' thead th').length);
+                                });
+                            })
+                            .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
+                    }
                 }
             },
 
@@ -4571,7 +4652,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
                         //The rest of this feature is buggy.  For some reason, the sort order does not always reflect the data displayed.
                         //Leave is for developers to debug, but stop annoying users until we find a solution.
-                        //Code is ispired from function handleClickSort in Knack.views.view_x.handleClickSort
+                        //Code is inspired from function handleClickSort in Knack.views.view_x.handleClickSort
                         if (!ktl.account.isDeveloper()) return;
 
                         var fieldId = e.target.closest('th').className;
@@ -4588,7 +4669,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 var newField = newHref.split('|')[0].split('#')[1];
                                 var viewObj = Knack.views[viewId];
                                 if (fieldAttr.type === 'date_time')
-                                    ctrlClickInvert ^= ctrlClickInvert;
+                                    ctrlClickInvert = !ctrlClickInvert;
 
                                 order = ctrlClickInvert ? 'desc' : 'asc';
                                 viewObj.model.view.source.sort = [{
@@ -5782,14 +5863,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     newUserFilters = data[0][cfg.userFiltersCodeFld];
 
                 try {
+                    var cloudUfDt = '';
                     var usrFiltersNeedDownload = false;
                     var usrFiltersNeedUpload = false;
-                    if (newUserFilters && newUserFilters.length > 1)
+                    if (newUserFilters && newUserFilters.length > 1) {
                         newUserFilters = JSON.parse(newUserFilters);
+                        if ($.isEmptyObject(newUserFilters)) return;
+                        cloudUfDt = newUserFilters.dt;
+                    }
 
-                    if ($.isEmptyObject(newUserFilters)) return;
-
-                    var cloudUfDt = newUserFilters.dt;
                     var lastUfStr = ktl.storage.lsGetItem(LS_UF + Knack.getUserAttributes().id);
                     if (lastUfStr) {
                         try {
@@ -5844,14 +5926,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (rec) {
                     var newPublicFilters = rec[cfg.appSettingsValueFld];
                     try {
+                        var cloudPfDt = '';
                         var pubFiltersNeedDownload = false;
                         var pubFiltersNeedUpload = false;
-                        if (newPublicFilters && newPublicFilters.length > 1)
+                        if (newPublicFilters && newPublicFilters.length > 1) {
                             newPublicFilters = JSON.parse(newPublicFilters);
+                            if ($.isEmptyObject(newPublicFilters)) return;
+                            cloudPfDt = newPublicFilters.dt;
+                        }
 
-                        if ($.isEmptyObject(newPublicFilters)) return;
-
-                        var cloudPfDt = newPublicFilters.dt;
                         var lastPfStr = ktl.storage.lsGetItem(LS_UFP + Knack.getUserAttributes().id);
                         if (lastPfStr) {
                             try {
@@ -6438,21 +6521,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         var bulkOpsInProgress = false; //Needed to prevent re-entering because pressing Enter on Sumbit causes two Click events.
         var bulkOpsDeleteAll = false;
 
-        $(document).on('knack-view-render.any', function (event, view, data) {
+        $(document).on('knack-view-render.table', function (event, view, data) {
             if (ktl.scenes.isiFrameWnd() || (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
                 return;
 
             var viewModel = Knack.router.scene_view.model.views._byId[view.key];
             if (viewModel) {
                 var viewAttr = viewModel.attributes;
-                if (viewAttr.type === 'table') {
-                    var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
-                    var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
-                    if ((canDelete && Knack.getUserRoleNames().includes('Bulk Delete')) || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
-                        enableBulkOperations(view, data);
-                        if (bulkOpsInProgress)
-                            processBulkOps();
-                    }
+                var inlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
+                var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
+                if ((canDelete && Knack.getUserRoleNames().includes('Bulk Delete')) || (inlineEditing && Knack.getUserRoleNames().includes('Bulk Edit'))) {
+                    enableBulkOperations(view, data);
+                    if (bulkOpsInProgress)
+                        processBulkOps();
                 }
             }
         })
