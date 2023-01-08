@@ -3934,7 +3934,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //Params: masterCheckBoxCallback is the function to be called when the top checkbox is clicked.
             //        It is used to do an action upon change like ena/disable a button or show number of items checked.
             addCheckboxesToTable: function (viewId, masterCheckBoxCallback = null) {
-                console.log('addCheckboxesToTable');
                 var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
 
                 //Only add checkboxes if there's data and checkboxes not yet added.
@@ -3951,21 +3950,44 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     });
 
                     //Add a checkbox to each row in the table body
+                    $('#' + viewId + ' .kn-table tbody tr').each(function () {
+                        if (!this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group'))
+                            $(this).prepend('<td><input type="checkbox"></td>');
+                    });
+
+
                     //For summary lines, prepend a space.
-                    //For groups, extend line up to end.
-                    var sel = '#' + viewId + ' tr.kn-table-totals';
-                    ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
-                        .then(function () {
-                            $('#' + viewId + ' .kn-table tbody tr').each(function () {
-                                if (this.classList.contains('kn-table-totals')) {
+                    if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
+                        var sel = '#' + viewId + ' tr.kn-table-totals';
+                        ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
+                            .then(function () {
+                                $('#' + viewId + ' tr.kn-table-totals').each(function () {
                                     $(this).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                                } else if (this.classList.contains('kn-table-group')) {
+                                });
+                            })
+                            .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
+                    }
+
+                    //For groups, extend line up to end.
+                    var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
+                    var groupingFound = false;
+                    for (i = 0; i < cols.length; i++) {
+                        if (cols[i].grouping) {
+                            groupingFound = true;
+                            break;
+                        }
+                    }
+
+                    if (groupingFound) {
+                        var sel = '#' + viewId + ' tr.kn-table-group';
+                        ktl.core.waitSelector(sel, 10000) //Totals may need extra wait time due to delayed server response.
+                            .then(function () {
+                                $('#' + viewId + ' tr.kn-table-group').each(function () {
                                     $(this).find('td').attr('colspan', document.querySelectorAll('#' + viewId + ' thead th').length);
-                                } else
-                                    $(this).prepend('<td><input type="checkbox"></td>');
-                            });
-                        })
-                        .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.'); })
+                                });
+                            })
+                            .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
+                    }
                 }
             },
 
