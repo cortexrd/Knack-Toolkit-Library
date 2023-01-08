@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.12';
+    const KTL_VERSION = '0.6.13';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2134,7 +2134,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         loadAllFilters();
 
-
+        //Early detection of scene change to prevent multi-rendering of views and flickering.
         var scn = '';
         setInterval(function () {
             if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
@@ -2155,33 +2155,32 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             for (var i = 0; i < views.length; i++) {
                 var filterDivId = views[i].attributes.key;
-                assembleSub(filterDivId);
+                var filterType = views[i].attributes.type;
 
-
-            //    var filterType = views[i].attributes.type;
-            //    if (filterType === 'report') {
-            //        var rows = views[i].attributes.rows;
-            //        console.log('rows =', rows);
-            //        rows.forEach((obj, idx) => {
-            //            console.log('obj =', obj);
-            //            var ar = obj.reports;
-            //            if (ar.length) {
-            //                console.log('idx =', idx);
-            //                console.log('ar =', ar);
-            //                filterDivId = 'kn-report-' + views[i].attributes.key + '-' + (idx + 1).toString();
-            //                console.log('new filterDivId =', filterDivId);
-            //                assembleSub(filterDivId);
-            //            }
-            //        })
-            //    } else
-            //        assembleSub(filterDivId);
+                //Reports are risky, since they don't have an absolute ID.  Instead, they have an index and if they are moved around
+                //in the builder, the filters won't know about it and will stop working.
+                //TODO:  Check if the source object is the good one at least, and if not, delete the filter.  A missing filter is better than a bad one.
+                if (filterType === 'report') {
+                    var rows = views[i].attributes.rows;
+                    var reportIdx = 0;
+                    rows.forEach((obj) => {
+                        var ar = obj.reports;
+                        if (ar.length) {
+                            ar.forEach(() => {
+                                filterDivId = 'kn-report-' + views[i].attributes.key + '-' + (reportIdx + 1).toString();
+                                tableOrReportAssy(filterDivId);
+                                reportIdx++;
+                            })
+                        }
+                    })
+                } else
+                    tableOrReportAssy(filterDivId);
             }
 
             if (allParams)
                 window.location.href = newUrl + allParams;
 
-
-            function assembleSub(filterDivId) {
+            function tableOrReportAssy(filterDivId) {
                 var filterUrlPart = filterDivIdToUrl(filterDivId);
                 var flt = getFilter(filterDivId);
                 var actFltIdx = flt.index;
@@ -2225,38 +2224,40 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
                 ktl.userFilters.addFilterButtons(view.key);
 
-            var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
-            if (perPageDropdown) {
-                perPageDropdown.addEventListener('change', function (e) {
-                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                });
-            }
+            if (view.type == 'table') {
+                var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
+                if (perPageDropdown) {
+                    perPageDropdown.addEventListener('change', function (e) {
+                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                    });
+                }
 
-            //When the Search button is clicked in table.
-            var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
-            if (searchBtn) {
-                searchBtn.addEventListener('click', function () {
-                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    updateSearchInFilter(view.key);
-                });
-            }
+                //When the Search button is clicked in table.
+                var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
+                if (searchBtn) {
+                    searchBtn.addEventListener('click', function () {
+                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                        updateSearchInFilter(view.key);
+                    });
+                }
 
-            //When Enter is pressed in Search table field.
-            var searchField = document.querySelector('#' + view.key + ' .table-keyword-search');
-            if (searchField) {
-                searchField.addEventListener('submit', function () {
-                    ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    updateSearchInFilter(view.key);
-                })
-            }
+                //When Enter is pressed in Search table field.
+                var searchField = document.querySelector('#' + view.key + ' .table-keyword-search');
+                if (searchField) {
+                    searchField.addEventListener('submit', function () {
+                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                        updateSearchInFilter(view.key);
+                    })
+                }
 
-            //When the Reset button is clicked in table's search.
-            var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
-            if (resetSearch) {
-                resetSearch.addEventListener('click', function () {
-                    document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
-                    updateSearchInFilter(view.key);
-                })
+                //When the Reset button is clicked in table's search.
+                var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
+                if (resetSearch) {
+                    resetSearch.addEventListener('click', function () {
+                        document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
+                        updateSearchInFilter(view.key);
+                    })
+                }
             }
         })
 
@@ -2282,23 +2283,24 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('mousedown click', e => {
             if (ktl.scenes.isiFrameWnd()) return;
 
+            //For Table views
             var viewId = e.target.closest('.kn-view');
             viewId = viewId ? viewId.id : null;
 
-            /* Maybe use this later, when Report views are better supported.
+            //For Report views
             var filterDivId = e.target.closest('div[id^=kn-report-' + viewId + '-]:not(.filterDiv)');
-            filterDivId = filterDivId ? filterDivId.id : viewId; //Typically view_123 for tables and kn-report-view_123-1 for reports.
-            filterDivId && ktl.userFilters.removeActiveFilter(filterDivId);
-            */
+            filterDivId = filterDivId ? filterDivId.id : viewId;
+
+            //At this point we end up with either something like view_123 for tables or kn-report-view_123-1 for reports.
 
             //When user clicks on Add Filters button or edits the current filter, we must:
             // 1) remember the view we're in because when we click Submit in the filter's edit pop-up, it's not be possible to retrieve it.
             // 2) remove the current filter because it doesn't match anymore.
             if (e.type === 'mousedown' && e.target.closest('.kn-filters-nav,.kn-filters,.kn-remove-filter')) {
-                setViewToRefresh(getViewToRefresh() || viewId);
+                setViewToRefresh(getViewToRefresh() || filterDivId);
                 if (e.target.closest('.kn-remove-filter')) {
                     setViewToRefresh(null);
-                    ktl.userFilters.removeActiveFilter(viewId);
+                    ktl.userFilters.removeActiveFilter(filterDivId);
                 }
             } else if (e.target.id && e.target.id === 'kn-submit-filters') {
                 var viewToRefresh = getViewToRefresh();
@@ -2827,10 +2829,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         }
 
+        //Used to reformat the report div ID to the URL. Ex: kn-report-view_2924-1 becomes view_2924_0.
         function filterDivIdToUrl(filterDivId = '') {
             if (!filterDivId) return;
 
-            //We need to reformat the report div ID to the URL. Ex: kn-report-view_2924-1 becomes view_2924_0.
             var filterUrlPart = filterDivId.replace('kn-report-', '');
             var vrAr = filterUrlPart.split('-');
             if (vrAr.length < 2)
@@ -2940,7 +2942,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     createFilterButtons(filterDivId, fltBtnsDivId);
 
                     //Enable/disable control buttons (Only save in this case)
-                    //kn-report-view_2924-1
                     if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from "Add filters"?
                         saveFilterButton.removeAttribute('disabled');
                         stopFilterButton.removeAttribute('disabled');
@@ -2948,22 +2949,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             },
 
-            setActiveFilter: function (filterName = '', viewId = '') {
-                if (!viewId || !filterName) return;
+            setActiveFilter: function (filterName = '', filterDivId = '') {
+                if (!filterDivId || !filterName) return;
 
-                //TODO: handle multiple report charts per view.
-
-                $('#' + viewId + ' .activeFilter').removeClass('activeFilter');
-                var filterIndex = getFilter(viewId, filterName).index;
+                $('#' + filterDivId + ' .activeFilter').removeClass('activeFilter');
+                var filterIndex = getFilter(filterDivId, filterName).index;
                 if (filterIndex >= 0) {
-                    var btnSelector = '#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(filterName);
+                    var btnSelector = '#' + filterDivId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(filterName);
                     ktl.core.waitSelector(btnSelector, 20000)
                         .then(function () {
                             var filterBtn = document.querySelector(btnSelector);
                             if (filterBtn) {
                                 filterBtn.classList.add('activeFilter');
                                 loadActiveFilters();
-                                activeFilterNameObj[viewId] = filterName;
+                                activeFilterNameObj[filterDivId] = filterName;
                                 ktl.storage.lsSetItem(LS_UF_ACT + Knack.getUserAttributes().id, JSON.stringify(activeFilterNameObj));
                             }
                         })
@@ -2971,7 +2970,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                             ktl.log.clog('purple', 'setActiveFilter, Failed waiting for ' + btnSelector);
                         })
                 } else
-                    ktl.userFilters.removeActiveFilter(viewId);
+                    ktl.userFilters.removeActiveFilter(filterDivId);
 
                 applyButtonColors();
             },
