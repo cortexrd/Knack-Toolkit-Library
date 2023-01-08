@@ -2155,7 +2155,34 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             for (var i = 0; i < views.length; i++) {
                 var filterDivId = views[i].attributes.key;
+                assembleSub(filterDivId);
 
+
+            //    var filterType = views[i].attributes.type;
+            //    if (filterType === 'report') {
+            //        var rows = views[i].attributes.rows;
+            //        console.log('rows =', rows);
+            //        rows.forEach((obj, idx) => {
+            //            console.log('obj =', obj);
+            //            var ar = obj.reports;
+            //            if (ar.length) {
+            //                console.log('idx =', idx);
+            //                console.log('ar =', ar);
+            //                filterDivId = 'kn-report-' + views[i].attributes.key + '-' + (idx + 1).toString();
+            //                console.log('new filterDivId =', filterDivId);
+            //                assembleSub(filterDivId);
+            //            }
+            //        })
+            //    } else
+            //        assembleSub(filterDivId);
+            }
+
+            if (allParams)
+                window.location.href = newUrl + allParams;
+
+
+            function assembleSub(filterDivId) {
+                var filterUrlPart = filterDivIdToUrl(filterDivId);
                 var flt = getFilter(filterDivId);
                 var actFltIdx = flt.index;
                 if (actFltIdx >= 0) {
@@ -2166,29 +2193,34 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         if (allParams)
                             allParams += '&';
 
-                        allParams += filterDivId + '_filters=' + encodedNewFilter;
+                        allParams += filterUrlPart + '_filters=' + encodedNewFilter;
 
                         if (filter.perPage)
-                            allParams += '&' + filterDivId + '_per_page=' + filter.perPage;
+                            allParams += '&' + filterUrlPart + '_per_page=' + filter.perPage;
 
                         if (filter.sort)
-                            allParams += '&' + filterDivId + '_sort=' + filter.sort;
+                            allParams += '&' + filterUrlPart + '_sort=' + filter.sort;
 
                         if (filter.search)
-                            allParams += '&' + filterDivId + '_search=' + filter.search;
+                            allParams += '&' + filterUrlPart + '_search=' + filter.search;
                     }
                 }
             }
-
-            if (allParams)
-                window.location.href = newUrl + allParams;
         }
+
+        $(document).on('knack-scene-render.any', function (event, scene) {
+            if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
+
+            //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
+            var cols = document.querySelectorAll('.view-column');
+            cols.forEach(col => {
+                if (!col.childElementCount)
+                    col.remove();
+            })
+        })
 
         $(document).on('knack-records-render.report knack-records-render.table', function (e, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
-
-            console.log('view.key =', view.key);
-            console.log('view.type =', view.type);
 
             if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
                 ktl.userFilters.addFilterButtons(view.key);
@@ -2227,50 +2259,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             }
         })
-
-        //$(document).on('knack-view-render.any', function (event, view, data) {
-        //    if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
-
-            //Report views are much more complex, thus not well supported yet.  Sorry :(
-            //if (document.querySelector('#' + view.key + '.kn-report')) return;
-
-            //if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
-            //    ktl.userFilters.addFilterButtons(view.key);
-
-        //    var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
-        //    if (perPageDropdown) {
-        //        perPageDropdown.addEventListener('change', function (e) {
-        //            ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-        //        });
-        //    }
-
-        //    //When the Search button is clicked in table.
-        //    var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
-        //    if (searchBtn) {
-        //        searchBtn.addEventListener('click', function () {
-        //            ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-        //            updateSearchInFilter(view.key);
-        //        });
-        //    }
-
-        //    //When Enter is pressed in Search table field.
-        //    var searchField = document.querySelector('#' + view.key + ' .table-keyword-search');
-        //    if (searchField) {
-        //        searchField.addEventListener('submit', function () {
-        //            ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-        //            updateSearchInFilter(view.key);
-        //        })
-        //    }
-
-        //    //When the Reset button is clicked in table's search.
-        //    var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
-        //    if (resetSearch) {
-        //        resetSearch.addEventListener('click', function () {
-        //            document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
-        //            updateSearchInFilter(view.key);
-        //        })
-        //    }            
-        //})
 
         //Retrieves the searched string form the field and saves it in the localStorage's filter entry.
         function updateSearchInFilter(viewId = '') {
@@ -2450,10 +2438,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             createFltBtns(filterDivId, LS_UF);
 
             function createFltBtns(filterDivId, type) {
-                var fltSrc = type === LS_UF ? userFiltersObj : publicFiltersObj;
-
-                if (filterDivId.includes('view_2924'))
-                    console.log('stop');
+                var fltSrc = (type === LS_UF) ? userFiltersObj : publicFiltersObj;
 
                 if (!$.isEmptyObject(fltSrc) && !$.isEmptyObject(fltSrc[filterDivId])) {
                     var errorFound = false;
@@ -2522,6 +2507,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             target.classList.add('activeFilter');
             applyButtonColors();
 
+            var filterUrlPart = filterDivIdToUrl(filterDivId);
+
             //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
             var parts = ktl.core.splitUrl(window.location.href);
             var newUrl = parts['path'] + '?';
@@ -2531,11 +2518,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             const params = Object.entries(parts['params']);
             if (!$.isEmptyObject(params)) {
                 params.forEach(function (param) {
-                    if (param[0].includes(filterDivId + '_filters') ||
-                        param[0].includes(filterDivId + '_per_page') ||
-                        param[0].includes(filterDivId + '_sort') ||
-                        param[0].includes(filterDivId + '_search') ||
-                        param[0].includes(filterDivId + '_page')) {
+                    if (param[0].includes(filterUrlPart + '_filters') ||
+                        param[0].includes(filterUrlPart + '_per_page') ||
+                        param[0].includes(filterUrlPart + '_sort') ||
+                        param[0].includes(filterUrlPart + '_search') ||
+                        param[0].includes(filterUrlPart + '_page')) {
                         //Ignore all these.
                     } else {
                         if (otherParams)
@@ -2547,16 +2534,16 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
 
-            var allParams = filterDivId + '_filters=' + encodedNewFilter;
+            var allParams = filterUrlPart + '_filters=' + encodedNewFilter;
 
             if (target.filter.perPage)
-                allParams += '&' + filterDivId + '_per_page=' + target.filter.perPage;
+                allParams += '&' + filterUrlPart + '_per_page=' + target.filter.perPage;
 
             if (target.filter.sort)
-                allParams += '&' + filterDivId + '_sort=' + target.filter.sort;
+                allParams += '&' + filterUrlPart + '_sort=' + target.filter.sort;
 
             if (target.filter.search)
-                allParams += '&' + filterDivId + '_search=' + target.filter.search;
+                allParams += '&' + filterUrlPart + '_search=' + target.filter.search;
 
             if (otherParams)
                 allParams += '&' + otherParams;
@@ -2840,6 +2827,20 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             }
         }
 
+        function filterDivIdToUrl(filterDivId = '') {
+            if (!filterDivId) return;
+
+            //We need to reformat the report div ID to the URL. Ex: kn-report-view_2924-1 becomes view_2924_0.
+            var filterUrlPart = filterDivId.replace('kn-report-', '');
+            var vrAr = filterUrlPart.split('-');
+            if (vrAr.length < 2)
+                return filterUrlPart;
+
+            var idx = parseInt(vrAr[1]) - 1;
+            filterUrlPart = vrAr[0] + '_' + idx.toString();
+            return filterUrlPart;
+        }
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.allowUserFilters && (allowUserFilters = cfgObj.allowUserFilters);
@@ -2861,10 +2862,17 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     allFiltersBar = document.querySelectorAll('#' + viewId + ' .kn-records-nav:not(.below) .level-left'); //Table views
 
                 allFiltersBar.forEach(function (viewFilterDiv) {
-                    var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]') || viewFilterDiv.closest('#' + viewId);
-                    filterDivId = filterDivId ? filterDivId.id : null; //Typically view_123 for tables and kn-report-view_123-1 for reports.
+                    var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]');
 
-                    console.log('filterDivId =', filterDivId);
+                    var adjustReportId = false;
+                    if (filterDivId) 
+                        adjustReportId = true;
+                    else
+                        filterDivId = viewFilterDiv.closest('#' + viewId);
+
+                    filterDivId = filterDivId ? filterDivId.id : null; //Typically view_123 for tables and kn-report-view_123-1 for reports.
+                    if (adjustReportId)
+                        filterUrlPart = filterDivIdToUrl(filterDivId);
 
                     if (filterDivId === null) {
                         if (ktl.account.isDeveloper())
@@ -2885,11 +2893,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         viewFilterDiv.appendChild(filterCtrlDiv);
                         $('#' + filterDivId + ' .filterCtrlDiv').css({ 'display': 'flex', 'margin-left': '15px' });
                     }
-
-                    if (filterDivId === 'kn-report-view_2924-1') {
-                        console.log('filterDivId =', filterDivId);
-                    }
-
 
                     /////////////////////////////
                     //Save Filter button - always create, but enable/disable depending on filter state.
@@ -2937,6 +2940,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     createFilterButtons(filterDivId, fltBtnsDivId);
 
                     //Enable/disable control buttons (Only save in this case)
+                    //kn-report-view_2924-1
                     if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from "Add filters"?
                         saveFilterButton.removeAttribute('disabled');
                         stopFilterButton.removeAttribute('disabled');
@@ -2983,16 +2987,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             //When user saves a filter to a named button, or when a filter's parameter is modified, like the sort order.
-            onSaveFilterBtnClicked: function (e, viewId = '', updateActive = false) {
-                if (!viewId) return;
+            onSaveFilterBtnClicked: function (e, filterDivId = '', updateActive = false) {
+                if (!filterDivId) return;
 
-                var filterDivId = viewId.replace('kn-report-', ''); //kn-report-view_2924-1
-                var vrAr = filterDivId.split('-');
-                console.log('vrAr =', vrAr);
-                var idx = parseInt(vrAr[1].replace('-', '')) - 1;
-                console.log('idx =', idx);
-                filterDivId = vrAr[0] + '_' + idx.toString();
-                console.log('filterDivId =', filterDivId);
+                var filterUrlPart = filterDivIdToUrl(filterDivId);
+                console.log('2 filterUrlPart =', filterUrlPart);
 
                 //Extract filter string for this view from URL and decode.
                 var newFilterStr = '';
@@ -3003,13 +3002,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 const params = Object.entries(parts['params']);
                 if (!$.isEmptyObject(params)) {
                     params.forEach(function (param) {
-                        if (param[0].includes(filterDivId + '_filters'))
+                        if (param[0].includes(filterUrlPart + '_filters'))
                             newFilterStr = param[1];
-                        if (param[0].includes(filterDivId + '_per_page'))
+                        if (param[0].includes(filterUrlPart + '_per_page'))
                             newPerPageStr = param[1];
-                        if (param[0].includes(filterDivId + '_sort'))
+                        if (param[0].includes(filterUrlPart + '_sort'))
                             newSortStr = param[1];
-                        if (param[0].includes(filterDivId + '_search'))
+                        if (param[0].includes(filterUrlPart + '_search'))
                             newSearchStr = param[1];
                     });
                 }
@@ -3067,8 +3066,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
                 saveFilters(type, filterDivId);
-                ktl.userFilters.addFilterButtons(viewId);
-                ktl.userFilters.setActiveFilter(filterName, viewId);
+                ktl.userFilters.addFilterButtons(filterDivId);
+                ktl.userFilters.setActiveFilter(filterName, filterDivId);
             },
 
             //Uploads the updated user filters.
@@ -3935,6 +3934,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //Params: masterCheckBoxCallback is the function to be called when the top checkbox is clicked.
             //        It is used to do an action upon change like ena/disable a button or show number of items checked.
             addCheckboxesToTable: function (viewId, masterCheckBoxCallback = null) {
+                console.log('addCheckboxesToTable');
                 var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
 
                 //Only add checkboxes if there's data and checkboxes not yet added.
@@ -3955,10 +3955,14 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     //For groups, extend line up to end.
                     var sel = '';
                     $('#' + viewId + ' .kn-table tbody tr').each(function () {
+                        console.log('this =', this);
                         if (this.classList.contains('kn-table-totals')) {
                             sel = '#' + viewId + ' tr.kn-table-totals';
                             ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
-                                .then(function () { $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); })
+                                .then(function () {
+                                    console.log('totals found', viewId);
+                                    $(sel).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                })
                                 .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.'); })
                         } else if (this.classList.contains('kn-table-group')) {
                             $(this).find('td').attr('colspan', '15');
