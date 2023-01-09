@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.14';
+    const KTL_VERSION = '0.6.15';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2858,6 +2858,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             var order = sort.split('|')[1];
             var sortAr = [field, order]
 
+
             Knack.views[viewId].model.view.source.sort = [{
                 field: sortAr[0],
                 order: sortAr[1]
@@ -3862,8 +3863,13 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             disableFilterOnFields(view);
         })
 
+        //Remove default handleClickSort and use KTL's instead for more flexibility.
+        $(document).on('mousedown', function (e) {
+            $('thead').off('click');
+        })
+
         $(document).on('click', function (e) {
-            ktl.views.modifyTableSort(e);
+            ktl.views.handleClickSort(e);
 
             //Pause auto-refresh when on a tables's search field.
             if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword' /*Needed to discriminate checkboxes.  We only want Search fields*/)
@@ -4709,62 +4715,52 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             },
 
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
-            modifyTableSort: function (e) {
+            //Note: this function replaces the Knack's default handler completely.
+            handleClickSort: function (e) {
                 if (e.target.closest('.kn-sort')) {
+                    e.preventDefault();
                     var viewId = e.target.closest('.kn-table.kn-view');
                     if (viewId) {
                         viewId = viewId.getAttribute('id');
+                        var href = e.target.closest('[href]');
+                        if (href) {
+                            Knack.showSpinner();
+                            var fieldId = e.target.closest('th').classList[0];
+                            if (Knack.objects.getField(fieldId)) {
+                                var fieldAttr = Knack.objects.getField(fieldId).attributes;
+                                var ctrlClickInvert = false;
+                                if (e.ctrlKey)
+                                    ctrlClickInvert = true;
 
-                        ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
-
-                        var alreadySorted = e.target.closest('[class*="sorted-"]');
-                        if (alreadySorted)
-                            return;
-
-                        //The rest of this feature is buggy.  For some reason, the sort order does not always reflect the data displayed.
-                        //Leave is for developers to debug, but stop annoying users until we find a solution.
-                        //Code is inspired from function handleClickSort in Knack.views.view_x.handleClickSort
-                        if (!ktl.account.isDeveloper()) return;
-
-                        var fieldId = e.target.closest('th').className;
-                        if (Knack.objects.getField(fieldId)) {
-                            var fieldAttr = Knack.objects.getField(fieldId).attributes;
-                            var ctrlClickInvert = false;
-                            if (e.ctrlKey)
-                                ctrlClickInvert = true;
-
-                            var href = e.target.closest('[href]');
-                            if (href) {
-                                var newHref = e.target.closest('.kn-sort').href;
-                                var order = newHref.split('|')[1];
-                                var newField = newHref.split('|')[0].split('#')[1];
+                                href = e.target.closest('.kn-sort').href;
+                                var order = href.split('|')[1];
+                                var newField = href.split('|')[0].split('#')[1];
                                 var viewObj = Knack.views[viewId];
                                 if (fieldAttr.type === 'date_time')
                                     ctrlClickInvert = !ctrlClickInvert;
 
-                                order = ctrlClickInvert ? 'desc' : 'asc';
+                                var alreadySorted = e.target.closest('[class*="sorted-"]');
+                                if (!alreadySorted)
+                                    order = ctrlClickInvert ? 'desc' : 'asc';
+
                                 viewObj.model.view.source.sort = [{
                                     field: newField,
                                     order: order
                                 }];
 
                                 var i = {};
-                                i[viewObj.model.view.key + "_sort"] = newField + "|" + order;
+                                i[viewId + "_sort"] = newField + "|" + order;
                                 var r = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
+                                Knack.router.navigate(r);
+                                Knack.setHashVars();
+                                viewObj.model.setDataAPI();
 
-                                e.preventDefault(),
-                                    viewObj.showLoading();
-
-                                Knack.router.navigate(r),
-                                    Knack.setHashVars(),
-                                    viewObj.model.setDataAPI(),
-                                    viewObj.model.fetch();
-
-                                setTimeout(function () {
-                                    ktl.views.refreshView(viewId);
-                                    ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
-                                }, 2000);
-
+                                Knack.models[viewId].fetch({
+                                    success: () => {
+                                        Knack.hideSpinner();
+                                        ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                                    }
+                                });
                             }
                         }
                     }
