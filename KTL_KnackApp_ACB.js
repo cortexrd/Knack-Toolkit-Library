@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.13';
+    const KTL_VERSION = '0.6.14';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2775,8 +2775,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             }
 
-            var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
-
+            //var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
+            var encodedNewFilter = target.filter.filterString;
             var allParams = filterUrlPart + '_filters=' + encodedNewFilter;
 
             if (target.filter.perPage)
@@ -2795,9 +2795,81 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             ktl.userFilters.setActiveFilter(target.filter.filterName, filterDivId);
 
-            if (window.location.href !== newUrl)
-                window.location.href = newUrl;
+            var isReport = false;
+            if (filterUrlPart !== filterDivId)
+                isReport = true;
+
+            if (!isReport) {
+                Knack.showSpinner();
+                updateSearchTable(filterDivId, target.filter.search);
+                updateFilters(filterUrlPart, JSON.parse(encodedNewFilter))
+                updatePerPage(filterDivId, target.filter.perPage);
+                updateSort(filterDivId, target.filter.sort);
+                Knack.models[filterDivId].fetch({
+                    success: () => { Knack.hideSpinner(); }
+                });
+            } else {
+                //Until a solution is found to the "var u = new t.Model;" issue, we have
+                //to refresh the whole page when applying a filter to a report chart.
+                //See: https://forums.knack.com/t/knack-under-the-hood-understanding-handlechangefilters/13611/6
+                if (window.location.href !== newUrl)
+                    window.location.href = newUrl;
+            }
         };
+
+        function updateSearchTable(viewId, srchTxt) {
+            Knack.views[viewId].model.searching = true;
+            var i = Knack.getSceneHash();
+            var r = {}
+            var a = [];
+            r[viewId + "_search"] = encodeURIComponent(srchTxt);
+            r[viewId + "_page"] = 1;
+            Knack.views[viewId].model.view.pagination_meta.page = 1;
+            Knack.views[viewId].model.view.source.page = 1;
+
+            var o = Knack.getQueryString(r, a);
+            o && (i += "?" + o);
+            Knack.router.navigate(i, false);
+            Knack.setHashVars();
+        }
+
+        function updateFilters(viewId, filters) {
+            const sceneHash = Knack.getSceneHash();
+            const queryString = Knack.getQueryString({ [`${viewId}_filters`]: encodeURIComponent(JSON.stringify(filters)) });
+            Knack.router.navigate(`${sceneHash}?${queryString}`, false);
+            Knack.setHashVars();
+            Knack.models[viewId].setFilters(filters); //Set new filters on view's model
+        };
+
+        function updatePerPage(viewId, perPage) {
+            Knack.views[viewId].model.view.pagination_meta.page = 1;
+            Knack.views[viewId].model.view.source.page = 1;
+            Knack.views[viewId].model.view.pagination_meta.rows_per_page = perPage;
+            Knack.views[viewId].model.view.rows_per_page = perPage;
+            var i = {};
+            i[viewId + '_per_page'] = perPage;
+            i[viewId + '_page'] = 1;
+            Knack.router.navigate(Knack.getSceneHash() + "?" + Knack.getQueryString(i), false);
+            Knack.setHashVars();
+        }
+
+        function updateSort(viewId, sort) {
+            var field = sort.split('|')[0];
+            var order = sort.split('|')[1];
+            var sortAr = [field, order]
+
+            Knack.views[viewId].model.view.source.sort = [{
+                field: sortAr[0],
+                order: sortAr[1]
+            }];
+
+            var i = {};
+            i[viewId + "_sort"] = sortAr[0] + "|" + sortAr[1]; //{ "view_1264_sort": "field_182-field_182|asc" }           
+            var r = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
+            Knack.router.navigate(r);
+            Knack.setHashVars();
+            Knack.views[viewId].model.setDataAPI();
+        }
 
         function onStopFilterBtnClicked(e, filterDivId) {
             var closeFilters = document.querySelectorAll('#' + filterDivId + ' .kn-remove-filter');
@@ -3231,7 +3303,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 if (!filterDivId) return;
 
                 var filterUrlPart = filterDivIdToUrl(filterDivId);
-                console.log('2 filterUrlPart =', filterUrlPart);
 
                 //Extract filter string for this view from URL and decode.
                 var newFilterStr = '';
