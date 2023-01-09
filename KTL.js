@@ -2534,7 +2534,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 })
             }
 
-            var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
+            //var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
+            var encodedNewFilter = target.filter.filterString;
+            console.log('encodedNewFilter =', encodedNewFilter);
 
             var allParams = filterUrlPart + '_filters=' + encodedNewFilter;
 
@@ -2554,9 +2556,95 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
             ktl.userFilters.setActiveFilter(target.filter.filterName, filterDivId);
 
-            if (window.location.href !== newUrl)
-                window.location.href = newUrl;
+            var isReport = false;
+            if (filterUrlPart !== filterDivId)
+                isReport = true;
+
+            if (!isReport) {
+                var filters = JSON.parse(encodedNewFilter);
+                console.log('filterDivId =', filterDivId);
+                console.log('filterUrlPart =', filterUrlPart);
+                console.log('filters =', filters);
+
+                updateSearchTable(filterDivId, target.filter.search);
+
+                updateFilters(filterUrlPart, filters)
+                    .then(function () {
+                        console.log('Done filtering', filterDivId);
+                    })
+                    .catch(function () {
+                        console.log('Error filtering', filterDivId);
+                    })
+                    .finally(function (model, response, options) {
+                        console.log('model =', model);
+                        console.log('response =', response);
+                        console.log('options =', options);
+                    })
+
+                updatePerPage(filterDivId, target.filter.perPage);
+            } else {
+                if (window.location.href !== newUrl)
+                    window.location.href = newUrl;
+            }
         };
+
+        const updateFilters = (viewId, filters) =>
+            new Promise((resolve, reject) => {
+                const sceneHash = Knack.getSceneHash();
+                // getQueryString not only gets the query string from current hash vars, but **also** sets query string params when provided an object
+                const queryString = Knack.getQueryString({ [`${viewId}_filters`]: encodeURIComponent(JSON.stringify(filters)) });
+                Knack.router.navigate(`${sceneHash}?${queryString}`, false); //Navigates to new query string via Backbone router
+                Knack.setHashVars(); //Updates internal hash vars from current url
+
+                console.log('UF filters =', filters);
+                Knack.models[viewId].setFilters(filters); //Set new filters on view's model
+                return Knack.models[viewId].fetch({ //Refetch view data, using new filters
+                    success: (model, response, options) => resolve(model, response, options),
+                    error: (model, response, options) => reject(model, response, options),
+                });
+            });
+
+        function updatePerPage(viewId, perPage) {
+            Knack.showSpinner();
+            Knack.views[viewId].model.view.pagination_meta.page = 1;
+            Knack.views[viewId].model.view.source.page = 1;
+            Knack.views[viewId].model.view.pagination_meta.rows_per_page = perPage;
+            Knack.views[viewId].model.view.rows_per_page = perPage;
+
+            var i = {};
+            i[viewId + '_per_page'] = perPage;
+            i[viewId + '_page'] = 1;
+
+            var tableObj = Knack.views[viewId].model;
+            var r = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
+            Knack.router.navigate(r, !1),
+                Knack.setHashVars(),
+                tableObj.fetch();
+        }
+
+        function updateSearchTable(viewId, srchTxt) {
+            Knack.views[viewId].model.searching = true;
+            var i = Knack.getSceneHash();
+            var r = {}
+            var a = [];
+            r[viewId + "_search"] = encodeURIComponent(srchTxt);
+            r[viewId + "_page"] = 1;
+            Knack.views[viewId].model.view.pagination_meta.page = 1;
+            Knack.views[viewId].model.view.source.page = 1;
+
+            var o = Knack.getQueryString(r, a);
+            o && (i += "?" + o);
+            Knack.router.navigate(i, !1);
+            Knack.setHashVars();
+            Knack.showSpinner();
+            if (Knack.views[viewId].model.view.type == "calendar") {
+                Knack.views[viewId].renderRecords();
+            } else {
+                Knack.views[viewId].model.data.on("reset", Knack.views[viewId].hideLoading,
+                    Knack.views[viewId],
+                    Knack.views[viewId].model.fetch({ page: 1 }));
+            }
+        }
 
         function onStopFilterBtnClicked(e, filterDivId) {
             var closeFilters = document.querySelectorAll('#' + filterDivId + ' .kn-remove-filter');
