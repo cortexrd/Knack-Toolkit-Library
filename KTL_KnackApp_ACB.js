@@ -5545,6 +5545,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //TODO:  allow dynamically adding more as per user requirements.
         };
 
+        var userPrefsObj = defaultUserPrefsObj;
         var myUserPrefsViewId = ktl.core.getViewIdByTitle('My Preferences');
 
         //App Callbacks
