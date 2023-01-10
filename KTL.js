@@ -1524,17 +1524,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         document.addEventListener('input', function (e) {
-            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
-                return;
+            if (!pfInitDone || !ktl.core.getCfg().enabled.persistentForm ||
+                scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd()) return;
 
-            pfInitDone && inputHasChanged(e);
+            inputHasChanged(e);
         })
 
         document.addEventListener('focusout', function (e) {
-            if (!document.hasFocus() || !ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
-                return;
+            if (!pfInitDone || !document.hasFocus() || !ktl.core.getCfg().enabled.persistentForm ||
+                scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() ||
+                e.target.type === 'radio') return;
 
-            pfInitDone && inputHasChanged(e);
+            inputHasChanged(e);
         }, true);
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
@@ -1564,10 +1565,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Save data for a given view and field.
         function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
             //console.log('saveFormData', text, viewId, fieldId, subField);
-            if (!viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
+            if (!pfInitDone || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
-            if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
+            if (fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
                 return;
 
             var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
@@ -1701,9 +1702,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     }
 
                                 } else if (fieldType === 'multiple_choice') {
+                                    console.log('field.attributes.format.type =', field.attributes.format.type);
+
                                     if (typeof fieldText === 'object') {
                                         subField = Object.keys(formDataObj[view.key][fieldId]);
                                         fieldText = formDataObj[view.key][fieldId][subField];
+                                    } else if (field.attributes.format.type === 'radios') {
+                                        document.querySelector('#kn-input-' + fieldId + ' [value="' + fieldText + '"]').checked = true
+                                        resolve();
+                                        return;
+                                    } else if (field.attributes.format.type === 'checkbox') {
+                                        //TODO
+                                        resolve();
+                                        return;
                                     }
 
                                     fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
@@ -1776,8 +1787,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var fieldId = knInput.getAttribute('data-input-id');
                     var text = e.target.value;
 
-                    if (e.target.type === 'checkbox')
+                    var field = Knack.objects.getField(fieldId);
+                    console.log('inputHasChanged - field.attributes =', field.attributes);
+                    if (field.attributes.format.type === 'radios') {
+                        console.log('inputHasChanged - radios');
                         text = e.target.checked;
+                    } else if (field.attributes.format.type === 'checkboxes') {
+                        console.log('inputHasChanged - checkbox');
+                        text = e.target.checked;
+                    }
 
                     if (fieldId !== e.target.id) {
                         subField = e.target.id;
@@ -2577,6 +2595,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         };
 
         function updateSearchTable(viewId, srchTxt) {
+            if (!viewId || !srchTxt) return;
             Knack.views[viewId].model.searching = true;
             var i = Knack.getSceneHash();
             var r = {}
@@ -2593,6 +2612,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function updateFilters(viewId, filters) {
+            if (!viewId || !filters) return;
             const sceneHash = Knack.getSceneHash();
             const queryString = Knack.getQueryString({ [`${viewId}_filters`]: encodeURIComponent(JSON.stringify(filters)) });
             Knack.router.navigate(`${sceneHash}?${queryString}`, false);
@@ -2601,6 +2621,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         };
 
         function updatePerPage(viewId, perPage) {
+            if (!viewId || !perPage) return;
             Knack.views[viewId].model.view.pagination_meta.page = 1;
             Knack.views[viewId].model.view.source.page = 1;
             Knack.views[viewId].model.view.pagination_meta.rows_per_page = perPage;
@@ -2613,6 +2634,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function updateSort(viewId, sort) {
+            if (!viewId || !sort) return;
             var field = sort.split('|')[0];
             var order = sort.split('|')[1];
             var sortAr = [field, order]
@@ -5283,30 +5305,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //App Callbacks
         var allowShowPrefs = null; //Determines what prefs can be shown, based on app's rules.
         var applyUserPrefs = null; //Apply your own prefs.
-
-        //Convert old prefs to new ones.
-        var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
-        if (lsPrefsStr) {
-            if (lsPrefsStr.includes('showId')) {
-                var oldFormat = lsPrefsStr;
-                userPrefsObj = JSON.parse(lsPrefsStr);
-                userPrefsObj.showViewId = userPrefsObj.showId;
-                userPrefsObj.showExtraDebugInfo = userPrefsObj.allowDebug;
-                userPrefsObj.showIframeWnd = userPrefsObj.showIFrame;
-                userPrefsObj.workShift = userPrefsObj.workShift;
-
-                delete userPrefsObj.showId;
-                delete userPrefsObj.allowDebug;
-                delete userPrefsObj.showIFrame;
-
-                lsPrefsStr = JSON.stringify(userPrefsObj);
-                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, lsPrefsStr);
-
-                ktl.debugWnd.lsLog('KTL PREFS_UPGRADE - Converted old prefs. Old format: ' + oldFormat);
-                ktl.log.addLog(ktl.const.LS_INFO, 'PREFS_UPGRADE_1 : user preferences have been converted.  Old format: ' + oldFormat);
-            }
-        }
-
         var lastUserPrefs = readUserPrefsFromLs(); //Used to detect prefs changes.
 
         function readUserPrefsFromLs() {
@@ -5362,12 +5360,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
 
                                 ktl.userPrefs.ktlApplyUserPrefs();
-                            } else if (prefsStr.includes('showId')) {
-                                //If old format, wipe all and reset to default object: 1970, etc.
-                                document.querySelector('#' + acctPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
-                                document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
-                                ktl.log.clog('red', 'Uploading (upgrading) default prefs to cloud');
-                                ktl.log.addLog(ktl.const.LS_INFO, 'PREFS_UPGRADE_2 : user preferences have been converted.  Old format: ' + prefsStr);
                             }
                         }
                     } else {
