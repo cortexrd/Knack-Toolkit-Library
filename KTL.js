@@ -700,6 +700,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     }
                 }
             },
+
+            convertDateTimeToString: function (dt) {
+                if (!dt) return;
+                const dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                return dt.toLocaleDateString(undefined, dtOptions);
+            },
         }
     })();
 
@@ -5289,7 +5295,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //User Preferences feature
     this.userPrefs = (function () {
         const defaultUserPrefsObj = {
-            dt: new Date(1970, 0, 1),
+            dt: '01/01/1970 00:00:00',
             showViewId: false,
             showExtraDebugInfo: false,
             showIframeWnd: false,
@@ -5297,8 +5303,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             workShift: 'A'
             //TODO:  allow dynamically adding more as per user requirements.
         };
-
-        var userPrefsObj = defaultUserPrefsObj;
 
         var myUserPrefsViewId = ktl.core.getViewIdByTitle('My Preferences');
 
