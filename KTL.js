@@ -2235,11 +2235,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
-            var cols = document.querySelectorAll('.view-column');
-            cols.forEach(col => {
-                if (!col.childElementCount)
-                    col.remove();
-            })
+            ktl.core.waitSelector('.view-column', 5000) //Needed otherwise we miss them once in a while.
+                .then(function () {
+                    var cols = document.querySelectorAll('.view-column');
+                    cols.forEach(col => {
+                        if (!col.childElementCount)
+                            col.remove();
+                    })
+                })
+                .catch(function () { })
         })
 
         $(document).on('knack-records-render.report knack-records-render.table', function (e, view, data) {
@@ -4644,6 +4648,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //Scenes feature
     this.scenes = (function () {
+        const linkSame = 'LINK_OPEN_SAME=';
+        const linkNew = 'LINK_OPEN_NEW=';
+
         var spinnerCtrDelay = 30;
         var spinnerCtr = 0;
         var spinnerInterval = null;
@@ -4708,8 +4715,29 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
             }
 
+            $('#app-menu-list li').on('click', function (e) {
+                const txt = e.target.innerText;
+                    console.log('txt =', txt);
+                if (txt.includes(linkSame) || txt.includes(linkNew)) {
+                    var linkType = txt.split('LINK_OPEN_');
+                    if (linkType.length >= 2) {
+                        console.log('linkType =', linkType);
+                        linkType = linkType[1].split('=');
+                        console.log('linkType =', linkType);
+                        var url = linkType[1];
+                        //window.open(url, linkType[0] === 'NEW' ? '_blank' : '_self');
+                    }
+                }
+            })
+
+            if (!window.self.frameElement) {
+                console.log('scene render cleanupLinkMenus');
+                cleanupLinkMenus();
+            }
+
             onSceneRender && onSceneRender(event, scene);
         })
+
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
@@ -4719,6 +4747,68 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('mousemove', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
+
+        if (!window.self.frameElement) {
+            window.addEventListener('hashchange', (e) => {
+                console.log('The hash has changed!', e)
+                cleanupLinkMenus();
+            }, false);
+        }
+
+        //Remove LINK_OPEN_ suffix from menu text containing links.
+        var linkMenuList = [];
+        function cleanupLinkMenus() {
+            console.log('entering cleanupLinkMenus');
+            console.log('linkMenuList =', linkMenuList);
+            if (!linkMenuList.length) {
+                console.log('linkMenuList empty');
+                ktl.core.waitSelector('#app-menu-list li', 5000)
+                    .then(function () {
+                        var topMenus = document.querySelectorAll('#app-menu-list li:not(.kn-dropdown-menu)');
+                        console.log('topMenus =', topMenus);
+                        for (var i = 0; i < topMenus.length; i++) {
+                            var menu = topMenus[i];
+                            //console.log('menu =', menu);
+                            var idx = menu.innerText.indexOf('LINK_OPEN_');
+                            if (idx >= 0) {
+                                linkMenuList.push(menu);
+                            }
+                        }
+                        console.log('After filled linkMenuList =', linkMenuList);
+                        cleanupLinkMenus();
+                    })
+                    .catch(function () { })
+            } else {
+                console.log('Not empty linkMenuList =', linkMenuList);
+                linkMenuList.forEach(menu => {
+                    removeText(menu);
+                })
+            }
+
+            function removeText(menu) {
+                ktl.core.waitSelector('#app-menu-list > li > a > span:contains("LINK_OPEN_")', 5000)
+                    .then(() => {
+                        var menus = $('#app-menu-list > li > a > span:contains("LINK_OPEN_")')
+                        try {
+                            menus.each((i, menu) => {
+                                console.log('menu =', menu);
+                                var idx = menu.innerText.indexOf('LINK_OPEN_');
+
+                                if (idx >= 0) {
+                                    console.log('FOUND and Removing!', linkMenuList);
+                                    var newTxt = menu.innerText.substr(0, idx);
+                                    menu.textContent = newTxt;
+                                }
+                            })
+                        }
+                        catch (e) {
+                            console.log(e);
+                        }
+                    })
+                    .catch(() => { ktl.log.clog('purple', 'removeText failed waiting for menus'); });
+            }
+        }
+
 
         return {
             setCfg: function (cfgObj = {}) {
