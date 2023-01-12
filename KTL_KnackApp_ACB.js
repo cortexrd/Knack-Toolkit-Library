@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.15';
+    const KTL_VERSION = '0.6.16';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -940,6 +940,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                         switching = true;
                     }
                 }
+            },
+
+            convertDateTimeToString: function (dt) {
+                if (!dt) return;
+                const dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                return dt.toLocaleDateString(undefined, dtOptions);
             },
         }
     })();
@@ -1765,17 +1771,18 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         })
 
         document.addEventListener('input', function (e) {
-            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
-                return;
+            if (!pfInitDone || !ktl.core.getCfg().enabled.persistentForm ||
+                scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd()) return;
 
-            pfInitDone && inputHasChanged(e);
+            inputHasChanged(e);
         })
 
         document.addEventListener('focusout', function (e) {
-            if (!document.hasFocus() || !ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd())
-                return;
+            if (!pfInitDone || !document.hasFocus() || !ktl.core.getCfg().enabled.persistentForm ||
+                scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() ||
+                e.target.type === 'radio') return;
 
-            pfInitDone && inputHasChanged(e);
+            inputHasChanged(e);
         }, true);
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
@@ -1805,10 +1812,10 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         //Save data for a given view and field.
         function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
             //console.log('saveFormData', text, viewId, fieldId, subField);
-            if (!viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
+            if (!pfInitDone || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
-            if (!pfInitDone || !viewId || !fieldId || fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
+            if (fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
                 return;
 
             var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
@@ -1942,9 +1949,19 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                     }
 
                                 } else if (fieldType === 'multiple_choice') {
+                                    console.log('field.attributes.format.type =', field.attributes.format.type);
+
                                     if (typeof fieldText === 'object') {
                                         subField = Object.keys(formDataObj[view.key][fieldId]);
                                         fieldText = formDataObj[view.key][fieldId][subField];
+                                    } else if (field.attributes.format.type === 'radios') {
+                                        document.querySelector('#kn-input-' + fieldId + ' [value="' + fieldText + '"]').checked = true
+                                        resolve();
+                                        return;
+                                    } else if (field.attributes.format.type === 'checkbox') {
+                                        //TODO
+                                        resolve();
+                                        return;
                                     }
 
                                     fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
@@ -2017,8 +2034,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                     var fieldId = knInput.getAttribute('data-input-id');
                     var text = e.target.value;
 
-                    if (e.target.type === 'checkbox')
+                    var field = Knack.objects.getField(fieldId);
+                    console.log('inputHasChanged - field.attributes =', field.attributes);
+                    if (field.attributes.format.type === 'radios') {
+                        console.log('inputHasChanged - radios');
                         text = e.target.checked;
+                    } else if (field.attributes.format.type === 'checkboxes') {
+                        console.log('inputHasChanged - checkbox');
+                        text = e.target.checked;
+                    }
 
                     if (fieldId !== e.target.id) {
                         subField = e.target.id;
@@ -2452,11 +2476,15 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
-            var cols = document.querySelectorAll('.view-column');
-            cols.forEach(col => {
-                if (!col.childElementCount)
-                    col.remove();
-            })
+            ktl.core.waitSelector('.view-column', 5000) //Needed otherwise we miss them once in a while.
+                .then(function () {
+                    var cols = document.querySelectorAll('.view-column');
+                    cols.forEach(col => {
+                        if (!col.childElementCount)
+                            col.remove();
+                    })
+                })
+                .catch(function () { })
         })
 
         $(document).on('knack-records-render.report knack-records-render.table', function (e, view, data) {
@@ -2818,6 +2846,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         };
 
         function updateSearchTable(viewId, srchTxt) {
+            if (!viewId || !srchTxt) return;
             Knack.views[viewId].model.searching = true;
             var i = Knack.getSceneHash();
             var r = {}
@@ -2834,6 +2863,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function updateFilters(viewId, filters) {
+            if (!viewId || !filters) return;
             const sceneHash = Knack.getSceneHash();
             const queryString = Knack.getQueryString({ [`${viewId}_filters`]: encodeURIComponent(JSON.stringify(filters)) });
             Knack.router.navigate(`${sceneHash}?${queryString}`, false);
@@ -2842,6 +2872,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         };
 
         function updatePerPage(viewId, perPage) {
+            if (!viewId || !perPage) return;
             Knack.views[viewId].model.view.pagination_meta.page = 1;
             Knack.views[viewId].model.view.source.page = 1;
             Knack.views[viewId].model.view.pagination_meta.rows_per_page = perPage;
@@ -2854,6 +2885,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         }
 
         function updateSort(viewId, sort) {
+            if (!viewId || !sort) return;
             var field = sort.split('|')[0];
             var order = sort.split('|')[1];
             var sortAr = [field, order]
@@ -4857,6 +4889,9 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //Scenes feature
     this.scenes = (function () {
+        const linkSame = 'LINK_OPEN_SAME=';
+        const linkNew = 'LINK_OPEN_NEW=';
+
         var spinnerCtrDelay = 30;
         var spinnerCtr = 0;
         var spinnerInterval = null;
@@ -4921,8 +4956,12 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
             }
 
+            if (!window.self.frameElement)
+                cleanupLinkMenus();
+
             onSceneRender && onSceneRender(event, scene);
         })
+
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
@@ -4932,6 +4971,61 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
         $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('mousemove', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
+
+        if (!window.self.frameElement) {
+            window.addEventListener('hashchange', (e) => {
+                cleanupLinkMenus();
+            }, false);
+        }
+
+        //Link Menu feature:  Add a blank page in top menu where the Settings' Name ends with 
+        //LINK_OPEN_SAME= or LINK_OPEN_NEW= followed by a URL that starts with HTTP or HTTPS.
+        //Ex: Support LINK_OPEN_NEW=https://ctrnd.com/
+        var linkMenuList = {};
+        function cleanupLinkMenus() {
+            const sel = '#app-menu-list li:not(.kn-dropdown-menu)';
+            ktl.core.waitSelector(sel, 10000)
+                .then(function () {
+                    try {
+                        var topMenus = document.querySelectorAll(sel);
+                        if ($.isEmptyObject(linkMenuList)) {
+                            for (var i = 0; i < topMenus.length; i++) {
+                                var menu = topMenus[i];
+                                var menuTxt = menu.innerText;
+                                var idx = menuTxt.indexOf('LINK_OPEN_');
+                                if (idx >= 0) {
+                                    var newTxt = menu.innerText.substr(0, idx);
+                                    var url = '';
+                                    var target = ''
+                                    var linkParts = menuTxt.split('LINK_OPEN_');
+                                    if (linkParts.length == 2) {
+                                        linkParts = linkParts[1].split('=');
+                                        url = linkParts[1];
+                                        if (linkParts[0] === 'NEW')
+                                            target = ' target="_blank"';
+                                    }
+
+                                    linkMenuList[i] = { text: newTxt, url: url, target: target };
+                                }
+                            }
+                            replaceMenuText(topMenus);
+                        } else
+                            replaceMenuText(topMenus);
+                    }
+                    catch (e) { console.log(e); }
+                })
+                .catch(function () { ktl.log.clog('purple', 'cleanupLinkMenus failed waiting for menus.'); })
+
+            //Remove LINK_OPEN_ suffix from menu text containing links and set href in menus.
+            function replaceMenuText(topMenus) {
+                Object.keys(linkMenuList).forEach(idx => {
+                    topMenus[idx].querySelector('a[href]').outerHTML = '<a href="' + linkMenuList[idx].url + '"'
+                        + (linkMenuList[idx].target ? ' "' + linkMenuList[idx].target + '"': '')
+                        + '<span>' + linkMenuList[idx].text + '</span></a>';
+                })
+            }
+        }
+
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -5508,7 +5602,7 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //User Preferences feature
     this.userPrefs = (function () {
         const defaultUserPrefsObj = {
-            dt: new Date(1970, 0, 1),
+            dt: '01/01/1970 00:00:00',
             showViewId: false,
             showExtraDebugInfo: false,
             showIframeWnd: false,
@@ -5517,37 +5611,11 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
             //TODO:  allow dynamically adding more as per user requirements.
         };
 
-        var userPrefsObj = defaultUserPrefsObj;
-
         var myUserPrefsViewId = ktl.core.getViewIdByTitle('My Preferences');
 
         //App Callbacks
         var allowShowPrefs = null; //Determines what prefs can be shown, based on app's rules.
         var applyUserPrefs = null; //Apply your own prefs.
-
-        //Convert old prefs to new ones.
-        var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
-        if (lsPrefsStr) {
-            if (lsPrefsStr.includes('showId')) {
-                var oldFormat = lsPrefsStr;
-                userPrefsObj = JSON.parse(lsPrefsStr);
-                userPrefsObj.showViewId = userPrefsObj.showId;
-                userPrefsObj.showExtraDebugInfo = userPrefsObj.allowDebug;
-                userPrefsObj.showIframeWnd = userPrefsObj.showIFrame;
-                userPrefsObj.workShift = userPrefsObj.workShift;
-
-                delete userPrefsObj.showId;
-                delete userPrefsObj.allowDebug;
-                delete userPrefsObj.showIFrame;
-
-                lsPrefsStr = JSON.stringify(userPrefsObj);
-                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, lsPrefsStr);
-
-                ktl.debugWnd.lsLog('KTL PREFS_UPGRADE - Converted old prefs. Old format: ' + oldFormat);
-                ktl.log.addLog(ktl.const.LS_INFO, 'PREFS_UPGRADE_1 : user preferences have been converted.  Old format: ' + oldFormat);
-            }
-        }
-
         var lastUserPrefs = readUserPrefsFromLs(); //Used to detect prefs changes.
 
         function readUserPrefsFromLs() {
@@ -5603,12 +5671,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
 
                                 ktl.userPrefs.ktlApplyUserPrefs();
-                            } else if (prefsStr.includes('showId')) {
-                                //If old format, wipe all and reset to default object: 1970, etc.
-                                document.querySelector('#' + acctPrefsFld).value = JSON.stringify(defaultUserPrefsObj);
-                                document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
-                                ktl.log.clog('red', 'Uploading (upgrading) default prefs to cloud');
-                                ktl.log.addLog(ktl.const.LS_INFO, 'PREFS_UPGRADE_2 : user preferences have been converted.  Old format: ' + prefsStr);
                             }
                         }
                     } else {
