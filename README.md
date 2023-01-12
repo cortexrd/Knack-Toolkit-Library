@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.13 - pre-release
+v0.6.16 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -84,6 +84,10 @@ provide many nice additions to your app:
 -   special keywords in the table's column headers to trigger
 
     -   hidden or deleted columns
+
+-   special keywords in menus to trigger
+
+    -   link to any URL, even external ones
 
 -   Ctrl+Click on a table header to invert the default sort
 
@@ -562,8 +566,8 @@ supported. Here's the list:
 
 ### Adding flags to the tables header text to trigger special behavior
 
-In the Builder, when you edit a table view, you can these flags at the
-end of your header text to trigger special behavior:
+In the Builder, when you edit a table view, you can add these flags at
+the end of your header text to trigger special behavior:
 
 -   **\_HIDE**: To hide the column. The columns are only hidden and
     still exists in DOM. The visibility is reversible (hide/show) on the
@@ -638,6 +642,23 @@ Provides scene-related features.
 
 -   **onSceneRender**: Callback to your app\'s handler of a
     "knack-scene-render.any" event.
+
+### Using Page Settings' Name field as flags to trigger special behavior
+
+In the Builder, you can add these flags at the end of your Page
+Settings' Name field to trigger special behavior:
+
+**LINK_OPEN_SAME=** : to redirect your browser to another URL, in the
+same page.
+
+**LINK_OPEN_NEW=** : to redirect your browser to another URL, in a new
+tab.
+
+Ex: Support LINK_OPEN_NEW=https://ctrnd.com/
+
+This will open a new tab to ctrnd.com website. The menu will display as
+**Support**. The page can be left blank, and the Page URL is ignored --
+just use a random label like linksupport for example.
 
 ## Form Persistence
 
