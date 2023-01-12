@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.15';
+    const KTL_VERSION = '0.6.16';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4715,25 +4715,8 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
                 ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
             }
 
-            $('#app-menu-list li').on('click', function (e) {
-                const txt = e.target.innerText;
-                    console.log('txt =', txt);
-                if (txt.includes(linkSame) || txt.includes(linkNew)) {
-                    var linkType = txt.split('LINK_OPEN_');
-                    if (linkType.length >= 2) {
-                        console.log('linkType =', linkType);
-                        linkType = linkType[1].split('=');
-                        console.log('linkType =', linkType);
-                        var url = linkType[1];
-                        //window.open(url, linkType[0] === 'NEW' ? '_blank' : '_self');
-                    }
-                }
-            })
-
-            if (!window.self.frameElement) {
-                console.log('scene render cleanupLinkMenus');
+            if (!window.self.frameElement)
                 cleanupLinkMenus();
-            }
 
             onSceneRender && onSceneRender(event, scene);
         })
@@ -4750,80 +4733,55 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
 
         if (!window.self.frameElement) {
             window.addEventListener('hashchange', (e) => {
-                console.log('The hash has changed!', e)
                 cleanupLinkMenus();
             }, false);
         }
 
-        //Remove LINK_OPEN_ suffix from menu text containing links.
-        var linkMenuList = [];
+        //Link Menu feature:  Add a blank page in top menu where the Settings' Name ends with 
+        //LINK_OPEN_SAME= or LINK_OPEN_NEW= followed by a URL that starts with HTTP or HTTPS.
+        //Ex: Support LINK_OPEN_NEW=https://ctrnd.com/
+        var linkMenuList = {};
         function cleanupLinkMenus() {
-            //console.log('entering cleanupLinkMenus');
-            //console.log('linkMenuList =', linkMenuList);
-            if (!linkMenuList.length) {
-                //console.log('linkMenuList empty');
-                ktl.core.waitSelector('#app-menu-list li', 5000)
-                    .then(function () {
-                        var topMenus = document.querySelectorAll('#app-menu-list li:not(.kn-dropdown-menu)');
-                        //console.log('topMenus =', topMenus);
-                        for (var i = 0; i < topMenus.length; i++) {
-                            var menu = topMenus[i];
-                            //console.log('menu =', menu);
-                            var idx = menu.innerText.indexOf('LINK_OPEN_');
-                            if (idx >= 0) {
-                                linkMenuList.push(menu);
-                            }
-                        }
-                        //console.log('After filled linkMenuList =', linkMenuList);
-                        cleanupLinkMenus();
-                    })
-                    .catch(function () { })
-            } else {
-                //console.log('Not empty linkMenuList =', linkMenuList);
-                linkMenuList.forEach(menu => {
-                    removeText(menu);
-                })
-            }
-
-            function removeText(menu) {
-                var sel = '#app-menu-list > li > a > span:contains("LINK_OPEN_")';
-                ktl.core.waitSelector(sel, 5000)
-                    .then(() => {
-                        try {
-                            console.log('found link_open');
-                            linkMenuList.forEach(menu => {
-                                console.log('menu =', menu);
-                                console.log('menu.innerText =', menu.innerText);
-                                var idx = menu.innerText.indexOf('LINK_OPEN_');
+            const sel = '#app-menu-list li:not(.kn-dropdown-menu)';
+            ktl.core.waitSelector(sel, 10000)
+                .then(function () {
+                    try {
+                        var topMenus = document.querySelectorAll(sel);
+                        if ($.isEmptyObject(linkMenuList)) {
+                            for (var i = 0; i < topMenus.length; i++) {
+                                var menu = topMenus[i];
+                                var menuTxt = menu.innerText;
+                                var idx = menuTxt.indexOf('LINK_OPEN_');
                                 if (idx >= 0) {
-                                    console.log('FOUND and Removing!', idx, linkMenuList);
                                     var newTxt = menu.innerText.substr(0, idx);
-                                    menu.querySelector('span').textContent = newTxt;
+                                    var url = '';
+                                    var target = ''
+                                    var linkParts = menuTxt.split('LINK_OPEN_');
+                                    if (linkParts.length == 2) {
+                                        linkParts = linkParts[1].split('=');
+                                        url = linkParts[1];
+                                        if (linkParts[0] === 'NEW')
+                                            target = ' target="_blank"';
+                                    }
+
+                                    linkMenuList[i] = { text: newTxt, url: url, target: target };
                                 }
-                            })
-                        }
-                        catch (e) {
-                            console.log(e);
-                        }
+                            }
+                            replaceMenuText(topMenus);
+                        } else
+                            replaceMenuText(topMenus);
+                    }
+                    catch (e) { console.log(e); }
+                })
+                .catch(function () { ktl.log.clog('purple', 'cleanupLinkMenus failed waiting for menus.'); })
 
-                    //    var menus = $('#app-menu-list > li > a > span:contains("LINK_OPEN_")')
-                    //    try {
-                    //        menus.each((i, menu) => {
-                    //            console.log('menu =', menu);
-                    //            var idx = menu.innerText.indexOf('LINK_OPEN_');
-
-                    //            if (idx >= 0) {
-                    //                console.log('FOUND and Removing!', linkMenuList);
-                    //                var newTxt = menu.innerText.substr(0, idx);
-                    //                menu.textContent = newTxt;
-                    //            }
-                    //        })
-                    //    }
-                    //    catch (e) {
-                    //        console.log(e);
-                    //    }
-                    })
-                    .catch(e => { ktl.log.clog('purple', 'removeText failed waiting for menus', e); });
+            //Remove LINK_OPEN_ suffix from menu text containing links and set href in menus.
+            function replaceMenuText(topMenus) {
+                Object.keys(linkMenuList).forEach(idx => {
+                    topMenus[idx].querySelector('a[href]').outerHTML = '<a href="' + linkMenuList[idx].url + '"'
+                        + (linkMenuList[idx].target ? ' "' + linkMenuList[idx].target + '"': '')
+                        + '<span>' + linkMenuList[idx].text + '</span></a>';
+                })
             }
         }
 
