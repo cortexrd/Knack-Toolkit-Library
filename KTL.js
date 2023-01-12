@@ -526,9 +526,7 @@ function Ktl($) {
 
                 if (!progressWnd) {
                     timedPopupEl = document.createElement('div');
-                    var style = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%) \
-;min-width:300px;min-height:50px;line-height:50px; \
-font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px;white-space:pre';
+                    var style = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%);min-width:300px;min-height:50px;line-height:50px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px;white-space:pre';
 
                     if (status === 'warning')
                         style += ';background-color:#fffa5e;border:2px solid #7e8060;top:10%';
@@ -4648,9 +4646,6 @@ font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-le
     //====================================================
     //Scenes feature
     this.scenes = (function () {
-        const linkSame = 'LINK_OPEN_SAME=';
-        const linkNew = 'LINK_OPEN_NEW=';
-
         var spinnerCtrDelay = 30;
         var spinnerCtr = 0;
         var spinnerInterval = null;
