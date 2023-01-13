@@ -129,7 +129,7 @@ tr:hover {
 
 .menuDiv {
 	background-color: #dfe8ff;
-	position: fixed;
+	position: absolute;
 	z-index: 1;
 	white-space: nowrap;
 }
