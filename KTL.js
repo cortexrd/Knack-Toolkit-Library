@@ -806,6 +806,7 @@ function Ktl($) {
         var onKeyPressed = null;
         var onFieldValueChanged = null;
         var textAsNumeric = []; //These are text fields that must be converted to numeric.
+        var textAsNumericExcludeScenes = []; //Do not enforce numric for these scenes.
         var chznBetterSrchDelay = 1500; //Default is fine-tuned experimentally, for 'a bit below average' typing speed.
         var chznBetterThresholds = {};
         var chznBetterToExclude = [];
@@ -1061,6 +1062,7 @@ function Ktl($) {
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
                 cfgObj.onFieldValueChanged && (onFieldValueChanged = cfgObj.onFieldValueChanged);
                 cfgObj.textAsNumeric && (textAsNumeric = cfgObj.textAsNumeric);
+                cfgObj.textAsNumericExcludeScenes && (textAsNumericExcludeScenes = cfgObj.textAsNumericExcludeScenes);  
                 cfgObj.chznBetterSrchDelay && (chznBetterSrchDelay = cfgObj.chznBetterSrchDelay);
                 cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
                 cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
@@ -1071,9 +1073,9 @@ function Ktl($) {
             //Also, using tel type is a little trick that allows auto-selection of text in a number field upon focus.
             convertNumToTel: function () {
                 return new Promise(function (resolve) {
-                    if (convertNumDone || ktl.scenes.isiFrameWnd())
+                    if (convertNumDone || ktl.scenes.isiFrameWnd() || textAsNumericExcludeScenes.includes(Knack.router.current_scene_key)) {
                         resolve();
-                    else {
+                    } else {
                         var forms = document.querySelectorAll('.kn-form');
                         forms.forEach(form => {
                             var viewId = form.id;
@@ -1301,7 +1303,7 @@ function Ktl($) {
                     var chznBetter = document.createElement('input');
 
                     //Numeric fields only, set to Tel type.
-                    if (textAsNumeric.includes(fieldId)) {
+                    if (textAsNumeric.includes(fieldId) && !textAsNumericExcludeScenes.includes(Knack.router.current_scene_key)) {
                         chznBetter.setAttribute('type', 'tel');
                         chznBetter.setAttribute('numeric', 'true');
                         chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '4'); //Minimum number of characters to be typed before search is triggered.
