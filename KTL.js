@@ -698,8 +698,8 @@ function Ktl($) {
                 }
             },
 
-            convertDateTimeToString: function (dateTimeStr, iso = false, dateOnly = false) {
-                if (!dateTimeStr) return;
+            convertDateTimeToString: function (dateTimeObj, iso = false, dateOnly = false) {
+                if (!dateTimeObj) return;
 
                 var dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' };
                 if (dateOnly) {
@@ -708,15 +708,25 @@ function Ktl($) {
 
                 if (iso) {
                     //yyyy-mm-dd format, for example used by input of type calendar.
-                    var year = dateTimeStr.toLocaleString(undefined, { year: 'numeric' });
-                    var month = dateTimeStr.toLocaleString(undefined, { month: '2-digit' });
-                    var day = dateTimeStr.toLocaleString(undefined, { day: '2-digit' });
+                    var year = dateTimeObj.toLocaleString(undefined, { year: 'numeric' });
+                    var month = dateTimeObj.toLocaleString(undefined, { month: '2-digit' });
+                    var day = dateTimeObj.toLocaleString(undefined, { day: '2-digit' });
                     var isoDate = year + '-' + month + '-' + day;
                     return isoDate;
                 } else {
                     //mm-dd-yyyy Knack's default format.
-                    return dateTimeStr.toLocaleDateString(undefined, dtOptions);
+                    return dateTimeObj.toLocaleDateString(undefined, dtOptions);
                 }
+            },
+
+            convertDateToIso: function (dateStr) {
+                if (!dateStr) return;
+                var date = new Date(dateStr);
+                var year = date.toLocaleString(undefined, { year: 'numeric' });
+                var month = date.toLocaleString(undefined, { month: '2-digit' });
+                var day = date.toLocaleString(undefined, { day: '2-digit' });
+                var isoDate = year + '-' + month + '-' + day;
+                return isoDate;
             },
 
             getLastDayOfMonth: function (dateStr, iso = false) {
