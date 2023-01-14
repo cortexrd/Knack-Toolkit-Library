@@ -698,10 +698,35 @@ function Ktl($) {
                 }
             },
 
-            convertDateTimeToString: function (dt) {
-                if (!dt) return;
-                const dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-                return dt.toLocaleDateString(undefined, dtOptions);
+            convertDateTimeToString: function (dateTimeStr, iso = false, dateOnly = false) {
+                if (!dateTimeStr) return;
+
+                var dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                if (dateOnly) {
+                    dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
+                }
+
+                if (iso) {
+                    //yyyy-mm-dd format, for example used by input of type calendar.
+                    var year = dateTimeStr.toLocaleString(undefined, { year: 'numeric' });
+                    var month = dateTimeStr.toLocaleString(undefined, { month: '2-digit' });
+                    var day = dateTimeStr.toLocaleString(undefined, { day: '2-digit' });
+                    var isoDate = year + '-' + month + '-' + day;
+                    return isoDate;
+                } else {
+                    //mm-dd-yyyy Knack's default format.
+                    return dateTimeStr.toLocaleDateString(undefined, dtOptions);
+                }
+            },
+
+            getLastDayOfMonth: function (dateStr, iso = false) {
+                var last = new Date(dateStr);
+                //console.log('last =', last);
+                var lastDayOfMonth = new Date(last.getFullYear(), last.getMonth() + 1, 0);
+                //console.log('lastDayOfMonth =', lastDayOfMonth);
+                endDateStr = ktl.core.convertDateTimeToString(lastDayOfMonth, iso, true);
+                //console.log('endDateStr =', endDateStr);
+                return endDateStr;
             },
         }
     })();
@@ -1204,6 +1229,45 @@ function Ktl($) {
                 checkBox.checked = state;
 
                 return checkBox;
+            },
+
+            addInput: function (div = null, label = '', type = 'text', value = '', id = '', inStyle = '', lbStyle = '') {
+                if (div === null || label === '') {
+                    //ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1006 - Called addCheckbox with invalid parameters');
+                    return null;
+                }
+
+                if (!id) {
+                    id = ktl.core.getCleanId(label);
+                }
+
+                var inLabel = document.getElementById(id + '-label-id');
+                var input = document.getElementById(id + '-id');
+
+                if (input === null) {
+                    input = document.createElement('input');
+                    input.type = type;
+                    input.id = id + '-id';
+                    inLabel = document.createElement('label');
+                    inLabel.htmlFor = id + '-id';
+                    inLabel.setAttribute('id', id + '-label-id');
+                    inLabel.appendChild(document.createTextNode(label));
+                }
+
+                if (!inStyle) {
+                    inStyle = 'margin-left: 5px; width: 15px; height: 15px;';
+                }
+
+                if (!lbStyle) {
+                    lbStyle = 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px;';
+                }
+
+                input.setAttribute('style', inStyle);
+                inLabel.setAttribute('style', lbStyle);
+                div.append(input, inLabel);
+                input.value = value;
+
+                return input;
             },
 
             //====================================================
