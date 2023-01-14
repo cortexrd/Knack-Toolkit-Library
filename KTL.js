@@ -719,7 +719,7 @@ function Ktl($) {
                 }
             },
 
-            convertDateToIso: function (dateStr) {
+            convertDateToIso: function (dateStr /*Expected: mm-dd-yyyy format*/) {
                 if (!dateStr) return;
                 var date = new Date(dateStr);
                 var year = date.toLocaleString(undefined, { year: 'numeric' });
@@ -730,13 +730,9 @@ function Ktl($) {
             },
 
             getLastDayOfMonth: function (dateStr, iso = false) {
-                var last = new Date(dateStr);
-                //console.log('last =', last);
-                var lastDayOfMonth = new Date(last.getFullYear(), last.getMonth() + 1, 0);
-                //console.log('lastDayOfMonth =', lastDayOfMonth);
-                endDateStr = ktl.core.convertDateTimeToString(lastDayOfMonth, iso, true);
-                //console.log('endDateStr =', endDateStr);
-                return endDateStr;
+                var date = new Date(dateStr);
+                var lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                return ktl.core.convertDateTimeToString(lastDayOfMonth, iso, true);
             },
         }
     })();
