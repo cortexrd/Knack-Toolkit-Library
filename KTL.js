@@ -1093,7 +1093,7 @@ function Ktl($) {
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
                 cfgObj.onFieldValueChanged && (onFieldValueChanged = cfgObj.onFieldValueChanged);
                 cfgObj.textAsNumeric && (textAsNumeric = cfgObj.textAsNumeric);
-                cfgObj.textAsNumericExcludeScenes && (textAsNumericExcludeScenes = cfgObj.textAsNumericExcludeScenes);  
+                cfgObj.textAsNumericExcludeScenes && (textAsNumericExcludeScenes = cfgObj.textAsNumericExcludeScenes);
                 cfgObj.chznBetterSrchDelay && (chznBetterSrchDelay = cfgObj.chznBetterSrchDelay);
                 cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
                 cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
@@ -2750,7 +2750,7 @@ function Ktl($) {
             ktl.systemColors.getSystemColors()
                 .then((sysColors) => {
                     $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr, 'border-color': '' });
-                    $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr/*, 'border-color': sysColors.borderClr */});
+                    $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr/*, 'border-color': sysColors.borderClr */ });
                     $('.filterBtn.public').css({ 'background-color': sysColors.publicFilterBtnClr, 'border-color': '' });
                     $('.activeFilter.public').css({ 'background-color': sysColors.activePublicFilterBtnClr/*, 'border-color': sysColors.borderClr*/ });
                 })
@@ -2895,7 +2895,7 @@ function Ktl($) {
                         ktl.log.clog('purple', 'Public Filter toggle, bad index found:', filterIndex);
                 });
             }
-    
+
             listPublicFilters && ul.appendChild(listPublicFilters);
             listDelete && ul.appendChild(listDelete);
             ul.appendChild(listRename);
@@ -2939,7 +2939,7 @@ function Ktl($) {
                             return filter;
                     });
                 } else
-                    return { index: -1, type: LS_UF, filterSrc: userFiltersObj};
+                    return { index: -1, type: LS_UF, filterSrc: userFiltersObj };
 
                 return { index: index, type: type, filterSrc: filterSrc, filterObj: filterSrc[viewId].filters[index] };
             }
@@ -3041,7 +3041,7 @@ function Ktl($) {
                     var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]');
 
                     var adjustReportId = false;
-                    if (filterDivId) 
+                    if (filterDivId)
                         adjustReportId = true;
                     else
                         filterDivId = viewFilterDiv.closest('#' + viewId);
@@ -3913,7 +3913,7 @@ function Ktl($) {
                                             //console.log('refreshView error response =', response);
                                             //console.log('model =', model);
                                             //console.log('options =', options);
-                                            
+
                                             response.caller = 'refreshView';
                                             response.viewId = viewId;
 
@@ -4627,7 +4627,7 @@ function Ktl($) {
                 }
             },
 
-            submitAndWait: function (viewId = '', formData = {/*fieldId: value*/}) {
+            submitAndWait: function (viewId = '', formData = {/*fieldId: value*/ }) {
                 return new Promise(function (resolve, reject) {
                     if (!viewId || $.isEmptyObject(formData)) return;
 
@@ -4845,7 +4845,7 @@ function Ktl($) {
             function replaceMenuText(topMenus) {
                 Object.keys(linkMenuList).forEach(idx => {
                     topMenus[idx].querySelector('a[href]').outerHTML = '<a href="' + linkMenuList[idx].url + '"'
-                        + (linkMenuList[idx].target ? ' "' + linkMenuList[idx].target + '"': '')
+                        + (linkMenuList[idx].target ? ' "' + linkMenuList[idx].target + '"' : '')
                         + '<span>' + linkMenuList[idx].text + '</span></a>';
                 })
             }
