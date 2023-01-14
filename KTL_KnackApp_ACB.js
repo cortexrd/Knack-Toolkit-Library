@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.16';
+    const KTL_VERSION = '0.6.17';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -939,10 +939,41 @@ function Ktl($) {
                 }
             },
 
-            convertDateTimeToString: function (dt) {
-                if (!dt) return;
-                const dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-                return dt.toLocaleDateString(undefined, dtOptions);
+            convertDateTimeToString: function (dateTimeObj, iso = false, dateOnly = false) {
+                if (!dateTimeObj) return;
+
+                var dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                if (dateOnly) {
+                    dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
+                }
+
+                if (iso) {
+                    //yyyy-mm-dd format, for example used by input of type calendar.
+                    var year = dateTimeObj.toLocaleString(undefined, { year: 'numeric' });
+                    var month = dateTimeObj.toLocaleString(undefined, { month: '2-digit' });
+                    var day = dateTimeObj.toLocaleString(undefined, { day: '2-digit' });
+                    var isoDate = year + '-' + month + '-' + day;
+                    return isoDate;
+                } else {
+                    //mm-dd-yyyy Knack's default format.
+                    return dateTimeObj.toLocaleDateString(undefined, dtOptions);
+                }
+            },
+
+            convertDateToIso: function (dateStr /*Expected: mm-dd-yyyy format*/) {
+                if (!dateStr) return;
+                var date = new Date(dateStr);
+                var year = date.toLocaleString(undefined, { year: 'numeric' });
+                var month = date.toLocaleString(undefined, { month: '2-digit' });
+                var day = date.toLocaleString(undefined, { day: '2-digit' });
+                var isoDate = year + '-' + month + '-' + day;
+                return isoDate;
+            },
+
+            getLastDayOfMonth: function (dateStr, iso = false) {
+                var date = new Date(dateStr);
+                var lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                return ktl.core.convertDateTimeToString(lastDayOfMonth, iso, true);
             },
         }
     })();
@@ -1047,6 +1078,7 @@ function Ktl($) {
         var onKeyPressed = null;
         var onFieldValueChanged = null;
         var textAsNumeric = []; //These are text fields that must be converted to numeric.
+        var textAsNumericExcludeScenes = []; //Do not enforce numric for these scenes.
         var chznBetterSrchDelay = 1500; //Default is fine-tuned experimentally, for 'a bit below average' typing speed.
         var chznBetterThresholds = {};
         var chznBetterToExclude = [];
@@ -1302,6 +1334,7 @@ function Ktl($) {
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
                 cfgObj.onFieldValueChanged && (onFieldValueChanged = cfgObj.onFieldValueChanged);
                 cfgObj.textAsNumeric && (textAsNumeric = cfgObj.textAsNumeric);
+                cfgObj.textAsNumericExcludeScenes && (textAsNumericExcludeScenes = cfgObj.textAsNumericExcludeScenes);
                 cfgObj.chznBetterSrchDelay && (chznBetterSrchDelay = cfgObj.chznBetterSrchDelay);
                 cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
                 cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
@@ -1312,9 +1345,9 @@ function Ktl($) {
             //Also, using tel type is a little trick that allows auto-selection of text in a number field upon focus.
             convertNumToTel: function () {
                 return new Promise(function (resolve) {
-                    if (convertNumDone || ktl.scenes.isiFrameWnd())
+                    if (convertNumDone || ktl.scenes.isiFrameWnd() || textAsNumericExcludeScenes.includes(Knack.router.current_scene_key)) {
                         resolve();
-                    else {
+                    } else {
                         var forms = document.querySelectorAll('.kn-form');
                         forms.forEach(form => {
                             var viewId = form.id;
@@ -1445,6 +1478,45 @@ function Ktl($) {
                 return checkBox;
             },
 
+            addInput: function (div = null, label = '', type = 'text', value = '', id = '', inStyle = '', lbStyle = '') {
+                if (div === null || label === '') {
+                    //ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1006 - Called addCheckbox with invalid parameters');
+                    return null;
+                }
+
+                if (!id) {
+                    id = ktl.core.getCleanId(label);
+                }
+
+                var inLabel = document.getElementById(id + '-label-id');
+                var input = document.getElementById(id + '-id');
+
+                if (input === null) {
+                    input = document.createElement('input');
+                    input.type = type;
+                    input.id = id + '-id';
+                    inLabel = document.createElement('label');
+                    inLabel.htmlFor = id + '-id';
+                    inLabel.setAttribute('id', id + '-label-id');
+                    inLabel.appendChild(document.createTextNode(label));
+                }
+
+                if (!inStyle) {
+                    inStyle = 'margin-left: 5px; width: 15px; height: 15px;';
+                }
+
+                if (!lbStyle) {
+                    lbStyle = 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px;';
+                }
+
+                input.setAttribute('style', inStyle);
+                inLabel.setAttribute('style', lbStyle);
+                div.append(input, inLabel);
+                input.value = value;
+
+                return input;
+            },
+
             //====================================================
             addRadioButton: function (div = null, label = '', name = ''/*group*/, id = '', value = '', rbStyle = '', lbStyle = '') {
                 if (div === null || name === '' || id === '') {
@@ -1542,7 +1614,7 @@ function Ktl($) {
                     var chznBetter = document.createElement('input');
 
                     //Numeric fields only, set to Tel type.
-                    if (textAsNumeric.includes(fieldId)) {
+                    if (textAsNumeric.includes(fieldId) && !textAsNumericExcludeScenes.includes(Knack.router.current_scene_key)) {
                         chznBetter.setAttribute('type', 'tel');
                         chznBetter.setAttribute('numeric', 'true');
                         chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '4'); //Minimum number of characters to be typed before search is triggered.
@@ -2919,7 +2991,7 @@ function Ktl($) {
             ktl.systemColors.getSystemColors()
                 .then((sysColors) => {
                     $('.filterBtn').css({ 'background-color': sysColors.filterBtnClr, 'border-color': '' });
-                    $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr/*, 'border-color': sysColors.borderClr */});
+                    $('.activeFilter').css({ 'background-color': sysColors.activeFilterBtnClr/*, 'border-color': sysColors.borderClr */ });
                     $('.filterBtn.public').css({ 'background-color': sysColors.publicFilterBtnClr, 'border-color': '' });
                     $('.activeFilter.public').css({ 'background-color': sysColors.activePublicFilterBtnClr/*, 'border-color': sysColors.borderClr*/ });
                 })
@@ -3064,7 +3136,7 @@ function Ktl($) {
                         ktl.log.clog('purple', 'Public Filter toggle, bad index found:', filterIndex);
                 });
             }
-    
+
             listPublicFilters && ul.appendChild(listPublicFilters);
             listDelete && ul.appendChild(listDelete);
             ul.appendChild(listRename);
@@ -3108,7 +3180,7 @@ function Ktl($) {
                             return filter;
                     });
                 } else
-                    return { index: -1, type: LS_UF, filterSrc: userFiltersObj};
+                    return { index: -1, type: LS_UF, filterSrc: userFiltersObj };
 
                 return { index: index, type: type, filterSrc: filterSrc, filterObj: filterSrc[viewId].filters[index] };
             }
@@ -3210,7 +3282,7 @@ function Ktl($) {
                     var filterDivId = viewFilterDiv.closest('[id^=kn-report-' + viewId + '-]');
 
                     var adjustReportId = false;
-                    if (filterDivId) 
+                    if (filterDivId)
                         adjustReportId = true;
                     else
                         filterDivId = viewFilterDiv.closest('#' + viewId);
@@ -3931,10 +4003,10 @@ function Ktl($) {
                         ktl.core.getSubstringPosition(view.title, 'AUTOREFRESH', 1),
                         ktl.core.getSubstringPosition(view.title, 'HIDDEN_', 1),
                         ktl.core.getSubstringPosition(view.title, 'NO_INLINE', 1),
-                        ktl.core.getSubstringPosition(view.title, 'USER_FILTERS_', 1),
                         ktl.core.getSubstringPosition(view.title, 'ADD_', 1),
                         ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1),
-                        ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1)
+                        ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1),
+                        ktl.core.getSubstringPosition(view.title, 'DATETIME_PICKERS', 1), //eX: DATETIME_PICKERS=MONTHLY,DATE
                     );
 
                     //Truncate all title characters beyond the lowest index found.
@@ -3962,8 +4034,13 @@ function Ktl($) {
                             $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
                     }
 
-                    if (view.title.includes('ADD_TIMESTAMP'))
+                    if (view.title.includes('ADD_TIMESTAMP')) {
                         ktl.views.addTimeStampToHeader(view);
+                    }
+
+                    if (view.title.includes('DATETIME_PICKERS')) {
+                        ktl.views.addDateTimePickers(view);
+                    }
                 }
 
                 //Remove unwanted columns, as specified in Builder, when _HIDE and _REMOVE is found in header.
@@ -4082,7 +4159,7 @@ function Ktl($) {
                                             //console.log('refreshView error response =', response);
                                             //console.log('model =', model);
                                             //console.log('options =', options);
-                                            
+
                                             response.caller = 'refreshView';
                                             response.viewId = viewId;
 
@@ -4345,6 +4422,129 @@ function Ktl($) {
                     timestamp.appendChild(document.createTextNode(ktl.core.getCurrentDateTime(false, true, false, false)));
                     timestamp.setAttribute('style', 'margin-left: 60px; color: blue; font-weight: bold; font-size:20pt;');
                     header && header.append(timestamp);
+                }
+            },
+
+            addDateTimePickers: function (view) {
+                const LS_REPORT_PERIOD = 'REPORT_PERIOD_' + view.key;
+                const viewTitle = Knack.views[view.key].model.view.title;
+                //DATETIME_PICKERS=MONTHLY,DATE
+                var options = viewTitle.split('_PICKERS='); //Important to use this part of the flag to ensure the [0] is not empty.
+                if (options.length !== 2) return;
+                options = options[1].split(',');
+                if (options.length !== 2) return;
+                if (!['MONTHLY'].includes(options[0])) return;
+                if (!['DATE'].includes(options[1])) return;
+
+                var fieldName = '';
+                var fieldId = '';
+
+                //Find first Date/Time field type.
+                var cols = document.querySelectorAll('#' + view.key + ' thead th');
+                for (var i = 0; i < cols.length; i++) {
+                    fieldId = cols[i].classList[0];
+                    var field = Knack.objects.getField(fieldId);
+                    if (field && field.attributes && field.attributes.type === 'date_time') {
+                        fieldName = field.attributes.name;
+                        break;
+                    }
+                }
+
+                if (!fieldId || !fieldName) return;
+
+                var div = document.createElement('div');
+                div.style.marginTop = '20px';
+                div.style.marginBottom = '50px';
+                ktl.core.insertAfter(div, document.querySelector('#' + view.key + ' .view-header'));
+
+                var startDateUs = '';
+                var startDateIso = '';
+                var endDateUs = '';
+                var endDateIso = '';
+
+                var reportPeriod = ktl.storage.lsGetItem(LS_REPORT_PERIOD);
+                if (reportPeriod) {
+                    try {
+                        reportPeriod = JSON.parse(reportPeriod);
+                        startDateUs = reportPeriod.startDateUs;
+                        endDateUs = reportPeriod.endDateUs;
+                    } catch (e) {
+                        console.log('Error parsing report period', e);
+                    }
+                } else {
+                    startDateUs = ktl.core.convertDateTimeToString(new Date(), false, true);
+                    endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
+                    savePeriod();
+                }
+
+                startDateIso = ktl.core.convertDateToIso(startDateUs);
+                endDateIso = ktl.core.convertDateToIso(endDateUs);
+
+                var startDateInput = ktl.fields.addInput(div, 'Start date', 'date', startDateIso, '', 'width: 200px; height: 25px;');
+                var endDateInput = ktl.fields.addInput(div, 'End date', 'date', endDateIso, '', 'width: 200px; height: 25px;');
+
+                startDateInput.value = startDateIso;
+                endDateInput.value = endDateIso;
+
+                //No active filter?  Apply now then.
+                if (!document.querySelector('#' + view.key + ' .kn-tag-filter')) {
+                    updateReportDates(startDateUs, endDateUs);
+                }
+
+                startDateInput.addEventListener('change', (e) => {
+                    startDateUs = ktl.core.convertDateTimeToString(new Date(e.target.value.replace(/-/g, '/')), false, true);
+                    endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
+                    endDateInput.value = ktl.core.convertDateToIso(endDateUs);
+                    updateReportDates(startDateUs, endDateUs);
+                    savePeriod();
+                })
+
+                endDateInput.addEventListener('change', (e) => {
+                    endDateUs = ktl.core.convertDateTimeToString(new Date(e.target.value.replace(/-/g, '/')), false, true);
+                    updateReportDates(startDateUs, endDateUs);
+                    savePeriod();
+                })
+
+                startDateInput.focus();
+
+                function updateReportDates(startDateUs, endDateUs) {
+                    //Must adjust end date due to "is before" nature of date filter.
+                    endDateUs = ktl.core.convertDateTimeToString(new Date(Date.parse(endDateUs) + (24 * 3600 * 1000)), false, true);
+                    var filterObj = [];
+                    filterObj = [
+                        {
+                            "field": fieldId,
+                            "operator": "is after",
+                            "value": {
+                                "date": startDateUs,
+                                "time": ""
+                            },
+                            "field_name": fieldName
+                        },
+                        {
+                            "match": "and",
+                            "field": fieldId,
+                            "operator": "is before",
+                            "value": {
+                                "date": endDateUs,
+                                "time": ""
+                            },
+                            "field_name": fieldName
+                        }
+                    ]
+
+                    const sceneHash = Knack.getSceneHash();
+                    const queryString = Knack.getQueryString({ [`${view.key}_filters`]: encodeURIComponent(JSON.stringify(filterObj)) });
+                    Knack.router.navigate(`${sceneHash}?${queryString}`, false);
+                    Knack.setHashVars();
+                    Knack.models[view.key].setFilters(filterObj);
+                    Knack.models[view.key].fetch({
+                        success: () => { Knack.hideSpinner(); }
+                    });
+                }
+
+                function savePeriod() {
+                    ktl.storage.lsSetItem(LS_REPORT_PERIOD, JSON.stringify({ startDateUs: startDateUs, endDateUs: endDateUs }));
                 }
             },
 
@@ -4796,7 +4996,7 @@ function Ktl($) {
                 }
             },
 
-            submitAndWait: function (viewId = '', formData = {/*fieldId: value*/}) {
+            submitAndWait: function (viewId = '', formData = {/*fieldId: value*/ }) {
                 return new Promise(function (resolve, reject) {
                     if (!viewId || $.isEmptyObject(formData)) return;
 
@@ -5014,7 +5214,7 @@ function Ktl($) {
             function replaceMenuText(topMenus) {
                 Object.keys(linkMenuList).forEach(idx => {
                     topMenus[idx].querySelector('a[href]').outerHTML = '<a href="' + linkMenuList[idx].url + '"'
-                        + (linkMenuList[idx].target ? ' "' + linkMenuList[idx].target + '"': '')
+                        + (linkMenuList[idx].target ? ' "' + linkMenuList[idx].target + '"' : '')
                         + '<span>' + linkMenuList[idx].text + '</span></a>';
                 })
             }
@@ -7203,6 +7403,7 @@ var KnackApp = function ($, info = {}) {
             onKeyPressed: onKeyPressed,
             onFieldValueChanged: onFieldValueChanged,
             textAsNumeric: [],
+            textAsNumericExcludeScenes: [],
             //chznBetterSrchDelay: 2000, //Uncomment if you prefer longer delay.
             chznBetterThresholds: {
                 'field_x': '4',

@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.16 - pre-release
+v0.6.17 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -324,6 +324,16 @@ internally, but also available to your app.
 
 -   **sortUList**: Will sort any un-ordered list in alphabetical order.
 
+-   **convertDateTimeToString**: Will convert a Date object to a string,
+    ISO or US format, and date only option.
+
+-   **convertDateToIso**: Converts a date string from US to ISO format.
+    US is for various Knack functions like API calls and filtering,
+    whereas ISO is for HTML objects like calendar input types.
+
+-   **getLastDayOfMonth**: Pass a date string and it will return the
+    last day of that month, as a string, is ISO or US format.
+
 ### A note about knAPI
 
 While Inline editing is mandatory for PUT (edit) operations on a table,
@@ -542,14 +552,30 @@ Provides view-related features.
 
     -   NO_INLINE Disables inline editing, even if enabled in Builder
 
-    -   USER_FILTERS_MENU Used in the page to save/load filters to the
-        Cloud
+    -   DATETIME_PICKERS Adds calendar pickers to the view (see below)
 
-    -   USER_FILTERS_CODE Used in the page to save/load filters to the
-        Cloud
+You can also add your own app-specific flags in the callback function
+processViewFlags.
 
-> You can also add your own app-specific flags in the callback function
-> processViewFlags.
+#### Additional information
+
+###### DATETIME_PICKERS
+
+Add this to your view title: DATETIME_PICKERS=*options*
+
+The options are:
+
+1)  MONTHLY, WEEKLY and DAILY
+
+2)  DATE, TIME and DATETIME
+
+Currently only MONTHLY,DATE is supported.
+
+When you select a Start date, the End date will automatically update
+itself to the last day of the month and the view will be filtered in
+real-time. The focus is conveniently placed on the Start date's month
+field so you can use the up/down arrows to scroll quickly through months
+and visualize data.
 
 ### Using view's Description text box as flags to trigger special behavior
 

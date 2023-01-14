@@ -3762,10 +3762,10 @@ function Ktl($) {
                         ktl.core.getSubstringPosition(view.title, 'AUTOREFRESH', 1),
                         ktl.core.getSubstringPosition(view.title, 'HIDDEN_', 1),
                         ktl.core.getSubstringPosition(view.title, 'NO_INLINE', 1),
-                        ktl.core.getSubstringPosition(view.title, 'USER_FILTERS_', 1),
                         ktl.core.getSubstringPosition(view.title, 'ADD_', 1),
                         ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1),
-                        ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1)
+                        ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1),
+                        ktl.core.getSubstringPosition(view.title, 'DATETIME_PICKERS', 1), //eX: DATETIME_PICKERS=MONTHLY,DATE
                     );
 
                     //Truncate all title characters beyond the lowest index found.
@@ -3793,8 +3793,13 @@ function Ktl($) {
                             $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
                     }
 
-                    if (view.title.includes('ADD_TIMESTAMP'))
+                    if (view.title.includes('ADD_TIMESTAMP')) {
                         ktl.views.addTimeStampToHeader(view);
+                    }
+
+                    if (view.title.includes('DATETIME_PICKERS')) {
+                        ktl.views.addDateTimePickers(view);
+                    }
                 }
 
                 //Remove unwanted columns, as specified in Builder, when _HIDE and _REMOVE is found in header.
@@ -4176,6 +4181,129 @@ function Ktl($) {
                     timestamp.appendChild(document.createTextNode(ktl.core.getCurrentDateTime(false, true, false, false)));
                     timestamp.setAttribute('style', 'margin-left: 60px; color: blue; font-weight: bold; font-size:20pt;');
                     header && header.append(timestamp);
+                }
+            },
+
+            addDateTimePickers: function (view) {
+                const LS_REPORT_PERIOD = 'REPORT_PERIOD_' + view.key;
+                const viewTitle = Knack.views[view.key].model.view.title;
+                //DATETIME_PICKERS=MONTHLY,DATE
+                var options = viewTitle.split('_PICKERS='); //Important to use this part of the flag to ensure the [0] is not empty.
+                if (options.length !== 2) return;
+                options = options[1].split(',');
+                if (options.length !== 2) return;
+                if (!['MONTHLY'].includes(options[0])) return;
+                if (!['DATE'].includes(options[1])) return;
+
+                var fieldName = '';
+                var fieldId = '';
+
+                //Find first Date/Time field type.
+                var cols = document.querySelectorAll('#' + view.key + ' thead th');
+                for (var i = 0; i < cols.length; i++) {
+                    fieldId = cols[i].classList[0];
+                    var field = Knack.objects.getField(fieldId);
+                    if (field && field.attributes && field.attributes.type === 'date_time') {
+                        fieldName = field.attributes.name;
+                        break;
+                    }
+                }
+
+                if (!fieldId || !fieldName) return;
+
+                var div = document.createElement('div');
+                div.style.marginTop = '20px';
+                div.style.marginBottom = '50px';
+                ktl.core.insertAfter(div, document.querySelector('#' + view.key + ' .view-header'));
+
+                var startDateUs = '';
+                var startDateIso = '';
+                var endDateUs = '';
+                var endDateIso = '';
+
+                var reportPeriod = ktl.storage.lsGetItem(LS_REPORT_PERIOD);
+                if (reportPeriod) {
+                    try {
+                        reportPeriod = JSON.parse(reportPeriod);
+                        startDateUs = reportPeriod.startDateUs;
+                        endDateUs = reportPeriod.endDateUs;
+                    } catch (e) {
+                        console.log('Error parsing report period', e);
+                    }
+                } else {
+                    startDateUs = ktl.core.convertDateTimeToString(new Date(), false, true);
+                    endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
+                    savePeriod();
+                }
+
+                startDateIso = ktl.core.convertDateToIso(startDateUs);
+                endDateIso = ktl.core.convertDateToIso(endDateUs);
+
+                var startDateInput = ktl.fields.addInput(div, 'Start date', 'date', startDateIso, '', 'width: 200px; height: 25px;');
+                var endDateInput = ktl.fields.addInput(div, 'End date', 'date', endDateIso, '', 'width: 200px; height: 25px;');
+
+                startDateInput.value = startDateIso;
+                endDateInput.value = endDateIso;
+
+                //No active filter?  Apply now then.
+                if (!document.querySelector('#' + view.key + ' .kn-tag-filter')) {
+                    updateReportDates(startDateUs, endDateUs);
+                }
+
+                startDateInput.addEventListener('change', (e) => {
+                    startDateUs = ktl.core.convertDateTimeToString(new Date(e.target.value.replace(/-/g, '/')), false, true);
+                    endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
+                    endDateInput.value = ktl.core.convertDateToIso(endDateUs);
+                    updateReportDates(startDateUs, endDateUs);
+                    savePeriod();
+                })
+
+                endDateInput.addEventListener('change', (e) => {
+                    endDateUs = ktl.core.convertDateTimeToString(new Date(e.target.value.replace(/-/g, '/')), false, true);
+                    updateReportDates(startDateUs, endDateUs);
+                    savePeriod();
+                })
+
+                startDateInput.focus();
+
+                function updateReportDates(startDateUs, endDateUs) {
+                    //Must adjust end date due to "is before" nature of date filter.
+                    endDateUs = ktl.core.convertDateTimeToString(new Date(Date.parse(endDateUs) + (24 * 3600 * 1000)), false, true);
+                    var filterObj = [];
+                    filterObj = [
+                        {
+                            "field": fieldId,
+                            "operator": "is after",
+                            "value": {
+                                "date": startDateUs,
+                                "time": ""
+                            },
+                            "field_name": fieldName
+                        },
+                        {
+                            "match": "and",
+                            "field": fieldId,
+                            "operator": "is before",
+                            "value": {
+                                "date": endDateUs,
+                                "time": ""
+                            },
+                            "field_name": fieldName
+                        }
+                    ]
+
+                    const sceneHash = Knack.getSceneHash();
+                    const queryString = Knack.getQueryString({ [`${view.key}_filters`]: encodeURIComponent(JSON.stringify(filterObj)) });
+                    Knack.router.navigate(`${sceneHash}?${queryString}`, false);
+                    Knack.setHashVars();
+                    Knack.models[view.key].setFilters(filterObj);
+                    Knack.models[view.key].fetch({
+                        success: () => { Knack.hideSpinner(); }
+                    });
+                }
+
+                function savePeriod() {
+                    ktl.storage.lsSetItem(LS_REPORT_PERIOD, JSON.stringify({ startDateUs: startDateUs, endDateUs: endDateUs }));
                 }
             },
 
