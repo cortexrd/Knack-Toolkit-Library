@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.17 - pre-release
+v0.6.18 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -563,19 +563,22 @@ processViewFlags.
 
 Add this to your view title: DATETIME_PICKERS=*options*
 
+Ex: Monthly Sales DATETIME_PICKERS=MONTHLY,DATE
+
 The options are:
 
 1)  MONTHLY, WEEKLY and DAILY
 
 2)  DATE, TIME and DATETIME
 
-Currently only MONTHLY,DATE is supported.
+Currently, only MONTHLY,DATE is supported.
 
 When you select a Start date, the End date will automatically update
 itself to the last day of the month and the view will be filtered in
 real-time. The focus is conveniently placed on the Start date's month
 field so you can use the up/down arrows to scroll quickly through months
-and visualize data.
+and visualize data. This is also compatible with additional filter
+fields, provided that the AND operator is used.
 
 ### Using view's Description text box as flags to trigger special behavior
 
