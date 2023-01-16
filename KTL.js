@@ -35,18 +35,18 @@ function Ktl($) {
     */
     this.const = {
         //Local Storage constants
-        LS_USER_PREFS: 'USER_PREFS_',
-        LS_VIEW_DATES: 'VIEW_DATES_',
+        LS_USER_PREFS: 'USER_PREFS',
+        LS_VIEW_DATES: 'VIEW_DATES',
 
-        LS_LOGIN: 'LOGIN_',
-        LS_ACTIVITY: 'ACTIVITY_',
-        LS_NAVIGATION: 'NAVIGATION_',
-        LS_INFO: 'INF_',
-        LS_DEBUG: 'DBG_',
-        LS_WRN: 'WRN_',
-        LS_APP_ERROR: 'APP_ERR_',
-        LS_SERVER_ERROR: 'SVR_ERR_',
-        LS_CRITICAL: 'CRI_',
+        LS_LOGIN: 'LOGIN',
+        LS_ACTIVITY: 'ACTIVITY',
+        LS_NAVIGATION: 'NAVIGATION',
+        LS_INFO: 'INF',
+        LS_DEBUG: 'DBG',
+        LS_WRN: 'WRN',
+        LS_APP_ERROR: 'APP_ERR',
+        LS_SERVER_ERROR: 'SVR_ERR',
+        LS_CRITICAL: 'CRI',
 
         LS_LAST_ERROR: 'LAST_ERROR',
         LS_SYSOP_MSG_UNREAD: 'SYSOP_MSG_UNREAD', //Maybe too app-specific
@@ -770,8 +770,8 @@ function Ktl($) {
                 return val ? val : '';
             },
 
-            lsRemoveItem: function (lsKey) {
-                hasLocalStorage && localStorage.removeItem(APP_ROOT_NAME + lsKey);
+            lsRemoveItem: function (lsKey, noUserId = false) {
+                hasLocalStorage && localStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
             },
 
             saveUserSetting: function (setting = '', value = '', expdays = COOKIE_DEFAULT_EXP_DAYS) {
@@ -2194,10 +2194,9 @@ function Ktl($) {
     //====================================================
     //User Filters feature
 
-    const LS_UF = 'UF_';
-    const LS_UFP = 'UFP_';
-    const LS_UF_ACT = 'UF_ACTIVE_';
-
+    const LS_UF = 'UF';
+    const LS_UFP = 'UFP';
+    const LS_UF_ACT = 'UF_ACTIVE';
 
     this.userFilters = (function () {
         const SAVE_FILTER_BTN = 'Save';
@@ -2421,7 +2420,7 @@ function Ktl($) {
         function loadFilters(type = '', updateObj = true) {
             if (type !== LS_UF && type !== LS_UFP) return;
             var fltObjTemp = {};
-            var lsStr = ktl.storage.lsGetItem(type + Knack.getUserAttributes().id);
+            var lsStr = ktl.storage.lsGetItem(type);
             if (lsStr) {
                 try {
                     fltObjTemp = JSON.parse(lsStr);
@@ -2464,7 +2463,7 @@ function Ktl($) {
         }
 
         function loadActiveFilters() {
-            var lsStr = ktl.storage.lsGetItem(LS_UF_ACT + Knack.getUserAttributes().id);
+            var lsStr = ktl.storage.lsGetItem(LS_UF_ACT);
             if (lsStr) {
                 try {
                     var fltObjTemp = JSON.parse(lsStr);
@@ -2505,7 +2504,7 @@ function Ktl($) {
 
                 delete fltObjFromLs.dt;
                 if ($.isEmptyObject(fltObjFromLs)) {
-                    ktl.storage.lsRemoveItem(type + Knack.getUserAttributes().id);
+                    ktl.storage.lsRemoveItem(type);
                     return;
                 } else {
                     fltObjFromLs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
@@ -2517,7 +2516,7 @@ function Ktl($) {
             }
 
             try {
-                ktl.storage.lsSetItem(type + Knack.getUserAttributes().id, JSON.stringify(type === LS_UF ? userFiltersObj : publicFiltersObj));
+                ktl.storage.lsSetItem(type, JSON.stringify(type === LS_UF ? userFiltersObj : publicFiltersObj));
             } catch (e) {
                 console.log('Error while saving filters:', e);
             }
@@ -2950,7 +2949,7 @@ function Ktl($) {
 
         function getActiveFilterName(viewId = '') {
             if (!viewId) return;
-            var lsStr = ktl.storage.lsGetItem(LS_UF_ACT + Knack.getUserAttributes().id);
+            var lsStr = ktl.storage.lsGetItem(LS_UF_ACT);
             if (lsStr) {
                 try {
                     var actFltObj = JSON.parse(lsStr);
@@ -3138,7 +3137,7 @@ function Ktl($) {
                                 filterBtn.classList.add('activeFilter');
                                 loadActiveFilters();
                                 activeFilterNameObj[filterDivId] = filterName;
-                                ktl.storage.lsSetItem(LS_UF_ACT + Knack.getUserAttributes().id, JSON.stringify(activeFilterNameObj));
+                                ktl.storage.lsSetItem(LS_UF_ACT, JSON.stringify(activeFilterNameObj));
                             }
                         })
                         .catch(function () {
@@ -3157,7 +3156,7 @@ function Ktl($) {
 
                 loadActiveFilters();
                 delete activeFilterNameObj[viewId];
-                ktl.storage.lsSetItem(LS_UF_ACT + Knack.getUserAttributes().id, JSON.stringify(activeFilterNameObj));
+                ktl.storage.lsSetItem(LS_UF_ACT, JSON.stringify(activeFilterNameObj));
             },
 
             //When user saves a filter to a named button, or when a filter's parameter is modified, like the sort order.
@@ -3664,26 +3663,26 @@ function Ktl($) {
                     //console.log('showLogsInDebugWnd, lsItems =', lsItems);
 
                     //Append activity at end of all logs.
-                    var cri = ktl.storage.lsGetItem(ktl.const.LS_CRITICAL + Knack.getUserAttributes().id);
-                    var lgin = ktl.storage.lsGetItem(ktl.const.LS_LOGIN + Knack.getUserAttributes().id);
-                    var act = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
-                    var nav = ktl.storage.lsGetItem(ktl.const.LS_NAVIGATION + Knack.getUserAttributes().id);
-                    var appErr = ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id);
-                    var svrErr = ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id);
-                    var wrn = ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id);
-                    var inf = ktl.storage.lsGetItem(ktl.const.LS_INFO + Knack.getUserAttributes().id);
-                    var dbg = ktl.storage.lsGetItem(ktl.const.LS_DEBUG + Knack.getUserAttributes().id);
+                    var cri = ktl.storage.lsGetItem(ktl.const.LS_CRITICAL);
+                    var lgin = ktl.storage.lsGetItem(ktl.const.LS_LOGIN);
+                    var act = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY);
+                    var nav = ktl.storage.lsGetItem(ktl.const.LS_NAVIGATION);
+                    var appErr = ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR);
+                    var svrErr = ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR);
+                    var wrn = ktl.storage.lsGetItem(ktl.const.LS_WRN);
+                    var inf = ktl.storage.lsGetItem(ktl.const.LS_INFO);
+                    var dbg = ktl.storage.lsGetItem(ktl.const.LS_DEBUG);
 
                     debugWndText.textContent +=
-                        (cri ? ('CRITICAL: ' + ktl.storage.lsGetItem(ktl.const.LS_CRITICAL + Knack.getUserAttributes().id) + '\n') : '') +
-                        (lgin ? ('LOGIN: ' + ktl.storage.lsGetItem(ktl.const.LS_LOGIN + Knack.getUserAttributes().id) + '\n') : '') +
-                        (act ? ('ACT: ' + ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id) + '\n') : '') +
-                        (nav ? ('NAV: ' + ktl.storage.lsGetItem(ktl.const.LS_NAVIGATION + Knack.getUserAttributes().id) + '\n') : '') +
-                        (appErr ? ('APP ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
-                        (svrErr ? ('SVR ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR + Knack.getUserAttributes().id) + '\n') : '') +
-                        (wrn ? ('WRN: ' + ktl.storage.lsGetItem(ktl.const.LS_WRN + Knack.getUserAttributes().id) + '\n') : '') +
-                        (inf ? ('INF: ' + ktl.storage.lsGetItem(ktl.const.LS_INFO + Knack.getUserAttributes().id) + '\n') : '') +
-                        (dbg ? ('DBG: ' + ktl.storage.lsGetItem(ktl.const.LS_DEBUG + Knack.getUserAttributes().id) + '\n') : '') +
+                        (cri ? ('CRITICAL: ' + ktl.storage.lsGetItem(ktl.const.LS_CRITICAL) + '\n') : '') +
+                        (lgin ? ('LOGIN: ' + ktl.storage.lsGetItem(ktl.const.LS_LOGIN) + '\n') : '') +
+                        (act ? ('ACT: ' + ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY) + '\n') : '') +
+                        (nav ? ('NAV: ' + ktl.storage.lsGetItem(ktl.const.LS_NAVIGATION) + '\n') : '') +
+                        (appErr ? ('APP ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_APP_ERROR) + '\n') : '') +
+                        (svrErr ? ('SVR ERR: ' + ktl.storage.lsGetItem(ktl.const.LS_SERVER_ERROR) + '\n') : '') +
+                        (wrn ? ('WRN: ' + ktl.storage.lsGetItem(ktl.const.LS_WRN) + '\n') : '') +
+                        (inf ? ('INF: ' + ktl.storage.lsGetItem(ktl.const.LS_INFO) + '\n') : '') +
+                        (dbg ? ('DBG: ' + ktl.storage.lsGetItem(ktl.const.LS_DEBUG) + '\n') : '') +
                         'Total localStorage usage = ' + lsItems + '\n';
 
                     debugWndText.scrollTop = dbgWndScrollHeight - 14;
@@ -4249,7 +4248,7 @@ function Ktl($) {
             },
 
             addDateTimePickers: function (view, data) {
-                const LSVD = ktl.const.LS_VIEW_DATES + view.key + '_' + Knack.getUserAttributes().id;
+                const LSVD = ktl.const.LS_VIEW_DATES + view.key;
                 const viewTitle = Knack.views[view.key].model.view.title;
                 //DATETIME_PICKERS=MONTHLY,DATE
                 var options = viewTitle.split('_PICKERS='); //Important to use this part of the flag to ensure the [0] is not empty.
@@ -5512,7 +5511,7 @@ function Ktl($) {
                 //Read logs as a string.
                 try {
                     var logArray = [];
-                    var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
+                    var categoryLogs = ktl.storage.lsGetItem(category);
                     if (categoryLogs)
                         logArray = JSON.parse(categoryLogs).logs;
 
@@ -5529,7 +5528,7 @@ function Ktl($) {
                         logId: ktl.core.getCurrentDateTime(true, true, true, true).replace(/[\D]/g, ''), //Unique message identifier used validate that transmission was successfull, created from a millisecond timestamp.
                     };
 
-                    ktl.storage.lsSetItem(category + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                    ktl.storage.lsSetItem(category, JSON.stringify(logObj));
 
                     //Also show some of them in console.  Important logs always show, others depending on param.
                     var color = 'blue';
@@ -5545,7 +5544,7 @@ function Ktl($) {
                 }
                 catch (e) {
                     ktl.log.addLog(ktl.const.LS_INFO, 'addLog, deleted log having obsolete format: ' + category + ', ' + e);
-                    ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
+                    ktl.storage.lsRemoveItem(category);
                 }
             },
 
@@ -5555,7 +5554,7 @@ function Ktl($) {
 
                 try {
                     var logArray = [];
-                    var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
+                    var categoryLogs = ktl.storage.lsGetItem(category);
                     if (categoryLogs)
                         logArray = JSON.parse(categoryLogs).logs;
 
@@ -5570,7 +5569,7 @@ function Ktl($) {
                 }
                 catch (e) {
                     ktl.log.addLog(ktl.const.LS_INFO, 'getLogArrayAge, deleted log having obsolete format: ' + category + ', ' + e);
-                    ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
+                    ktl.storage.lsRemoveItem(category);
                 }
             },
 
@@ -5588,18 +5587,18 @@ function Ktl($) {
                 ktl.const.LS_SERVER_ERROR, ktl.const.LS_CRITICAL];
 
                 categories.forEach(category => {
-                    var categoryLogs = ktl.storage.lsGetItem(category + Knack.getUserAttributes().id);
+                    var categoryLogs = ktl.storage.lsGetItem(category);
                     if (categoryLogs) {
                         try {
                             var logObj = JSON.parse(categoryLogs);
                             if (logObj.logId && logObj.logId === logId) {
                                 //console.log('Deleting found logId =', logId, 'cat=', category);
-                                ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
+                                ktl.storage.lsRemoveItem(category);
                             }
                         }
                         catch (e) {
                             ktl.log.addLog(ktl.const.LS_INFO, 'removeLogById, deleted log having obsolete format: ' + category + ', ' + e);
-                            ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
+                            ktl.storage.lsRemoveItem(category);
                         }
                     }
                 })
@@ -5609,7 +5608,7 @@ function Ktl($) {
                 if (!ktl.core.getCfg().enabled.logging.activity) return;
 
                 //Important to read again every 5 seconds in case some other opened pages would add to shared counters.
-                var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
+                var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY);
                 try {
                     var nowUTC = ktl.core.getCurrentDateTime(true, true, false, true);
                     if (!categoryLogs)
@@ -5633,7 +5632,7 @@ function Ktl($) {
                 }
                 catch (e) {
                     ktl.log.addLog(ktl.const.LS_INFO, 'Deleted ACTIVITY log having obsolete format: ' + e);
-                    ktl.storage.lsRemoveItem(ktl.const.LS_ACTIVITY + Knack.getUserAttributes().id);
+                    ktl.storage.lsRemoveItem(ktl.const.LS_ACTIVITY);
                 }
             },
 
@@ -5664,7 +5663,7 @@ function Ktl($) {
 
         function readUserPrefsFromLs() {
             try {
-                var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id);
+                var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS);
                 if (lsPrefsStr)
                     userPrefsObj = JSON.parse(lsPrefsStr);
 
@@ -5711,7 +5710,7 @@ function Ktl($) {
 
                                 lastUserPrefs = prefsStr;
 
-                                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, prefsStr);
+                                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, prefsStr);
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
 
                                 ktl.userPrefs.ktlApplyUserPrefs();
@@ -6045,7 +6044,7 @@ function Ktl($) {
                         cloudUfDt = newUserFilters.dt;
                     }
 
-                    var lastUfStr = ktl.storage.lsGetItem(LS_UF + Knack.getUserAttributes().id);
+                    var lastUfStr = ktl.storage.lsGetItem(LS_UF);
                     if (lastUfStr) {
                         try {
                             var lastUfTempObj = JSON.parse(lastUfStr);
@@ -6108,7 +6107,7 @@ function Ktl($) {
                             cloudPfDt = newPublicFilters.dt;
                         }
 
-                        var lastPfStr = ktl.storage.lsGetItem(LS_UFP + Knack.getUserAttributes().id);
+                        var lastPfStr = ktl.storage.lsGetItem(LS_UFP);
                         if (lastPfStr) {
                             try {
                                 var lastPfTempObj = JSON.parse(lastPfStr);
@@ -6149,7 +6148,7 @@ function Ktl($) {
                     var checkNext = false;
                     var el = highPriorityLogs[ix];
 
-                    var categoryLogs = ktl.storage.lsGetItem(el.type + Knack.getUserAttributes().id);
+                    var categoryLogs = ktl.storage.lsGetItem(el.type);
                     if (categoryLogs) {
                         try {
                             var logObj = JSON.parse(categoryLogs);
@@ -6157,7 +6156,7 @@ function Ktl($) {
                             if (details) {
                                 if (!logObj.sent) {
                                     logObj.sent = true; //Do not send twice, when many opened windows.
-                                    ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                                    ktl.storage.lsSetItem(el.type, JSON.stringify(logObj));
 
                                     ktl.log.clog('purple', 'Submitting high priority log for: ' + el.typeStr);
 
@@ -6181,7 +6180,7 @@ function Ktl($) {
                                             .catch(function (reason) {
                                                 ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1015 - Failed posting high-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + JSON.stringify(reason));
                                                 delete logObj.sent;
-                                                ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                                                ktl.storage.lsSetItem(el.type, JSON.stringify(logObj));
                                                 ktl.views.autoRefresh(); //JIC it was stopped by critical email not sent.
                                                 startHighPriorityLogging();
                                             })
@@ -6194,7 +6193,7 @@ function Ktl($) {
                         }
                         catch (e) {
                             ktl.log.addLog(ktl.const.LS_INFO, 'startHighPriorityLogging, deleted log having obsolete format: ' + el.type + ', ' + e);
-                            ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
+                            ktl.storage.lsRemoveItem(category);
                             checkNext = true;
                         }
                     } else
@@ -6225,7 +6224,7 @@ function Ktl($) {
                         //Accumulate logs over a longer period of time to reduce nb of records
                         if (oldestLog >= TIME_TO_SEND_LOW_PRIORITY_LOGS) {
                             //lsLog('Submitting logs for: ' + el.typeStr);
-                            var categoryLogs = ktl.storage.lsGetItem(el.type + Knack.getUserAttributes().id);
+                            var categoryLogs = ktl.storage.lsGetItem(el.type);
                             if (categoryLogs) {
                                 try {
                                     var logObj = JSON.parse(categoryLogs);
@@ -6236,7 +6235,7 @@ function Ktl($) {
                                         else {
                                             if (!logObj.sent) {
                                                 logObj.sent = true; //Do not send twice, when many opened windows.
-                                                ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                                                ktl.storage.lsSetItem(el.type, JSON.stringify(logObj));
 
                                                 var viewId = cfg.acctLogsViewId;
                                                 if (viewId) {
@@ -6251,7 +6250,7 @@ function Ktl($) {
                                                         .catch(function (reason) {
                                                             ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1016 - Failed posting low-priority log type ' + el.typeStr + ', logId ' + logObj.logId + ', reason ' + JSON.stringify(reason));
                                                             delete logObj.sent;
-                                                            ktl.storage.lsSetItem(el.type + Knack.getUserAttributes().id, JSON.stringify(logObj));
+                                                            ktl.storage.lsSetItem(el.type, JSON.stringify(logObj));
                                                         })
                                                 }
                                             } else
@@ -6262,7 +6261,7 @@ function Ktl($) {
                                 }
                                 catch (e) {
                                     ktl.log.addLog(ktl.const.LS_INFO, 'startLowPriorityLogging, deleted log having obsolete format: ' + el.type + ', ' + e);
-                                    ktl.storage.lsRemoveItem(category + Knack.getUserAttributes().id);
+                                    ktl.storage.lsRemoveItem(category);
                                     checkNext = true;
                                 }
                             } else
