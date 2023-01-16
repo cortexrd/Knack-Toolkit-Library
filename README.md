@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.18 - pre-release
+v0.6.20 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -561,24 +561,21 @@ processViewFlags.
 
 ###### DATETIME_PICKERS
 
-Add this to your view title: DATETIME_PICKERS=*options*
+Add this at the end of your view's title: DATETIME_PICKERS
 
-Ex: Monthly Sales DATETIME_PICKERS=MONTHLY,DATE
+Ex: Monthly Sales DATETIME_PICKERS
 
-The options are:
-
-1)  MONTHLY, WEEKLY and DAILY
-
-2)  DATE, TIME and DATETIME
-
-Currently, only MONTHLY,DATE is supported.
-
-When you select a Start date, the End date will automatically update
-itself to the last day of the month and the view will be filtered in
-real-time. The focus is conveniently placed on the Start date's month
-field so you can use the up/down arrows to scroll quickly through months
-and visualize data. This is also compatible with additional filter
-fields, provided that the AND operator is used.
+Six new fields will appear at the top of your table: **From**, **To**
+and periods as **Monthly**, **Weekly**, and **Daily**. Depending on the
+active period, when you change From, the To field will automatically
+update itself accordingly, and the view will be filtered in real-time.
+On the other hand, if you change the To date, the From will not be
+affected, leaving you more flexibility. The focus is conveniently placed
+on the last field used so you can use the up/down arrows to scroll
+quickly through months and visualize data. This is also compatible with
+additional filter fields, provided that the AND operator is used. Once
+you have a filter that you like, it's also possible to save it as a
+[User Filter](#user-filters).
 
 ### Using view's Description text box as flags to trigger special behavior
 
