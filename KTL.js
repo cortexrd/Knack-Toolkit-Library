@@ -36,6 +36,7 @@ function Ktl($) {
     this.const = {
         //Local Storage constants
         LS_USER_PREFS: 'USER_PREFS_',
+        LS_VIEW_DATES: 'VIEW_DATES_',
 
         LS_LOGIN: 'LOGIN_',
         LS_ACTIVITY: 'ACTIVITY_',
@@ -751,21 +752,21 @@ function Ktl($) {
 
             // Just specify key and func will prepend APP_ROOT_NAME.
             // Typically used for generic utility storage, like logging, custom filters, user preferences, etc.
-            lsSetItem: function (lsKey, data) {
+            lsSetItem: function (lsKey, data, noUserId = false) {
                 if (lsKey.indexOf('undefined') >= 0)
                     return; //Needed to prevent logging pre-login events.
 
                 if (hasLocalStorage) {
-                    localStorage.setItem(APP_ROOT_NAME + lsKey, data);
+                    localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
                 } else
                     alert('KEC_1005 - lsSetItem called without storage');
             },
 
             //Returns empty string if key doesn't exist.
-            lsGetItem: function (lsKey) { //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
+            lsGetItem: function (lsKey, noUserId = false) {
                 var val = '';
                 if (hasLocalStorage)
-                    val = localStorage.getItem(APP_ROOT_NAME + lsKey);
+                    val = localStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
                 return val ? val : '';
             },
 
@@ -3744,10 +3745,48 @@ function Ktl($) {
                         return viewDisplay.call(this, ...arguments);
                     };
                     */
-                    
+
+                    addGotoDate(view.key);
                 } catch (e) { console.log(e); }
             }
         })
+
+        function addGotoDate(viewId) {
+            if (!viewId) return;
+
+            var div = document.createElement('div');
+            //div.style.marginTop = '20px';
+            //div.style.marginBottom = '50px';
+            ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .fc-header-left'));
+
+            var gotoDateIso = '';
+            var dateType = 'month';
+            if (Knack.views.view_2925.current_view !== 'month')
+                dateType = 'date';
+
+            var gotoDateObj = ktl.fields.addInput(div, 'Go to date', dateType, gotoDateIso, '', 'width: 200px; height: 25px;');
+            gotoDateObj.value = ktl.core.convertDateToIso(ktl.core.convertDateTimeToString(new Date(), false, true));
+
+            gotoDateObj.addEventListener('change', (e) => {
+                var dt = e.target.value;
+                console.log('dt =', dt);
+
+                dt = dt.replaceAll('-0', '-').replaceAll('-', '/'); //If we don't do this, we get crazy behavior..
+                console.log('dt =', dt);
+
+                Knack.views[viewId].$('.knack-calendar').fullCalendar('gotoDate', new Date(dt));
+
+
+                //gotoDateUs = ktl.core.convertDateTimeToString(new Date(e.target.value.replace(/-/g, '/')), false, true);
+                //console.log('gotoDateUs =', gotoDateUs);
+                //gotoDateIso = ktl.core.convertDateToIso(gotoDateUs);
+                //console.log('gotoDateIso =', gotoDateIso);
+                //Knack.views[viewId].$('.knack-calendar').fullCalendar('gotoDate', new Date(gotoDateIso));
+                gotoDateObj.focus();
+            })
+
+            gotoDateObj.focus();            
+        }
 
         //Remove default handleClickSort and use KTL's instead for more flexibility.
         $(document).on('mousedown', function (e) {
@@ -4210,7 +4249,7 @@ function Ktl($) {
             },
 
             addDateTimePickers: function (view, data) {
-                const LS_REPORT_PERIOD = 'REPORT_PERIOD_' + view.key;
+                const LSVD = ktl.const.LS_VIEW_DATES + view.key + '_' + Knack.getUserAttributes().id;
                 const viewTitle = Knack.views[view.key].model.view.title;
                 //DATETIME_PICKERS=MONTHLY,DATE
                 var options = viewTitle.split('_PICKERS='); //Important to use this part of the flag to ensure the [0] is not empty.
@@ -4249,7 +4288,7 @@ function Ktl($) {
                 var endDateUs = '';
                 var endDateIso = '';
 
-                var reportPeriod = ktl.storage.lsGetItem(LS_REPORT_PERIOD);
+                var reportPeriod = ktl.storage.lsGetItem(LSVD);
                 if (reportPeriod) {
                     try {
                         reportPeriod = JSON.parse(reportPeriod);
@@ -4354,7 +4393,7 @@ function Ktl($) {
                 }
 
                 function savePeriod() {
-                    ktl.storage.lsSetItem(LS_REPORT_PERIOD, JSON.stringify({ startDateUs: startDateUs, endDateUs: endDateUs }));
+                    ktl.storage.lsSetItem(LSVD, JSON.stringify({ startDateUs: startDateUs, endDateUs: endDateUs }));
                 }
             },
 
