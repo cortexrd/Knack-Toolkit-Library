@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.18';
+    const KTL_VERSION = '0.6.19';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -3940,6 +3940,7 @@ function Ktl($) {
         var autoRefreshViews = {};
         var unPauseTimer = null;
         var processViewFlags = null;
+        var handleCalendarEventDrop = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -3964,6 +3965,29 @@ function Ktl($) {
             ktlProcessViewFlags(view, data);
             ktl.views.addViewId(view);
             disableFilterOnFields(view);
+
+            if (view.type === 'calendar') {
+                try {
+                    const fc = Knack.views[view.key].$('.knack-calendar').data('fullCalendar');
+
+                    const originalEventDropHandler = fc.options.eventDrop;
+                    fc.options.eventDrop = function (event, dayDelta, minuteDelta, allDay, revertFunc) {
+                        handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+                        return originalEventDropHandler.call(this, ...arguments);
+                    };
+
+                    /* Attempt at receiving a callback when the calendar view is rendered - no luck!
+                    const viewDisplay = fc.options.viewDisplay;
+                    console.log('viewDisplay =', viewDisplay);
+                    fc.viewDisplay = function (view, element) {
+                        console.log('viewDisplay: view, element', view, element);
+                        //handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+                        return viewDisplay.call(this, ...arguments);
+                    };
+                    */
+                    
+                } catch (e) { console.log(e); }
+            }
         })
 
         //Remove default handleClickSort and use KTL's instead for more flexibility.
@@ -4112,6 +4136,7 @@ function Ktl($) {
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processViewFlags && (processViewFlags = cfgObj.processViewFlags);
+                cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
             },
 
             refreshView: function (viewId) {
@@ -7423,6 +7448,7 @@ var KnackApp = function ($, info = {}) {
 
         ktl.views.setCfg({
             processViewFlags: processViewFlags,
+            handleCalendarEventDrop: handleCalendarEventDrop,
         })
 
         ktl.fields.setCfg({
@@ -7736,6 +7762,46 @@ var KnackApp = function ($, info = {}) {
                     .catch(function (foundText) { ktl.log.addLog(ktl.const.LS_APP_ERROR, 'EC_xxxx - Could not find shift ' + shiftLetter) })
             }
         }
+    }
+
+    function handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
+        console.log('eventDrop', { view, event, dayDelta, minuteDelta, allDay, revertFunc });
+        var eventField = view.events.event_field.key;
+        var recId = event.id;
+
+        //Typical exmample of how to use this callback: upon event drop, update a table below with same object and the Date/Time field.
+        const CALENDAR_VIEW = 'view_2925';
+        const TABLE_TO_REFRESH = 'view_2926';
+        (function tryRefresh(retryCtr) { //These retries are important due to the latency chain: calendar > server > table being updated.
+            setTimeout(() => {
+                if (view.key === CALENDAR_VIEW) {
+                    var found = false;
+                    ktl.views.refreshView(TABLE_TO_REFRESH).then(function (data) {
+                        for (var i = 0; i < data.models.length; i++) {
+                            if (data.models[i].id === recId) {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found) {
+                            var date = data.models[i].attributes[eventField + '_raw'].timestamp;
+                            var eventDate = event.start;
+                            if (Date.parse(date) !== Date.parse(eventDate)) {
+                                if (retryCtr-- > 0) {
+                                    ktl.log.clog('purple', 'date mismatch', retryCtr);
+                                    tryRefresh(retryCtr);
+                                } else {
+                                    ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
+                                }
+                            } else {
+                                ktl.log.clog('green', 'Date match found');
+                            }
+                        }
+                    });
+                }
+            }, 500);
+        })(10); //Retries
     }
 
     //KTL callbacks to your App - END

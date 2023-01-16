@@ -76,6 +76,7 @@ var KnackApp = function ($, info = {}) {
 
         ktl.views.setCfg({
             processViewFlags: processViewFlags,
+            handleCalendarEventDrop: handleCalendarEventDrop,
         })
 
         ktl.fields.setCfg({
@@ -389,6 +390,46 @@ var KnackApp = function ($, info = {}) {
                     .catch(function (foundText) { ktl.log.addLog(ktl.const.LS_APP_ERROR, 'EC_xxxx - Could not find shift ' + shiftLetter) })
             }
         }
+    }
+
+    function handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
+        console.log('eventDrop', { view, event, dayDelta, minuteDelta, allDay, revertFunc });
+        var eventField = view.events.event_field.key;
+        var recId = event.id;
+
+        //Typical exmample of how to use this callback: upon event drop, update a table below with same object and the Date/Time field.
+        const CALENDAR_VIEW = 'view_2925';
+        const TABLE_TO_REFRESH = 'view_2926';
+        (function tryRefresh(retryCtr) { //These retries are important due to the latency chain: calendar > server > table being updated.
+            setTimeout(() => {
+                if (view.key === CALENDAR_VIEW) {
+                    var found = false;
+                    ktl.views.refreshView(TABLE_TO_REFRESH).then(function (data) {
+                        for (var i = 0; i < data.models.length; i++) {
+                            if (data.models[i].id === recId) {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found) {
+                            var date = data.models[i].attributes[eventField + '_raw'].timestamp;
+                            var eventDate = event.start;
+                            if (Date.parse(date) !== Date.parse(eventDate)) {
+                                if (retryCtr-- > 0) {
+                                    ktl.log.clog('purple', 'date mismatch', retryCtr);
+                                    tryRefresh(retryCtr);
+                                } else {
+                                    ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
+                                }
+                            } else {
+                                ktl.log.clog('green', 'Date match found');
+                            }
+                        }
+                    });
+                }
+            }, 500);
+        })(10); //Retries
     }
 
     //KTL callbacks to your App - END

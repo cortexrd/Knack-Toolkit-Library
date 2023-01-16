@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.18';
+    const KTL_VERSION = '0.6.19';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -3699,6 +3699,7 @@ function Ktl($) {
         var autoRefreshViews = {};
         var unPauseTimer = null;
         var processViewFlags = null;
+        var handleCalendarEventDrop = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -3723,6 +3724,29 @@ function Ktl($) {
             ktlProcessViewFlags(view, data);
             ktl.views.addViewId(view);
             disableFilterOnFields(view);
+
+            if (view.type === 'calendar') {
+                try {
+                    const fc = Knack.views[view.key].$('.knack-calendar').data('fullCalendar');
+
+                    const originalEventDropHandler = fc.options.eventDrop;
+                    fc.options.eventDrop = function (event, dayDelta, minuteDelta, allDay, revertFunc) {
+                        handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+                        return originalEventDropHandler.call(this, ...arguments);
+                    };
+
+                    /* Attempt at receiving a callback when the calendar view is rendered - no luck!
+                    const viewDisplay = fc.options.viewDisplay;
+                    console.log('viewDisplay =', viewDisplay);
+                    fc.viewDisplay = function (view, element) {
+                        console.log('viewDisplay: view, element', view, element);
+                        //handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+                        return viewDisplay.call(this, ...arguments);
+                    };
+                    */
+                    
+                } catch (e) { console.log(e); }
+            }
         })
 
         //Remove default handleClickSort and use KTL's instead for more flexibility.
@@ -3871,6 +3895,7 @@ function Ktl($) {
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processViewFlags && (processViewFlags = cfgObj.processViewFlags);
+                cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
             },
 
             refreshView: function (viewId) {
