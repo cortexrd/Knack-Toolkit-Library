@@ -720,20 +720,23 @@ function Ktl($) {
                 }
             },
 
-            convertDateToIso: function (dateStr /*Expected: mm-dd-yyyy format*/) {
-                if (!dateStr) return;
-                var date = new Date(dateStr);
-                var year = date.toLocaleString(undefined, { year: 'numeric' });
-                var month = date.toLocaleString(undefined, { month: '2-digit' });
-                var day = date.toLocaleString(undefined, { day: '2-digit' });
-                var isoDate = year + '-' + month + '-' + day;
+            convertDateToIso: function (dateObj, period = '') {
+                if (!dateObj) return '';
+                var year = dateObj.toLocaleString(undefined, { year: 'numeric' });
+                var month = dateObj.toLocaleString(undefined, { month: '2-digit' });
+                var day = dateObj.toLocaleString(undefined, { day: '2-digit' });
+                var isoDate = year + '-' + month;
+                if (period !== 'monthly')
+                    isoDate += '-' + day;
                 return isoDate;
             },
 
-            getLastDayOfMonth: function (dateStr, iso = false) {
-                var date = new Date(dateStr);
-                var lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-                return ktl.core.convertDateTimeToString(lastDayOfMonth, iso, true);
+            getLastDayOfMonth: function (dateObj, iso = false) {
+                //var date = new Date(dateStr);
+                var lastDayOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
+
+                //return ktl.core.convertDateTimeToString(lastDayOfMonth, iso, true);
+                return lastDayOfMonth;
             },
         }
     })();
@@ -1172,10 +1175,7 @@ function Ktl($) {
             },
 
             addButton: function (div = null, label = '', style = '', classes = [], id = '') {
-                if (!div) {
-                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1014 - Called addButton with invalid parameters');
-                    return null;
-                }
+                if (!div) return null;
 
                 !label && (label = 'Button');
 
@@ -1208,19 +1208,14 @@ function Ktl($) {
             },
 
             addCheckbox: function (div = null, label = '', state = false, id = '', cbStyle = '', lbStyle = '') {
-                if (div === null || label === '') {
-                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1006 - Called addCheckbox with invalid parameters');
-                    return null;
-                }
+                if (!div || !label) return null;
 
-                if (!id) {
-                    id = ktl.core.getCleanId(label);
-                }
+                !id && (id = ktl.core.getCleanId(label));
 
                 var cbLabel = document.getElementById(id + '-label-id');
                 var checkBox = document.getElementById(id + '-id');
 
-                if (checkBox === null) {
+                if (!checkBox) {
                     checkBox = document.createElement('input');
                     checkBox.type = 'checkbox';
                     checkBox.id = id + '-id';
@@ -1239,38 +1234,25 @@ function Ktl($) {
             },
 
             addInput: function (div = null, label = '', type = 'text', value = '', id = '', inStyle = '', lbStyle = '') {
-                if (div === null || label === '') {
-                    //ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1006 - Called addCheckbox with invalid parameters');
-                    return null;
-                }
+                if (!div || !label) return null;
 
-                if (!id) {
-                    id = ktl.core.getCleanId(label);
-                }
+                !id && (id = ktl.core.getCleanId(label));
 
-                var inLabel = document.getElementById(id + '-label-id');
-                var input = document.getElementById(id + '-id');
+                var inLabel = document.getElementById(id + '-label');
+                var input = document.getElementById(id);
 
-                if (input === null) {
+                if (!input) {
                     input = document.createElement('input');
                     input.type = type;
-                    input.id = id + '-id';
+                    input.id = id;
                     inLabel = document.createElement('label');
-                    inLabel.htmlFor = id + '-id';
-                    inLabel.setAttribute('id', id + '-label-id');
+                    inLabel.htmlFor = id;
+                    inLabel.setAttribute('id', id + '-label');
                     inLabel.appendChild(document.createTextNode(label));
                 }
 
-                if (!inStyle) {
-                    inStyle = 'margin-left: 5px; width: 15px; height: 15px;';
-                }
-
-                if (!lbStyle) {
-                    lbStyle = 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px;';
-                }
-
-                input.setAttribute('style', inStyle);
-                inLabel.setAttribute('style', lbStyle);
+                input.setAttribute('style', inStyle ? inStyle : 'margin-left: 5px; width: 15px; height: 15px;');
+                inLabel.setAttribute('style', lbStyle ? lbStyle : 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px;');
                 div.append(input, inLabel);
                 input.value = value;
 
@@ -1279,31 +1261,26 @@ function Ktl($) {
 
             //====================================================
             addRadioButton: function (div = null, label = '', name = ''/*group*/, id = '', value = '', rbStyle = '', lbStyle = '') {
-                if (div === null || name === '' || id === '') {
-                    ktl.log.addLog(ktl.const.LS_APP_ERROR, 'EC_1024 - Called addRadioButton with invalid parameters');
-                    return null;
-                }
+                if (!div || !name || !id) return null;
 
-                if (!id) {
-                    id = ktl.core.getCleanId(label);
-                }
+                !id && (id = ktl.core.getCleanId(label));
 
-                var rbLabel = document.getElementById(id + '-label-id');
-                var rbBtn = document.getElementById(id + '-id');
+                var rbLabel = document.getElementById(id + '-label');
+                var rbBtn = document.getElementById(id);
 
                 if (rbBtn === null) {
                     rbBtn = document.createElement('input');
                     rbBtn.type = 'radio';
                     rbBtn.name = name;
-                    rbBtn.id = id + '-id';
+                    rbBtn.id = id;
                     rbLabel = document.createElement('label');
-                    rbLabel.htmlFor = id + '-id';
-                    rbLabel.setAttribute('id', id + '-label-id');
+                    rbLabel.htmlFor = id;
+                    rbLabel.setAttribute('id', id + '-label');
                     rbLabel.appendChild(document.createTextNode(label));
                 }
 
-                rbBtn.setAttribute('style', 'margin-left: 5px; width: 18px; height: 18px; margin-top: 3px; ' + rbStyle);
-                rbLabel.setAttribute('style', 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px; margin-top: 3px; ' + lbStyle);
+                rbBtn.setAttribute('style', rbStyle ? rbStyle : 'margin-left: 5px; width: 18px; height: 18px; margin-top: 3px;');
+                rbLabel.setAttribute('style', lbStyle ? lbStyle : 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px; margin-top: 3px;');
                 div.append(rbBtn, rbLabel); //Move this up in === null ?
                 rbBtn.value = value;
 
@@ -3701,6 +3678,7 @@ function Ktl($) {
         var processViewFlags = null;
         var handleCalendarEventDrop = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
+        var currentFocus = null;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
@@ -3759,28 +3737,17 @@ function Ktl($) {
             ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .fc-header-left'));
 
             var gotoDateIso = '';
-            var dateType = 'month';
-            if (Knack.views.view_2925.current_view !== 'month')
-                dateType = 'date';
+            var inputType = 'month';
+            if (Knack.views[viewId].current_view !== 'month')
+                inputType = 'date';
 
-            var gotoDateObj = ktl.fields.addInput(div, 'Go to date', dateType, gotoDateIso, '', 'width: 200px; height: 25px;');
+            var gotoDateObj = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, '', 'width: 200px; height: 25px;');
             gotoDateObj.value = ktl.core.convertDateToIso(ktl.core.convertDateTimeToString(new Date(), false, true));
 
             gotoDateObj.addEventListener('change', (e) => {
                 var dt = e.target.value;
-                console.log('dt =', dt);
-
                 dt = dt.replaceAll('-0', '-').replaceAll('-', '/'); //If we don't do this, we get crazy behavior..
-                console.log('dt =', dt);
-
                 Knack.views[viewId].$('.knack-calendar').fullCalendar('gotoDate', new Date(dt));
-
-
-                //gotoDateUs = ktl.core.convertDateTimeToString(new Date(e.target.value.replace(/-/g, '/')), false, true);
-                //console.log('gotoDateUs =', gotoDateUs);
-                //gotoDateIso = ktl.core.convertDateToIso(gotoDateUs);
-                //console.log('gotoDateIso =', gotoDateIso);
-                //Knack.views[viewId].$('.knack-calendar').fullCalendar('gotoDate', new Date(gotoDateIso));
                 gotoDateObj.focus();
             })
 
@@ -4248,23 +4215,25 @@ function Ktl($) {
             },
 
             addDateTimePickers: function (view, data) {
-                const LSVD = ktl.const.LS_VIEW_DATES + view.key;
-                const viewTitle = Knack.views[view.key].model.view.title;
-                //DATETIME_PICKERS=MONTHLY,DATE
-                var options = viewTitle.split('_PICKERS='); //Important to use this part of the flag to ensure the [0] is not empty.
-                if (options.length !== 2) return;
-                options = options[1].split(',');
-                if (options.length !== 2) return;
-                if (!['MONTHLY'].includes(options[0])) return;
-                if (!['DATE'].includes(options[1])) return;
+                var period = 'monthly';
+                var inputType = 'month';
 
-                var fieldName = '';
+                //These two variables are always a Date object in Knack's default format: mm/dd/yyyy.
+                var startDateUs = '';
+                var endDateUs = '';
+
+                //These two variables are always a string in the date picker's ISO format: yyyy-mm-dd.
+                var startDateIso = '';
+                var endDateIso = '';
+
+                //The tables Date/Time field on which the filtering is applied.  Always the first one found from the left.
                 var fieldId = '';
+                var fieldName = '';
 
                 //Find first Date/Time field type.
                 var cols = Knack.router.scene_view.model.views._byId[view.key].attributes.columns;
                 for (var i = 0; i < cols.length; i++) {
-                    fieldId = cols[i].id;
+                    fieldId = cols[i].field.key;
                     var field = Knack.objects.getField(fieldId);
                     if (field && field.attributes && field.attributes.type === 'date_time') {
                         fieldName = field.attributes.name;
@@ -4278,55 +4247,112 @@ function Ktl($) {
                 }
 
                 var div = document.createElement('div');
-                div.style.marginTop = '20px';
-                div.style.marginBottom = '50px';
-                ktl.core.insertAfter(div, document.querySelector('#' + view.key + ' .view-header'));
+                div.style.marginTop = '15px';
+                div.style.marginBottom = '15px';
 
-                var startDateUs = '';
-                var startDateIso = '';
-                var endDateUs = '';
-                var endDateIso = '';
-
-                var reportPeriod = ktl.storage.lsGetItem(LSVD);
-                if (reportPeriod) {
-                    try {
-                        reportPeriod = JSON.parse(reportPeriod);
-                        startDateUs = reportPeriod.startDateUs;
-                        endDateUs = reportPeriod.endDateUs;
-                    } catch (e) {
-                        console.log('Error parsing report period', e);
-                    }
+                //If Search exists, append at end to save space.
+                if (document.querySelector('#' + view.key + ' .table-keyword-search')) {
+                    ktl.core.insertAfter(div, document.querySelector('#' + view.key + ' .table-keyword-search'));
+                    document.querySelector('#' + view.key + ' .level').style.display = 'inline-flex';
+                    div.style.marginLeft = '100px';
                 } else {
-                    startDateUs = ktl.core.convertDateTimeToString(new Date(), false, true);
-                    endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
+                    ktl.core.insertAfter(div, document.querySelector('#' + view.key + ' .view-header'));
                 }
 
-                startDateIso = ktl.core.convertDateToIso(startDateUs);
-                endDateIso = ktl.core.convertDateToIso(endDateUs);
+                var viewDates = ktl.views.loadViewDates(view.key);
+                if (!viewDates.startDt) {
+                    startDateUs = new Date(); //Nothing yet for this view, use "now".
+                    endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
+                } else {
+                    startDateUs = new Date(viewDates.startDt);
+                    viewDates.period && (period = viewDates.period);
+                    endDateUs = new Date(viewDates.endDt);
+                }
 
-                var startDateInput = ktl.fields.addInput(div, 'Start date', 'date', startDateIso, '', 'width: 200px; height: 25px;');
-                var endDateInput = ktl.fields.addInput(div, 'End date', 'date', endDateIso, '', 'width: 200px; height: 25px;');
+                startDateIso = ktl.core.convertDateToIso(startDateUs, period);
+                endDateIso = ktl.core.convertDateToIso(endDateUs, period);
+
+                inputType = periodToInputType(period);
+
+                var startDateInput = ktl.fields.addInput(div, 'From', inputType, startDateIso, 'startDateInput', 'width: 140px; height: 25px;');
+                var endDateInput = ktl.fields.addInput(div, 'To', inputType, endDateIso, 'endDateInput', 'width: 140px; height: 25px;');
+                var periodMonthly = ktl.fields.addRadioButton(div, 'Monthly', 'PERIOD', 'monthly', 'monthly');
+                var periodWeekly = ktl.fields.addRadioButton(div, 'Weekly', 'PERIOD', 'weekly', 'weekly');
+                var periodDaily = ktl.fields.addRadioButton(div, 'Daily', 'PERIOD', 'daily', 'daily');
+
+                document.querySelector('#' + period).checked = true;
 
                 startDateInput.value = startDateIso;
                 endDateInput.value = endDateIso;
 
                 startDateInput.addEventListener('change', (e) => {
-                    startDateUs = ktl.core.convertDateTimeToString(new Date(e.target.value.replace(/-/g, '/')), false, true);
-                    endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
-                    endDateInput.value = ktl.core.convertDateToIso(endDateUs);
-                    updateReportDates(startDateUs, endDateUs);
-                    savePeriod();
+                    var sd = e.target.value.replaceAll('-', '/');
+                    startDateUs = new Date(sd);
+                    adjustEndDate(period);
+
+                    endDateInput.value = ktl.core.convertDateToIso(endDateUs, period);
+                    ktl.views.saveViewDates(
+                        view.key,
+                        ktl.core.convertDateTimeToString(startDateUs, false, true),
+                        ktl.core.convertDateTimeToString(endDateUs, false, true),
+                        period);
+                    updatePeriodFilter(startDateUs, endDateUs);
                 })
 
                 endDateInput.addEventListener('change', (e) => {
-                    endDateUs = ktl.core.convertDateTimeToString(new Date(e.target.value.replace(/-/g, '/')), false, true);
-                    updateReportDates(startDateUs, endDateUs);
-                    savePeriod();
+                    endDateUs = new Date(e.target.value.replace(/-/g, '/'));
+                    ktl.views.saveViewDates(
+                        view.key,
+                        ktl.core.convertDateTimeToString(startDateUs, false, true),
+                        ktl.core.convertDateTimeToString(endDateUs, false, true),
+                        period);
+
+                    updatePeriodFilter(startDateUs, endDateUs);
                 })
 
-                startDateInput.focus();
+                startDateInput.onfocus = (e) => { currentFocus = '#startDateInput'; }
+                endDateInput.onfocus = (e) => { currentFocus = '#endDateInput'; }
+                if (currentFocus) {
+                    document.querySelector(currentFocus).focus();
+                } else
+                    startDateInput.focus();
 
-                function updateReportDates(startDateUs, endDateUs) {
+                function adjustEndDate(period) {
+                    if (period === 'monthly')
+                        endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
+                    else if (period === 'weekly') {
+                        endDateUs = new Date(startDateUs);
+                        endDateUs.setDate(endDateUs.getDate() + 6);
+                    } else if (period === 'daily')
+                        endDateUs = new Date(startDateUs);
+                }
+
+                periodMonthly.addEventListener('click', e => { updatePeriod(e); });
+                periodWeekly.addEventListener('click', e => { updatePeriod(e); });
+                periodDaily.addEventListener('click', e => { updatePeriod(e); });
+
+                function updatePeriod(e) {
+                    period = e.target.defaultValue;
+                    inputType = periodToInputType(period);
+                    document.querySelector('#startDateInput').type = inputType;
+                    document.querySelector('#endDateInput').type = inputType;
+                    adjustEndDate(period);
+                    ktl.views.saveViewDates(
+                        view.key,
+                        ktl.core.convertDateTimeToString(startDateUs, false, true),
+                        ktl.core.convertDateTimeToString(endDateUs, false, true),
+                        period);
+                    updatePeriodFilter(startDateUs, endDateUs);
+                }
+
+                function periodToInputType(period) {
+                    var inputType = 'month';
+                    if (period !== 'monthly')
+                        inputType = 'date';
+                    return inputType;
+                }
+
+                function updatePeriodFilter(startDateUs, endDateUs) {
                     Knack.showSpinner();
 
                     //Merge current filter with new one, if possible, i.e. using the AND operator.
@@ -4351,7 +4377,10 @@ function Ktl($) {
                     }
 
                     //Must adjust end date due to "is before" nature of date filter.
-                    endDateUs = ktl.core.convertDateTimeToString(new Date(Date.parse(endDateUs) + (24 * 3600 * 1000)), false, true);
+                    startDateUs.setDate(startDateUs.getDate() - 1);
+                    endDateUs.setDate(endDateUs.getDate() + 1);
+                    startDateUs = ktl.core.convertDateTimeToString(startDateUs, false, true);
+                    endDateUs = ktl.core.convertDateTimeToString(endDateUs, false, true);
 
                     var filterRules = [
                         {
@@ -4390,10 +4419,47 @@ function Ktl($) {
                         error: () => { Knack.hideSpinner(); }
                     });
                 }
+            },
 
-                function savePeriod() {
-                    ktl.storage.lsSetItem(LSVD, JSON.stringify({ startDateUs: startDateUs, endDateUs: endDateUs }));
-                }
+            saveViewDates: function (viewId = '', startDt = '', endDt = '', period = 'monthly') {
+                if (!viewId || (!startDt && !endDt)) return;
+
+                var viewDates = {};
+                var viewDatesStr = ktl.storage.lsGetItem(ktl.const.LS_VIEW_DATES);
+                if (viewDatesStr) {
+                    try {
+                        viewDates = JSON.parse(viewDatesStr);
+                    }
+                    catch (e) {
+                        console.log('Error parsing view dates.', e);
+                        return;
+                    }
+                };
+
+                viewDates[viewId] = { startDt: startDt, endDt: endDt, period: period };
+                ktl.storage.lsSetItem(ktl.const.LS_VIEW_DATES, JSON.stringify(viewDates));
+            },
+
+            loadViewDates: function (viewId = '') {
+                if (!viewId) return {};
+
+                var startDt = '';
+                var endDt = '';
+
+                var viewDates = ktl.storage.lsGetItem(ktl.const.LS_VIEW_DATES);
+                if (viewDates) {
+                    try {
+                        viewDates = JSON.parse(viewDates);
+                        startDt = viewDates[viewId].startDt;
+                        endDt = viewDates[viewId].endDt;
+                        period = viewDates[viewId].period;
+                    } catch (e) {
+                        console.log('Error parsing report period', e);
+                    }
+                } else
+                    return {};
+
+                return { startDt: startDt, endDt: endDt, period: period };
             },
 
             hideField: function (fieldId) {
@@ -5836,6 +5902,15 @@ function Ktl($) {
         const LOGIN_ACCESS_DENIED = 'Page access denied';
         const LOGIN_WRONG_USER_INFO = 'Wrong email or password';
         const LOGIN_TIMEOUT = 'Timeout';
+
+        //Show logged-in user ID when double-clicking on First name.
+        //Useful to copy/pase in the localStorage filtering field to see only those entries.
+        $(document).on('knack-scene-render.any', function (event, scene) {
+            $('.kn-current_user > span.first').on('dblclick', (e) => {
+                var userId = $('.kn-current_user').attr('id');
+                console.log('User ID:', userId);
+            })
+        })
 
         //Handle log-in/out events.
         $(document).on('click', function (e) {
