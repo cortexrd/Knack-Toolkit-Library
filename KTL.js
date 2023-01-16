@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.19';
+    const KTL_VERSION = '0.6.20';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4359,15 +4359,24 @@ function Ktl($) {
                     var currentFilters = Knack.views[view.key].getFilters();
                     var curRules = [];
                     var foundAnd = true;
-                    if (currentFilters.rules && currentFilters.rules.length > 0) {
-                        var rules = currentFilters.rules;
-                        rules.forEach(rule => {
-                            if (rule.match && rule.match === 'or')
-                                foundAnd = false;
+                    if (!$.isEmptyObject(currentFilters)) {
+                        //Sometimes, the filters have a roles key, but not always.
+                        //If not, then the object itself is the array that contain the rules.
+                        var rules;
+                        if (currentFilters.rules && currentFilters.rules.length > 0)
+                            rules = currentFilters.rules;
+                        else if (currentFilters.length > 0)
+                            rules = currentFilters;
 
-                            if (rule.field !== fieldId)
-                                curRules.push(rule);
-                        })
+                        if (rules) {
+                            rules.forEach(rule => {
+                                if (rule.match && rule.match === 'or')
+                                    foundAnd = false;
+
+                                if (rule.field !== fieldId)
+                                    curRules.push(rule);
+                            })
+                        }
                     }
 
                     if (!foundAnd) {
