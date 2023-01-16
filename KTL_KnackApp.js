@@ -450,7 +450,7 @@ var KnackApp = function ($, info = {}) {
     userPrefs.workShift = '';
 
     //Save back to localStorage.
-    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS + Knack.getUserAttributes().id, JSON.stringify(userPrefs));
+    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
     //console.log('userPrefs =', userPrefs);
     //Setup default preferences - END
 
