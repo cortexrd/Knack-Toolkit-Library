@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.20';
+    const KTL_VERSION = '0.6.21';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -531,9 +531,9 @@ function Ktl($) {
 
             switchVersion: function (ver = 'prod') {
                 if (ver === 'prod')
-                    ktl.storage.lsRemoveItem('dev');
+                    ktl.storage.lsRemoveItem('dev', true);
                 else if (ver === 'dev')
-                    ktl.storage.lsSetItem('dev', '');
+                    ktl.storage.lsSetItem('dev', '', true);
 
                 ktl.debugWnd.lsLog('Switching version to ' + ver);
 
@@ -3920,6 +3920,10 @@ function Ktl($) {
         var handleCalendarEventDrop = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
         var currentFocus = null;
+        var gotoDateObj = new Date();
+        var prevType = '';
+        var prevStartDate = '';
+
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
@@ -3954,45 +3958,72 @@ function Ktl($) {
                         return originalEventDropHandler.call(this, ...arguments);
                     };
 
-                    /* Attempt at receiving a callback when the calendar view is rendered - no luck!
+                    //Callback when the calendar view changes type of range.
                     const viewDisplay = fc.options.viewDisplay;
-                    console.log('viewDisplay =', viewDisplay);
-                    fc.viewDisplay = function (view, element) {
-                        console.log('viewDisplay: view, element', view, element);
-                        //handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+                    fc.options.viewDisplay = function (calView) {
+                        addGotoDate(view.key, calView);
                         return viewDisplay.call(this, ...arguments);
                     };
-                    */
 
                     addGotoDate(view.key);
                 } catch (e) { console.log(e); }
             }
         })
 
-        function addGotoDate(viewId) {
+        function addGotoDate(viewId, calView) {
             if (!viewId) return;
 
-            var div = document.createElement('div');
-            //div.style.marginTop = '20px';
-            //div.style.marginBottom = '50px';
-            ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .fc-header-left'));
+            var inputType = 'date';
+            var period = 'weekly-daily';
 
-            var gotoDateIso = '';
-            var inputType = 'month';
-            if (Knack.views[viewId].current_view !== 'month')
-                inputType = 'date';
+            if (calView) {
+                if (calView.name === 'month') {
+                    period = 'monthly';
+                    inputType = 'month';
+                }
+            } else {
+                if (Knack.views[viewId].current_view === 'month') {
+                    period = 'monthly';
+                    inputType = 'month';
+                }
+            }
 
-            var gotoDateObj = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, '', 'width: 200px; height: 25px;');
-            gotoDateObj.value = ktl.core.convertDateToIso(ktl.core.convertDateTimeToString(new Date(), false, true));
+            if (prevType !== inputType) {
+                prevType = inputType;
+                $('#' + viewId + ' #gotoDate').remove();
+                $('#' + viewId + ' #gotoDate-label').remove();
+            }
 
-            gotoDateObj.addEventListener('change', (e) => {
-                var dt = e.target.value;
-                dt = dt.replaceAll('-0', '-').replaceAll('-', '/'); //If we don't do this, we get crazy behavior..
-                Knack.views[viewId].$('.knack-calendar').fullCalendar('gotoDate', new Date(dt));
-                gotoDateObj.focus();
-            })
+            var focusGoto = (document.activeElement === document.querySelector('#gotoDate'));
+            if (calView) {
+                if (prevStartDate !== calView.visStart && !focusGoto) {
+                    prevStartDate = calView.visStart;
+                    gotoDateObj = new Date(calView.start);
+                }
+            }
 
-            gotoDateObj.focus();            
+            var gotoDateIso = ktl.core.convertDateToIso(gotoDateObj, period);//ktl.core.convertDateTimeToString(gotoDateObj, true, true);
+
+            var gotoDateField = document.querySelector('#' + viewId + ' #gotoDate');
+            if (!gotoDateField) {
+                var div = document.createElement('div');
+                ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .fc-header-left'));
+
+                var gotoDateField = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, 'gotoDate', 'width: 200px; height: 25px;');
+                gotoDateField.focus();
+
+                gotoDateField.addEventListener('change', (e) => {
+                    var dt = e.target.value;
+                    dt = dt.replaceAll('-0', '-').replaceAll('-', '/'); //If we don't do this, we get crazy behavior.
+                    Knack.views[viewId].$('.knack-calendar').fullCalendar('gotoDate', new Date(dt));
+                    gotoDateField.focus();
+                })
+            }
+
+            if (!focusGoto) {
+                gotoDateField.value = gotoDateIso;
+                gotoDateField.focus();
+            }
         }
 
         //Remove default handleClickSort and use KTL's instead for more flexibility.
