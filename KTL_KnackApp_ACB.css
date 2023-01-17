@@ -57,6 +57,22 @@ tr:hover {
 	font-weight: bold; /*Make this configurable*/
 }
 
+.kn-radio.horizontal {
+	display: flex;
+}
+
+.option.radio.horizontal {
+	padding-right: 15px;
+}
+
+.kn-checkbox.horizontal {
+	display: flex;
+}
+
+.option.checkbox.horizontal {
+	padding-right: 15px;
+}
+
 /************ Tooltips **************/
 .tooltip {
 	position: relative;

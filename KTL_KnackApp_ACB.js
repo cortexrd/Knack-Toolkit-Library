@@ -260,7 +260,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.21';
+    const KTL_VERSION = '0.6.22';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1001,7 +1001,12 @@ function Ktl($) {
                     return; //Needed to prevent logging pre-login events.
 
                 if (hasLocalStorage) {
-                    localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                    try {
+                        localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                    }
+                    catch (e) {
+                        console.log('Error in localStorage.setItem', e);
+                    }
                 } else
                     alert('KEC_1005 - lsSetItem called without storage');
             },
@@ -1216,7 +1221,9 @@ function Ktl($) {
             //Do we need to add the chznBetter object?
             //chznBetter is ktl's fix to a few chzn dropdown problems.
             //Note that support of multi-selection type has been removed.  Too buggy for now, and needs more work.
-            if (ktl.core.getCfg().enabled.chznBetter && e.path.length >= 1 && !ktl.fields.getUsingBarcode()) {
+            //console.log('e =', e);
+            //if (ktl.core.getCfg().enabled.chznBetter && e.path.length >= 1 && !ktl.fields.getUsingBarcode()) {
+            if (ktl.core.getCfg().enabled.chznBetter && !ktl.fields.getUsingBarcode()) {
                 //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
                 var dropdownId = $(e.target).closest('.chzn-container').attr('id');
                 var isMultiSelect = $(e.target).closest('.chzn-container-multi').length > 0;
@@ -1260,12 +1267,11 @@ function Ktl($) {
                     if ($(e.target)[0].id === 'chznBetter') {
                         //Leave this here even though we update these two variables again a few lines below.
                         //This is to cover cases where threshold chars is not reached and focus is set elsewhere by user.
-                        inputVal = inputVal.replace(' ', '');
+                        inputVal = inputVal.trim();
                         chznBetterTxt = inputVal;
                         chznLastKeyTimer = setTimeout(function () {
                             if (inputVal.length >= threshold) {
-                                //console.log('inputVal =', inputVal);
-                                inputVal = $(e.target).val().replace(' ', ''); //Get a last update in case user was quick and entered more than threshold chars.
+                                inputVal = $(e.target).val().trim(); //Get a last update in case user was quick and entered more than threshold chars.
                                 ktl.fields.searchChznBetterDropdown(inputVal);
                             }
                         }, chznBetterSrchDelay);
@@ -1274,14 +1280,15 @@ function Ktl($) {
                         if (chznBetter.length > 0) {
                             //When focus is switched to input in background, leave it there,
                             //but copy input text to foreground chznBetter field so user can see it.
-                            inputVal = inputVal.replace(' ', '');
+                            inputVal = inputVal.trim();
+
                             chznBetterTxt = inputVal;
                             chznBetter.val(chznBetterTxt);
 
                             //Update filtered results again.
                             chznLastKeyTimer = setTimeout(function () {
                                 if (inputVal.length >= threshold) {
-                                    inputVal = $(e.target).val().replace(' ', ''); //Get a last update in case user was quick and entered more than 4 chars.
+                                    inputVal = $(e.target).val().trim(); //Get a last update in case user was quick and entered more than 4 chars.
                                     ktl.fields.searchChznBetterDropdown(inputVal);
                                 }
                             }, chznBetterSrchDelay);
@@ -1861,17 +1868,20 @@ function Ktl($) {
             //console.log('saveFormData', text, viewId, fieldId, subField);
             if (!pfInitDone || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
+            var formDataObj = {};
+
             var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
             if (fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
                 return;
 
             var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
             if (formDataObjStr)
-                var formDataObj = JSON.parse(formDataObjStr);
+                formDataObj = JSON.parse(formDataObjStr);
 
             if (fieldId === 'chznBetter')
                 fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
 
+            //console.log('saveFormData: formDataObj =', formDataObj);
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
 
             if (!subField) {
@@ -1890,8 +1900,15 @@ function Ktl($) {
                 formDataObj[viewId][fieldId][subField] = text;
             }
 
-            formDataObjStr = JSON.stringify(formDataObj);
-            ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, formDataObjStr);
+            if ($.isEmptyObject(formDataObj[viewId]))
+                delete(formDataObj[viewId]);
+
+            if ($.isEmptyObject(formDataObj))
+                ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA);
+            else {
+                formDataObjStr = JSON.stringify(formDataObj);
+                ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, formDataObjStr);
+            }
 
             currentViews[viewId] = viewId;
 
@@ -1916,7 +1933,7 @@ function Ktl($) {
                 }
 
                 //To see all data types:  console.log(Knack.config);
-                const textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text'];
+                const textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text', 'currency'];
 
                 formDataObj = {};
                 currentViews = {};
@@ -1983,26 +2000,36 @@ function Ktl($) {
                                     textToFind = textToFind[0];
 
                                     //Start with a first 'rough' pass to populate option records...
-                                    ktl.views.searchDropdown(textToFind, fieldId, false, false, '', false)
-                                        .then(function () { findRecId(recId); })
-                                        .catch(function () { findRecId(recId); })
+                                    var viewSrch = view.key; //Must keep a copy of these two vars otherwise they get overwritten.
+                                    var fieldSrch = fieldId;
+                                    ktl.views.searchDropdown(textToFind, fieldSrch, false, false, viewSrch, false)
+                                        .then(function () {
+                                            findRecId(recId);
+                                        })
+                                        .catch(function () {
+                                            findRecId(recId);
+                                        })
 
                                     //... then a second pass to find exact match with recId.
                                     function findRecId(recId) {
-                                        recId && $('#' + view.key + '-' + fieldId).val(recId).trigger('liszt:updated').chosen().trigger('change');
+                                        recId && $('#' + viewSrch + '-' + fieldSrch).val(recId).trigger('liszt:updated').chosen().trigger('change');
 
-                                        var chznContainer = $('#' + view.key + ' [data-input-id="' + fieldId + '"] .chzn-container');
+                                        var chznContainer = $('#' + viewSrch + ' [data-input-id="' + fieldSrch + '"] .chzn-container');
                                         $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                        ktl.scenes.autoFocus();
                                     }
-
                                 } else if (fieldType === 'multiple_choice') {
+
                                     console.log('field.attributes.format.type =', field.attributes.format.type);
+                                    console.log('fieldId =', fieldId);
+                                    console.log('fieldText =', fieldText);
 
                                     if (typeof fieldText === 'object') {
                                         subField = Object.keys(formDataObj[view.key][fieldId]);
                                         fieldText = formDataObj[view.key][fieldId][subField];
                                     } else if (field.attributes.format.type === 'radios') {
-                                        document.querySelector('#kn-input-' + fieldId + ' [value="' + fieldText + '"]').checked = true
+                                        var rb = document.querySelector('#kn-input-' + fieldId + ' [value="' + fieldText + '"]');
+                                        rb && (rb.checked = true);
                                         resolve();
                                         return;
                                     } else if (field.attributes.format.type === 'checkbox') {
@@ -2083,17 +2110,19 @@ function Ktl($) {
 
                     var field = Knack.objects.getField(fieldId);
                     console.log('inputHasChanged - field.attributes =', field.attributes);
-                    if (field.attributes.format.type === 'radios') {
-                        console.log('inputHasChanged - radios');
-                        text = e.target.checked;
-                    } else if (field.attributes.format.type === 'checkboxes') {
-                        console.log('inputHasChanged - checkbox');
-                        text = e.target.checked;
+
+                    if (field.attributes.format) {
+                        if (field.attributes.format.type === 'radios') {
+                            console.log('inputHasChanged - radios');
+                            text = e.target.checked;
+                        } else if (field.attributes.format.type === 'checkboxes') {
+                            console.log('inputHasChanged - checkbox');
+                            text = e.target.checked;
+                        }
                     }
 
-                    if (fieldId !== e.target.id) {
+                    if (fieldId !== e.target.id)
                         subField = e.target.id;
-                    }
 
                     var viewId = e.target.closest('.kn-form.kn-view');
                     if (viewId) {
@@ -3948,6 +3977,11 @@ function Ktl($) {
             ktl.views.addViewId(view);
             disableFilterOnFields(view);
 
+            $('#' + view.key + ' .kn-radio').addClass('horizontal');
+            $('#' + view.key + ' .option.radio').addClass('horizontal');
+            $('#' + view.key + ' .kn-checkbox').addClass('horizontal');
+            $('#' + view.key + ' .option.checkbox').addClass('horizontal');
+
             if (view.type === 'calendar') {
                 try {
                     const fc = Knack.views[view.key].$('.knack-calendar').data('fullCalendar');
@@ -4068,7 +4102,8 @@ function Ktl($) {
                         ktl.core.getSubstringPosition(view.title, 'ADD_', 1),
                         ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1),
                         ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1),
-                        ktl.core.getSubstringPosition(view.title, 'DATETIME_PICKERS', 1), //eX: DATETIME_PICKERS=MONTHLY,DATE
+                        ktl.core.getSubstringPosition(view.title, 'DATETIME_PICKERS', 1),
+                        ktl.core.getSubstringPosition(view.title, 'REFRESH_VIEW', 1),
                     );
 
                     //Truncate all title characters beyond the lowest index found.
@@ -4100,7 +4135,10 @@ function Ktl($) {
                         ktl.views.addTimeStampToHeader(view);
 
                     if (view.title.includes('DATETIME_PICKERS'))
-                        ktl.views.addDateTimePickers(view, data);
+                        ktl.views.addDateTimePickers(view);
+
+                    if (view.title.includes('REFRESH_VIEW'))
+                        ktl.views.addSubmitToViewRefresh(view);
                 }
 
                 //Remove unwanted columns, as specified in Builder, when _HIDE and _REMOVE is found in header.
@@ -4486,7 +4524,7 @@ function Ktl($) {
                 }
             },
 
-            addDateTimePickers: function (view, data) {
+            addDateTimePickers: function (view) {
                 var period = 'monthly';
                 var inputType = 'month';
 
@@ -5275,8 +5313,29 @@ function Ktl($) {
 
                 submitDisabled && ktl.scenes.spinnerWatchdog(!submitDisabled); //Don't let the disabled Submit cause a page reload.
             },
+
+            addSubmitToViewRefresh(view) {
+                if (!view.title) return;
+                var views = view.title.split('REFRESH_VIEW=');
+                if (views.length !== 2) return;
+                views = views[1].split(',');
+                var foundViewIds = [];
+                for (var i = 0; i < views.length; i++) {
+                    var viewTitle = views[i].trim();
+                    var viewId = ktl.scenes.findViewWithTitle(viewTitle, true, view.key);
+                    if (viewId) {
+                        foundViewIds.push(viewId);
+                    }
+                }
+
+                if (foundViewIds.length) {
+                    $(document).on('knack-form-submit.' + view.key, () => {
+                        ktl.views.refreshViewArray(foundViewIds)
+                    })
+                }
+            }
         }
-    })();
+    })(); //views
 
     //====================================================
     //Scenes feature
@@ -5691,7 +5750,7 @@ function Ktl($) {
                 idleWatchDogTimeout && idleWatchDogTimeout();
             },
 
-            findViewWithTitle: function (srch = '', exact = false) {
+            findViewWithTitle: function (srch = '', exact = false, excludeViewId = '') {
                 var views = Knack.router.scene_view.model.views.models;
                 var title = '';
                 var viewId = '';
@@ -5699,9 +5758,10 @@ function Ktl($) {
                 try {
                     for (var i = 0; i < views.length; i++) {
                         viewId = views[i].attributes.key;
+                        if (viewId === excludeViewId) continue;
                         title = views[i].attributes.title.toLowerCase();
                         if (exact && title === srch) return viewId;
-                        if (title.includes(srch)) return viewId;
+                        if (!exact && title.includes(srch)) return viewId;
                     }
                 }
                 catch (e) {

@@ -42,7 +42,7 @@
 
 **Knack Toolkit Library**
 
-v0.6.20 - pre-release
+v0.6.22 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -534,48 +534,74 @@ Provides view-related features.
 
 -   **ktlProcessViewFlags**: This is an internal function that is not
     exposed. But worth some additional explaining, nonetheless. It
-    parses the view\'s title for special flags. Here\'s the list:
+    parses the view\'s title for flags that trigger special behavior.
+    See the list and details below.
 
-    -   AUTOREFRESH=\[value\] To refresh the view every \[value\] in
-        seconds
+### Using view's Title to add flags to trigger special behavior
 
-    -   HIDDEN_VIEW To hide the view away from screen, but still
-        existing
+You can add these flags **at the end of your view's title** to trigger
+the behavior. The flag and any text that follows will be truncated, thus
+not visible to the user.
 
-    -   HIDDEN_TITLE To hide the view title only to save real-estate
+#### AUTOREFRESH=\[value\]
 
-    -   ADD_REFRESH For Kiosk mode only, adds a Refresh button
+The view will be refreshed periodically every *\[value\]* seconds. It is
+possible to start/stop at will using the autoRefresh function.
 
-    -   ADD_BACK For Kiosk mode only, adds a Back button
+#### HIDDEN_VIEW
 
-    -   ADD_DONE For Kiosk mode only, adds a Done button
+To hide the view away from screen, but still existing.
 
-    -   NO_INLINE Disables inline editing, even if enabled in Builder
+#### HIDDEN_TITLE
 
-    -   DATETIME_PICKERS Adds calendar pickers to the view (see below)
+To hide the view title only to save real-estate.
+
+#### ADD_REFRESH
+
+For Kiosk mode only, adds a Refresh button.
+
+#### ADD_BACK
+
+For Kiosk mode only, adds a Back button.
+
+#### ADD_DONE
+
+For Kiosk mode only, adds a Done button.
+
+#### NO_INLINE
+
+Disables inline editing for the user, while still enabled in Builder for
+API calls.
+
+#### DATETIME_PICKERS
+
+Six new fields will appear at the top of your table view: **From**,
+**To** and periods as **Monthly**, **Weekly**, and **Daily**. Depending
+on the active period, when you change From, the To field will
+automatically update itself accordingly, and the view will be filtered
+in real-time. On the other hand, if you change the To date, the From
+will not be affected, leaving you more flexibility. The focus is
+conveniently placed on the last field used so you can use the up/down
+arrows to scroll quickly through months and visualize data. This is also
+compatible with additional filter fields, provided that the AND operator
+is used. Once you have a filter that you like, it's also possible to
+save it as a [User Filter](#user-filters).
+
+#### REFRESH_VIEW
+
+When a form is submitted, will refresh any other views specified.
+
+Ex: **Customer Sale REFRESH_VIEW=Client Sales,Store Sales**
+
+The visible title will be Customer Sales, and when submitted
+successfully, the two tables with the title Client Sales and Store
+Sales, separated by a comma, will also be refreshed. The titles must
+match exactly.
+
+#### Your own flags
 
 You can also add your own app-specific flags in the callback function
 processViewFlags.
-
-#### Additional information
-
-###### DATETIME_PICKERS
-
-Add this at the end of your view's title: DATETIME_PICKERS
-
-Ex: Monthly Sales DATETIME_PICKERS
-
-Six new fields will appear at the top of your table: **From**, **To**
-and periods as **Monthly**, **Weekly**, and **Daily**. Depending on the
-active period, when you change From, the To field will automatically
-update itself accordingly, and the view will be filtered in real-time.
-On the other hand, if you change the To date, the From will not be
-affected, leaving you more flexibility. The focus is conveniently placed
-on the last field used so you can use the up/down arrows to scroll
-quickly through months and visualize data. This is also compatible with
-additional filter fields, provided that the AND operator is used. Once
-you have a filter that you like, it's also possible to save it as a
-[User Filter](#user-filters).
 
 ### Using view's Description text box as flags to trigger special behavior
 
