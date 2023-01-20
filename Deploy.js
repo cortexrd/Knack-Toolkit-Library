@@ -17,35 +17,26 @@ const rl = readline.createInterface({
 
 process.chdir('c:\\code');
 
-minify(fullPathName)
-    .then(function () {
-        upload();
-    })
-    .catch(function (reason) {
-        console.log('\x1b[31m%s\x1b[0m', reason);
-    })
+runScript('.\\Lib\\KTL\\NodeJS\\NodeJS_ACB_MergeFiles.js', ['-ktlpath=.\\Lib\\KTL', '-filename=.\\Lib\\KTL\\KTL_KnackApp'],
+    function (err) {
+        if (err) throw err;
+        console.log('\x1b[32m%s\x1b[0m', 'Merge complete');
 
-
-//runScript('.\\Lib\\KTL\\NodeJS\\NodeJS_ACB_MergeFiles.js', ['-ktlpath=.\\Lib\\KTL', '-filename=.\\Lib\\KTL\\KTL_KnackApp'],
-//    function (err) {
-//        if (err) throw err;
-//        console.log('\x1b[32m%s\x1b[0m', 'Merge complete');
-
-//        rl.question('Do you want to minify (y/n) ?', function (minifyYes) {
-//            if (minifyYes === 'y') {
-//                minify(fullPathName)
-//                    .then(function () {
-//                        upload();
-//                    })
-//                    .catch(function (reason) {
-//                        console.log('\x1b[31m%s\x1b[0m', reason);
-//						})
-//            } else {
-//                upload();
-//            }
-//        });
-//    }
-//);
+        rl.question('Do you want to minify (y/n) ?', function (minifyYes) {
+            if (minifyYes === 'y') {
+                minify(fullPathName)
+                    .then(function () {
+                        upload();
+                    })
+                    .catch(function (reason) {
+                        console.log('\x1b[31m%s\x1b[0m', reason);
+						})
+            } else {
+                upload();
+            }
+        });
+    }
+);
 
 function runScript(scriptPath, args, callback) {
     //Keep track of whether callback has been invoked to prevent multiple invocations
@@ -75,15 +66,14 @@ function minify(file) {
         process.chdir('c:\\code\\Lib\\KTL');
         var code = fs.readFileSync(file, 'utf8');
 
-        var rootUrl = "https://ctrnd.com/Lib/KTL";
         const minifiedOutput = fileName + '.min.js';
         console.log('minifiedOutput =', minifiedOutput);
 
         var result = UglifyJS.minify(code, {
             sourceMap: {
-                //filename: minifiedOutput,
+                filename: minifiedOutput,
                 url: 'KTL.min.js.map',
-                root: rootUrl,
+                root: 'https://ctrnd.com/Lib/KTL',
             }
         })
 
