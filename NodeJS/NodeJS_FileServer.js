@@ -1,14 +1,17 @@
 //Non-secure HTTP server, to be used on local network for development purpose only.
-//TODO:  Find out how to support space characters in file path.
 var fs = require('fs'),
     http = require('http');
 
-http.createServer(function (req, res) {
-    fs.readFile(__dirname + req.url, function (err, data) {
-		console.log('__dirname =',__dirname);
-		console.log('req.url =',req.url);
+console.log('Starting server, waiting for requests...');
 
-        if (err) {	
+http.createServer(function (req, res) {
+    var url = __dirname + req.url;
+    url = url.replace(/\\/g, '/');
+    url = decodeURI(url.trim());
+    fs.readFile(url, function (err, data) {
+        console.log('url =', url);
+        if (err) {
+            console.log('err =', err);
             res.writeHead(404);
             res.end(JSON.stringify(err));
             return;
