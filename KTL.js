@@ -3902,22 +3902,21 @@ function Ktl($) {
 
                 //Remove unwanted columns, as specified in Builder, when _HIDE and _REMOVE is found in header.
                 if (view.type === 'table' /*TODO: add more view types*/) {
-                    var columns = view.columns;
+                    //var columns = view.columns;
+                    var columns = Knack.views[view.key].model.view.columns;
                     var hiddenFieldsAr = [];
                     var removedFieldsAr = [];
                     var header = '';
                     var fieldId = '';
                     columns.forEach(col => {
                         header = col.header;
-                        if (col.type === 'field')
-                            fieldId = col.id;
-                        else if (col.type === 'link' && col.link_type === 'field')
-                            fieldId = col.field.key;
-
-                        if (header.includes('_HIDE'))
-                            hiddenFieldsAr.push(fieldId);
-                        if (header.includes('_REMOVE'))
-                            removedFieldsAr.push(fieldId);
+                        fieldId = (col.id || (col.field && col.field.key));
+                        if (fieldId) {
+                            if (header.includes('_HIDE'))
+                                hiddenFieldsAr.push(fieldId);
+                            else if (header.includes('_REMOVE'))
+                                removedFieldsAr.push(fieldId);
+                        }
                     })
 
                     if (hiddenFieldsAr.length)
@@ -4235,7 +4234,6 @@ function Ktl($) {
                         if (!this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group'))
                             $(this).prepend('<td><input type="checkbox"></td>');
                     });
-
 
                     //For summary lines, prepend a space.
                     if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
@@ -5181,6 +5179,7 @@ function Ktl($) {
 
         if (!window.self.frameElement) {
             window.addEventListener('hashchange', (e) => {
+                ktl.core.waitSelector('h2', 5000).then(function () { $('h2').css('opacity', '0'); })
                 cleanupLinkMenus();
             }, false);
         }
