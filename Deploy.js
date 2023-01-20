@@ -75,7 +75,7 @@ function minify(file) {
         process.chdir('c:\\code\\Lib\\KTL');
         var code = fs.readFileSync(file, 'utf8');
 
-        var rootUrl = "https://ctrnd.com/Lib/KTL/";
+        var rootUrl = "https://ctrnd.com/Lib/KTL";
         const minifiedOutput = fileName + '.min.js';
         console.log('minifiedOutput =', minifiedOutput);
 
