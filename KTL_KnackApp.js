@@ -438,8 +438,8 @@ var KnackApp = function ($, info = {}) {
     //Setup default preferences - BEGIN
     var userPrefs = ktl.userPrefs.getUserPrefs();
 
-    //Typically, only the developer is interested in seeing the view IDs.
-    if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
+    //Typically, only the developers are interested in seeing the view IDs.
+    if (ktl.account.isDeveloper())
         userPrefs.showViewId = true;
     else
         userPrefs.showViewId = false;
@@ -453,18 +453,7 @@ var KnackApp = function ($, info = {}) {
     ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
     //console.log('userPrefs =', userPrefs);
     //Setup default preferences - END
-
-
-
-
-
-
-    //====================================================
-    //====================================================
-    //My App code - BEGIN
-    //  .....your code here....
-    //My App code - END
-
-
 };
 
+//====================================================
+//  Add your code here...
