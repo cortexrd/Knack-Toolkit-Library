@@ -22,25 +22,18 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
         return;
     }
 
-    if (fileName.includes(' ')) {
-        console.log('\n\nERROR: filename can\'t have spaces.');
-        return;
-    }
-
     console.log('STARTING MERGE...........');
 
-    if (ext !== 'js' && ext !== 'css') {
-        console.log('\x1b[31m%s\x1b[0m', '\n\nERROR: extension must be js or css, without the dot.');
+    if (ext !== 'js') {
+        console.log('\x1b[31m%s\x1b[0m', '\n\nERROR: extension must be js, without the dot.');
         return;
     }
 
-
-    var folder = process.cwd();
-    console.log('Folder =', folder);
-
+    const folder = process.cwd();
     const mergedFile = fileName + '_ACB.' + ext;
     fileName += '.' + ext;
 
+    console.log('Folder =', folder);
     console.log('Extension:\t', ext);
     console.log('Filename:\t', fileName);
     console.log('ktlPath:\t%s\n', ktlPath);
@@ -50,15 +43,15 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
             if (fs.existsSync(mergedFile))
                 fs.truncateSync(mergedFile, 0);
         } catch (err) {
-            console.error(err)
+            console.log('\x1b[31m%s\x1b[0m', err);
         }
 
         filesToMerge.push(fileName);
         console.log('\x1b[36m%s\x1b[0m', 'filesToMerge = ' + JSON.stringify(filesToMerge, null, 4) + '\n');
 
         var data = '';
-        for (var index = 0; index < filesToMerge.length; index++) {
-            var fileToMerge = filesToMerge[index];
+        for (var i = 0; i < filesToMerge.length; i++) {
+            var fileToMerge = filesToMerge[i];
             console.log('Merging file\t', fileToMerge);
 
             if (!fs.existsSync(fileToMerge)) {
@@ -85,3 +78,8 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
 
 console.clear();
 mergeFiles(fileName, 'js', [ktlPath + '\\KTL_Bootloader.js']);
+
+console.log('Press any key to exit');
+process.stdin.setRawMode(true);
+process.stdin.resume();
+process.stdin.on('data', process.exit.bind(process, 0));
