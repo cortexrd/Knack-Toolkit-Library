@@ -7,7 +7,7 @@
  * 2019-2022
  * */
 
-window.APP_ROOT_NAME = Knack.app.attributes.name + '_';
+window.APP_ROOT_NAME = window.lsShortName;
 const APP_ROOT_NAME = window.APP_ROOT_NAME;
 
 window.IFRAME_WND_ID = 'iFrameWnd';
@@ -5546,7 +5546,9 @@ function Ktl($) {
 
 
                     var versionStyle = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
-                    if (localStorage.getItem(Knack.app.attributes.name + '_dev') === null) { //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
+
+                    //if (!ktl.storage.lsGetItem('dev', true)) {
+                    if (localStorage.getItem(window.lsShortName + 'dev') === null) { //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
                         if (style) //If style already exist, use it as is.
                             versionStyle = style;
                         else //Otherwise, use KTL's default.
