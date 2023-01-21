@@ -14,7 +14,6 @@ KnackInitAsync = function ($, callback) {
     var appName = Knack.app.attributes.name;
     var appPath = 'KnackApps/' + appName + '/'; //Must match the folder structure as descripbed in the documentation.
     var ktlPath = 'Lib/KTL/';
-    LazyLoad.css([ktlSvr + ktlPath + 'KTL.css'], () => { });
     LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js']);
     LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js']);
     LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']);
@@ -26,7 +25,8 @@ KnackInitAsync = function ($, callback) {
         LazyLoad.js([appUrl], () => { })
     }
 
-    LazyLoad.js([ktlSvr + ktlPath + 'KTL.min.js'], () => {
+    LazyLoad.css([ktlSvr + ktlPath + 'KTL.css'], () => { });
+    LazyLoad.js([ktlSvr + ktlPath + 'KTL.js'], () => {
         if (typeof Ktl === 'function') {
             if (prod) {
                 if (typeof KnackApp === 'function')
@@ -50,8 +50,10 @@ KnackInitAsync = function ($, callback) {
             console.log(`KTL Loading time: ${end - start} ms`);
             callback();
         } else
-            if (confirm('Error - can\'t load KTL.  Do you want to retry?'))
+            if (confirm('Error - can\'t load KTL.  Do you want to switch to Production?')) {
+                localStorage.removeItem(window.lsShortName + 'dev');
                 location.reload(true);
+            }
     })
 };
 
