@@ -5528,7 +5528,7 @@ function Ktl($) {
                             versionStyle = style;
                         else //Otherwise, use KTL's default.
                             versionStyle += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
-                    } else //CLS mode, make version bright yellow/red font.
+                    } else //Dev mode, make version bright yellow/red font.
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
 
                     ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
