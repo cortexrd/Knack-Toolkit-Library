@@ -3727,8 +3727,17 @@ function Ktl($) {
                 }
             }
 
-            for (var viewId in Knack.views)
-                Knack.views[viewId] && (ktl.views.addViewId(Knack.views[viewId].model.view));
+            var views = Knack.router.scene_view.model.views.models;
+            for (var v = 0; v < views.length; v++) {
+                var viewId = views[v].id;
+                if (viewId) {
+                    ktl.views.addViewId(viewId);
+
+                    //The fix is needed here also because the totals are rendered once again after the view in some cases.
+                    if (!ktl.scenes.isiFrameWnd())
+                        ktl.bulkOps.fixBulkOpsAlignment(viewId);
+                }
+            }
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -4234,39 +4243,6 @@ function Ktl($) {
                         if (!this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group'))
                             $(this).prepend('<td><input type="checkbox"></td>');
                     });
-
-                    //For summary lines, prepend a space.
-                    if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
-                        var sel = '#' + viewId + ' tr.kn-table-totals';
-                        ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
-                            .then(function () {
-                                $('#' + viewId + ' tr.kn-table-totals').each(function () {
-                                    $(this).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                                });
-                            })
-                            .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
-                    }
-
-                    //For groups, extend line up to end.
-                    var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
-                    var groupingFound = false;
-                    for (i = 0; i < cols.length; i++) {
-                        if (cols[i].grouping) {
-                            groupingFound = true;
-                            break;
-                        }
-                    }
-
-                    if (groupingFound) {
-                        var sel = '#' + viewId + ' tr.kn-table-group';
-                        ktl.core.waitSelector(sel, 10000) //Totals may need extra wait time due to delayed server response.
-                            .then(function () {
-                                $('#' + viewId + ' tr.kn-table-group').each(function () {
-                                    $(this).find('td').attr('colspan', document.querySelectorAll('#' + viewId + ' thead th').length);
-                                });
-                            })
-                            .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
-                    }
                 }
             },
 
@@ -6937,10 +6913,10 @@ function Ktl($) {
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
         //Called upon each view rendering.
         function enableBulkOperations(view, data) {
-            var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
-
             ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
+            ktl.bulkOps.fixBulkOpsAlignment(view.key);
 
+            var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
             if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
                 addBulkDeleteButtons(view, data);
 
@@ -7204,6 +7180,45 @@ function Ktl($) {
                             })
                     })(deleteArray);
                 })
+            },
+
+            fixBulkOpsAlignment: function (viewId) {
+                if (!viewId) return;
+                //For summary lines, prepend a space.
+                if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals && Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
+                    var sel = '#' + viewId + ' tr.kn-table-totals';
+                    ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
+                        .then(function () {
+                            var head = document.querySelector('#' + viewId + ' thead tr').querySelectorAll('th').length;
+                            var total = document.querySelector('#' + viewId + ' .kn-table-totals').querySelectorAll('td').length;
+                            if (head <= total) return;
+                            $('#' + viewId + ' tr.kn-table-totals').each(function () {
+                                $(this).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                            });
+                        })
+                        .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
+                }
+
+                //For groups, extend line up to end.
+                var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
+                var groupingFound = false;
+                for (i = 0; i < cols.length; i++) {
+                    if (cols[i].grouping) {
+                        groupingFound = true;
+                        break;
+                    }
+                }
+
+                if (groupingFound) {
+                    var sel = '#' + viewId + ' tr.kn-table-group';
+                    ktl.core.waitSelector(sel, 10000) //Totals may need extra wait time due to delayed server response.
+                        .then(function () {
+                            $('#' + viewId + ' tr.kn-table-group').each(function () {
+                                $(this).find('td').attr('colspan', document.querySelectorAll('#' + viewId + ' thead th').length);
+                            });
+                        })
+                        .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
+                }
             },
         }
     })();
