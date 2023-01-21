@@ -1,4 +1,4 @@
-//This utility will merge the KTL's Bootloader and your custom Javascript into an ACB file.
+//This utility will merge the KTL's Bootloader and your custom Javascript into an Prod file.
 //Modify the file name and path to match your needs, if you deviate from the recommended defaults.
 //Version 1.0
 
