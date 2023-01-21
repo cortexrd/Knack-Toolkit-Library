@@ -68,18 +68,14 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
             const stats = fs.statSync(absolutePath)
             console.log('\x1b[36m%s\x1b[0m', '\nMerged file:\t ' + absolutePath);
             console.log('\x1b[33m%s\x1b[0m', 'File size:\t ' + stats.size + ' bytes\n');
-            console.log('\x1b[32m%s\x1b[0m', 'Operation completed successfully');
+            //console.log('\x1b[32m%s\x1b[0m', 'Operation completed successfully');
+            process.exit(code = 0);
         } catch (err) {
 			console.log('\x1b[31m%s\x1b[0m', '\nERROR occurred while merging files!');
             console.log('\x1b[31m%s\x1b[0m', err);
+            process.exit(code = 1);
         }
     }
 }
 
-console.clear();
 mergeFiles(fileName, 'js', [ktlPath + '\\KTL_Bootloader.js']);
-
-console.log('Press any key to exit');
-process.stdin.setRawMode(true);
-process.stdin.resume();
-process.stdin.on('data', process.exit.bind(process, 0));
