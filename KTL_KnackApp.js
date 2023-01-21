@@ -45,8 +45,8 @@ var KnackApp = function ($, info = {}) {
                 },
 
                 bulkOps: {
-                    bulkEdit: false,
-                    bulkDelete: false,
+                    bulkEdit: true,
+                    bulkDelete: true,
                 },
             },
 
@@ -398,8 +398,8 @@ var KnackApp = function ($, info = {}) {
         var recId = event.id;
 
         //Typical exmample of how to use this callback: upon event drop, update a table below with same object and the Date/Time field.
-        const CALENDAR_VIEW = 'view_2925';
-        const TABLE_TO_REFRESH = 'view_2926';
+        const CALENDAR_VIEW = 'view_CALENDAR';
+        const TABLE_TO_REFRESH = 'view_TABLE';
         (function tryRefresh(retryCtr) { //These retries are important due to the latency chain: calendar > server > table being updated.
             setTimeout(() => {
                 if (view.key === CALENDAR_VIEW) {
