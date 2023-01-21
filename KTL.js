@@ -26,6 +26,9 @@ function Ktl($) {
 
     var ktl = this;
 
+    LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js']);
+    LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']);
+
     //KEC stands for "KTL Event Code".  Next:  KEC_1025
     //
 
@@ -7048,7 +7051,7 @@ function Ktl($) {
                     ktl.bulkOps.deleteRecords(deleteArray, view)
                         .then(function () {
                             ktl.scenes.spinnerWatchdog();
-                            jQuery.blockUI({
+                            $.blockUI({
                                 message: '',
                                 overlayCSS: {
                                     backgroundColor: '#ddd',
@@ -7061,7 +7064,7 @@ function Ktl($) {
                             setTimeout(function () {
                                 ktl.views.refreshView(view.key).then(function (model) {
                                     setTimeout(function () {
-                                        jQuery.unblockUI();
+                                        $.unblockUI();
                                         if (bulkOpsDeleteAll) {
                                             if (model && model.length > 0) {
                                                 $('#kn-button-delete-all-' + view.key).click();
@@ -7076,7 +7079,7 @@ function Ktl($) {
                             }, 2000);
                         })
                         .catch(function (response) {
-                            jQuery.unblockUI();
+                            $.unblockUI();
                             ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1024 - Bulk Delete failed, reason: ' + response);
                             alert('Failed deleting record.\n' + response);
                         })
@@ -7358,3 +7361,5 @@ function Ktl($) {
 
 ////////////////  End of KTL /////////////////////
 
+window.ktlEnd = window.performance.now();
+console.log(`KTL took ${Math.trunc(window.ktlEnd - window.ktlStart)} ms`);
