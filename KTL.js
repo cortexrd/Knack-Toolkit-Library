@@ -26,9 +26,6 @@ function Ktl($) {
 
     var ktl = this;
 
-    LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js']);
-    LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']);
-
     //KEC stands for "KTL Event Code".  Next:  KEC_1025
     //
 
@@ -292,9 +289,9 @@ function Ktl($) {
             },
 
             switchVersion: function (ver = 'prod') {
-                if (ver === 'prod')
+                if (ver.toLowerCase() === 'prod')
                     ktl.storage.lsRemoveItem('dev', true);
-                else if (ver === 'dev')
+                else if (ver.toLowerCase() === 'dev')
                     ktl.storage.lsSetItem('dev', '', true);
 
                 ktl.debugWnd.lsLog('Switching version to ' + ver);
@@ -5513,14 +5510,14 @@ function Ktl($) {
                 document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
             },
 
-            addVersionNumber: function (info, style = '') {
+            addVersionInfo: function (info, style = '') {
                 if (!ktl.core.getCfg().enabled.showAppInfo || window.self.frameElement) return;
 
                 //By default, version numbers are added at top right of screen
                 if ($('#verButtonId').length === 0) {
                     var ktlVer = ktl.core.getCfg().enabled.showKtlInfo ? '    KTL v' + KTL_VERSION : '';
                     var appName = Knack.app.attributes.name.toUpperCase();
-                    var versionInfo = appName + '    v' + APP_VERSION + ktlVer + '    ' + info.hostname;
+                    var versionInfo = appName + '    v' + APP_VERSION + ktlVer + (info.hostname ? '    ' + info.hostname : '');
 
 
                     var versionStyle = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
@@ -5531,15 +5528,15 @@ function Ktl($) {
                             versionStyle = style;
                         else //Otherwise, use KTL's default.
                             versionStyle += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
-                    } else //Dev mode, make version bright yellow/red font.
+                    } else //CLS mode, make version bright yellow/red font.
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
 
                     ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
                     $('#verButtonId').on('click touchstart', function (e) {
                         if (ktl.account.isDeveloper()) {
                             e.preventDefault();
-                            var ver = prompt('Which version to run, "prod" or "dev"?', 'prod');
-                            if (ver === 'prod' || ver === 'dev')
+                            var ver = prompt('Switch Mode - "prod" or "dev"?', 'prod');
+                            if (ver.toLowerCase() === 'prod' || ver.toLowerCase() === 'dev')
                                 ktl.core.switchVersion(ver);
                         }
                     })
@@ -5988,7 +5985,9 @@ function Ktl($) {
         $(document).on('knack-scene-render.any', function (event, scene) {
             $('.kn-current_user > span.first').on('dblclick', (e) => {
                 var userId = $('.kn-current_user').attr('id');
-                console.log('User ID:', userId);
+                console.log('\nApp:\t', app_id);
+                console.log('End:\t', app_id.substr(-4, 4));
+                console.log('User:\t', userId);
             })
         })
 
@@ -6552,7 +6551,7 @@ function Ktl($) {
                             ktl.iFrameWnd.setCfg({ iFrameReady: true });
                             ktl.wndMsg.startHeartbeat();
 
-                            //Delete iFrameWnd and re-create periodically.  This is to check for a SW update.
+                            //Delete iFrameWnd and re-create periodically.
                             setTimeout(function () {
                                 //ktl.log.clog('purple', 'Reloading frame);
                                 if (ktl.iFrameWnd.getiFrameWnd()) {
