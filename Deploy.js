@@ -16,27 +16,43 @@ const rl = readline.createInterface({
 });
 
 process.chdir('c:\\code');
+console.clear();
+loop();
 
-runScript('.\\Lib\\KTL\\NodeJS\\NodeJS_ACB_MergeFiles.js', ['-ktlpath=.\\Lib\\KTL', '-filename=.\\Lib\\KTL\\KTL_KnackApp'],
-    function (err) {
-        if (err) throw err;
-        console.log('\x1b[32m%s\x1b[0m', 'Merge complete');
-
-        rl.question('Do you want to minify (y/n) ?', function (minifyYes) {
-            if (minifyYes === 'y') {
-                minify(fullPathName)
-                    .then(function () {
-                        upload();
-                    })
-                    .catch(function (reason) {
-                        console.log('\x1b[31m%s\x1b[0m', reason);
-						})
-            } else {
-                upload();
-            }
-        });
-    }
-);
+function loop() {
+    rl.question('[1] Merge  [2] Minify  [3] Upload  [X] Exit\n> ', function (op) {
+        console.log('op =', op);
+        if (op === '1') {
+            runScript('.\\Lib\\KTL\\NodeJS\\NodeJS_ACB_MergeFiles.js', ['-ktlpath=.\\Lib\\KTL', '-filename=.\\Lib\\KTL\\KTL_KnackApp'],
+                function (err) {
+                    if (err) {
+                        console.log('Error during merge:\n', err, '\n\n');
+                        //throw err;
+                        loop();
+                    } else {
+                        console.log('\x1b[32m%s\x1b[0m', 'Merge complete\n');
+                        loop();
+                    }
+                }
+            );
+        } else if (op === '2') {
+            minify(fullPathName)
+                .then(function () {
+                    console.log('MINIFY COMPLETE - RESOLVED');
+                    loop();
+                })
+                .catch(function (reason) { console.log('\x1b[31m%s\x1b[0m', reason); })
+        } else if (op === '3') {
+            upload()
+                .then(function () { loop(); })
+                .catch(function (reason) { console.log('\x1b[31m%s\x1b[0m', reason); })
+        } else if (op.toLowerCase() === 'x') {
+            rl.close();
+            process.exit(code = 0)
+            //break;
+        }
+    })
+}
 
 function runScript(scriptPath, args, callback) {
     //Keep track of whether callback has been invoked to prevent multiple invocations
@@ -53,7 +69,6 @@ function runScript(scriptPath, args, callback) {
 
     //Execute the callback once the process has finished running
     process.on('exit', function (code) {
-        console.log('Exit code', code);
         if (invoked) return;
         invoked = true;
         var err = code === 0 ? null : new Error('exit code ' + code);
@@ -65,7 +80,6 @@ function minify(file) {
     return new Promise(function (resolve, reject) {
         process.chdir('c:\\code\\Lib\\KTL');
         var code = fs.readFileSync(file, 'utf8');
-
         const minifiedOutput = fileName + '.min.js';
         console.log('minifiedOutput =', minifiedOutput);
         var result = UglifyJS.minify(code, {
@@ -76,46 +90,44 @@ function minify(file) {
             //        root: 'https://ctrnd.com/Lib/KTL',
             //    }
         })
-
         if (result.error) { //Runtime error, or `undefined` if no error
             reject(result.error);
         } else {
             fs.writeFileSync(minifiedOutput, result.code);
             //fs.writeFileSync(minifiedOutput + '.map', result.map);
-            console.log('\x1b[32m%s\x1b[0m', 'Minification complete');
+            console.log('\x1b[32m%s\x1b[0m', 'Minification complete\n');
             resolve();
         }
     })
 }
 
-function upload(file) {
-    rl.question('Do you want to upload (y/n) ?', function (upload) {
-        if (upload === 'y') {
-            var ftp = childProcess.spawn('cmd.exe', ['/k', 'C:\\code\\FTP\\WinSCP.bat']);
-
-            ftp.stdout.on('data', function (data) {
-                console.log(data.toString().replace('\n', ''));
-                if (data.includes('Error')) {
-                    console.log('\x1b[31m%s\x1b[0m', '\nError'); //RED color
-                    console.log('\x1b[0m');
-                    ftp.kill();
-                } else if (data.includes('No session.')) {
-                    ftp.kill();
-                }
-            });
-
-            ftp.stderr.on('data', function (data) {
-                console.log('\x1b[31m%s\x1b[0m', 'stderr: ' + data);
+function upload() {
+    return new Promise(function (resolve, reject) {
+        var ftp = childProcess.spawn('cmd.exe', ['/k', 'C:\\code\\FTP\\WinSCP.bat']);
+        ftp.stdout.on('data', function (data) {
+            if (data.includes('Error')) {
+                console.log('\x1b[31m%s\x1b[0m', '\nError: ' + data); //RED color
+                ftp.exitCode = 1;
+                ftp.kill('SIGINT');
+            } else if (data.includes('No session.')) {
                 ftp.kill();
-            });
+            } else {
+                console.log(data.toString().replace('\n', ''));
+            }
+        });
 
-            ftp.on('exit', function (code) {
-                //TODO:  have better output on error.  Currently, code is always undefined.
-                //console.log('Child process exited with code ' + code);
-                process.exit(code = 0)
-            });
-        }
+        ftp.stderr.on('data', function (data) {
+            console.log('\x1b[31m%s\x1b[0m', 'stderr: ' + data);
+            ftp.kill();
+        });
 
-        rl.close();
-    });
+        ftp.on('exit', function (code, signal) {
+            if (code)
+                console.log('\x1b[31m%s\x1b[0m', 'Upload incomplete\n');
+            else
+                console.log('\x1b[32m%s\x1b[0m', 'Upload complete\n');
+
+            resolve();
+        });
+    })
 }
