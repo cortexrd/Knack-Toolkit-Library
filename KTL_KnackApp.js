@@ -178,10 +178,10 @@ var KnackApp = function ($, info = {}) {
     //Called by KTL
     function onSceneRender(event, scene) {
         if (ktl.core.isKiosk()) {
-            ktl.scenes.addVersionNumber(info, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
+            ktl.scenes.addVersionInfo(info, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
         } else {
             document.body.classList.add('show-menu');
-            ktl.scenes.addVersionNumber(info);
+            ktl.scenes.addVersionInfo(info);
         }
     }
 
