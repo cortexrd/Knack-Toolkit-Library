@@ -68,20 +68,20 @@ function minify(file) {
 
         const minifiedOutput = fileName + '.min.js';
         console.log('minifiedOutput =', minifiedOutput);
-
         var result = UglifyJS.minify(code, {
-            sourceMap: {
-                filename: minifiedOutput,
-                url: 'KTL.min.js.map',
-                root: 'https://ctrnd.com/Lib/KTL',
-            }
+            //No source maps for now - too buggy.
+            //    sourceMap: {
+            //        filename: minifiedOutput,
+            //        url: 'KTL.min.js.map',
+            //        root: 'https://ctrnd.com/Lib/KTL',
+            //    }
         })
 
         if (result.error) { //Runtime error, or `undefined` if no error
             reject(result.error);
         } else {
             fs.writeFileSync(minifiedOutput, result.code);
-            fs.writeFileSync(minifiedOutput + '.map', result.map);
+            //fs.writeFileSync(minifiedOutput + '.map', result.map);
             console.log('\x1b[32m%s\x1b[0m', 'Minification complete');
             resolve();
         }
