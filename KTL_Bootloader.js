@@ -1,6 +1,6 @@
-KnackInitAsync = function ($, callback) {
-    window.ktlStart = window.performance.now();
-    window.$ = $;
-    window.LazyLoad = LazyLoad;
-    LazyLoad.js(['https://ctrnd.com/Lib/KTL/KTL_BL.js'], function () { setCallback(callback); });
+KnackInitAsync = function ($, callback) { // Load the Knack Toolkit Library (KTL)
+    (window.LazyLoad = LazyLoad) && LazyLoad.js(['https://ctrnd.com/Lib/KTL/KTL_BL.js'], () => {
+        loadKtl($, callback, KnackApp, '' /*KTL version, leave blank to get latest*/, ''/*Set to "full" for non-minified code*/);
+    })
 };
+
