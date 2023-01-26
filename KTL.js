@@ -7191,7 +7191,7 @@ function Ktl($) {
             },
 
             fixBulkOpsAlignment: function (viewId) {
-                if (!viewId) return;
+                if (!viewId || document.querySelector('#' + viewId + ' tr.kn-tr-nodata')) return;
                 //For summary lines, prepend a space.
                 if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals && Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
                     var sel = '#' + viewId + ' tr.kn-table-totals';
@@ -7225,7 +7225,7 @@ function Ktl($) {
                                 $(this).find('td').attr('colspan', document.querySelectorAll('#' + viewId + ' thead th').length);
                             });
                         })
-                        .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
+                        .catch(function () { ktl.log.clog('purple', 'Failed waiting for table groups.', viewId); })
                 }
             },
         }
@@ -7366,5 +7366,5 @@ function Ktl($) {
 
 ////////////////  End of KTL /////////////////////
 
-window.ktlEnd = window.performance.now();
-console.log(`KTL took ${Math.trunc(window.ktlEnd - window.ktlStart)} ms`);
+//window.ktlEnd = window.performance.now();
+//console.log(`KTL took ${Math.trunc(window.ktlEnd - window.ktlStart)} ms`);
