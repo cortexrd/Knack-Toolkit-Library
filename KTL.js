@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.22';
+    const KTL_VERSION = '0.6.23';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1868,14 +1868,14 @@ function Ktl($) {
                     var text = e.target.value;
 
                     var field = Knack.objects.getField(fieldId);
-                    console.log('inputHasChanged - field.attributes =', field.attributes);
+                    //console.log('inputHasChanged - field.attributes =', field.attributes);
 
                     if (field.attributes.format) {
                         if (field.attributes.format.type === 'radios') {
-                            console.log('inputHasChanged - radios');
+                            //console.log('inputHasChanged - radios');
                             text = e.target.checked;
                         } else if (field.attributes.format.type === 'checkboxes') {
-                            console.log('inputHasChanged - checkbox');
+                            //console.log('inputHasChanged - checkbox');
                             text = e.target.checked;
                         }
                     }
@@ -5082,6 +5082,7 @@ function Ktl($) {
         var kioskButtons = {};
         var prevScene = '';
         var idleWatchDogDelay = 0;
+        var versionDisplayName = '';
 
         //App callbacks
         var onSceneRender = null;
@@ -5155,7 +5156,9 @@ function Ktl($) {
 
         if (!window.self.frameElement) {
             window.addEventListener('hashchange', (e) => {
-                ktl.core.waitSelector('h2', 5000).then(function () { $('h2').css('opacity', '0'); })
+                ktl.core.waitSelector('h2', 5000)
+                    .then(function () { $('h2').css('opacity', '0'); })
+                    .catch(function () { /*ignore*/ })
                 cleanupLinkMenus();
             }, false);
         }
@@ -5219,11 +5222,13 @@ function Ktl($) {
                 cfgObj.autoFocus && (autoFocus = cfgObj.autoFocus);
                 cfgObj.kioskButtons && (kioskButtons = cfgObj.kioskButtons);
                 cfgObj.onSceneRender && (onSceneRender = cfgObj.onSceneRender);
+                cfgObj.versionDisplayName && (versionDisplayName = cfgObj.versionDisplayName);
             },
 
             getCfg: function () {
                 return {
                     idleWatchDogDelay,
+                    versionDisplayName,
                 }
             },
 
@@ -5516,20 +5521,19 @@ function Ktl($) {
                 //By default, version numbers are added at top right of screen
                 if ($('#verButtonId').length === 0) {
                     var ktlVer = ktl.core.getCfg().enabled.showKtlInfo ? '    KTL v' + KTL_VERSION : '';
-                    var appName = Knack.app.attributes.name.toUpperCase();
-                    var versionInfo = appName + '    v' + APP_VERSION + ktlVer + (info.hostname ? '    ' + info.hostname : '');
+                    var versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; top:5px; right:0px; border-style:none; padding-bottom:2px';
 
+                    if (style) //If style already exist, use it as is, otherwise, use KTL's default.
+                        versionStyle = style;
 
-                    var versionStyle = 'white-space: pre; margin-left: 10px; font-size:small; position:absolute; top:5px; right:10px; background-color:transparent; border-style:none';
-
-                    //if (!ktl.storage.lsGetItem('dev', true)) {
+                    var versionInfo = ' v' + APP_VERSION + ktlVer + (info.hostname ? '    ' + info.hostname : '');
                     if (localStorage.getItem(window.lsShortName + 'dev') === null) { //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
-                        if (style) //If style already exist, use it as is.
-                            versionStyle = style;
-                        else //Otherwise, use KTL's default.
-                            versionStyle += '; color:darkslategray'; //Make this color configuratble or automatic based on theme.
-                    } else //Dev mode, make version bright yellow/red font.
+                        versionStyle += '; color:#0008; background-color:#FFF3;';
+                        versionInfo = ktl.scenes.getCfg().versionDisplayName + versionInfo;
+                    } else { //Dev mode, make version bright yellow/red font.
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
+                        versionInfo = Knack.app.attributes.name.toUpperCase() + versionInfo;
+                    }
 
                     ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
                     $('#verButtonId').on('click touchstart', function (e) {
@@ -5544,6 +5548,8 @@ function Ktl($) {
                     //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
                     if (ktl.core.isKiosk() && !ktl.scenes.isiFrameWnd())
                         $('body').css({ 'padding-top': '15px' });
+                    else
+                        $('body').css({ 'padding-top': '' });
                 }
             },
 
