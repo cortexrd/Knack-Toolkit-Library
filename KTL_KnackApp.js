@@ -150,6 +150,8 @@ var KnackApp = function ($, info = {}) {
                         scenesToExclude: [/*CHANGE_SHIFT_SCN, MESSAGING_SCN*/],
                     },
                 },
+
+                versionDisplayName: Knack.app.attributes.name.toUpperCase(),
             })
 
             ktl.userFilters.setCfg({
