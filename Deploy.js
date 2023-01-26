@@ -82,22 +82,29 @@ function minify(file) {
         var code = fs.readFileSync(file, 'utf8');
         const minifiedOutput = fileName + '.min.js';
         console.log('minifiedOutput =', minifiedOutput);
-        var result = UglifyJS.minify(code, {
-            //No source maps for now - too buggy.
-            //    sourceMap: {
-            //        filename: minifiedOutput,
-            //        url: 'KTL.min.js.map',
-            //        root: 'https://ctrnd.com/Lib/KTL',
-            //    }
+
+        rl.question('Create Source Maps? (y/[n])\n> ', function (op) {
+            var srcMapOpt = {};
+            if (op.toLowerCase() === 'y')
+                srcMapOpt = {
+                    sourceMap: {
+                        filename: minifiedOutput,
+                        url: 'KTL.min.js.map',
+                        root: 'https://ctrnd.com/Lib/KTL',
+                    }
+                }
+
+            var result = UglifyJS.minify(code, srcMapOpt)
+            if (result.error) { //Runtime error, or `undefined` if no error
+                reject(result.error);
+            } else {
+                fs.writeFileSync(minifiedOutput, result.code);
+                if (result.map)
+                    fs.writeFileSync(minifiedOutput + '.map', result.map);
+                console.log('\x1b[32m%s\x1b[0m', 'Minification complete\n');
+                resolve();
+            }
         })
-        if (result.error) { //Runtime error, or `undefined` if no error
-            reject(result.error);
-        } else {
-            fs.writeFileSync(minifiedOutput, result.code);
-            //fs.writeFileSync(minifiedOutput + '.map', result.map);
-            console.log('\x1b[32m%s\x1b[0m', 'Minification complete\n');
-            resolve();
-        }
     })
 }
 
