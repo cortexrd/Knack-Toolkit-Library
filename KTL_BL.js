@@ -1,5 +1,5 @@
 //KTL Bootloader, second stage: Prod and Dev modes switcher.
-window.ktlStart = window.performance.now();
+//window.ktlStart = window.performance.now();
 window.lsShortName = Knack.app.attributes.name.substr(0, 6).replaceAll(' ', '') + '_' + app_id.substr(-4, 4) + '_';
 var ktlSvr = 'https://ctrnd.com/'; //CDN is Cortex R&D Inc server.
 var callback;
@@ -14,6 +14,7 @@ function loadKtl($, _callback, _KnackApp, _ktlVersion = '', _fullCode = '') {
 
     var prod = (localStorage.getItem(window.lsShortName + 'dev') === null);
     if (!prod) {
+        ktlVersion = '';
         var fileName = localStorage.getItem(window.lsShortName + 'fileName');
         !fileName && (fileName = Knack.app.attributes.name);
         ktlSvr = 'http://localhost:3000/';
@@ -26,7 +27,7 @@ function loadKtl($, _callback, _KnackApp, _ktlVersion = '', _fullCode = '') {
     LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']);
     LazyLoad.css([ktlSvr + 'Lib/KTL/KTL.css'], () => { });
     var ktlFile = ktlSvr + 'Lib/KTL/KTL' + (ktlVersion ? '-' + ktlVersion : '') + (_fullCode === 'full' ? '' : '.min') + '.js';
-    console.log('ktlFile =', ktlFile);
+    //console.log('ktlFile =', ktlFile);
     LazyLoad.js([ktlFile], () => {
         if (typeof Ktl === 'function') {
             if (prod) {
