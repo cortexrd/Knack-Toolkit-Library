@@ -1,15 +1,15 @@
 //KTL Bootloader, second stage: Prod and Dev modes switcher.
 //window.ktlStart = window.performance.now();
 window.lsShortName = Knack.app.attributes.name.substr(0, 6).replaceAll(' ', '') + '_' + app_id.substr(-4, 4) + '_';
-var ktlSvr = 'https://ctrnd.com/'; //CDN is Cortex R&D Inc server.
-var callback;
-var KnackApp;
-var ktlVersion = '';
 function loadKtl($, _callback, _KnackApp, _ktlVersion = '', _fullCode = '') {
+    var ktlSvr = 'https://ctrnd.com/'; //CDN is Cortex R&D Inc server.
+    var callback;
+    var ktlVersion = '';
+
     window.$ = $;
     window.jQuery = $; //For BlockUI
     callback = _callback;
-    KnackApp = _KnackApp;
+    window.KnackApp = _KnackApp;
     ktlVersion = _ktlVersion;
 
     var prod = (localStorage.getItem(window.lsShortName + 'dev') === null);
@@ -20,6 +20,8 @@ function loadKtl($, _callback, _KnackApp, _ktlVersion = '', _fullCode = '') {
         ktlSvr = 'http://localhost:3000/';
         var appUrl = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
         appUrl = encodeURI(appUrl);
+        if (typeof KnackApp === 'function')
+            delete KnackApp;
         LazyLoad.js([appUrl], () => { })
     }
 
@@ -50,7 +52,7 @@ function loadKtl($, _callback, _KnackApp, _ktlVersion = '', _fullCode = '') {
 
             callback();
         } else
-            if (confirm('Error - can\'t load KTL.  Do you want to switch to Production?')) {
+            if (confirm('Error - can\'t load KTL.  Do you want to switch to Production?\n' + ktlFile)) {
                 localStorage.removeItem(window.lsShortName + 'dev');
                 location.reload(true);
             }
