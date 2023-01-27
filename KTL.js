@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.6.23';
+    const KTL_VERSION = '0.7.0';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1064,17 +1064,10 @@ function Ktl($) {
                 if (e.target.id && e.target.selectedOptions[0]) {
                     var text = e.target.selectedOptions[0].innerText;
                     var recId = e.target.selectedOptions[0].value; //@@@ TODO: create a function called hasRecIdFormat() to validate hex and 24 chars.
-                    if (text !== '' && text !== 'Select' && text !== 'Type to search') {
-                        text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
+                    if (text !== '' && text !== 'Select' && text !== 'Type to search')
                         processFieldChanged({ text: text, recId: recId, e: e });
-                    }
                 }
             })
-
-            function findLongestWord(str) {
-                var longestWord = str.split(/[^a-zA-Z0-9]/).sort(function (a, b) { return b.length - a.length; });
-                return longestWord[0];
-            }
 
             //Calendars
             $('.knack-date').datepicker().change(function (e) {
@@ -1086,7 +1079,6 @@ function Ktl($) {
 
             //For text input changes, see inputHasChanged
             function processFieldChanged({ text: text, recId: recId, e: e }) {
-                //console.log('processFieldChanged', text, recId, e);
                 try {
                     var viewId = e.target.closest('.kn-view').id;
                     var fieldId = document.querySelector('#' + e.target.id).closest('.kn-input').getAttribute('data-input-id')
@@ -1921,8 +1913,15 @@ function Ktl($) {
             //For KTL internal use.  Add Change event handlers for Dropdowns, Calendars, etc.
             onFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 if (!fieldsToExclude.includes(fieldId)) {
+                    text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
+
                     recId && (text += '-' + recId);
                     saveFormData(text, viewId, fieldId);
+                }
+
+                function findLongestWord(str) {
+                    var longestWord = str.split(/[^a-zA-Z0-9]/).sort(function (a, b) { return b.length - a.length; });
+                    return longestWord[0];
                 }
             },
         }
