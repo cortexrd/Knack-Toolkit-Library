@@ -4,8 +4,15 @@
         Features](#zero-config-needed-for-basic-features)
 -   [No time to read all this now - How about a quick
     tryout?](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
--   [Features](#features)
-    -   [Bootloader](#bootloader)
+-   [How to use the KTL](#how-to-use-the-ktl)
+    -   [About Prod and Dev modes](#about-prod-and-dev-modes)
+    -   [Prod Mode](#prod-mode)
+    -   [Dev Mode](#dev-mode)
+    -   [Hybrid Mode](#hybrid-mode)
+    -   [Switching Modes](#switching-modes)
+    -   [Cloning the Source Code](#cloning-the-source-code)
+-   [KTL Features](#ktl-features)
+    -   [Loader](#loader)
     -   [Core](#core)
     -   [Storage](#storage)
     -   [Fields](#fields)
@@ -22,27 +29,19 @@
     -   [Windows Messaging](#windows-messaging)
     -   [System Info](#system-info)
     -   [System Colors](#system-colors)
--   [How to use KTL](#how-to-use-ktl)
-    -   [Folder Structure](#folder-structure)
-    -   [KTL Modes](#ktl-modes)
-    -   [ACB Mode -- "All Code in
-        Builder"](#acb-mode-all-code-in-builder)
-    -   [CLS Mode -- "Code on Local
-        Server"](#cls-mode-code-on-local-server)
-    -   [Hybrid Mode - For Production and Development at same
-        time!](#hybrid-mode---for-production-and-development-at-same-time)
-    -   [Switching Modes](#switching-modes)
--   [Editing KTL_KnackApp.js](#editing-ktl_knackapp.js)
+-   [Turning off Features](#turning-off-features)
+    -   [Editing KTL_KnackApp.js](#editing-ktl_knackapp.js)
 -   [Advanced Features](#advanced-features)
     -   [Setup](#setup-2)
+-   [Additional utilities](#additional-utilities)
 -   [Future Improvements](#future-improvements)
--   [Conlusion](#conlusion)
+-   [Conclusion](#conclusion)
 
 # Introduction
 
 **Knack Toolkit Library**
 
-v0.6.22 - pre-release
+v0.7.1 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -64,6 +63,9 @@ provide many nice additions to your app:
     outage
 
 -   sorted menus
+
+-   keyboard support in image viewer: left/right arrows for next/prev,
+    esc to exit.
 
 -   lightly colorized inline-editable fields for easy identification
 
@@ -97,7 +99,7 @@ provide many nice additions to your app:
 
 -   numeric pre-validation
 
--   force uppercase on desired fields
+-   force uppercases on desired fields
 
 -   auto-focus on first field of a form or search field in a table
 
@@ -107,40 +109,280 @@ provide many nice additions to your app:
 
 -   debug window for embedded devices
 
-Click the following link if you're interested to know more about
+Click the following link if you are interested to know more about
 [Advanced Features](#advanced-features).
 
 # No time to read all this now - How about a quick tryout?
 
 If you want to try/use the basic, default setup version of the KTL, all
-you need to do is copy the content of those two files:
-[**KTL_KnackApp_ACB.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp_ACB.js)
-and
-[**KTL_Knack_ACB.css**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp_ACB.css)
-to their respective panes in your Builder. If you already have your own
-code, it will not conflict with the KTL. Just move it between these
-lines at the end:
+you need to do is copy the **five lines** of code from this file
+[**KTL_Loader.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Loader.js)
+at the **top** of the Javascript pane of the Builder.
 
-//My App code - BEGIN
+If you already have your own code, it will not conflict with the KTL.
+Just leave it after those added lines.
 
-// \.....your code here\....
+If you do not like some features, you can turn them off individually --
+[see here](#turning-off-features).
 
-//My App code -- END
+# How to use the KTL
 
-For your CSS code vs KTL's, the placement does not matter. But it is
-recommended to keep each of them grouped together, with clearly
-identified delimiters.
+There are three modes of operation:
 
-If you don't like a feature, don't worry. It's possible to turn it off
-by setting its flag to false in the function **ktl.core.setCfg**, in the
-**//KTL Setup** section of the **KTL_KnackApp.js** file.
+-   Production ("Prod")
 
-# Features
+-   Development ("Dev")
+
+-   Hybrid
+
+## About Prod and Dev modes
+
+Traditionally, all your app code resides in the Builder\'s Javascript
+pane. This is what we refer to as the Prod mode and is the default.
+
+But with the KTL, it is now possible to switch to Dev mode instantly to
+allow loading your Javascript and CSS code at run-time directly from
+your hard drive. This means you can now code and save on your
+workstation, without having to copy/paste the code to the Builder every
+time you want to test a change.
+
+This mode enables you (the developer) to work more efficiently by using
+your favorite code editor with all its bells and whistles, instead of
+the basic Builder\'s Javascript pane editor. You must install
+**Node.js** (<https://nodejs.org>) on your computer and run the
+**NodeJS_FileServer.js** script provided. Then, each time you save your
+code, all you have to do is refresh the browser to see the changes take
+effect immediately. In this mode, writing and testing code simply won't
+ever get any faster.
+
+Another great advantage is that it opens the possibility of teamwork.
+Currently, only one developer at a time can edit the code. With the
+Loader and Node.js file server, there is no conflict because each
+developer works with his own \"sandboxed\" local copy and pulls external
+changes whenever he/she chooses to do so.
+
+**Furthermore and most importantly**, you can simultaneously work on a
+production app, running officially released and tested code, while you
+run development code locally -- yes, two different code revisions at the
+same time, without conflicting! This means that the classic method of
+going in Knack's Builder to create a sandbox copy of your app to develop
+and experiment with new code is not required anymore - or a lot less
+often. When your app becomes huge, creating a copy can take a whole day
+sometimes.
+
+If you're interested in peeking under the hood and understanding how the
+Dev/Prod mode is selected, see the file
+[KTL_Start.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Start.js).
+
+## Prod Mode
+
+This is the traditional mode that we\'re all used to, i.e. when all the
+code resides in the Builder\'s Javascript and CSS panes. **If you do not
+have coding experience, this is for you**.
+
+### Pros
+
+-   Easier and faster setup, no need to install anything, except the 5
+    lines of the
+    [Loader](#no-time-to-read-all-this-now---how-about-a-quick-tryout).
+
+-   Other users can always see your changes.
+
+-   You can evaluate your code on any device, not limited to your
+    workstation.
+
+### Cons
+
+-   Slower than Dev mode and more tedious to work, due to the redundant
+    merge/copy/paste/save sequence required each time you make a change.
+
+-   Can be risky if used in production (when the app is being used in a
+    live and consequential context) since your development code always
+    takes effect immediately. You must have good coding experience and
+    know exactly what you\'re doing.
+
+To use this mode, you have two options:
+
+1)  Use the default, basic, ready-to-use setup
+    [here](#zero-config-needed-for-basic-features)
+
+2)  If you want to customize the KTL's behavior or disable some
+    features, edit a copy of the
+    [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js)
+    file and paste that code in the Javascript pane, after the Loader.
+    [Follow the procedure here](#editing-ktl_knackapp.js).
+
+\*Note about **KTL_KnackApp.js**: throughout the document, we will refer
+to this file name as the "app code", but you can substitute it to
+anything that would better match your app's name. As long as you modify
+the merge utility files accordingly, if you are planning to use it. See
+the **-filename** parameter in the batch file.
+
+Open the KTL_KnackApp_Prod.js file, copy its content to your Javascript
+pane in the Builder and save.
+
+### Setup
+
+You will need to modify the KTL_KnackApp.js file to match your needs if
+you want to go beyond the basic default setup. [Follow the procedure
+here](#editing-ktl_knackapp.js).
+
+## Dev Mode
+
+This mode provides much faster code-save-test cycles and is typically
+used when you have frequent code changes, and where you don\'t need to
+show your results to others until a milestone is reached. It also
+enables collaborative coding on the same app.
+
+It requires the installation of Node.js as a basic local file server
+that the Loader uses to fetch the KTL files and your app\'s code. The
+Builder\'s Javascript pane only needs to contain the Loader code (5
+lines!). You can also have the full Prod code without conflict. Although
+this means a few extra milliseconds of loading time, it allows you to
+leverage the powerful [Hybrid Mode](#hybrid-mode).
+
+### Pros
+
+-   Allows very fast \"code-save-test\" cycles.
+
+-   Allows multi-developer coding collaboration without conflict.
+
+-   Allows Hybrid Mode for development and production code running at
+    same time.
+
+### Cons
+
+-   Requires a one-time Node.js installation and setup.
+
+-   Other users or clients cannot see the updates until you merge all
+    code and switch to Prod Mode.
+
+-   You cannot evaluate your code on devices other than your
+    workstation, running the file server.
+
+### Multi-Developers Collaboration
+
+With the Dev mode, it is now possible to have many developers write code
+independently on the same app since they are working on a "sandboxed"
+copy of their code. Of course, for other developers to see your changes,
+they need to pull/merge your new code with theirs, and vice-versa for
+you to see their changes. GitHub is excellent at that.
+
+### Setup
+
+Install **Node.js** (<https://nodejs.org>) on your workstation. Just the
+basic installation, no optional component is needed (Chocolatey).
+
+Validate installation by typing **node -v** in a command prompt or
+terminal window. You should see the version number displayed.
+
+1)  Edit the file [KTL_KnackApp.js using this
+    procedure](#editing-ktl_knackapp.js).
+
+2)  Run the **FileServer.bat** utility.
+
+3)  Alternatively to the batch file, you can also open a command prompt
+    or a shell, go to the **code** folder (assuming default folder
+    structure) and launch **node NodeJS_FileServer.js**.
+
+4)  Each time you refresh your app\'s page, you will see logs showing
+    the path and file name requested.
+
+5)  Open a browser to your Knack app.
+
+6)  Check console logs to see if all is looking good.
+
+## Hybrid Mode
+
+Traditionally, Knack developers have to go in the Builder to create a
+temporary copy of their production app to experiment freely without
+fearing serious consequences or disruption. While this is still
+desirable in many cases, you now have another option: **Hybrid Mode**.
+Thanks to the Loader, a hybrid setup is possible with both the Prod and
+Dev modes at same time. This enables you to run development code in a
+production environment without users being affected by it.
+
+What happens is that the Loader will use the stable and released code
+from the Prod in the Javascript pane by default for all users. But if it
+detects the "development flag" in your localStorage, it will switch to
+the Dev code... **but on your workstation only**.
+
+With Hybrid Mode, it is also possible to switch back and forth between
+the Prod and Dev modes instantly. See [Switching
+Modes](#switching-modes) in the next section.
+
+## Switching Modes
+
+Once you've mastered both modes, you'll typically spend 95% of the time
+in Dev mode for its efficiency and speed, and 5% in Prod mode to show
+updates to your client.
+
+You can switch modes using two methods:
+
+1)  If you have the **showAppInfo** flag enabled **and** your account
+    has the "**Developer**" role, it will add the version info on the
+    top-right of the screen. Clicking on it will show a prompt with
+    this: ***Which version to run, \"prod\" or \"dev\"?*** Type in the
+    desired mode and click ok. The page will refresh itself
+    automatically.
+
+2)  Add a key to the localStorage for your app with the name followed by
+    **\_dev** like this: **KTL_KnackApp_dev**. Leave the value empty
+    since not used.
+
+Once in the Dev mode, you will see the version shown with bright
+yellow/red as an attention getter that indicates you are in Dev mode.
+
+## Cloning the Source Code
+
+If you're interested in collaborating with the KTL project or just study
+the code and "borrow" a few tricks, you will need to fetch all the files
+from GitHub to your workstation. The best way to do it is to install
+GitHub and "clone" the repository locally. You will find this under the
+green "\< \> Code" button at top right of this page. Alternatively, you
+can use "Download ZIP" under that same button. In that case, you will
+need to remove the "**-master**" at the end of the folder
+Knack-Toolkit-Library-master.
+
+You will end up with the following folder structure on your favorite
+"code" folder. It will keep each app's code separated, a single set of
+shared libraries, and everything easy to maintain with a revision
+control tool like GitHub.
+
+.code\\Lib\\KTL\\KTL.js
+
+.code\\Lib\\KTL\\KTL.css
+
+.code\\Lib\\KTL\\KTL_KnackApp.js
+
+.code\\Lib\\KTL\\KTL_Loader.js
+
+.code\\Lib\\KTL\\KTL_Start.js
+
+.code\\Lib\\KTL\\NodeJS\\NodeJS_MergeFiles.js
+
+.code\\Lib\\KTL\\NodeJS\\NodeJS_FileServer.js
+
+.code\\Lib\\KTL\\Docs
+
+And more...
+
+You can also add your own files, like this:
+
+.code\\MyKnackApps\\App1\\App1.js
+
+.code\\MyKnackApps\\App2\\App2.js
+
+.code\\MyKnackApps\\App3\\App3.js
+
+.code\\Lib\\SomeOtherCoolLib\\CoolCode.js
+
+# KTL Features
 
 The code is organized by specific feature categories, and here\'s the
 complete list:
 
--   Bootloader
+-   Loader
 
 -   Core
 
@@ -174,64 +416,20 @@ complete list:
 
 -   System Colors
 
-In the next section, we'll go through each one and see what they can do,
-with the list of all available functions to you as a developer, if ever
-you're interested in trying out the more advanced features.
+In the next section, we will go through each one and see what they can
+do, with the list of all available functions to you as a developer, if
+ever you're interested in trying out the more advanced features.
 
-## Bootloader
+## Loader
 
 ### Usage
 
-The bootloader is the entry point of all code, including the KTL and
-your app-specific code. It is very technical, and the average user will
-not really need to understand it. Basically, it does two things:
-
-### External library loading
-
-First, I wish to say a big *\"thank you\"* to
-[**Soluntech**](https://www.soluntech.com/) for their gracious
-permission to use a portion of their code to manage the dynamic library
-loading. This is the cornerstone that allowed kickstarting the KTL
-project. In short, it uses a list of libraries your app will need, and
-automatically loads them with the LazyLoad function. Again, you won\'t
-need to understand how it works since the setup is already done.
-
-### Developing your code locally -- aka [CLS mode](#how-to-use-ktl)
-
-Traditionally, i.e. without the Bootloader, all your app code resides in
-the Builder\'s Javascript and CSS panes. But if you leverage the
-Bootloader, you'll be able to load your Javascript and CSS code from
-your hard drive instead, at run-time. This means you can now code and
-save directly on your workstation, without having to copy/paste the code
-to the Builder every time you want to test a change.
-
-This mode enables you (the developer) to work more efficiently by using
-your favorite code editor with all its bells and whistles, instead of
-the basic Builder\'s Javascript pane editor. You must install
-**Node.js** (<https://nodejs.org>) on your computer and run the
-**NodeJS_FileServer.js** script provided. Then, each time you save your
-code, all you have to do is refresh the browser to see the changes take
-effect immediately. In this mode, writing and testing code simply won't
-ever get any faster.
-
-Another great advantage is that it opens the possibility of teamwork.
-Currently, only one developer at a time can edit the code. With the
-bootloader and Node.js file server, there is no conflict because each
-developer works with his own \"sandboxed\" local copy and pulls external
-changes whenever he/she chooses to do so.
-
-**Furthermore and most importantly**, you can simultaneously work on a
-production app, running officially released and tested code, while you
-run development code locally -- yes, two different code revisions at the
-same time, without conflicting! This means that the classic method of
-going in Knack's Builder to create a sandbox copy of your app to develop
-and experiment with new code is not required anymore - or a lot less
-often. When your app becomes huge, creating a copy can take a whole day
-sometimes.
+This is where the KTL is initialized and where the [Dev or
+Prod](#about-prod-and-dev-modes) mode is selected.
 
 ### Functions
 
--   Bootloader has no exposed functions.
+-   The Loader has no exposed functions.
 
 ## Core
 
@@ -337,10 +535,14 @@ internally, but also available to your app.
 ### A note about knAPI
 
 While Inline editing is mandatory for PUT (edit) operations on a table,
-it may not be desirable to let users modify data manually. You can
-disable these edits dynamically by adding the view title flag
+sometimes it may not be desirable to let users modify data manually. You
+can disable these inline edits by adding the view title flag
 **NO_INLINE**. This allows the API calls to work properly, while
 disabling the mouse actions.
+
+\* Note about security: use this flag with caution as it only disables
+the user interface. Someone with coding skills and bad intentions could
+still modify the data using commands in the console.
 
 ## Storage
 
@@ -373,10 +575,10 @@ letters.
 -   **setCfg**: Set all callbacks to your app, like keypress event
     handler and field value changed. Use the textAsNumeric array to
     specify which fields must be considered as numeric even though you
-    have set them up as Short Text in Knack. This can be very useful in
-    some special use cases. For example, you can dynamically change this
-    to allow a unique Account Role to enter letters, while all others
-    can only enter digits.
+    have set them up as Short Text in Knack. This can be particularly
+    useful in specific use cases. For example, you can dynamically
+    change this to allow a unique Account Role to enter letters, while
+    all others can only enter digits.
 
 -   **convertNumToTel**: All numeric fields will automatically be
     converted to telephone type. This has no negative or perceptible
@@ -441,7 +643,7 @@ In the Builder, when you edit a field in the schema view, there's a
 Description text box, where you can put your own notes, as a developer.
 Now, this can also be used by the KTL to trigger special behavior. You
 can add the flag at the end of your description, or on a separate line,
-as you wish. Here's the list:
+as you wish. Here is the list:
 
 -   **TO_UPPERCASE**: to convert text to uppercase in real-time
 
@@ -494,7 +696,7 @@ Provides view-related features.
     choices object, with these options: exact match, show popup for
     outcome. Currently supports 3 different states of the dropdown:
     single selection, less than 500 and more than 500 entries. Will auto
-    select the found result it it's an exact match. Otherwise returns
+    select the found result it it is an exact match. Otherwise returns
     all found items and lets you manually choose from the results list.
     Multiple selections are more complex and will be supported
     eventually.
@@ -507,7 +709,7 @@ Provides view-related features.
 -   **removeTableColumns**: Will hide or remove columns from a table.
     Pass it an array of field ids, and/or array of columns indexes to
     remove. Also works with action links, which is useful to remove a
-    Delete action if the logged-in role shouldn\'t be allowed for
+    Delete action if the logged-in role should not be allowed for
     example.
 
 -   **findFirstExistingField**: Pass a list of field IDs and returns the
@@ -573,6 +775,10 @@ For Kiosk mode only, adds a Done button.
 Disables inline editing for the user, while still enabled in Builder for
 API calls.
 
+\* Note about security: use this flag with caution as it only disables
+the user interface. Someone with coding skills and bad intentions could
+still modify the data using commands in the console.
+
 #### DATETIME_PICKERS
 
 Six new fields will appear at the top of your table view: **From**,
@@ -584,7 +790,7 @@ will not be affected, leaving you more flexibility. The focus is
 conveniently placed on the last field used so you can use the up/down
 arrows to scroll quickly through months and visualize data. This is also
 compatible with additional filter fields, provided that the AND operator
-is used. Once you have a filter that you like, it's also possible to
+is used. Once you have a filter that you like, it is also possible to
 save it as a [User Filter](#user-filters).
 
 #### REFRESH_VIEW
@@ -606,11 +812,11 @@ processViewFlags.
 ### Using view's Description text box as flags to trigger special behavior
 
 In the Builder, when you edit a view, there's a Description text box,
-where you can put additional information to the user. Now, this can also
-be used by the KTL to trigger special behavior. You can add your flags
-at the end of your description, or on a separate line, as you wish, as
-long as it's at the end of your text. Currently, only tables are
-supported. Here's the list:
+where you can put additional information to the user. Now, the KTL can
+also use this to trigger special behavior. You can add your flags at the
+end of your description, or on a separate line, as you wish, as long as
+it's at the end of your text. Currently, only tables are supported. Here
+is the list:
 
 -   **NO_FILTER=field_x, field_y, field_z** This will prevent filtering
     on these fields, even if they are visible in the table. Each must
@@ -767,7 +973,7 @@ is shown: **Public: Yes/No**. Clicking on it will broadcast the new
 filter to all users. Within about 20 seconds, they will see it appear on
 all opened pages with that view. The Public Filters are always located
 to the left of the other filters with a slightly increased color and
-kept in the same order as the creator's. They can't be renamed, deleted
+kept in the same order as the creator's. They cannot be renamed, deleted
 or re-ordered by regular users.
 
 ### Functions
@@ -782,7 +988,7 @@ or re-ordered by regular users.
 ### Usage
 
 There are two types of bulk operations: Bulk Edit and Bulk Delete. As
-their names imply, they provide the ability to perform several record
+their names imply, they provide the ability to perform multiple record
 modifications or delete operations in batches. Both work with table
 views and have a global flag to enable each of them separately.
 
@@ -868,7 +1074,7 @@ Provides various settings for the currently logged-in account. Some are
 built-in, and more can be added by your app. You can control which
 settings can be modified by the user and they can access them in the
 Account Settings page. See the [User Preferences setup
-procedure](#account-logging).
+procedure](#user-preferences-1).
 
 ### Functions
 
@@ -1064,234 +1270,16 @@ variations for KTL features.
 -   **rgbToHsl**, **hslToRgb**, **rgbToHsv**, **hsvToRgb**,
     **hexToRgb**: Various color conversion utilities.
 
-# How to use KTL
+# Turning off Features
 
-The first thing to do is to get all the files on your workstation. The
-best way to do it is to install GitHub and "clone" the repository
-locally. You will find this under the green "\< \> Code" button at top
-right of this page. Alternatively, you can use "Download ZIP" under that
-same button. In that case, you will need to remove the "**-master**" at
-the end of the folder Knack-Toolkit-Library-master.
+You can turn off a feature by setting its flag to false in the function
+**ktl.core.setCfg**, in the **//KTL Setup** section of the
+**KTL_KnackApp.js** file.
 
-## Folder Structure
+For example, you don't want to see the version info at top-right of the
+page, set this to false: **showAppInfo: false**
 
-The following folder structure will be generated by default from the
-repository. It will keep each app's code separated, a single set of
-shared libraries, and everything easy to maintain with a revision
-control tool like GitHub.
-
-.code\\MyKnackApps\\App1\\App1.js
-
-.code\\MyKnackApps\\App2\\App2.js
-
-.code\\MyKnackApps\\App3\\App3.js
-
-.code\\Lib\\KTL\\KTL_Bootloader.js
-
-.code\\Lib\\KTL\\KTL.js
-
-.code\\Lib\\KTL\\KTL.css
-
-.code\\Lib\\KTL\\KTL_KnackApp.js
-
-.code\\Lib\\KTL\\NodeJS\\NodeJS_ACB_MergeFiles.js
-
-.code\\Lib\\KTL\\NodeJS\\NodeJS_FileServer.js
-
-.code\\Lib\\SomeOtherCoolLib\\CoolCode.js
-
-## KTL Modes
-
-There are three possible modes for using KTL: **ACB, CLS** and
-**Hybrid**.
-
-## ACB Mode -- "All Code in Builder"
-
-This is the traditional mode that we\'re all used to, i.e. when all the
-code resides in the Builder\'s Javascript and CSS panes.
-
-### Pros
-
--   Easier and faster setup, no need to install anything for default
-    ACB.
-
--   Other users can always see your changes.
-
--   You can test your code on any device, not limited to your
-    workstation.
-
-### Cons
-
--   Slower than CLS mode and more tedious to work, due to the redundant
-    merge/copy/paste/save sequence required each time you make a change.
-
--   Can be risky if used in production (when the app is being used in a
-    live and consequential context) since your development code always
-    takes effect immediately. You must have good coding experience and
-    know exactly what you\'re doing.
-
-To use this mode, you have two options:
-
-1)  Use the default, basic, ready-to-use setup
-    [here](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
-
-2)  Use your custom app code and generate the ACB file yourself. This is
-    described in the following section.
-
-### How to generate your own ACB file
-
-First, you'll need to install **Node.js** (<https://nodejs.org>) on your
-workstation. Just the basic installation, no optional component is
-needed.
-
-Then, the custom ACB file can be generated using the
-[NodeJS_ACB_MergeFiles.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/NodeJS/NodeJS_ACB_MergeFiles.js)
-merge utility provided in the NodeJS folder.
-
-This script can be invoked manually in a command prompt or shell, but
-it's easier to run the batch file provided:
-[Merge_ACB.bat](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Merge_ACB.bat)
-. The extension .bat is only for Windows but it can be rewritten a .sh
-(shell script) for Linux and MacOS. See the .bat file for more details
-about the script parameters.
-
-These three files will be merged together:
-
-1)  [KTL_Bootloader.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Bootloader.js)
-
-2)  [KTL.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL.js)
-
-3)  [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js)
-
-The output file is
-[KTL_KnackApp_ACB](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp_ACB.js).
-
-\*Note about **KTL_KnackApp.js**: throughout the document, we'll refer
-to the app code file as this one, but you can substitute it to anything
-that would better match your app name. As long as you modify the merge
-utilities accordingly. See the **-filename** parameter in the batch
-file.
-
-Open the KTL_KnackApp_ACB.js file, copy its content to your Javascript
-pane in the Builder and save.
-
-Open the KTL_KnackApp_ACB.css file, copy its content to your CSS pane in
-the Builder and save.
-
-\*Note that eventually, when we reach the first official release, these
-two files will be hosted on my Cortex R&D's CDN, and all these copy
-operations won't be required anymore.
-
-### Setup
-
-You will need to modify the KTL_KnackApp.js file to match your needs if
-you want to go beyond the basic default setup. [Follow the procedure
-here](#switching-modes).
-
-## CLS Mode -- "Code on Local Server"
-
-This mode provides much faster code-save-test cycles and is typically
-used when you have frequent code changes, and where you don\'t need to
-show your results to others until a milestone is reached. It also
-enables collaborative coding on the same app.
-
-It requires the installation of Node.js as a basic local file server
-that the Bootloader uses to fetch the KTL files and your app\'s code.
-The Builder\'s Javascript pane only needs to contain the Bootloader code
-(\~240 lines!). You can also have the full ACB code without conflict.
-Although this means a few extra milliseconds of loading time, it allows
-you to leverage the powerful [Hybrid
-Mode](#hybrid-mode---for-production-and-development-at-same-time).
-
-### Pros
-
--   Allows very fast \"code-save-test\" cycles.
-
--   Allows multi-developer coding collaboration without conflict.
-
--   Allows Hybrid Mode for development and production code running at
-    same time.
-
-### Cons
-
--   Requires a one-time Node.js installation and setup.
-
--   Other users or clients can\'t see the updates until you merge all
-    code and switch to the ACB Mode.
-
--   You can\'t test on devices other than your workstation, running the
-    file server.
-
-### Multi-Developers Collaboration
-
-With the CLS mode, it is now possible to have many developers write code
-independently on the same app since they are working on a "sandboxed"
-copy of their code. Of course, for other developers to see your changes,
-they need to pull/merge your new code with theirs, and vice-versa for
-you to see their changes. GitHub is excellent at that.
-
-### Setup
-
-Install **Node.js** (<https://nodejs.org>) on your workstation. Just the
-basic installation, no optional component is needed.
-
-Validate installation by typing **node -v** in a command prompt or
-terminal window. You should see the version number displayed.
-
-1)  Edit the file [KTL_KnackApp.js using this
-    procedure](#switching-modes). Include the KTL.css file also.
-
-2)  Run the FileServer.bat utility. You can also open a command prompt
-    or a shell, go to the **code** folder (see folder structure below)
-    and launch **node NodeJS_FileServer.js**.
-
-3)  Each time you refresh your app\'s page, you will see logs showing
-    the path and file name requested.
-
-4)  Open a browser to your Knack app.
-
-5)  Check console logs to see if all is looking good.
-
-## Hybrid Mode - For Production and Development at same time!
-
-Traditionally, Knack developers have to create a temporary copy of their
-production app to experiment freely without fearing serious consequences
-or disruption. While this is still desirable in many cases, you now have
-another option: **Hybrid Mode**. Thanks to the Bootloader, a hybrid
-setup is possible with both the ACB and CLS modes at same time. This
-enables you to run development code in a production environment without
-users being affected by it.
-
-What happens is that the Bootloader will use the stable and released
-code from the ACB in the Javascript pane by default for remote users.
-But if it detects a development flag in your localStorage, it will
-switch to the CLS code **on your workstation only**.
-
-With Hybrid Mode, it is also possible to switch back and forth between
-the ACB and CLS modes instantly. See [Switching Modes](#switching-modes)
-in the next section.
-
-## Switching Modes
-
-Once you've mastered both modes, you'll typically spend 95% of the time
-in CLS mode for its efficiency and speed, and 5% in ACB mode to show
-updates to your client.
-
-Switching modes can be done two ways:
-
-1)  If you have the showAppInfo flag enabled, it will add the version
-    info on the top-right of the screen. Clicking on it will show a
-    prompt with this: *Which version to run, \"prod\" or \"dev\"?* Type
-    in the desired mode and click ok. Note that this is possible only
-    for accounts having the "Developer" role.
-
-2)  Add a key to the localStorage for your app with the name followed by
-    **\_dev** like this: **KTL_KnackApp_dev**. Leave the value empty
-    since it is not used. Refresh the page and you'll see the version
-    now shown with bright yellow/red attention getter that indicates
-    you're in CLS development mode.
-
-# Editing KTL_KnackApp.js
+## Editing KTL_KnackApp.js
 
 1)  Open the **KTL_KnackApp.js** file in your favorite editor.
 
@@ -1308,15 +1296,17 @@ Switching modes can be done two ways:
 5)  Locate the **//Setup default preferences** section and go through
     all the flags and settings to match your needs.
 
-6)  In the CSS pane, add the CSS code from file KTL.css to yours.
+6)  Copy/paste the content of the file in the Javascript pane, after the
+    5 lines of the KTL_Loader.js at top. Save. (*Note that if you are in
+    Dev mode, you don't have to do this copy/paste operation)*
 
 7)  Open a browser to your Knack app.
 
 8)  Check console logs to see if all is looking good.
 
-\*Note: If you're using the ACB mode, you should never edit the
-generated ACB file directly. Always edit the KTL_KnackApp.js file and
-merge again.
+\*Note: If you are using the Prod mode, you should never edit the
+generated Prod file directly. Always edit the KTL_KnackApp.js file and
+copy/paste the code in the Javascript pane.
 
 # Advanced Features
 
@@ -1544,7 +1534,7 @@ To support automatic Upload and Download, follow this procedure:
     the 30 for 10 seconds temporarily for quicker testing, then put back
     to 30)
 
-**To test this feature:**
+**To assess this feature:**
 
 Open two different browsers (ex: Chrome and Edge) and log-in with the
 same account - yours. Open both to the same page, where there's a table
@@ -1620,6 +1610,35 @@ safely be deleted from localStorage.
 If you want to add Bulk Edit and Bulk Delete to your app, follow this
 procedure described in this section [Bulk Operations](#bulk-operations).
 
+# Additional utilities
+
+### Merging a list of .js files together
+
+There are two utilities provided for merging .js files together:
+[**MergeFiles.bat**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/MergeFiles.bat)
+that calls
+[**NodeJS_MergeFiles.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/NodeJS/NodeJS_MergeFiles.js).
+
+First, you'll need to install **Node.js** (<https://nodejs.org>) on your
+workstation. Just the basic installation, no optional component is
+needed.
+
+Then, the custom Prod file can be generated using the
+NodeJS_MergeFiles.js merge utility provided in the NodeJS folder.
+
+This script can be invoked manually in a command prompt or shell, but it
+is easier to run the MergeFiles.bat provided. The extension .bat is only
+for Windows, but it can be rewritten a .sh (shell script) for Linux and
+MacOS. See the .bat file for more details about the script parameters.
+
+These files will be merged together:
+
+1)  [KTL_Loader.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Loader.js)
+
+2)  [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js)
+
+The output file is KTL_KnackApp_Prod.js
+
 # Future Improvements
 
 -   Use JSDoc to have an adequate auto-generated and detailed API
@@ -1628,9 +1647,9 @@ procedure described in this section [Bulk Operations](#bulk-operations).
 -   Geofencing and other map-based features, with geo-based events and
     Google Maps integration.
 
--   The sky\'s the limit! Let\'s see what we can come up with...
+-   The sky\'s the limit! Let us see what we can come up with...
 
-# Conlusion
+# Conclusion
 
 That\'s about it for now, thanks for reading this and testing the
 library. Hope you enjoy it as much as I did write it. Now, let's see how

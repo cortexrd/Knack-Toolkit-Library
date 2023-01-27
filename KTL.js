@@ -1621,7 +1621,10 @@ function Ktl($) {
 
             var formDataObj = {};
 
-            var action = Knack.router.scene_view.model.views._byId[viewId].attributes.action;
+            var viewAttr = Knack.router.scene_view.model.views._byId[viewId].attributes;
+            if (!viewAttr) return;
+
+            var action = viewAttr.action;
             if (fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
                 return;
 
