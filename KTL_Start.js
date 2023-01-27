@@ -1,4 +1,4 @@
-//KTL Bootloader, second stage: Prod and Dev modes switcher.
+//KTL and App Starter.  Also enables switching between Prod and Dev modes.
 //window.ktlStart = window.performance.now();
 window.lsShortName = Knack.app.attributes.name.substr(0, 6).replaceAll(' ', '') + '_' + app_id.substr(-4, 4) + '_';
 function loadKtl($, _callback, _KnackApp, _ktlVersion = '', _fullCode = '') {
