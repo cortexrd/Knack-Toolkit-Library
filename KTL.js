@@ -5542,7 +5542,7 @@ function Ktl($) {
                         if (ktl.account.isDeveloper()) {
                             e.preventDefault();
                             var ver = prompt('Switch Mode - "prod" or "dev"?', 'prod');
-                            if (ver.toLowerCase() === 'prod' || ver.toLowerCase() === 'dev')
+                            if (ver && (ver.toLowerCase() === 'prod' || ver.toLowerCase() === 'dev'))
                                 ktl.core.switchVersion(ver);
                         }
                     })
