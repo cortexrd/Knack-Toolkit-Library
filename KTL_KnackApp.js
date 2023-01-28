@@ -4,7 +4,7 @@
 var KnackApp = function ($, info = {}) {
     window.$ = $;
 
-    window.APP_VERSION = '0.1.0'; //Your App version.
+    window.APP_VERSION = '1.0.0'; //Your App version.
 
     const IFRAME_WND_ID = 'iFrameWnd';
 
