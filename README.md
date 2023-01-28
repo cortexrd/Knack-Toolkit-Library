@@ -30,7 +30,7 @@
     -   [System Info](#system-info)
     -   [System Colors](#system-colors)
 -   [Turning off Features](#turning-off-features)
-    -   [Editing KTL_KnackApp.js](#editing-ktl_knackapp.js)
+    -   [Editing the KTL_KnackApp file](#editing-the-ktl_knackapp-file)
 -   [Advanced Features](#advanced-features)
     -   [Setup](#setup-2)
 -   [Additional utilities](#additional-utilities)
@@ -210,7 +210,7 @@ To use this mode, you have two options:
     features, edit a copy of the
     [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js)
     file and paste that code in the Javascript pane, after the Loader.
-    [Follow the procedure here](#editing-ktl_knackapp.js).
+    [Follow the procedure here](#editing-the-ktl_knackapp-file).
 
 \*Note about **KTL_KnackApp.js**: throughout the document, we will refer
 to this file name as the "app code", but you can substitute it to
@@ -225,7 +225,7 @@ pane in the Builder and save.
 
 You will need to modify the KTL_KnackApp.js file to match your needs if
 you want to go beyond the basic default setup. [Follow the procedure
-here](#editing-ktl_knackapp.js).
+here](#editing-the-ktl_knackapp-file).
 
 ## Dev Mode
 
@@ -277,7 +277,7 @@ Validate installation by typing **node -v** in a command prompt or
 terminal window. You should see the version number displayed.
 
 1)  Edit the file [KTL_KnackApp.js using this
-    procedure](#editing-ktl_knackapp.js).
+    procedure](#editing-the-ktl_knackapp-file).
 
 2)  Run the **FileServer.bat** utility.
 
@@ -1279,7 +1279,7 @@ You can turn off a feature by setting its flag to false in the function
 For example, you don't want to see the version info at top-right of the
 page, set this to false: **showAppInfo: false**
 
-## Editing KTL_KnackApp.js
+## Editing the KTL_KnackApp file
 
 1)  Open the **KTL_KnackApp.js** file in your favorite editor.
 
