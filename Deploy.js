@@ -20,14 +20,24 @@ console.clear();
 loop();
 
 function loop() {
-    rl.question('[1] Merge  [2] Minify  [3] Upload  [X] Exit\n> ', function (op) {
+    rl.question('[1] Minify  [2] Upload  [3] Merge  [X] Exit\n> ', function (op) {
         console.log('op =', op);
         if (op === '1') {
-            runScript('.\\Lib\\KTL\\NodeJS\\NodeJS_ACB_MergeFiles.js', ['-ktlpath=.\\Lib\\KTL', '-filename=.\\Lib\\KTL\\KTL_KnackApp'],
+            minify(fullPathName)
+                .then(function () {
+                    console.log('MINIFY COMPLETE - RESOLVED');
+                    loop();
+                })
+                .catch(function (reason) { console.log('\x1b[31m%s\x1b[0m', reason); })
+        } else if (op === '2') {
+            upload()
+                .then(function () { loop(); })
+                .catch(function (reason) { console.log('\x1b[31m%s\x1b[0m', reason); })
+        } else if (op === '3') {
+            runScript('.\\Lib\\KTL\\NodeJS\\NodeJS_MergeFiles.js', ['-ktlpath=.\\Lib\\KTL', '-filename=.\\Lib\\KTL\\KTL_KnackApp'],
                 function (err) {
                     if (err) {
                         console.log('Error during merge:\n', err, '\n\n');
-                        //throw err;
                         loop();
                     } else {
                         console.log('\x1b[32m%s\x1b[0m', 'Merge complete\n');
@@ -35,21 +45,9 @@ function loop() {
                     }
                 }
             );
-        } else if (op === '2') {
-            minify(fullPathName)
-                .then(function () {
-                    console.log('MINIFY COMPLETE - RESOLVED');
-                    loop();
-                })
-                .catch(function (reason) { console.log('\x1b[31m%s\x1b[0m', reason); })
-        } else if (op === '3') {
-            upload()
-                .then(function () { loop(); })
-                .catch(function (reason) { console.log('\x1b[31m%s\x1b[0m', reason); })
         } else if (op.toLowerCase() === 'x') {
             rl.close();
             process.exit(code = 0)
-            //break;
         }
     })
 }
@@ -80,8 +78,13 @@ function minify(file) {
     return new Promise(function (resolve, reject) {
         process.chdir('c:\\code\\Lib\\KTL');
         var code = fs.readFileSync(file, 'utf8');
-        const minifiedOutput = fileName + '.min.js';
-        console.log('minifiedOutput =', minifiedOutput);
+        var startIdx = code.search(/const KTL_VERSION = \'[^;]+;/);
+        var endIdx = code.indexOf(';', startIdx);
+        var version = code.substring(startIdx, endIdx);
+        version = version.split('=')[1].replaceAll(/[' ]/g, "");
+        console.log('Version found:', version);
+        const minifiedOutput = fileName + '-' + version + '.min.js';
+        console.log('Minified output file: ', minifiedOutput);
 
         rl.question('Create Source Maps? (y/[n])\n> ', function (op) {
             var srcMapOpt = {};
@@ -89,8 +92,8 @@ function minify(file) {
                 srcMapOpt = {
                     sourceMap: {
                         filename: minifiedOutput,
-                        url: 'KTL.min.js.map',
-                        root: 'https://ctrnd.com/Lib/KTL',
+                        url: 'KTL-' + version + '.min.js.map',
+                        root: 'https://ctrnd.com/Lib/KTL/Prod',
                     }
                 }
 
@@ -110,6 +113,19 @@ function minify(file) {
 
 function upload() {
     return new Promise(function (resolve, reject) {
+        //Copy CSS file as versioned Prod.
+        const cssPathName = filePath + fileName + '.css';
+        var code = fs.readFileSync(cssPathName, 'utf8');
+        var version = code.match(/KTL CSS version: [\d.]+/);
+        version = version[0].match(/[\d.]+/)[0];
+        console.log('CSS version found:', version);
+        const cssProd = fileName + '-' + version + '.css';
+        console.log('CSS output file: ', cssProd);
+        fs.copyFile(cssPathName, filePath + cssProd, (err) => {
+            if (err) throw err;
+            console.log('\x1b[32m%s\x1b[0m', 'Copied ' + cssProd + ' successfully\n');
+        });
+
         var ftp = childProcess.spawn('cmd.exe', ['/k', 'C:\\code\\FTP\\WinSCP.bat']);
         ftp.stdout.on('data', function (data) {
             if (data.includes('Error')) {
