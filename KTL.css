@@ -9,11 +9,6 @@
 /* KTL CSS version: 0.2.0 */
 
 /************ General Settings **************/
-/* Always hide H2 until stripped from special codes. HiDDEN_VIEW, etc. */
-h2 {
-	opacity: 0;
-}
-
 /* Hide header and scene render will put it back if not an iFrame. */
 #kn-app-header, .knHeader {
 	display: none !important;
