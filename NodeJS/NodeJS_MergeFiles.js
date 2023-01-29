@@ -30,7 +30,7 @@ function mergeFiles(fileName = '', ext = '', filesToMerge = []) {
     }
 
     const folder = process.cwd();
-    const mergedFile = fileName + '_ACB.' + ext;
+    const mergedFile = fileName + '_Prod.' + ext;
     fileName += '.' + ext;
 
     console.log('Folder =', folder);
