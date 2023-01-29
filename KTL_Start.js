@@ -3,18 +3,22 @@
 window.lsShortName = Knack.app.attributes.name.substr(0, 6).replaceAll(' ', '') + '_' + app_id.substr(-4, 4) + '_';
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_VERSION = '0.7.0';
+    const KTL_LATEST_JS_VERSION = '0.7.0';
+    const KTL_LATEST_CSS_VERSION = '0.2.0';
+    var cssVersion = KTL_LATEST_CSS_VERSION;
     var prodFolder = 'Prod/';
     var ktlSvr = 'https://ctrnd.com/'; //CDN is Cortex R&D Inc server.
     window.$ = $;
     window.jQuery = $; //For BlockUI
     window.KnackApp = _KnackApp;
     callback = _callback;
-    ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_VERSION);
+    ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
     var prod = (localStorage.getItem(window.lsShortName + 'dev') === null);
     if (!prod) {
         ktlVersion = '';
+        cssVersion = '';
         prodFolder = '';
+        fullCode = 'full';
         var fileName = localStorage.getItem(window.lsShortName + 'fileName');
         !fileName && (fileName = Knack.app.attributes.name);
         ktlSvr = 'http://localhost:3000/';
@@ -27,8 +31,10 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
 
     LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js']);
     LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']);
-    LazyLoad.css([ktlSvr + 'Lib/KTL/KTL.css'], () => { });
+    var cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css';
     var ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js';
+
+    LazyLoad.css([cssFile], () => { });
     LazyLoad.js([ktlFile], () => {
         if (typeof Ktl === 'function') {
             if (prod) {
