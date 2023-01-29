@@ -3743,7 +3743,7 @@ function Ktl($) {
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            ktlProcessViewFlags(view, data);
+            ktl.views.ktlProcessViewFlags(view, data);
             ktl.views.addViewId(view);
             disableFilterOnFields(view);
 
@@ -3859,88 +3859,6 @@ function Ktl($) {
             else if (e.keyCode === 39) //Right arrow
                 $('#asset-viewer > div > div > a.kn-asset-next').trigger('click');
         })
-
-        //Process views with special flags in their titles, such as HIDDEN_VIEW and HIDDEN_TITLE, etc.
-        function ktlProcessViewFlags(view, data) {
-            try {
-                //Clean up title first by removing all flags. All flags must be AFTER any title text to be kept.
-                if (view.title && view.title !== '') {
-                    var index = Math.min(
-                        ktl.core.getSubstringPosition(view.title, 'AUTOREFRESH', 1),
-                        ktl.core.getSubstringPosition(view.title, 'HIDDEN_', 1),
-                        ktl.core.getSubstringPosition(view.title, 'NO_INLINE', 1),
-                        ktl.core.getSubstringPosition(view.title, 'ADD_', 1),
-                        ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1),
-                        ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1),
-                        ktl.core.getSubstringPosition(view.title, 'DATETIME_PICKERS', 1),
-                        //ktl.core.getSubstringPosition(view.title, 'REFRESH_VIEW', 1),
-                    );
-
-                    //Truncate all title characters beyond the lowest index found.
-                    var title = view.title.substring(0, index);
-                    $('#' + view.key + ' > div.view-header > h1').text(title); //Search Views use H1 instead of H2.
-                    $('#' + view.key + ' > div.view-header > h2').text(title);
-
-                    //Hide the whole view, typically used when doing background searches.
-                    if (view.title.includes('HIDDEN_VIEW')) {
-                        if (!Knack.getUserRoleNames().includes('Developer'))
-                            $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' }); //Hide (move) away from screen to prevent clicking and adding duplicates.
-                    }
-
-                    //Hide the view title only, typically used to save space when real estate is critical.
-                    if (view.title.includes('HIDDEN_TITLE')) {
-                        $('#' + view.key + ' > div.view-header > h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
-                        $('#' + view.key + ' > div.view-header > h2').css({ 'position': 'absolute', 'left': '-9000px' });
-                    }
-
-                    //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
-                    if (Knack.views[view.key] && Knack.views[view.key].model && Knack.views[view.key].model.view.options && Knack.views[view.key].model.view.options.cell_editor) {
-                        if (view.title.includes('NO_INLINE') && !ktl.account.isDeveloper())
-                            $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
-                        else
-                            $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
-                    }
-
-                    if (view.title.includes('ADD_TIMESTAMP'))
-                        ktl.views.addTimeStampToHeader(view);
-
-                    if (view.title.includes('DATETIME_PICKERS'))
-                        ktl.views.addDateTimePickers(view);
-                }
-
-                //Remove unwanted columns, as specified in Builder, when _HIDE and _REMOVE is found in header.
-                if (view.type === 'table' /*TODO: add more view types*/) {
-                    //var columns = view.columns;
-                    var columns = Knack.views[view.key].model.view.columns;
-                    var hiddenFieldsAr = [];
-                    var removedFieldsAr = [];
-                    var header = '';
-                    var fieldId = '';
-                    columns.forEach(col => {
-                        header = col.header;
-                        fieldId = (col.id || (col.field && col.field.key));
-                        if (fieldId) {
-                            if (header.includes('_HIDE'))
-                                hiddenFieldsAr.push(fieldId);
-                            else if (header.includes('_REMOVE'))
-                                removedFieldsAr.push(fieldId);
-                        }
-                    })
-
-                    if (hiddenFieldsAr.length)
-                        ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr);
-                    if (removedFieldsAr.length)
-                        ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr);
-                }
-
-                processViewFlags && processViewFlags(view, data);
-
-                //Put back h2 opacity to normal (see CSS code).
-                //This is to prevent seeing the title flags in headings until they are removed, which happens often on slower devices.
-                //$('h2').css('opacity', '1');
-            }
-            catch (err) { console.log('err', err); };
-        }
 
         //Filter Restriction Rules from view's Description.
         function disableFilterOnFields(view) {
@@ -5064,7 +4982,85 @@ function Ktl($) {
                         ktl.views.refreshViewArray(foundViewIds)
                     })
                 }
-            }
+            },
+
+            //Process views with special flags in their titles, such as HIDDEN_VIEW and HIDDEN_TITLE, etc.
+            ktlProcessViewFlags: function (view, data) {
+                try {
+                    //Clean up title first by removing all flags. All flags must be AFTER any title text to be kept.
+                    if (view.title && view.title !== '') {
+                        var index = Math.min(
+                            ktl.core.getSubstringPosition(view.title, 'AUTOREFRESH', 1),
+                            ktl.core.getSubstringPosition(view.title, 'HIDDEN_', 1),
+                            ktl.core.getSubstringPosition(view.title, 'NO_INLINE', 1),
+                            ktl.core.getSubstringPosition(view.title, 'ADD_', 1),
+                            ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1),
+                            ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1),
+                            ktl.core.getSubstringPosition(view.title, 'DATETIME_PICKERS', 1),
+                            //ktl.core.getSubstringPosition(view.title, 'REFRESH_VIEW', 1),
+                        );
+
+                        //Truncate all title characters beyond the lowest index found.
+                        var title = view.title.substring(0, index);
+                        $('#' + view.key + ' > div.view-header > h1').text(title); //Search Views use H1 instead of H2.
+                        $('#' + view.key + ' > div.view-header > h2').text(title);
+
+                        //Hide the whole view, typically used when doing background searches.
+                        if (view.title.includes('HIDDEN_VIEW')) {
+                            if (!Knack.getUserRoleNames().includes('Developer'))
+                                $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' }); //Hide (move) away from screen to prevent clicking and adding duplicates.
+                        }
+
+                        //Hide the view title only, typically used to save space when real estate is critical.
+                        if (view.title.includes('HIDDEN_TITLE')) {
+                            $('#' + view.key + ' > div.view-header > h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
+                            $('#' + view.key + ' > div.view-header > h2').css({ 'position': 'absolute', 'left': '-9000px' });
+                        }
+
+                        //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
+                        if (Knack.views[view.key] && Knack.views[view.key].model && Knack.views[view.key].model.view.options && Knack.views[view.key].model.view.options.cell_editor) {
+                            if (view.title.includes('NO_INLINE') && !ktl.account.isDeveloper())
+                                $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
+                            else
+                                $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
+                        }
+
+                        if (view.title.includes('ADD_TIMESTAMP'))
+                            ktl.views.addTimeStampToHeader(view);
+
+                        if (view.title.includes('DATETIME_PICKERS'))
+                            ktl.views.addDateTimePickers(view);
+                    }
+
+                    //Remove unwanted columns, as specified in Builder, when _HIDE and _REMOVE is found in header.
+                    if (view.type === 'table' /*TODO: add more view types*/) {
+                        //var columns = view.columns;
+                        var columns = Knack.views[view.key].model.view.columns;
+                        var hiddenFieldsAr = [];
+                        var removedFieldsAr = [];
+                        var header = '';
+                        var fieldId = '';
+                        columns.forEach(col => {
+                            header = col.header;
+                            fieldId = (col.id || (col.field && col.field.key));
+                            if (fieldId) {
+                                if (header.includes('_HIDE'))
+                                    hiddenFieldsAr.push(fieldId);
+                                else if (header.includes('_REMOVE'))
+                                    removedFieldsAr.push(fieldId);
+                            }
+                        })
+
+                        if (hiddenFieldsAr.length)
+                            ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr);
+                        if (removedFieldsAr.length)
+                            ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr);
+                    }
+
+                    processViewFlags && processViewFlags(view, data);
+                }
+                catch (err) { console.log('err', err); };
+            },
         }
     })(); //views
 
@@ -5094,21 +5090,22 @@ function Ktl($) {
                 mutations.forEach(mutRec => {
                     var node = Array.from(mutRec.addedNodes).find(node => (node.classList && node.classList.contains('view-header')));
                     if (node) {
+                        var view = Knack.views[mutRec.target.id].model.view;
+                        //ktl.views.ktlProcessViewFlags(view);
                         var index = node.innerText.indexOf('REFRESH_VIEW');
                         if (index !== -1) {
                             var orgTitle = Knack.views[mutRec.target.id].model.view.title;
                             var title = orgTitle.substring(0, index);
                             var newHTML = node.innerHTML.replace(orgTitle, title);
                             node.innerHTML = newHTML;
-                            var view = Knack.views[mutRec.target.id].model.view;
                             ktl.views.addSubmitToViewRefresh(view);
                             view.title = title;
                         }
-                    } else {
-                        node = Array.from(mutRec.addedNodes).find(node => (node.classList && node.classList.contains('kn-navigation-bar')));
-                        if (node)
-                            cleanupLinkMenus(node);
                     }
+
+                    node = Array.from(mutRec.addedNodes).find(node => (node.classList && node.classList.contains('kn-navigation-bar')));
+                    if (node)
+                        cleanupLinkMenus(node);
                 })
             });
 
