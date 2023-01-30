@@ -2,6 +2,12 @@
 //window.ktlStart = window.performance.now();
 window.lsShortName = Knack.app.attributes.name.substr(0, 6).replaceAll(' ', '') + '_' + app_id.substr(-4, 4) + '_';
 var callback;
+
+/* ktlVersion:
+ *  - 'x,y,z' will use that specific Prod version.
+ *  - if empty, will use the latest Prod version from KTL_LATEST_JS_VERSION.
+ *  - if 'dev', will use /Prod/KTL-dev.js version, which is same as dev, copied by FTP.  See C:\code\FTP\WinSCP_Script.txt
+*/
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     const KTL_LATEST_JS_VERSION = '0.7.0';
     const KTL_LATEST_CSS_VERSION = '0.2.0';
@@ -28,6 +34,9 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
             delete KnackApp;
         LazyLoad.js([appUrl], () => { })
     }
+
+    if (ktlVersion === 'dev')
+        cssVersion = 'dev';
 
     LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js']);
     LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']);
