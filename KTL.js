@@ -18,6 +18,8 @@ const ONE_MINUTE_DELAY = 60000;
 const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
+const keywords = [];
+
 function Ktl($) {
     const KTL_VERSION = '0.7.0';
     const APP_VERSION = window.APP_VERSION;
@@ -115,6 +117,24 @@ function Ktl($) {
                 ktl.views.autoRefresh();
             }
         })
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutRec => {
+                var node = Array.from(mutRec.addedNodes).find(node => (node.classList && (node.classList.contains('view-header') || node.classList.contains('kn-navigation-bar'))));
+                if (node) {
+                    if (node.classList.contains('view-header')) {
+                        var view = Knack.views[mutRec.target.id].model.view;
+                        ktl.views.ktlProcessViewFlags(view);
+                    } else //Uncomment whenever we had more cases.  if (node.classList.contains('kn-navigation-bar'))
+                        ktl.scenes.cleanupLinkMenus(node);
+                }
+            })
+        });
+
+        observer.observe(document.querySelector('.kn-content'), {
+            childList: true,
+            subtree: true,
+        });
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -3891,6 +3911,27 @@ function Ktl($) {
             }
         }
 
+        function addSubmitToViewRefresh(view) {
+            if (!view.title) return;
+            var views = view.title.split('REFRESH_VIEW=');
+            if (views.length !== 2) return;
+            views = views[1].split(',');
+            var foundViewIds = [];
+            for (var i = 0; i < views.length; i++) {
+                var viewTitle = views[i].trim();
+                var viewId = ktl.scenes.findViewWithTitle(viewTitle, false, view.key);
+                if (viewId)
+                    foundViewIds.push(viewId);
+            }
+
+            if (foundViewIds.length) {
+                $(document).on('knack-form-submit.' + view.key, () => {
+                    ktl.views.refreshViewArray(foundViewIds)
+                })
+            }
+        }
+
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processViewFlags && (processViewFlags = cfgObj.processViewFlags);
@@ -4964,32 +5005,13 @@ function Ktl($) {
                 submitDisabled && ktl.scenes.spinnerWatchdog(!submitDisabled); //Don't let the disabled Submit cause a page reload.
             },
 
-            addSubmitToViewRefresh(view) {
-                if (!view.title) return;
-                var views = view.title.split('REFRESH_VIEW=');
-                if (views.length !== 2) return;
-                views = views[1].split(',');
-                var foundViewIds = [];
-                for (var i = 0; i < views.length; i++) {
-                    var viewTitle = views[i].trim();
-                    var viewId = ktl.scenes.findViewWithTitle(viewTitle, false, view.key);
-                    if (viewId)
-                        foundViewIds.push(viewId);
-                }
-
-                if (foundViewIds.length) {
-                    $(document).on('knack-form-submit.' + view.key, () => {
-                        ktl.views.refreshViewArray(foundViewIds)
-                    })
-                }
-            },
-
             //Process views with special flags in their titles, such as HIDDEN_VIEW and HIDDEN_TITLE, etc.
             ktlProcessViewFlags: function (view, data) {
+                if (!view) return;
                 try {
                     //Clean up title first by removing all flags. All flags must be AFTER any title text to be kept.
                     if (view.title && view.title !== '') {
-                        var index = Math.min(
+                        var firstKeywordIdx = Math.min(
                             ktl.core.getSubstringPosition(view.title, 'AUTOREFRESH', 1),
                             ktl.core.getSubstringPosition(view.title, 'HIDDEN_', 1),
                             ktl.core.getSubstringPosition(view.title, 'NO_INLINE', 1),
@@ -4997,11 +5019,26 @@ function Ktl($) {
                             ktl.core.getSubstringPosition(view.title, 'NO_BUTTONS', 1),
                             ktl.core.getSubstringPosition(view.title, 'BROADCAST_SW_UPDATE', 1),
                             ktl.core.getSubstringPosition(view.title, 'DATETIME_PICKERS', 1),
-                            //ktl.core.getSubstringPosition(view.title, 'REFRESH_VIEW', 1),
+                            ktl.core.getSubstringPosition(view.title, 'REFRESH_VIEW', 1),
                         );
 
-                        //Truncate all title characters beyond the lowest index found.
-                        var title = view.title.substring(0, index);
+                        var node = document.querySelector('#' + view.key + ' .view-header');
+                        if (!node) return;
+
+                        var orgTitle = Knack.views[view.key].model.view.title;
+                        view.orgTitle = orgTitle;
+
+                        var keywordIdx = node.innerText.indexOf('REFRESH_VIEW');
+                        if (keywordIdx !== -1) {
+                            var title = orgTitle.substring(0, keywordIdx);
+                            var newHTML = node.innerHTML.replace(orgTitle, title);
+                            node.innerHTML = newHTML;
+                            addSubmitToViewRefresh(view);
+                            view.title = title;
+                        }
+
+                        //Truncate all flags, all text i.e. after firstFlagIndex.
+                        var title = view.title.substring(0, firstKeywordIdx);
                         $('#' + view.key + ' > div.view-header > h1').text(title); //Search Views use H1 instead of H2.
                         $('#' + view.key + ' > div.view-header > h2').text(title);
 
@@ -5084,38 +5121,6 @@ function Ktl($) {
         var spinnerWatchDogTimeout = null;
         var idleWatchDogTimeout = null;
 
-
-        $(document).ready(function () {
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach(mutRec => {
-                    var node = Array.from(mutRec.addedNodes).find(node => (node.classList && node.classList.contains('view-header')));
-                    if (node) {
-                        var view = Knack.views[mutRec.target.id].model.view;
-                        //ktl.views.ktlProcessViewFlags(view);
-                        var index = node.innerText.indexOf('REFRESH_VIEW');
-                        if (index !== -1) {
-                            var orgTitle = Knack.views[mutRec.target.id].model.view.title;
-                            var title = orgTitle.substring(0, index);
-                            var newHTML = node.innerHTML.replace(orgTitle, title);
-                            node.innerHTML = newHTML;
-                            ktl.views.addSubmitToViewRefresh(view);
-                            view.title = title;
-                        }
-                    }
-
-                    node = Array.from(mutRec.addedNodes).find(node => (node.classList && node.classList.contains('kn-navigation-bar')));
-                    if (node)
-                        cleanupLinkMenus(node);
-                })
-            });
-
-            observer.observe(document.querySelector('.kn-content'), {
-                childList: true,
-                subtree: true,
-            });
-        });
-
-
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (Knack.router.current_scene_key !== scene.key) {
                 alert('ERROR - Scene keys do not match!');
@@ -5180,31 +5185,6 @@ function Ktl($) {
         //Link Menu feature:  Add a blank page in top menu where the Settings' Name ends with 
         //LINK_OPEN_SAME= or LINK_OPEN_NEW= followed by a URL that starts with HTTP or HTTPS.
         //Ex: Support LINK_OPEN_NEW=https://ctrnd.com/
-        function cleanupLinkMenus(menus) {
-            var menuList = menus.querySelectorAll('ul li');
-            menuList.forEach(menu => {
-                var menuTxt = menu.innerText;
-                var idx = menuTxt.indexOf('LINK_OPEN_');
-                if (idx >= 0) {
-                    var newTxt = menu.innerText.substr(0, idx);
-                    var url = '';
-                    var target = ''
-                    var linkParts = menuTxt.split('LINK_OPEN_');
-                    if (linkParts.length === 2) {
-                        linkParts = linkParts[1].split('=');
-                        url = linkParts[1];
-                        if (linkParts[0] === 'NEW')
-                            target = ' target="_blank"';
-
-                        //Remove LINK_OPEN_ suffix from menu text containing links and set href in menus.
-                        var html = menu.querySelector('a[href]').outerHTML;
-                        menu.querySelector('a[href]').outerHTML = '<a href="' + url + '"'
-                            + (target ? ' "' + target + '"' : '')
-                            + '<span>' + newTxt + '</span></a>';
-                    }
-                }
-            })
-        }
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -5549,6 +5529,32 @@ function Ktl($) {
 
             isiFrameWnd: function () {
                 return (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID)) ? true : false;
+            },
+
+            cleanupLinkMenus: function (menus) {
+                var menuList = menus.querySelectorAll('ul li');
+                menuList.forEach(menu => {
+                    var menuTxt = menu.innerText;
+                    var idx = menuTxt.indexOf('LINK_OPEN_');
+                    if (idx >= 0) {
+                        var newTxt = menu.innerText.substr(0, idx);
+                        var url = '';
+                        var target = ''
+                        var linkParts = menuTxt.split('LINK_OPEN_');
+                        if (linkParts.length === 2) {
+                            linkParts = linkParts[1].split('=');
+                            url = linkParts[1];
+                            if (linkParts[0] === 'NEW')
+                                target = ' target="_blank"';
+
+                            //Remove LINK_OPEN_ suffix from menu text containing links and set href in menus.
+                            var html = menu.querySelector('a[href]').outerHTML;
+                            menu.querySelector('a[href]').outerHTML = '<a href="' + url + '"'
+                                + (target ? ' "' + target + '"' : '')
+                                + '<span>' + newTxt + '</span></a>';
+                        }
+                    }
+                })
             },
         }
     })(); //Scenes
@@ -7333,6 +7339,34 @@ function Ktl($) {
         return {
             getSysInfo: function () {
                 return sInfo;
+            },
+
+            getAllKeywords: function () {
+                const keywords = ['AUTOREFRESH', 'HIDDEN', 'NO_INLINE', 'ADD_', 'NO_BUTTONS', 'BROADCAST_SW_UPDATE', 'DATETIME_PICKERS', 'REFRESH_VIEW'];
+
+                var keywordViews = {};
+                for (var i = 0; i < Knack.scenes.length; i++) {
+                    var scn = Knack.scenes.models[i];
+                    var views = scn.views;
+                    views.forEach(view => {
+                        var title = view.attributes.title;
+                        if (title) {
+                            keywords.forEach(kw => {
+                                if (title.includes(kw)) {
+                                    var newView = { scnId: scn.attributes.key, viewId: view.attributes.key, title: title };
+                                    if (keywordViews[kw])
+                                        keywordViews[kw].push(newView);
+                                    else {
+                                        keywordViews[kw] = [];
+                                        keywordViews[kw].push(newView);
+                                    }
+                                }
+                            })
+                        }
+                    })
+                }
+                console.log('keywordViews =', JSON.stringify(keywordViews, null, 4));
+                return keywordViews;
             },
         }
     })(); //sysInfo
