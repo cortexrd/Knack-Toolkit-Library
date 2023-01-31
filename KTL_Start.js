@@ -10,7 +10,7 @@ var callback;
 */
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     const KTL_LATEST_JS_VERSION = '0.7.0';
-    const KTL_LATEST_CSS_VERSION = '0.2.0';
+    const KTL_LATEST_CSS_VERSION = '0.2.1';
     var cssVersion = KTL_LATEST_CSS_VERSION;
     var prodFolder = 'Prod/';
     var ktlSvr = 'https://ctrnd.com/'; //CDN is Cortex R&D Inc server.
