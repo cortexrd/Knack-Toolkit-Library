@@ -21,7 +21,7 @@ const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 const keywords = [];
 
 function Ktl($) {
-    const KTL_VERSION = '0.7.0';
+    const KTL_VERSION = '0.7.2';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
