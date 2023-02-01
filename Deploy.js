@@ -82,7 +82,7 @@ function minify(file) {
         var endIdx = code.indexOf(';', startIdx);
         var version = code.substring(startIdx, endIdx);
         version = version.split('=')[1].replaceAll(/[' ]/g, "");
-        console.log('Version found:', version);
+        console.log('JS Version found:', version);
         const minifiedOutput = fileName + '-' + version + '.min.js';
         console.log('Minified output file: ', minifiedOutput);
 
@@ -113,6 +113,21 @@ function minify(file) {
 
 function upload() {
     return new Promise(function (resolve, reject) {
+        //Copy JS file as versioned Prod.
+        const jsPathName = filePath + fileName + '.js';
+        var code = fs.readFileSync(jsPathName, 'utf8');
+        var startIdx = code.search(/const KTL_VERSION = \'[^;]+;/);
+        var endIdx = code.indexOf(';', startIdx);
+        var version = code.substring(startIdx, endIdx);
+        version = version.split('=')[1].replaceAll(/[' ]/g, "");
+        console.log('JS Version found:', version);
+        const jsProd = fileName + '-' + version + '.js';
+        console.log('JS output file: ', jsProd);
+        fs.copyFile(jsPathName, filePath + jsProd, (err) => {
+            if (err) throw err;
+            console.log('\x1b[32m%s\x1b[0m', 'Copied ' + jsProd + ' successfully\n');
+        });
+
         //Copy CSS file as versioned Prod.
         const cssPathName = filePath + fileName + '.css';
         var code = fs.readFileSync(cssPathName, 'utf8');
