@@ -5025,11 +5025,13 @@ function Ktl($) {
                         var node = document.querySelector('#' + view.key + ' .view-header');
                         if (!node) return;
 
-                        var orgTitle = Knack.views[view.key].model.view.title;
-                        view.orgTitle = orgTitle;
-
                         var keywordIdx = node.innerText.indexOf('REFRESH_VIEW');
                         if (keywordIdx !== -1) {
+                            var orgTitle = Knack.views[view.key].model.view.title;
+
+                            //Keep a copy of the original title for further processing.
+                            !view.orgTitle && (view.orgTitle = orgTitle);
+
                             var title = orgTitle.substring(0, keywordIdx);
                             var newHTML = node.innerHTML.replace(orgTitle, title);
                             node.innerHTML = newHTML;
