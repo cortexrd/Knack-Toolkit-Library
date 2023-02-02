@@ -20,6 +20,112 @@ const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 const keywords = [];
 
+var spd = 10;
+(function scanSceneChange() {
+    var itv = setInterval(function () {
+        if (Knack.router) {
+            clearInterval(itv);
+            cleanUpTitles();
+        }
+    }, spd);
+})();
+
+function cleanUpTitles() {
+    if (window.self.frameElement) return;
+
+    const keywords = ['AUTOREFRESH', 'HIDDEN', 'NO_INLINE', 'ADD_', 'NO_BUTTONS', 'BROADCAST_SW_UPDATE', 'DATETIME_PICKERS', 'REFRESH_VIEW'];
+
+    var st = window.performance.now();
+
+    var keywordViews = {};
+    for (var i = 0; i < Knack.scenes.length; i++) {
+        var scn = Knack.scenes.models[i];
+        var views = scn.views;
+        views.forEach(view => {
+            var title = view.attributes.title;
+            if (title) {
+                keywords.forEach(kw => {
+                    if (title.includes(kw)) {
+                        var newView = {
+                            scnId: scn.attributes.key, viewId: view.attributes.key, title: title, orgTitle: orgTitle
+                        };
+
+                        if (keywordViews[kw])
+                            keywordViews[kw].push(newView);
+                        else {
+                            keywordViews[kw] = [];
+                            keywordViews[kw].push(newView);
+                        }
+
+
+                    }
+                })
+            }
+        })
+    }
+
+    console.log('keywordViews =', JSON.stringify(keywordViews, null, 4));
+
+    var en = window.performance.now();
+    console.log(`KTL took ${Math.trunc(en - st)} ms`);
+
+
+
+
+
+
+
+
+
+
+
+
+    var views = Knack.router.scene_view.model.views.models;
+    for (var v = 0; v < views.length; v++) {
+        view = views[v];
+        var title = view.attributes.title;
+        console.log('title =', title);
+        view.title = title;
+        if (title && title !== '') {
+            var firstKeywordIdx = Math.min(
+                ktl.core.getSubstringPosition(title, 'AUTOREFRESH', 1),
+                ktl.core.getSubstringPosition(title, 'HIDDEN_', 1),
+                ktl.core.getSubstringPosition(title, 'NO_INLINE', 1),
+                ktl.core.getSubstringPosition(title, 'ADD_', 1),
+                ktl.core.getSubstringPosition(title, 'NO_BUTTONS', 1),
+                ktl.core.getSubstringPosition(title, 'BROADCAST_SW_UPDATE', 1),
+                ktl.core.getSubstringPosition(title, 'DATETIME_PICKERS', 1),
+                ktl.core.getSubstringPosition(title, 'REFRESH_VIEW', 1),
+
+                //New format, starting by underscore.
+                ktl.core.getSubstringPosition(title, '_', 1)
+            );
+
+            if (firstKeywordIdx === title.length) //No keywords found.
+                return;
+
+            //Truncate all flags, all text i.e. after firstFlagIndex.
+            var truncatedTitle = title.substring(0, firstKeywordIdx);
+            //console.log('truncatedTitle =', truncatedTitle);
+            $('#' + view.id + ' > div.view-header > h1').text(truncatedTitle); //Search Views use H1 instead of H2.
+            $('#' + view.id + ' > div.view-header > h2').text(truncatedTitle);
+
+            //var node = document.querySelector('#' + view.id + ' .view-header');
+            var model = (Knack.views[view.id] && Knack.views[view.id].model);
+            //if (!node || !model) return;
+            if (!model) return;
+
+            //Keep a copy of the original title for further processing.
+            var orgTitle = model.view.title;
+            !view.orgTitle && (view.orgTitle = orgTitle); //Only write once - first time, when not yet existing.
+
+            orgTitle = view.orgTitle;
+
+            model.view.title = truncatedTitle;
+        }
+    }
+}
+
 function Ktl($) {
     const KTL_VERSION = '0.7.2';
     const APP_VERSION = window.APP_VERSION;
@@ -68,6 +174,8 @@ function Ktl($) {
         * @param  {} function(
         */
     this.core = (function () {
+        console.log('core');
+
         window.addEventListener("resize", (event) => {
             ktl.core.sortMenu(); //To resize menu and prevent overflowing out of screen bottom when Sticky is used.
         });
@@ -2244,6 +2352,9 @@ function Ktl($) {
                 if (Knack.router.current_scene_key !== scn) {
                     scn = Knack.router.current_scene_key;
                     assembleFilterURL();
+
+                    console.log('scn chg');
+                    cleanUpTitles();
                 }
             }
         }, 500);
@@ -3745,7 +3856,7 @@ function Ktl($) {
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            ktl.views.ktlProcessViewFlags(view, data);
+            ktl.views.ktlProcessKeywords(view, data);
             ktl.views.addViewId(view);
             disableFilterOnFields(view);
 
@@ -3894,8 +4005,8 @@ function Ktl($) {
         }
 
         function addSubmitToViewRefresh(view) {
-            if (!view.title) return;
-            var views = view.title.split('REFRESH_VIEW=');
+            if (!view.orgTitle) return;
+            var views = view.orgTitle.split('REFRESH_VIEW=');
             if (views.length !== 2) return;
             views = views[1].split(',');
             var foundViewIds = [];
@@ -4987,8 +5098,9 @@ function Ktl($) {
                 submitDisabled && ktl.scenes.spinnerWatchdog(!submitDisabled); //Don't let the disabled Submit cause a page reload.
             },
 
-            //Process views with special flags in their titles, such as HIDDEN_VIEW and HIDDEN_TITLE, etc.
-            ktlProcessViewFlags: function (view, data) {
+            //Process views with special keywords in their titles, fields, descriptions, etc.
+            ktlProcessKeywords: function (view, data) {
+                return;
                 if (!view) return;
                 try {
                     //Clean up title first by removing all flags. All flags must be AFTER any title text to be kept.
@@ -5012,6 +5124,7 @@ function Ktl($) {
 
                         //Truncate all flags, all text i.e. after firstFlagIndex.
                         var truncatedTitle = view.title.substring(0, firstKeywordIdx);
+                        //console.log('truncatedTitle =', truncatedTitle);
                         $('#' + view.key + ' > div.view-header > h1').text(truncatedTitle); //Search Views use H1 instead of H2.
                         $('#' + view.key + ' > div.view-header > h2').text(truncatedTitle);
 
@@ -5023,40 +5136,37 @@ function Ktl($) {
                         var orgTitle = model.view.title;
                         !view.orgTitle && (view.orgTitle = orgTitle); //Only write once - first time, when not yet existing.
 
-                        var keywordIdx = node.innerText.indexOf('REFRESH_VIEW');
-                        if (keywordIdx !== -1) {
+                        orgTitle = view.orgTitle;
 
-                            var title = view.orgTitle.substring(0, keywordIdx);
-                            var newHTML = node.innerHTML.replace(view.orgTitle, title);
-                            node.innerHTML = newHTML;
+                        model.view.title = truncatedTitle;
+
+                        if (orgTitle.includes('REFRESH_VIEW') || orgTitle.includes('_RVS'))
                             addSubmitToViewRefresh(view);
-                            view.title = title;
-                        }
 
                         //Hide the whole view, typically used when doing background searches.
-                        if (view.orgTitle.includes('HIDDEN_VIEW')) {
+                        if (orgTitle.includes('HIDDEN_VIEW') || orgTitle.includes('_HV')) {
                             if (!Knack.getUserRoleNames().includes('Developer'))
-                                $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' }); //Hide (move) away from screen to prevent clicking and adding duplicates.
+                                $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' });
                         }
 
                         //Hide the view title only, typically used to save space when real estate is critical.
-                        if (view.orgTitle.includes('HIDDEN_TITLE')) {
+                        if (orgTitle.includes('HIDDEN_TITLE') || orgTitle.includes('_HT')) {
                             $('#' + view.key + ' > div.view-header > h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
                             $('#' + view.key + ' > div.view-header > h2').css({ 'position': 'absolute', 'left': '-9000px' });
                         }
 
                         //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
                         if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor) {
-                            if (view.orgTitle.includes('NO_INLINE') && !ktl.account.isDeveloper())
+                            if ((orgTitle.includes('NO_INLINE') || orgTitle.includes('_NI')) && !ktl.account.isDeveloper())
                                 $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
                             else
                                 $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
                         }
 
-                        if (view.orgTitle.includes('ADD_TIMESTAMP'))
+                        if (orgTitle.includes('ADD_TIMESTAMP') || orgTitle.includes('_TS'))
                             ktl.views.addTimeStampToHeader(view);
 
-                        if (view.orgTitle.includes('DATETIME_PICKERS'))
+                        if (orgTitle.includes('DATETIME_PICKERS') || orgTitle.includes('_DTP'))
                             ktl.views.addDateTimePickers(view);
                     }
 
@@ -5072,9 +5182,9 @@ function Ktl($) {
                             header = col.header;
                             fieldId = (col.id || (col.field && col.field.key));
                             if (fieldId) {
-                                if (header.includes('_HIDE'))
+                                if (header.includes('_HIDE') || header.includes('_HC'))
                                     hiddenFieldsAr.push(fieldId);
-                                else if (header.includes('_REMOVE'))
+                                else if (header.includes('_REMOVE') || header.includes('_RC'))
                                     removedFieldsAr.push(fieldId);
                             }
                         })
@@ -5225,13 +5335,13 @@ function Ktl($) {
                         return;
 
                     var title = Knack.views[viewId].model.view.title;
-                    if (title.includes('NO_BUTTONS'))
+                    if (title.includes('NO_BUTTONS') || title.includes('_KN'))
                         return;
                     else {
-                        if (title.includes('ADD_REFRESH')) {
-                            if (title.includes('ADD_BACK'))
+                        if (title.includes('ADD_REFRESH') || title.includes('_KR')) {
+                            if (title.includes('ADD_BACK') || title.includes('_KB'))
                                 backBtnText = 'Back';
-                            else if (title.includes('ADD_DONE'))
+                            else if (title.includes('ADD_DONE') || title.includes('_KD'))
                                 backBtnText = 'Done';
 
                             //Messaging button    
@@ -7335,6 +7445,7 @@ function Ktl($) {
             getAllKeywords: function () {
                 const keywords = ['AUTOREFRESH', 'HIDDEN', 'NO_INLINE', 'ADD_', 'NO_BUTTONS', 'BROADCAST_SW_UPDATE', 'DATETIME_PICKERS', 'REFRESH_VIEW'];
 
+                var st = window.performance.now();
                 var keywordViews = {};
                 for (var i = 0; i < Knack.scenes.length; i++) {
                     var scn = Knack.scenes.models[i];
@@ -7357,30 +7468,35 @@ function Ktl($) {
                     })
                 }
                 console.log('keywordViews =', JSON.stringify(keywordViews, null, 4));
+
+                var en = window.performance.now();
+                console.log(`KTL took ${Math.trunc(en - st)} ms`);
+
                 return keywordViews;
             },
         }
     })(); //sysInfo
 
-    $(document).ready(function () {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutRec => {
-                var node = Array.from(mutRec.addedNodes).find(node => (node.classList && (node.classList.contains('view-header') || node.classList.contains('kn-navigation-bar'))));
-                if (node) {
-                    if (node.classList.contains('view-header')) {
-                        var view = Knack.views[mutRec.target.id].model.view;
-                        ktl.views.ktlProcessViewFlags(view);
-                    } else //Uncomment whenever we had more cases.  if (node.classList.contains('kn-navigation-bar'))
-                        ktl.scenes.cleanupLinkMenus(node);
-                }
-            })
-        });
+    //$(document).ready(function () {
+    //    const observer = new MutationObserver((mutations) => {
+    //        mutations.forEach(mutRec => {
+    //            var node = Array.from(mutRec.addedNodes).find(node => (node.classList && (node.classList.contains('view-header') || node.classList.contains('kn-navigation-bar'))));
+    //            if (node) {
+    //                if (node.classList.contains('view-header')) {
+    //                    var view = Knack.views[mutRec.target.id].model.view;
+    //                    //ktl.views.ktlProcessKeywords(view);
+    //                } else //Uncomment whenever we had more cases.  if (node.classList.contains('kn-navigation-bar'))
+    //                    ktl.scenes.cleanupLinkMenus(node);
+    //            }
+    //        })
+    //    });
 
-        observer.observe(document.querySelector('.kn-content'), {
-            childList: true,
-            subtree: true,
-        });
-    })
+    //    observer.observe(document.querySelector('.kn-content'), {
+    //        childList: true,
+    //        subtree: true,
+    //    });
+    //})
+
 
     return { //KTL exposed objects
         const: this.const,
@@ -7402,8 +7518,6 @@ function Ktl($) {
         systemColors: this.systemColors,
     };
 };
-
-
 
 ////////////////  End of KTL /////////////////////
 
