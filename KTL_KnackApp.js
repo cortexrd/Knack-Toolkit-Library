@@ -23,7 +23,7 @@ var KnackApp = function ($, info = {}) {
         ktl.core.setCfg({
             developerName: 'Firstname Lastname', //Put your name here to get super powers!
             developerEmail: '', //yourmail@provider.com
-            enabled: { //Main KTL feature switches.  Here is where your App can override the defaults (all is disabled) and enables what is desired.
+            enabled: { //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
                 showAppInfo: true,
                 showKtlInfo: true,
                 showMenuInTitle: true,
@@ -75,7 +75,7 @@ var KnackApp = function ($, info = {}) {
         })
 
         ktl.views.setCfg({
-            processViewFlags: processViewFlags,
+            processViewKeywords: processViewKeywords,
             handleCalendarEventDrop: handleCalendarEventDrop,
         })
 
@@ -282,7 +282,7 @@ var KnackApp = function ($, info = {}) {
     }
 
     //Special app-specific title flags.
-    function processViewFlags(view, data) {
+    function processViewKeywords(view, data) {
         if (view.title && view.title !== '') {
             if (view.title.includes('MY_APP_FLAG')) {
             }
