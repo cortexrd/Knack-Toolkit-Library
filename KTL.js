@@ -639,7 +639,7 @@ function Ktl($) {
                     if (sceneObj) {
                         var views = sceneObj.views.models;
                         for (var j = 0; j < views.length; j++) {
-                            var title = views[j].attributes.title;
+                            var title = views[j].attributes.orgTitle;
                             if (title && exactMatch && (title === srchTitle)) return views[j].id;
                             if (title && !exactMatch && title.includes(srchTitle)) return views[j].id;
                         }
@@ -1620,8 +1620,9 @@ function Ktl($) {
             if (!pfInitDone || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var formDataObj = {};
-
-            var viewAttr = Knack.router.scene_view.model.views._byId[viewId].attributes;
+            var view = Knack.router.scene_view.model.views._byId[viewId];
+            if (!view) return;
+            var viewAttr = view.attributes;
             if (!viewAttr) return;
 
             var action = viewAttr.action;
@@ -2682,8 +2683,7 @@ function Ktl($) {
         };
 
         function updateSearchTable(viewId, srchTxt) {
-            if (!viewId || !srchTxt) return;
-            Knack.views[viewId].model.searching = true;
+            if (!viewId) return;
             var i = Knack.getSceneHash();
             var r = {}
             var a = [];
@@ -3706,7 +3706,7 @@ function Ktl($) {
         const PAUSE_REFRESH = 'pause_auto_refresh';
         var autoRefreshViews = {};
         var unPauseTimer = null;
-        var processViewFlags = null;
+        var processViewKeywords = null;
         var handleCalendarEventDrop = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
         var currentFocus = null;
@@ -3913,7 +3913,7 @@ function Ktl($) {
 
         return {
             setCfg: function (cfgObj = {}) {
-                cfgObj.processViewFlags && (processViewFlags = cfgObj.processViewFlags);
+                cfgObj.processViewKeywords && (processViewKeywords = cfgObj.processViewKeywords);
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
             },
 
@@ -3970,7 +3970,8 @@ function Ktl($) {
                                             if (response.status === 401 || response.status === 403 || response.status === 500)
                                                 procRefreshViewSvrErr(response);
                                             else {
-                                                if (Knack.router.scene_view.model.views._byId[viewId].attributes.title.includes('AUTOREFRESH')) {
+                                                var title = Knack.router.scene_view.model.views._byId[viewId].attributes.title.toLowerCase();
+                                                if (title.includes('autorefresh') || title.includes('_ar')) {
                                                     resolve(); //Just ignore, we'll try again shortly anyways.
                                                     return;
                                                 } else {
@@ -4054,7 +4055,7 @@ function Ktl($) {
             },
 
             //Parse the Knack object to find all views and start any applicable autorefresh interval timers for each, based on title.
-            //Triggered when view title contains AUTOREFRESH=30 (for 30 seconds interval in this example).
+            //Triggered when view title contains _ar=30 (for 30 seconds interval in this example).
             autoRefresh: function (run = true, autoRestart = true) {
                 clearTimeout(unPauseTimer);
                 if (run) {
@@ -4063,17 +4064,21 @@ function Ktl($) {
 
                     Knack.router.scene_view.model.views.models.forEach(function (eachView) {
                         var view = eachView.attributes;
-                        if (view.title && view.title.includes('AUTOREFRESH')) {
-                            var index = view.title.lastIndexOf('='); //Get refresh delay value
-                            var intervalDelay = (index === -1) ? 20 : intervalDelay = Math.max(Math.min(parseInt(view.title.substring(index + 1)), 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
+                        var title = view.orgTitle;
+                        if (title) {
+                            title = title.toLowerCase();
+                            if (title.includes('autorefresh') || title.includes('_ar')) {
+                                var index = title.lastIndexOf('='); //Get refresh delay value
+                                var intervalDelay = (index === -1) ? 20 : intervalDelay = Math.max(Math.min(parseInt(title.substring(index + 1)), 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 
-                            //Add view to autorefresh list.
-                            if (!(view.key in autoRefreshViews)) {
-                                var intervalId = setInterval(function () {
-                                    ktl.views.refreshView(view.key).then(function () { });
-                                }, intervalDelay * 1000);
+                                //Add view to autorefresh list.
+                                if (!(view.key in autoRefreshViews)) {
+                                    var intervalId = setInterval(function () {
+                                        ktl.views.refreshView(view.key).then(function () { });
+                                    }, intervalDelay * 1000);
 
-                                autoRefreshViews[view.key] = { delay: intervalDelay, intervalId: intervalId };
+                                    autoRefreshViews[view.key] = { delay: intervalDelay, intervalId: intervalId };
+                                }
                             }
                         }
                     })
@@ -5063,7 +5068,7 @@ function Ktl($) {
                         }
                     }
 
-                    processViewFlags && processViewFlags(view, data);
+                    processViewKeywords && processViewKeywords(view, data);
                 }
                 catch (err) { console.log('err', err); };
             },
@@ -5206,7 +5211,7 @@ function Ktl($) {
             },
 
             //Add default extra buttons to facilitate Kiosk mode:  Refresh, Back, Done and Messaging
-            //Excludes all iFrames and all view titles must not contain NO_BUTTONS flag.
+            //Excludes all iFrames and all view titles must not contain _kn (no_buttons) flag.
             addKioskButtons: function (viewId = '', style = {}) {
                 if (window.self.frameElement || !ktl.core.isKiosk())
                     return;
@@ -5216,14 +5221,16 @@ function Ktl($) {
                     if (typeof Knack.views[viewId] === 'undefined' || typeof Knack.views[viewId].model.view.title === 'undefined')
                         return;
 
-                    var title = Knack.views[viewId].model.view.title;
-                    if (title.includes('NO_BUTTONS') || title.includes('_KN'))
+                    var title = Knack.views[viewId].model.view.orgTitle;
+                    if (!title) return;
+                    title = title.toLowerCase();
+                    if (title.includes('no_buttons') || title.includes('_kn'))
                         return;
                     else {
-                        if (title.includes('ADD_REFRESH') || title.includes('_KR')) {
-                            if (title.includes('ADD_BACK') || title.includes('_KB'))
+                        if (title.includes('add_refresh') || title.includes('_kr')) {
+                            if (title.includes('add_back') || title.includes('_kb'))
                                 backBtnText = 'Back';
-                            else if (title.includes('ADD_DONE') || title.includes('_KD'))
+                            else if (title.includes('add_done') || title.includes('_kd'))
                                 backBtnText = 'Done';
 
                             //Messaging button    
@@ -5264,7 +5271,7 @@ function Ktl($) {
                             if (backBtnText && !backBtn) {
                                 backBtn = document.createElement('BUTTON');
                                 backBtn.classList.add('kn-button', 'kiosk-btn');
-                                var backOrDone = backBtnText === 'Back' ? 'ADD_BACK' : 'ADD_DONE';
+                                var backOrDone = backBtnText === 'Back' ? 'add_back' : 'add_done';
                                 backBtn.id = kioskButtons[backOrDone].id;
                                 backBtn.innerHTML = kioskButtons[backOrDone].html;
 
@@ -5280,7 +5287,7 @@ function Ktl($) {
                                 });
                             }
 
-                            //Find the Submit bar with the buttons (ADD_BACK or ADD_DONE) or Header 2 if none.
+                            //Find the Submit bar with the buttons (add_back or add_done) or Header 2 if none.
                             var submitBar = document.querySelector('#' + viewId + ' .kn-submit');
                             if (!submitBar) {
                                 submitBar = document.querySelector('#' + viewId + ' .view-header'); //Happens with pages without a Submit button.  Ex: When you only have a table.
@@ -5322,6 +5329,7 @@ function Ktl($) {
                                         ktl.core.hideSelector('#' + menuCopy.id, true);
                                         $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
                                         $('.kn-menu').css({ 'display': 'inline-flex', 'margin-right': '30px' });
+                                        applyStyle(); //Need to apply once again due to random additional delay.
                                     })
                                     .catch(function () {
                                         ktl.log.clog('purple', 'menu bar not found');
@@ -5346,18 +5354,22 @@ function Ktl($) {
                             }
                         }
 
+                        applyStyle();
+
                         //Make all buttons same size and style.
-                        if (!$.isEmptyObject(style))
-                            $('.kn-button').css(style);
-                        else
-                            $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '33px', 'line-height': '0px' });
+                        function applyStyle() {
+                            if (!$.isEmptyObject(style))
+                                $('.kn-button').css(style);
+                            else
+                                $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '33px', 'line-height': '0px' });
 
-                        $('.kiosk-btn').css({ 'margin-left': '20px' });
+                            $('.kiosk-btn').css({ 'margin-left': '20px' });
 
-                        for (var i = 0; i < Knack.router.scene_view.model.views.length; i++) {
-                            if (Knack.router.scene_view.model.views.models[i].attributes.type === 'form') {
-                                $('.kn-button').css({ 'height': '40px' });
-                                break;
+                            for (var i = 0; i < Knack.router.scene_view.model.views.length; i++) {
+                                if (Knack.router.scene_view.model.views.models[i].attributes.type === 'form') {
+                                    $('.kn-button').css({ 'height': '40px' });
+                                    break;
+                                }
                             }
                         }
                     }
@@ -7325,7 +7337,7 @@ function Ktl($) {
             },
 
             findAllKeywords: function () {
-                const keywords = ['AUTOREFRESH', 'HIDDEN', 'NO_INLINE', 'ADD_', 'NO_BUTTONS', 'BROADCAST_SW_UPDATE', 'DATETIME_PICKERS', 'REFRESH_VIEW'];
+                const keywords = ['autorefresh', 'hidden', 'no_inline', 'add_', 'no_buttons', 'broadcast_sw_update', 'datetime_pickers', 'refresh_view', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_kr', '_kb', '_kd', '_kn'];
 
                 var st = window.performance.now();
                 var keywordViews = {};
@@ -7336,7 +7348,7 @@ function Ktl($) {
                         var title = view.attributes.orgTitle;
                         if (title) {
                             keywords.forEach(kw => {
-                                if (title.includes(kw)) {
+                                if (title.toLowerCase().includes(kw)) {
                                     var newView = { scnId: scn.attributes.key, viewId: view.attributes.key, title: title };
                                     if (keywordViews[kw])
                                         keywordViews[kw].push(newView);
@@ -7362,57 +7374,56 @@ function Ktl($) {
     //Clean up any titles that contain keywords. All keywords must be AFTER any title text to be visible.
     //Ideally this would be done using MutationObserver (below), but it's not reliable.  Randomly stops after a while.
     var titleCleanupDone = false;
-    if (Knack.home_slug !== 'iframewnd') {
-        var itv = setInterval(function () {
-            if (Knack.router) {
-                clearInterval(itv);
+    var itv = setInterval(function () {
+        if (Knack.router) {
+            clearInterval(itv);
 
-                for (var i = 0; i < Knack.scenes.length; i++) {
-                    var scn = Knack.scenes.models[i];
-                    var views = scn.views;
-                    views.forEach(view => {
-                        var title = view.attributes.title;
-                        if (title) {
-                            var firstKeywordIdx = Math.min(
-                                ktl.core.getSubstringPosition(title, 'AUTOREFRESH', 1),
-                                ktl.core.getSubstringPosition(title, 'HIDDEN_', 1),
-                                ktl.core.getSubstringPosition(title, 'NO_INLINE', 1),
-                                ktl.core.getSubstringPosition(title, 'ADD_', 1),
-                                ktl.core.getSubstringPosition(title, 'NO_BUTTONS', 1),
-                                ktl.core.getSubstringPosition(title, 'BROADCAST_SW_UPDATE', 1),
-                                ktl.core.getSubstringPosition(title, 'DATETIME_PICKERS', 1),
-                                ktl.core.getSubstringPosition(title, 'REFRESH_VIEW', 1),
+            for (var i = 0; i < Knack.scenes.length; i++) {
+                var scn = Knack.scenes.models[i];
+                var views = scn.views;
+                views.forEach(view => {
+                    var title = view.attributes.title;
+                    if (title) {
+                        var cmpTitle = title.toLowerCase();
+                        var firstKeywordIdx = Math.min(
+                            ktl.core.getSubstringPosition(cmpTitle, 'autorefresh', 1),
+                            ktl.core.getSubstringPosition(cmpTitle, 'hidden_', 1),
+                            ktl.core.getSubstringPosition(cmpTitle, 'no_inline', 1),
+                            ktl.core.getSubstringPosition(cmpTitle, 'add_', 1),
+                            ktl.core.getSubstringPosition(cmpTitle, 'no_buttons', 1),
+                            ktl.core.getSubstringPosition(cmpTitle, 'broadcast_sw_update', 1),
+                            ktl.core.getSubstringPosition(cmpTitle, 'datetime_pickers', 1),
+                            ktl.core.getSubstringPosition(cmpTitle, 'refresh_view', 1),
 
-                                //New format, starting by underscore.
-                                ktl.core.getSubstringPosition(title, '_', 1)
-                            );
+                            //New format, starting by underscore.
+                            ktl.core.getSubstringPosition(cmpTitle, '_', 1)
+                        );
 
-                            //No keywords found.
-                            if (firstKeywordIdx !== title.length) {
-                                //Truncate all flags, all text i.e. after firstFlagIndex.
-                                var truncatedTitle = title.substring(0, firstKeywordIdx);
-                                $('#' + view.id + ' > div.view-header > h1').text(truncatedTitle); //Search Views use H1 instead of H2.
-                                $('#' + view.id + ' > div.view-header > h2').text(truncatedTitle);
+                        //No keywords found.
+                        if (firstKeywordIdx !== title.length) {
+                            //Truncate all flags, all text i.e. after firstFlagIndex.
+                            var truncatedTitle = title.substring(0, firstKeywordIdx);
+                            $('#' + view.id + ' > div.view-header > h1').text(truncatedTitle); //Search Views use H1 instead of H2.
+                            $('#' + view.id + ' > div.view-header > h2').text(truncatedTitle);
 
-                                //Keep a copy of the original title for further processing.
-                                var orgTitle = view.attributes.title;
-                                !view.attributes.orgTitle && (view.attributes.orgTitle = orgTitle); //Only write once - first time, when not yet existing.
+                            //Keep a copy of the original title for further processing.
+                            var orgTitle = view.attributes.title;
+                            !view.attributes.orgTitle && (view.attributes.orgTitle = orgTitle); //Only write once - first time, when not yet existing.
 
-                                orgTitle = view.attributes.orgTitle;
-                                view.attributes.title = truncatedTitle;
-                                if (Knack.views[view.id]) {
-                                    Knack.views[view.id].model.view.orgTitle = orgTitle;
-                                    Knack.views[view.id].model.view.title = truncatedTitle;
-                                }
+                            orgTitle = view.attributes.orgTitle;
+                            view.attributes.title = truncatedTitle;
+                            if (Knack.views[view.id]) {
+                                Knack.views[view.id].model.view.orgTitle = orgTitle;
+                                Knack.views[view.id].model.view.title = truncatedTitle;
                             }
                         }
-                    })
-                }
-
-                titleCleanupDone = true;
+                    }
+                })
             }
-        }, 10);
-    }
+
+            titleCleanupDone = true;
+        }
+    }, 10);
 
     //$(document).ready(function () {
     //    const observer = new MutationObserver((mutations) => {
