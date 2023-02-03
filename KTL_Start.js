@@ -67,9 +67,11 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                 }
             }
         } else {
-            console.log("Error - can't locate KTL file:\n" + ktlFile);
-            localStorage.removeItem(window.lsShortName + 'dev'); //JIC
-            location.reload(true);
+            if (prod) {
+                console.log("Error - can't locate KTL file:\n" + ktlFile);
+                localStorage.removeItem(window.lsShortName + 'dev'); //JIC
+                location.reload(true);
+            }
         }
     })
 }
