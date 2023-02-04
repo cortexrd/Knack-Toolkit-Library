@@ -582,6 +582,7 @@ function Ktl($) {
             //To insert a node after an existing one, but as sibling, not as a child.
             //Note: Do not confuse with jquery's version that has the same name!
             insertAfter: function (newNode, referenceNode) {
+                if (!newNode || !referenceNode) return;
                 referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
             },
 
@@ -639,7 +640,7 @@ function Ktl($) {
                     if (sceneObj) {
                         var views = sceneObj.views.models;
                         for (var j = 0; j < views.length; j++) {
-                            var title = views[j].attributes.orgTitle;
+                            var title = views[j].attributes.title;
                             if (title && exactMatch && (title === srchTitle)) return views[j].id;
                             if (title && !exactMatch && title.includes(srchTitle)) return views[j].id;
                         }
@@ -737,6 +738,14 @@ function Ktl($) {
 
                 //return ktl.core.convertDateTimeToString(lastDayOfMonth, iso, true);
                 return lastDayOfMonth;
+            },
+
+            injectCSS: (css) => { //Add custom styles to existing CSS.
+                var ktlCSS = (document.querySelector('#ktlCSS') || ((ktlCSS = document.createElement('style')) && document.head.appendChild(ktlCSS)));
+                ktlCSS.id = 'ktlCSS';
+                ktlCSS.type = 'text/css';
+                ktlCSS.textContent += css + '\n\n';                
+                console.log('ktlCSS =', ktlCSS.innerText);
             },
         }
     })();
@@ -1946,6 +1955,13 @@ function Ktl($) {
             if (initDone) {
                 $('.kn-table').css({ 'color': sysColors.text.rgb });
                 $('.table-row-highlighted').css({ 'color': sysColors.text.rgb + '!important' });
+
+                ktl.systemColors.getSystemColors().then(sc => {
+                    if (sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
+                        $('#' + view.key + ' .kn-table').removeClass('knTable--rowHover');
+                        $('#' + view.key + ' .kn-table').addClass('ktlTable--rowHover');
+                    }
+                })
             }
         })
 
@@ -1953,6 +1969,27 @@ function Ktl($) {
         return {
             setCfg: function (cfgObj = {}) {
                 //TODO: Support custom colors or variations.
+                console.log('cfgObj =', cfgObj);
+                if (cfgObj.inlineEditBkgColor && cfgObj.inlineEditBkgColor !== '')
+                    sysColors.inlineEditBkgColor = cfgObj.inlineEditBkgColor;
+
+                if (sysColors.inlineEditBkgColor) {
+                    ktl.core.injectCSS(
+                        '.cell-editable td.cell-edit {' +
+                        'background-color: ' + sysColors.inlineEditBkgColor + '!important;}'
+                    );
+                }
+
+                if (cfgObj.tableRowHoverBkgColor && cfgObj.tableRowHoverBkgColor !== '')
+                    sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
+
+                if (sysColors.tableRowHoverBkgColor && sysColors.tableRowHoverBkgColor !== '') {
+                    ktl.core.injectCSS(
+                        '.ktlTable--rowHover tbody tr:hover {' +
+                        'background-color: ' + sysColors.tableRowHoverBkgColor + '!important;' +
+                        'transition: background-color .2s ease-out;}'
+                    );
+                }
             },
 
             //For KTL internal use.
@@ -1968,7 +2005,8 @@ function Ktl($) {
                         sysColors.text = extractSysElClr(/\.kn-content a \{\s+color: #/gm); //Text color
 
                         //Additional colors, usually derived from basic colors, or hard-coded.
-                        var newS, newV = 1.0;
+                        var newS = 1.0;
+                        var newV = 1.0;
                         var newRGB = '';
 
                         //User Filter buttons
@@ -2003,7 +2041,15 @@ function Ktl($) {
                         newV = 1.0;
                         newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
                         sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                        sysColors.paleLowSatClrTransparent = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.5)';
 
+                        newS = 0.5;
+                        newV = 1.0;
+                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                        sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
+                        sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
+                        
+                                                
                         initDone = true;
                         //console.log('Init complete, sysColors =', sysColors);
 
@@ -2025,6 +2071,7 @@ function Ktl($) {
                 return new Promise(function (resolve, reject) {
                     if (initDone) {
                         resolve(sysColors);
+                        return;
                     } else {
                         ktl.systemColors.initSystemColors();
 
@@ -3863,7 +3910,7 @@ function Ktl($) {
         //Filter Restriction Rules from view's Description.
         function disableFilterOnFields(view) {
             if (view.type === 'table' /*TODO: add more view types*/) {
-                const NF = 'NO_FILTER=';
+                const NF = '_nf=';
                 var descr = view.description;
                 if (!descr) return;
                 var index = descr.indexOf(NF);
@@ -3893,7 +3940,7 @@ function Ktl($) {
 
         function addSubmitToViewRefresh(view) {
             if (!view.orgTitle) return;
-            var views = view.orgTitle.split('REFRESH_VIEW=');
+            var views = view.orgTitle.split('_rvs=');
             if (views.length !== 2) return;
             views = views[1].split(',');
             var foundViewIds = [];
@@ -3970,21 +4017,24 @@ function Ktl($) {
                                             if (response.status === 401 || response.status === 403 || response.status === 500)
                                                 procRefreshViewSvrErr(response);
                                             else {
-                                                var title = Knack.router.scene_view.model.views._byId[viewId].attributes.title.toLowerCase();
-                                                if (title.includes('autorefresh') || title.includes('_ar')) {
-                                                    resolve(); //Just ignore, we'll try again shortly anyways.
-                                                    return;
-                                                } else {
-                                                    if (retryCtr-- > 0) {
-                                                        var responseTxt = JSON.stringify(response);
-                                                        ktl.log.clog('purple', 'refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr);
-
-                                                        setTimeout(function () {
-                                                            tryRefresh(retryCtr);
-                                                        }, 1000);
-                                                    } else
-                                                        procRefreshViewSvrErr(response);
+                                                var view = Knack.router.scene_view.model.views._byId[viewId];
+                                                if (view && view.attributes && view.attributes.orgTitle) {
+                                                    var title = view.attributes.orgTitle.toLowerCase();
+                                                    if (title.includes('autorefresh') || title.includes('_ar')) {
+                                                        resolve(); //Just ignore, we'll try again shortly anyways.
+                                                        return;
+                                                    }
                                                 }
+
+                                                if (retryCtr-- > 0) {
+                                                    var responseTxt = JSON.stringify(response);
+                                                    ktl.log.clog('purple', 'refreshView error, response = ' + responseTxt + ' retry = ' + retryCtr);
+
+                                                    setTimeout(function () {
+                                                        tryRefresh(retryCtr);
+                                                    }, 1000);
+                                                } else
+                                                    procRefreshViewSvrErr(response);
                                             }
                                         }
                                     });
@@ -4232,16 +4282,15 @@ function Ktl($) {
                 }
 
                 var div = document.createElement('div');
-                div.style.marginTop = '15px';
-                div.style.marginBottom = '15px';
 
                 //If Search exists, append at end to save space.
                 if (document.querySelector('#' + view.key + ' .table-keyword-search')) {
-                    ktl.core.insertAfter(div, document.querySelector('#' + view.key + ' .table-keyword-search'));
-                    document.querySelector('#' + view.key + ' .level').style.display = 'inline-flex';
+                    document.querySelector('#' + view.key + ' .table-keyword-search').appendChild(div);
                     div.style.marginLeft = '100px';
                 } else {
                     ktl.core.insertAfter(div, document.querySelector('#' + view.key + ' .view-header'));
+                    div.style.marginTop = '15px';
+                    div.style.marginBottom = '15px';
                 }
 
                 var viewDates = ktl.views.loadViewDates(view.key);
@@ -4996,41 +5045,38 @@ function Ktl($) {
                     var model = (Knack.views[view.key] && Knack.views[view.key].model);
                     if (view.title && view.title !== '') {
                         if (model) {
-
                             var itv = setInterval(() => {
                                 if (titleCleanupDone) {
                                     clearInterval(itv);
 
                                     var orgTitle = (model.view && model.view.orgTitle);
                                     if (orgTitle) {
-                                        if (orgTitle.includes('REFRESH_VIEW') || orgTitle.includes('_RVS'))
+                                        orgTitle = orgTitle.toLowerCase();
+                                        if (orgTitle.includes('refresh_view') || orgTitle.includes('_rvs'))
                                             addSubmitToViewRefresh(view);
 
                                         //Hide the whole view, typically used when doing background searches.
-                                        if (orgTitle.includes('HIDDEN_VIEW') || orgTitle.includes('_HV')) {
+                                        if (orgTitle.includes('hidden_view') || orgTitle.includes('_hv')) {
                                             if (!Knack.getUserRoleNames().includes('Developer'))
                                                 $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' });
                                         }
 
                                         //Hide the view title only, typically used to save space when real estate is critical.
-                                        if (orgTitle.includes('HIDDEN_TITLE') || orgTitle.includes('_HT')) {
+                                        if (orgTitle.includes('hidden_title') || orgTitle.includes('_ht')) {
                                             $('#' + view.key + ' > div.view-header > h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
                                             $('#' + view.key + ' > div.view-header > h2').css({ 'position': 'absolute', 'left': '-9000px' });
                                         }
 
                                         //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
-                                        if ((orgTitle.includes('NO_INLINE') || orgTitle.includes('_NI')) && !ktl.account.isDeveloper()) {
-                                            if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor) {
+                                        if ((orgTitle.includes('no_inline') || orgTitle.includes('_ni')) && !ktl.account.isDeveloper()) {
+                                            if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
                                                 $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
-                                            } else {
-                                                $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'all', 'background-color': '#ffffdd', 'font-weight': 'bold' });
-                                            }
                                         }
 
-                                        if (orgTitle.includes('ADD_TIMESTAMP') || orgTitle.includes('_TS'))
+                                        if (orgTitle.includes('add_timestamp') || orgTitle.includes('_ts'))
                                             ktl.views.addTimeStampToHeader(view);
 
-                                        if (orgTitle.includes('DATETIME_PICKERS') || orgTitle.includes('_DTP'))
+                                        if (orgTitle.includes('datetime_pickers') || orgTitle.includes('_dtp'))
                                             ktl.views.addDateTimePickers(view);
                                     }
                                 }
@@ -5049,9 +5095,9 @@ function Ktl($) {
                             header = col.header;
                             fieldId = (col.id || (col.field && col.field.key));
                             if (fieldId) {
-                                if (header.includes('_HIDE') || header.includes('_HC'))
+                                if (header.includes('_hide') || header.includes('_hc'))
                                     hiddenFieldsAr.push(fieldId);
-                                else if (header.includes('_REMOVE') || header.includes('_RC'))
+                                else if (header.includes('_remove') || header.includes('_rc'))
                                     removedFieldsAr.push(fieldId);
                             }
                         })
@@ -5524,32 +5570,6 @@ function Ktl($) {
 
             isiFrameWnd: function () {
                 return (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID)) ? true : false;
-            },
-
-            cleanupLinkMenus: function (menus) {
-                var menuList = menus.querySelectorAll('ul li');
-                menuList.forEach(menu => {
-                    var menuTxt = menu.innerText;
-                    var idx = menuTxt.indexOf('LINK_OPEN_');
-                    if (idx >= 0) {
-                        var newTxt = menu.innerText.substr(0, idx);
-                        var url = '';
-                        var target = ''
-                        var linkParts = menuTxt.split('LINK_OPEN_');
-                        if (linkParts.length === 2) {
-                            linkParts = linkParts[1].split('=');
-                            url = linkParts[1];
-                            if (linkParts[0] === 'NEW')
-                                target = ' target="_blank"';
-
-                            //Remove LINK_OPEN_ suffix from menu text containing links and set href in menus.
-                            var html = menu.querySelector('a[href]').outerHTML;
-                            menu.querySelector('a[href]').outerHTML = '<a href="' + url + '"'
-                                + (target ? ' "' + target + '"' : '')
-                                + '<span>' + newTxt + '</span></a>';
-                        }
-                    }
-                })
             },
         }
     })(); //Scenes
@@ -7360,6 +7380,8 @@ function Ktl($) {
                             })
                         }
                     })
+
+                    //var fieldDesc = ktl.fields.getFieldDescription(e.target.id);
                 }
                 console.log('keywordViews =', JSON.stringify(keywordViews, null, 4));
 
@@ -7399,23 +7421,19 @@ function Ktl($) {
                             ktl.core.getSubstringPosition(cmpTitle, '_', 1)
                         );
 
-                        //No keywords found.
-                        if (firstKeywordIdx !== title.length) {
-                            //Truncate all flags, all text i.e. after firstFlagIndex.
-                            var truncatedTitle = title.substring(0, firstKeywordIdx);
+                        //Truncate all flags, all text i.e. after firstFlagIndex.
+                        var truncatedTitle = title.substring(0, firstKeywordIdx);
+
+                        //Keep a copy of the original title for further processing.
+                        !view.attributes.orgTitle && (view.attributes.orgTitle = view.attributes.title); //Only write once - first time, when not yet existing.
+
+                        var orgTitle = view.attributes.orgTitle;
+                        view.attributes.title = truncatedTitle;
+                        if (Knack.views[view.id]) {
                             $('#' + view.id + ' > div.view-header > h1').text(truncatedTitle); //Search Views use H1 instead of H2.
                             $('#' + view.id + ' > div.view-header > h2').text(truncatedTitle);
-
-                            //Keep a copy of the original title for further processing.
-                            var orgTitle = view.attributes.title;
-                            !view.attributes.orgTitle && (view.attributes.orgTitle = orgTitle); //Only write once - first time, when not yet existing.
-
-                            orgTitle = view.attributes.orgTitle;
-                            view.attributes.title = truncatedTitle;
-                            if (Knack.views[view.id]) {
-                                Knack.views[view.id].model.view.orgTitle = orgTitle;
-                                Knack.views[view.id].model.view.title = truncatedTitle;
-                            }
+                            Knack.views[view.id].model.view.orgTitle = orgTitle;
+                            Knack.views[view.id].model.view.title = truncatedTitle;
                         }
                     }
                 })
