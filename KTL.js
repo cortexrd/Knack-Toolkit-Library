@@ -1022,8 +1022,11 @@ function Ktl($) {
 
                 //Process special field flags
                 var fieldDesc = ktl.fields.getFieldDescription(e.target.id);
-                if (fieldDesc && fieldDesc.includes('TO_UPPERCASE'))
-                    e.target.value = e.target.value.toUpperCase();
+                if (fieldDesc) {
+                    fieldDesc = fieldDesc.toLowerCase();
+                    if (fieldDesc.includes('TO_UPPERCASE') || fieldDesc.includes('_uc'))
+                        e.target.value = e.target.value.toUpperCase();
+                }
 
                 if ($(e.target).length > 0) {
                     var inputVal = $(e.target).val();
