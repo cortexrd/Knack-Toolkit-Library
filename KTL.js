@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.7.2';
+    const KTL_VERSION = '0.7.3';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -745,7 +745,6 @@ function Ktl($) {
                 ktlCSS.id = 'ktlCSS';
                 ktlCSS.type = 'text/css';
                 ktlCSS.textContent += css + '\n\n';                
-                console.log('ktlCSS =', ktlCSS.innerText);
             },
         }
     })();
@@ -1968,8 +1967,6 @@ function Ktl($) {
 
         return {
             setCfg: function (cfgObj = {}) {
-                //TODO: Support custom colors or variations.
-                console.log('cfgObj =', cfgObj);
                 if (cfgObj.inlineEditBkgColor && cfgObj.inlineEditBkgColor !== '')
                     sysColors.inlineEditBkgColor = cfgObj.inlineEditBkgColor;
 
