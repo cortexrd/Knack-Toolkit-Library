@@ -1,6 +1,5 @@
 //====================================================
 //====================================================
-//Your App ID:  xxxxxxxxxxxxxxxxxxxxxxxx
 var KnackApp = function ($, info = {}) {
     window.$ = $;
 
@@ -97,11 +96,13 @@ var KnackApp = function ($, info = {}) {
             fieldsToExclude: ['field_xx', 'field_yy'], //Fields you never want to save.
         })
 
-        ktl.systemColors.setCfg({
-        })
-
         ktl.systemColors.getSystemColors()
-            .then(() => { })
+            .then(sc => {
+                ktl.systemColors.setCfg({
+                    inlineEditBkgColor: '', //Could also be some other presets in sysColors like: sc.paleLowSatClrTransparent
+                    tableRowHoverBkgColor: '', //Or a named color like 'mistyrose' or a hex RGBA value '#a0454b75'
+                })
+            })
             .catch((err) => { ktl.log.clog('red', 'App getSystemColors error: ' + err); })
 
         ktl.userPrefs.setCfg({
@@ -152,6 +153,7 @@ var KnackApp = function ($, info = {}) {
                 },
 
                 versionDisplayName: Knack.app.attributes.name.toUpperCase(),
+                //versionDisplayName: 'CTRND', //As an example, when you prefer to use a shorter name.
             })
 
             ktl.userFilters.setCfg({
@@ -281,11 +283,11 @@ var KnackApp = function ($, info = {}) {
         }
     }
 
-    //Special app-specific title flags.
+    //Special app-specific keywords.  Note that all keywords must start by an underscore "_".
     function processViewKeywords(view, data) {
-        if (view.title && view.title !== '') {
-            if (view.title.includes('MY_APP_FLAG')) {
-            }
+        if (!view.orgTitle) return;
+        if (view.orgTitle.includes('_my_app_keyword')) {
+            //Do something here...
         }
     }
 
