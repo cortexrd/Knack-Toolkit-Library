@@ -1973,10 +1973,16 @@ function Ktl($) {
                 if (cfgObj.inlineEditBkgColor && cfgObj.inlineEditBkgColor !== '')
                     sysColors.inlineEditBkgColor = cfgObj.inlineEditBkgColor;
 
+                if (cfgObj.inlineEditFontWeight && cfgObj.inlineEditFontWeight !== '')
+                    sysColors.inlineEditFontWeight = cfgObj.inlineEditFontWeight;
+                else
+                    sysColors.inlineEditFontWeight = '500';
+
                 if (sysColors.inlineEditBkgColor) {
                     ktl.core.injectCSS(
                         '.cell-editable td.cell-edit {' +
-                        'background-color: ' + sysColors.inlineEditBkgColor + '!important;}'
+                        'background-color: ' + sysColors.inlineEditBkgColor + '!important;' +
+                        'font-weight: ' + sysColors.inlineEditFontWeight + '}'
                     );
                 }
 
