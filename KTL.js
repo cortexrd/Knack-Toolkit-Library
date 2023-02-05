@@ -1981,7 +1981,7 @@ function Ktl($) {
                 if (sysColors.inlineEditBkgColor) {
                     ktl.core.injectCSS(
                         '.cell-editable td.cell-edit {' +
-                        'background-color: ' + sysColors.inlineEditBkgColor + '!important;' +
+                        'background-color: ' + sysColors.inlineEditBkgColor + ';' +
                         'font-weight: ' + sysColors.inlineEditFontWeight + '}'
                     );
                 }
@@ -6257,9 +6257,10 @@ function Ktl($) {
                 if (rec) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
                     if (newSWVersion !== APP_KTL_VERSIONS) {
-                        if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
-                            ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
-                        else {
+                        if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
+                            if (localStorage.getItem(window.lsShortName + 'dev') === null) //Only warn when in Prod mode.
+                                ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                        } else {
                             console.log('sending reloadAppMsg with ver:', newSWVersion);
                             ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: newSWVersion });
                         }
