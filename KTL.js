@@ -178,7 +178,7 @@ function Ktl($) {
                                     'Authorization': Knack.getUserToken(),
                                     'X-Knack-Application-Id': Knack.application_id,
                                     'Content-Type': 'application/json',
-                                    'Access-Control-Allow-Origin': '*.knack.com', //Attempting to reduce the frequent but intermittent CORS error message.  No success.  Someone... Please help me!!!
+                                    'Access-Control-Allow-Origin': '*.knack.com',
                                 },
                                 data: JSON.stringify(apiData),
                                 success: function (data) {
@@ -2740,6 +2740,7 @@ function Ktl($) {
             var i = Knack.getSceneHash();
             var r = {}
             var a = [];
+            !srchTxt && (srchTxt = '');
             r[viewId + "_search"] = encodeURIComponent(srchTxt);
             r[viewId + "_page"] = 1;
             Knack.views[viewId].model.view.pagination_meta.page = 1;
@@ -5548,13 +5549,12 @@ function Ktl($) {
                         versionStyle = style;
 
                     var versionInfo = ' v' + APP_VERSION + ktlVer + (info.hostname ? '    ' + info.hostname : '');
-                    if (localStorage.getItem(window.lsShortName + 'dev') === null) { //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
+                    if (localStorage.getItem(window.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
                         versionStyle += '; color:#0008; background-color:#FFF3;';
-                        versionInfo = ktl.scenes.getCfg().versionDisplayName + versionInfo;
-                    } else { //Dev mode, make version bright yellow/red font.
+                    else //Dev mode, make version bright yellow/red font.
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
-                        versionInfo = Knack.app.attributes.name.toUpperCase() + versionInfo;
-                    }
+
+                    versionInfo = ktl.scenes.getCfg().versionDisplayName + versionInfo;
 
                     ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
                     $('#verButtonId').on('click touchstart', function (e) {
