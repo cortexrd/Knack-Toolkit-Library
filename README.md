@@ -37,6 +37,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 -   User filters to save your filters to named buttons
 -   Form data persistence that saves as you type, and will load back your data if a page is reloaded after a submit failure or power outage
 -   Sorted menus
+-   Display page title in browser’s tab
 -   Keyboard support in image viewer with left/right arrows for next/prev, and esc to exit
 -   Custom highlight/color for table’s inline-editable fields for easy identification
 -   Custom highlight/color for table row hover
@@ -51,7 +52,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
     -   hidden or deleted columns
 -   Keywords in a rich text view to trigger
     -   opening a link to any URL, using same page or a new one, when clicked on its top menu
--   Ctrl+Click on a table header to invert the default sort
+-   Ctrl+Click on a table’s header to invert the default sort
 -   Idle timeout watchdog
 -   Spinner timeout watchdog
 -   Numeric pre-validation
@@ -111,7 +112,7 @@ This is the traditional mode that we're all used to, i.e. when all the code resi
 To use this mode, you have two options:
 
 1.  Use the default, basic, ready-to-use setup [here](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
-2.  If you want to customize the KTL’s behavior or disable some features, edit a copy of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file and paste that code in the Javascript pane, after the Loader. [Follow the procedure here](#editing-the-ktl_knackapp-file).
+2.  If you want to customize the KTL’s behavior or disable some features, edit a copy of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file and paste that code in the Javascript pane, after the Loader. [See Editing the KTL_KnackApp file](#editing-the-ktl_knackapp-file).
 
 \*Note about **KTL_KnackApp.js**: throughout the document, we will refer to this file name as the “app code”, but you can substitute it to anything that would better match your app’s name. As long as you modify the merge utility files accordingly, if you are planning to use it. See the **-filename** parameter in the batch file.
 
@@ -119,7 +120,7 @@ Open the KTL_KnackApp_Prod.js file, copy its content to your Javascript pane in 
 
 ### Setup
 
-You will need to modify the KTL_KnackApp.js file to match your needs if you want to go beyond the basic default setup. [Follow the procedure here](#editing-the-ktl_knackapp-file).
+You will need to modify the KTL_KnackApp.js file to match your needs if you want to go beyond the basic default setup. [See Editing the KTL_KnackApp file](#editing-the-ktl_knackapp-file).
 
 ## Dev Mode
 
@@ -466,7 +467,7 @@ The User Filters feature is enabled by default, but you can disable it by settin
 
 If you are annoyed by the limitations of **Filter menus** that only have one field and without AND/OR operators, then you will find Public Filters very useful. They are the same as User Filters but created by special users, yet visible to everyone.
 
-First, you need to perform the setup of the [iFrameWnd](#_iFrameWnd) and the [Heartbeat Monitoring and SW Update](#_Heartbeat_Monitoring_and).
+First, you need to perform the setup of the [iFrameWnd](#iframewnd) and the [Heartbeat Monitoring and SW Update](#heartbeat-monitoring-and-sw-update).
 
 Then, create a **Public Filters** role and assign it to the privileged users of your choice. When they create their filters, they can right-click the assigned button to open the popup menu, where an option is shown: **Public: Yes/No**. Clicking on it will broadcast the new filter to all users. Within about 20 seconds, they will see it appear on all opened pages with that view. The Public Filters are always located to the left of the other filters with a slightly increased color and kept in the same order as the creator’s. They cannot be renamed, deleted or re-ordered by regular users.
 
@@ -530,7 +531,7 @@ Provides features for the currently logged-in account.
 
 ### Usage
 
-Provides various settings for the currently logged-in account. Some are built-in, and more can be added by your app. You can control which settings can be modified by the user and they can access them in the Account Settings page. See the [User Preferences setup procedure](#_User_Preferences).
+Provides various settings for the currently logged-in account. Some are built-in, and more can be added by your app. You can control which settings can be modified by the user and they can access them in the Account Settings page. See the [User Preferences setup procedure](#user-preferences-1).
 
 ### Functions
 
@@ -539,7 +540,7 @@ Provides various settings for the currently logged-in account. Some are built-in
 
 ## iFrame Window
 
-Referred to as the **iFrameWnd**, it's a hidden utility page that is dynamically created at the bottom of the main app page. It contains various views to implement system status, user preferences, remote SW updates and logging features. You may even add your own views if you need any. The idea is to be at two places at the same time: The main app page that changes as the user navigates around, and that invisible iFrameWnd that stays with us to serve various functions in the background. When the user logs-in, the authentication token is conveniently shared with the iFrameWnd, allowing us to log-in seamlessly and do API calls. If desired, it is possible to exchange information between both windows using the powerful [wndMsg](#_Windows_Messaging) feature.
+Referred to as the **iFrameWnd**, it's a hidden utility page that is dynamically created at the bottom of the main app page. It contains various views to implement system status, user preferences, remote SW updates and logging features. You may even add your own views if you need any. The idea is to be at two places at the same time: The main app page that changes as the user navigates around, and that invisible iFrameWnd that stays with us to serve various functions in the background. When the user logs-in, the authentication token is conveniently shared with the iFrameWnd, allowing us to log-in seamlessly and do API calls. If desired, it is possible to exchange information between both windows using the powerful [wndMsg](#windows-messaging) feature.
 
 ### Usage
 
@@ -572,7 +573,7 @@ Provides a window to see local logs on mobile devices where we don't have the lu
 
 Provides comprehensive logging functionalities for just about anything you want to monitor, such as user activity, navigation, system status, errors, or simply traces for development and debugging. All logs are connected to a given account.
 
-To use this feature, you must set the iFrameWnd and all desired logging flags to true in the ktl.core.setCfg function, then follow the [Account Logs setup procedure](#_Account_Logging).
+To use this feature, you must set the iFrameWnd and all desired logging flags to true in the ktl.core.setCfg function, then follow the [Account Logs setup procedure](#account-logging).
 
 All logs are aways saved in localStorage, with their timestamp. This is to prevent losing any of them in case of power outage or browser crash.
 
