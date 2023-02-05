@@ -1,4 +1,4 @@
-# ![A picture containing text, clipart Description automatically generated](.Docs\media/8e07b417287cf963d56fba071accc102.jpeg)
+# ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
 # Contents
 
@@ -856,4 +856,4 @@ Cortex R&D Inc.
 
 Blainville, Québec, Canada
 
-![A picture containing text, clipart Description automatically generated](.Docs\media/8e07b417287cf963d56fba071accc102.jpeg)
+![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
