@@ -1,184 +1,22 @@
-Table of Contents
+# Contents
 
 [Introduction](#introduction)
 
-[Overview](#overview)
+[Overview](#_Overview)
 
-[Zero config needed for Basic Features](#_Toc126476879)
+[Zero config needed for Basic Features](#_Zero_config_needed)
 
-[No time to read all this now - How about a quick tryout?](#_Toc126476880)
+[No time to read all this now - How about a quick tryout?](#_No_time_to)
 
-[How to use the KTL](#_Toc126476881)
+[How to use the KTL](#_How_to_use)
 
-[About Prod and Dev modes](#_Toc126476882)
+[KTL Features](#_KTL_Features)
 
-[Prod Mode](#prod-mode)
+[Customizing Features](#_Customizing_Features)
 
-[Pros](#pros)
+[Advanced Features](#_Advanced_Features)
 
-[Cons](#cons)
-
-[Setup](#setup)
-
-[Dev Mode](#dev-mode)
-
-[Pros](#pros-1)
-
-[Cons](#cons-1)
-
-[Multi-Developers Collaboration](#multi-developers-collaboration)
-
-[Setup](#setup-1)
-
-[Hybrid Mode](#_Toc126476892)
-
-[Switching Modes](#_Toc126476893)
-
-[Cloning the Source Code](#cloning-the-source-code)
-
-[KTL Features](#ktl-features)
-
-[Loader](#loader)
-
-[Usage](#usage)
-
-[Functions](#_Toc126476898)
-
-[Core](#core)
-
-[Usage](#usage-1)
-
-[Functions](#functions-1)
-
-[A note about knAPI](#a-note-about-knapi)
-
-[Storage](#storage)
-
-[Usage](#usage-2)
-
-[Functions](#functions-2)
-
-[Fields](#fields)
-
-[Usage](#usage-3)
-
-[Functions](#functions-3)
-
-[Using field’s Description text box as keywords to trigger special behavior](#using-fields-description-text-box-as-keywords-to-trigger-special-behavior)
-
-[Views](#views)
-
-[Usage](#usage-4)
-
-[Functions](#functions-4)
-
-[Using view’s Title to add keywords to trigger special behavior](#using-views-title-to-add-keywords-to-trigger-special-behavior)
-
-[Using view’s Description text box as keywords to trigger special behavior](#using-views-description-text-box-as-keywords-to-trigger-special-behavior)
-
-[Adding keywords to the tables header text to trigger special behavior](#adding-keywords-to-the-tables-header-text-to-trigger-special-behavior)
-
-[Scenes](#scenes)
-
-[Usage](#usage-5)
-
-[Functions](#functions-5)
-
-[Using a page’s Rich Text view with keywords to trigger special behavior](#using-a-pages-rich-text-view-with-keywords-to-trigger-special-behavior)
-
-[Form Persistence](#form-persistence)
-
-[Usage](#usage-6)
-
-[Functions](#functions-6)
-
-[User Filters](#_Toc126476923)
-
-[Usage](#usage-7)
-
-[Public Filters](#public-filters)
-
-[Functions](#functions-7)
-
-[Bulk Operations](#_Toc126476927)
-
-[Usage](#usage-8)
-
-[Bulk Edit](#bulk-edit)
-
-[Bulk Delete](#bulk-delete)
-
-[Functions](#functions-8)
-
-[Account](#account)
-
-[Usage](#usage-9)
-
-[Functions](#functions-9)
-
-[User Preferences](#_Toc126476935)
-
-[Usage](#usage-10)
-
-[Functions](#functions-10)
-
-[iFrame Window](#_Toc126476938)
-
-[Usage](#usage-11)
-
-[Functions](#functions-11)
-
-[Debug Window](#debug-window)
-
-[Usage](#usage-12)
-
-[Functions](#functions-12)
-
-[Logging](#logging)
-
-[Usage](#usage-13)
-
-[Functions](#functions-13)
-
-[Windows Messaging](#_Toc126476947)
-
-[Functions](#functions-14)
-
-[System Info](#system-info)
-
-[Functions](#functions-15)
-
-[System Colors](#system-colors)
-
-[Functions](#functions-16)
-
-[Customizing Features](#_Toc126476953)
-
-[Callbacks](#callbacks)
-
-[Disabling a Feature](#disabling-a-feature)
-
-[Editing the KTL_KnackApp file](#_Toc126476956)
-
-[Keeping your KTL_KnackApp file in Sync](#keeping-your-ktl_knackapp-file-in-sync)
-
-[Advanced Features](#_Toc126476958)
-
-[Setup](#setup-2)
-
-[Invisible Menu](#invisible-menu)
-
-[iFrameWnd](#_Toc126476961)
-
-[Additional utilities](#additional-utilities)
-
-[Merging a list of .js files together](#merging-a-list-of-js-files-together)
-
-[Future Improvements](#_Toc126476964)
-
-[Conclusion](#conclusion)
-
-[List of all Keywords](#list-of-all-keywords)
+[List of all Keywords](#_List_of_all)
 
 # Introduction
 
@@ -229,7 +67,7 @@ If you want to try/use the basic, default setup version of the KTL, all you need
 
 If you already have your own code, it will not conflict with the KTL. Just leave it after those added lines.
 
-If you do not like some features, you can turn them off individually – [see here](#_Turning_off_features).
+If you do not like some features, you can turn them off individually – [see here](#_Disabling_a_Feature).
 
 # How to use the KTL
 
@@ -271,7 +109,7 @@ This is the traditional mode that we're all used to, i.e. when all the code resi
 To use this mode, you have two options:
 
 1.  Use the default, basic, ready-to-use setup [here](#zero-config-needed-for-basic-features)
-2.  If you want to customize the KTL’s behavior or disable some features, edit a copy of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file and paste that code in the Javascript pane, after the Loader. [Follow the procedure here](#editing-the-ktl_knackapp-file).
+2.  If you want to customize the KTL’s behavior or disable some features, edit a copy of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file and paste that code in the Javascript pane, after the Loader. [Follow the procedure here](#_Editing_the_KTL_KnackApp).
 
 \*Note about **KTL_KnackApp.js**: throughout the document, we will refer to this file name as the “app code”, but you can substitute it to anything that would better match your app’s name. As long as you modify the merge utility files accordingly, if you are planning to use it. See the **-filename** parameter in the batch file.
 
@@ -322,7 +160,7 @@ Traditionally, Knack developers have to go in the Builder to create a temporary 
 
 What happens is that the Loader will use the stable and released code from the Prod in the Javascript pane by default for all users. But if it detects the “development flag” in your localStorage, it will switch to the Dev code… **but on your workstation only**.
 
-With Hybrid Mode, it is also possible to switch back and forth between the Prod and Dev modes instantly. See [Switching Modes](#switching-modes) in the next section.
+With Hybrid Mode, it is also possible to switch back and forth between the Prod and Dev modes instantly. See [Switching Modes](#_Switching_Modes) in the next section.
 
 ## Switching Modes
 
@@ -397,7 +235,7 @@ In the next section, we will go through each one and see what they can do, with 
 
 ### Usage
 
-This is where the KTL is initialized and where the [Dev or Prod](#about-prod-and-dev-modes) mode is selected.
+This is where the KTL is initialized and where the [Dev or Prod](#switching-modes) mode is selected.
 
 ### Functions
 
@@ -616,7 +454,7 @@ The Edit form is not supported as it would cause confusion as for distinguishing
 
 ### Usage
 
-When "Add filters" is used in tables and reports, it is possible to save each one you create to a named button by clicking on the yellow diskette save icon. The [X] icon with a pink color is to remove the active filter and see all records. Your filters are saved in localStorage but can be saved/restored to/from Knack for backup or migration to other devices, provided some additional setup. See the [User Filters setup procedure](#user-filters-1).
+When "Add filters" is used in tables and reports, it is possible to save each one you create to a named button by clicking on the yellow diskette save icon. The [X] icon with a pink color is to remove the active filter and see all records. Your filters are saved in localStorage but can be saved/restored to/from Knack for backup or migration to other devices, provided some additional setup. See the [User Filters setup procedure](#_User_Filters).
 
 Each active filter will not only remember its filter parameters, but also the column selected for sorting, the sort order, and the searched text. You can rename and delete buttons at will, and you can also drag and drop the buttons to re-order them at your convenience. The button colors will have matching variations based on the app's header color. Each view remembers the last active filter when you go back to its page.
 
@@ -626,7 +464,7 @@ The User Filters feature is enabled by default, but you can disable it by settin
 
 If you are annoyed by the limitations of **Filter menus** that only have one field and without AND/OR operators, then you will find Public Filters very useful. They are the same as User Filters but created by special users, yet visible to everyone.
 
-First, you need to perform the setup of the [iFrameWnd](#iframewnd) and the [Heartbeat Monitoring and SW Update](#heartbeat-monitoring-and-sw-update).
+First, you need to perform the setup of the [iFrameWnd](#_iFrameWnd) and the [Heartbeat Monitoring and SW Update](#_Heartbeat_Monitoring_and).
 
 Then, create a **Public Filters** role and assign it to the privileged users of your choice. When they create their filters, they can right-click the assigned button to open the popup menu, where an option is shown: **Public: Yes/No**. Clicking on it will broadcast the new filter to all users. Within about 20 seconds, they will see it appear on all opened pages with that view. The Public Filters are always located to the left of the other filters with a slightly increased color and kept in the same order as the creator’s. They cannot be renamed, deleted or re-ordered by regular users.
 
@@ -690,7 +528,7 @@ Provides features for the currently logged-in account.
 
 ### Usage
 
-Provides various settings for the currently logged-in account. Some are built-in, and more can be added by your app. You can control which settings can be modified by the user and they can access them in the Account Settings page. See the [User Preferences setup procedure](#user-preferences-1).
+Provides various settings for the currently logged-in account. Some are built-in, and more can be added by your app. You can control which settings can be modified by the user and they can access them in the Account Settings page. See the [User Preferences setup procedure](#_User_Preferences).
 
 ### Functions
 
@@ -699,7 +537,7 @@ Provides various settings for the currently logged-in account. Some are built-in
 
 ## iFrame Window
 
-Referred to as the **iFrameWnd**, it's a hidden utility page that is dynamically created at the bottom of the main app page. It contains various views to implement system status, user preferences, remote SW updates and logging features. You may even add your own views if you need any. The idea is to be at two places at the same time: The main app page that changes as the user navigates around, and that invisible iFrameWnd that stays with us to serve various functions in the background. When the user logs-in, the authentication token is conveniently shared with the iFrameWnd, allowing us to log-in seamlessly and do API calls. If desired, it is possible to exchange information between both windows using the powerful [wndMsg](#windows-messaging) feature.
+Referred to as the **iFrameWnd**, it's a hidden utility page that is dynamically created at the bottom of the main app page. It contains various views to implement system status, user preferences, remote SW updates and logging features. You may even add your own views if you need any. The idea is to be at two places at the same time: The main app page that changes as the user navigates around, and that invisible iFrameWnd that stays with us to serve various functions in the background. When the user logs-in, the authentication token is conveniently shared with the iFrameWnd, allowing us to log-in seamlessly and do API calls. If desired, it is possible to exchange information between both windows using the powerful [wndMsg](#_Windows_Messaging) feature.
 
 ### Usage
 
@@ -947,7 +785,7 @@ If you want to add Account Logging to your app, follow this procedure:
 
 #### Bulk Operations
 
-If you want to add Bulk Edit and Bulk Delete to your app, follow this procedure described in this section [Bulk Operations](#bulk-operations).
+If you want to add Bulk Edit and Bulk Delete to your app, follow this procedure described in this section [Bulk Operations](#_Bulk_Operations).
 
 # Additional utilities
 
