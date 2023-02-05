@@ -7006,19 +7006,25 @@ function Ktl($) {
                 ktl.scenes.spinnerWatchdog(false);
 
                 var arrayLen = bulkOpsRecIdArray.length;
-                (function updateRecord(recIdArray) {
-                    var recId = recIdArray[0];
-                    ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + recIdArray.length);
+
+                var idx = 0;
+                var countDone = 0;
+                var itv = setInterval(() => {
+                    if (idx < arrayLen)
+                        updateRecord(bulkOpsRecIdArray[idx++]);
+                    else
+                        clearInterval(itv);
+                }, 150);
+
+                function updateRecord(recId) {
+                    showProgress();
                     ktl.core.knAPI(bulkOpsViewId, recId, apiData, 'PUT')
                         .then(function () {
-                            //console.log('updated recId =', recId);
-                            recIdArray.shift();
-                            if (recIdArray.length === 0) {
+                            if (++countDone === bulkOpsRecIdArray.length) {
                                 Knack.showSpinner();
                                 ktl.core.removeInfoPopup();
                                 ktl.views.refreshView(bulkOpsViewId).then(function () {
-                                    ktl.core.removeTimedPopup(); //Remove residual SWD pop up.
-
+                                    ktl.core.removeTimedPopup(); //Remove any residual SWD pop up.
                                     ktl.scenes.spinnerWatchdog();
                                     setTimeout(function () {
                                         ktl.views.autoRefresh();
@@ -7026,9 +7032,8 @@ function Ktl($) {
                                         alert('Bulk operation completed successfully');
                                     }, 1000);
                                 })
-                            } else {
-                                updateRecord(recIdArray);
-                            }
+                            } else
+                                showProgress();
                         })
                         .catch(function (reason) {
                             alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
@@ -7036,7 +7041,11 @@ function Ktl($) {
                             ktl.views.autoRefresh();
                             ktl.scenes.spinnerWatchdog();
                         })
-                })(bulkOpsRecIdArray);
+
+                    function showProgress() {
+                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                    }
+                }
             } else
                 bulkOpsInProgress = false;
         }
