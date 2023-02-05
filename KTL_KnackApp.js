@@ -115,6 +115,7 @@ var KnackApp = function ($, info = {}) {
             processFailedMessages: processFailedMessages,
             processAppMsg: processAppMsg,
             sendAppMsg: sendAppMsg,
+            processServerErrors: processServerErrors,
         })
 
         //Features that do not apply to the iFrameWnd.
@@ -158,9 +159,7 @@ var KnackApp = function ($, info = {}) {
             })
 
             ktl.userFilters.setCfg({
-                allowUserFilters: allowUserFilters, //Callback to your app.
-                ufDateTimeFld: 'field_x',
-                ufFiltersCodeFld: 'field_x',
+                allowUserFilters: allowUserFilters,
             })
 
             ktl.log.setCfg({
@@ -170,7 +169,6 @@ var KnackApp = function ($, info = {}) {
     })();
     //KTL Setup - END
     //====================================================
-
 
 
 
@@ -314,7 +312,7 @@ var KnackApp = function ($, info = {}) {
 
     function applyUserPrefs(refreshScene = false) {
         if (refreshScene)
-            ktl.scenes.refreshScene();
+            ktl.scenes.renderViews();
     }
 
     function allowUserFilters() {
@@ -374,6 +372,13 @@ var KnackApp = function ($, info = {}) {
         else {
             console.log('Called sendAppMsg with unsupported src/dst.');//$$$
         }
+    }
+
+    //All server errors are processed here, in app.  Any error occuring in iFrameWnd must be forwarded here.
+    function processServerErrors(msg = {}) {
+        if ($.isEmptyObject(msg)) return;
+
+        //Implement your app-specific processing here.
     }
 
     function updateWorkShiftItems(shiftLetter = '') {
