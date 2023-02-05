@@ -1283,17 +1283,17 @@ variations for KTL features.
 
 ### Functions
 
+-   **setCfg**: To define your own parameters for highlighting...
+
+    -   **inlineEditBkgColor**: the color of inline-editable cells
+
+    -   **inlineEditFontWeight**: the font weight of inline-editable
+        cells
+
+    -   **tableRowHoverBkgColor**: the table's row hover color if you
+        want to override Knack's default
+
 -   **getSystemColors**: Get the sysColors object.
-
--   **setSystemColors**: To define your own parameters for
-    highlighting...
-
-    -   the inline-editable cells of a table - color and font weight
-
-    -   the table's row hover color if you want to override Knack's
-        default
-
-    -   use the ktl.systemColors.setCfg function
 
 -   **rgbToHsl**, **hslToRgb**, **rgbToHsv**, **hsvToRgb**,
     **hexToRgb**: Various color conversion utilities.
