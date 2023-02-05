@@ -1,16 +1,16 @@
-Contents
+Table of Contents
 
-[Introduction](#_Toc126472608)
+[Introduction](#introduction)
 
 [Overview](#overview)
 
-[Zero config needed for Basic Features](#_Toc126472610)
+[Zero config needed for Basic Features](#_Toc126476879)
 
-[No time to read all this now - How about a quick tryout?](#_Toc126472611)
+[No time to read all this now - How about a quick tryout?](#_Toc126476880)
 
-[How to use the KTL](#_Toc126472612)
+[How to use the KTL](#_Toc126476881)
 
-[About Prod and Dev modes](#_Toc126472613)
+[About Prod and Dev modes](#_Toc126476882)
 
 [Prod Mode](#prod-mode)
 
@@ -30,9 +30,9 @@ Contents
 
 [Setup](#setup-1)
 
-[Hybrid Mode](#_Toc126472623)
+[Hybrid Mode](#_Toc126476892)
 
-[Switching Modes](#_Toc126472624)
+[Switching Modes](#_Toc126476893)
 
 [Cloning the Source Code](#cloning-the-source-code)
 
@@ -42,7 +42,7 @@ Contents
 
 [Usage](#usage)
 
-[Functions](#_Toc126472629)
+[Functions](#_Toc126476898)
 
 [Core](#core)
 
@@ -92,7 +92,7 @@ Contents
 
 [Functions](#functions-6)
 
-[User Filters](#_Toc126472654)
+[User Filters](#_Toc126476923)
 
 [Usage](#usage-7)
 
@@ -100,7 +100,7 @@ Contents
 
 [Functions](#functions-7)
 
-[Bulk Operations](#_Toc126472658)
+[Bulk Operations](#_Toc126476927)
 
 [Usage](#usage-8)
 
@@ -116,13 +116,13 @@ Contents
 
 [Functions](#functions-9)
 
-[User Preferences](#_Toc126472666)
+[User Preferences](#_Toc126476935)
 
 [Usage](#usage-10)
 
 [Functions](#functions-10)
 
-[iFrame Window](#_Toc126472669)
+[iFrame Window](#_Toc126476938)
 
 [Usage](#usage-11)
 
@@ -140,7 +140,7 @@ Contents
 
 [Functions](#functions-13)
 
-[Windows Messaging](#_Toc126472678)
+[Windows Messaging](#_Toc126476947)
 
 [Functions](#functions-14)
 
@@ -152,23 +152,29 @@ Contents
 
 [Functions](#functions-16)
 
-[Turning off Features](#_Toc126472684)
+[Customizing Features](#_Toc126476953)
 
-[Editing the KTL_KnackApp file](#_Toc126472685)
+[Callbacks](#callbacks)
 
-[Advanced Features](#_Toc126472686)
+[Disabling a Feature](#disabling-a-feature)
+
+[Editing the KTL_KnackApp file](#_Toc126476956)
+
+[Keeping your KTL_KnackApp file in Sync](#keeping-your-ktl_knackapp-file-in-sync)
+
+[Advanced Features](#_Toc126476958)
 
 [Setup](#setup-2)
 
 [Invisible Menu](#invisible-menu)
 
-[iFrameWnd](#_Toc126472689)
+[iFrameWnd](#_Toc126476961)
 
 [Additional utilities](#additional-utilities)
 
 [Merging a list of .js files together](#merging-a-list-of-js-files-together)
 
-[Future Improvements](#_Toc126472692)
+[Future Improvements](#_Toc126476964)
 
 [Conclusion](#conclusion)
 
@@ -265,7 +271,7 @@ This is the traditional mode that we're all used to, i.e. when all the code resi
 To use this mode, you have two options:
 
 1.  Use the default, basic, ready-to-use setup [here](#zero-config-needed-for-basic-features)
-2.  If you want to customize the KTL’s behavior or disable some features, edit a copy of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file and paste that code in the Javascript pane, after the Loader. [Follow the procedure here](#_Editing_the_KTL_KnackApp).
+2.  If you want to customize the KTL’s behavior or disable some features, edit a copy of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file and paste that code in the Javascript pane, after the Loader. [Follow the procedure here](#editing-the-ktl_knackapp-file).
 
 \*Note about **KTL_KnackApp.js**: throughout the document, we will refer to this file name as the “app code”, but you can substitute it to anything that would better match your app’s name. As long as you modify the merge utility files accordingly, if you are planning to use it. See the **-filename** parameter in the batch file.
 
@@ -496,7 +502,7 @@ Provides view-related features.
 
 ### Functions
 
--   **setCfg**: To setup your parameters and callbacks to your app. Callback processViewFlags allows you to process your own special title keywords.
+-   **setCfg**: To setup your parameters and callbacks to your app. Callback processViewKeywords allows you to process your own special title keywords.
 -   **refreshView**: Robust view refresh function with retries and error handling. Supports most types of views including tables, details, searches, forms, rich text, and menus.
 -   **refreshViewArray**: Calls refreshView for each view in the array of view ids as parameter, and returns (resolve from promise) only when all are done refreshing.
 -   **autoRefresh**: You can now add auto refresh to any view without a single line of code. It is done from the Builder, by simply adding **\_ar=30** at the end of your view's title and it will refresh itself every 30 seconds. Values from 5 (seconds) to 86500 (24 hours) are accepted. Of course, the keyword is truncated so only your title remains visible. Also, you can start and stop the process at will by setting the run parameter to true/false. Note that this will apply to all views in scene.
@@ -508,10 +514,11 @@ Provides view-related features.
 -   **findInSearchView**: Uses a Search view to find text, with exact match. Very useful to prevent duplicate entries on a connected field, for example, by doing a hidden search on that view before submitting a new connected record.
 -   **removeTableColumns**: Will hide or remove columns from a table. Pass it an array of field ids, and/or array of columns indexes to remove. Also works with action links, which is useful to remove a Delete action if the logged-in role should not be allowed for example.
 -   **findFirstExistingField**: Pass a list of field IDs and returns the first found in scene.
--   **modifyTableSort**: Inverts the sort order if the data type is Date/Time. In several apps, we found that users always need to click the header twice because they want to see the most recent entries. You can also do a Ctrl+Click to sort it ascending like Knack’s default behavior.
+-   **handleClickSort**: Inverts the sort order if the data type is Date/Time. In several apps, we’ve been told that too often users need to click the header twice because they want to see the most recent entries. You can also do a Ctrl+Click to sort it ascending like Knack’s default behavior.
 -   **submitAndWait**: Pass a form’s view ID and an object containing pairs of field IDs and values. It will fill in the form and submit automatically, then return with a success or failure outcome. If successful, the resulting record is also returned and can be used for further processing.
 -   **updateSubmitButtonState**: Used to perform real-time form validation, i.e. before Submit is clicked, by enabling or disabling the button based on your criteria. Pass the form’s view ID and it will enable or disable the Submit button. This status extends the existing **validity** property of the button, by adding the **invalidItemObj** object to it. When this object is empty, Submit is enabled, if it contains any key, it will be disabled.
--   **ktlProcessViewFlags**: This is an internal function that is not exposed. But worth some additional explaining, nonetheless. It parses the view's title for keywords that trigger special behavior. See the list and details below.
+-   **ktlProcessViewKeywords**: This is an internal function that is not exposed. But worth some additional explaining, nonetheless. It parses the view's title for keywords that trigger special behavior. See the list and details below.
+-   **handleCalendarEventDrop**: Provides notification that a drag’n drop operation has been done on a calendar event. This can be used to sync a table to a calendar.
 
 ### Using view’s Title to add keywords to trigger special behavior
 
@@ -541,7 +548,7 @@ Ex: **Customer Sale \_rvs=Client Sales, Store Sales**
 
 Here, the form’s visible title will be “Customer Sales”, and when submitted successfully, the two views with the title “Client Sales” and “Store Sales” will be refreshed.
 
-**\_yourOwnKeywords**: You can also add your own app-specific keywords and process them in the callback function processViewFlags.
+**\_yourOwnKeywords**: You can also add your own app-specific keywords and process them in the callback function processViewKeywords.
 
 ### Using view’s Description text box as keywords to trigger special behavior
 
@@ -787,9 +794,17 @@ Retrieves information about Knack's colors and generates a few variations for KT
 -   **getSystemColors**: Get the sysColors object.
 -   **rgbToHsl**, **hslToRgb**, **rgbToHsv**, **hsvToRgb**, **hexToRgb**: Various color conversion utilities.
 
-# Turning off Features
+# Customizing Features
 
-You can turn off a feature by setting its flag to false in the function **ktl.core.setCfg**, in the **//KTL Setup** section of the **KTL_KnackApp.js** file.
+You can customize how the KTL operates by modifying the **KTL_KnackApp.js** file. This is done by setting various flags and variables, but also by adding your own processing code in the callbacks.
+
+## Callbacks
+
+The callbacks play a major role, and can be seen as a “bridge” between the KTL and your App. In some cases, it passes control to execute app-specific code that drives its behavior at run-time, but also to get/set configuration parameters.
+
+## Disabling a Feature
+
+You can turn off a feature by setting its flag to false in the function **ktl.core.setCfg**, in the **//KTL Setup** section.
 
 For example, you don’t want to see the version info at top-right of the page, set this to false: **showAppInfo: false**
 
@@ -800,11 +815,16 @@ For example, you don’t want to see the version info at top-right of the page, 
 3.  Locate the **//KTL Setup** section and go through all the flags and settings to match your needs.
 4.  Locate the **//KTL callbacks to your App** section and go through each function, adapting them to match your needs.
 5.  Locate the **//Setup default preferences** section and go through all the flags and settings to match your needs.
-6.  Copy/paste the content of the file in the Javascript pane, after the 5 lines of the KTL_Loader.js at top. Save. (*Note that if you are in Dev mode, you don’t have to do this copy/paste operation)*
-7.  Open a browser to your Knack app.
-8.  Check console logs to see if all is looking good.
+6.  Copy/paste the content of the file in the Javascript pane, after the 5 lines of the KTL_Loader.js at top. Save.
+7.  If you are in Dev mode, the previous step is not required since the local file server will use the code from your workstation.
+8.  Open a browser to your Knack app.
+9.  Check console logs to see if all is looking good.
 
 \*Note: If you are using the Prod mode, you should never edit the generated Prod file directly. Always edit the KTL_KnackApp.js file and copy/paste the code in the Javascript pane.
+
+## Keeping your KTL_KnackApp file in Sync
+
+The **KTL_KnackApp.js** file is subject to frequent changes over time, mainly due to added functionalities. Since this file lives in two different places – your copy and the official KTL copy, you will need to check what has changed since your last update (GitHub pull or clone) and import those changes in your copy. Omitting to do so will not have any negative impact other than not fully benefiting from the latest updates.
 
 # Advanced Features
 
@@ -821,7 +841,7 @@ Namely:
 2.  Bulk Operations
     1.  Edit
     2.  Delete
-3.  User Filters Upload and Download (save/restore)
+3.  User and Public Filters automatic Upload and Download (save/restore)
 
 ## Setup
 
