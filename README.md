@@ -36,12 +36,13 @@
 -   [Additional utilities](#additional-utilities)
 -   [Future Improvements](#future-improvements)
 -   [Conclusion](#conclusion)
+-   [List of all Keywords](#list-of-all-keywords)
 
 # Introduction
 
 **Knack Toolkit Library**
 
-v0.7.1 - pre-release
+v0.7.3 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a
 collection of open-source Javascript utilities that eases Knack
@@ -56,20 +57,23 @@ API are 100% view-based, so your API key is never exposed.
 Right out of the box, without any coding or complex setup, the KTL will
 provide many nice additions to your app:
 
--   user filters to save your filters to named buttons
+-   User filters to save your filters to named buttons
 
--   form data persistence that saves as you type, and will load back
+-   Form data persistence that saves as you type, and will load back
     your data if a page is reloaded after a submit failure or power
     outage
 
--   sorted menus
+-   Sorted menus
 
--   keyboard support in image viewer: left/right arrows for next/prev,
-    esc to exit.
+-   Keyboard support in image viewer with left/right arrows for
+    next/prev, and esc to exit
 
--   lightly colorized inline-editable fields for easy identification
+-   Custom highlight/color for table's inline-editable fields for easy
+    identification
 
--   special keywords in the view's title to trigger
+-   Custom highlight/color for table row hover
+
+-   Keywords in the view's title to trigger
 
     -   auto-refresh of tables, details view or other views
 
@@ -79,35 +83,36 @@ provide many nice additions to your app:
 
     -   disable inline editing
 
--   special keywords in the view's description to trigger
+-   Keywords in the view's description to trigger
 
     -   filter restriction for specified fields
 
--   special keywords in the table's column headers to trigger
+-   Keywords in a table's column headers to trigger
 
     -   hidden or deleted columns
 
--   special keywords in menus to trigger
+-   Keywords in a rich text view to trigger
 
-    -   link to any URL, even external ones
+    -   opening a link to any URL, using same page or a new one, when
+        clicked on its top menu
 
 -   Ctrl+Click on a table header to invert the default sort
 
--   idle timeout watchdog
+-   Idle timeout watchdog
 
--   spinner timeout watchdog
+-   Spinner timeout watchdog
 
--   numeric pre-validation
+-   Numeric pre-validation
 
--   force uppercases on desired fields
+-   Force uppercases on desired fields
 
--   auto-focus on first field of a form or search field in a table
+-   Auto-focus on first field of a form or search field in a table
 
--   dropdown selector improvements
+-   Dropdown selector improvements
 
--   kiosk mode
+-   Kiosk mode
 
--   debug window for embedded devices
+-   Debug window for embedded devices
 
 Click the following link if you are interested to know more about
 [Advanced Features](#advanced-features).
@@ -141,10 +146,10 @@ Traditionally, all your app code resides in the Builder\'s Javascript
 pane. This is what we refer to as the Prod mode and is the default.
 
 But with the KTL, it is now possible to switch to Dev mode instantly to
-allow loading your Javascript and CSS code at run-time directly from
-your hard drive. This means you can now code and save on your
-workstation, without having to copy/paste the code to the Builder every
-time you want to test a change.
+load your Javascript and CSS code at run-time directly from your hard
+drive. This means you can now code and save on your workstation, without
+having to copy/paste the code to the Builder every time you want to test
+a change.
 
 This mode enables you (the developer) to work more efficiently by using
 your favorite code editor with all its bells and whistles, instead of
@@ -198,8 +203,7 @@ have coding experience, this is for you**.
 
 -   Can be risky if used in production (when the app is being used in a
     live and consequential context) since your development code always
-    takes effect immediately. You must have good coding experience and
-    know exactly what you\'re doing.
+    takes effect immediately.
 
 To use this mode, you have two options:
 
@@ -298,9 +302,10 @@ Traditionally, Knack developers have to go in the Builder to create a
 temporary copy of their production app to experiment freely without
 fearing serious consequences or disruption. While this is still
 desirable in many cases, you now have another option: **Hybrid Mode**.
-Thanks to the Loader, a hybrid setup is possible with both the Prod and
-Dev modes at same time. This enables you to run development code in a
-production environment without users being affected by it.
+Thanks to the Loader, a hybrid setup is possible where both the Prod and
+Dev modes are active at the same time. This enables you to run
+development code in a production environment without users being
+affected by it.
 
 What happens is that the Loader will use the stable and released code
 from the Prod in the Javascript pane by default for all users. But if it
@@ -326,9 +331,12 @@ You can switch modes using two methods:
     desired mode and click ok. The page will refresh itself
     automatically.
 
-2)  Add a key to the localStorage for your app with the name followed by
-    **\_dev** like this: **KTL_KnackApp_dev**. Leave the value empty
-    since not used.
+2)  You can manually add a key to the localStorage for your app with the
+    **LS Key** followed by **\_dev** like this: **KTLTu_fcbf_dev**, for
+    example. Leave the value empty since not used. The **LS Key** can be
+    obtained by double-clicking on your first name in the top bar, then
+    looking at the console output. You will also find there the App ID
+    and your User ID.
 
 Once in the Dev mode, you will see the version shown with bright
 yellow/red as an attention getter that indicates you are in Dev mode.
@@ -337,7 +345,7 @@ yellow/red as an attention getter that indicates you are in Dev mode.
 
 If you're interested in collaborating with the KTL project or just study
 the code and "borrow" a few tricks, you will need to fetch all the files
-from GitHub to your workstation. The best way to do it is to install
+from GitHub to your workstation. The best way to do so is to install
 GitHub and "clone" the repository locally. You will find this under the
 green "\< \> Code" button at top right of this page. Alternatively, you
 can use "Download ZIP" under that same button. In that case, you will
@@ -532,17 +540,20 @@ internally, but also available to your app.
 -   **getLastDayOfMonth**: Pass a date string and it will return the
     last day of that month, as a string, is ISO or US format.
 
+-   **injectCSS**: Used internally to add custom styles at run-time
+    based on user's settings.
+
 ### A note about knAPI
 
 While Inline editing is mandatory for PUT (edit) operations on a table,
 sometimes it may not be desirable to let users modify data manually. You
-can disable these inline edits by adding the view title flag
-**NO_INLINE**. This allows the API calls to work properly, while
-disabling the mouse actions.
+can disable these inline edits by adding the view title keyword
+**\_ni**. This allows the API calls to work properly, while disabling
+the mouse actions.
 
-\* Note about security: use this flag with caution as it only disables
-the user interface. Someone with coding skills and bad intentions could
-still modify the data using commands in the console.
+\* Note about security: use this keyword with caution as it only
+disables the user interface. Someone with coding skills and bad
+intentions could still modify the data using commands in the console.
 
 ## Storage
 
@@ -608,8 +619,8 @@ letters.
     annoying being the following: When you have more than 500 items in
     the list, the dropdown switches mode and displays a search field.
     But most of the time, when 3 or 4 characters are typed, the last one
-    or two are erased, rendering the selection very tedious. I got so
-    many complaints about this that I decided to code my own solution.
+    or two are erased, rendering the selection very tedious. We got so
+    many complaints about this that we decided to code our own solution.
     As a bonus, you can now customize the delay before the search starts
     (common to all dropdowns), and for individual dropdowns, the
     threshold number of characters to type before the search starts.
@@ -637,18 +648,18 @@ letters.
 -   **getFieldDescription**: Returns the description text from the field
     ID parameter.
 
-### Using field's Description text box as flags to trigger special behavior
+### Using field's Description text box as keywords to trigger special behavior
 
 In the Builder, when you edit a field in the schema view, there's a
 Description text box, where you can put your own notes, as a developer.
 Now, this can also be used by the KTL to trigger special behavior. You
-can add the flag at the end of your description, or on a separate line,
-as you wish. Here is the list:
+can add the keyword at the end of your description, or on a separate
+line, as you wish. Here is the list:
 
--   **TO_UPPERCASE**: to convert text to uppercase in real-time
+-   **\_uc**: to convert text to uppercase in real-time
 
--   **IS_IP_ADDRESS**: TODO: enforce IP format, with automatic colons
-    and hex char real-time validation.
+-   **\_ip**: enforce IP format, with automatic colons and hex char
+    real-time validation (not yet implemented).
 
 ## Views
 
@@ -660,7 +671,7 @@ Provides view-related features.
 
 -   **setCfg**: To setup your parameters and callbacks to your app.
     Callback processViewFlags allows you to process your own special
-    title flags.
+    title keywords.
 
 -   **refreshView**: Robust view refresh function with retries and error
     handling. Supports most types of views including tables, details,
@@ -672,9 +683,9 @@ Provides view-related features.
 
 -   **autoRefresh**: You can now add auto refresh to any view without a
     single line of code. It is done from the Builder, by simply adding
-    AUTOREFRESH=30 at the end of your view\'s title and it will refresh
+    **\_ar=30** at the end of your view\'s title and it will refresh
     itself every 30 seconds. Values from 5 (seconds) to 86500 (24 hours)
-    are accepted. Of course, the flag is truncated so only your title
+    are accepted. Of course, the keyword is truncated so only your title
     remains visible. Also, you can start and stop the process at will by
     setting the run parameter to true/false. Note that this will apply
     to all views in scene.
@@ -716,9 +727,10 @@ Provides view-related features.
     first found in scene.
 
 -   **modifyTableSort**: Inverts the sort order if the data type is
-    Date/Time. In several apps, I found that users always need to click
+    Date/Time. In several apps, we found that users always need to click
     the header twice because they want to see the most recent entries.
-    You can also do a Ctrl+Click to sort it ascending like it is now.
+    You can also do a Ctrl+Click to sort it ascending like Knack's
+    default behavior.
 
 -   **submitAndWait**: Pass a form's view ID and an object containing
     pairs of field IDs and values. It will fill in the form and submit
@@ -736,51 +748,40 @@ Provides view-related features.
 
 -   **ktlProcessViewFlags**: This is an internal function that is not
     exposed. But worth some additional explaining, nonetheless. It
-    parses the view\'s title for flags that trigger special behavior.
+    parses the view\'s title for keywords that trigger special behavior.
     See the list and details below.
 
-### Using view's Title to add flags to trigger special behavior
+### Using view's Title to add keywords to trigger special behavior
 
-You can add these flags **at the end of your view's title** to trigger
-the behavior. The flag and any text that follows will be truncated, thus
-not visible to the user.
+You can add these keywords **at the end of your view's title** to
+trigger the behavior. The keyword and any text that follows will be
+truncated, thus not visible to the user.
 
-#### AUTOREFRESH=\[value\]
+**\_ar=*n***: Auto Refresh view. The view will be refreshed periodically
+every "*n*" seconds. It is possible to manually start/stop the process
+using the autoRefresh function.
 
-The view will be refreshed periodically every *\[value\]* seconds. It is
-possible to start/stop at will using the autoRefresh function.
+**\_hv**: Hide View, away from screen but still existing in DOM.
 
-#### HIDDEN_VIEW
+**\_ht**: Hide View title, used to save real-estate in the App while
+keeping the title in the Builder.
 
-To hide the view away from screen, but still existing.
+**\_kr**: Kiosk add Refresh button. For Kiosk mode only, when there's no
+keyboard/mouse.
 
-#### HIDDEN_TITLE
+**\_kb**: Kiosk add Back button.
 
-To hide the view title only to save real-estate.
+**\_kd**: Kiosk add Done button.
 
-#### ADD_REFRESH
+**\_ni**: No Inline editing. Disables inline editing for the user, while
+still enabled in Builder for API calls.
 
-For Kiosk mode only, adds a Refresh button.
+\* Note about \_ni security: use this keyword with caution as it only
+disables the user interface. Someone with coding skills and bad
+intentions could still modify the data using commands in the console.
 
-#### ADD_BACK
-
-For Kiosk mode only, adds a Back button.
-
-#### ADD_DONE
-
-For Kiosk mode only, adds a Done button.
-
-#### NO_INLINE
-
-Disables inline editing for the user, while still enabled in Builder for
-API calls.
-
-\* Note about security: use this flag with caution as it only disables
-the user interface. Someone with coding skills and bad intentions could
-still modify the data using commands in the console.
-
-#### DATETIME_PICKERS
-
+**\_dtp**: Add Date/Time Picker to a table. The table **must have a
+Date/Time field**, and the first one found from the left will be used.
 Six new fields will appear at the top of your table view: **From**,
 **To** and periods as **Monthly**, **Weekly**, and **Daily**. Depending
 on the active period, when you change From, the To field will
@@ -793,46 +794,47 @@ compatible with additional filter fields, provided that the AND operator
 is used. Once you have a filter that you like, it is also possible to
 save it as a [User Filter](#user-filters).
 
-#### REFRESH_VIEW
+**\_rvs=*v1,v2***: Refresh Views upon Submit. Add this to a form's title
+and when it is submitted successfully, will refresh any other views
+specified. Use the exact full title text, separated by commas, spaces
+are allowed.
 
-When a form is submitted, will refresh any other views specified.
+Ex: **Customer Sale \_rvs=Client Sales, Store Sales**
 
-Ex: **Customer Sale REFRESH_VIEW=Client Sales,Store Sales**
+Here, the form's visible title will be "Customer Sales", and when
+submitted successfully, the two views with the title "Client Sales" and
+"Store Sales" will be refreshed.
 
-The visible title will be Customer Sales, and when submitted
-successfully, the two tables with the title Client Sales and Store
-Sales, separated by a comma, will also be refreshed. The titles must
-match exactly.
+**\_yourOwnKeywords**: You can also add your own app-specific keywords
+and process them in the callback function processViewFlags.
 
-#### Your own flags
-
-You can also add your own app-specific flags in the callback function
-processViewFlags.
-
-### Using view's Description text box as flags to trigger special behavior
+### Using view's Description text box as keywords to trigger special behavior
 
 In the Builder, when you edit a view, there's a Description text box,
 where you can put additional information to the user. Now, the KTL can
-also use this to trigger special behavior. You can add your flags at the
-end of your description, or on a separate line, as you wish, as long as
-it's at the end of your text. Currently, only tables are supported. Here
-is the list:
+also use this to trigger special behavior. You can add your keywords at
+the end of your description, or on a separate line, as you wish, as long
+as it's at the end of your text. Currently, only tables are supported.
+Here is the list:
 
--   **NO_FILTER=field_x, field_y, field_z** This will prevent filtering
-    on these fields, even if they are visible in the table. Each must
-    have a comma separator, spaces are allowed.
+**\_nf=field_x, field_y, field_z** This will prevent filtering on these
+fields, even if they are visible in the table. Each must have a comma
+separator, spaces are allowed.
 
-### Adding flags to the tables header text to trigger special behavior
+### Adding keywords to the tables header text to trigger special behavior
 
-In the Builder, when you edit a table view, you can add these flags at
-the end of your header text to trigger special behavior:
+In the Builder, when you edit a table view, you can add these keywords
+at the end of your header text to trigger special behavior:
 
--   **\_HIDE**: To hide the column. The columns are only hidden and
-    still exists in DOM. The visibility is reversible (hide/show) on the
-    fly if needed.
+**\_hc**: To hide the column. The columns are only hidden and still
+exists in DOM. The visibility is reversible (hide/show) on the fly if
+needed.
 
--   **\_REMOVE**: To complete delete de column from the DOM. Safer since
-    it's not possible to peek at data by showing the columns manually.
+**\_rc**: To delete de column from the table and the DOM. "Somewhat" a
+bit more secure since it's not easily possible to peek at data from the
+browser's console. Though someone could intercept the data *before* it's
+been removed, i.e. while it's being sent by the server, so keep this in
+mind.
 
 ## Scenes
 
@@ -848,15 +850,17 @@ Provides scene-related features.
 
 -   **autoFocus**: Callback to your app\'s handler of autoFocus. By
     default, Knack does not set the focus to a field. But this enables
-    you to choose when and how to do it -- your way.
+    you to choose when and how to do it -- your way. For your
+    convenience, a sample snippet is included, but feel free to adapt it
+    to your needs.
 
 -   **renderViews**: Renders all views in the current scene.
 
 -   **addKioskButtons**: In kiosk mode, most of the time there is no
     mouse or keyboard. This enables adding specific buttons, typically
-    for navigation: Back, Done, Refresh. I\'ve also added Work Shift and
-    Messaging buttons, if ever you need them (more information provided
-    upon request).
+    for navigation: Back, Done, Refresh. We\'ve also added Work Shift
+    and Messaging buttons, if ever you need them (more information
+    provided upon request).
 
 -   **spinnerWatchdog**: This is a timer that checks if the app is in a
     waiting state. If the spinner takes more than a specified amount of
@@ -865,7 +869,7 @@ Provides scene-related features.
     waiting\" problem after a Submit or any page load/refresh,
     especially for kiosks without a keyboard, where users would
     otherwise have to reboot the device. After quite a bit of
-    experimentation, I was surprised to observe that a submitted form
+    experimentation, we were surprised to observe that a submitted form
     was indeed sent successfully, but it was the screen refresh that
     never came back. This forced refresh solved the problem at least 90%
     of the time.
@@ -878,7 +882,7 @@ Provides scene-related features.
     or failure.
 
 -   **resetIdleWatchdog**: The idle watchdog is an "inactivity timer".
-    Each time a mouse click/move or a key press is detected, this is
+    Each time a mouse click/move, or a key press is detected, this is
     called. After a given amount of time without activity, the
     idleWatchDogTimeout callback (below) in your app allows a specific
     action to take place.
@@ -901,31 +905,39 @@ Provides scene-related features.
 -   **onSceneRender**: Callback to your app\'s handler of a
     "knack-scene-render.any" event.
 
-### Using Page Settings' Name field as flags to trigger special behavior
+### Using a page's Rich Text view with keywords to trigger special behavior
 
-In the Builder, you can add these flags at the end of your Page
-Settings' Name field to trigger special behavior:
+In the Builder, you can add a rich text view with these keywords to
+trigger special behavior. The page must have **only one view,** have the
+"Include this page in the Page Menu" flag active and be in the **top**
+**menu** (not in a sub-menu).
 
-**LINK_OPEN_SAME=** : to redirect your browser to another URL, in the
-same page.
+**\_ols=*url*** : Open Link in Same page. To redirect your browser to
+another URL, on the same page. In the rich text, add the keyword
+**\_ols=** as plain text, followed by a **link** to the website and a
+descriptive text (or same URL).
 
-**LINK_OPEN_NEW=** : to redirect your browser to another URL, in a new
-tab.
+**\_oln=*url*** : Open Link in New page. To redirect your browser to
+another URL, in a new tab. In the rich text, add the keyword **\_oln=**
+as plain text, followed by a **link** to the website and a descriptive
+text (or same URL).
 
-Ex: Support LINK_OPEN_NEW=https://ctrnd.com/
+Ex: \_oln=[Support](https://ctrnd.com)
 
-This will open a new tab to ctrnd.com website. The menu will display as
-**Support**. The page can be left blank, and the Page URL is ignored --
-just use a random label like linksupport for example.
+When clicked on the Support top menu, a new tab will be opened to the
+Cortex R&D Inc. website.
 
 ## Form Persistence
 
 ### Usage
 
-When user types-in data in a form, values are saved to localStorage and
-restored in case of power outage, accidental refresh, loss of network or
-other mishaps. **Data is erased** when the form is **submitted**
-**successfully,** or user **navigates away** from page.
+When user types-in data in a **Add form**, values are saved to
+localStorage and restored in case of power outage, accidental refresh,
+loss of network or other mishaps. **Data is erased** when the form is
+**submitted** **successfully,** or user **navigates away** from page.
+
+The Edit form is not supported as it would cause confusion as for
+distinguishing between the data pulled from Knack vs the stored one.
 
 ### Functions
 
@@ -1021,9 +1033,10 @@ You can prevent this by first choosing a sort+filter combination that
 will not cause this. Ideally set the filtering to show only a very
 restricted number of records, but still include the ones you need.
 Experimenting with only a few records at a time (less than 10) or even
-better "test records" is recommended as a starting point. If you\'ve
-made an error, the process can be interrupted (but not undone) at any
-time by pressing F5 to reload the page.
+better "test records" is recommended as a starting point.
+
+If you realize you've made an error, the process can be interrupted (but
+not undone) at any time by pressing F5 to reload the page.
 
 ### Bulk Delete
 
@@ -1044,8 +1057,8 @@ You will see two buttons appear:
     checkboxes are ignored, and the process will keep deleting records
     until none is left, flipping through pages automatically.
 
-If you\'ve made an error, the process can be interrupted (but not
-undone) at any time by pressing F5 to reload the page.
+If you realize you've made an error, the process can be interrupted (but
+not undone) at any time by pressing F5 to reload the page.
 
 ### Functions
 
@@ -1172,7 +1185,7 @@ agglomerated over an hour and sent only once as a single stringified
 object. A custom viewer then disassembles them for display in
 chronological order.
 
-The logging categories are: User Login, Navigation, Activity (count of
+The logging categories are User Login, Navigation, Activity (count of
 keypresses and mouse clicks), Critical Events, App Errors, Server
 Errors, Warnings, Info and Debug.
 
@@ -1258,6 +1271,11 @@ This is also where the SW Update broadcast takes place.
 -   **getSysInfo**: Returns an object with the above-mentioned
     properties.
 
+-   **findAllKeywords**: Scans through all views and fields and creates
+    a catalog of keywords used with info about Scene ID, View ID and
+    Title. This can be invoked from the browser's console with this
+    command: ktl.sysInfo.findAllKeywords()
+
 ## System Colors
 
 Retrieves information about Knack\'s colors and generates a few
@@ -1266,6 +1284,16 @@ variations for KTL features.
 ### Functions
 
 -   **getSystemColors**: Get the sysColors object.
+
+-   **setSystemColors**: To define your own parameters for
+    highlighting...
+
+    -   the inline-editable cells of a table - color and font weight
+
+    -   the table's row hover color if you want to override Knack's
+        default
+
+    -   use the ktl.systemColors.setCfg function
 
 -   **rgbToHsl**, **hslToRgb**, **rgbToHsv**, **hsvToRgb**,
     **hexToRgb**: Various color conversion utilities.
@@ -1373,7 +1401,7 @@ built-in, and you can also add your own. Follow this procedure:
 
 2)  In the iFrameWnd page, add a view: Type: Details, For: Logged-in
     Account. Once the view is added, remove all fields, then add User
-    Prefs. Set the view title to **Current User Prefs AUTOREFRESH=10**.
+    Prefs. Set the view title to **Current User Prefs** **\_ar=10**.
 
 3)  Add a Form view that updates the currently logged-in account. Once
     the view is added, remove all fields, then add User Prefs. Set the
@@ -1455,10 +1483,10 @@ follow this procedure:
     "Heartbeat sent successfully.".
 
 5)  Still in the iFrameWnd, add a table view that displays **App
-    Settings**, with title: **App Settings AUTOREFRESH=20**. Source
-    filter: **Item Starting with APP**, sorted alphabetically A to Z. No
-    Search, inline editing = On, 10 records at a time, no filtering
-    allowed. Add all fields. Set Value's Truncate Text to 75 characters.
+    Settings**, with title: **App Settings \_ar=20**. Source filter:
+    **Item Starting with APP**, sorted alphabetically A to Z. No Search,
+    inline editing = On, 10 records at a time, no filtering allowed. Add
+    all fields. Set Value's Truncate Text to 75 characters.
 
 6)  Be sure you have the Show iFrameWnd checkbox on in [User
     Prefs](#user-preferences-1) above.
@@ -1469,17 +1497,16 @@ follow this procedure:
 8)  **VIEWER**: To view the heartbeats, online status, latest activity,
     SW Version, etc., create a Sysop Dashboard page accessible to
     Developer role only, with a table view that shows the Accounts
-    having an Active status. Title: **Account Status AUTOREFRESH=60**.
-    Fields: Name, Online, LOC HB, UTC HB, UTC Last Activity, SW Version
-    and User Prefs. This view will refresh itself every minute, so you
-    can assess the presence, latest activity and SW Version for each
-    account.
+    having an Active status. Title: **Account Status \_ar=60**. Fields:
+    Name, Online, LOC HB, UTC HB, UTC Last Activity, SW Version and User
+    Prefs. This view will refresh itself every minute, so you can assess
+    the presence, latest activity and SW Version for each account.
 
 9)  **Note**: The Online status flag is set, but not reset
-    automatically. You'll need to create a daily task to reset it. I
-    also have some existing code that does it with API calls, but need
-    to add it to the KTL soon. TODO: provide code for Online update,
-    email and audio alerts, custom status colorizing, etc.
+    automatically. You'll need to create a daily task to reset it. We
+    also have some existing code that does it with API calls and will
+    add it to the KTL soon. We will also provide all code for Online
+    updates, emails and audio alerts, custom status colorizing, etc.
 
 10) **For SW Updates**: In the Status Monitoring page, add a table view
     for App Settings object. Title: **BROADCAST_SW_UPDATE**. Filter
@@ -1530,9 +1557,8 @@ To support automatic Upload and Download, follow this procedure:
 3)  Source: Limit number of records to 1.
 
 4)  Settings: no search, Inline Editing = On, 10 records at a time, no
-    filtering. Title: **User Filters AUTOREFRESH=30** (you can change
-    the 30 for 10 seconds temporarily for quicker testing, then put back
-    to 30)
+    filtering. Title: **User Filters \_ar=30** (you can change the 30
+    for 10 seconds temporarily for quicker testing, then put back to 30)
 
 **To assess this feature:**
 
@@ -1593,9 +1619,8 @@ If you want to add Account Logging to your app, follow this procedure:
         used in the code to confirm completion, so it must be exactly
         the same.
 
-    d.  Set the view title to **Account Logs AUTOREFRESH=30**, disable
-        keyword search, enable Inline editing, 10 records at a time, no
-        filter.
+    d.  Set the view title to **Account Logs \_ar=30**, disable search,
+        enable Inline editing, 10 records at a time, no filter.
 
     e.  Sort by Log Nb: high to low, limit to 5 records.
 
@@ -1652,9 +1677,75 @@ The output file is KTL_KnackApp_Prod.js
 # Conclusion
 
 That\'s about it for now, thanks for reading this and testing the
-library. Hope you enjoy it as much as I did write it. Now, let's see how
-many of you will **collaborate on this project**. Cortex R&D needs
-you!!!
+library. Hope you'll enjoy it as much as we did creating it. Now, let's
+see how many of you will **collaborate on this project**. Cortex R&D
+needs you!!!
+
+# List of all Keywords
+
+  -----------------------------------------------------------------------------------
+  **Keyword**         **Description**       **Where to use  **Example**
+                                            it**            
+  ------------------- --------------------- --------------- -------------------------
+  \_ar=n              Auto-Refresh a view   View\'s Title   \_ar=60
+                      every *n* seconds                     
+
+  \_hv                Hidden View                            
+
+  \_ht                Hidden Title                           
+
+  \_ni                No Inline                              
+
+  \_ts                Adds a Time Stamp to                   
+                      a view                                
+
+  \_dtp               Adds Date/Time                         
+                      pickers                               
+
+  \_rvs=viewTitle1,   Refresh Views after                   \_rvs=Monthly Sales,
+  viewTitle2...       Submit                                Clients
+
+                                                             
+
+  \_nf=f1,f2...       Prevents filtering on View\'s         \_nf=field_1,field_2
+                      spcified fields       Description     
+
+                                                             
+
+  \_hc                Hide Column, but keep Table\'s Column  
+                      in DOM                Header          
+
+  \_rc                Remove Column,                         
+                      including DOM                         
+
+                                                             
+
+  \_oln=url           Open Link in a New    Rich Text view  Support
+                      page (tab)            with link       \_oln=https://ctrnd.com
+
+  \_ols=url           Open Link in Same     Rich Text view  Support
+                      page                  with link       \_ols=https://ctrnd.com
+
+                                                             
+
+  \_uc                Convert to uppercase  Field\'s         
+                                            description     
+
+  \_ip                Validate IP format                     
+                      (to do)                               
+
+                                                             
+
+  \_kr                Kiosk Add Refresh     Views, in        
+                      Button                Kiosks mode     
+
+  \_kb                Kiosk Add Back Button                  
+
+  \_kd                Kiosk Add Done Button                  
+
+  \_kn                Kiosk No Buttons (to                   
+                      clarify)                              
+  -----------------------------------------------------------------------------------
 
 All code and documentation written by:
 
