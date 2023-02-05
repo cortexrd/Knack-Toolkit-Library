@@ -1,3 +1,5 @@
+# ![A picture containing text, clipart Description automatically generated](.Docs\media/8e07b417287cf963d56fba071accc102.jpeg)
+
 # Contents
 
 [Introduction](#introduction)
@@ -63,11 +65,11 @@ Click the following link if you are interested to know more about [Advanced Feat
 
 # No time to read all this now - How about a quick tryout?
 
-If you want to try/use the basic, default setup version of the KTL, all you need to do is copy the **five lines** of code from this file [**KTL_Loader.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Loader.js) at the **top** of the Javascript pane of the Builder.
+If you want to try/use the basic, default setup version of the KTL, all you need to do is copy the **5 lines** of code from this file [**KTL_Loader.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Loader.js) at the **top** of the Javascript pane of the Builder.
 
 If you already have your own code, it will not conflict with the KTL. Just leave it after those added lines.
 
-If you do not like some features, you can turn them off individually – [see here](#_Disabling_a_Feature).
+If you do not like some features, you can turn them off individually – [see here](#disabling-a-feature).
 
 # How to use the KTL
 
@@ -97,7 +99,7 @@ This is the traditional mode that we're all used to, i.e. when all the code resi
 
 ### Pros
 
--   Easier and faster setup, no need to install anything, except the 5 lines of the [Loader](#_No_time_to).
+-   Easier and faster setup, no need to install anything, except the 5 lines of the [Loader](#no-time-to-read-all-this-now---how-about-a-quick-tryout).
 -   Other users can always see your changes.
 -   You can evaluate your code on any device, not limited to your workstation.
 
@@ -108,8 +110,8 @@ This is the traditional mode that we're all used to, i.e. when all the code resi
 
 To use this mode, you have two options:
 
-1.  Use the default, basic, ready-to-use setup [here](#zero-config-needed-for-basic-features)
-2.  If you want to customize the KTL’s behavior or disable some features, edit a copy of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file and paste that code in the Javascript pane, after the Loader. [Follow the procedure here](#_Editing_the_KTL_KnackApp).
+1.  Use the default, basic, ready-to-use setup [here](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
+2.  If you want to customize the KTL’s behavior or disable some features, edit a copy of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file and paste that code in the Javascript pane, after the Loader. [Follow the procedure here](#editing-the-ktl_knackapp-file).
 
 \*Note about **KTL_KnackApp.js**: throughout the document, we will refer to this file name as the “app code”, but you can substitute it to anything that would better match your app’s name. As long as you modify the merge utility files accordingly, if you are planning to use it. See the **-filename** parameter in the batch file.
 
@@ -160,7 +162,7 @@ Traditionally, Knack developers have to go in the Builder to create a temporary 
 
 What happens is that the Loader will use the stable and released code from the Prod in the Javascript pane by default for all users. But if it detects the “development flag” in your localStorage, it will switch to the Dev code… **but on your workstation only**.
 
-With Hybrid Mode, it is also possible to switch back and forth between the Prod and Dev modes instantly. See [Switching Modes](#_Switching_Modes) in the next section.
+With Hybrid Mode, it is also possible to switch back and forth between the Prod and Dev modes instantly. See [Switching Modes](#switching-modes) in the next section.
 
 ## Switching Modes
 
@@ -342,7 +344,7 @@ Provides view-related features.
 
 -   **setCfg**: To setup your parameters and callbacks to your app. Callback processViewKeywords allows you to process your own special title keywords.
 -   **refreshView**: Robust view refresh function with retries and error handling. Supports most types of views including tables, details, searches, forms, rich text, and menus.
--   **refreshViewArray**: Calls refreshView for each view in the array of view ids as parameter, and returns (resolve from promise) only when all are done refreshing.
+-   **refreshViewArray**: Calls refreshView for each view in the array of view IDs as parameter, and returns (resolve from promise) only when all are done refreshing.
 -   **autoRefresh**: You can now add auto refresh to any view without a single line of code. It is done from the Builder, by simply adding **\_ar=30** at the end of your view's title and it will refresh itself every 30 seconds. Values from 5 (seconds) to 86500 (24 hours) are accepted. Of course, the keyword is truncated so only your title remains visible. Also, you can start and stop the process at will by setting the run parameter to true/false. Note that this will apply to all views in scene.
 -   **addViewId**: Convenient for developers who want to see the view id next to or near the title.
 -   **addCheckboxesToTable**: Will add checkboxes to a table, including the top one in the header to check all at once. Used by bulk operations.
@@ -454,7 +456,7 @@ The Edit form is not supported as it would cause confusion as for distinguishing
 
 ### Usage
 
-When "Add filters" is used in tables and reports, it is possible to save each one you create to a named button by clicking on the yellow diskette save icon. The [X] icon with a pink color is to remove the active filter and see all records. Your filters are saved in localStorage but can be saved/restored to/from Knack for backup or migration to other devices, provided some additional setup. See the [User Filters setup procedure](#_User_Filters).
+When "Add filters" is used in tables and reports, it is possible to save each one you create to a named button by clicking on the yellow diskette save icon. The [X] icon with a pink color is to remove the active filter and see all records. Your filters are saved in localStorage but can be saved/restored to/from Knack for backup or migration to other devices, provided some additional setup. See the [User Filters setup procedure](#user-filters-1).
 
 Each active filter will not only remember its filter parameters, but also the column selected for sorting, the sort order, and the searched text. You can rename and delete buttons at will, and you can also drag and drop the buttons to re-order them at your convenience. The button colors will have matching variations based on the app's header color. Each view remembers the last active filter when you go back to its page.
 
@@ -785,7 +787,7 @@ If you want to add Account Logging to your app, follow this procedure:
 
 #### Bulk Operations
 
-If you want to add Bulk Edit and Bulk Delete to your app, follow this procedure described in this section [Bulk Operations](#_Bulk_Operations).
+If you want to add Bulk Edit and Bulk Delete to your app, follow this procedure described in this section [Bulk Operations](#bulk-operations-1).
 
 # Additional utilities
 
@@ -846,10 +848,12 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 ## All code and documentation written by:
 
-### Normand Defayette
+Normand Defayette
 
-### [nd@ctrnd.com](mailto:nd@ctrnd.com)
+[nd@ctrnd.com](mailto:nd@ctrnd.com)
 
-### Cortex R&D Inc.
+Cortex R&D Inc.
 
-### Blainville, Québec, Canada
+Blainville, Québec, Canada
+
+![A picture containing text, clipart Description automatically generated](.Docs\media/8e07b417287cf963d56fba071accc102.jpeg)
