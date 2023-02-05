@@ -846,6 +846,10 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 ## All code and documentation written by:
 
-### Normand Defayette [nd@ctrnd.com](mailto:nd@ctrnd.com) Cortex R&D Inc.
+### Normand Defayette
+
+### [nd@ctrnd.com](mailto:nd@ctrnd.com)
+
+### Cortex R&D Inc.
 
 ### Blainville, Québec, Canada
