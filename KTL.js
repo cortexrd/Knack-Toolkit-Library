@@ -3957,6 +3957,7 @@ function Ktl($) {
                     foundViewIds.push(viewId);
             }
 
+            console.log('foundViewIds =', foundViewIds);
             if (foundViewIds.length) {
                 $(document).off('knack-form-submit.' + view.key).on('knack-form-submit.' + view.key, () => {
                     ktl.views.refreshViewArray(foundViewIds)
@@ -6013,7 +6014,7 @@ function Ktl($) {
             $('.kn-current_user > span.first').on('dblclick', (e) => {
                 var userId = $('.kn-current_user').attr('id');
                 console.log('\nApp:\t', app_id);
-                console.log('End:\t', app_id.substr(-4, 4));
+                console.log('LS key:\t', APP_ROOT_NAME);
                 console.log('User:\t', userId);
             })
         })
