@@ -7024,7 +7024,7 @@ function Ktl($) {
                                 Knack.showSpinner();
                                 ktl.core.removeInfoPopup();
                                 ktl.views.refreshView(bulkOpsViewId).then(function () {
-                                    ktl.core.removeTimedPopup(); //Remove any residual SWD pop up.
+                                    ktl.core.removeTimedPopup();
                                     ktl.scenes.spinnerWatchdog();
                                     setTimeout(function () {
                                         ktl.views.autoRefresh();
@@ -7036,10 +7036,12 @@ function Ktl($) {
                                 showProgress();
                         })
                         .catch(function (reason) {
-                            alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
                             ktl.core.removeInfoPopup();
-                            ktl.views.autoRefresh();
+                            ktl.core.removeTimedPopup();
+                            Knack.hideSpinner();
                             ktl.scenes.spinnerWatchdog();
+                            ktl.views.autoRefresh();
+                            alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
                         })
 
                     function showProgress() {
@@ -7199,25 +7201,41 @@ function Ktl($) {
                     var objName = Knack.objects._byId[Knack.views[view.key].model.view.source.object].attributes.name; //Get object's name.  TODO:  put in a function getObjNameForView
 
                     ktl.core.infoPopup();
-                    (function deleteRecord(recIdArray) {
-                        var id = recIdArray[0];
-                        ktl.core.setInfoPopupText('Deleting ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + recIdArray.length);
 
-                        ktl.core.knAPI(view.key, id, {}, 'DELETE')
+                    var idx = 0;
+                    var countDone = 0;
+                    var itv = setInterval(() => {
+                        if (idx < arrayLen)
+                            deleteRecord(deleteArray[idx++]);
+                        else
+                            clearInterval(itv);
+                    }, 150);
+
+                    function deleteRecord(recId) {
+                        showProgress();
+                        ktl.core.knAPI(view.key, recId, {}, 'DELETE')
                             .then(function () {
-                                recIdArray.shift();
-                                if (recIdArray.length === 0) {
+                                if (++countDone === deleteArray.length) {
+                                    Knack.showSpinner();
                                     ktl.core.removeInfoPopup();
                                     resolve();
-                                } else {
-                                    deleteRecord(recIdArray);
-                                }
+                                } else
+                                    showProgress();
                             })
                             .catch(function (reason) {
                                 ktl.core.removeInfoPopup();
-                                reject('deleteRecords - Failed to delete record ' + id + ', reason: ' + JSON.stringify(reason));
+                                ktl.core.removeTimedPopup();
+                                Knack.hideSpinner();
+                                ktl.scenes.spinnerWatchdog();
+                                ktl.views.autoRefresh();
+
+                                reject('deleteRecords - Failed to delete record ' + recId + ', reason: ' + JSON.stringify(reason));
                             })
-                    })(deleteArray);
+
+                        function showProgress() {
+                            ktl.core.setInfoPopupText('Deleting ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                        }
+                    }
                 })
             },
 
