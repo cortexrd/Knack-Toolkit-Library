@@ -37,7 +37,8 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 -   User filters to save your filters to named buttons
 -   Form data persistence that saves as you type, and will load back your data if a page is reloaded after a submit failure or power outage
 -   Sorted menus
--   Display page title in browser’s tab
+-   Show page’s title in browser’s tab
+-   Go to Date selector added to all calendar views
 -   Keyboard support in image viewer with left/right arrows for next/prev, and esc to exit
 -   Custom highlight/color for table’s inline-editable fields for easy identification
 -   Custom highlight/color for table row hover
@@ -357,6 +358,7 @@ Provides view-related features.
 -   **findFirstExistingField**: Pass a list of field IDs and returns the first found in scene.
 -   **handleClickSort**: Inverts the sort order if the data type is Date/Time. In several apps, we’ve been told that too often users need to click the header twice because they want to see the most recent entries. You can also do a Ctrl+Click to sort it ascending like Knack’s default behavior.
 -   **submitAndWait**: Pass a form’s view ID and an object containing pairs of field IDs and values. It will fill in the form and submit automatically, then return with a success or failure outcome. If successful, the resulting record is also returned and can be used for further processing.
+-   **waitSubmitOutcome**: After submitting a form programmatically, this Promise function will wait for the outcome and resolve with the success message and reject with the failure reason.
 -   **updateSubmitButtonState**: Used to perform real-time form validation, i.e. before Submit is clicked, by enabling or disabling the button based on your criteria. Pass the form’s view ID and it will enable or disable the Submit button. This status extends the existing **validity** property of the button, by adding the **invalidItemObj** object to it. When this object is empty, Submit is enabled, if it contains any key, it will be disabled.
 -   **ktlProcessViewKeywords**: This is an internal function that is not exposed. But worth some additional explaining, nonetheless. It parses the view's title for keywords that trigger special behavior. See the list and details below.
 -   **handleCalendarEventDrop**: Provides notification that a drag’n drop operation has been done on a calendar event. This can be used to sync a table to a calendar.
