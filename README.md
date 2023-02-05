@@ -842,7 +842,7 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | \_uc                          | Convert to uppercase                  | Field's description      |                                 |
 | \_ip                          | Validate IP format (to do)            |                          |                                 |
 |                               |                                       |                          |                                 |
-| \_kr                          | Kiosk Add Refresh Button              | Views, in Kiosks mode    |                                 |
+| \_kr                          | Kiosk Add Refresh Button              | Views, in Kiosk mode     |                                 |
 | \_kb                          | Kiosk Add Back Button                 |                          |                                 |
 | \_kd                          | Kiosk Add Done Button                 |                          |                                 |
 | \_kn                          | Kiosk No Buttons (to clarify)         |                          |                                 |
