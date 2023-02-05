@@ -3957,7 +3957,6 @@ function Ktl($) {
                     foundViewIds.push(viewId);
             }
 
-            console.log('foundViewIds =', foundViewIds);
             if (foundViewIds.length) {
                 $(document).off('knack-form-submit.' + view.key).on('knack-form-submit.' + view.key, () => {
                     ktl.views.refreshViewArray(foundViewIds)
