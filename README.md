@@ -2,21 +2,21 @@
 
 [Introduction](#introduction)
 
-[Overview](#_Overview)
+[Overview](#overview)
 
-[Zero config needed for Basic Features](#_Zero_config_needed)
+[Zero config needed for Basic Features](#zero-config-needed-for-basic-features)
 
-[No time to read all this now - How about a quick tryout?](#_No_time_to)
+[No time to read all this now - How about a quick tryout?](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
 
-[How to use the KTL](#_How_to_use)
+[How to use the KTL](#how-to-use-the-ktl)
 
-[KTL Features](#_KTL_Features)
+[KTL Features](#ktl-features)
 
-[Customizing Features](#_Customizing_Features)
+[Customizing Features](#customizing-features)
 
-[Advanced Features](#_Advanced_Features)
+[Advanced Features](#advanced-features)
 
-[List of all Keywords](#_List_of_all)
+[List of all Keywords](#list-of-all-keywords)
 
 # Introduction
 
