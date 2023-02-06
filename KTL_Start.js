@@ -48,17 +48,17 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         if (typeof Ktl === 'function') {
             if (prod) {
                 if (typeof KnackApp === 'function') {
-                    KnackApp($, {});
+                    KnackApp($, { ktlVersion: ktlVersion });
                     callback();
                 } else
                     LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_KnackApp.js'], () => {
                         console.log('Loaded default KnackApp.');
-                        KnackApp($, {});
+                        KnackApp($, { ktlVersion: ktlVersion });
                         callback();
                     });
             } else { //Dev mode
                 if (typeof KnackApp === 'function') {
-                    KnackApp($, { hostname: ktlSvr });
+                    KnackApp($, { hostname: ktlSvr, ktlVersion: ktlVersion });
                     callback();
                 } else {
                     var fileName = prompt('Error - Cannot find KnackApp file.\nWhat is file name (without .js)?');
