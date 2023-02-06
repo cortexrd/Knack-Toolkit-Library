@@ -9,7 +9,7 @@ var callback;
  *  - if 'dev', will use /Prod/KTL-dev.js version, which is same as dev, copied by FTP.  See C:\code\FTP\WinSCP_Script.txt
 */
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.7.6';
+    const KTL_LATEST_JS_VERSION = '0.7.7';
     const KTL_LATEST_CSS_VERSION = '0.2.1';
     var cssVersion = KTL_LATEST_CSS_VERSION;
     var prodFolder = 'Prod/';
