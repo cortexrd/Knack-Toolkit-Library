@@ -288,22 +288,6 @@ function Ktl($) {
                 }, delay);
             },
 
-            switchVersion: function (ver = 'prod') {
-                if (ver.toLowerCase() === 'prod')
-                    ktl.storage.lsRemoveItem('dev', true);
-                else if (ver.toLowerCase() === 'dev')
-                    ktl.storage.lsSetItem('dev', '', true);
-
-                ktl.debugWnd.lsLog('Switching version to ' + ver);
-
-                setTimeout(() => {
-                    if (ktl.scenes.isiFrameWnd())
-                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'MANUAL_REFRESH' });
-                    else
-                        location.reload(true);
-                }, 2000);
-            },
-
             enableDragElement: function (el) {
                 var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
                 if (document.getElementById(el.id + "header")) {
@@ -745,8 +729,26 @@ function Ktl($) {
                 ktlCSS.type = 'text/css';
                 ktlCSS.textContent += css + '\n\n';                
             },
+
+            toggleMode: function () { //Prod <=> Dev modes
+                var prod = (localStorage.getItem(window.lsShortName + 'dev') === null);
+                if (confirm('Are you sure you want to switch to ' + (prod ? 'DEV' : 'PROD') + ' mode?')) {
+                    if (prod)
+                        ktl.storage.lsSetItem('dev', '', true);
+                    else
+                        ktl.storage.lsRemoveItem('dev', true);
+
+                    ktl.debugWnd.lsLog('Switching mode to: ' + (prod ? 'DEV' : 'PROD'));
+                    setTimeout(() => {
+                        if (ktl.scenes.isiFrameWnd())
+                            ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'MANUAL_REFRESH' });
+                        else
+                            location.reload(true);
+                    }, 500);
+                }
+            }
         }
-    })();
+    }) ();
 
     //====================================================
     //Storage Feature
@@ -3638,6 +3640,7 @@ function Ktl($) {
             lsLog: function (logStr, sendToConsole = true) {
                 if (ktl.storage.hasLocalStorage()) {
                     var dt = ktl.core.getCurrentDateTime();
+
                     localStorage.setItem(APP_ROOT_NAME + dt, logStr);
                     if (sendToConsole)
                         console.log(logStr);
@@ -5057,6 +5060,7 @@ function Ktl($) {
 
                                     var orgTitle = (model.view && model.view.orgTitle);
                                     if (orgTitle) {
+
                                         orgTitle = orgTitle.toLowerCase();
                                         if (orgTitle.includes('refresh_view') || orgTitle.includes('_rvs'))
                                             addSubmitToViewRefresh(view);
@@ -5547,7 +5551,7 @@ function Ktl($) {
                     if (style) //If style already exist, use it as is, otherwise, use KTL's default.
                         versionStyle = style;
 
-                    var versionInfo = ' v' + APP_VERSION + ktlVer + (info.hostname ? '    ' + info.hostname : '');
+                    var versionInfo = ' v' + APP_VERSION + ktlVer + (info.ktlVersion === 'dev' ? '-dev' : '') + (info.hostname ? '    ' + info.hostname : '');
                     if (localStorage.getItem(window.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
                         versionStyle += '; color:#0008; background-color:#FFF3;';
                     else //Dev mode, make version bright yellow/red font.
@@ -5559,9 +5563,13 @@ function Ktl($) {
                     $('#verButtonId').on('click touchstart', function (e) {
                         if (ktl.account.isDeveloper()) {
                             e.preventDefault();
-                            var ver = prompt('Switch Mode - "prod" or "dev"?', 'prod');
-                            if (ver && (ver.toLowerCase() === 'prod' || ver.toLowerCase() === 'dev'))
-                                ktl.core.switchVersion(ver);
+                            ktl.core.toggleMode();
+                        }
+
+                        if (ktl.sysInfo.getSysInfo().model === 'D1-G') {
+                            ktl.debugWnd.lsLog('test');
+                            alert('test');
+                            //alert(JSON.stringify(localStorage));
                         }
                     })
 
@@ -6094,12 +6102,23 @@ function Ktl($) {
             })
         }
 
+        if (!window.logout) { //Emergency logout
+            window.logout = function () {
+                $('.kn-log-out').click();
+            }
+        }
+
         return {
             isDeveloper: function () {
                 return Knack.getUserRoleNames().includes('Developer');
             },
+
             isLoggedIn: function () {
                 return Knack.getUserAttributes() !== 'No user found';
+            },
+
+            logout: function () {
+                $('.kn-log-out').click();
             },
         }
     })();
@@ -7436,66 +7455,70 @@ function Ktl($) {
             for (var i = 0; i < Knack.scenes.length; i++) {
                 var scn = Knack.scenes.models[i];
                 var views = scn.views;
-                views.forEach(view => {
-                    var title = view.attributes.title;
-                    if (title) {
-                        var cmpTitle = title.toLowerCase();
-                        var firstKeywordIdx = Math.min(
-                            ktl.core.getSubstringPosition(cmpTitle, 'autorefresh', 1),
-                            ktl.core.getSubstringPosition(cmpTitle, 'hidden_', 1),
-                            ktl.core.getSubstringPosition(cmpTitle, 'no_inline', 1),
-                            ktl.core.getSubstringPosition(cmpTitle, 'add_', 1),
-                            ktl.core.getSubstringPosition(cmpTitle, 'no_buttons', 1),
-                            ktl.core.getSubstringPosition(cmpTitle, 'broadcast_sw_update', 1),
-                            ktl.core.getSubstringPosition(cmpTitle, 'datetime_pickers', 1),
-                            ktl.core.getSubstringPosition(cmpTitle, 'refresh_view', 1),
+                for (var j = 0; j < views.models.length; j++) {
+                    var view = views.models[j];
+                    if (view) {
+                        var title = view.attributes.title;
+                        if (title) {
+                            var cmpTitle = title.toLowerCase();
+                            var firstKeywordIdx = Math.min(
+                                ktl.core.getSubstringPosition(cmpTitle, 'autorefresh', 1),
+                                ktl.core.getSubstringPosition(cmpTitle, 'hidden_', 1),
+                                ktl.core.getSubstringPosition(cmpTitle, 'no_inline', 1),
+                                ktl.core.getSubstringPosition(cmpTitle, 'add_', 1),
+                                ktl.core.getSubstringPosition(cmpTitle, 'no_buttons', 1),
+                                ktl.core.getSubstringPosition(cmpTitle, 'broadcast_sw_update', 1),
+                                ktl.core.getSubstringPosition(cmpTitle, 'datetime_pickers', 1),
+                                ktl.core.getSubstringPosition(cmpTitle, 'refresh_view', 1),
 
-                            //New format, starting by underscore.
-                            ktl.core.getSubstringPosition(cmpTitle, '_', 1)
-                        );
+                                //New format, starting by underscore.
+                                ktl.core.getSubstringPosition(cmpTitle, '_', 1)
+                            );
 
-                        //Truncate all flags, all text i.e. after firstFlagIndex.
-                        var truncatedTitle = title.substring(0, firstKeywordIdx);
+                            //Truncate all flags, all text i.e. after firstFlagIndex.
+                            var truncatedTitle = title.substring(0, firstKeywordIdx);
 
-                        //Keep a copy of the original title for further processing.
-                        !view.attributes.orgTitle && (view.attributes.orgTitle = view.attributes.title); //Only write once - first time, when not yet existing.
+                            //Keep a copy of the original title for further processing.
+                            !view.attributes.orgTitle && (view.attributes.orgTitle = view.attributes.title); //Only write once - first time, when not yet existing.
 
-                        var orgTitle = view.attributes.orgTitle;
-                        view.attributes.title = truncatedTitle;
-                        if (Knack.views[view.id]) {
-                            $('#' + view.id + ' > div.view-header > h1').text(truncatedTitle); //Search Views use H1 instead of H2.
-                            $('#' + view.id + ' > div.view-header > h2').text(truncatedTitle);
-                            Knack.views[view.id].model.view.orgTitle = orgTitle;
-                            Knack.views[view.id].model.view.title = truncatedTitle;
+                            var orgTitle = view.attributes.orgTitle;
+                            view.attributes.title = truncatedTitle;
+                            if (Knack.views[view.id]) {
+                                $('#' + view.id + ' > div.view-header > h1').text(truncatedTitle); //Search Views use H1 instead of H2.
+                                $('#' + view.id + ' > div.view-header > h2').text(truncatedTitle);
+                                Knack.views[view.id].model.view.orgTitle = orgTitle;
+                                Knack.views[view.id].model.view.title = truncatedTitle;
+                            }
                         }
                     }
-                })
+                }
             }
 
             titleCleanupDone = true;
         }
     }, 10);
 
-    //$(document).ready(function () {
-    //    const observer = new MutationObserver((mutations) => {
-    //        mutations.forEach(mutRec => {
-    //            var node = Array.from(mutRec.addedNodes).find(node => (node.classList && (node.classList.contains('view-header') || node.classList.contains('kn-navigation-bar'))));
-    //            if (node) {
-    //                if (node.classList.contains('view-header')) {
-    //                    var view = Knack.views[mutRec.target.id].model.view;
-    //                    //ktl.views.ktlProcessKeywords(view);
-    //                } else //Uncomment whenever we had more cases.  if (node.classList.contains('kn-navigation-bar'))
-    //                    ktl.scenes.cleanupLinkMenus(node);
-    //            }
-    //        })
-    //    });
+    /*
+    $(document).ready(function () {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutRec => {
+                var node = Array.from(mutRec.addedNodes).find(node => (node.classList && (node.classList.contains('view-header') || node.classList.contains('kn-navigation-bar'))));
+                if (node) {
+                    if (node.classList.contains('view-header')) {
+                        var view = Knack.views[mutRec.target.id].model.view;
+                        ktl.views.ktlProcessKeywords(view);
+                    } else //Uncomment whenever we had more cases.  if (node.classList.contains('kn-navigation-bar'))
+                        ktl.scenes.cleanupLinkMenus(node);
+                }
+            })
+        });
 
-    //    observer.observe(document.querySelector('.kn-content'), {
-    //        childList: true,
-    //        subtree: true,
-    //    });
-    //})
-
+        observer.observe(document.querySelector('.kn-content'), {
+            childList: true,
+            subtree: true,
+        });
+    })
+    */
 
     return { //KTL exposed objects
         const: this.const,
