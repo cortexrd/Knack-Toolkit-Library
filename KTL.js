@@ -19,7 +19,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($) {
-    const KTL_VERSION = '0.7.5';
+    const KTL_VERSION = '0.7.6';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -554,15 +554,14 @@ function Ktl($) {
             },
 
             infoPopup: function (addedStyle = '') {
-                var el = document.createElement('div');
-                el.id = 'kn-modeless-wnd';
+                var el = (document.querySelector('#kn-modeless-wnd') || ((el = document.createElement('div')) && document.body.appendChild(el)));
 
                 //Default style, that can be modified or incremented by parameter.
                 var style = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%)';
                 style += ';min-width:300px;min-height:50px;line-height:50px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px';
                 style += ';background-color:#81b378;border:5px solid #294125; white-space:pre';
+                el.id = 'kn-modeless-wnd';
                 el.setAttribute('style', style + ';' + addedStyle);
-                document.body.appendChild(el);
                 progressWnd = el;
             },
 
