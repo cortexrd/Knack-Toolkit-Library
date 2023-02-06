@@ -1609,7 +1609,7 @@ function Ktl($) {
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
                 return;
 
-            //TODO:  Investigate iOS bug eith userFilters.
+            //TODO:  Investigate iOS bug with userFilters.
             if (e.target.className.includes && e.target.className.includes('kn-button is-primary') && e.target.classList.length > 0 && e.target.type === 'submit') {
                 var view = e.target.closest('.kn-form.kn-view');
                 if (view) {
@@ -5323,7 +5323,7 @@ function Ktl($) {
                             if (backBtnText && !backBtn) {
                                 backBtn = document.createElement('BUTTON');
                                 backBtn.classList.add('kn-button', 'kiosk-btn');
-                                var backOrDone = backBtnText === 'Back' ? 'add_back' : 'add_done';
+                                var backOrDone = backBtnText === 'Back' ? 'ADD_BACK' : 'ADD_DONE';
                                 backBtn.id = kioskButtons[backOrDone].id;
                                 backBtn.innerHTML = kioskButtons[backOrDone].html;
 
@@ -5339,7 +5339,7 @@ function Ktl($) {
                                 });
                             }
 
-                            //Find the Submit bar with the buttons (add_back or add_done) or Header 2 if none.
+                            //Find the Submit bar with the buttons (ADD_BACK or ADD_DONE) or Header 2 if none.
                             var submitBar = document.querySelector('#' + viewId + ' .kn-submit');
                             if (!submitBar) {
                                 submitBar = document.querySelector('#' + viewId + ' .view-header'); //Happens with pages without a Submit button.  Ex: When you only have a table.
