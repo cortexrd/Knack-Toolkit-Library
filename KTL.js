@@ -7,22 +7,22 @@
  * 2019-2022
  * */
 
-window.APP_ROOT_NAME = window.lsShortName;
-const APP_ROOT_NAME = window.APP_ROOT_NAME;
-
-window.IFRAME_WND_ID = 'iFrameWnd';
-const IFRAME_WND_ID = window.IFRAME_WND_ID;
+const IFRAME_WND_ID = 'iFrameWnd';
+window.IFRAME_WND_ID = IFRAME_WND_ID;
 
 const TEN_SECONDS_DELAY = 10000;
 const ONE_MINUTE_DELAY = 60000;
 const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
-function Ktl($) {
-    const KTL_VERSION = '0.7.8';
+function Ktl($, info) {
+    const KTL_VERSION = '0.7.9';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
+
+    const APP_ROOT_NAME = info.lsShortName;
+    window.APP_ROOT_NAME = APP_ROOT_NAME;
 
     var ktl = this;
 
@@ -5564,12 +5564,6 @@ function Ktl($) {
                         if (ktl.account.isDeveloper()) {
                             e.preventDefault();
                             ktl.core.toggleMode();
-                        }
-
-                        if (ktl.sysInfo.getSysInfo().model === 'D1-G') {
-                            ktl.debugWnd.lsLog('test');
-                            alert('test');
-                            //alert(JSON.stringify(localStorage));
                         }
                     })
 

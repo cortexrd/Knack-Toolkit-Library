@@ -7,7 +7,7 @@ var KnackApp = function ($, info = {}) {
 
     const IFRAME_WND_ID = 'iFrameWnd';
 
-    var ktl = new Ktl($);
+    var ktl = new Ktl($, info);
     window.ktl = ktl;
 
     //====================================================
