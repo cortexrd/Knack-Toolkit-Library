@@ -731,7 +731,7 @@ function Ktl($, info) {
             },
 
             toggleMode: function () { //Prod <=> Dev modes
-                var prod = (localStorage.getItem(window.lsShortName + 'dev') === null);
+                var prod = (localStorage.getItem(info.lsShortName + 'dev') === null);
                 if (confirm('Are you sure you want to switch to ' + (prod ? 'DEV' : 'PROD') + ' mode?')) {
                     if (prod)
                         ktl.storage.lsSetItem('dev', '', true);
@@ -5269,7 +5269,7 @@ function Ktl($, info) {
             //Add default extra buttons to facilitate Kiosk mode:  Refresh, Back, Done and Messaging
             //Excludes all iFrames and all view titles must not contain _kn (no_buttons) flag.
             addKioskButtons: function (viewId = '', style = {}) {
-                if (window.self.frameElement || !ktl.core.isKiosk())
+                if (!viewId || window.self.frameElement || !ktl.core.isKiosk())
                     return;
 
                 try {
@@ -5552,7 +5552,7 @@ function Ktl($, info) {
                         versionStyle = style;
 
                     var versionInfo = ' v' + APP_VERSION + ktlVer + (info.ktlVersion === 'dev' ? '-dev' : '') + (info.hostname ? '    ' + info.hostname : '');
-                    if (localStorage.getItem(window.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
+                    if (localStorage.getItem(info.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
                         versionStyle += '; color:#0008; background-color:#FFF3;';
                     else //Dev mode, make version bright yellow/red font.
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
@@ -6270,7 +6270,7 @@ function Ktl($, info) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
                     if (newSWVersion !== APP_KTL_VERSIONS) {
                         if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
-                            if (localStorage.getItem(window.lsShortName + 'dev') === null) //Only warn when in Prod mode.
+                            if (localStorage.getItem(info.lsShortName + 'dev') === null) //Only warn when in Prod mode.
                                 ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
                         } else {
                             console.log('sending reloadAppMsg with ver:', newSWVersion);
