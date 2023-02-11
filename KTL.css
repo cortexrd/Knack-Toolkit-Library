@@ -58,6 +58,10 @@
 	padding-right: 15px;
 }
 
+#knack-body.iFrameWnd {
+	background-color: #e1e1e1;
+}
+
 /************ Tooltips **************/
 .tooltip {
 	position: relative;
