@@ -2397,8 +2397,13 @@ function Ktl($, info) {
                 var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
                 if (searchBtn) {
                     searchBtn.addEventListener('click', function () {
-                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                        updateSearchInFilter(view.key);
+                        var tableSrchTxt = document.querySelector('#' + view.key + ' .table-keyword-search input').value;
+                        var actFlt = getFilter(view.key);
+                        var fltSrchTxt = actFlt.filterObj.search;
+                        if (tableSrchTxt !== fltSrchTxt) {
+                            ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                            updateSearchInFilter(view.key);
+                        }
                     });
                 }
 
