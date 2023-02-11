@@ -2422,7 +2422,7 @@ function Ktl($, info) {
             }
         })
 
-        //Retrieves the searched string form the field and saves it in the localStorage's filter entry.
+        //Retrieves the searched string from the field and saves it in the localStorage's filter entry.
         function updateSearchInFilter(viewId = '') {
             var actFlt = getFilter(viewId);
             var filterSrc = actFlt.filterSrc;
@@ -4528,7 +4528,7 @@ function Ktl($, info) {
             searchDropdown: function (srchTxt = '', fieldId = '', onlyExactMatch = true, showPopup = true, viewId = '', pfSaveForm = true) {
                 return new Promise(function (resolve, reject) {
                     if (!srchTxt || !fieldId) {
-                        reject('');
+                        reject('Empty parameters');
                         return;
                     }
 
@@ -5277,7 +5277,6 @@ function Ktl($, info) {
                     var backBtnText = '';
                     if (typeof Knack.views[viewId] === 'undefined' || typeof Knack.views[viewId].model.view.title === 'undefined')
                         return;
-
 
                     var itv = setInterval(() => {
                         if (titleCleanupDone) {
@@ -6186,6 +6185,11 @@ function Ktl($, info) {
             { type: ktl.const.LS_NAVIGATION, typeStr: 'Navigation' },
         ];
 
+        $(document).ready(() => {
+            if (ktl.scenes.isiFrameWnd())
+                document.querySelector('#knack-body').classList.add('iFrameWnd');
+        })
+
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) {
                 var intervalId = setInterval(function () { //Wait until ready HB field is ready.
@@ -6512,7 +6516,7 @@ function Ktl($, info) {
                     iFrameWnd.setAttribute('id', IFRAME_WND_ID);
                     iFrameWnd.src = window.location.href.slice(0, index + 1) + URL.attributes.slug;
 
-                    document.body.appendChild(iFrameWnd);
+                    document.body.appendChild(iFrameWnd);                    
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
 
                     //ktl.log.clog('blue', 'Created iFrameWnd');
