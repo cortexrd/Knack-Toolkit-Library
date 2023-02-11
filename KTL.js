@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.7.10';
+    const KTL_VERSION = '0.7.12';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1430,7 +1430,8 @@ function Ktl($, info) {
 
                 try {
                     chznBetterTxt = text;
-                    if (document.querySelector('#chznBetter').getAttribute('valid') === 'false')
+                    var cbSel = document.querySelector('#chznBetter');
+                    if (!cbSel || cbSel.getAttribute('valid') === 'false')
                         return;
 
                     var chzn = document.activeElement.closest('.kn-input') || document.activeElement.closest('.chzn-container').previousElementSibling;
@@ -5536,7 +5537,7 @@ function Ktl($, info) {
                     for (var i = 0; i < views.length; i++) {
                         viewId = views[i].attributes.key;
                         if (viewId === excludeViewId) continue;
-                        title = views[i].attributes.title.toLowerCase();
+                        title = views[i].attributes.orgTitle.toLowerCase();
                         if (exact && title === srch) return viewId;
                         if (!exact && title.includes(srch)) return viewId;
                     }
