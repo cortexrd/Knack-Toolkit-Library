@@ -229,7 +229,8 @@ function Ktl($, info) {
             },
 
             isKiosk: function () {
-                return isKiosk ? isKiosk() : false;
+                var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
+                return sessionKiosk || (isKiosk ? isKiosk() : false);
             },
 
             //Param is selector string and optionally if we want to put back a hidden element as it was.
@@ -765,13 +766,17 @@ function Ktl($, info) {
 
             // Just specify key and func will prepend APP_ROOT_NAME.
             // Typically used for generic utility storage, like logging, custom filters, user preferences, etc.
-            lsSetItem: function (lsKey, data, noUserId = false) {
+            lsSetItem: function (lsKey, data, noUserId = false, session = false) {
                 if (lsKey.indexOf('undefined') >= 0)
                     return; //Needed to prevent logging pre-login events.
 
                 if (hasLocalStorage) {
                     try {
-                        localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                        if (session)
+                            sessionStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                        else
+                            localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+
                     }
                     catch (e) {
                         console.log('Error in localStorage.setItem', e);
@@ -781,15 +786,24 @@ function Ktl($, info) {
             },
 
             //Returns empty string if key doesn't exist.
-            lsGetItem: function (lsKey, noUserId = false) {
+            lsGetItem: function (lsKey, noUserId = false, session = false) {
                 var val = '';
-                if (hasLocalStorage)
-                    val = localStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                if (hasLocalStorage) {
+                    if (session)
+                        val = sessionStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                    else
+                        val = localStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                }
                 return val ? val : '';
             },
 
-            lsRemoveItem: function (lsKey, noUserId = false) {
-                hasLocalStorage && localStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+            lsRemoveItem: function (lsKey, noUserId = false, session = false) {
+                if (hasLocalStorage) {
+                    if (session)
+                        sessionStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                    else
+                        localStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                }
             },
 
             saveUserSetting: function (setting = '', value = '', expdays = COOKIE_DEFAULT_EXP_DAYS) {
@@ -5576,8 +5590,20 @@ function Ktl($, info) {
                     ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
                     $('#verButtonId').on('click touchstart', function (e) {
                         if (ktl.account.isDeveloper()) {
-                            e.preventDefault();
-                            ktl.core.toggleMode();
+                            if (e.ctrlKey) {
+                                var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
+                                if (sessionKiosk) {
+                                    ktl.core.timedPopup('Switching to Normal mode...');
+                                    ktl.storage.lsRemoveItem('KIOSK', false, true);
+                                } else {
+                                    ktl.core.timedPopup('Switching to Kiosk mode...');
+                                    ktl.storage.lsSetItem('KIOSK', true, false, true);
+                                }
+                                location.reload(true);
+                            } else {
+                                e.preventDefault();
+                                ktl.core.toggleMode();
+                            }
                         }
                     })
 
