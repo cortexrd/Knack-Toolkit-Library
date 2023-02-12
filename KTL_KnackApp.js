@@ -184,7 +184,13 @@ var KnackApp = function ($, info = {}) {
             ktl.scenes.addVersionInfo(info, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
         } else {
             document.body.classList.add('show-menu');
-            ktl.scenes.addVersionInfo(info);
+
+            var versionStyle = '';
+            var bottomCenter = false; //Set this to true to have the version info at bottom center of page, as an example.
+            if (bottomCenter)
+                versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; border-style:none; padding-bottom:2px; left: 50%; transform: translate(-50%, -50%);';
+
+            ktl.scenes.addVersionInfo(info, versionStyle);
         }
     }
 
