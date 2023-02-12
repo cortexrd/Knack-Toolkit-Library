@@ -513,7 +513,7 @@ function Ktl($, info) {
                     var style = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%);min-width:300px;min-height:50px;line-height:50px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px;white-space:pre';
 
                     if (status === 'warning')
-                        style += ';background-color:#fffa5e;border:2px solid #7e8060;top:10%';
+                        style += ';background-color:#fffa5e;border:2px solid #7e8060;top:15%';
                     else if (status === 'error')
                         style += ';background-color:#FFB0B0;border:5px solid #660000';
                     else //Default is success
