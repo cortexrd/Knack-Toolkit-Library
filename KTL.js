@@ -5568,7 +5568,7 @@ function Ktl($, info) {
                 document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
             },
 
-            addVersionInfo: function (info, style = '') {
+            addVersionInfo: function (info, style = '', div) {
                 if (!ktl.core.getCfg().enabled.showAppInfo || window.self.frameElement) return;
 
                 //By default, version numbers are added at top right of screen
@@ -5587,7 +5587,7 @@ function Ktl($, info) {
 
                     versionInfo = ktl.scenes.getCfg().versionDisplayName + versionInfo;
 
-                    ktl.fields.addButton(document.body, versionInfo, versionStyle, [], 'verButtonId');
+                    ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
                     $('#verButtonId').on('click touchstart', function (e) {
                         if (ktl.account.isDeveloper()) {
                             if (e.ctrlKey) {
