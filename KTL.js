@@ -1102,7 +1102,7 @@ function Ktl($, info) {
             })
 
             //More to come...
-            //TODO: radio buttons, multiple selection dropdowns
+            //TODO: multiple selection dropdowns
 
             //For text input changes, see inputHasChanged
             function processFieldChanged({ text: text, recId: recId, e: e }) {
@@ -1112,7 +1112,7 @@ function Ktl($, info) {
                         || document.querySelector('#' + viewId + ' .kn-search-filter #' + e.target.id).getAttribute('name'); //TODO: Need to support multiple search fields.
 
                     var p = { viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e };
-                    ktl.persistentForm.onFieldValueChanged(p);
+                    ktl.persistentForm.ktlOnFieldValueChanged(p);
                     ktl.fields.onFieldValueChanged(p); //Notify app of change
                 } catch { /*ignore*/ }
             }
@@ -1559,6 +1559,11 @@ function Ktl($, info) {
                     return descr;
                 }
             },
+
+            getFieldData: function (p = {}) {
+                if (p.e) {
+                }
+            },
         }
     })(); //fields
 
@@ -1575,7 +1580,6 @@ function Ktl($, info) {
         var currentViews = {}; //Needed to cleanup form data from previous views, when scene changes.
         var previousScene = '';
         var formDataObj = {};
-        var keyTimeout = null;
         var pfInitDone = false;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -1603,6 +1607,11 @@ function Ktl($, info) {
             });
         })
 
+        $(document).on('knack-form-submit.any', function (event, view, record) {
+            if (ktl.scenes.isiFrameWnd()) return;
+            eraseFormData(view.key);
+        });
+
         document.addEventListener('input', function (e) {
             if (!pfInitDone || !ktl.core.getCfg().enabled.persistentForm ||
                 scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd()) return;
@@ -1617,11 +1626,6 @@ function Ktl($, info) {
 
             inputHasChanged(e);
         }, true);
-
-        $(document).on('knack-form-submit.any', function (event, view, record) {
-            if (ktl.scenes.isiFrameWnd()) return;
-            eraseFormData(view.key);
-        });
 
         $(document).on('click', function (e) {
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
@@ -1642,9 +1646,60 @@ function Ktl($, info) {
             }
         })
 
+        //When input field text has changed or has lost focus, save it.
+        //Note that this function applies to text input fields only.  Other field types are saved through ktlOnFieldValueChanged.
+        function inputHasChanged(e = null) {
+            if (!e || !e.target.type || e.target.id === 'chznBetter'
+                || e.target.className.includes('knack-date') || e.target.className.includes('ui-autocomplete-input'))
+                return;
+
+            //Useful logs to implement future object types.
+            //console.log('inputHasChanged, e =', e);
+            //console.log('e.type =', e.type);
+            //console.log('e.target.type =', e.target.type);
+            //console.log('e.target.value =', e.target.value);
+            //console.log('e.target.id =', e.target.id);
+            //console.log('e.target.name =', e.target.name);
+            //console.log('e.target.className =', e.target.className);
+            //console.log('e.relatedTarget =', e.relatedTarget);
+
+            if ((e.type === 'focusout' && e.relatedTarget) || e.type === 'input') {
+                var viewId = e.target.closest('.kn-form.kn-view');
+                if (!viewId) return;
+
+                viewId = viewId.id;
+                var subField = '';
+                var knInput = e.target.closest('.kn-input');
+                if (knInput) {
+                    var fieldId = knInput.getAttribute('data-input-id');
+                    if (!fieldId) return;
+
+                    var text = e.target.value;
+                    var field = Knack.objects.getField(fieldId);
+                    if (field.attributes && field.attributes.format) {
+                        if (field.attributes.format.type === 'radios') {
+                            console.log('inputHasChanged - radios', text);
+                        } else if (field.attributes.format.type === 'checkboxes') {
+                            var options = document.querySelectorAll('#' + viewId + ' [data-input-id=' + fieldId + '] input.checkbox');
+                            var optObj = {};
+                            options.forEach(opt => {
+                                optObj[opt.value] = opt.checked;
+                            })
+                            text = optObj;
+                        }
+                    }
+
+                    if (fieldId !== e.target.id)
+                        subField = e.target.id;
+
+                    saveFormData(text, viewId, fieldId, subField);
+                }
+            }
+        }
+
         //Save data for a given view and field.
-        function saveFormData(text = '', viewId = '', fieldId = '', subField = '') {
-            //console.log('saveFormData', text, viewId, fieldId, subField);
+        function saveFormData(data, viewId = '', fieldId = '', subField = '') {
+            //console.log('saveFormData', data, viewId, fieldId, subField);
             if (!pfInitDone || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
             var formDataObj = {};
@@ -1668,19 +1723,23 @@ function Ktl($, info) {
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
 
             if (!subField) {
-                var fieldObj = Knack.objects.getField(fieldId);
-                if (fieldObj) {
-                    if (text === 'Select' && (fieldObj.attributes.type === 'connection' || fieldObj.attributes.type === 'user_roles'))
-                        text = ''; //Do not save the placeholder 'Select';
+                if (typeof data === 'string') {
+                    var fieldObj = Knack.objects.getField(fieldId);
+                    if (fieldObj) {
+                        if (data === 'Select' && (fieldObj.attributes.type === 'connection' || fieldObj.attributes.type === 'user_roles'))
+                            data = ''; //Do not save the placeholder 'Select';
+                    }
+                } else { //Object
+                    data = JSON.stringify(data);
                 }
 
-                if (!text)
+                if (!data)
                     delete formDataObj[viewId][fieldId];
                 else
-                    formDataObj[viewId][fieldId] = text;
+                    formDataObj[viewId][fieldId] = data;
             } else { //Some field types like Name and Address have sub-fields.
                 formDataObj[viewId][fieldId] = formDataObj[viewId][fieldId] ? formDataObj[viewId][fieldId] : {};
-                formDataObj[viewId][fieldId][subField] = text;
+                formDataObj[viewId][fieldId][subField] = data;
             }
 
             if ($.isEmptyObject(formDataObj[viewId]))
@@ -1748,6 +1807,9 @@ function Ktl($, info) {
                             if (field) { //TODO: Move this IF with continue at top.
                                 var subField = '';
                                 var fieldType = field.attributes.type;
+
+                                field.attributes.format && console.log('field.attributes.format.type =', field.attributes.format.type);
+
                                 if (textDataTypes.includes(fieldType)) {
                                     if (typeof fieldText === 'object') { //Ex: name and address field types.
                                         var allSubFields = Object.keys(formDataObj[view.key][fieldId])
@@ -1802,28 +1864,24 @@ function Ktl($, info) {
                                         ktl.scenes.autoFocus();
                                     }
                                 } else if (fieldType === 'multiple_choice') {
-
-                                    console.log('field.attributes.format.type =', field.attributes.format.type);
-                                    console.log('fieldId =', fieldId);
-                                    console.log('fieldText =', fieldText);
-
                                     if (typeof fieldText === 'object') {
                                         subField = Object.keys(formDataObj[view.key][fieldId]);
                                         fieldText = formDataObj[view.key][fieldId][subField];
                                     } else if (field.attributes.format.type === 'radios') {
                                         var rb = document.querySelector('#kn-input-' + fieldId + ' [value="' + fieldText + '"]');
                                         rb && (rb.checked = true);
-                                        resolve();
-                                        return;
-                                    } else if (field.attributes.format.type === 'checkbox') {
-                                        //TODO
-                                        resolve();
-                                        return;
+                                    } else if (field.attributes.format.type === 'checkboxes') {
+                                        var optObj = JSON.parse(fieldText);
+                                        var options = Object.keys(optObj)
+                                        options.forEach(opt => {
+                                            document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input[value="' + opt + '"]').checked = optObj[opt];
+                                        })
+                                    } else {
+                                        ktl.log.clog('blue', 'loadFormData - searchDropdown');
+                                        fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
+                                            .then(function () { })
+                                            .catch(function () { })
                                     }
-
-                                    fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
-                                        .then(function () { })
-                                        .catch(function () { })
                                 } else if (fieldType === 'boolean') {
                                     document.querySelector('#' + view.key + ' [data-input-id="' + fieldId + '"] input').checked = fieldText;
                                 } else {
@@ -1856,67 +1914,6 @@ function Ktl($, info) {
             })
         }
 
-        //When input field text has changed or has lost focus, save it.
-        //Note that this function applies to text input fields only.  Other field types are saved through onFieldValueChanged.
-        function inputHasChanged(e = null) {
-            if (!e || !e.target.type || e.target.id === 'chznBetter'
-                || e.target.className.includes('knack-date') || e.target.className.includes('ui-autocomplete-input'))
-                return;
-
-            //Useful logs to implement future object types.
-            //console.log('e =', e);
-            //console.log('e.type =', e.type);
-            //console.log('e.target.type =', e.target.type);
-            //console.log('e.target.value =', e.target.value);
-            //console.log('e.target.id =', e.target.id);
-            //console.log('e.target.name =', e.target.name);
-            //console.log('e.target.className =', e.target.className);
-            //console.log('e.relatedTarget =', e.relatedTarget);
-
-            clearTimeout(keyTimeout);
-
-
-            if ((e.type === 'focusout' && e.relatedTarget) || (e.type === 'input' && e.target.type === 'select-one'))
-                saveText();
-            else {
-                keyTimeout = setTimeout(function () {
-                    saveText();
-                }, 1000);
-            }
-
-            function saveText() {
-                var subField = '';
-                var knInput = e.target.closest('.kn-input');
-                if (knInput) {
-                    var fieldId = knInput.getAttribute('data-input-id');
-                    var text = e.target.value;
-
-                    var field = Knack.objects.getField(fieldId);
-                    //console.log('inputHasChanged - field.attributes =', field.attributes);
-
-                    if (field.attributes.format) {
-                        if (field.attributes.format.type === 'radios') {
-                            //console.log('inputHasChanged - radios');
-                            text = e.target.checked;
-                        } else if (field.attributes.format.type === 'checkboxes') {
-                            //console.log('inputHasChanged - checkbox');
-                            text = e.target.checked;
-                        }
-                    }
-
-                    if (fieldId !== e.target.id)
-                        subField = e.target.id;
-
-                    var viewId = e.target.closest('.kn-form.kn-view');
-                    if (viewId) {
-                        viewId = viewId.id;
-                        if (viewId && fieldId)
-                            saveFormData(text, viewId, fieldId, subField);
-                    }
-                }
-            }
-        }
-
         //Remove all saved data for this view after a submit 
         //If changing scene, erase for all previous scene's views.
         //If viewId is empty, erase all current scene's views.
@@ -1943,7 +1940,7 @@ function Ktl($, info) {
             },
 
             //For KTL internal use.  Add Change event handlers for Dropdowns, Calendars, etc.
-            onFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
+            ktlOnFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 if (!fieldsToExclude.includes(fieldId)) {
                     text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
 
