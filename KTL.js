@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.7.14';
+    const KTL_VERSION = '0.7.15';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -767,8 +767,8 @@ function Ktl($, info) {
             // Just specify key and func will prepend APP_ROOT_NAME.
             // Typically used for generic utility storage, like logging, custom filters, user preferences, etc.
             lsSetItem: function (lsKey, data, noUserId = false, session = false) {
-                if (lsKey.indexOf('undefined') >= 0)
-                    return; //Needed to prevent logging pre-login events.
+                if (!lsKey || !Knack.getUserAttributes().id)
+                    return;
 
                 if (hasLocalStorage) {
                     try {
@@ -1674,25 +1674,23 @@ function Ktl($, info) {
                     var fieldId = knInput.getAttribute('data-input-id');
                     if (!fieldId) return;
 
-                    var text = e.target.value;
+                    var data = e.target.value;
                     var field = Knack.objects.getField(fieldId);
                     if (field.attributes && field.attributes.format) {
-                        if (field.attributes.format.type === 'radios') {
-                            console.log('inputHasChanged - radios', text);
-                        } else if (field.attributes.format.type === 'checkboxes') {
+                        if (field.attributes.format.type === 'checkboxes') {
                             var options = document.querySelectorAll('#' + viewId + ' [data-input-id=' + fieldId + '] input.checkbox');
                             var optObj = {};
                             options.forEach(opt => {
                                 optObj[opt.value] = opt.checked;
                             })
-                            text = optObj;
+                            data = optObj;
                         }
                     }
 
                     if (fieldId !== e.target.id)
                         subField = e.target.id;
 
-                    saveFormData(text, viewId, fieldId, subField);
+                    saveFormData(data, viewId, fieldId, subField);
                 }
             }
         }
@@ -1808,11 +1806,9 @@ function Ktl($, info) {
                                 var subField = '';
                                 var fieldType = field.attributes.type;
 
-                                field.attributes.format && console.log('field.attributes.format.type =', field.attributes.format.type);
-
                                 if (textDataTypes.includes(fieldType)) {
                                     if (typeof fieldText === 'object') { //Ex: name and address field types.
-                                        var allSubFields = Object.keys(formDataObj[view.key][fieldId])
+                                        var allSubFields = Object.keys(formDataObj[view.key][fieldId]);
                                         allSubFields.forEach(function (eachSubField) {
                                             fieldText = formDataObj[view.key][fieldId][eachSubField];
                                             setFieldText(eachSubField);
@@ -1872,7 +1868,7 @@ function Ktl($, info) {
                                         rb && (rb.checked = true);
                                     } else if (field.attributes.format.type === 'checkboxes') {
                                         var optObj = JSON.parse(fieldText);
-                                        var options = Object.keys(optObj)
+                                        var options = Object.keys(optObj);
                                         options.forEach(opt => {
                                             document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input[value="' + opt + '"]').checked = optObj[opt];
                                         })
@@ -2411,10 +2407,12 @@ function Ktl($, info) {
                     searchBtn.addEventListener('click', function () {
                         var tableSrchTxt = document.querySelector('#' + view.key + ' .table-keyword-search input').value;
                         var actFlt = getFilter(view.key);
-                        var fltSrchTxt = actFlt.filterObj.search;
-                        if (tableSrchTxt !== fltSrchTxt) {
-                            ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                            updateSearchInFilter(view.key);
+                        if (actFlt.filterObj) {
+                            var fltSrchTxt = actFlt.filterObj.search;
+                            if (tableSrchTxt !== fltSrchTxt) {
+                                ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                                updateSearchInFilter(view.key);
+                            }
                         }
                     });
                 }
@@ -5420,7 +5418,7 @@ function Ktl($, info) {
                                         kioskButtonsDiv = document.createElement('div');
                                         kioskButtonsDiv.setAttribute('class', 'kioskButtonsDiv');
                                         kioskButtonsParentDiv.appendChild(kioskButtonsDiv);
-                                        $('.kioskButtonsDiv').css({ 'position': 'absolute', 'right': '2%' });
+                                        $('.kioskButtonsDiv').css({ 'position': 'absolute', 'right': '2%', 'top': '0px' });
                                     }
 
                                     backBtn && kioskButtonsDiv.appendChild(backBtn);
@@ -6947,20 +6945,36 @@ function Ktl($, info) {
             //Prepare all we need for Bulk Operations. Take note of view, field and new value.
 
             //Did we click on Submit during inline editing?
-            var submit = $(e.target).closest('#cell-editor .kn-button');
-            if (submit.length > 0 && !bulkOpsInProgress && bulkOpsRecIdArray.length > 0) {
+            var submit = e.target.closest('#cell-editor .kn-button');
+            if (submit && !bulkOpsInProgress && bulkOpsRecIdArray.length > 0) {
                 bulkOpsInProgress = true;
                 bulkOpsFieldId = $('#cell-editor .kn-input').attr('data-input-id');
 
-                //Uncomment to find new unknown types: 
-                //console.log('Field type =', Knack.objects.getField(bulkOpsFieldId).attributes.type);
-
-                bulkOpsNewValue = $('#cell-editor .chzn-select.select.chzn-done').val()
-                    || $('#cell-editor .kn-input #' + bulkOpsFieldId).val()
-                    || $('#cell-editor .knack-date.input.control.hasDatepicker').val()
-                    || $('#cell-editor .kn-radio input[type=radio]:checked').val()
-                    || $('#cell-editor .kn-input-multiple_choice .kn-select .select').val()
-                    || $('#cell-editor .kn-input-boolean input[type=checkbox]').is(':checked');
+                const fieldAttr = Knack.objects.getField(bulkOpsFieldId).attributes;
+                const fieldType = fieldAttr.type;
+                if (fieldType === 'multiple_choice') {
+                    if (fieldAttr.format && fieldAttr.format.type === 'radios') {
+                        options = document.querySelectorAll('#cell-editor input.radio');
+                        options.forEach(opt => {
+                            if (opt.checked)
+                                bulkOpsNewValue = opt.value;
+                        })
+                    } else if (fieldAttr.format && fieldAttr.format.type === 'checkboxes') {
+                        var options = document.querySelectorAll('#cell-editor [name=' + bulkOpsFieldId + ']');
+                        var optObj = {};
+                        options.forEach(opt => {
+                            optObj[opt.value] = opt.checked;
+                        })
+                        bulkOpsNewValue = optObj;
+                    }
+                } else {
+                    bulkOpsNewValue = $('#cell-editor .chzn-select.select.chzn-done').val()
+                        || $('#cell-editor .kn-input #' + bulkOpsFieldId).val()
+                        || $('#cell-editor .knack-date.input.control.hasDatepicker').val()
+                        || $('#cell-editor .kn-radio input[type=radio]:checked').val()
+                        || $('#cell-editor .kn-input-multiple_choice .kn-select .select').val()
+                        || $('#cell-editor .kn-input-boolean input[type=checkbox]').is(':checked');
+                }
                 var time = $('#cell-editor .kn-time.input.control.ui-timepicker-input').val();
                 if (time)
                     bulkOpsNewValue += ' ' + time;
@@ -7038,6 +7052,8 @@ function Ktl($, info) {
 
         //Called when user clicks on Submit from an Inline Editing form and when there are some checkboxes enabled.
         function processBulkOps() {
+            if (!bulkOpsNewValue) return;
+
             var object = Knack.router.scene_view.model.views._byId[bulkOpsViewId].attributes.source.object;
             var objName = Knack.objects._byId[object].attributes.name;  //Create function getObjNameForView
 
@@ -7046,10 +7062,31 @@ function Ktl($, info) {
                 var apiData = {};
 
                 var fieldAttr = Knack.objects.getField(bulkOpsFieldId).attributes;
-                if (fieldAttr.type === 'connection')
-                    apiData[bulkOpsFieldId] = [bulkOpsNewValue];
-                else
+
+                //Move this to a common place like core, since used elsewhere.
+                const textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text', 'currency'];
+
+                if (textDataTypes.includes(fieldAttr.type))
                     apiData[bulkOpsFieldId] = bulkOpsNewValue;
+                else if (fieldAttr.type === 'connection')
+                    apiData[bulkOpsFieldId] = [bulkOpsNewValue];
+                else if (fieldAttr.type === 'multiple_choice') {
+                    if (fieldAttr.format && fieldAttr.format.type === 'radios')
+                        apiData[bulkOpsFieldId] = bulkOpsNewValue;
+                    else if (fieldAttr.format && fieldAttr.format.type === 'checkboxes') {
+                        apiData[bulkOpsFieldId] = [];
+                        var options = Object.keys(bulkOpsNewValue);
+                        options.forEach(opt => {
+                            if (bulkOpsNewValue[opt])
+                                apiData[bulkOpsFieldId].push(opt);
+                        })
+                    }
+                }
+
+                if ($.isEmptyObject(apiData)) {
+                    alert('Sorry, field type "' + fieldAttr.type + '" is not yet supported.');
+                    return;
+                }
 
                 ktl.core.infoPopup();
                 ktl.views.autoRefresh(false);
