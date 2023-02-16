@@ -831,12 +831,12 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | \_ar=n                        | Auto-Refresh a view every *n* seconds | View's Title             | \_ar=60                         |
 | \_hv                          | Hidden View                           |                          |                                 |
 | \_ht                          | Hidden Title                          |                          |                                 |
-| \_ni                          | No Inline                             |                          |                                 |
+| \_ni                          | No Inline editing                     |                          |                                 |
 | \_ts                          | Adds a Time Stamp to a view           |                          |                                 |
-| \_dtp                         | Adds Date/Time pickers                |                          |                                 |
+| \_dtp                         | Adds Date/Time Pickers                |                          |                                 |
 | \_rvs=viewTitle1, viewTitle2… | Refresh Views after Submit            |                          | \_rvs=Monthly Sales, Clients    |
 |                               |                                       |                          |                                 |
-| \_nf=f1,f2…                   | Prevents filtering on spcified fields | View's Description       | \_nf=field_1,field_2            |
+| \_nf=f1,f2…                   | No Filtering on specified fields      | View's Description       | \_nf=field_1,field_2            |
 |                               |                                       |                          |                                 |
 | \_hc                          | Hide Column, but keep in DOM          | Table's Column Header    |                                 |
 | \_rc                          | Remove Column, including DOM          |                          |                                 |
@@ -844,13 +844,13 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | \_oln=url                     | Open Link in a New page (tab)         | Rich Text view with link | Support \_oln=https://ctrnd.com |
 | \_ols=url                     | Open Link in Same page                | Rich Text view with link | Support \_ols=https://ctrnd.com |
 |                               |                                       |                          |                                 |
-| \_uc                          | Convert to uppercase                  | Field's description      |                                 |
+| \_uc                          | Convert to Uppercase                  | Field's description      |                                 |
 | \_ip                          | Validate IP format (to do)            |                          |                                 |
 |                               |                                       |                          |                                 |
-| \_kr                          | Kiosk Add Refresh Button              | Views, in Kiosk mode     |                                 |
-| \_kb                          | Kiosk Add Back Button                 |                          |                                 |
-| \_kd                          | Kiosk Add Done Button                 |                          |                                 |
-| \_kn                          | Kiosk No Buttons (to clarify)         |                          |                                 |
+| \_kr                          | Kiosk add Refresh button              | Views, in Kiosk mode     |                                 |
+| \_kb                          | Kiosk add Back button                 |                          |                                 |
+| \_kd                          | Kiosk add Done button                 |                          |                                 |
+| \_kn                          | Kiosk No buttons (to clarify)         |                          |                                 |
 
 ## All code and documentation written by:
 
