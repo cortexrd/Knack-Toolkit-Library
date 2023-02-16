@@ -21,7 +21,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     window.KnackApp = _KnackApp;
     callback = _callback;
     ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
-    const lsShortName = Knack.app.attributes.name.substr(0, 6).replace(/ /g, '_') + '_' + app_id.substr(-4, 4) + '_';
+    const lsShortName = Knack.app.attributes.name.substr(0, 6).replace(/ /g, '') + '_' + app_id.substr(-4, 4) + '_';
     var prod = (localStorage.getItem(lsShortName + 'dev') === null);
     if (!prod) {
         ktlVersion = '';
