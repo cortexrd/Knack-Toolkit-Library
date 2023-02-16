@@ -24,7 +24,7 @@
 
 **Knack Toolkit Library**
 
-v0.7.3 - pre-release
+v0.7.15 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a collection of open-source Javascript utilities that eases Knack application development and add several features that are not easily created from the ground up. Those features that involve using the Knack API are 100% view-based, so your API key is never exposed.
 
@@ -172,7 +172,7 @@ Once you’ve mastered both modes, you’ll typically spend 95% of the time in D
 
 You can switch modes using two methods:
 
-1.  If you have the **showAppInfo** flag enabled **and** your account has the “**Developer**” role, it will add the version info on the top-right of the screen. Clicking on it will show a prompt with this: **Which version to run, "prod" or "dev"?** Type in the desired mode and click ok. The page will refresh itself automatically.
+1.  If you have the **showAppInfo** flag enabled **and** your account has the “**Developer**” role, it will add the version info bar on the top-right of the screen. Clicking on it will show a prompt with this: **Which version to run, "prod" or "dev"?** Type in the desired mode and click ok. The page will refresh itself automatically.
 2.  You can manually add a key to the localStorage for your app with the **LS Key** followed by **\_dev** like this: **KTLTu_fcbf_dev**, for example. Leave the value empty since not used. The **LS Key** can be obtained by double-clicking on your first name in the top bar, then looking at the console output. You will also find there the App ID and your User ID.
 
 Once in the Dev mode, you will see the version shown with bright yellow/red as an attention getter that indicates you are in Dev mode.
@@ -256,7 +256,7 @@ This contains generic utility functions, used by most other features internally,
 -   **setCfg**: This is where you can enable the features you want.
 -   **getCfg**: To get the config and read the flags.
 -   **knAPI**: Knack API wrapper with retries and error management.
--   **isKiosk**: For support of kiosk mode applications. You decide the trigger conditions for kiosk mode in a callback function.
+-   **isKiosk**: For support of kiosk mode applications. You decide the trigger conditions for kiosk mode in a callback function. It is possible to switch back and forth between the Normal and Kiosk modes if you have the Developer role and Ctrl+Click on the version info bar.
 -   **hideSelector**: To move away elements off the screen to hide them or save real-estate.
 -   **waitSelector**: When you need to wait until an element exists or is visible.
 -   **waitAndReload**: Waits for a specific delay, then reloads page.
@@ -288,6 +288,7 @@ This contains generic utility functions, used by most other features internally,
 -   **convertDateToIso**: Converts a date string from US to ISO format. US is for various Knack functions like API calls and filtering, whereas ISO is for HTML objects like calendar input types.
 -   **getLastDayOfMonth**: Pass a date string and it will return the last day of that month, as a string, is ISO or US format.
 -   **injectCSS**: Used internally to add custom styles at run-time based on user’s settings.
+-   **toggleMode**: Toggles back and forth between the Prod and Dev modes. Only for Developer role. This is invoked when the version info bar is clicked.
 
 ### A note about knAPI
 
@@ -304,7 +305,7 @@ Provides non-volatile storage utilities using the localStorage and cookies objec
 ### Functions
 
 -   **hasLocalStorage**: Returns whether or not localStorage is supported.
--   **lsSetItem, lsGetItem, lsRemoveItem**: Saves, loads, and deletes text item in app-specific keys.
+-   **lsSetItem, lsGetItem, lsRemoveItem**: Saves, loads, and deletes text item in app-specific keys. By default, localStorage is used, but the “session” parameter allows using the sessionStorage instead for non-persistent data.
 -   **saveUserSetting, loadUserSetting, setCookie, getCookie, deleteCookie, deleteAllCookies**: Same but using cookies.
 
 ## Fields
@@ -491,9 +492,11 @@ To use this feature, you must:
 2.  Create an account role named "Bulk Edit" and assign it diligently to very trusty and liable users.
 3.  For each applicable table, enable Inline editing and be sure to disable all the fields that should be protected against unintended modifications.
 
-These field types are supported: all text fields, connected fields, date time picker, Yes/No, multiple choices (single selection and radio buttons only at this time).
+These field types are supported: all text fields, connected fields, date time picker, Yes/No, multiple choices: radio buttons and checkboxes.
 
 Usage: In the table, select all the checkboxes for the records to be modified. Then click on any cell to edit its value (inline). After submitting the change, a prompt will ask you if the value should also apply to all selected records. Click yes to apply to all. A confirmation message will pop up after completion.
+
+After a modification is completed, the selected records are retained in memory – even if not visible due to a table refresh. This allows performing multiple bulk edits one after another, on different fields.
 
 \*\* Important note\*\* the table's sort+filter combination may cause your changes to disappear due to becoming out of scope. This is normal. You can prevent this by first choosing a sort+filter combination that will not cause this. Ideally set the filtering to show only a very restricted number of records, but still include the ones you need. Experimenting with only a few records at a time (less than 10) or even better “test records” is recommended as a starting point.
 
@@ -649,7 +652,7 @@ The callbacks play a major role, and can be seen as a “bridge” between the K
 
 You can turn off a feature by setting its flag to false in the function **ktl.core.setCfg**, in the **//KTL Setup** section.
 
-For example, you don’t want to see the version info at top-right of the page, set this to false: **showAppInfo: false**
+For example, you don’t want to see the version info bar at top-right of the page, set this to false: **showAppInfo: false**
 
 ## Editing the KTL_KnackApp file
 
