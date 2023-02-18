@@ -5120,6 +5120,9 @@ function Ktl($, info) {
                                     if (orgTitle.includes('_al')) {
                                         console.log('auto login');
                                     }
+
+                                    if (orgTitle.includes('_qt'))
+                                        ktl.views.quickToggle(view.key);
                                 }
                             }
                         }
@@ -5159,6 +5162,114 @@ function Ktl($, info) {
                 }
                 catch (err) { console.log('err', err); };
             },
+
+            getDataFromRecId: function (viewId = '', recId = '') {
+                if (!viewId || !recId) return;
+                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                if (viewType === 'table')
+                    return Knack.views[viewId] && Knack.views[viewId].model.data._byId[recId].attributes;
+                else
+                    return Knack.views[viewId].model.results_model.data._byId[recId].attributes;
+            },
+
+            quickToggle: function (viewId = '') {
+            if (!viewId) return;
+                var itvb = null;
+                var quickToggleRecIdObj = {};
+                var refreshTimer = null;
+                var viewsToRefresh = [];
+                $(document).on('knack-view-render.any', function (event, view, data) {
+                    var viewModel = Knack.router.scene_view.model.views._byId[view.key];
+                    if (viewModel) {
+                        var viewAttr = viewModel.attributes;
+                        const viewType = viewAttr.type;
+                        if (!['table', 'search'].includes(viewType)) return;
+
+                        var inlineEditing = false;
+                        if (viewType === 'table')
+                            inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
+                        else
+                            inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
+
+                        if (!inlineEditing) return;
+
+                        const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
+                        cols.forEach(col => {
+                            if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
+                                var field = Knack.objects.getField(col.field.key);
+                                if (field) {
+                                    var fieldType = field.attributes.type;
+                                    if (fieldType === 'boolean') {
+                                        $('.' + col.field.key + '.cell-edit').on('click', e => {
+                                            e.stopImmediatePropagation();
+                                            !itvb && startQtScanning();
+                                            var recId = e.target.closest('tr').id;
+                                            var value = ktl.views.getDataFromRecId(view.key, recId, col.field.key)[col.field.key + '_raw'];
+                                            value = (value === true ? false : true);
+                                            if (!viewsToRefresh.includes(view.key))
+                                                viewsToRefresh.push(view.key);
+
+                                            quickToggleRecIdObj[recId] = { viewId: view.key, fieldId: col.field.key, value: value, processed: false };
+
+                                            $(e.target).css('background', '#9908'); //Visual cue that the process is started.
+                                            clearTimeout(refreshTimer);
+                                        })
+                                    }
+                                }
+                            }
+                        })
+                    }
+                })
+
+                function startQtScanning() {
+                    itvb = setInterval(() => {
+                        if (!$.isEmptyObject(quickToggleRecIdObj)) {
+                            ktl.views.autoRefresh(false);
+                            ktl.scenes.spinnerWatchdog(false);
+
+                            var rec = Object.keys(quickToggleRecIdObj)[0];
+                            if (!quickToggleRecIdObj[rec].processed) {
+                                quickToggleRecIdObj[rec].processed = true;
+                                quickToggle(rec);
+                            }
+                        }
+                    }, 200);
+                }
+
+                function quickToggle(rec) {
+                    var recObj = quickToggleRecIdObj[rec];
+                    if ($.isEmptyObject(recObj)) return;
+                    var viewId = recObj.viewId;
+                    var fieldId = recObj.fieldId;
+                    if (!viewId || !fieldId) return;
+
+                    var apiData = {};
+                    apiData[recObj.fieldId] = recObj.value;
+                    ktl.core.knAPI(recObj.viewId, rec, apiData, 'PUT')
+                        .then(() => {
+                            delete quickToggleRecIdObj[rec];
+                            if ($.isEmptyObject(quickToggleRecIdObj)) {
+                                clearInterval(itvb);
+                                itvb = null;
+                                refreshTimer = setTimeout(() => {
+                                    ktl.views.refreshViewArray(viewsToRefresh);
+                                    Knack.hideSpinner();
+                                    ktl.scenes.spinnerWatchdog();
+                                    ktl.views.autoRefresh();
+                                }, 1000);
+                            }
+                        })
+                        .catch(function (reason) {
+                            Knack.hideSpinner();
+                            ktl.scenes.spinnerWatchdog();
+                            ktl.views.autoRefresh();
+                            alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
+                        })
+                }
+            },
+
+
+
         }
     })(); //views
 
