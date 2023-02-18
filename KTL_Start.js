@@ -9,7 +9,7 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.7.15';
+    const KTL_LATEST_JS_VERSION = '0.7.16';
     const KTL_LATEST_CSS_VERSION = '0.2.2';
 
 
@@ -33,8 +33,10 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         ktlSvr = 'http://localhost:3000/';
         var appUrl = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
         appUrl = encodeURI(appUrl);
-        if (typeof KnackApp === 'function')
+        if (typeof KnackApp === 'function') {
             delete KnackApp;
+            KnackApp = undefined; //Required for those account where the delete doesn't work.
+        }
         LazyLoad.js([appUrl], () => { })
     }
 
