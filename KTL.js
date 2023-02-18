@@ -4012,23 +4012,20 @@ function Ktl($, info) {
 
                             var viewType = view.attributes.type;
                             var formAction = view.attributes.action;
-                            var useFetch = (formAction === 'insert' || formAction === 'create') ? false : true;
-
-                            //This generates a bit too much logs sometimes.  Uncomment if you really need it.
-                            //if (ktl.userPrefs.getUserPrefs().showExtraDebugInfo) {
-                            //    ktl.log.clog('purple, 'refreshView: ' + viewId);
-                            //    console.log('viewType:', viewType, '  formAction:', formAction, '  useFetch:', useFetch);
-                            //}
+                            var triggerChange = (formAction === 'insert' || formAction === 'create') ? false : true;
 
                             (function tryRefresh(retryCtr) {
                                 if (view && ['search', 'form', 'rich_text', 'menu' /*more types?*/].includes(viewType)) {
-                                    if (useFetch) { //Can't use fetch() because it triggers a on submit event for some reason.
-                                        Knack.views[viewId].model.trigger('change'); //This does the job though.  Discovered by trial and error!
+                                    if (triggerChange) {
+                                        Knack.views[viewId].model.trigger('change');
                                         Knack.views[viewId].renderForm && Knack.views[viewId].renderForm();
                                         Knack.views[viewId].renderView && Knack.views[viewId].renderView();
+                                        Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                     }
                                     Knack.views[viewId].render();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
+                                    resolve();
+                                    return;
                                 } else {
                                     Knack.views[viewId].model.fetch({
                                         success: function (model, response, options) {
@@ -4102,8 +4099,6 @@ function Ktl($, info) {
                     if (viewsToRefresh.length === 0)
                         resolve();
                     else {
-                        Knack.showSpinner();
-
                         var promisesArray = [];
                         viewsToRefresh.forEach(function (viewId) {
                             promisesArray.push(
@@ -4111,31 +4106,25 @@ function Ktl($, info) {
                                     .then(() => {
                                         //ktl.log.clog('green', 'View refreshed successfully: ' + viewId);
                                     })
-                                    .catch(() => {
-                                        ktl.log.clog('red', 'Error refreshing view:' + viewId);
-                                    })
                             )
                         })
 
                         Promise.all(promisesArray)
                             .then(() => {
-                                //ktl.log.clog('green', 'All views refreshed!');
-                                Knack.hideSpinner();
+                                //ktl.log.clog('green', 'All views refreshed: ' + viewsToRefresh);
                                 resolve();
                             })
                             .catch(() => {
-                                ktl.log.clog('red', 'Error refreshing views!');
+                                ktl.log.clog('red', 'Error refreshing views: ' + viewsToRefresh );
                                 reject()
                             })
-                            .finally(() => {
-                                clearTimeout(failsafe);
-                            })
+                            .finally(() => { clearTimeout(failsafe); })
                     }
 
                     var failsafe = setTimeout(() => {
-                        ktl.log.clog('red', 'Failsafe timeout in refreshViewArray!');
+                        ktl.log.clog('red', 'Failsafe timeout in refreshViewArray: ' + viewsToRefresh);
                         reject();
-                    }, 30000);
+                    }, 60000);
                 })
             },
 
@@ -5095,83 +5084,81 @@ function Ktl($, info) {
             ktlProcessKeywords: function (view, data) {
                 if (!view) return;
                 try {
-                    var model = (Knack.views[view.key] && Knack.views[view.key].model);
-                    if (view.title && view.title !== '') {
-                        if (model) {
-                            var itv = setInterval(() => {
-                                if (titleCleanupDone) {
-                                    clearInterval(itv);
+                    var itv = setInterval(() => {
+                        var model = (Knack.views[view.key] && Knack.views[view.key].model);
+                        if (view.title && view.title !== '') {
+                            if (model && titleCleanupDone) {
+                                clearInterval(itv);
 
-                                    var orgTitle = (model.view && model.view.orgTitle);
-                                    if (orgTitle) {
-                                        orgTitle = orgTitle.toLowerCase();
-                                        if (orgTitle.includes('refresh_view') || orgTitle.includes('_rvs'))
-                                            addSubmitToViewRefresh(view);
+                                var orgTitle = (model.view && model.view.orgTitle);
+                                if (orgTitle) {
+                                    orgTitle = orgTitle.toLowerCase();
+                                    if (orgTitle.includes('refresh_view') || orgTitle.includes('_rvs'))
+                                        addSubmitToViewRefresh(view);
 
-                                        //Hide the whole view, typically used when doing background searches.
-                                        if (orgTitle.includes('hidden_view') || orgTitle.includes('_hv')) {
-                                            if (!Knack.getUserRoleNames().includes('Developer'))
-                                                $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' });
-                                        }
+                                    //Hide the whole view, typically used when doing background searches.
+                                    if (orgTitle.includes('hidden_view') || orgTitle.includes('_hv')) {
+                                        if (!Knack.getUserRoleNames().includes('Developer'))
+                                            $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' });
+                                    }
 
-                                        //Hide the view title only, typically used to save space when real estate is critical.
-                                        if (orgTitle.includes('hidden_title') || orgTitle.includes('_ht')) {
-                                            $('#' + view.key + ' .view-header h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
-                                            $('#' + view.key + ' .view-header h2').css({ 'position': 'absolute', 'left': '-9000px' });
-                                        }
+                                    //Hide the view title only, typically used to save space when real estate is critical.
+                                    if (orgTitle.includes('hidden_title') || orgTitle.includes('_ht')) {
+                                        $('#' + view.key + ' .view-header h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
+                                        $('#' + view.key + ' .view-header h2').css({ 'position': 'absolute', 'left': '-9000px' });
+                                    }
 
-                                        //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
-                                        if ((orgTitle.includes('no_inline') || orgTitle.includes('_ni')) && !ktl.account.isDeveloper()) {
-                                            if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
-                                                $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
-                                        }
+                                    //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
+                                    if ((orgTitle.includes('no_inline') || orgTitle.includes('_ni')) && !ktl.account.isDeveloper()) {
+                                        if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
+                                            $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
+                                    }
 
-                                        if (orgTitle.includes('add_timestamp') || orgTitle.includes('_ts'))
-                                            ktl.views.addTimeStampToHeader(view);
+                                    if (orgTitle.includes('add_timestamp') || orgTitle.includes('_ts'))
+                                        ktl.views.addTimeStampToHeader(view);
 
-                                        if (orgTitle.includes('datetime_pickers') || orgTitle.includes('_dtp'))
-                                            ktl.views.addDateTimePickers(view);
+                                    if (orgTitle.includes('datetime_pickers') || orgTitle.includes('_dtp'))
+                                        ktl.views.addDateTimePickers(view);
 
-                                        if (orgTitle.includes('_al')) {
-                                            console.log('auto login');
-                                        }
+                                    if (orgTitle.includes('_al')) {
+                                        console.log('auto login');
                                     }
                                 }
-                            }, 50);
-                        }
-                    }
-
-                    //Remove unwanted columns, as specified in Builder, when _HIDE and _REMOVE is found in header.
-                    if (view.type === 'table' /*TODO: add more view types*/) {
-                        var columns = model.view.columns;
-                        var hiddenFieldsAr = [];
-                        var removedFieldsAr = [];
-                        var header = '';
-                        var fieldId = '';
-                        columns.forEach(col => {
-                            header = col.header;
-                            fieldId = (col.id || (col.field && col.field.key));
-                            if (fieldId) {
-                                if (header.includes('_hide') || header.includes('_hc'))
-                                    hiddenFieldsAr.push(fieldId);
-                                else if (header.includes('_remove') || header.includes('_rc'))
-                                    removedFieldsAr.push(fieldId);
                             }
-                        })
-
-                        if (hiddenFieldsAr.length)
-                            ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr);
-                        if (removedFieldsAr.length)
-                            ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr);
-                    } else if (view.type === 'rich_text') {
-                        var txt = view.content.toLowerCase();
-                        if (txt.includes('_ol')) {
-                            var innerHTML = document.querySelector('#' + view.key).innerHTML;
-                            document.querySelector('#' + view.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
                         }
-                    }
 
-                    processViewKeywords && processViewKeywords(view, data);
+                        //Remove unwanted columns, as specified in Builder, when _hc and _rc is found in header.
+                        if (view.type === 'table' /*TODO: add more view types*/) {
+                            var columns = model.view.columns;
+                            var hiddenFieldsAr = [];
+                            var removedFieldsAr = [];
+                            var header = '';
+                            var fieldId = '';
+                            columns.forEach(col => {
+                                header = col.header;
+                                fieldId = (col.id || (col.field && col.field.key));
+                                if (fieldId) {
+                                    if (header.includes('_hide') || header.includes('_hc'))
+                                        hiddenFieldsAr.push(fieldId);
+                                    else if (header.includes('_remove') || header.includes('_rc'))
+                                        removedFieldsAr.push(fieldId);
+                                }
+                            })
+
+                            if (hiddenFieldsAr.length)
+                                ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr);
+                            if (removedFieldsAr.length)
+                                ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr);
+                        } else if (view.type === 'rich_text') {
+                            var txt = view.content.toLowerCase();
+                            if (txt.includes('_ol')) {
+                                var innerHTML = document.querySelector('#' + view.key).innerHTML;
+                                document.querySelector('#' + view.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
+                            }
+                        }
+
+                        processViewKeywords && processViewKeywords(view, data);
+                    }, 50);
                 }
                 catch (err) { console.log('err', err); };
             },
