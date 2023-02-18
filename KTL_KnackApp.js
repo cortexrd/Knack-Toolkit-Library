@@ -408,12 +408,12 @@ var KnackApp = function ($, info = {}) {
         }
     }
 
+    //Typical exmample of how to use this callback: upon event drop, update a table below with same object and the Date/Time field.
     function handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
         console.log('eventDrop', { view, event, dayDelta, minuteDelta, allDay, revertFunc });
         var eventField = view.events.event_field.key;
         var recId = event.id;
 
-        //Typical exmample of how to use this callback: upon event drop, update a table below with same object and the Date/Time field.
         const CALENDAR_VIEW = 'view_CALENDAR';
         const TABLE_TO_REFRESH = 'view_TABLE';
         (function tryRefresh(retryCtr) { //These retries are important due to the latency chain: calendar > server > table being updated.

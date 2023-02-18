@@ -3913,9 +3913,7 @@ function Ktl($, info) {
             var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
             if (viewId) {
                 viewId = viewId.getAttribute('id');
-
                 const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
-                console.log('viewType =', viewType);
                 if (viewType === 'table')
                     ktl.views.handleClickSort(e);
             }
@@ -4934,7 +4932,6 @@ function Ktl($, info) {
 
                         //Attempt to support Search views but crashes with a "URL" problem after fetch() below.
                         const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
-                        //console.log('viewType =', viewType);
                         if (viewType === 'search') return; //Remove this line if ever we find the solution.
 
                         e.preventDefault();
