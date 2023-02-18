@@ -5079,11 +5079,15 @@ function Ktl($, info) {
 
             //Process views with special keywords in their titles, fields, descriptions, etc.
             ktlProcessKeywords: function (view, data) {
-                if (!view) return;
+                if (!view || ktl.scenes.isiFrameWnd()) return;
                 try {
                     var itv = setInterval(() => {
                         var model = (Knack.views[view.key] && Knack.views[view.key].model);
-                        if (view.title && view.title !== '') {
+
+                        //Can't rely on view.title: Search forms have no title when the results are rendered.
+                        var title = Knack.views[view.key].model.view.orgTitle;
+
+                        if (title && title !== '') {
                             if (model && titleCleanupDone) {
                                 clearInterval(itv);
 
@@ -5117,12 +5121,12 @@ function Ktl($, info) {
                                     if (orgTitle.includes('datetime_pickers') || orgTitle.includes('_dtp'))
                                         ktl.views.addDateTimePickers(view);
 
+                                    if (orgTitle.includes('_qt'))
+                                        ktl.views.quickToggle(view.key);
+
                                     if (orgTitle.includes('_al')) {
                                         console.log('auto login');
                                     }
-
-                                    if (orgTitle.includes('_qt'))
-                                        ktl.views.quickToggle(view.key);
                                 }
                             }
                         }
@@ -5173,53 +5177,57 @@ function Ktl($, info) {
             },
 
             quickToggle: function (viewId = '') {
-            if (!viewId) return;
+                if (!viewId) return;
                 var itvb = null;
                 var quickToggleRecIdObj = {};
                 var refreshTimer = null;
                 var viewsToRefresh = [];
-                $(document).on('knack-view-render.any', function (event, view, data) {
-                    var viewModel = Knack.router.scene_view.model.views._byId[view.key];
-                    if (viewModel) {
-                        var viewAttr = viewModel.attributes;
-                        const viewType = viewAttr.type;
-                        if (!['table', 'search'].includes(viewType)) return;
+                var viewModel = Knack.router.scene_view.model.views._byId[viewId];
+                if (viewModel) {
+                    var viewAttr = viewModel.attributes;
+                    const viewType = viewAttr.type;
+                    if (!['table', 'search'].includes(viewType)) return;
 
-                        var inlineEditing = false;
-                        if (viewType === 'table')
-                            inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
-                        else
-                            inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
+                    var inlineEditing = false;
+                    if (viewType === 'table')
+                        inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
+                    else
+                        inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
 
-                        if (!inlineEditing) return;
+                    if (!inlineEditing) return;
 
-                        const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
-                        cols.forEach(col => {
-                            if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
-                                var field = Knack.objects.getField(col.field.key);
-                                if (field) {
-                                    var fieldType = field.attributes.type;
-                                    if (fieldType === 'boolean') {
-                                        $('.' + col.field.key + '.cell-edit').on('click', e => {
-                                            e.stopImmediatePropagation();
-                                            !itvb && startQtScanning();
+                    const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
+                    cols.forEach(col => {
+                        if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
+                            var field = Knack.objects.getField(col.field.key);
+                            if (field) {
+                                var fieldType = field.attributes.type;
+                                if (fieldType === 'boolean') {
+                                    $('.' + col.field.key + '.cell-edit').off('click').on('click', e => {
+                                        e.stopImmediatePropagation();
+                                        !itvb && startQtScanning();
+
+                                        var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
+                                        if (viewId) {
+                                            viewId = viewId.getAttribute('id');
+
                                             var recId = e.target.closest('tr').id;
-                                            var value = ktl.views.getDataFromRecId(view.key, recId, col.field.key)[col.field.key + '_raw'];
+                                            var value = ktl.views.getDataFromRecId(viewId, recId, col.field.key)[col.field.key + '_raw'];
                                             value = (value === true ? false : true);
-                                            if (!viewsToRefresh.includes(view.key))
-                                                viewsToRefresh.push(view.key);
+                                            if (!viewsToRefresh.includes(viewId))
+                                                viewsToRefresh.push(viewId);
 
-                                            quickToggleRecIdObj[recId] = { viewId: view.key, fieldId: col.field.key, value: value, processed: false };
+                                            quickToggleRecIdObj[recId] = { viewId: viewId, fieldId: col.field.key, value: value, processed: false };
 
                                             $(e.target).css('background', '#9908'); //Visual cue that the process is started.
                                             clearTimeout(refreshTimer);
-                                        })
-                                    }
+                                        }
+                                    })
                                 }
                             }
-                        })
-                    }
-                })
+                        }
+                    })
+                }
 
                 function startQtScanning() {
                     itvb = setInterval(() => {
