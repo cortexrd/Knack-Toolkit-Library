@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.7.15';
+    const KTL_VERSION = '0.7.16';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -750,7 +750,7 @@ function Ktl($, info) {
                 }
             }
         }
-    }) ();
+    }) (); //Core
 
     //====================================================
     //Storage Feature
@@ -3902,13 +3902,23 @@ function Ktl($, info) {
             }
         }
 
-        //Remove default handleClickSort and use KTL's instead for more flexibility.
+        //Replace Knack's default mouse click handler on headers by KTL's handleClickSort for more flexibility.
         $(document).on('mousedown', function (e) {
-            $('thead').off('click');
+            $(".thead").not(".kn-search .thead").off('click'); //Exclude Search views until we find a fix to sorting.
+            //This is what we want:  $('thead').off('click');
+            //Search this for more details:  Attempt to support Search views but crashes with a "URL" problem 
         })
 
         $(document).on('click', function (e) {
-            ktl.views.handleClickSort(e);
+            var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
+            if (viewId) {
+                viewId = viewId.getAttribute('id');
+
+                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                console.log('viewType =', viewType);
+                if (viewType === 'table')
+                    ktl.views.handleClickSort(e);
+            }
 
             //Pause auto-refresh when on a tables's search field.
             if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword' /*Needed to discriminate checkboxes.  We only want Search fields*/)
@@ -4929,10 +4939,16 @@ function Ktl($, info) {
             //Note: this function replaces the Knack's default handler completely.
             handleClickSort: function (e) {
                 if (e.target.closest('.kn-sort')) {
-                    e.preventDefault();
-                    var viewId = e.target.closest('.kn-table.kn-view');
+                    var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
                     if (viewId) {
                         viewId = viewId.getAttribute('id');
+
+                        //Attempt to support Search views but crashes with a "URL" problem after fetch() below.
+                        const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                        //console.log('viewType =', viewType);
+                        if (viewType === 'search') return; //Remove this line if ever we find the solution.
+
+                        e.preventDefault();
                         var href = e.target.closest('[href]');
                         if (href) {
                             Knack.showSpinner();
@@ -4954,18 +4970,30 @@ function Ktl($, info) {
                                 if (!alreadySorted)
                                     order = ctrlClickInvert ? 'desc' : 'asc';
 
-                                viewObj.model.view.source.sort = [{
-                                    field: newField,
-                                    order: order
-                                }];
+                                if (viewType === 'search') {
+                                    viewObj.model.results_model.view.source.sort = [{
+                                        field: newField,
+                                        order: order
+                                    }];
+                                } else {
+                                    viewObj.model.view.source.sort = [{
+                                        field: newField,
+                                        order: order
+                                    }];
+                                }
 
                                 var i = {};
                                 i[viewId + "_sort"] = newField + "|" + order;
                                 var r = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
                                 Knack.router.navigate(r);
                                 Knack.setHashVars();
-                                viewObj.model.setDataAPI();
 
+                                if (viewType === 'search')
+                                    viewObj.model.results_model.setDataAPI();
+                                else
+                                    viewObj.model.setDataAPI();
+
+                                //Attempt to support Search views but crashes with a "URL" problem after fetch() below.
                                 Knack.models[viewId].fetch({
                                     success: () => {
                                         Knack.hideSpinner();
@@ -5076,7 +5104,6 @@ function Ktl($, info) {
 
                                     var orgTitle = (model.view && model.view.orgTitle);
                                     if (orgTitle) {
-
                                         orgTitle = orgTitle.toLowerCase();
                                         if (orgTitle.includes('refresh_view') || orgTitle.includes('_rvs'))
                                             addSubmitToViewRefresh(view);
@@ -5089,8 +5116,8 @@ function Ktl($, info) {
 
                                         //Hide the view title only, typically used to save space when real estate is critical.
                                         if (orgTitle.includes('hidden_title') || orgTitle.includes('_ht')) {
-                                            $('#' + view.key + ' > div.view-header > h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
-                                            $('#' + view.key + ' > div.view-header > h2').css({ 'position': 'absolute', 'left': '-9000px' });
+                                            $('#' + view.key + ' .view-header h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
+                                            $('#' + view.key + ' .view-header h2').css({ 'position': 'absolute', 'left': '-9000px' });
                                         }
 
                                         //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
@@ -5104,6 +5131,10 @@ function Ktl($, info) {
 
                                         if (orgTitle.includes('datetime_pickers') || orgTitle.includes('_dtp'))
                                             ktl.views.addDateTimePickers(view);
+
+                                        if (orgTitle.includes('_al')) {
+                                            console.log('auto login');
+                                        }
                                     }
                                 }
                             }, 50);
@@ -5418,8 +5449,9 @@ function Ktl($, info) {
                                         kioskButtonsDiv = document.createElement('div');
                                         kioskButtonsDiv.setAttribute('class', 'kioskButtonsDiv');
                                         kioskButtonsParentDiv.appendChild(kioskButtonsDiv);
-                                        $('.kioskButtonsDiv').css({ 'position': 'absolute', 'right': '2%', 'top': '0px' });
                                     }
+
+                                    $('.kioskButtonsDiv').css({ 'position': 'absolute', 'right': '2%' });
 
                                     backBtn && kioskButtonsDiv.appendChild(backBtn);
                                     refreshBtn && kioskButtonsDiv.appendChild(refreshBtn);
@@ -7553,8 +7585,8 @@ function Ktl($, info) {
                             var orgTitle = view.attributes.orgTitle;
                             view.attributes.title = truncatedTitle;
                             if (Knack.views[view.id]) {
-                                $('#' + view.id + ' > div.view-header > h1').text(truncatedTitle); //Search Views use H1 instead of H2.
-                                $('#' + view.id + ' > div.view-header > h2').text(truncatedTitle);
+                                $('#' + view.id + ' .view-header h1').text(truncatedTitle); //Search Views use H1 instead of H2.
+                                $('#' + view.id + ' .view-header h2').text(truncatedTitle);
                                 Knack.views[view.id].model.view.orgTitle = orgTitle;
                                 Knack.views[view.id].model.view.title = truncatedTitle;
                             }
