@@ -238,9 +238,9 @@ function Ktl($, info) {
                 sel && ktl.core.waitSelector(sel)
                     .then(() => {
                         if (show)
-                            $(sel).css({ 'position': '', 'left': '' });
+                            $(sel).removeClass('ktlHidden');
                         else
-                            $(sel).css({ 'position': 'absolute', 'left': '-9000px' });
+                            $(sel).addClass('ktlHidden');
                     })
                     .catch(() => { ktl.log.clog('purple', 'hideSelector failed waiting for selector: ' + sel); });
             },
