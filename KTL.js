@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.7.16';
+    const KTL_VERSION = '0.8.0';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4223,16 +4223,19 @@ function Ktl($, info) {
                         if (title) {
                             title = title.toLowerCase();
                             if (title.includes('autorefresh') || title.includes('_ar')) {
-                                var index = title.lastIndexOf('='); //Get refresh delay value
-                                var intervalDelay = (index === -1) ? 20 : intervalDelay = Math.max(Math.min(parseInt(title.substring(index + 1)), 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
+                                var intervalDelay = title.split('_ar=');
+                                if (intervalDelay.length > 1) {
+                                    intervalDelay = intervalDelay[1].split(/[ ,]/)[0];
+                                    intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 
-                                //Add view to autorefresh list.
-                                if (!(view.key in autoRefreshViews)) {
-                                    var intervalId = setInterval(function () {
-                                        ktl.views.refreshView(view.key).then(function () { });
-                                    }, intervalDelay * 1000);
+                                    //Add view to autorefresh list.
+                                    if (!(view.key in autoRefreshViews)) {
+                                        var intervalId = setInterval(function () {
+                                            ktl.views.refreshView(view.key).then(function () { });
+                                        }, intervalDelay * 1000);
 
-                                    autoRefreshViews[view.key] = { delay: intervalDelay, intervalId: intervalId };
+                                        autoRefreshViews[view.key] = { delay: intervalDelay, intervalId: intervalId };
+                                    }
                                 }
                             }
                         }
@@ -5168,7 +5171,6 @@ function Ktl($, info) {
                         var model = (Knack.views[view.key] && Knack.views[view.key].model);
 
                         //Can't rely on view.title: Search forms have no title when the results are rendered.
-
                         if (model && titleCleanupDone) {
                             clearInterval(itv);
 
@@ -5205,7 +5207,7 @@ function Ktl($, info) {
                                         ktl.views.addDateTimePickers(view);
 
                                     if (orgTitle.includes('_qt'))
-                                        ktl.views.quickToggle(view.key);
+                                        ktl.views.quickToggle(view.key, data);
 
                                     if (orgTitle.includes('_al'))
                                         ktl.account.autoLogin(view.key);
@@ -5258,10 +5260,10 @@ function Ktl($, info) {
                     return Knack.views[viewId].model.results_model.data._byId[recId].attributes;
             },
 
-            quickToggle: function (viewId = '') {
-                if (!viewId) return;
+            quickToggle: function (viewId = '', data = []) {
+                if (!viewId || ktl.scenes.isiFrameWnd()) return;
                 var itvb = null;
-                var quickToggleRecIdObj = {};
+                var quickToggleObj = {};
                 var refreshTimer = null;
                 var viewsToRefresh = [];
                 var viewModel = Knack.router.scene_view.model.views._byId[viewId];
@@ -5278,14 +5280,18 @@ function Ktl($, info) {
 
                     if (!inlineEditing) return;
 
+                    var fields = [];
                     const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
-                    cols.forEach(col => {
+                    for (var i = 0; i < cols.length; i++) {
+                        var col = cols[i];
                         if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
                             var field = Knack.objects.getField(col.field.key);
                             if (field) {
                                 var fieldType = field.attributes.type;
                                 if (fieldType === 'boolean') {
-                                    $('.' + col.field.key + '.cell-edit').off('click').on('click', e => {
+                                    const fieldId = col.field.key;
+                                    fields.push(fieldId);
+                                    $('.' + fieldId + '.cell-edit').off('click').on('click', e => {
                                         e.stopImmediatePropagation();
                                         !itvb && startQtScanning();
 
@@ -5293,73 +5299,88 @@ function Ktl($, info) {
                                         if (viewId) {
                                             viewId = viewId.getAttribute('id');
 
+                                            const dt = Date.now();
                                             var recId = e.target.closest('tr').id;
-                                            var value = ktl.views.getDataFromRecId(viewId, recId, col.field.key)[col.field.key + '_raw'];
+                                            var value = ktl.views.getDataFromRecId(viewId, recId, fieldId)[fieldId + '_raw'];
                                             value = (value === true ? false : true);
                                             if (!viewsToRefresh.includes(viewId))
                                                 viewsToRefresh.push(viewId);
 
-                                            quickToggleRecIdObj[recId] = { viewId: viewId, fieldId: col.field.key, value: value, processed: false };
-
-                                            $(e.target).css('background', '#9908'); //Visual cue that the process is started.
+                                            quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
+                                            $(e.target.closest('td')).css('background', '#9908'); //Visual cue that the process is started.
                                             clearTimeout(refreshTimer);
                                         }
                                     })
                                 }
                             }
                         }
-                    })
-                }
+                    }
 
-                function startQtScanning() {
-                    itvb = setInterval(() => {
-                        if (!$.isEmptyObject(quickToggleRecIdObj)) {
-                            ktl.views.autoRefresh(false);
-                            ktl.scenes.spinnerWatchdog(false);
+                    var trueCol = '';
+                    var falseCol = '';
+                    var orgTitle = Knack.views[viewId].model.view.orgTitle;
+                    var colors = orgTitle.split('_qt=');
+                    if (colors.length === 2) {
+                        colors = colors[1].replace(/ /g, '').split(',');
+                        trueCol = '#' + colors[0];
+                        falseCol = '#' + colors[1];
 
-                            var rec = Object.keys(quickToggleRecIdObj)[0];
-                            if (!quickToggleRecIdObj[rec].processed) {
-                                quickToggleRecIdObj[rec].processed = true;
-                                quickToggle(rec);
-                            }
+                        if (fields.length) {
+                            data.forEach(row => {
+                                fields.forEach(fieldId => {
+                                    $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background', (row[fieldId + '_raw'] === true) ? trueCol : falseCol);
+                                })
+                            })
                         }
-                    }, 200);
-                }
+                    }
 
-                function quickToggle(rec) {
-                    var recObj = quickToggleRecIdObj[rec];
-                    if ($.isEmptyObject(recObj)) return;
-                    var viewId = recObj.viewId;
-                    var fieldId = recObj.fieldId;
-                    if (!viewId || !fieldId) return;
+                    function startQtScanning() {
+                        itvb = setInterval(() => {
+                            if (!$.isEmptyObject(quickToggleObj)) {
+                                ktl.views.autoRefresh(false);
+                                ktl.scenes.spinnerWatchdog(false);
 
-                    var apiData = {};
-                    apiData[recObj.fieldId] = recObj.value;
-                    ktl.core.knAPI(recObj.viewId, rec, apiData, 'PUT')
-                        .then(() => {
-                            delete quickToggleRecIdObj[rec];
-                            if ($.isEmptyObject(quickToggleRecIdObj)) {
-                                clearInterval(itvb);
-                                itvb = null;
-                                refreshTimer = setTimeout(() => {
-                                    ktl.views.refreshViewArray(viewsToRefresh);
-                                    Knack.hideSpinner();
-                                    ktl.scenes.spinnerWatchdog();
-                                    ktl.views.autoRefresh();
-                                }, 1000);
+                                var dt = Object.keys(quickToggleObj)[0];
+                                if (!quickToggleObj[dt].processed) {
+                                    quickToggleObj[dt].processed = true;
+                                    quickToggle(dt);
+                                }
                             }
-                        })
-                        .catch(function (reason) {
-                            Knack.hideSpinner();
-                            ktl.scenes.spinnerWatchdog();
-                            ktl.views.autoRefresh();
-                            alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
-                        })
+                        }, 200);
+                    }
+
+                    function quickToggle(dt) {
+                        var recObj = quickToggleObj[dt];
+                        if ($.isEmptyObject(recObj)) return;
+                        var viewId = recObj.viewId;
+                        var fieldId = recObj.fieldId;
+                        if (!viewId || !fieldId) return;
+
+                        var apiData = {};
+                        apiData[recObj.fieldId] = recObj.value;
+                        ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT')
+                            .then(() => {
+                                delete quickToggleObj[dt];
+                                if ($.isEmptyObject(quickToggleObj)) {
+                                    clearInterval(itvb);
+                                    itvb = null;
+                                    refreshTimer = setTimeout(() => {
+                                        ktl.views.refreshViewArray(viewsToRefresh);
+                                        Knack.hideSpinner();
+                                        ktl.scenes.spinnerWatchdog();
+                                        ktl.views.autoRefresh();
+                                    }, 1000);
+                                }
+                            })
+                            .catch(function (reason) {
+                                Knack.hideSpinner();
+                                ktl.scenes.spinnerWatchdog();
+                                ktl.views.autoRefresh();
+                                alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
+                            })
+                    }
                 }
             },
-
-
-
         }
     })(); //views
 
@@ -6375,9 +6396,10 @@ function Ktl($, info) {
                             }
 
                             loginInfo = JSON.parse(loginInfo);
-                            $('.kn-login.kn-view' + '#' + viewId).css({ 'position': 'absolute', 'left': '-9000px' });
+                            $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
                             $('#email').val(loginInfo.email);
                             $('#password').val(loginInfo.pw);
+                            $('.remember input')[0].checked = true;
                             $('#' + viewId + ' form').submit();
                         } else {
                             if (confirm('Do you want to set up Auto-Login on this machine?')) {
