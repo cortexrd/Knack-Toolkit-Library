@@ -748,13 +748,41 @@ function Ktl($, info) {
                             location.reload(true);
                     }, 500);
                 }
-            }
+            },
+
+            loadLib: function (libName = '') {
+                return new Promise(function (resolve, reject) {
+                    if (!libName) {
+                        reject();
+                        return;
+                    }
+
+                    if (libName === 'SecureLS') {
+                        if (typeof SecureLS !== 'function') {
+                            LazyLoad.js(['https://ctrnd.com/Lib/Secure-LS/secure-ls.min.js'], function () {
+                                (typeof SecureLS === 'function') ? resolve() : reject('Cannot find SecureLS library.');
+                            })
+                        }
+                    }
+                })
+            },
+
+            generateRandomChars: function (length) {
+                var result = '';
+                var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; //API PUT doesn't like ampersand &
+                var charactersLength = characters.length;
+                for (var i = 0; i < length; i++) {
+                    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+                }
+                return result;
+            },
         }
     }) (); //Core
 
     //====================================================
     //Storage Feature
     //Utilities related to cookies and localStorage.
+    var secureLs = null;
     this.storage = (function () {
         const COOKIE_DEFAULT_EXP_DAYS = 1;
         var hasLocalStorage = typeof (Storage) !== 'undefined';
@@ -766,17 +794,20 @@ function Ktl($, info) {
 
             // Just specify key and func will prepend APP_ROOT_NAME.
             // Typically used for generic utility storage, like logging, custom filters, user preferences, etc.
-            lsSetItem: function (lsKey, data, noUserId = false, session = false) {
-                if (!lsKey || !Knack.getUserAttributes().id)
+            lsSetItem: function (lsKey, data, noUserId = false, session = false, secure = false) {
+                if (!lsKey || (!noUserId && !Knack.getUserAttributes().id))
                     return;
 
                 if (hasLocalStorage) {
                     try {
-                        if (session)
-                            sessionStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
-                        else
-                            localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
-
+                        if (secure) {
+                            secureLs.set(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                        } else {
+                            if (session)
+                                sessionStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                            else
+                                localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                        }
                     }
                     catch (e) {
                         console.log('Error in localStorage.setItem', e);
@@ -786,23 +817,41 @@ function Ktl($, info) {
             },
 
             //Returns empty string if key doesn't exist.
-            lsGetItem: function (lsKey, noUserId = false, session = false) {
+            lsGetItem: function (lsKey, noUserId = false, session = false, secure = false) {
+                if (!lsKey || (!noUserId && !Knack.getUserAttributes().id))
+                    return;
+
                 var val = '';
                 if (hasLocalStorage) {
-                    if (session)
-                        val = sessionStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
-                    else
-                        val = localStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                    if (secure) {
+                        val = secureLs.get(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                    } else {
+                        if (session)
+                            val = sessionStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                        else
+                            val = localStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                    }
                 }
                 return val ? val : '';
             },
 
-            lsRemoveItem: function (lsKey, noUserId = false, session = false) {
+            lsRemoveItem: function (lsKey, noUserId = false, session = false, secure = false) {
+                if (!lsKey || (!noUserId && !Knack.getUserAttributes().id))
+                    return;
+
                 if (hasLocalStorage) {
-                    if (session)
-                        sessionStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
-                    else
-                        localStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                    if (secure) {
+                        initSecureLs()
+                            .then(() => {
+                                val = secureLs.remove(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                            })
+                            .catch(reason => { ktl.log.clog('purple', reason); });
+                    } else {
+                        if (session)
+                            sessionStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                        else
+                            localStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                    }
                 }
             },
 
@@ -859,6 +908,40 @@ function Ktl($, info) {
                         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 }
             },
+
+            initSecureLs: function () {
+                return new Promise(function (resolve, reject) {
+                    if (typeof SecureLS === 'function')
+                        resolve();
+                    else {
+                        ktl.core.loadLib('SecureLS')
+                            .then(() => {
+                                var key = ktl.storage.lsGetItem('AES_EK', true, false, false);
+                                if (!key || key === '') {
+                                    do {
+                                        key = prompt('AES Key:', ktl.core.generateRandomChars(40));
+                                        if (!key)
+                                            ktl.core.timedPopup('You must specify a Key.', 'warning');
+                                    } while (!key || key === '');
+
+                                    ktl.storage.lsSetItem('AES_EK', key, true, false, false);
+                                    applyAesKey(key);
+                                } else
+                                    applyAesKey(key);
+                            })
+                            .catch(reason => { reject('initSecureLs error:', reason); })
+                    }
+                    function applyAesKey(key) {
+                        secureLs = new SecureLS({
+                            encodingType: 'aes',
+                            isCompression: false,
+                            encryptionSecret: key,
+                        });
+                        resolve();
+                    }
+                });
+            },
+
         }
     })();
 
@@ -5124,9 +5207,8 @@ function Ktl($, info) {
                                     if (orgTitle.includes('_qt'))
                                         ktl.views.quickToggle(view.key);
 
-                                    if (orgTitle.includes('_al')) {
-                                        console.log('auto login');
-                                    }
+                                    if (orgTitle.includes('_al'))
+                                        ktl.account.autoLogin(view.key);
                                 }
                             }
                         }
@@ -6279,6 +6361,42 @@ function Ktl($, info) {
 
             logout: function () {
                 $('.kn-log-out').click();
+            },
+
+            autoLogin: function (viewId = '') {
+                if (!viewId) return;
+                ktl.storage.initSecureLs()
+                    .then(() => {
+                        var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false, true);
+                        if (loginInfo) {
+                            if (loginInfo === 'NoAutoLogin') {
+                                console.log('loginInfo =', loginInfo);
+                                return;
+                            }
+
+                            loginInfo = JSON.parse(loginInfo);
+                            $('.kn-login.kn-view' + '#' + viewId).css({ 'position': 'absolute', 'left': '-9000px' });
+                            $('#email').val(loginInfo.email);
+                            $('#password').val(loginInfo.pw);
+                            $('#' + viewId + ' form').submit();
+                        } else {
+                            if (confirm('Do you want to set up Auto-Login on this machine?')) {
+                                //var key = prompt('Key:', generateRandomChars(40));
+                                var email = prompt('Email:', 'nd@ctrnd.com');
+                                var pw = prompt('PW:', 'Cortex6869');
+                                if (!email || !pw) {
+                                    alert('You must specify an Email and a Password.');
+                                } else {
+                                    loginInfo = JSON.stringify({ email: email, pw: pw });
+                                    ktl.storage.lsSetItem('AES_LI', loginInfo, true, false, true);
+                                }
+                                location.reload();
+                            } else {
+                                ktl.storage.lsSetItem('AES_LI', 'NoAutoLogin', true, false, true);
+                            }
+                        }
+                    })
+                    .catch(reason => { ktl.log.clog('purple', reason); });
             },
         }
     })();
