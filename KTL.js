@@ -4611,7 +4611,7 @@ function Ktl($, info) {
             },
 
             hideField: function (fieldId) {
-                $('#kn-input-' + fieldId).css({ 'position': 'absolute', 'left': '-9000px' });
+                $('#kn-input-' + fieldId).addClass('ktlHidden');
             },
 
             // srchTxt: string to find, must be non-empty.
@@ -5168,12 +5168,12 @@ function Ktl($, info) {
                         var model = (Knack.views[view.key] && Knack.views[view.key].model);
 
                         //Can't rely on view.title: Search forms have no title when the results are rendered.
-                        var title = Knack.views[view.key].model.view.orgTitle;
 
-                        if (title && title !== '') {
-                            if (model && titleCleanupDone) {
-                                clearInterval(itv);
+                        if (model && titleCleanupDone) {
+                            clearInterval(itv);
 
+                            var title = Knack.views[view.key].model.view.orgTitle;
+                            if (title && title !== '') {
                                 var orgTitle = (model.view && model.view.orgTitle);
                                 if (orgTitle) {
                                     orgTitle = orgTitle.toLowerCase();
@@ -6381,9 +6381,8 @@ function Ktl($, info) {
                             $('#' + viewId + ' form').submit();
                         } else {
                             if (confirm('Do you want to set up Auto-Login on this machine?')) {
-                                //var key = prompt('Key:', generateRandomChars(40));
-                                var email = prompt('Email:', 'nd@ctrnd.com');
-                                var pw = prompt('PW:', 'Cortex6869');
+                                var email = prompt('Email:', '');
+                                var pw = prompt('PW:', '');
                                 if (!email || !pw) {
                                     alert('You must specify an Email and a Password.');
                                 } else {
@@ -7781,6 +7780,7 @@ function Ktl($, info) {
                     var view = views.models[j];
                     if (view) {
                         var title = view.attributes.title;
+                        var truncatedTitle = title;
                         if (title) {
                             var cmpTitle = title.toLowerCase();
                             var firstKeywordIdx = Math.min(
@@ -7798,19 +7798,19 @@ function Ktl($, info) {
                             );
 
                             //Truncate all flags, all text i.e. after firstFlagIndex.
-                            var truncatedTitle = title.substring(0, firstKeywordIdx);
+                            truncatedTitle = title.substring(0, firstKeywordIdx);
+                        }
 
-                            //Keep a copy of the original title for further processing.
-                            !view.attributes.orgTitle && (view.attributes.orgTitle = view.attributes.title); //Only write once - first time, when not yet existing.
+                        //Keep a copy of the original title for further processing.
+                        !view.attributes.orgTitle && (view.attributes.orgTitle = view.attributes.title); //Only write once - first time, when not yet existing.
 
-                            var orgTitle = view.attributes.orgTitle;
-                            view.attributes.title = truncatedTitle;
-                            if (Knack.views[view.id]) {
-                                $('#' + view.id + ' .view-header h1').text(truncatedTitle); //Search Views use H1 instead of H2.
-                                $('#' + view.id + ' .view-header h2').text(truncatedTitle);
-                                Knack.views[view.id].model.view.orgTitle = orgTitle;
-                                Knack.views[view.id].model.view.title = truncatedTitle;
-                            }
+                        var orgTitle = view.attributes.orgTitle;
+                        view.attributes.title = truncatedTitle;
+                        if (Knack.views[view.id]) {
+                            $('#' + view.id + ' .view-header h1').text(truncatedTitle); //Search Views use H1 instead of H2.
+                            $('#' + view.id + ' .view-header h2').text(truncatedTitle);
+                            Knack.views[view.id].model.view.orgTitle = orgTitle;
+                            Knack.views[view.id].model.view.title = truncatedTitle;
                         }
                     }
                 }
