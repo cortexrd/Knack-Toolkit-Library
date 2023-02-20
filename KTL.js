@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.8.0';
+    const KTL_VERSION = '0.8.2';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4133,7 +4133,7 @@ function Ktl($, info) {
                                                 var view = Knack.router.scene_view.model.views._byId[viewId];
                                                 if (view && view.attributes && view.attributes.orgTitle) {
                                                     var title = view.attributes.orgTitle.toLowerCase();
-                                                    if (title.includes('autorefresh') || title.includes('_ar')) {
+                                                    if (title.includes('_ar')) {
                                                         resolve(); //Just ignore, we'll try again shortly anyways.
                                                         return;
                                                     }
@@ -4209,7 +4209,7 @@ function Ktl($, info) {
                 })
             },
 
-            //Parse the Knack object to find all views and start any applicable autorefresh interval timers for each, based on title.
+            //Parse the Knack object to find all views and start any applicable auto refresh interval timers for each, based on title.
             //Triggered when view title contains _ar=30 (for 30 seconds interval in this example).
             autoRefresh: function (run = true, autoRestart = true) {
                 clearTimeout(unPauseTimer);
@@ -4222,13 +4222,13 @@ function Ktl($, info) {
                         var title = view.orgTitle;
                         if (title) {
                             title = title.toLowerCase();
-                            if (title.includes('autorefresh') || title.includes('_ar')) {
+                            if (title.includes('_ar')) {
                                 var intervalDelay = title.split('_ar=');
                                 if (intervalDelay.length > 1) {
                                     intervalDelay = intervalDelay[1].split(/[ ,]/)[0];
                                     intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 
-                                    //Add view to autorefresh list.
+                                    //Add view to auto refresh list.
                                     if (!(view.key in autoRefreshViews)) {
                                         var intervalId = setInterval(function () {
                                             ktl.views.refreshView(view.key).then(function () { });
@@ -4246,7 +4246,7 @@ function Ktl($, info) {
 
                 $('#' + PAUSE_REFRESH + '-id').prop('checked', !run);
 
-                //Stop all autorefresh interval timers for all views.
+                //Stop all auto refresh interval timers for all views.
                 function stopAutoRefresh(restart = true) {
                     $('#' + PAUSE_REFRESH + '-label-id').css('background-color', 'red');
                     const views = Object.entries(autoRefreshViews);
@@ -5179,31 +5179,31 @@ function Ktl($, info) {
                                 var orgTitle = (model.view && model.view.orgTitle);
                                 if (orgTitle) {
                                     orgTitle = orgTitle.toLowerCase();
-                                    if (orgTitle.includes('refresh_view') || orgTitle.includes('_rvs'))
+                                    if (orgTitle.includes('_rvs'))
                                         addSubmitToViewRefresh(view);
 
                                     //Hide the whole view, typically used when doing background searches.
-                                    if (orgTitle.includes('hidden_view') || orgTitle.includes('_hv')) {
+                                    if (orgTitle.includes('_hv')) {
                                         if (!Knack.getUserRoleNames().includes('Developer'))
                                             $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' });
                                     }
 
                                     //Hide the view title only, typically used to save space when real estate is critical.
-                                    if (orgTitle.includes('hidden_title') || orgTitle.includes('_ht')) {
+                                    if (orgTitle.includes('_ht')) {
                                         $('#' + view.key + ' .view-header h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
                                         $('#' + view.key + ' .view-header h2').css({ 'position': 'absolute', 'left': '-9000px' });
                                     }
 
                                     //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
-                                    if ((orgTitle.includes('no_inline') || orgTitle.includes('_ni')) && !ktl.account.isDeveloper()) {
+                                    if (orgTitle.includes('_ni') && !ktl.account.isDeveloper()) {
                                         if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
                                             $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
                                     }
 
-                                    if (orgTitle.includes('add_timestamp') || orgTitle.includes('_ts'))
+                                    if (orgTitle.includes('_ts'))
                                         ktl.views.addTimeStampToHeader(view);
 
-                                    if (orgTitle.includes('datetime_pickers') || orgTitle.includes('_dtp'))
+                                    if (orgTitle.includes('_dtp'))
                                         ktl.views.addDateTimePickers(view);
 
                                     if (orgTitle.includes('_qt'))
@@ -5520,7 +5520,7 @@ function Ktl($, info) {
             },
 
             //Add default extra buttons to facilitate Kiosk mode:  Refresh, Back, Done and Messaging
-            //Excludes all iFrames and all view titles must not contain _kn (no_buttons) flag.
+            //Excludes all iFrames and all view titles must not contain _kn flag.
             addKioskButtons: function (viewId = '', style = {}) {
                 if (!viewId || window.self.frameElement || !ktl.core.isKiosk())
                     return;
@@ -5537,13 +5537,13 @@ function Ktl($, info) {
                             var title = Knack.views[viewId].model.view.orgTitle;
                             if (!title) return;
                             title = title.toLowerCase();
-                            if (title.includes('no_buttons') || title.includes('_kn'))
+                            if (title.includes('_kn'))
                                 return;
                             else {
-                                if (title.includes('add_refresh') || title.includes('_kr')) {
-                                    if (title.includes('add_back') || title.includes('_kb'))
+                                if (title.includes('_kr')) {
+                                    if (title.includes('_kb'))
                                         backBtnText = 'Back';
-                                    else if (title.includes('add_done') || title.includes('_kd'))
+                                    else if (title.includes('_kd'))
                                         backBtnText = 'Done';
 
                                     //Messaging button    
@@ -6524,7 +6524,7 @@ function Ktl($, info) {
                             selToast = '#toast-container > div > div > p';
                             var msg = $(selToast).text();
                             if (msg.includes('Account Logs - Email sent successfully')) {
-                                //console.log('Email sent, re-starting autorefresh and logging loop');
+                                //console.log('Email sent, re-starting auto refresh and logging loop');
                                 ktl.views.autoRefresh();
                                 startHighPriorityLogging();
                             } else
@@ -7654,7 +7654,7 @@ function Ktl($, info) {
         };
 
         var cfg = {
-            appBcstSWUpdateViewId: ktl.core.getViewIdByTitle('BROADCAST_SW_UPDATE', Knack.router.current_scene_key, true),
+            appBcstSWUpdateViewId: ktl.core.getViewIdByTitle('_sw_update', Knack.router.current_scene_key, true),
         };
 
         //Comes from here:  https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
@@ -7752,7 +7752,8 @@ function Ktl($, info) {
             },
 
             findAllKeywords: function () {
-                const keywords = ['autorefresh', 'hidden', 'no_inline', 'add_', 'no_buttons', 'broadcast_sw_update', 'datetime_pickers', 'refresh_view', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_kr', '_kb', '_kd', '_kn'];
+                //See list here: https://github.com/cortexrd/Knack-Toolkit-Library#list-of-all-keywords
+                const titleKeywords = ['_sw_update', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_kr', '_kb', '_kd', '_kn', '_qt'];
 
                 var st = window.performance.now();
                 var keywordViews = {};
@@ -7762,21 +7763,23 @@ function Ktl($, info) {
                     views.forEach(view => {
                         var title = view.attributes.orgTitle;
                         if (title) {
-                            keywords.forEach(kw => {
+                            titleKeywords.forEach(kw => {
                                 if (title.toLowerCase().includes(kw)) {
                                     var newView = { scnId: scn.attributes.key, viewId: view.attributes.key, title: title };
-                                    if (keywordViews[kw])
-                                        keywordViews[kw].push(newView);
-                                    else {
+                                    if (!keywordViews[kw])
                                         keywordViews[kw] = [];
-                                        keywordViews[kw].push(newView);
-                                    }
+
+                                    keywordViews[kw].push(newView);
                                 }
                             })
                         }
                     })
 
+                    //Add view keywords from description.
                     //var fieldDesc = ktl.fields.getFieldDescription(e.target.id);
+
+                    //Add field keywords from description.
+                    //todo...
                 }
                 console.log('keywordViews =', JSON.stringify(keywordViews, null, 4));
 
@@ -7805,22 +7808,12 @@ function Ktl($, info) {
                         var truncatedTitle = title;
                         if (title) {
                             var cmpTitle = title.toLowerCase();
-                            var firstKeywordIdx = Math.min(
-                                ktl.core.getSubstringPosition(cmpTitle, 'autorefresh', 1),
-                                ktl.core.getSubstringPosition(cmpTitle, 'hidden_', 1),
-                                ktl.core.getSubstringPosition(cmpTitle, 'no_inline', 1),
-                                ktl.core.getSubstringPosition(cmpTitle, 'add_', 1),
-                                ktl.core.getSubstringPosition(cmpTitle, 'no_buttons', 1),
-                                ktl.core.getSubstringPosition(cmpTitle, 'broadcast_sw_update', 1),
-                                ktl.core.getSubstringPosition(cmpTitle, 'datetime_pickers', 1),
-                                ktl.core.getSubstringPosition(cmpTitle, 'refresh_view', 1),
-
-                                //New format, starting by underscore.
-                                ktl.core.getSubstringPosition(cmpTitle, '_', 1)
-                            );
+                            //All keywords must start with an underscore.
+                            var firstKeywordIdx = cmpTitle.search(/(?:^|\s)(_[a-z0-9]\w*)/);
 
                             //Truncate all flags, all text i.e. after firstFlagIndex.
-                            truncatedTitle = title.substring(0, firstKeywordIdx);
+                            if (firstKeywordIdx >= 0)
+                                truncatedTitle = title.substring(0, firstKeywordIdx);
                         }
 
                         //Keep a copy of the original title for further processing.
