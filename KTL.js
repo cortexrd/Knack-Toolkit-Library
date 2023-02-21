@@ -3869,7 +3869,6 @@ function Ktl($, info) {
         var prevType = '';
         var prevStartDate = '';
 
-
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
             if (ktl.account.isDeveloper() && !ktl.scenes.isiFrameWnd()) {
@@ -3913,11 +3912,11 @@ function Ktl($, info) {
 
                     const originalEventDropHandler = fc.options.eventDrop;
                     fc.options.eventDrop = function (event, dayDelta, minuteDelta, allDay, revertFunc) {
-                        handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+                        ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
                         return originalEventDropHandler.call(this, ...arguments);
                     };
 
-                    //Callback when the calendar view changes type of range.
+                    //Callback when the calendar view changes type or range.
                     const viewDisplay = fc.options.viewDisplay;
                     fc.options.viewDisplay = function (calView) {
                         addGotoDate(view.key, calView);
@@ -3928,6 +3927,56 @@ function Ktl($, info) {
                 } catch (e) { console.log(e); }
             }
         })
+
+        function ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
+            var keywords = Knack.views[view.key].model.view.keywords;
+            const views = keywords._rvd;
+            if (views.length) {
+                var foundViewIds = [];
+                for (var i = 0; i < views.length; i++) {
+                    var viewTitle = views[i].trim();
+                    var viewId = ktl.scenes.findViewWithTitle(viewTitle, false, view.key);
+                    if (viewId)
+                        foundViewIds.push(viewId);
+                }
+
+                foundViewIds.forEach(viewId => {
+                    var eventField = view.events.event_field.key;
+                    var recId = event.id;
+
+                    (function tryRefresh(retryCtr) { //These retries are important due to the latency chain: calendar > server > view being updated.
+                        setTimeout(() => {
+                            var found = false;
+                            ktl.views.refreshView(viewId).then(function (data) {
+                                for (var i = 0; i < data.models.length; i++) {
+                                    if (data.models[i].id === recId) {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+
+                                if (found) {
+                                    var date = data.models[i].attributes[eventField + '_raw'].timestamp;
+                                    var eventDate = event.start;
+                                    if (Date.parse(date) !== Date.parse(eventDate)) {
+                                        if (retryCtr-- > 0) {
+                                            ktl.log.clog('purple', 'date mismatch', retryCtr);
+                                            tryRefresh(retryCtr);
+                                        } else {
+                                            ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
+                                        }
+                                    } else {
+                                        //ktl.log.clog('green', 'Date match found');
+                                    }
+                                }
+                            });
+                        }, 500);
+                    })(10); //Retries
+                })
+            }
+
+            handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+        }
 
         function addGotoDate(viewId, calView) {
             if (!viewId) return;
@@ -5407,22 +5456,18 @@ function Ktl($, info) {
                     var field = Knack.objects.getField(fieldId);
                     if (field && field.attributes) {
                         fieldName = field.attributes.name;
-                        if (fieldName === toMatch) {
-                            //console.log('field.attributes =', field.attributes);
+                        if (fieldName === toMatch)
                             break;
-                        }
                     }
                 }
 
                 if (!fieldId || !fieldName) {
-                    ktl.core.timedPopup('This table doesn\'t have a column with that title: ' + toMatch, 'warning', 4000);
+                    ktl.core.timedPopup('This table doesn\'t have a column with that header: ' + toMatch, 'warning', 4000);
                     return;
                 }
 
                 data.forEach(row => {
                     var bgColor = document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor;
-
-                    //console.log('bgColor =', bgColor);
 
                     $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background', bgColor);
                 })
@@ -7799,7 +7844,7 @@ function Ktl($, info) {
 
             findAllKeywords: function () {
                 //See list here: https://github.com/cortexrd/Knack-Toolkit-Library#list-of-all-keywords
-                const titleKeywords = ['_sw_update', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_kr', '_kb', '_kd', '_kn', '_qt'];
+                const titleKeywords = ['_sw_update', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_rvd', '_kr', '_kb', '_kd', '_kn', '_qt'];
 
                 var st = window.performance.now();
                 var keywordViews = {};
