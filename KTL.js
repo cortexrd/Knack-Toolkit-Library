@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.8.4';
+    const KTL_VERSION = '0.8.5';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -5320,7 +5320,7 @@ function Ktl($, info) {
                 const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
                 if (viewType === 'table')
                     return Knack.views[viewId] && Knack.views[viewId].model.data._byId[recId].attributes;
-                else
+                else if (viewType === 'search')
                     return Knack.views[viewId].model.results_model.data._byId[recId].attributes;
             },
 
@@ -7861,7 +7861,7 @@ function Ktl($, info) {
 
             findAllKeywords: function () {
                 //See list here: https://github.com/cortexrd/Knack-Toolkit-Library#list-of-all-keywords
-                const titleKeywords = ['_sw_update', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_rvd', '_rvr', '_kr', '_kb', '_kd', '_kn', '_qt'];
+                const titleKeywords = ['_sw_update', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_rvd', '_rvr', '_kr', '_kb', '_kd', '_kn', '_qt', '_mc', '_al'];
 
                 var st = window.performance.now();
                 var keywordViews = {};
