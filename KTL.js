@@ -5206,11 +5206,14 @@ function Ktl($, info) {
                                     if (orgTitle.includes('_dtp'))
                                         ktl.views.addDateTimePickers(view);
 
-                                    if (orgTitle.includes('_qt'))
-                                        ktl.views.quickToggle(view.key, data);
-
                                     if (orgTitle.includes('_al'))
                                         ktl.account.autoLogin(view.key);
+
+                                    if (orgTitle.includes('_qt')) //IMPORTANT*** _mc must be PROCESSED after _qt.
+                                        ktl.views.quickToggle(view.key, data);
+
+                                    if (orgTitle.includes('_mc')) //IMPORTANT*** _mc must be PROCESSED after _qt.
+                                        ktl.views.matchColor(view.key, data);
                                 }
                             }
                         }
@@ -5261,125 +5264,168 @@ function Ktl($, info) {
             },
 
             quickToggle: function (viewId = '', data = []) {
-                if (!viewId || ktl.scenes.isiFrameWnd()) return;
-                var itvb = null;
+                if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
+                var qtScanItv = null;
                 var quickToggleObj = {};
                 var refreshTimer = null;
                 var viewsToRefresh = [];
                 var viewModel = Knack.router.scene_view.model.views._byId[viewId];
-                if (viewModel) {
-                    var viewAttr = viewModel.attributes;
-                    const viewType = viewAttr.type;
-                    if (!['table', 'search'].includes(viewType)) return;
+                if (!viewModel) return;
 
-                    var inlineEditing = false;
-                    if (viewType === 'table')
-                        inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
-                    else
-                        inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
+                var viewAttr = viewModel.attributes;
+                const viewType = viewAttr.type;
+                if (!['table', 'search'].includes(viewType)) return;
 
-                    if (!inlineEditing) return;
+                var inlineEditing = false;
+                if (viewType === 'table')
+                    inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
+                else
+                    inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
 
-                    var fields = [];
-                    const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
-                    for (var i = 0; i < cols.length; i++) {
-                        var col = cols[i];
-                        if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
-                            var field = Knack.objects.getField(col.field.key);
-                            if (field) {
-                                var fieldType = field.attributes.type;
-                                if (fieldType === 'boolean') {
-                                    const fieldId = col.field.key;
-                                    fields.push(fieldId);
-                                    $('.' + fieldId + '.cell-edit').off('click').on('click', e => {
-                                        e.stopImmediatePropagation();
-                                        !itvb && startQtScanning();
+                if (!inlineEditing) return;
 
-                                        var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
-                                        if (viewId) {
-                                            viewId = viewId.getAttribute('id');
+                var fields = [];
+                const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
+                for (var i = 0; i < cols.length; i++) {
+                    var col = cols[i];
+                    if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
+                        var field = Knack.objects.getField(col.field.key);
+                        if (field) {
+                            if (field.attributes.type === 'boolean') {
+                                const fieldId = col.field.key;
+                                fields.push(fieldId);
+                                $('.' + fieldId + '.cell-edit').off('click').on('click', e => {
+                                    e.stopImmediatePropagation();
+                                    !qtScanItv && startQtScanning();
+                                    var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
+                                    if (viewId) {
+                                        viewId = viewId.getAttribute('id');
 
-                                            const dt = Date.now();
-                                            var recId = e.target.closest('tr').id;
-                                            var value = ktl.views.getDataFromRecId(viewId, recId, fieldId)[fieldId + '_raw'];
-                                            value = (value === true ? false : true);
-                                            if (!viewsToRefresh.includes(viewId))
-                                                viewsToRefresh.push(viewId);
+                                        const dt = Date.now();
+                                        var recId = e.target.closest('tr').id;
+                                        var value = ktl.views.getDataFromRecId(viewId, recId, fieldId)[fieldId + '_raw'];
+                                        value = (value === true ? false : true);
+                                        if (!viewsToRefresh.includes(viewId))
+                                            viewsToRefresh.push(viewId);
 
-                                            quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
-                                            $(e.target.closest('td')).css('background', '#9908'); //Visual cue that the process is started.
-                                            clearTimeout(refreshTimer);
-                                        }
-                                    })
-                                }
-                            }
-                        }
-                    }
-
-                    var trueCol = '';
-                    var falseCol = '';
-                    var orgTitle = Knack.views[viewId].model.view.orgTitle;
-                    var colors = orgTitle.split('_qt=');
-                    if (colors.length === 2) {
-                        colors = colors[1].replace(/ /g, '').split(',');
-                        trueCol = '#' + colors[0];
-                        falseCol = '#' + colors[1];
-
-                        if (fields.length) {
-                            data.forEach(row => {
-                                fields.forEach(fieldId => {
-                                    $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background', (row[fieldId + '_raw'] === true) ? trueCol : falseCol);
+                                        quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
+                                        $(e.target.closest('td')).css('background', '#9908'); //Visual cue that the process is started.
+                                        clearTimeout(refreshTimer);
+                                    }
                                 })
-                            })
-                        }
-                    }
-
-                    function startQtScanning() {
-                        itvb = setInterval(() => {
-                            if (!$.isEmptyObject(quickToggleObj)) {
-                                ktl.views.autoRefresh(false);
-                                ktl.scenes.spinnerWatchdog(false);
-
-                                var dt = Object.keys(quickToggleObj)[0];
-                                if (!quickToggleObj[dt].processed) {
-                                    quickToggleObj[dt].processed = true;
-                                    quickToggle(dt);
-                                }
                             }
-                        }, 200);
-                    }
-
-                    function quickToggle(dt) {
-                        var recObj = quickToggleObj[dt];
-                        if ($.isEmptyObject(recObj)) return;
-                        var viewId = recObj.viewId;
-                        var fieldId = recObj.fieldId;
-                        if (!viewId || !fieldId) return;
-
-                        var apiData = {};
-                        apiData[recObj.fieldId] = recObj.value;
-                        ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT')
-                            .then(() => {
-                                delete quickToggleObj[dt];
-                                if ($.isEmptyObject(quickToggleObj)) {
-                                    clearInterval(itvb);
-                                    itvb = null;
-                                    refreshTimer = setTimeout(() => {
-                                        ktl.views.refreshViewArray(viewsToRefresh);
-                                        Knack.hideSpinner();
-                                        ktl.scenes.spinnerWatchdog();
-                                        ktl.views.autoRefresh();
-                                    }, 1000);
-                                }
-                            })
-                            .catch(function (reason) {
-                                Knack.hideSpinner();
-                                ktl.scenes.spinnerWatchdog();
-                                ktl.views.autoRefresh();
-                                alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
-                            })
+                        }
                     }
                 }
+
+                var trueCol = '';
+                var falseCol = '';
+                var keywords = Knack.views[viewId].model.view.keywords;
+
+                //Supports both named colors and hex style like #FF08 (RGBA).
+                if (keywords._qt.length >= 1)
+                    trueCol = keywords._qt[0];
+                if (keywords._qt.length >= 2)
+                    falseCol = keywords._qt[1];
+
+                if (fields.length) {
+                    data.forEach(row => {
+                        fields.forEach(fieldId => {
+                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background', (row[fieldId + '_raw'] === true) ? trueCol : falseCol);
+                        })
+                    })
+                }
+
+                function startQtScanning() {
+                    qtScanItv = setInterval(() => {
+                        if (!$.isEmptyObject(quickToggleObj)) {
+                            ktl.views.autoRefresh(false);
+                            ktl.scenes.spinnerWatchdog(false);
+
+                            var dt = Object.keys(quickToggleObj)[0];
+                            if (!quickToggleObj[dt].processed) {
+                                quickToggleObj[dt].processed = true;
+                                quickToggle(dt);
+                            }
+                        }
+                    }, 200);
+                }
+
+                function quickToggle(dt) {
+                    var recObj = quickToggleObj[dt];
+                    if ($.isEmptyObject(recObj)) return;
+                    var viewId = recObj.viewId;
+                    var fieldId = recObj.fieldId;
+                    if (!viewId || !fieldId) return;
+
+                    var apiData = {};
+                    apiData[recObj.fieldId] = recObj.value;
+                    ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT')
+                        .then(() => {
+                            delete quickToggleObj[dt];
+                            if ($.isEmptyObject(quickToggleObj)) {
+                                clearInterval(qtScanItv);
+                                qtScanItv = null;
+                                refreshTimer = setTimeout(() => {
+                                    ktl.views.refreshViewArray(viewsToRefresh);
+                                    Knack.hideSpinner();
+                                    ktl.scenes.spinnerWatchdog();
+                                    ktl.views.autoRefresh();
+                                }, 1000);
+                            }
+                        })
+                        .catch(function (reason) {
+                            Knack.hideSpinner();
+                            ktl.scenes.spinnerWatchdog();
+                            ktl.views.autoRefresh();
+                            alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
+                        })
+                }
+            },
+
+            matchColor: function (viewId = '', data = []) {
+                if (!viewId || ktl.scenes.isiFrameWnd()) return;
+
+                var viewModel = Knack.router.scene_view.model.views._byId[viewId];
+                if (!viewModel) return;
+
+                var viewAttr = viewModel.attributes;
+                const viewType = viewAttr.type;
+                if (!['table', 'search'].includes(viewType)) return;
+
+                var keywords = Knack.views[viewId].model.view.keywords;
+                var toMatch = keywords._mc;
+                if (toMatch.length !== 1 || !toMatch[0]) return;
+                toMatch = toMatch[0];
+
+                var fieldId = '';
+                var fieldName = '';
+
+                var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
+                for (var i = 0; i < cols.length; i++) {
+                    fieldId = cols[i].field.key;
+                    var field = Knack.objects.getField(fieldId);
+                    if (field && field.attributes) {
+                        fieldName = field.attributes.name;
+                        if (fieldName === toMatch) {
+                            //console.log('field.attributes =', field.attributes);
+                            break;
+                        }
+                    }
+                }
+
+                if (!fieldId || !fieldName) {
+                    ktl.core.timedPopup('This table doesn\'t have a column with that title: ' + toMatch, 'warning', 4000);
+                    return;
+                }
+
+                data.forEach(row => {
+                    var bgColor = document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor;
+
+                    //console.log('bgColor =', bgColor);
+
+                    $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background', bgColor);
+                })
             },
         }
     })(); //views
@@ -7794,9 +7840,9 @@ function Ktl($, info) {
     //Clean up any titles that contain keywords. All keywords must be AFTER any title text to be visible.
     //Ideally this would be done using MutationObserver (below), but it's not reliable.  Randomly stops after a while.
     var titleCleanupDone = false;
-    var itv = setInterval(function () {
+    var titleCleanupItv = setInterval(function () {
         if (Knack.router) {
-            clearInterval(itv);
+            clearInterval(titleCleanupItv);
 
             for (var i = 0; i < Knack.scenes.length; i++) {
                 var scn = Knack.scenes.models[i];
@@ -7806,29 +7852,63 @@ function Ktl($, info) {
                     if (view) {
                         var title = view.attributes.title;
                         var truncatedTitle = title;
+                        var keywords = {};
                         if (title) {
                             var cmpTitle = title.toLowerCase();
                             //All keywords must start with an underscore.
                             var firstKeywordIdx = cmpTitle.search(/(?:^|\s)(_[a-z0-9]\w*)/);
 
                             //Truncate all flags, all text i.e. after firstFlagIndex.
-                            if (firstKeywordIdx >= 0)
+                            if (firstKeywordIdx >= 0) {
                                 truncatedTitle = title.substring(0, firstKeywordIdx);
+                                keywords = parseKeywords(title.substring(firstKeywordIdx).trim());
+                            }
                         }
 
                         //Keep a copy of the original title for further processing.
                         !view.attributes.orgTitle && (view.attributes.orgTitle = view.attributes.title); //Only write once - first time, when not yet existing.
+                        !view.attributes.keywords && (view.attributes.keywords = keywords);
 
                         var orgTitle = view.attributes.orgTitle;
                         view.attributes.title = truncatedTitle;
+
+                        //Apply to those views that are currently being displayed.
                         if (Knack.views[view.id]) {
                             $('#' + view.id + ' .view-header h1').text(truncatedTitle); //Search Views use H1 instead of H2.
                             $('#' + view.id + ' .view-header h2').text(truncatedTitle);
-                            Knack.views[view.id].model.view.orgTitle = orgTitle;
                             Knack.views[view.id].model.view.title = truncatedTitle;
+                            Knack.views[view.id].model.view.orgTitle = orgTitle;
+                            Knack.views[view.id].model.view.keywords = keywords;
                         }
                     }
                 }
+            }
+
+            function parseKeywords(title) {
+                var keywords = {};
+                var kwAr = [];
+                if (title && title !== '') {
+                    var kwAr = title.split('_');
+                    kwAr.splice(0, 1);
+                    for (var i = 0; i < kwAr.length; i++) {
+                        kwAr[i] = ('_' + kwAr[i]).trim();
+                        parseParams(kwAr[i]);
+                    }
+                }
+
+                function parseParams(kwString) {
+                    var kw = kwString.split('=');
+                    var params = [];
+                    if (kw.length > 1) {
+                        params = kw[1].split(',');
+                        params.forEach((param, idx) => {
+                            params[idx] = param.trim();
+                        })
+                    }
+                    keywords[kw[0]] = params;
+                }
+
+                return keywords;
             }
 
             titleCleanupDone = true;
