@@ -35,6 +35,7 @@ Knack Toolkit Library, henceforth referred to as **KTL**, is a collection of ope
 Right out of the box, without any coding or complex setup, the KTL will provide many nice additions to your app:
 
 -   User filters to save your filters to named buttons
+-   Bulk Operations: Edit and Delete
 -   Form data persistence that saves as you type, and will load back your data if a page is reloaded after a submit failure or power outage
 -   Sorted menus
 -   Show page’s title in browser’s tab
@@ -42,17 +43,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 -   Keyboard support in image viewer with left/right arrows for next/prev, and esc to exit
 -   Custom highlight/color for table’s inline-editable fields for easy identification
 -   Custom highlight/color for table row hover
--   Keywords in the view’s title to trigger
-    -   auto-refresh of tables, details view or other views
-    -   hidden views
-    -   hidden titles
-    -   disable inline editing
--   Keywords in the view’s description to trigger
-    -   filter restriction for specified fields
--   Keywords in a table’s column headers to trigger
-    -   hidden or deleted columns
--   Keywords in a rich text view to trigger
-    -   opening a link to any URL, using same page or a new one, when clicked on its top menu
+-   Using reserved keywords to trigger special behavior
 -   Ctrl+Click on a table’s header to invert the default sort
 -   Idle timeout watchdog
 -   Spinner timeout watchdog
@@ -361,8 +352,9 @@ Provides view-related features.
 -   **submitAndWait**: Pass a form’s view ID and an object containing pairs of field IDs and values. It will fill in the form and submit automatically, then return with a success or failure outcome. If successful, the resulting record is also returned and can be used for further processing.
 -   **waitSubmitOutcome**: After submitting a form programmatically, this Promise function will wait for the outcome and resolve with the success message and reject with the failure reason.
 -   **updateSubmitButtonState**: Used to perform real-time form validation, i.e. before Submit is clicked, by enabling or disabling the button based on your criteria. Pass the form’s view ID and it will enable or disable the Submit button. This status extends the existing **validity** property of the button, by adding the **invalidItemObj** object to it. When this object is empty, Submit is enabled, if it contains any key, it will be disabled.
--   **ktlProcessViewKeywords**: This is an internal function that is not exposed. But worth some additional explaining, nonetheless. It parses the view's title for keywords that trigger special behavior. See the list and details below.
+-   **ktlProcessKeywords**: This is an internal function that is not exposed. But worth some additional explaining, nonetheless. It parses the view's title for keywords that trigger special behavior. See the list and details below.
 -   **handleCalendarEventDrop**: Provides notification that a drag’n drop operation has been done on a calendar event. This can be used to sync a table to a calendar.
+-   **getDataFromRecId**: returns the data record for a given view and record ID. Works with Tables and Search views.
 
 ### Using view’s Title to add keywords to trigger special behavior
 
@@ -386,11 +378,21 @@ You can add these keywords **at the end of your view’s title** to trigger the 
 
 **\_dtp**: Add Date/Time Picker to a table. The table **must have a Date/Time field**, and the first one found from the left will be used. Six new fields will appear at the top of your table view: **From**, **To** and periods as **Monthly**, **Weekly**, and **Daily**. Depending on the active period, when you change From, the To field will automatically update itself accordingly, and the view will be filtered in real-time. On the other hand, if you change the To date, the From will not be affected, leaving you more flexibility. The focus is conveniently placed on the last field used so you can use the up/down arrows to scroll quickly through months and visualize data. This is also compatible with additional filter fields, provided that the AND operator is used. Once you have a filter that you like, it is also possible to save it as a [User Filter](#user-filters).
 
-**\_rvs=v1,v2**: Refresh Views upon Submit. Add this to a form’s title and when it is submitted successfully, will refresh any other views specified. Use the exact full title text, separated by commas, spaces are allowed.
+**\_rvs=v1,v2**: Refresh Views after a Submit. Add this to a form’s title and when it is submitted successfully, will refresh any other views specified. Use the exact full title text, separated by commas, spaces are allowed.
 
 Ex: **Customer Sale \_rvs=Client Sales, Store Sales**
 
 Here, the form’s visible title will be “Customer Sales”, and when submitted successfully, the two views with the title “Client Sales” and “Store Sales” will be refreshed.
+
+**\_rvr=v1,v2**: Refresh Views after a Refresh. Same syntax as \_rvs. Used to trigger a refresh to other views. Be careful not to induce a circular loop!
+
+**\_rvd=v1,v2**: Refresh Views after a Drop. Same syntax as \_rvs. Used to trigger a refresh to other views, after an event has been drag’n dropped in a Calendar view.
+
+**\_qt=bgColorTrue,bgColorFalse**: Quick Toggle of boolean fields in a Table or Search view. Will queue all clicks on cells with a Yes/No type of fields and will invert their state in a background processing loop. Optional true/false/pending colors can be specified, compatible with all web formats like \#rrggbbaa, \#rgba and named colors (ex: darkolivegreen). The colors can be app-wide or on a per-view basis, as desired. See quickToggleParams for details in the KTL_KnackApp.js file.
+
+**\_mc=columnHeader**: Match Color of the whole row to the cell at a specific column in a table. Can be used in conjunction with the \_qt feature to use its colors.
+
+**\_al**: Auto-Login, with AES encrypted email/pw stored in localStorage. Used to automate boot-up of Dashboards or other unattended devices. A first-time setup procedure must be done manually, by entering an encryption key then the email/pw information. This is done for each new device and can be bypassed if desired.
 
 **\_yourOwnKeywords**: You can also add your own app-specific keywords and process them in the callback function processViewKeywords.
 
