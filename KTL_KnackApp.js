@@ -433,7 +433,12 @@ var KnackApp = function ($, info = {}) {
     ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
     //console.log('userPrefs =', userPrefs);
     //Setup default preferences - END
+
+
+    //====================================================
+    //  Add your code here...
+
+
+
 };
 
-//====================================================
-//  Add your code here...
