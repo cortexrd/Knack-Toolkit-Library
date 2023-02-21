@@ -3871,6 +3871,7 @@ function Ktl($, info) {
         var quickToggleParams = {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
+            bgColorPending: '#dd08',
         };
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -4078,6 +4079,7 @@ function Ktl($, info) {
 
         //Filter Restriction Rules from view's Description.
         function disableFilterOnFields(view) {
+            if (!view) return;
             if (view.type === 'table' /*TODO: add more view types*/) {
                 const NF = '_nf=';
                 var descr = view.description;
@@ -4107,23 +4109,44 @@ function Ktl($, info) {
             }
         }
 
-        function addSubmitToViewRefresh(view) {
-            if (!view.orgTitle) return;
-            var views = view.orgTitle.split('_rvs=');
-            if (views.length !== 2) return;
-            views = views[1].split(',');
-            var foundViewIds = [];
-            for (var i = 0; i < views.length; i++) {
-                var viewTitle = views[i].trim();
-                var viewId = ktl.scenes.findViewWithTitle(viewTitle, false, view.key);
-                if (viewId)
-                    foundViewIds.push(viewId);
-            }
+        function refreshViewsAfterSubmit(viewId = '') {
+            if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
+            var keywords = Knack.views[viewId].model.view.keywords;
+            const views = keywords._rvs;
+            if (views.length) {
+                var foundViewIds = [];
+                for (var i = 0; i < views.length; i++) {
+                    var viewTitle = views[i].trim();
+                    var viewIdToRefresh = ktl.scenes.findViewWithTitle(viewTitle, false, viewId);
+                    if (viewIdToRefresh)
+                        foundViewIds.push(viewIdToRefresh);
+                }
 
-            if (foundViewIds.length) {
-                $(document).off('knack-form-submit.' + view.key).on('knack-form-submit.' + view.key, () => {
+                if (foundViewIds.length) {
+                    $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
+                        ktl.views.refreshViewArray(foundViewIds)
+                    })
+                }
+            }
+        }
+
+        function refreshViewsAfterRefresh(viewId = '') {
+            if (!viewId) return;
+            var keywords = Knack.views[viewId].model.view.keywords;
+            const views = keywords._rvr;
+            if (views.length) {
+                var foundViewIds = [];
+                for (var i = 0; i < views.length; i++) {
+                    var viewTitle = views[i].trim();
+                    var viewIdToRefresh = ktl.scenes.findViewWithTitle(viewTitle, false, viewId);
+                    if (viewIdToRefresh)
+                        foundViewIds.push(viewIdToRefresh);
+                }
+
+                if (foundViewIds.length) {
+                    console.log('refreshViewArray(foundViewIds)', viewId, foundViewIds);
                     ktl.views.refreshViewArray(foundViewIds)
-                })
+                }
             }
         }
 
@@ -4400,18 +4423,20 @@ function Ktl($, info) {
                 }
             },
 
-            addTimeStampToHeader: function (view) {
-                var header = document.querySelector('#' + view.key + ' .kn-title');
-                if ($('#' + view.key + '-timestamp-id').length === 0/*Add only once*/) {
+            addTimeStampToHeader: function (viewId = '') {
+                if (!viewId) return;
+                var header = document.querySelector('#' + viewId + ' .kn-title');
+                if ($('#' + viewId + '-timestamp-id').length === 0/*Add only once*/) {
                     var timestamp = document.createElement('label');
-                    timestamp.setAttribute('id', view.key + '-timestamp-id');
+                    timestamp.setAttribute('id', viewId + '-timestamp-id');
                     timestamp.appendChild(document.createTextNode(ktl.core.getCurrentDateTime(false, true, false, false)));
                     timestamp.setAttribute('style', 'margin-left: 60px; color: blue; font-weight: bold;');
                     header && header.append(timestamp);
                 }
             },
 
-            addDateTimePickers: function (view) {
+            addDateTimePickers: function (viewId = '') {
+                if (!viewId) return;
                 var period = 'monthly';
                 var inputType = 'month';
 
@@ -4428,7 +4453,7 @@ function Ktl($, info) {
                 var fieldName = '';
 
                 //Find first Date/Time field type.
-                var cols = Knack.router.scene_view.model.views._byId[view.key].attributes.columns;
+                var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
                 for (var i = 0; i < cols.length; i++) {
                     fieldId = cols[i].field.key;
                     var field = Knack.objects.getField(fieldId);
@@ -4446,16 +4471,16 @@ function Ktl($, info) {
                 var div = document.createElement('div');
 
                 //If Search exists, append at end to save space.
-                if (document.querySelector('#' + view.key + ' .table-keyword-search')) {
-                    document.querySelector('#' + view.key + ' .table-keyword-search').appendChild(div);
+                if (document.querySelector('#' + viewId + ' .table-keyword-search')) {
+                    document.querySelector('#' + viewId + ' .table-keyword-search').appendChild(div);
                     div.style.marginLeft = '100px';
                 } else {
-                    ktl.core.insertAfter(div, document.querySelector('#' + view.key + ' .view-header'));
+                    ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .view-header'));
                     div.style.marginTop = '15px';
                     div.style.marginBottom = '15px';
                 }
 
-                var viewDates = ktl.views.loadViewDates(view.key);
+                var viewDates = ktl.views.loadViewDates(viewId);
                 if (!viewDates.startDt) {
                     startDateUs = new Date(); //Nothing yet for this view, use "now".
                     endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
@@ -4488,7 +4513,7 @@ function Ktl($, info) {
 
                     endDateInput.value = ktl.core.convertDateToIso(endDateUs, period);
                     ktl.views.saveViewDates(
-                        view.key,
+                        viewId,
                         ktl.core.convertDateTimeToString(startDateUs, false, true),
                         ktl.core.convertDateTimeToString(endDateUs, false, true),
                         period);
@@ -4498,7 +4523,7 @@ function Ktl($, info) {
                 endDateInput.addEventListener('change', (e) => {
                     endDateUs = new Date(e.target.value.replace(/-/g, '/'));
                     ktl.views.saveViewDates(
-                        view.key,
+                        viewId,
                         ktl.core.convertDateTimeToString(startDateUs, false, true),
                         ktl.core.convertDateTimeToString(endDateUs, false, true),
                         period);
@@ -4534,7 +4559,7 @@ function Ktl($, info) {
                     document.querySelector('#endDateInput').type = inputType;
                     adjustEndDate(period);
                     ktl.views.saveViewDates(
-                        view.key,
+                        viewId,
                         ktl.core.convertDateTimeToString(startDateUs, false, true),
                         ktl.core.convertDateTimeToString(endDateUs, false, true),
                         period);
@@ -4552,7 +4577,7 @@ function Ktl($, info) {
                     Knack.showSpinner();
 
                     //Merge current filter with new one, if possible, i.e. using the AND operator.
-                    var currentFilters = Knack.views[view.key].getFilters();
+                    var currentFilters = Knack.views[viewId].getFilters();
                     var curRules = [];
                     var foundAnd = true;
                     if (!$.isEmptyObject(currentFilters)) {
@@ -4615,11 +4640,11 @@ function Ktl($, info) {
                     }
 
                     const sceneHash = Knack.getSceneHash();
-                    const queryString = Knack.getQueryString({ [`${view.key}_filters`]: encodeURIComponent(JSON.stringify(filterObj)) });
+                    const queryString = Knack.getQueryString({ [`${viewId}_filters`]: encodeURIComponent(JSON.stringify(filterObj)) });
                     Knack.router.navigate(`${sceneHash}?${queryString}`, false);
                     Knack.setHashVars();
-                    Knack.models[view.key].setFilters(filterObj);
-                    Knack.models[view.key].fetch({
+                    Knack.models[viewId].setFilters(filterObj);
+                    Knack.models[viewId].fetch({
                         success: () => { Knack.hideSpinner(); },
                         error: () => { Knack.hideSpinner(); }
                     });
@@ -5234,7 +5259,7 @@ function Ktl($, info) {
                                 if (orgTitle) {
                                     orgTitle = orgTitle.toLowerCase();
                                     if (orgTitle.includes('_rvs'))
-                                        addSubmitToViewRefresh(view);
+                                        refreshViewsAfterSubmit(view.key);
 
                                     //Hide the whole view, typically used when doing background searches.
                                     if (orgTitle.includes('_hv')) {
@@ -5255,10 +5280,10 @@ function Ktl($, info) {
                                     }
 
                                     if (orgTitle.includes('_ts'))
-                                        ktl.views.addTimeStampToHeader(view);
+                                        ktl.views.addTimeStampToHeader(view.key);
 
                                     if (orgTitle.includes('_dtp'))
-                                        ktl.views.addDateTimePickers(view);
+                                        ktl.views.addDateTimePickers(view.key);
 
                                     if (orgTitle.includes('_al'))
                                         ktl.account.autoLogin(view.key);
@@ -5268,6 +5293,9 @@ function Ktl($, info) {
 
                                     if (orgTitle.includes('_mc')) //IMPORTANT*** _mc must be PROCESSED after _qt.
                                         ktl.views.matchColor(view.key, data);
+
+                                    if (orgTitle.includes('_rvr'))
+                                        refreshViewsAfterRefresh(view.key);
                                 }
                             }
                         }
@@ -5363,7 +5391,7 @@ function Ktl($, info) {
                                             viewsToRefresh.push(viewId);
 
                                         quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
-                                        $(e.target.closest('td')).css('background', '#9908'); //Visual cue that the process is started.
+                                        $(e.target.closest('td')).css('background', quickToggleParams.bgColorPending); //Visual cue that the process is started.
                                         clearTimeout(refreshTimer);
                                     }
                                 })
@@ -5425,7 +5453,7 @@ function Ktl($, info) {
                                     Knack.hideSpinner();
                                     ktl.scenes.spinnerWatchdog();
                                     ktl.views.autoRefresh();
-                                }, 1000);
+                                }, 2000);
                             }
                         })
                         .catch(function (reason) {
@@ -5455,7 +5483,8 @@ function Ktl($, info) {
                 var fieldId = '';
                 var fieldName = '';
 
-                var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
+                const attr = Knack.router.scene_view.model.views._byId[viewId].attributes;
+                var cols = attr.columns.length ? attr.columns : attr.results.columns;
                 for (var i = 0; i < cols.length; i++) {
                     fieldId = cols[i].field.key;
                     var field = Knack.objects.getField(fieldId);
@@ -5472,10 +5501,13 @@ function Ktl($, info) {
                 }
 
                 data.forEach(row => {
-                    var bgColor = document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor;
-                    document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor = ''; //Need to remove current bg color otherwise transparency can add up and play tricks.
+                    var rowSel = document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId);
+                    if (rowSel) {
+                        var bgColor = rowSel.style.backgroundColor;
+                        document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor = ''; //Need to remove current bg color otherwise transparency can add up and play tricks.
 
-                    $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background', bgColor);
+                        $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background', bgColor);
+                    }
                 })
             },
         }
@@ -7850,7 +7882,7 @@ function Ktl($, info) {
 
             findAllKeywords: function () {
                 //See list here: https://github.com/cortexrd/Knack-Toolkit-Library#list-of-all-keywords
-                const titleKeywords = ['_sw_update', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_rvd', '_kr', '_kb', '_kd', '_kn', '_qt'];
+                const titleKeywords = ['_sw_update', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_rvd', '_rvr', '_kr', '_kb', '_kd', '_kn', '_qt'];
 
                 var st = window.performance.now();
                 var keywordViews = {};
