@@ -5468,6 +5468,7 @@ function Ktl($, info) {
 
                 data.forEach(row => {
                     var bgColor = document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor;
+                    document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor = ''; //Need to remove current bg color otherwise transparency can add up and play tricks.
 
                     $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background', bgColor);
                 })
