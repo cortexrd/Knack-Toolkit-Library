@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.8.3';
+    const KTL_VERSION = '0.8.4';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -3868,6 +3868,10 @@ function Ktl($, info) {
         var gotoDateObj = new Date();
         var prevType = '';
         var prevStartDate = '';
+        var quickToggleParams = {
+            bgColorTrue: '#39d91f',
+            bgColorFalse: '#f04a3b',
+        };
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
@@ -4127,6 +4131,7 @@ function Ktl($, info) {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processViewKeywords && (processViewKeywords = cfgObj.processViewKeywords);
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
+                cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
             },
 
             refreshView: function (viewId) {
@@ -5339,7 +5344,7 @@ function Ktl($, info) {
                     var col = cols[i];
                     if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
                         var field = Knack.objects.getField(col.field.key);
-                        if (field) {
+                        if (field && !col.connection) { //Field must be local to view's object, not a connected field.
                             if (field.attributes.type === 'boolean') {
                                 const fieldId = col.field.key;
                                 fields.push(fieldId);
@@ -5367,20 +5372,20 @@ function Ktl($, info) {
                     }
                 }
 
-                var trueCol = '';
-                var falseCol = '';
+                var bgColorTrue = quickToggleParams.bgColorTrue;
+                var bgColorFalse = quickToggleParams.bgColorFalse;
                 var keywords = Knack.views[viewId].model.view.keywords;
 
                 //Supports both named colors and hex style like #FF08 (RGBA).
                 if (keywords._qt.length >= 1)
-                    trueCol = keywords._qt[0];
+                    bgColorTrue = keywords._qt[0];
                 if (keywords._qt.length >= 2)
-                    falseCol = keywords._qt[1];
+                    bgColorFalse = keywords._qt[1];
 
                 if (fields.length) {
                     data.forEach(row => {
                         fields.forEach(fieldId => {
-                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background', (row[fieldId + '_raw'] === true) ? trueCol : falseCol);
+                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background', (row[fieldId + '_raw'] === true) ? bgColorTrue : bgColorFalse);
                         })
                     })
                 }
