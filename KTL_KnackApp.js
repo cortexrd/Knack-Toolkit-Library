@@ -76,6 +76,12 @@ var KnackApp = function ($, info = {}) {
         ktl.views.setCfg({
             processViewKeywords: processViewKeywords,
             handleCalendarEventDrop: handleCalendarEventDrop,
+            //Uncomment below to override default Quick Toggle colors.
+            //    quickToggleParams: {
+            //        bgColorTrue: '#39d91f',
+            //        bgColorFalse: '#f04a3b',
+            //        bgColorPending: '#dd08',
+            //    },
         })
 
         ktl.fields.setCfg({
