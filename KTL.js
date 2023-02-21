@@ -3935,50 +3935,39 @@ function Ktl($, info) {
 
         function ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
             var keywords = Knack.views[view.key].model.view.keywords;
-            const views = keywords._rvd;
-            if (views.length) {
-                var foundViewIds = [];
-                for (var i = 0; i < views.length; i++) {
-                    var viewTitle = views[i].trim();
-                    var viewId = ktl.scenes.findViewWithTitle(viewTitle, false, view.key);
-                    if (viewId)
-                        foundViewIds.push(viewId);
-                }
-
-                foundViewIds.forEach(viewId => {
-                    var eventField = view.events.event_field.key;
-                    var recId = event.id;
-
-                    (function tryRefresh(retryCtr) { //These retries are important due to the latency chain: calendar > server > view being updated.
-                        setTimeout(() => {
-                            var found = false;
-                            ktl.views.refreshView(viewId).then(function (data) {
-                                for (var i = 0; i < data.models.length; i++) {
-                                    if (data.models[i].id === recId) {
-                                        found = true;
-                                        break;
-                                    }
+            var viewIds = convertTitlesToViewIds(keywords._rvd, view.key);
+            viewIds.forEach(viewId => {
+                var eventField = view.events.event_field.key;
+                var recId = event.id;
+                (function tryRefresh(retryCtr) { //These retries are important due to the latency chain: calendar > server > view being updated.
+                    setTimeout(() => {
+                        var found = false;
+                        ktl.views.refreshView(viewId).then(function (data) {
+                            for (var i = 0; i < data.models.length; i++) {
+                                if (data.models[i].id === recId) {
+                                    found = true;
+                                    break;
                                 }
+                            }
 
-                                if (found) {
-                                    var date = data.models[i].attributes[eventField + '_raw'].timestamp;
-                                    var eventDate = event.start;
-                                    if (Date.parse(date) !== Date.parse(eventDate)) {
-                                        if (retryCtr-- > 0) {
-                                            ktl.log.clog('purple', 'date mismatch', retryCtr);
-                                            tryRefresh(retryCtr);
-                                        } else {
-                                            ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
-                                        }
+                            if (found) {
+                                var date = data.models[i].attributes[eventField + '_raw'].timestamp;
+                                var eventDate = event.start;
+                                if (Date.parse(date) !== Date.parse(eventDate)) {
+                                    if (retryCtr-- > 0) {
+                                        ktl.log.clog('purple', 'date mismatch', retryCtr);
+                                        tryRefresh(retryCtr);
                                     } else {
-                                        //ktl.log.clog('green', 'Date match found');
+                                        ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
                                     }
+                                } else {
+                                    //ktl.log.clog('green', 'Date match found');
                                 }
-                            });
-                        }, 500);
-                    })(10); //Retries
-                })
-            }
+                            }
+                        });
+                    }, 500);
+                })(10); //Retries
+            })
 
             handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
         }
@@ -4112,42 +4101,32 @@ function Ktl($, info) {
         function refreshViewsAfterSubmit(viewId = '') {
             if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
             var keywords = Knack.views[viewId].model.view.keywords;
-            const views = keywords._rvs;
-            if (views.length) {
-                var foundViewIds = [];
-                for (var i = 0; i < views.length; i++) {
-                    var viewTitle = views[i].trim();
-                    var viewIdToRefresh = ktl.scenes.findViewWithTitle(viewTitle, false, viewId);
-                    if (viewIdToRefresh)
-                        foundViewIds.push(viewIdToRefresh);
-                }
-
-                if (foundViewIds.length) {
-                    $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
-                        ktl.views.refreshViewArray(foundViewIds)
-                    })
-                }
+            var viewIds = convertTitlesToViewIds(keywords._rvs, viewId);
+            if (viewIds.length) {
+                $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
+                    ktl.views.refreshViewArray(viewIds)
+                })
             }
         }
 
         function refreshViewsAfterRefresh(viewId = '') {
             if (!viewId) return;
             var keywords = Knack.views[viewId].model.view.keywords;
-            const views = keywords._rvr;
-            if (views.length) {
-                var foundViewIds = [];
-                for (var i = 0; i < views.length; i++) {
-                    var viewTitle = views[i].trim();
-                    var viewIdToRefresh = ktl.scenes.findViewWithTitle(viewTitle, false, viewId);
-                    if (viewIdToRefresh)
-                        foundViewIds.push(viewIdToRefresh);
-                }
+            var viewIds = convertTitlesToViewIds(keywords._rvr, viewId);
+            if (viewIds.length)
+                ktl.views.refreshViewArray(viewIds)
+        }
 
-                if (foundViewIds.length) {
-                    console.log('refreshViewArray(foundViewIds)', viewId, foundViewIds);
-                    ktl.views.refreshViewArray(foundViewIds)
-                }
+        function convertTitlesToViewIds(viewTitles = [], viewId = '') {
+            if (!viewTitles.length) return;
+            var foundViewIds = [];
+            for (var i = 0; i < viewTitles.length; i++) {
+                var viewTitle = viewTitles[i].trim();
+                var foundViewId = ktl.scenes.findViewWithTitle(viewTitle, false, viewId);
+                if (foundViewId)
+                    foundViewIds.push(foundViewId);
             }
+            return foundViewIds;
         }
 
         return {
