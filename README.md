@@ -24,7 +24,7 @@
 
 **Knack Toolkit Library**
 
-v0.7.15 - pre-release
+v0.8.2 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a collection of open-source Javascript utilities that eases Knack application development and add several features that are not easily created from the ground up. Those features that involve using the Knack API are 100% view-based, so your API key is never exposed.
 
