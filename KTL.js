@@ -1956,7 +1956,7 @@ function Ktl($, info) {
                                             document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input[value="' + opt + '"]').checked = optObj[opt];
                                         })
                                     } else {
-                                        ktl.log.clog('blue', 'loadFormData - searchDropdown');
+                                        //ktl.log.clog('blue', 'loadFormData - searchDropdown');
                                         fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
                                             .then(function () { })
                                             .catch(function () { })
@@ -7323,12 +7323,14 @@ function Ktl($, info) {
         })
 
         $(document).on('click', function (e) {
+            if (ktl.scenes.isiFrameWnd()) return;
             //On every click event, we process Inline Submit and Checkbox clicks.
             //Prepare all we need for Bulk Operations. Take note of view, field and new value.
 
             //Did we click on Submit during inline editing?
             var submit = e.target.closest('#cell-editor .kn-button');
             if (submit && !bulkOpsInProgress && bulkOpsRecIdArray.length > 0) {
+                bulkOpsNewValue = null;
                 bulkOpsInProgress = true;
                 bulkOpsFieldId = $('#cell-editor .kn-input').attr('data-input-id');
 
@@ -7434,7 +7436,7 @@ function Ktl($, info) {
 
         //Called when user clicks on Submit from an Inline Editing form and when there are some checkboxes enabled.
         function processBulkOps() {
-            if (!bulkOpsNewValue) return;
+            if (bulkOpsNewValue === null) return;
 
             var object = Knack.router.scene_view.model.views._byId[bulkOpsViewId].attributes.source.object;
             var objName = Knack.objects._byId[object].attributes.name;  //Create function getObjNameForView
@@ -7445,10 +7447,9 @@ function Ktl($, info) {
 
                 var fieldAttr = Knack.objects.getField(bulkOpsFieldId).attributes;
 
-                //Move this to a common place like core, since used elsewhere.
-                const textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text', 'currency'];
+                const directDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text', 'currency', 'boolean'];
 
-                if (textDataTypes.includes(fieldAttr.type))
+                if (directDataTypes.includes(fieldAttr.type))
                     apiData[bulkOpsFieldId] = bulkOpsNewValue;
                 else if (fieldAttr.type === 'connection')
                     apiData[bulkOpsFieldId] = [bulkOpsNewValue];
