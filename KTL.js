@@ -959,6 +959,8 @@ function Ktl($, info) {
         var chznBetterToExclude = [];
         var chznBetterSetFocus = null;
         var convertNumDone = false;
+        var horizontalRadioButtons = false;
+        var horizontalCheckboxes = false;
 
         var chznBetterTxt = '';
         var chznChoicesIntervalId = null;
@@ -1201,6 +1203,18 @@ function Ktl($, info) {
             }
         })
 
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            if (horizontalRadioButtons) {
+                $('#' + view.key + ' .kn-radio').addClass('horizontal');
+                $('#' + view.key + ' .option.radio').addClass('horizontal');
+            }
+
+            if (horizontalCheckboxes) {
+                $('#' + view.key + ' .kn-checkbox').addClass('horizontal');
+                $('#' + view.key + ' .option.checkbox').addClass('horizontal');
+            }
+        })
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
@@ -1211,6 +1225,8 @@ function Ktl($, info) {
                 cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
                 cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
                 cfgObj.chznBetterSetFocus && (chznBetterSetFocus = cfgObj.chznBetterSetFocus);
+                cfgObj.horizontalRadioButtons && (horizontalRadioButtons = cfgObj.horizontalRadioButtons);
+                cfgObj.horizontalCheckboxes && (horizontalCheckboxes = cfgObj.horizontalCheckboxes);
             },
 
             //Converts all applicable fields in the scene from text to numeric (telephone) type to allow numeric keypad on mobile devices.
@@ -3908,11 +3924,6 @@ function Ktl($, info) {
             ktl.views.ktlProcessKeywords(view, data);
             ktl.views.addViewId(view);
             disableFilterOnFields(view);
-
-            $('#' + view.key + ' .kn-radio').addClass('horizontal');
-            $('#' + view.key + ' .option.radio').addClass('horizontal');
-            $('#' + view.key + ' .kn-checkbox').addClass('horizontal');
-            $('#' + view.key + ' .option.checkbox').addClass('horizontal');
 
             if (view.type === 'calendar') {
                 try {

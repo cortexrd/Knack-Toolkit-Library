@@ -95,6 +95,8 @@ var KnackApp = function ($, info = {}) {
             },
             chznBetterToExclude: [],
             chznBetterSetFocus: chznBetterSetFocus,
+            //horizontalRadioButtons: true, //Uncomment these two lines to get horizontal layout for CBs and RBs.
+            //horizontalCheckboxes: true,
         })
 
         ktl.persistentForm.setCfg({
