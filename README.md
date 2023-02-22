@@ -24,7 +24,7 @@
 
 **Knack Toolkit Library**
 
-v0.8.2 - pre-release
+v0.8.6 - pre-release
 
 Knack Toolkit Library, henceforth referred to as **KTL**, is a collection of open-source Javascript utilities that eases Knack application development and add several features that are not easily created from the ground up. Those features that involve using the Knack API are 100% view-based, so your API key is never exposed.
 
@@ -392,7 +392,7 @@ Here, the form’s visible title will be “Customer Sales”, and when submitte
 
 **\_mc=columnHeader**: Match Color of the whole row to the cell at a specific column in a table. Can be used in conjunction with the \_qt feature to use its colors.
 
-**\_al**: Auto-Login, with AES encrypted email/pw stored in localStorage. Used to automate boot-up of Dashboards or other unattended devices. A first-time setup procedure must be done manually, by entering an encryption key then the email/pw information. This is done for each new device and can be bypassed if desired.
+**\_al**: Auto-Login, with AES encrypted email/pw stored in localStorage. This must be in the view title of the **login page**. Used to automate boot-up of Dashboards or other unattended devices. A first-time setup procedure must be done manually, by entering an encryption key then the email/pw information. This is done for each new device and can be bypassed if desired.
 
 **\_yourOwnKeywords**: You can also add your own app-specific keywords and process them in the callback function processViewKeywords.
 
@@ -828,31 +828,36 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 # List of all Keywords
 
-| **Keyword**                   | **Description**                       | **Where to use it**      | **Example**                     |
-|-------------------------------|---------------------------------------|--------------------------|---------------------------------|
-| \_ar=n                        | Auto-Refresh a view every *n* seconds | View's Title             | \_ar=60                         |
-| \_hv                          | Hidden View                           |                          |                                 |
-| \_ht                          | Hidden Title                          |                          |                                 |
-| \_ni                          | No Inline editing                     |                          |                                 |
-| \_ts                          | Adds a Time Stamp to a view           |                          |                                 |
-| \_dtp                         | Adds Date/Time Pickers                |                          |                                 |
-| \_rvs=viewTitle1, viewTitle2… | Refresh Views after Submit            |                          | \_rvs=Monthly Sales, Clients    |
-|                               |                                       |                          |                                 |
-| \_nf=f1,f2…                   | No Filtering on specified fields      | View's Description       | \_nf=field_1,field_2            |
-|                               |                                       |                          |                                 |
-| \_hc                          | Hide Column, but keep in DOM          | Table's Column Header    |                                 |
-| \_rc                          | Remove Column, including DOM          |                          |                                 |
-|                               |                                       |                          |                                 |
-| \_oln=url                     | Open Link in a New page (tab)         | Rich Text view with link | Support \_oln=https://ctrnd.com |
-| \_ols=url                     | Open Link in Same page                | Rich Text view with link | Support \_ols=https://ctrnd.com |
-|                               |                                       |                          |                                 |
-| \_uc                          | Convert to Uppercase                  | Field's description      |                                 |
-| \_ip                          | Validate IP format (to do)            |                          |                                 |
-|                               |                                       |                          |                                 |
-| \_kr                          | Kiosk add Refresh button              | Views, in Kiosk mode     |                                 |
-| \_kb                          | Kiosk add Back button                 |                          |                                 |
-| \_kd                          | Kiosk add Done button                 |                          |                                 |
-| \_kn                          | Kiosk No buttons (to clarify)         |                          |                                 |
+| **Keyword**                   | **Description**                                | **Where to use it**          | **Example**                     |
+|-------------------------------|------------------------------------------------|------------------------------|---------------------------------|
+| \_ar=n                        | Auto-Refresh a view every *n* seconds          | View's Title                 | \_ar=60                         |
+| \_hv                          | Hidden View                                    |                              |                                 |
+| \_ht                          | Hidden Title                                   |                              |                                 |
+| \_ni                          | No Inline editing                              |                              |                                 |
+| \_ts                          | Adds a Time Stamp to a view                    |                              |                                 |
+| \_dtp                         | Adds Date/Time Pickers                         |                              |                                 |
+| \_rvs=viewTitle1, viewTitle2… | Refresh Views after Submit                     |                              | \_rvs=Monthly Sales, Clients    |
+| \_rvr=viewTitle1, viewTitle2… | Refresh Views after Refresh                    |                              | \_rvr=Monthly Sales, Clients    |
+| \_rvd=viewTitle1, viewTitle2… | Refresh Views after calendar event Drag’n Drop |                              | \_rvd=Monthly Sales, Clients    |
+| \_qt=colorTrue,colorFalse     | Quick Toggle of boolean fields                 |                              | \_qt=\#0F07,pink                |
+| \_mc=columnHeader             | Match Color for whole row to a given column    |                              | \_mc=Sales                      |
+| \_al                          | Auto-Login                                     | View’s Title of a login page |                                 |
+|                               |                                                |                              |                                 |
+| \_nf=f1,f2…                   | No Filtering on specified fields               | View's Description           | \_nf=field_1,field_2            |
+|                               |                                                |                              |                                 |
+| \_hc                          | Hide Column, but keep in DOM                   | Table's Column Header        |                                 |
+| \_rc                          | Remove Column, including DOM                   |                              |                                 |
+|                               |                                                |                              |                                 |
+| \_oln=url                     | Open Link in a New page (tab)                  | Rich Text view with link     | Support \_oln=https://ctrnd.com |
+| \_ols=url                     | Open Link in Same page                         | Rich Text view with link     | Support \_ols=https://ctrnd.com |
+|                               |                                                |                              |                                 |
+| \_uc                          | Convert to Uppercase                           | Field's description          |                                 |
+| \_ip                          | Validate IP format (to do)                     |                              |                                 |
+|                               |                                                |                              |                                 |
+| \_kr                          | Kiosk add Refresh button                       | Views, in Kiosk mode         |                                 |
+| \_kb                          | Kiosk add Back button                          |                              |                                 |
+| \_kd                          | Kiosk add Done button                          |                              |                                 |
+| \_kn                          | Kiosk No buttons (to clarify)                  |                              |                                 |
 
 ## All code and documentation written by:
 
