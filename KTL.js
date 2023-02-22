@@ -2898,6 +2898,9 @@ function Ktl($, info) {
             var closeFilters = document.querySelectorAll('#' + filterDivId + ' .kn-remove-filter');
             closeFilters.forEach(closeBtn => { closeBtn.click(); });
             ktl.userFilters.removeActiveFilter(filterDivId);
+            setTimeout(() => {
+                $('#' + filterDivId + ' .reset.kn-button.is-link').click();
+            }, 1000);
         };
 
         function onLockFiltersBtnClicked(e, filterDivId) {
