@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.8.6';
+    const KTL_VERSION = '0.8.7';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -919,7 +919,7 @@ function Ktl($, info) {
                                 var key = ktl.storage.lsGetItem('AES_EK', true, false, false);
                                 if (!key || key === '') {
                                     do {
-                                        key = prompt('AES Key:', ktl.core.generateRandomChars(40));
+                                        key = prompt('Create AES Key:', ktl.core.generateRandomChars(40));
                                         if (!key)
                                             ktl.core.timedPopup('You must specify a Key.', 'warning');
                                     } while (!key || key === '');
@@ -6508,41 +6508,49 @@ function Ktl($, info) {
 
             autoLogin: function (viewId = '') {
                 if (!viewId) return;
-                ktl.storage.initSecureLs()
-                    .then(() => {
-                        var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false, true);
-                        if (loginInfo) {
-                            if (loginInfo === 'NoAutoLogin') {
-                                console.log('loginInfo =', loginInfo);
-                                return;
-                            }
-
-                            loginInfo = JSON.parse(loginInfo);
-                            $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
-                            $('#email').val(loginInfo.email);
-                            $('#password').val(loginInfo.pw);
-                            $('.remember input')[0].checked = true;
-                            $('#' + viewId + ' form').submit();
-                        } else {
-                            if (confirm('Do you want to set up Auto-Login on this machine?')) {
+                var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
+                if (loginInfo && loginInfo !== '') {
+                    if (loginInfo === 'SkipAutoLogin') {
+                        console.log('AL not needed:', loginInfo);
+                        return;
+                    } else {
+                        ktl.storage.initSecureLs()
+                            .then(() => {
+                                var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false, true);
+                                if (loginInfo && loginInfo !== '') {
+                                    loginInfo = JSON.parse(loginInfo);
+                                    $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
+                                    $('#email').val(loginInfo.email);
+                                    $('#password').val(loginInfo.pw);
+                                    $('.remember input')[0].checked = true;
+                                    $('#' + viewId + ' form').submit();
+                                }
+                            })
+                            .catch(reason => { ktl.log.clog('purple', reason); });
+                    }
+                } else {
+                    //First time - AL needed not yet specified.
+                    if (confirm('Do you need Auto-Login on this machine?')) {
+                        ktl.storage.initSecureLs()
+                            .then(() => {
                                 var email = prompt('Email:', '');
                                 var pw = prompt('PW:', '');
                                 if (!email || !pw) {
                                     alert('You must specify an Email and a Password.');
+                                    ktl.account.autoLogin(viewId);
                                 } else {
                                     loginInfo = JSON.stringify({ email: email, pw: pw });
                                     ktl.storage.lsSetItem('AES_LI', loginInfo, true, false, true);
                                 }
                                 location.reload();
-                            } else {
-                                ktl.storage.lsSetItem('AES_LI', 'NoAutoLogin', true, false, true);
-                            }
-                        }
-                    })
-                    .catch(reason => { ktl.log.clog('purple', reason); });
+                            })
+                            .catch(reason => { ktl.log.clog('purple', reason); });
+                    } else
+                        ktl.storage.lsSetItem('AES_LI', 'SkipAutoLogin', true, false, false);
+                }
             },
         }
-    })();
+    })(); //account
 
     //====================================================
     //iFrameWnd feature
