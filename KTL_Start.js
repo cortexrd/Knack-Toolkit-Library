@@ -9,7 +9,7 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.8.6';
+    const KTL_LATEST_JS_VERSION = '0.8.7';
     const KTL_LATEST_CSS_VERSION = '0.2.3';
 
     var cssVersion = KTL_LATEST_CSS_VERSION;
@@ -72,6 +72,9 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
             }
         } else {
             if (prod) {
+                if (typeof Android !== 'undefined')
+                    alert("Error - can't locate KTL file:\n" + ktlFile);
+
                 console.log("Error - can't locate KTL file:\n" + ktlFile);
                 localStorage.removeItem(lsShortName + 'dev'); //JIC
                 location.reload(true);
