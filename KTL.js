@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.8.7';
+    const KTL_VERSION = '0.8.8';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -916,18 +916,17 @@ function Ktl($, info) {
                     else {
                         ktl.core.loadLib('SecureLS')
                             .then(() => {
-                                var key = ktl.storage.lsGetItem('AES_EK', true, false, false);
-                                if (!key || key === '') {
-                                    do {
+                                do {
+                                    var key = ktl.storage.lsGetItem('AES_EK', true, false, false);
+                                    if (!key || key === '') {
                                         key = prompt('Create AES Key:', ktl.core.generateRandomChars(40));
                                         if (!key)
                                             ktl.core.timedPopup('You must specify a Key.', 'warning');
-                                    } while (!key || key === '');
+                                    }
+                                } while (!key || key === '');
 
-                                    ktl.storage.lsSetItem('AES_EK', key, true, false, false);
-                                    applyAesKey(key);
-                                } else
-                                    applyAesKey(key);
+                                ktl.storage.lsSetItem('AES_EK', key, true, false, false);
+                                applyAesKey(key);
                             })
                             .catch(reason => { reject('initSecureLs error:', reason); })
                     }
@@ -7912,7 +7911,7 @@ function Ktl($, info) {
                     //Add field keywords from description.
                     //todo...
                 }
-                console.log('keywordViews =', JSON.stringify(keywordViews, null, 4));
+                //console.log('keywordViews =', JSON.stringify(keywordViews, null, 4));
 
                 var en = window.performance.now();
                 console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
