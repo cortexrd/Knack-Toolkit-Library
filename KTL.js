@@ -3956,55 +3956,40 @@ function Ktl($, info) {
                     if (model && keywordsCleanupDone) {
                         clearInterval(itv);
 
-                        var title = Knack.views[view.key].model.view.orgTitle;
-                        if (title && title !== '') {
-                            var orgTitle = (model.view && model.view.orgTitle);
-                            if (orgTitle) {
-                                orgTitle = orgTitle.toLowerCase();
-                                if (orgTitle.includes('_rvs'))
-                                    refreshViewsAfterSubmit(view.key);
+                        var keywords = Knack.views[view.key].model.view.keywords;
+                        if (!$.isEmptyObject(keywords)) {
+                            //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
-                                //Hide the whole view, typically used when doing background searches.
-                                if (orgTitle.includes('_hv')) {
-                                    if (!Knack.getUserRoleNames().includes('Developer'))
-                                        $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' });
-                                }
-
-                                //Hide the view title only, typically used to save space when real estate is critical.
-                                if (orgTitle.includes('_ht')) {
-                                    $('#' + view.key + ' .view-header h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
-                                    $('#' + view.key + ' .view-header h2').css({ 'position': 'absolute', 'left': '-9000px' });
-                                }
-
-                                //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
-                                if (orgTitle.includes('_ni') && !ktl.account.isDeveloper()) {
-                                    if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
-                                        $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
-                                }
-
-                                if (orgTitle.includes('_ts'))
-                                    ktl.views.addTimeStampToHeader(view.key);
-
-                                if (orgTitle.includes('_dtp'))
-                                    ktl.views.addDateTimePickers(view.key);
-
-                                if (orgTitle.includes('_al'))
-                                    ktl.account.autoLogin(view.key);
-
-                                if (orgTitle.includes('_qt')) //IMPORTANT*** _mc must be PROCESSED after _qt.
-                                    ktl.views.quickToggle(view.key, data);
-
-                                if (orgTitle.includes('_mc')) //IMPORTANT*** _mc must be PROCESSED after _qt.
-                                    ktl.views.matchColor(view.key, data);
-
-                                if (orgTitle.includes('_rvr'))
-                                    refreshViewsAfterRefresh(view.key);
+                            //Hide the whole view, typically used when doing background searches.
+                            if (keywords._hv) {
+                                if (!Knack.getUserRoleNames().includes('Developer'))
+                                    $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' });
                             }
+
+                            //Hide the view title only, typically used to save space when real estate is critical.
+                            if (keywords._ht) {
+                                $('#' + view.key + ' .view-header h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
+                                $('#' + view.key + ' .view-header h2').css({ 'position': 'absolute', 'left': '-9000px' });
+                            }
+
+                            //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
+                            if (keywords._ni && !ktl.account.isDeveloper()) {
+                                if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
+                                    $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
+                            }
+
+                            //IMPORTANT: _qc must be processed BEFORE _mc.
+                            keywords._qt && ktl.views.quickToggle(view.key, keywords, data);
+                            keywords._mc && ktl.views.matchColor(view.key, keywords, data);
+
+                            keywords._ts && ktl.views.addTimeStampToHeader(view.key);
+                            keywords._dtp && ktl.views.addDateTimePickers(view.key);
+                            keywords._al && ktl.account.autoLogin(view.key);
+                            keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
+                            keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
+                            keywords._nf && disableFilterOnFields(view, keywords);
                         }
                     }
-
-                    if (view.description.includes('_nf'))
-                        disableFilterOnFields(view);
 
                     //Remove unwanted columns, as specified in Builder, when _hc and _rc is found in header.
                     if (view.type === 'table' /*TODO: add more view types*/) {
@@ -4176,9 +4161,11 @@ function Ktl($, info) {
         })
 
         //Filter Restriction Rules from view's Description.
-        function disableFilterOnFields(view) {
+        function disableFilterOnFields(view, keywords) {
             if (!view) return;
             if (view.type === 'table' /*TODO: add more view types*/) {
+                console.log('keywords =', view.key, keywords);
+
                 const NF = '_nf=';
                 var descr = view.description;
                 if (!descr) return;
@@ -4207,9 +4194,8 @@ function Ktl($, info) {
             }
         }
 
-        function refreshViewsAfterSubmit(viewId = '') {
+        function refreshViewsAfterSubmit(viewId = '', keywords) {
             if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
-            var keywords = Knack.views[viewId].model.view.keywords;
             var viewIds = convertTitlesToViewIds(keywords._rvs, viewId);
             if (viewIds.length) {
                 $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
@@ -4218,9 +4204,8 @@ function Ktl($, info) {
             }
         }
 
-        function refreshViewsAfterRefresh(viewId = '') {
+        function refreshViewsAfterRefresh(viewId = '', keywords) {
             if (!viewId) return;
-            var keywords = Knack.views[viewId].model.view.keywords;
             var viewIds = convertTitlesToViewIds(keywords._rvr, viewId);
             if (viewIds.length)
                 ktl.views.refreshViewArray(viewIds)
@@ -5335,7 +5320,7 @@ function Ktl($, info) {
                     return Knack.views[viewId].model.results_model.data._byId[recId].attributes;
             },
 
-            quickToggle: function (viewId = '', data = []) {
+            quickToggle: function (viewId = '', keywords, data = []) {
                 if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
                 var qtScanItv = null;
                 var quickToggleObj = {};
@@ -5392,7 +5377,6 @@ function Ktl($, info) {
 
                 var bgColorTrue = quickToggleParams.bgColorTrue;
                 var bgColorFalse = quickToggleParams.bgColorFalse;
-                var keywords = Knack.views[viewId].model.view.keywords;
 
                 //Supports both named colors and hex style like #FF08 (RGBA).
                 if (keywords._qt.length >= 1)
@@ -5455,7 +5439,7 @@ function Ktl($, info) {
                 }
             },
 
-            matchColor: function (viewId = '', data = []) {
+            matchColor: function (viewId = '', keywords, data = []) {
                 if (!viewId || ktl.scenes.isiFrameWnd()) return;
 
                 var viewModel = Knack.router.scene_view.model.views._byId[viewId];
@@ -7935,7 +7919,6 @@ function Ktl($, info) {
                     var view = views.models[j];
                     if (view) {
                         var keywords = {};
-
                         var title = view.attributes.title;
                         var cleanedUpTitle = title;
                         var firstKeywordIdx;
@@ -7953,6 +7936,7 @@ function Ktl($, info) {
                             firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-z0-9]\w*)/);
                             if (firstKeywordIdx >= 0) {
                                 cleanedUpDescription = description.substring(0, firstKeywordIdx);
+
                                 parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
                             }
                         }
@@ -7978,19 +7962,25 @@ function Ktl($, info) {
                 }
             }
 
-            function parseKeywords(keywords, title) {
+            function parseKeywords(keywords, strToParse) {
                 var kwAr = [];
-                if (title && title !== '') {
-                    var kwAr = title.split('_');
+                if (strToParse && strToParse !== '') {
+                    var kwAr = strToParse.split(/(_[a-z]{2,})/gm);
                     kwAr.splice(0, 1);
                     for (var i = 0; i < kwAr.length; i++) {
-                        kwAr[i] = ('_' + kwAr[i]).trim();
-                        parseParams(kwAr[i]);
+                        kwAr[i] = kwAr[i].trim();
+                        parseParams(kwAr[i], i);
                     }
                 }
 
-                function parseParams(kwString) {
-                    var kw = kwString.split('=');
+                function parseParams(kwString, kwIdx) {
+                    var kw = [];
+                    if (kwAr[i].startsWith('_')) {
+                        keywords[kwAr[i]] = [];
+                        return;
+                    } else if (kwAr[i].startsWith('='))
+                        kw = kwString.split('=');
+
                     var params = [];
                     if (kw.length > 1) {
                         params = kw[1].split(',');
@@ -7998,7 +7988,9 @@ function Ktl($, info) {
                             params[idx] = param.trim();
                         })
                     }
-                    keywords[kw[0]] = params;
+
+                    kwAr[kwIdx - 1] = kwAr[kwIdx - 1].toLowerCase();
+                    keywords[kwAr[kwIdx - 1]] = params;
                 }
             }
 
