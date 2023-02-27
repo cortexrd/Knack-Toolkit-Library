@@ -3988,32 +3988,11 @@ function Ktl($, info) {
                             keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
                             keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
                             keywords._nf && disableFilterOnFields(view, keywords);
+                            keywords._hc && hideColumns(view, keywords);
                         }
                     }
 
-                    //Remove unwanted columns, as specified in Builder, when _hc and _rc is found in header.
-                    if (view.type === 'table' /*TODO: add more view types*/) {
-                        var columns = model.view.columns;
-                        var hiddenFieldsAr = [];
-                        var removedFieldsAr = [];
-                        var header = '';
-                        var fieldId = '';
-                        columns.forEach(col => {
-                            header = col.header;
-                            fieldId = (col.id || (col.field && col.field.key));
-                            if (fieldId) {
-                                if (header.includes('_hide') || header.includes('_hc'))
-                                    hiddenFieldsAr.push(fieldId);
-                                else if (header.includes('_remove') || header.includes('_rc'))
-                                    removedFieldsAr.push(fieldId);
-                            }
-                        })
-
-                        if (hiddenFieldsAr.length)
-                            ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr);
-                        if (removedFieldsAr.length)
-                            ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr);
-                    } else if (view.type === 'rich_text') {
+                    if (view.type === 'rich_text') {
                         var txt = view.content.toLowerCase();
                         if (txt.includes('_ol')) {
                             var innerHTML = document.querySelector('#' + view.key).innerHTML;
@@ -4164,34 +4143,57 @@ function Ktl($, info) {
         function disableFilterOnFields(view, keywords) {
             if (!view) return;
             if (view.type === 'table' /*TODO: add more view types*/) {
-                console.log('keywords =', view.key, keywords);
-
-                const NF = '_nf=';
-                var descr = view.description;
-                if (!descr) return;
-                var index = descr.indexOf(NF);
-                if (index >= 0) {
-                    descr = descr.substr(index + NF.length);
-                    var realDescr = view.description.substr(0, index - 1);
-                    var sel = '#' + view.key + ' .kn-description';
-                    ktl.core.waitSelector(sel, 5000)
-                        .then(function () {
-                            document.querySelector(sel).innerText = realDescr;
-                            descr = descr.replace(/\s/g, '')
-                            var fieldsAr = descr.split(',');
-                            $('.kn-add-filter,.kn-filters').on('click', function (e) {
-                                var filterFields = document.querySelectorAll('.field.kn-select select option');
-                                filterFields.forEach(field => {
-                                    if (fieldsAr.includes(field.value))
-                                        field.remove();
-                                })
-                            })
-                        })
-                        .catch(function () {
-                            ktl.log.clog('purple', 'disableFilterOnFields failed waiting for description.');
-                        })
-                }
+                var fieldsAr = keywords._nf;
+                $('.kn-add-filter,.kn-filters').on('click', function (e) {
+                    var filterFields = document.querySelectorAll('.field.kn-select select option');
+                    filterFields.forEach(field => {
+                        if (fieldsAr.includes(field.value) || fieldsAr.includes(field.textContent))
+                            field.remove();
+                    })
+                })
             }
+        }
+
+        function hideColumns(view = '', keywords) {
+            if (!view.key || (view.type !== 'table' && view.type === 'search')) return;
+
+            console.log('_hc =', keywords._hc);
+
+            var model = (Knack.views[view.key] && Knack.views[view.key].model);
+            var columns = model.view.columns;
+            var hiddenFieldsAr = [];
+            var hiddenHeadersAr = [];
+            var removedFieldsAr = [];
+            var header = '';
+            var fieldId = '';
+
+            console.log('columns =', columns);
+
+            columns.forEach(col => {
+                console.log('col =', col);
+
+                header = col.header;
+                console.log('header =', header);
+                if (keywords._hc.includes(header))
+                    hiddenHeadersAr.push(header);
+
+                fieldId = (col.id || (col.field && col.field.key));
+                if (fieldId) {
+                    console.log('fieldId =', fieldId);
+                    if (keywords._hc.includes(fieldId))
+                        hiddenFieldsAr.push(fieldId);
+                    
+                //    else if (header.includes('_remove') || header.includes('_rc'))
+                //        removedFieldsAr.push(fieldId);
+                }
+            })
+
+            console.log('hiddenFieldsAr =', hiddenFieldsAr);
+            console.log('hiddenHeadersAr =', hiddenHeadersAr);
+            if (hiddenFieldsAr.length || hiddenHeadersAr.length)
+                ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr, hiddenHeadersAr);
+            if (removedFieldsAr.length)
+                ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr);
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
@@ -5065,12 +5067,13 @@ function Ktl($, info) {
                 You may use both arrays at same time, but columnsArray has precedence.
             */
             //////////////////////////////////////////////////////////////////
-            removeTableColumns: function (viewId = '', remove = true, columnsArray = [], fieldsArray = []) {
+            removeTableColumns: function (viewId = '', remove = true, columnsArray = [], fieldsArray = [], headers = []) {
                 var header;
                 var cell;
                 var column;
 
-                if (!viewId || ((fieldsArray && fieldsArray.length === 0) && (columnsArray && columnsArray.length === 0))) {
+                if (!viewId ||
+                    ((fieldsArray && fieldsArray.length === 0) && (columnsArray && columnsArray.length === 0)) && (headers && headers.length === 0) ) {
                     ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
                     return;
                 }
@@ -5118,6 +5121,38 @@ function Ktl($, info) {
                                         cell.css({ 'display': 'none' });
                                 }
                             })
+                        }
+                    })
+                }
+
+                if (headers && headers.length > 0) {
+                    $("div.kn-table.kn-view." + viewId + " table.kn-table thead tr th").each(function (index) {
+                        header = $(this)[0].innerText;
+                        console.log('header =', header);
+
+                        if (headers.some(function (v) { return header.indexOf(v) >= 0; })) {
+                            if (remove)
+                                $(this).remove(); //Remove header.
+                            else
+                                $(this).css({ 'display': 'none' });
+
+                            //Remember each columns where cells muse be removed.
+                            column = index + 1;
+                            console.log('column =', column);
+
+                            //Remove each row's data.
+                            $("div.kn-table.kn-view." + viewId + " table tr:not(.kn-table-group)").each(function () {
+                                cell = $(this).find('td:nth-child(' + column.toString() + ')');
+                                if (cell.length > 0) {
+                                    if (remove)
+                                        cell.remove(); //Remove cell.
+                                    else
+                                        cell.css({ 'display': 'none' });
+                                }
+                            })
+
+                            ktl.bulkOps.fixBulkOpsAlignment(viewId);
+                            //document.querySelectorAll('#' + viewId + ' .kn-table-totals td')[column - 1].style.display = 'none';
                         }
                     })
                 }
@@ -7923,7 +7958,7 @@ function Ktl($, info) {
                         var cleanedUpTitle = title;
                         var firstKeywordIdx;
                         if (title) {
-                            firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-z0-9]\w*)/);
+                            firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-z0-9]\w*)/m);
                             if (firstKeywordIdx >= 0) {
                                 cleanedUpTitle = title.substring(0, firstKeywordIdx);
                                 parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
@@ -7933,7 +7968,7 @@ function Ktl($, info) {
                         var description = view.attributes.description;
                         var cleanedUpDescription = description;
                         if (description) {
-                            firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-z0-9]\w*)/);
+                            firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-z0-9]\w*)/m);
                             if (firstKeywordIdx >= 0) {
                                 cleanedUpDescription = description.substring(0, firstKeywordIdx);
 
@@ -7953,6 +7988,7 @@ function Ktl($, info) {
                         if (Knack.views[view.id]) {
                             $('#' + view.id + ' .view-header h1').text(cleanedUpTitle); //Search Views use H1 instead of H2.
                             $('#' + view.id + ' .view-header h2').text(cleanedUpTitle);
+                            $('#' + view.id + ' .kn-description').text(cleanedUpDescription);
                             Knack.views[view.id].model.view.title = cleanedUpTitle;
                             Knack.views[view.id].model.view.description = cleanedUpDescription;
                             Knack.views[view.id].model.view.orgTitle = orgTitle;
