@@ -63,7 +63,7 @@
 }
 
 .ktlHidden {
-	position: absolute;
+	position: absolute!important;
 	left: -9000px;
 }
 
