@@ -4167,19 +4167,19 @@ function Ktl($, info) {
             var header = '';
             var fieldId = '';
 
-            console.log('columns =', columns);
+            //console.log('columns =', columns);
 
             columns.forEach(col => {
-                console.log('col =', col);
+                //console.log('col =', col);
 
                 header = col.header;
-                console.log('header =', header);
+                //console.log('header =', header);
                 if (keywords._hc.includes(header))
                     hiddenHeadersAr.push(header);
 
                 fieldId = (col.id || (col.field && col.field.key));
                 if (fieldId) {
-                    console.log('fieldId =', fieldId);
+                    //console.log('fieldId =', fieldId);
                     if (keywords._hc.includes(fieldId))
                         hiddenFieldsAr.push(fieldId);
                     
@@ -4188,8 +4188,8 @@ function Ktl($, info) {
                 }
             })
 
-            console.log('hiddenFieldsAr =', hiddenFieldsAr);
-            console.log('hiddenHeadersAr =', hiddenHeadersAr);
+            //console.log('hiddenFieldsAr =', hiddenFieldsAr);
+            //console.log('hiddenHeadersAr =', hiddenHeadersAr);
             if (hiddenFieldsAr.length || hiddenHeadersAr.length)
                 ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr, hiddenHeadersAr);
             if (removedFieldsAr.length)
@@ -5128,7 +5128,7 @@ function Ktl($, info) {
                 if (headers && headers.length > 0) {
                     $("div.kn-table.kn-view." + viewId + " table.kn-table thead tr th").each(function (index) {
                         header = $(this)[0].innerText;
-                        console.log('header =', header);
+                        //console.log('header =', header);
 
                         if (headers.some(function (v) { return header.indexOf(v) >= 0; })) {
                             if (remove)
@@ -5138,7 +5138,7 @@ function Ktl($, info) {
 
                             //Remember each columns where cells muse be removed.
                             column = index + 1;
-                            console.log('column =', column);
+                            //console.log('column =', column);
 
                             //Remove each row's data.
                             $("div.kn-table.kn-view." + viewId + " table tr:not(.kn-table-group)").each(function () {
@@ -7754,12 +7754,21 @@ function Ktl($, info) {
                     var sel = '#' + viewId + ' tr.kn-table-totals';
                     ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
                         .then(function () {
-                            var head = document.querySelector('#' + viewId + ' thead tr').querySelectorAll('th').length;
-                            var total = document.querySelector('#' + viewId + ' .kn-table-totals').querySelectorAll('td').length;
-                            if (head <= total) return;
-                            $('#' + viewId + ' tr.kn-table-totals').each(function () {
-                                $(this).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                            });
+                            var head = $('#' + viewId + ' thead tr th:visible').length;
+                            var total = $('#' + viewId + ' .kn-table-totals td:visible').length;
+
+                            console.log('head =', head);
+                            console.log('total =', total);
+
+                            if (head < total) {
+                                //Remove extra cells.
+
+                            } else if (head > total) {
+                                //Add extra cells.
+                                $('#' + viewId + ' tr.kn-table-totals').each(function () {
+                                    $(this).prepend('<td style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                });
+                            }
                         })
                         .catch(function () { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId); })
                 }
