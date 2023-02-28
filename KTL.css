@@ -67,6 +67,10 @@
 	left: -9000px;
 }
 
+.ktlDisplayNone {
+	display: none!important;
+}
+
 /************ Tooltips **************/
 .tooltip {
 	position: relative;
