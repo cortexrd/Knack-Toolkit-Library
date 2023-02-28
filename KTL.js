@@ -4154,10 +4154,36 @@ function Ktl($, info) {
             }
         }
 
+
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutRec => {
+                var target = mutRec.target;
+                if (mutRec.target.id && mutRec.addedNodes.length && target.classList.contains('kn-table') || target.classList.contains('kn-search')) {
+                    const viewId = mutRec.target.id;
+                    console.log('viewId =', viewId);
+                    var keywords = Knack.views[viewId].model.view.keywords;
+                    console.log('keywords =', keywords);
+                    //if (!Knack.views[viewId].model.hiddenColumnsDone)
+                    keywords._hc && hideColumns(Knack.views[viewId].model.view, keywords);
+                }
+            })
+        });
+
+        observer.observe(document.querySelector('.kn-content'), {
+            childList: true,
+            subtree: true,
+        });
+
+
+
+
+
+
         function hideColumns(view = '', keywords) {
             if (!view.key || (view.type !== 'table' && view.type === 'search')) return;
 
-            console.log('_hc =', keywords._hc);
+            console.log('hideColumns _hc =', view.key, keywords._hc);
 
             var model = (Knack.views[view.key] && Knack.views[view.key].model);
             var columns = model.view.columns;
@@ -4198,6 +4224,8 @@ function Ktl($, info) {
 
             if (removedFieldsAr.length || removedHeadersAr.length)
                 ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr, removedHeadersAr);
+
+            model.hiddenColumnsDone = true;
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
@@ -5088,7 +5116,7 @@ function Ktl($, info) {
 
                 var view = Knack.views[viewId];
                 var columns = view.model.view.columns;
-                console.log('columns =', columns);
+                //console.log('columns =', columns);
 
                 const totals = Knack.router.scene_view.model.views._byId[viewId].attributes.totals;
                 var needRefresh = false;
@@ -5097,12 +5125,13 @@ function Ktl($, info) {
                     var fieldId = col.id;
                     var header = col.header;
                     if (headers.includes(header)) {
-                        console.log('fieldId =', i, fieldId, header);
+                        //console.log('fieldId =', i, fieldId, header);
 
                         if (remove) {
                             columns.splice(i, 1);
                             needRefresh = true;
                         }
+
                         $('#' + viewId + ' [data-column-index="' + i + '"]').addClass('ktlDisplayNone');
                         $('#' + viewId + ' tbody tr td:nth-child(' + (i + 1) + ')').addClass('ktlDisplayNone');
                         $('#' + viewId + ' thead tr th')[i].classList.add('ktlDisplayNone');
@@ -5111,11 +5140,11 @@ function Ktl($, info) {
                     }
                 }
 
-                console.log('fix for view');
-                if (needRefresh)
-                    ktl.views.refreshView(viewId);
-                else
-                    ktl.bulkOps.fixTableRowsAlignment(viewId);
+                //console.log('fix for view');
+                //if (needRefresh)
+                //    false && ktl.views.refreshView(viewId);
+                //else
+                //    ktl.bulkOps.fixTableRowsAlignment(viewId);
 
 /*
                 if (columnsArray && columnsArray.length > 0) {
