@@ -3914,7 +3914,7 @@ function Ktl($, info) {
 
                     //The fix is needed here also because the totals are rendered once again after the view in some cases.
                     if (!ktl.scenes.isiFrameWnd())
-                        ktl.bulkOps.fixBulkOpsAlignment(viewId);
+                        ktl.bulkOps.fixTableRowsAlignment(viewId);
                 }
             }
         })
@@ -3988,7 +3988,7 @@ function Ktl($, info) {
                             keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
                             keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
                             keywords._nf && disableFilterOnFields(view, keywords);
-                            keywords._hc && hideColumns(view, keywords);
+                            (keywords._hc || keywords._rc) && hideColumns(view, keywords);
                         }
                     }
 
@@ -4164,6 +4164,7 @@ function Ktl($, info) {
             var hiddenFieldsAr = [];
             var hiddenHeadersAr = [];
             var removedFieldsAr = [];
+            var removedHeadersAr = [];
             var header = '';
             var fieldId = '';
 
@@ -4174,13 +4175,15 @@ function Ktl($, info) {
 
                 header = col.header;
                 //console.log('header =', header);
-                if (keywords._hc.includes(header))
+                if (keywords._hc && keywords._hc.includes(header))
                     hiddenHeadersAr.push(header);
+                else if (keywords._rc && keywords._rc.includes(header))
+                    removedHeadersAr.push(header);
 
                 fieldId = (col.id || (col.field && col.field.key));
                 if (fieldId) {
                     //console.log('fieldId =', fieldId);
-                    if (keywords._hc.includes(fieldId))
+                    if (keywords._hc && keywords._hc.includes(fieldId))
                         hiddenFieldsAr.push(fieldId);
                     
                 //    else if (header.includes('_remove') || header.includes('_rc'))
@@ -4192,8 +4195,9 @@ function Ktl($, info) {
             //console.log('hiddenHeadersAr =', hiddenHeadersAr);
             if (hiddenFieldsAr.length || hiddenHeadersAr.length)
                 ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr, hiddenHeadersAr);
-            if (removedFieldsAr.length)
-                ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr);
+
+            if (removedFieldsAr.length || removedHeadersAr.length)
+                ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr, removedHeadersAr);
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
@@ -5078,6 +5082,42 @@ function Ktl($, info) {
                     return;
                 }
 
+                //console.log('columnsArray =', columnsArray);
+                //console.log('fieldsArray =', fieldsArray);
+                //console.log('headers =', headers);
+
+                var view = Knack.views[viewId];
+                var columns = view.model.view.columns;
+                console.log('columns =', columns);
+
+                const totals = Knack.router.scene_view.model.views._byId[viewId].attributes.totals;
+                var needRefresh = false;
+                for (var i = columns.length-1; i >= 0; i--) {
+                    var col = columns[i];
+                    var fieldId = col.id;
+                    var header = col.header;
+                    if (headers.includes(header)) {
+                        console.log('fieldId =', i, fieldId, header);
+
+                        if (remove) {
+                            columns.splice(i, 1);
+                            needRefresh = true;
+                        }
+                        $('#' + viewId + ' [data-column-index="' + i + '"]').addClass('ktlDisplayNone');
+                        $('#' + viewId + ' tbody tr td:nth-child(' + (i + 1) + ')').addClass('ktlDisplayNone');
+                        $('#' + viewId + ' thead tr th')[i].classList.add('ktlDisplayNone');
+                        if (totals && totals.length)
+                            $('#' + viewId + ' .kn-table-totals td')[i].classList.add('ktlDisplayNone');
+                    }
+                }
+
+                console.log('fix for view');
+                if (needRefresh)
+                    ktl.views.refreshView(viewId);
+                else
+                    ktl.bulkOps.fixTableRowsAlignment(viewId);
+
+/*
                 if (columnsArray && columnsArray.length > 0) {
                     columnsArray.forEach(function (el) {
                         //Remove Header
@@ -5151,11 +5191,11 @@ function Ktl($, info) {
                                 }
                             })
 
-                            ktl.bulkOps.fixBulkOpsAlignment(viewId);
                             //document.querySelectorAll('#' + viewId + ' .kn-table-totals td')[column - 1].style.display = 'none';
                         }
                     })
                 }
+*/
             },
 
             //Pass a list of field IDs and returns the first found.
@@ -7430,7 +7470,7 @@ function Ktl($, info) {
         //Called upon each view rendering.
         function enableBulkOperations(view, data) {
             ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
-            ktl.bulkOps.fixBulkOpsAlignment(view.key);
+            ktl.bulkOps.fixTableRowsAlignment(view.key);
 
             var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
             if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
@@ -7747,10 +7787,11 @@ function Ktl($, info) {
                 })
             },
 
-            fixBulkOpsAlignment: function (viewId) {
+            fixTableRowsAlignment: function (viewId) {
                 if (!viewId || document.querySelector('#' + viewId + ' tr.kn-tr-nodata')) return;
-                //For summary lines, prepend a space.
-                if (Knack.router.scene_view.model.views._byId[viewId].attributes.totals && Knack.router.scene_view.model.views._byId[viewId].attributes.totals.length) {
+                //For summary lines, prepend a space if Bulk Ops are enabled.
+                const totals = Knack.router.scene_view.model.views._byId[viewId].attributes.totals;
+                if (totals && totals.length) {
                     var sel = '#' + viewId + ' tr.kn-table-totals';
                     ktl.core.waitSelector(sel, 10000) //For some reason, totals need extra wait time due to delayed server response.
                         .then(function () {
@@ -7762,6 +7803,13 @@ function Ktl($, info) {
 
                             if (head < total) {
                                 //Remove extra cells.
+                                var cols = document.querySelectorAll('#' + viewId + ' th.ktlDisplayNone');
+                                console.log('cols =', cols);
+                                cols.forEach(col => {
+                                    console.log('col.cellIndex =', col.cellIndex);
+                                    $('#' + viewId + ' .kn-table-totals td')[col.cellIndex].classList.add('ktlDisplayNone');
+                                })
+                                //cellIndex
 
                             } else if (head > total) {
                                 //Add extra cells.
@@ -7956,18 +8004,20 @@ function Ktl($, info) {
         if (Knack.router) {
             clearInterval(kwCleanupItv);
 
+            var viewId = '';
             for (var i = 0; i < Knack.scenes.length; i++) {
                 var scn = Knack.scenes.models[i];
                 var views = scn.views;
                 for (var j = 0; j < views.models.length; j++) {
                     var view = views.models[j];
                     if (view) {
+                        viewId = view.id;
                         var keywords = {};
                         var title = view.attributes.title;
                         var cleanedUpTitle = title;
                         var firstKeywordIdx;
                         if (title) {
-                            firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-z0-9]\w*)/m);
+                            firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                             if (firstKeywordIdx >= 0) {
                                 cleanedUpTitle = title.substring(0, firstKeywordIdx);
                                 parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
@@ -7977,7 +8027,7 @@ function Ktl($, info) {
                         var description = view.attributes.description;
                         var cleanedUpDescription = description;
                         if (description) {
-                            firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-z0-9]\w*)/m);
+                            firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                             if (firstKeywordIdx >= 0) {
                                 cleanedUpDescription = description.substring(0, firstKeywordIdx);
 
@@ -8008,9 +8058,12 @@ function Ktl($, info) {
             }
 
             function parseKeywords(keywords, strToParse) {
+                //if (viewId === 'view_2927')
+                //    debugger;
+
                 var kwAr = [];
                 if (strToParse && strToParse !== '') {
-                    var kwAr = strToParse.split(/(_[a-z]{2,})/gm);
+                    var kwAr = strToParse.split(/(_[a-zA-Z]{2,})/gm);
                     kwAr.splice(0, 1);
                     for (var i = 0; i < kwAr.length; i++) {
                         kwAr[i] = kwAr[i].trim();
@@ -8021,7 +8074,7 @@ function Ktl($, info) {
                 function parseParams(kwString, kwIdx) {
                     var kw = [];
                     if (kwAr[i].startsWith('_')) {
-                        keywords[kwAr[i]] = [];
+                        keywords[kwAr[i].toLowerCase()] = [];
                         return;
                     } else if (kwAr[i].startsWith('='))
                         kw = kwString.split('=');
@@ -8034,8 +8087,8 @@ function Ktl($, info) {
                         })
                     }
 
-                    kwAr[kwIdx - 1] = kwAr[kwIdx - 1].toLowerCase();
-                    keywords[kwAr[kwIdx - 1]] = params;
+                    //kwAr[kwIdx - 1] = kwAr[kwIdx - 1].toLowerCase();
+                    keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
                 }
             }
 
