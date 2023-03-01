@@ -3891,6 +3891,7 @@ function Ktl($, info) {
             bgColorFalse: '#f04a3b',
             bgColorPending: '#dd08',
         };
+        var observer = null;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
@@ -3988,7 +3989,9 @@ function Ktl($, info) {
                             keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
                             keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
                             keywords._nf && disableFilterOnFields(view, keywords);
-                            (keywords._hc || keywords._rc) && hideColumns(view, keywords);
+
+                            //(keywords._hc || keywords._rc) && kwHideColumns(view, keywords);
+                            keywords._rc && kwHideColumns(view, keywords);
                         }
                     }
 
@@ -4154,36 +4157,37 @@ function Ktl($, info) {
             }
         }
 
+        if (!observer) {
+            var itv = setInterval(() => {
+                if (keywordsCleanupDone) {
+                    clearInterval(itv);
+                    observer = new MutationObserver((mutations) => {
+                        mutations.forEach(mutRec => {
+                            const knView = mutRec.target.closest('.kn-view');
+                            viewId = knView && knView.id;
+                            if (viewId && mutRec.target.localName === 'tbody') {
+                                var keywords = Knack.views[viewId].model.view.keywords;
+                                keywords._hc && kwHideColumns(Knack.views[viewId].model.view, keywords);
+                            }
+                        })
+                    });
 
-
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutRec => {
-                var target = mutRec.target;
-                if (mutRec.target.id && mutRec.addedNodes.length && target.classList.contains('kn-table') || target.classList.contains('kn-search')) {
-                    const viewId = mutRec.target.id;
-                    console.log('viewId =', viewId);
-                    var keywords = Knack.views[viewId].model.view.keywords;
-                    console.log('keywords =', keywords);
-                    //if (!Knack.views[viewId].model.hiddenColumnsDone)
-                    keywords._hc && hideColumns(Knack.views[viewId].model.view, keywords);
+                    observer.observe(document.querySelector('.kn-content'), {
+                        childList: true,
+                        subtree: true,
+                    });
                 }
-            })
-        });
-
-        observer.observe(document.querySelector('.kn-content'), {
-            childList: true,
-            subtree: true,
-        });
+            }, 50);
+        }
 
 
 
 
 
-
-        function hideColumns(view = '', keywords) {
+        function kwHideColumns(view = '', keywords = {}) {
             if (!view.key || (view.type !== 'table' && view.type === 'search')) return;
 
-            console.log('hideColumns _hc =', view.key, keywords._hc);
+            //console.log('hideColumns _hc =', view.key, keywords._hc);
 
             var model = (Knack.views[view.key] && Knack.views[view.key].model);
             var columns = model.view.columns;
@@ -4211,9 +4215,6 @@ function Ktl($, info) {
                     //console.log('fieldId =', fieldId);
                     if (keywords._hc && keywords._hc.includes(fieldId))
                         hiddenFieldsAr.push(fieldId);
-                    
-                //    else if (header.includes('_remove') || header.includes('_rc'))
-                //        removedFieldsAr.push(fieldId);
                 }
             })
 
@@ -4224,8 +4225,6 @@ function Ktl($, info) {
 
             if (removedFieldsAr.length || removedHeadersAr.length)
                 ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr, removedHeadersAr);
-
-            model.hiddenColumnsDone = true;
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
@@ -5099,132 +5098,39 @@ function Ktl($, info) {
                 You may use both arrays at same time, but columnsArray has precedence.
             */
             //////////////////////////////////////////////////////////////////
-            removeTableColumns: function (viewId = '', remove = true, columnsArray = [], fieldsArray = [], headers = []) {
-                var header;
-                var cell;
-                var column;
-
+            removeTableColumns: function (viewId = '', remove = true, columnsAr = [], fieldsAr = [], headersAr = []) {
                 if (!viewId ||
-                    ((fieldsArray && fieldsArray.length === 0) && (columnsArray && columnsArray.length === 0)) && (headers && headers.length === 0) ) {
+                    ((fieldsAr && fieldsAr.length === 0) && (columnsAr && columnsAr.length === 0)) && (headersAr && headersAr.length === 0) ) {
                     ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
                     return;
                 }
 
                 //console.log('columnsArray =', columnsArray);
                 //console.log('fieldsArray =', fieldsArray);
-                //console.log('headers =', headers);
+                //console.log('headersAr =', headersAr);
 
                 var view = Knack.views[viewId];
                 var columns = view.model.view.columns;
-                //console.log('columns =', columns);
-
-                const totals = Knack.router.scene_view.model.views._byId[viewId].attributes.totals;
-                var needRefresh = false;
                 for (var i = columns.length-1; i >= 0; i--) {
                     var col = columns[i];
-                    var fieldId = col.id;
-                    var header = col.header;
-                    if (headers.includes(header)) {
-                        //console.log('fieldId =', i, fieldId, header);
-
+                    if (headersAr.includes(col.header) || columnsAr.includes(i) || fieldsAr.includes(col.id)) {
                         if (remove) {
                             columns.splice(i, 1);
-                            needRefresh = true;
-                        }
+                        } else {
+                            var thead = $('#' + viewId + ' thead tr th:contains("' + col.header + '")');
+                            if (thead.length) {
+                                var cellIndex = thead[0].cellIndex;
 
-                        $('#' + viewId + ' [data-column-index="' + i + '"]').addClass('ktlDisplayNone');
-                        $('#' + viewId + ' tbody tr td:nth-child(' + (i + 1) + ')').addClass('ktlDisplayNone');
-                        $('#' + viewId + ' thead tr th')[i].classList.add('ktlDisplayNone');
-                        if (totals && totals.length)
-                            $('#' + viewId + ' .kn-table-totals td')[i].classList.add('ktlDisplayNone');
+                                //console.log('Hiding columns', viewId, cellIndex, col.header);
+                                //console.log('thead =', thead);
+                                thead[0].classList.add('ktlDisplayNone');
+                                $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').addClass('ktlDisplayNone');
+                                var knTotals = $('#' + viewId + ' .kn-table-totals td')[cellIndex];
+                                knTotals && knTotals.classList.add('ktlDisplayNone');
+                            }
+                        }
                     }
                 }
-
-                //console.log('fix for view');
-                //if (needRefresh)
-                //    false && ktl.views.refreshView(viewId);
-                //else
-                //    ktl.bulkOps.fixTableRowsAlignment(viewId);
-
-/*
-                if (columnsArray && columnsArray.length > 0) {
-                    columnsArray.forEach(function (el) {
-                        //Remove Header
-                        header = $('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(' + el + ')');
-                        if (remove)
-                            header.remove();
-                        else
-                            header.css({ 'display': 'none' });
-
-                        //Remove each data field
-                        cell = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td:nth-child(' + el + ')');
-                        if (cell.length > 0) {
-                            if (remove)
-                                cell.remove();
-                            else
-                                cell.css({ 'display': 'none' });
-                        }
-                    })
-                }
-
-                if (fieldsArray && fieldsArray.length > 0) {
-                    $("div.kn-table.kn-view." + viewId + " table.kn-table thead tr th").each(function (index) {
-                        header = $(this)[0].className;
-
-                        if (fieldsArray.some(function (v) { return header.indexOf(v) >= 0; })) {
-                            if (remove)
-                                $(this).remove(); //Remove header.
-                            else
-                                $(this).css({ 'display': 'none' });
-
-                            //Remember each columns where cells muse be removed.
-                            column = index + 1;
-
-                            //Remove each row's data.
-                            $("div.kn-table.kn-view." + viewId + " table tr:not(.kn-table-group)").each(function () {
-                                cell = $(this).find('td:nth-child(' + column.toString() + ')');
-                                if (cell.length > 0) {
-                                    if (remove)
-                                        cell.remove(); //Remove cell.
-                                    else
-                                        cell.css({ 'display': 'none' });
-                                }
-                            })
-                        }
-                    })
-                }
-
-                if (headers && headers.length > 0) {
-                    $("div.kn-table.kn-view." + viewId + " table.kn-table thead tr th").each(function (index) {
-                        header = $(this)[0].innerText;
-                        //console.log('header =', header);
-
-                        if (headers.some(function (v) { return header.indexOf(v) >= 0; })) {
-                            if (remove)
-                                $(this).remove(); //Remove header.
-                            else
-                                $(this).css({ 'display': 'none' });
-
-                            //Remember each columns where cells muse be removed.
-                            column = index + 1;
-                            //console.log('column =', column);
-
-                            //Remove each row's data.
-                            $("div.kn-table.kn-view." + viewId + " table tr:not(.kn-table-group)").each(function () {
-                                cell = $(this).find('td:nth-child(' + column.toString() + ')');
-                                if (cell.length > 0) {
-                                    if (remove)
-                                        cell.remove(); //Remove cell.
-                                    else
-                                        cell.css({ 'display': 'none' });
-                                }
-                            })
-
-                            //document.querySelectorAll('#' + viewId + ' .kn-table-totals td')[column - 1].style.display = 'none';
-                        }
-                    })
-                }
-*/
             },
 
             //Pass a list of field IDs and returns the first found.
@@ -7832,14 +7738,12 @@ function Ktl($, info) {
 
                             if (head < total) {
                                 //Remove extra cells.
-                                var cols = document.querySelectorAll('#' + viewId + ' th.ktlDisplayNone');
-                                console.log('cols =', cols);
-                                cols.forEach(col => {
-                                    console.log('col.cellIndex =', col.cellIndex);
-                                    $('#' + viewId + ' .kn-table-totals td')[col.cellIndex].classList.add('ktlDisplayNone');
-                                })
-                                //cellIndex
-
+                            //    var cols = document.querySelectorAll('#' + viewId + ' th.ktlDisplayNone');
+                            //    console.log('cols =', cols);
+                            //    cols.forEach(col => {
+                            //        console.log('col.cellIndex =', col.cellIndex);
+                            //        $('#' + viewId + ' .kn-table-totals td')[col.cellIndex].classList.add('ktlDisplayNone');
+                            //    })
                             } else if (head > total) {
                                 //Add extra cells.
                                 $('#' + viewId + ' tr.kn-table-totals').each(function () {
@@ -8081,6 +7985,20 @@ function Ktl($, info) {
                             Knack.views[view.id].model.view.description = cleanedUpDescription;
                             Knack.views[view.id].model.view.orgTitle = orgTitle;
                             Knack.views[view.id].model.view.keywords = keywords;
+
+                            //Pre-processing of specific keywords.
+                            if (keywords._rc) {
+                            //    var view = Knack.views[view.id];
+                            //    var columns = view.model.view.columns;
+                            //    for (var i = columns.length - 1; i >= 0; i--) {
+                            //        var col = columns[i];
+                            //        if (headersAr.includes(col.header) || columnsAr.includes(i) || fieldsAr.includes(col.id)) {
+                            //            if (remove) {
+                            //                columns.splice(i, 1);
+                            //            }
+                            //        }
+                            //    }
+                            }
                         }
                     }
                 }
