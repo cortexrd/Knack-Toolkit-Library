@@ -26,7 +26,7 @@ function Ktl($, info) {
 
     var ktl = this;
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1025
+    //KEC stands for "KTL Event Code".  Next:  KEC_1026
     //
 
     /**
@@ -376,19 +376,19 @@ function Ktl($, info) {
             // Returns Top Menu, Menu and Link.
             getMenuInfo: function () {
                 var linkStr = window.location.href;
-                var topMenu = null;
                 var topMenuStr = '';
+                var topMenu = '';
                 var menuStr = '';
+                var pageStr = Knack.scenes._byId[Knack.router.current_scene].attributes.name;
 
-                var menuElem = document.querySelector('#app-menu-list .is-active > a > span');
-                menuElem && (menuStr = menuElem.innerText);
-
+                var menuElem = document.querySelector('#app-menu-list .is-active');
                 if (ktl.core.isKiosk()) {
                     topMenuStr = 'Kiosk Mode - no menu'; //For some reason, Kiosk's Menu have many entries.
                 } else {
-                    menuElem && (topMenu = menuElem.closest('.kn-dropdown-menu'));
+                    menuElem && (topMenu = (menuElem.closest('.kn-dropdown-menu') || menuElem.closest('.kn-dropdown-menu') || document.querySelector('#kn-app-menu li.is-active')));
                     if (topMenu) {
                         topMenuStr = topMenu.innerText;
+                        menuStr = menuElem.textContent;
 
                         //Special case for Apple devices, where all menus are included.  Must cleanup and keep only first one.
                         if (topMenuStr.length >= 13 && topMenuStr.substr(0, 13) === '\n            ') {
@@ -398,7 +398,7 @@ function Ktl($, info) {
                     }
                 }
 
-                return { topmenu: topMenuStr.trim(), menu: menuStr.trim(), link: linkStr.trim() };
+                return { topmenu: topMenuStr.trim(), menu: menuStr.trim(), page: pageStr.trim(), link: linkStr.trim() };
             },
 
             isHex: function (str) {
@@ -1125,7 +1125,6 @@ function Ktl($, info) {
 
         $(document).on('input', function (e) {
             if (!ktl.fields.getUsingBarcode()) {
-                ktl.fields.enforceNumeric();
 
                 //Process special field keywords
                 var fieldDesc = ktl.fields.getFieldDescription(e.target.id);
@@ -1133,7 +1132,15 @@ function Ktl($, info) {
                     fieldDesc = fieldDesc.toLowerCase();
                     if (fieldDesc.includes('_uc'))
                         e.target.value = e.target.value.toUpperCase();
+
+                    if (fieldDesc.includes('_num'))
+                        e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+
+                    if (fieldDesc.includes('_int'))
+                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
                 }
+
+                ktl.fields.enforceNumeric();
 
                 if ($(e.target).length > 0) {
                     var inputVal = $(e.target).val();
@@ -1248,7 +1255,8 @@ function Ktl($, info) {
                             var fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text,.kn-input-number');
                             fields.forEach(field => {
                                 var fieldId = field.attributes['data-input-id'].value;
-                                if (field.classList.contains('kn-input-number') || textAsNumeric.includes(fieldId)) {
+                                var fieldDesc = ktl.fields.getFieldDescription(fieldId);
+                                if (field.classList.contains('kn-input-number') || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
                                     if (!field.getAttribute('numeric')) {
                                         field.setAttribute('numeric', true);
 
@@ -1286,6 +1294,11 @@ function Ktl($, info) {
                             if (inputFld) {
                                 var value = inputFld.value;
                                 var fieldValid = !isNaN(value);
+
+                                var fieldDesc = ktl.fields.getFieldDescription(inputFld.id);
+                                if (fieldDesc && fieldDesc.includes('_int'))
+                                    fieldValid = fieldValid && (value.search(/[^0-9]/) === -1);
+
                                 formValid = formValid && fieldValid;
                                 inputFld.setAttribute('valid', fieldValid);
                                 $(inputFld).css('background-color', !fieldValid ? '#fdb0b0' : ''); //Same color as Knack errors.
@@ -3913,13 +3926,6 @@ function Ktl($, info) {
                     });
                 }
             }
-
-            var views = Knack.router.scene_view.model.views.models;
-            for (var v = 0; v < views.length; v++) {
-                var viewId = views[v].id;
-                if (viewId)
-                    ktl.views.addViewId(viewId);
-            }
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -4382,54 +4388,60 @@ function Ktl($, info) {
             //Parse the Knack object to find all views and start any applicable auto refresh interval timers for each, based on title.
             //Triggered when view title contains _ar=30 (for 30 seconds interval in this example).
             autoRefresh: function (run = true, autoRestart = true) {
-                clearTimeout(unPauseTimer);
-                if (run) {
-                    if (!$.isEmptyObject(autoRefreshViews))
-                        stopAutoRefresh(false); //Force a clean start.
+                var itv = setInterval(() => {
+                    if (keywordsCleanupDone) {
+                        clearInterval(itv);
 
-                    Knack.router.scene_view.model.views.models.forEach(function (eachView) {
-                        var view = eachView.attributes;
-                        var keywords = view.keywords;
-                        if (keywords._ar) {
-                            var intervalDelay = keywords._ar[0];
-                            intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
+                        clearTimeout(unPauseTimer);
+                        if (run) {
+                            if (!$.isEmptyObject(autoRefreshViews))
+                                stopAutoRefresh(false); //Force a clean start.
 
-                            //Add view to auto refresh list.
-                            if (!(view.key in autoRefreshViews)) {
-                                var intervalId = setInterval(function () {
-                                    ktl.views.refreshView(view.key).then(function () { });
-                                }, intervalDelay * 1000);
+                            Knack.router.scene_view.model.views.models.forEach(function (eachView) {
+                                var view = eachView.attributes;
+                                var keywords = view.keywords;
+                                if (keywords._ar) {
+                                    var intervalDelay = keywords._ar[0];
+                                    intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 
-                                autoRefreshViews[view.key] = { delay: intervalDelay, intervalId: intervalId };
+                                    //Add view to auto refresh list.
+                                    if (!(view.key in autoRefreshViews)) {
+                                        var intervalId = setInterval(function () {
+                                            ktl.views.refreshView(view.key).then(function () { });
+                                        }, intervalDelay * 1000);
+
+                                        autoRefreshViews[view.key] = { delay: intervalDelay, intervalId: intervalId };
+                                    }
+                                }
+                            })
+                            $('#' + PAUSE_REFRESH + '-label-id').css('background-color', '');
+                        } else
+                            stopAutoRefresh();
+
+                        $('#' + PAUSE_REFRESH + '-id').prop('checked', !run);
+
+                        //Stop all auto refresh interval timers for all views.
+                        function stopAutoRefresh(restart = true) {
+                            $('#' + PAUSE_REFRESH + '-label-id').css('background-color', 'red');
+                            const views = Object.entries(autoRefreshViews);
+                            if (views.length > 0) {
+                                views.forEach(function (element) {
+                                    var intervalId = element[1].intervalId;
+                                    clearInterval(intervalId);
+                                })
+
+                                autoRefreshViews = {};
+
+                                //For safety reasons, automatically 'un-pause' autoRefresh after five minutes to re-enable it.
+                                if (restart && autoRestart) {
+                                    unPauseTimer = setTimeout(function () {
+                                        ktl.views.autoRefresh();
+                                    }, FIVE_MINUTES_DELAY)
+                                }
                             }
                         }
-                    })
-                    $('#' + PAUSE_REFRESH + '-label-id').css('background-color', '');
-                } else
-                    stopAutoRefresh();
-
-                $('#' + PAUSE_REFRESH + '-id').prop('checked', !run);
-
-                //Stop all auto refresh interval timers for all views.
-                function stopAutoRefresh(restart = true) {
-                    $('#' + PAUSE_REFRESH + '-label-id').css('background-color', 'red');
-                    const views = Object.entries(autoRefreshViews);
-                    if (views.length > 0) {
-                        views.forEach(function (element) {
-                            var intervalId = element[1].intervalId;
-                            clearInterval(intervalId);
-                        })
-
-                        autoRefreshViews = {};
-
-                        //For safety reasons, automatically 'un-pause' autoRefresh after five minutes to re-enable it.
-                        if (restart && autoRestart) {
-                            unPauseTimer = setTimeout(function () {
-                                ktl.views.autoRefresh();
-                            }, FIVE_MINUTES_DELAY)
-                        }
                     }
-                }
+                }, 50);
             },
 
             addViewId: function (view, fontStyle = 'color: red; font-weight: bold; font-size:small') {
@@ -5481,7 +5493,7 @@ function Ktl($, info) {
                             Knack.hideSpinner();
                             ktl.scenes.spinnerWatchdog();
                             ktl.views.autoRefresh();
-                            alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
+                            alert('Error code KEC_1025 while processing Quick Toggle operation, reason: ' + JSON.stringify(reason));
                         })
                 }
             },
@@ -5604,8 +5616,8 @@ function Ktl($, info) {
 
             //Handle Scene change.
             if (prevScene !== scene.key) {
-                var menu = ktl.core.getMenuInfo().menu;
-                (ktl.core.getCfg().enabled.showMenuInTitle && menu) && (document.title = Knack.app.attributes.name + ' - ' + menu); //Add menu to browser's tab.
+                var page = ktl.core.getMenuInfo().page;
+                (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
 
                 if (prevScene) //Do not log navigation on first page - useless and excessive.  We only want transitions.
                     ktl.log.addLog(ktl.const.LS_NAVIGATION, scene.key + ', ' + JSON.stringify(ktl.core.getMenuInfo()), false);
