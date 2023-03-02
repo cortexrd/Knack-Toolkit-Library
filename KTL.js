@@ -61,6 +61,13 @@ function Ktl($, info) {
         MSG_APP: 'MSG_APP',
     }
 
+    //jQuery extension that searches a selector for text like :contains, but with an exact match, and after a spaces trim.
+    $.expr[':'].textEquals = function (el, i, m) {
+        var searchText = m[3];
+        var match = $(el).text().trim().match("^" + searchText + "$")
+        return match && match.length > 0;
+    }
+
     /**
         * Core functions
         * @param  {} function(
@@ -4187,7 +4194,7 @@ function Ktl($, info) {
             var fieldId = '';
 
             columns.forEach(col => {
-                header = col.header;
+                header = col.header.trim();
                 if (keywords._hc && keywords._hc.includes(header))
                     hiddenHeadersAr.push(header);
                 else if (keywords._rc && keywords._rc.includes(header))
@@ -5143,8 +5150,9 @@ function Ktl($, info) {
                 var columns = view.model.view.columns;
                 for (var i = columns.length - 1; i >= 0; i--) {
                     var col = columns[i];
-                    if (headersAr.includes(col.header) || columnsAr.includes(i) || fieldsAr.includes(col.id)) {
-                        var thead = $('#' + viewId + ' thead tr th:contains("' + col.header + '")');
+                    var header = col.header.trim();
+                    if (headersAr.includes(header) || columnsAr.includes(i) || fieldsAr.includes(col.id)) {
+                        var thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
                         if (thead.length) {
                             var cellIndex = thead[0].cellIndex;
                             if (remove) {
