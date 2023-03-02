@@ -5147,9 +5147,14 @@ function Ktl($, info) {
                         var thead = $('#' + viewId + ' thead tr th:contains("' + col.header + '")');
                         if (thead.length) {
                             var cellIndex = thead[0].cellIndex;
-                            thead[0].classList.add('ktlDisplayNone');
-                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').addClass('ktlDisplayNone');
-                            remove && columns.splice(i, 1);
+                            if (remove) {
+                                thead.remove();
+                                $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').remove();
+                                columns.splice(i, 1);
+                            } else {
+                                thead[0].classList.add('ktlDisplayNone');
+                                $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').addClass('ktlDisplayNone');
+                            }
                         }
                     }
                 }
