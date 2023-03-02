@@ -3997,8 +3997,8 @@ function Ktl($, info) {
                             keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
                             keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
                             keywords._nf && disableFilterOnFields(view, keywords);
-
                             (keywords._hc || keywords._rc) && kwHideColumns(view, keywords);
+                            keywords._dr && numDisplayedRecords(view, keywords);
                         }
                     }
 
@@ -4247,6 +4247,31 @@ function Ktl($, info) {
                     foundViewIds.push(foundViewId);
             }
             return foundViewIds;
+        }
+
+        function numDisplayedRecords(view, keywords) {
+            if (!view || !keywords._dr || !keywords._dr.length) return;
+
+            var viewId = view.key;
+            var perPage = keywords._dr[0];
+            var href = window.location.href;
+            if (!href.includes(viewId + '_per_page=')) {
+                Knack.showSpinner();
+                Knack.views[viewId].model.view.pagination_meta.page = 1;
+                Knack.views[viewId].model.view.source.page = 1;
+                Knack.views[viewId].model.view.pagination_meta.rows_per_page = perPage;
+                Knack.views[viewId].model.view.rows_per_page = perPage;
+                var i = {};
+                i[viewId + '_per_page'] = perPage;
+                i[viewId + '_page'] = 1;
+                Knack.router.navigate(Knack.getSceneHash() + "?" + Knack.getQueryString(i), false);
+                Knack.setHashVars();
+
+                Knack.models[viewId].fetch({
+                    success: () => { Knack.hideSpinner(); }
+                });
+            }
+
         }
 
         return {
