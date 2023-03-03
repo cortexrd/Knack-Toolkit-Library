@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.8.9';
+    const KTL_VERSION = '0.9.0';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2480,8 +2480,28 @@ function Ktl($, info) {
         $(document).on('knack-records-render.report knack-records-render.table', function (e, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
-            if (!window.self.frameElement && allowUserFilters() && $('#' + view.key + ' .kn-add-filter').length > 0)
-                ktl.userFilters.addFilterButtons(view.key);
+            const viewId = view.key;
+
+            if (!window.self.frameElement && allowUserFilters() && $('#' + viewId + ' .kn-add-filter').length > 0) {
+                ktl.userFilters.addFilterButtons(viewId);
+
+                //Link Filters feature
+                var keywords = Knack.views[viewId].model.view.keywords;
+                var viewIds = ktl.views.convertTitlesToViewIds(keywords._lf, viewId);
+                if (viewIds) {
+                    var view = Knack.models[viewId].view;
+                    viewIds.forEach(linkedViewId => {
+                        Knack.showSpinner();
+                        updateSearchTable(linkedViewId, document.querySelector('#' + viewId + ' .table-keyword-search input').value);
+                        updateFilters(linkedViewId, view.filters)
+                        updatePerPage(linkedViewId, view.rows_per_page);
+                        updateSort(linkedViewId, view.source.sort[0].field + '|' + view.source.sort[0].order);
+                        Knack.models[linkedViewId].fetch({
+                            success: () => { Knack.hideSpinner(); }
+                        });
+                    })
+                }
+            }
 
             if (view.type == 'table') {
                 var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
@@ -2800,9 +2820,8 @@ function Ktl($, info) {
                 })
             }
 
-            //var encodedNewFilter = encodeURIComponent(target.filter.filterString).replace(/'/g, "%27").replace(/"/g, "%22");
-            var encodedNewFilter = target.filter.filterString;
-            var allParams = filterUrlPart + '_filters=' + encodedNewFilter;
+            var filterString = target.filter.filterString;
+            var allParams = filterUrlPart + '_filters=' + filterString;
 
             if (target.filter.perPage)
                 allParams += '&' + filterUrlPart + '_per_page=' + target.filter.perPage;
@@ -2827,7 +2846,7 @@ function Ktl($, info) {
             if (!isReport) {
                 Knack.showSpinner();
                 updateSearchTable(filterDivId, target.filter.search);
-                updateFilters(filterUrlPart, JSON.parse(encodedNewFilter))
+                updateFilters(filterUrlPart, JSON.parse(filterString))
                 updatePerPage(filterDivId, target.filter.perPage);
                 updateSort(filterDivId, target.filter.sort);
                 Knack.models[filterDivId].fetch({
@@ -3990,7 +4009,7 @@ function Ktl($, info) {
 
         function ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
             var keywords = Knack.views[view.key].model.view.keywords;
-            var viewIds = convertTitlesToViewIds(keywords._rvd, view.key);
+            var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvd, view.key);
             viewIds.forEach(viewId => {
                 var eventField = view.events.event_field.key;
                 var recId = event.id;
@@ -4194,7 +4213,7 @@ function Ktl($, info) {
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
             if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
-            var viewIds = convertTitlesToViewIds(keywords._rvs, viewId);
+            var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvs, viewId);
             if (viewIds.length) {
                 $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
                     ktl.views.refreshViewArray(viewIds)
@@ -4204,21 +4223,9 @@ function Ktl($, info) {
 
         function refreshViewsAfterRefresh(viewId = '', keywords) {
             if (!viewId) return;
-            var viewIds = convertTitlesToViewIds(keywords._rvr, viewId);
+            var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvr, viewId);
             if (viewIds.length)
                 ktl.views.refreshViewArray(viewIds)
-        }
-
-        function convertTitlesToViewIds(viewTitles = [], viewId = '') {
-            if (!viewTitles.length) return;
-            var foundViewIds = [];
-            for (var i = 0; i < viewTitles.length; i++) {
-                var viewTitle = viewTitles[i].trim();
-                var foundViewId = ktl.scenes.findViewWithTitle(viewTitle, false, viewId);
-                if (foundViewId)
-                    foundViewIds.push(foundViewId);
-            }
-            return foundViewIds;
         }
 
         function numDisplayedRecords(view, keywords) {
@@ -5539,6 +5546,18 @@ function Ktl($, info) {
                         $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background', bgColor);
                     }
                 })
+            },
+
+            convertTitlesToViewIds: function (viewTitles = [], viewId = '') {
+                if (!viewTitles.length) return;
+                var foundViewIds = [];
+                for (var i = 0; i < viewTitles.length; i++) {
+                    var viewTitle = viewTitles[i].trim();
+                    var foundViewId = ktl.scenes.findViewWithTitle(viewTitle, false, viewId);
+                    if (foundViewId)
+                        foundViewIds.push(foundViewId);
+                }
+                return foundViewIds;
             },
         }
     })(); //views
