@@ -400,6 +400,8 @@ This option is “somewhat” a bit more secure than \_hc since it’s not as ea
 
 **\_dr=rowsNumber**: Displayed Records. Sets the initial number of rows in a table, allowing to go beyond the maximum value of 100 in the Builder. This is applied when the page is first opened.
 
+**\_lf= vTitle1,vTitle2**: Linked Filters. Add this to the main view, and all other views will apply the same filtering patters. The number of records per page, sort columns/order and searched text will also apply, if the view allows it.
+
 **\_dtp**: Add Date/Time Picker to a table. The table **must have a Date/Time field**, and the first one found from the left will be used. Six new fields will appear at the top of your table view: **From**, **To** and periods as **Monthly**, **Weekly**, and **Daily**. Depending on the active period, when you change From, the To field will automatically update itself accordingly, and the view will be filtered in real-time. On the other hand, if you change the To date, the From will not be affected, leaving you more flexibility. The focus is conveniently placed on the last field used so you can use the up/down arrows to scroll quickly through months and visualize data. This is also compatible with additional filter fields, provided that the AND operator is used. Once you have a filter that you like, it is also possible to save it as a [User Filter](#user-filters).
 
 **\_rvs=vTitle1,vTitle2**: Refresh Views after a Submit. Add this to a form’s title and when it is submitted successfully, will refresh any other views specified. Use the exact full title text, separated by commas, spaces are allowed.
@@ -855,6 +857,7 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | \_rvs=vTitle1, vTitle2…       | Refresh Views after Submit                     |                                                          | \_rvs=Monthly Sales, Clients    |
 | \_rvr=vTitle1, vTitle2…       | Refresh Views after Refresh                    |                                                          | \_rvr=Monthly Sales, Clients    |
 | \_rvd=vTitle1, vTitle2…       | Refresh Views after calendar event Drag’n Drop |                                                          | \_rvd=Monthly Sales, Clients    |
+| \_lf= vTitle1,vTitle2…        | Linked Filters                                 |                                                          | \_lf=Monthly Sales, Clients     |
 | \_qt=colorTrue,colorFalse     | Quick Toggle of Boolean fields                 |                                                          | \_qt=\#0F07,pink                |
 | \_mc=colHeader                | Match Color for whole row to a given column    |                                                          | \_mc=Sales                      |
 | \_hc= colHeader1, colHeader2… | Hide Columns, but keep in DOM                  |                                                          |                                 |
