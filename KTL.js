@@ -78,35 +78,7 @@ function Ktl($, info) {
         });
 
         var cfg = {
-            //IMPORTANT!!! DO NOT EDIT THIS SECTION.  Instead, use the ktl.core.setCfg function.
-            developerName: '',
-            developerEmail: '',
-            enabled: { //Main KTL feature switches.  By default, all is disabled and your App enables what is desired in ktl.core.setCfg.
-                showAppInfo: false,
-                showKtlInfo: false,
-                showMenuInTitle: false,
-                selTextOnFocus: false,
-                chznBetter: false,
-                autoFocus: false,
-                userFilters: false,
-                persistentForm: false,
-                debugWnd: false,
-                idleWatchDog: false,
-                spinnerWatchDog: false,
-
-                //Those below nust also be properly setup to have any effect.  See documentation.
-                iFrameWnd: false,
-                logging: {
-                    logins: false,
-                    navigation: false,
-                    activity: false,
-                },
-
-                bulkOps: {
-                    bulkEdit: false,
-                    bulkDelete: false,
-                },
-            },
+            //Let the App do the settings.  See function ktl.core.setCfg in KTL_KnackApp.js file.
         };
 
         var isKiosk = null;
