@@ -22,11 +22,16 @@
 
 # Introduction
 
-**Knack Toolkit Library**
+**What is the Knack Toolkit Library?**
 
-v0.8.6 - pre-release
+The Knack Toolkit Library, henceforth referred to as **KTL**, is a collection of open-source Javascript utilities that eases Knack application development and adds several features that are not easily created from the ground up.
 
-Knack Toolkit Library, henceforth referred to as **KTL**, is a collection of open-source Javascript utilities that eases Knack application development and add several features that are not easily created from the ground up. Those features that involve using the Knack API are 100% view-based, so your API key is never exposed.
+For the most part, you do not need to have any coding skills to benefit from the KTL. The simple **“keyword-based”** approach allows you to use the Builder to trigger the desired features and specific behavior.
+
+Most importantly, any of those features that *may* involve the usage of Knack’s API calls are:
+
+1.  Minimized to all extents possible
+2.  100% view-based, so **your API key is never exposed**.
 
 # Overview
 
@@ -48,10 +53,10 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 -   Idle timeout watchdog
 -   Spinner timeout watchdog
 -   Numeric pre-validation
--   Force uppercases on desired fields
+-   Force uppercase on desired fields
 -   Auto-focus on first field of a form or search field in a table
 -   Dropdown selector improvements
--   Kiosk mode
+-   Kiosk mode support
 -   Debug window for embedded devices
 
 Click the following link if you are interested to know more about [Advanced Features](#advanced-features).
@@ -252,9 +257,9 @@ This contains generic utility functions, used by most other features internally,
 -   **waitSelector**: When you need to wait until an element exists or is visible.
 -   **waitAndReload**: Waits for a specific delay, then reloads page.
 -   **switchVersion**: To toggle between production and development versions.
--   **enableDragElement**: To add basic drag and drop to an element.
+-   **enableDragElement**: Provides basic drag’n drop functionality to an element.
 -   **splitUrl**: Creates an array containing the path and parameters of the URL.
--   **getMenuInfo**: Retrieves the menu and sub-menu items.
+-   **getMenuInfo**: Retrieves the top menu, menu, page and URL information.
 -   **isHex**: For hexadecimal format validation.
 -   **isIPFormat**: For IP format validation.
 -   **getSubstringPosition**: Returns the index of the Nth occurrence of a string within a string.
@@ -309,7 +314,13 @@ Provides field-related features like auto-select all text on focus, convert from
 
 -   **setCfg**: Set all callbacks to your app, like keypress event handler and field value changed. Use the textAsNumeric array to specify which fields must be considered as numeric even though you have set them up as Short Text in Knack. This can be particularly useful in specific use cases. For example, you can dynamically change this to allow a unique Account Role to enter letters, while all others can only enter digits. It is possible to modify the radio buttons and checkboxes to have a horizontal layout by setting the horizontalRadioButtons and horizontalCheckboxes flags to true.
 -   **convertNumToTel**: All numeric fields will automatically be converted to telephone type. This has no negative or perceptible impact for all users, except that it allows mobile devices to switch the keyboard to telephone type for a more convenient numeric layout and also auto-selection of all text upon focus.
--   **enforceNumeric**: For all numeric fields, and any specified in textAsNumeric, validation will be performed. If non-numeric values are found, the submit button will be disabled and grayed out, and the field will be colorized with Knack's "pink" error indicator.
+-   **enforceNumeric**: Provides automatic pre-validation on those fields:
+    -   all **Number** type fields
+    -   any **Short Text** fields having the **\_int** or **\_num** keywords in their description
+    -   all fields specified in the **textAsNumeric** array.
+
+        If an illegal numeric value is found during typing, the submit button will be disabled (grayed out), and the field will be colorized with Knack's "pink" error indicator.
+
 -   **addButton**: Will add a button to a specified div element. You can specify the label, style, classes and ID, and it will return a button object to which you can attach your event handlers.
 -   **addCheckbox**: Similar to addButton, but for a checkbox.
 -   **addRadioButton**: Similar to addButton, but for radio buttons.
@@ -323,10 +334,17 @@ Provides field-related features like auto-select all text on focus, convert from
 
 ### Using field’s Description text box as keywords to trigger special behavior
 
-In the Builder, when you edit a field in the schema view, there’s a Description text box, where you can put your own notes, as a developer. Now, this can also be used by the KTL to trigger special behavior. You can add the keyword at the end of your description, or on a separate line, as you wish. Here is the list:
+In the Builder, when you edit a field in the schema view, there’s a Description text box, where you can put your own notes, as a developer. Now, this can also be used by the KTL to trigger special behavior. You can add the keyword **at the end** of your description, or on a separate line, as you wish.
 
--   **\_uc**: to convert text to uppercase in real-time
--   **\_ip**: enforce IP format, with automatic colons and hex char real-time validation (not yet implemented).
+Here is the list:
+
+**\_uc**: to convert text to uppercase in real-time
+
+**\_num**: Numeric characters only, including decimal dot. This will prevent entering any other characters even if the field type is short text. Validation is done in real time with enforceNumeric.
+
+**\_int**: Integer characters only (0-9). This will prevent entering any other characters even if the field type is short text. Validation is done in real time with enforceNumeric.
+
+**\_ip**: enforce IP format, with automatic colons and hex char real-time validation (not yet implemented).
 
 ## Views
 
@@ -356,15 +374,47 @@ Provides view-related features.
 -   **handleCalendarEventDrop**: Provides notification that a drag’n drop operation has been done on a calendar event. This can be used to sync a table to a calendar.
 -   **getDataFromRecId**: returns the data record for a given view and record ID. Works with Tables and Search views.
 
-### Using view’s Title to add keywords to trigger special behavior
+### Using view’s Title or Description to add keywords to trigger special behavior
 
-You can add these keywords **at the end of your view’s title** to trigger the behavior. The keyword and any text that follows will be truncated, thus not visible to the user.
+You can add reserved keywords **at the end of your view’s title** **or description** to trigger special behavior. The **first keyword found** - and any text that follows - will be truncated, thus not visible to the user. Some keywords require extra parameters, following the equal sign. Each parameter must be separated by a comma and spaces are allowed. The keywords are not case-sensitive, but the parameters are and must always be an **exact match** to take effect.
+
+Here is the list:
 
 **\_ar=n**: Auto Refresh view. The view will be refreshed periodically every “*n*” seconds. It is possible to manually start/stop the process using the autoRefresh function.
 
-**\_hv**: Hide View, away from screen but still existing in DOM.
+**\_hv**: Hide View. Moves the view away from screen but kept in DOM. Used to save real-estate, while maintaining API calls and automated search capabilities.
 
-**\_ht**: Hide View title, used to save real-estate in the App while keeping the title in the Builder.
+**\_ht**: Hide view Title. Used to save real-estate while keeping the title in the Builder.
+
+**\_hc=colHeader1, colHeader2**: Hide Columns. To hide the columns based on the header’s exact text. The columns are only hidden but still exist in DOM. The visibility can be reversed on the fly with a bit of extra code. Hiding a column is useful to save real-estate or hide its data, while maintaining API calls capability or allow filtering on all fields.
+
+**\_rc=colHeader1, colHeader2**: Remove Columns. To delete de columns based on the header’s exact text. This will delete them from the table **and** the DOM. Like \_hc, removing a column will maintain API calls capability and allow filtering on its field.
+
+This option is “somewhat” a bit more secure than \_hc since it’s not as easy to peek at data from the browser’s console. Though someone could intercept the data *before* it’s been removed, i.e. while it’s being sent by the server, so keep this in mind.
+
+**\_nf=field_x, field_y, field_z**: No Filtering. Will prevent filtering on these fields, even if they are visible in the table.
+
+**\_ni**: No Inline editing. Disables inline editing for the user, even if enabled in the Builder. Enabling inline editing is required for API calls in tables, but not always desirable at the user interface. This provides a solution.
+
+\* Note about \_ni security: use this keyword with caution as it only disables the user interface. Someone with coding skills and bad intentions could still modify the data using commands in the console.
+
+**\_dr=rowsNumber**: Displayed Records. Sets the initial number of rows in a table, allowing to go beyond the maximum value of 100 in the Builder. This is applied when the page is first opened.
+
+**\_dtp**: Add Date/Time Picker to a table. The table **must have a Date/Time field**, and the first one found from the left will be used. Six new fields will appear at the top of your table view: **From**, **To** and periods as **Monthly**, **Weekly**, and **Daily**. Depending on the active period, when you change From, the To field will automatically update itself accordingly, and the view will be filtered in real-time. On the other hand, if you change the To date, the From will not be affected, leaving you more flexibility. The focus is conveniently placed on the last field used so you can use the up/down arrows to scroll quickly through months and visualize data. This is also compatible with additional filter fields, provided that the AND operator is used. Once you have a filter that you like, it is also possible to save it as a [User Filter](#user-filters).
+
+**\_rvs=vTitle1,vTitle2**: Refresh Views after a Submit. Add this to a form’s title and when it is submitted successfully, will refresh any other views specified. Use the exact full title text, separated by commas, spaces are allowed.
+
+Ex: **Customer Sale \_rvs=Client Sales, Store Sales**
+
+Here, the form’s visible title will be “Customer Sales”, and when submitted successfully, the two views with the title “Client Sales” and “Store Sales” will be refreshed.
+
+**\_rvr=vTitle1,vTitle2**: Refresh Views after a Refresh. Same syntax as \_rvs. Used to trigger a refresh to other views. Care must be taken to avoid infinite circular loops: A\>B\>C\>A\>B\>C…
+
+**\_rvd=vTitle1,vTitle2**: Refresh Views after a Drop. Same syntax as \_rvs. Used to trigger a refresh to other views, after an event has been drag’n dropped in a Calendar view.
+
+**\_qt=bgColorTrue,bgColorFalse**: Quick Toggle of Boolean fields in a Table or Search view. Will queue all clicks on cells with a Yes/No type of fields and will invert their state in a background processing loop. Optional true/false/pending colors can be specified, compatible with all web formats like \#rrggbbaa, \#rgba and named colors (ex: darkolivegreen). The colors can be app-wide or on a per-view basis, as desired. See quickToggleParams for details in the KTL_KnackApp.js file.
+
+**\_mc=colHeader**: Match Color of the whole row to the cell at a specific column in a table. Can be used in conjunction with the \_qt feature to use its colors.
 
 **\_kr**: Kiosk add Refresh button. For Kiosk mode only, when there’s no keyboard/mouse.
 
@@ -372,43 +422,9 @@ You can add these keywords **at the end of your view’s title** to trigger the 
 
 **\_kd**: Kiosk add Done button.
 
-**\_ni**: No Inline editing. Disables inline editing for the user, while still enabled in Builder for API calls.
-
-\* Note about \_ni security: use this keyword with caution as it only disables the user interface. Someone with coding skills and bad intentions could still modify the data using commands in the console.
-
-**\_dtp**: Add Date/Time Picker to a table. The table **must have a Date/Time field**, and the first one found from the left will be used. Six new fields will appear at the top of your table view: **From**, **To** and periods as **Monthly**, **Weekly**, and **Daily**. Depending on the active period, when you change From, the To field will automatically update itself accordingly, and the view will be filtered in real-time. On the other hand, if you change the To date, the From will not be affected, leaving you more flexibility. The focus is conveniently placed on the last field used so you can use the up/down arrows to scroll quickly through months and visualize data. This is also compatible with additional filter fields, provided that the AND operator is used. Once you have a filter that you like, it is also possible to save it as a [User Filter](#user-filters).
-
-**\_rvs=v1,v2**: Refresh Views after a Submit. Add this to a form’s title and when it is submitted successfully, will refresh any other views specified. Use the exact full title text, separated by commas, spaces are allowed.
-
-Ex: **Customer Sale \_rvs=Client Sales, Store Sales**
-
-Here, the form’s visible title will be “Customer Sales”, and when submitted successfully, the two views with the title “Client Sales” and “Store Sales” will be refreshed.
-
-**\_rvr=v1,v2**: Refresh Views after a Refresh. Same syntax as \_rvs. Used to trigger a refresh to other views. Be careful not to induce a circular loop!
-
-**\_rvd=v1,v2**: Refresh Views after a Drop. Same syntax as \_rvs. Used to trigger a refresh to other views, after an event has been drag’n dropped in a Calendar view.
-
-**\_qt=bgColorTrue,bgColorFalse**: Quick Toggle of boolean fields in a Table or Search view. Will queue all clicks on cells with a Yes/No type of fields and will invert their state in a background processing loop. Optional true/false/pending colors can be specified, compatible with all web formats like \#rrggbbaa, \#rgba and named colors (ex: darkolivegreen). The colors can be app-wide or on a per-view basis, as desired. See quickToggleParams for details in the KTL_KnackApp.js file.
-
-**\_mc=columnHeader**: Match Color of the whole row to the cell at a specific column in a table. Can be used in conjunction with the \_qt feature to use its colors.
-
 **\_al**: Auto-Login, with AES encrypted email/pw stored in localStorage. This must be in the view title of the **login page**. Used to automate boot-up of Dashboards or other unattended devices. A first-time setup procedure must be done manually, by entering an encryption key then the email/pw information. This is done for each new device and can be bypassed if desired.
 
 **\_yourOwnKeywords**: You can also add your own app-specific keywords and process them in the callback function processViewKeywords.
-
-### Using view’s Description text box as keywords to trigger special behavior
-
-In the Builder, when you edit a view, there’s a Description text box, where you can put additional information to the user. Now, the KTL can also use this to trigger special behavior. You can add your keywords at the end of your description, or on a separate line, as you wish, as long as it’s at the end of your text. Currently, only tables are supported. Here is the list:
-
-**\_nf=field_x, field_y, field_z** This will prevent filtering on these fields, even if they are visible in the table. Each must have a comma separator, spaces are allowed.
-
-### Adding keywords to the tables header text to trigger special behavior
-
-In the Builder, when you edit a table view, you can add these keywords at the end of your header text to trigger special behavior:
-
-**\_hc**: To hide the column. The columns are only hidden and still exists in DOM. The visibility is reversible (hide/show) on the fly if needed.
-
-**\_rc**: To delete de column from the table and the DOM. “Somewhat” a bit more secure since it’s not easily possible to peek at data from the browser’s console. Though someone could intercept the data *before* it’s been removed, i.e. while it’s being sent by the server, so keep this in mind.
 
 ## Scenes
 
@@ -828,36 +844,37 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 # List of all Keywords
 
-| **Keyword**                   | **Description**                                | **Where to use it**          | **Example**                     |
-|-------------------------------|------------------------------------------------|------------------------------|---------------------------------|
-| \_ar=n                        | Auto-Refresh a view every *n* seconds          | View's Title                 | \_ar=60                         |
-| \_hv                          | Hidden View                                    |                              |                                 |
-| \_ht                          | Hidden Title                                   |                              |                                 |
-| \_ni                          | No Inline editing                              |                              |                                 |
-| \_ts                          | Adds a Time Stamp to a view                    |                              |                                 |
-| \_dtp                         | Adds Date/Time Pickers                         |                              |                                 |
-| \_rvs=viewTitle1, viewTitle2… | Refresh Views after Submit                     |                              | \_rvs=Monthly Sales, Clients    |
-| \_rvr=viewTitle1, viewTitle2… | Refresh Views after Refresh                    |                              | \_rvr=Monthly Sales, Clients    |
-| \_rvd=viewTitle1, viewTitle2… | Refresh Views after calendar event Drag’n Drop |                              | \_rvd=Monthly Sales, Clients    |
-| \_qt=colorTrue,colorFalse     | Quick Toggle of boolean fields                 |                              | \_qt=\#0F07,pink                |
-| \_mc=columnHeader             | Match Color for whole row to a given column    |                              | \_mc=Sales                      |
-| \_al                          | Auto-Login                                     | View’s Title of a login page |                                 |
-|                               |                                                |                              |                                 |
-| \_nf=f1,f2…                   | No Filtering on specified fields               | View's Description           | \_nf=field_1,field_2            |
-|                               |                                                |                              |                                 |
-| \_hc                          | Hide Column, but keep in DOM                   | Table's Column Header        |                                 |
-| \_rc                          | Remove Column, including DOM                   |                              |                                 |
-|                               |                                                |                              |                                 |
-| \_oln=url                     | Open Link in a New page (tab)                  | Rich Text view with link     | Support \_oln=https://ctrnd.com |
-| \_ols=url                     | Open Link in Same page                         | Rich Text view with link     | Support \_ols=https://ctrnd.com |
-|                               |                                                |                              |                                 |
-| \_uc                          | Convert to Uppercase                           | Field's description          |                                 |
-| \_ip                          | Validate IP format (to do)                     |                              |                                 |
-|                               |                                                |                              |                                 |
-| \_kr                          | Kiosk add Refresh button                       | Views, in Kiosk mode         |                                 |
-| \_kb                          | Kiosk add Back button                          |                              |                                 |
-| \_kd                          | Kiosk add Done button                          |                              |                                 |
-| \_kn                          | Kiosk No buttons (to clarify)                  |                              |                                 |
+| **Keyword**                   | **Description**                                | **Where to use it**                                      | **Example**                     |
+|-------------------------------|------------------------------------------------|----------------------------------------------------------|---------------------------------|
+| \_ar=n                        | Auto-Refresh a view every *n* seconds          | View Title or Description                                | \_ar=60                         |
+| \_hv                          | Hidden View                                    |                                                          |                                 |
+| \_ht                          | Hidden Title                                   |                                                          |                                 |
+| \_ni                          | No Inline editing                              |                                                          |                                 |
+| \_ts                          | Adds a Time Stamp to a view                    |                                                          |                                 |
+| \_dtp                         | Adds Date/Time Pickers                         |                                                          |                                 |
+| \_rvs=vTitle1, vTitle2…       | Refresh Views after Submit                     |                                                          | \_rvs=Monthly Sales, Clients    |
+| \_rvr=vTitle1, vTitle2…       | Refresh Views after Refresh                    |                                                          | \_rvr=Monthly Sales, Clients    |
+| \_rvd=vTitle1, vTitle2…       | Refresh Views after calendar event Drag’n Drop |                                                          | \_rvd=Monthly Sales, Clients    |
+| \_qt=colorTrue,colorFalse     | Quick Toggle of Boolean fields                 |                                                          | \_qt=\#0F07,pink                |
+| \_mc=colHeader                | Match Color for whole row to a given column    |                                                          | \_mc=Sales                      |
+| \_hc= colHeader1, colHeader2… | Hide Columns, but keep in DOM                  |                                                          |                                 |
+| \_rc= colHeader1, colHeader2… | Remove Columns, including DOM                  |                                                          |                                 |
+| \_nf=field_1,field_2…         | No Filtering on specified fields               |                                                          | \_nf=field_1,field_2            |
+|                               |                                                |                                                          |                                 |
+| \_al                          | Auto-Login                                     | View Title or Description of a login page                |                                 |
+|                               |                                                |                                                          |                                 |
+| \_oln=url                     | Open Link in a New page (tab)                  | Rich Text view with link                                 | Support \_oln=https://ctrnd.com |
+| \_ols=url                     | Open Link in Same page                         | Rich Text view with link                                 | Support \_ols=https://ctrnd.com |
+|                               |                                                |                                                          |                                 |
+| \_uc                          | Convert to Uppercase                           | Field Description                                        |                                 |
+| \_num                         | Numeric                                        |                                                          |                                 |
+| \_int                         | Integer                                        |                                                          |                                 |
+| \_ip                          | Validate IP format (to do)                     |                                                          |                                 |
+|                               |                                                |                                                          |                                 |
+| \_kr                          | Kiosk add Refresh button                       | View Title or Description. Effective in Kiosk mode only. |                                 |
+| \_kb                          | Kiosk add Back button                          |                                                          |                                 |
+| \_kd                          | Kiosk add Done button                          |                                                          |                                 |
+| \_kn                          | Kiosk No buttons (to clarify)                  |                                                          |                                 |
 
 ## All code and documentation written by:
 
