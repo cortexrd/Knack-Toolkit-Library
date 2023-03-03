@@ -1,5 +1,7 @@
 # ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
+Last update: March 3, 2023
+
 # Contents
 
 [Introduction](#introduction)
@@ -400,7 +402,7 @@ This option is “somewhat” a bit more secure than \_hc since it’s not as ea
 
 **\_dr=rowsNumber**: Displayed Records. Sets the initial number of rows in a table, allowing to go beyond the maximum value of 100 in the Builder. This is applied when the page is first opened.
 
-**\_lf= vTitle1,vTitle2**: Linked Filters. Add this to the main view, and all other views will apply the same filtering patters. The number of records per page, sort columns/order and searched text will also apply, if the view allows it.
+**\_lf= vTitle1,vTitle2**: Linked Filters. Add this to the main “controlling” view, and all other views will apply the same filtering pattern. The number of records per page, sort column+order and searched text will also apply, if the view allows it.
 
 **\_dtp**: Add Date/Time Picker to a table. The table **must have a Date/Time field**, and the first one found from the left will be used. Six new fields will appear at the top of your table view: **From**, **To** and periods as **Monthly**, **Weekly**, and **Daily**. Depending on the active period, when you change From, the To field will automatically update itself accordingly, and the view will be filtered in real-time. On the other hand, if you change the To date, the From will not be affected, leaving you more flexibility. The focus is conveniently placed on the last field used so you can use the up/down arrows to scroll quickly through months and visualize data. This is also compatible with additional filter fields, provided that the AND operator is used. Once you have a filter that you like, it is also possible to save it as a [User Filter](#user-filters).
 
@@ -878,6 +880,8 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | \_kb                          | Kiosk add Back button                          |                                                          |                                 |
 | \_kd                          | Kiosk add Done button                          |                                                          |                                 |
 | \_kn                          | Kiosk No buttons (to clarify)                  |                                                          |                                 |
+
+## 
 
 ## All code and documentation written by:
 
