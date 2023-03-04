@@ -65,7 +65,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                     KnackApp($, { hostname: ktlSvr, ktlVersion: ktlVersion, lsShortName: lsShortName });
                     callback();
                 } else {
-                    var fileName = prompt('Error - Cannot find KnackApp file.\nWhat is file name (without .js)?');
+                    var fileName = prompt('Error - Cannot find KnackApp file:\n' + appUrl + '\nWhat is file name (without .js)?');
                     localStorage.setItem(lsShortName + 'fileName', fileName);
                     location.reload(true);
                 }
