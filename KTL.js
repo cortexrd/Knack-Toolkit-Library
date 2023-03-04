@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.9.0';
+    const KTL_VERSION = '0.9.1';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -79,6 +79,7 @@ function Ktl($, info) {
 
         var cfg = {
             //Let the App do the settings.  See function ktl.core.setCfg in KTL_KnackApp.js file.
+            ktlConfig: '',
         };
 
         var isKiosk = null;
@@ -101,6 +102,7 @@ function Ktl($, info) {
                 cfgObj.developerEmail && (cfg.developerEmail = cfgObj.developerEmail);
                 cfgObj.enabled && (cfg.enabled = cfgObj.enabled);
                 cfgObj.isKiosk && (isKiosk = cfgObj.isKiosk);
+                cfgObj.ktlConfig && (cfg.ktlConfig = cfgObj.ktlConfig);
             },
 
             getCfg: function () {
@@ -325,9 +327,9 @@ function Ktl($, info) {
                 var urlParts = {};
                 var indexParams = url.indexOf('?');
                 if (indexParams === -1)
-                    urlParts['path'] = url;
+                    urlParts.path = url;
                 else
-                    urlParts['path'] = url.substring(0, indexParams);
+                    urlParts.path = url.substring(0, indexParams);
 
                 var params = {};
                 var pairs = url.substring(url.indexOf('?') + 1).split('&');
@@ -340,7 +342,7 @@ function Ktl($, info) {
                         params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
                 }
 
-                urlParts['params'] = params;
+                urlParts.params = params;
 
                 return urlParts;
             },
@@ -2405,7 +2407,7 @@ function Ktl($, info) {
             if (!views.length || ($.isEmptyObject(userFiltersObj) && $.isEmptyObject(publicFiltersObj))) return;
 
             var parts = ktl.core.splitUrl(window.location.href);
-            var newUrl = parts['path'] + '?';
+            var newUrl = parts.path + '?';
             var allParams = '';
 
             for (var i = 0; i < views.length; i++) {
@@ -2485,22 +2487,78 @@ function Ktl($, info) {
             if (!window.self.frameElement && allowUserFilters() && $('#' + viewId + ' .kn-add-filter').length > 0) {
                 ktl.userFilters.addFilterButtons(viewId);
 
-                //Link Filters feature
-                var keywords = Knack.views[viewId].model.view.keywords;
-                var viewIds = ktl.views.convertTitlesToViewIds(keywords._lf, viewId);
-                if (viewIds) {
-                    var view = Knack.models[viewId].view;
-                    viewIds.forEach(linkedViewId => {
-                        Knack.showSpinner();
-                        updateSearchTable(linkedViewId, document.querySelector('#' + viewId + ' .table-keyword-search input').value);
-                        updateFilters(linkedViewId, view.filters)
-                        updatePerPage(linkedViewId, view.rows_per_page);
-                        updateSort(linkedViewId, view.source.sort[0].field + '|' + view.source.sort[0].order);
-                        Knack.models[linkedViewId].fetch({
-                            success: () => { Knack.hideSpinner(); }
-                        });
-                    })
-                }
+                var itv = setInterval(() => {
+                    if (keywordsCleanupDone) { //TODO: Convert all these to a Promise.
+                        clearInterval(itv);
+
+                        //Linked Filters feature
+                        var keywords = Knack.views[viewId].model.view.keywords;
+                        var reportsAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
+
+                        var viewIds = ktl.views.convertTitlesToViewIds(keywords._lf, viewId);
+                        if (viewIds) {
+                            var view = Knack.models[viewId].view;
+                            for (var v = 0; v < viewIds.length; v++) {
+                                var linkedViewId = viewIds[v];
+                                Knack.showSpinner();
+                                if (Knack.models[linkedViewId].view.type === 'report') {
+                                    var reportId = linkedViewId;
+                                    reportsAr.push(reportId);
+                                } else {
+                                    if (Knack.models[viewId].view.type === 'table') {
+                                        var srchVal = document.querySelector('#' + viewId + ' .table-keyword-search input');
+                                        srchVal = srchVal ? srchVal.value : '';
+                                        updateSearchTable(linkedViewId, srchVal);
+                                        updatePerPage(linkedViewId, view.rows_per_page);
+                                        updateSort(linkedViewId, view.source.sort[0].field + '|' + view.source.sort[0].order);
+                                        updateFilters(linkedViewId, view.filters);
+                                    }
+                                }
+
+                                Knack.models[linkedViewId].fetch({
+                                    success: () => { Knack.hideSpinner(); }
+                                });
+                            }
+
+                            if (reportsAr.length) {
+                                var filterUrlPart = filterDivIdToUrl(viewId);
+                                var parts = ktl.core.splitUrl(window.location.href);
+
+                                var filter = parts.params[filterUrlPart + '_filters'];
+                                if (!filter) filter = JSON.stringify({});
+
+                                var encodedRef = encodeURIComponent(filter);
+                                var mergedParams = '';
+                                const params = Object.entries(parts.params);
+                                if (!$.isEmptyObject(params)) {
+                                    params.forEach(function (param) {
+                                        //Special case: skip for report charts, as we'll reconstruct below.
+                                        if (param[0].search(/view_\d+_\d+_filters/) === -1) {
+                                            if (mergedParams)
+                                                mergedParams += '&';
+                                            mergedParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22");
+                                        }
+                                    })
+
+                                    for (var r = 0; r < reportsAr.length; r++) {
+                                        var rv = reportsAr[r];
+                                        var rLen = Knack.views[rv].model.view.rows.length;
+                                        for (var c = 0; c < rLen; c++) {
+                                            var chartFilter = rv + '_' + c + '_filters=' + encodedRef;
+                                            if (mergedParams)
+                                                mergedParams += '&';
+                                            mergedParams += chartFilter;
+                                        }
+                                    }
+
+                                    var newUrl = parts.path + '?' + mergedParams;
+                                    if (decodeURI(window.location.href) !== decodeURI(newUrl))
+                                        window.location.href = newUrl;
+                                }
+                            }
+                        }
+                    }
+                }, 50);
             }
 
             if (view.type == 'table') {
@@ -2799,11 +2857,11 @@ function Ktl($, info) {
 
             //Get current URL, check if a filter exists, if so, replace it.  If not, append it.
             var parts = ktl.core.splitUrl(window.location.href);
-            var newUrl = parts['path'] + '?';
+            var newUrl = parts.path + '?';
             var otherParams = ''; //Usually, this contains params for other views then this one.
 
             //Get any additional params from URL.
-            const params = Object.entries(parts['params']);
+            const params = Object.entries(parts.params);
             if (!$.isEmptyObject(params)) {
                 params.forEach(function (param) {
                     if (param[0].includes(filterUrlPart + '_filters') ||
@@ -3362,7 +3420,7 @@ function Ktl($, info) {
                 var newSortStr = '';
                 var newSearchStr = '';
                 var parts = ktl.core.splitUrl(window.location.href);
-                const params = Object.entries(parts['params']);
+                const params = Object.entries(parts.params);
                 if (!$.isEmptyObject(params)) {
                     params.forEach(function (param) {
                         if (param[0].includes(filterUrlPart + '_filters'))
@@ -3995,6 +4053,7 @@ function Ktl($, info) {
 
                     if (view.type === 'rich_text') {
                         var txt = view.content.toLowerCase();
+
                         if (txt.includes('_ol')) {
                             var innerHTML = document.querySelector('#' + view.key).innerHTML;
                             document.querySelector('#' + view.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
@@ -4010,10 +4069,12 @@ function Ktl($, info) {
         function ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
             var keywords = Knack.views[view.key].model.view.keywords;
             var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvd, view.key);
-            viewIds.forEach(viewId => {
-                var eventField = view.events.event_field.key;
-                var recId = event.id;
-                (function tryRefresh(retryCtr) { //These retries are important due to the latency chain: calendar > server > view being updated.
+            var eventField = view.events.event_field.key;
+            var recId = event.id;
+
+            for (var v = 0; v < viewIds.length; v++) {
+                var viewId = viewIds[v];
+                (function tryRefresh(viewId, retryCtr) { //These retries are important due to the latency chain: calendar > server > view being updated.
                     setTimeout(() => {
                         var found = false;
                         ktl.views.refreshView(viewId).then(function (data) {
@@ -4030,7 +4091,7 @@ function Ktl($, info) {
                                 if (Date.parse(date) !== Date.parse(eventDate)) {
                                     if (retryCtr-- > 0) {
                                         ktl.log.clog('purple', 'date mismatch', retryCtr);
-                                        tryRefresh(retryCtr);
+                                        tryRefresh(viewId, retryCtr);
                                     } else {
                                         ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
                                     }
@@ -4040,8 +4101,8 @@ function Ktl($, info) {
                             }
                         });
                     }, 500);
-                })(10); //Retries
-            })
+                })(viewId, 10); //Retries
+            }
 
             handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
         }
@@ -4348,7 +4409,7 @@ function Ktl($, info) {
                             }
                         }
                     } else {
-                        var callerInfo = refreshView.caller.toString().replace(/\s+/g, ' ');
+                        var callerInfo = ktl.views.refreshView.caller.toString().replace(/\s+/g, ' ');
                         ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1009 - Called refreshView with invalid parameter.  Caller info: ' + callerInfo);
                         resolve(); //Always resolve.
                     }
@@ -5958,9 +6019,13 @@ function Ktl($, info) {
                     for (var i = 0; i < views.length; i++) {
                         viewId = views[i].attributes.key;
                         if (viewId === excludeViewId) continue;
+                        if (!views[i].attributes.orgTitle)
+                            continue;
                         title = views[i].attributes.orgTitle.toLowerCase();
-                        if (exact && title === srch) return viewId;
-                        if (!exact && title.includes(srch)) return viewId;
+                        if (exact && title === srch)
+                            return viewId;
+                        if (!exact && title.includes(srch))
+                            return viewId;
                     }
                 }
                 catch (e) {
@@ -7961,7 +8026,8 @@ function Ktl($, info) {
                     var view = views.models[j];
                     if (view) {
                         var keywords = {};
-                        var title = view.attributes.title;
+                        var attr = view.attributes;
+                        var title = attr.title;
                         var cleanedUpTitle = title;
                         var firstKeywordIdx;
                         if (title) {
@@ -7972,7 +8038,7 @@ function Ktl($, info) {
                             }
                         }
 
-                        var description = view.attributes.description;
+                        var description = attr.description;
                         var cleanedUpDescription = description;
                         if (description) {
                             firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
@@ -7984,12 +8050,12 @@ function Ktl($, info) {
                         }
 
                         //Only write once - first time, when not yet existing.
-                        !view.attributes.orgTitle && (view.attributes.orgTitle = view.attributes.title);
-                        !view.attributes.keywords && (view.attributes.keywords = keywords);
+                        !attr.orgTitle && (attr.orgTitle = attr.title);
+                        !attr.keywords && (attr.keywords = keywords);
 
-                        var orgTitle = view.attributes.orgTitle;
-                        view.attributes.title = cleanedUpTitle;
-                        view.attributes.description = cleanedUpDescription;
+                        var orgTitle = attr.orgTitle;
+                        attr.title = cleanedUpTitle;
+                        attr.description = cleanedUpDescription;
 
                         //Apply to those views that are currently being displayed.
                         if (Knack.views[view.id]) {
@@ -8006,9 +8072,6 @@ function Ktl($, info) {
             }
 
             function parseKeywords(keywords, strToParse) {
-                //if (viewId === 'view_2927')
-                //    debugger;
-
                 var kwAr = [];
                 if (strToParse && strToParse !== '') {
                     var kwAr = strToParse.split(/(_[a-zA-Z]{2,})/gm);
@@ -8038,6 +8101,14 @@ function Ktl($, info) {
                     //kwAr[kwIdx - 1] = kwAr[kwIdx - 1].toLowerCase();
                     keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
                 }
+            }
+
+            //Future improvement: use a rich text view to store all config by user without code.
+            var ktlConfig = Knack.scenes._byId['ktl-app-cfg'];
+            if (ktlConfig) {
+                ktlConfig = ktlConfig.views.models[0].attributes.content.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+                //console.log('ktlConfig =', ktlConfig);
+                ktl.core.setCfg({ ktlConfig: ktlConfig });
             }
 
             keywordsCleanupDone = true;
