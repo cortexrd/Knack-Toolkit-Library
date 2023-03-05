@@ -2504,66 +2504,95 @@ function Ktl($, info) {
                         clearInterval(itv);
 
                         //Linked Filters feature
-                        var keywords = Knack.views[viewId].model.view.keywords;
-                        var reportsAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
+                        var masterViewId = viewId; //Just to make it easier to understand when reading.
+                        var keywords = Knack.views[masterViewId].model.view.keywords;
+                        var useUrlAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
 
-                        var viewIds = ktl.views.convertTitlesToViewIds(keywords._lf, viewId);
-                        if (viewIds) {
-                            var view = Knack.models[viewId].view;
-                            for (var v = 0; v < viewIds.length; v++) {
-                                var linkedViewId = viewIds[v];
-                                Knack.showSpinner();
+                        var linkedViewIds = ktl.views.convertTitlesToViewIds(keywords._lf, masterViewId);
+                        if (linkedViewIds) {
+                            var masterView = Knack.models[masterViewId].view;
+                            if (masterView.type === 'report')
+                                linkedViewIds.push(masterViewId);
+
+                            for (var v = 0; v < linkedViewIds.length; v++) {
+                                var linkedViewId = linkedViewIds[v];
                                 if (Knack.models[linkedViewId].view.type === 'report') {
                                     var reportId = linkedViewId;
-                                    reportsAr.push(reportId);
+                                    useUrlAr.push(reportId);
                                 } else {
-                                    if (Knack.models[viewId].view.type === 'table') {
-                                        var srchVal = document.querySelector('#' + viewId + ' .table-keyword-search input');
+                                    if (masterView.type === 'table') {
+                                        Knack.showSpinner();
+                                        var srchVal = document.querySelector('#' + masterViewId + ' .table-keyword-search input');
                                         srchVal = srchVal ? srchVal.value : '';
                                         updateSearchTable(linkedViewId, srchVal);
-                                        updatePerPage(linkedViewId, view.rows_per_page);
-                                        updateSort(linkedViewId, view.source.sort[0].field + '|' + view.source.sort[0].order);
-                                        updateFilters(linkedViewId, view.filters);
+                                        updatePerPage(linkedViewId, masterView.rows_per_page);
+                                        updateSort(linkedViewId, masterView.source.sort[0].field + '|' + masterView.source.sort[0].order);
+                                        updateFilters(linkedViewId, masterView.filters);
+
+                                        Knack.models[linkedViewId].fetch({
+                                            success: () => { Knack.hideSpinner(); }
+                                        });
+                                    } else {
+                                        //If the master is a report, then treat all view types as if they were reports.
+                                        useUrlAr.push(linkedViewId);
                                     }
                                 }
-
-                                Knack.models[linkedViewId].fetch({
-                                    success: () => { Knack.hideSpinner(); }
-                                });
                             }
 
-                            if (reportsAr.length) {
-                                var filterUrlPart = filterDivIdToUrl(viewId);
+
+
+                            if (useUrlAr.length) {
+                                var filterUrlPart = filterDivIdToUrl(masterViewId);
                                 var parts = ktl.core.splitUrl(window.location.href);
 
                                 var filter = parts.params[filterUrlPart + '_filters'];
-                                if (!filter) filter = JSON.stringify({});
+                                if (masterView.type === 'report')
+                                    filter = parts.params[filterUrlPart + '_0_filters']; //Always use first one as master.
+
+                                if (!filter)
+                                    filter = '[]';
 
                                 var encodedRef = encodeURIComponent(filter);
                                 var mergedParams = '';
+                                var otherParams = '';
                                 const params = Object.entries(parts.params);
                                 if (!$.isEmptyObject(params)) {
                                     params.forEach(function (param) {
                                         //Special case: skip for report charts, as we'll reconstruct below.
-                                        if (param[0].search(/view_\d+_\d+_filters/) === -1) {
+                                        if (param[0].search(/view_\d+_filters/) >= 0 && param[0].search(/view_\d+_\d+_filters/) === -1) {
                                             if (mergedParams)
                                                 mergedParams += '&';
-                                            mergedParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22");
+                                            mergedParams += param[0] + '=' + encodedRef;
+                                        }
+
+                                        if (!param[0].includes('_filter')) {
+                                            if (otherParams)
+                                                otherParams += '&';
+                                            otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22");
                                         }
                                     })
 
-                                    for (var r = 0; r < reportsAr.length; r++) {
-                                        var rv = reportsAr[r];
-                                        var rLen = Knack.views[rv].model.view.rows.length;
-                                        for (var c = 0; c < rLen; c++) {
-                                            var chartFilter = rv + '_' + c + '_filters=' + encodedRef;
-                                            if (mergedParams)
-                                                mergedParams += '&';
-                                            mergedParams += chartFilter;
+
+                                    var chartFilter = '';
+                                    for (var r = 0; r < useUrlAr.length; r++) {
+                                        var rv = useUrlAr[r];
+                                        if (Knack.views[rv].model.view.type === 'report') {
+                                            var rLen = Knack.views[rv].model.view.rows.length;
+                                            for (var c = 0; c < rLen; c++) {
+                                                chartFilter = rv + '_' + c + '_filters=' + encodedRef;
+                                                if (mergedParams)
+                                                    mergedParams += '&';
+                                                mergedParams += chartFilter;
+                                            }
                                         }
                                     }
 
+                                    if (otherParams)
+                                        mergedParams += '&' + otherParams;
+
                                     var newUrl = parts.path + '?' + mergedParams;
+                                    //console.log('decodeURI(window.location.href) =\n', decodeURI(window.location.href));
+                                    //console.log('decodeURI(newUrl) =\n', decodeURI(newUrl));
                                     if (decodeURI(window.location.href) !== decodeURI(newUrl))
                                         window.location.href = newUrl;
                                 }
@@ -4084,6 +4113,7 @@ function Ktl($, info) {
             var keywords = Knack.views[view.key].model.view.keywords;
             var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvd, view.key);
             var eventField = view.events.event_field.key;
+            console.log('eventField =', eventField);
             var recId = event.id;
 
             for (var v = 0; v < viewIds.length; v++) {
@@ -4095,6 +4125,7 @@ function Ktl($, info) {
                             for (var i = 0; i < data.models.length; i++) {
                                 if (data.models[i].id === recId) {
                                     found = true;
+                                    //console.log('Found data =', viewId, data);
                                     break;
                                 }
                             }
@@ -4110,7 +4141,8 @@ function Ktl($, info) {
                                         ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
                                     }
                                 } else {
-                                    //ktl.log.clog('green', 'Date match found');
+                                    //ktl.log.clog('green', 'Date match found!');
+                                    console.log(viewId, i, data.models[i]);
                                 }
                             }
                         });
@@ -8112,7 +8144,6 @@ function Ktl($, info) {
                         })
                     }
 
-                    //kwAr[kwIdx - 1] = kwAr[kwIdx - 1].toLowerCase();
                     keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
                 }
             }
