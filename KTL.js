@@ -776,18 +776,22 @@ function Ktl($, info) {
             // Just specify key and func will prepend APP_ROOT_NAME.
             // Typically used for generic utility storage, like logging, custom filters, user preferences, etc.
             lsSetItem: function (lsKey, data, noUserId = false, session = false, secure = false) {
-                if (!lsKey || (!noUserId && !Knack.getUserAttributes().id))
+                if (!lsKey)
                     return;
+
+                var userId = Knack.getUserAttributes().id;
+                if (!noUserId && !userId)
+                    userId = 'Anonymous'
 
                 if (hasLocalStorage) {
                     try {
                         if (secure) {
-                            secureLs.set(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                            secureLs.set(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId), data);
                         } else {
                             if (session)
-                                sessionStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                                sessionStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId), data);
                             else
-                                localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id), data);
+                                localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId), data);
                         }
                     }
                     catch (e) {
@@ -799,39 +803,47 @@ function Ktl($, info) {
 
             //Returns empty string if key doesn't exist.
             lsGetItem: function (lsKey, noUserId = false, session = false, secure = false) {
-                if (!lsKey || (!noUserId && !Knack.getUserAttributes().id))
+                if (!lsKey)
                     return;
+
+                var userId = Knack.getUserAttributes().id;
+                if (!noUserId && !userId)
+                    userId = 'Anonymous'
 
                 var val = '';
                 if (hasLocalStorage) {
                     if (secure) {
-                        val = secureLs.get(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                        val = secureLs.get(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
                     } else {
                         if (session)
-                            val = sessionStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                            val = sessionStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
                         else
-                            val = localStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                            val = localStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
                     }
                 }
                 return val ? val : '';
             },
 
             lsRemoveItem: function (lsKey, noUserId = false, session = false, secure = false) {
-                if (!lsKey || (!noUserId && !Knack.getUserAttributes().id))
+                if (!lsKey)
                     return;
+
+                var userId = Knack.getUserAttributes().id;
+                if (!noUserId && !userId)
+                    userId = 'Anonymous'
 
                 if (hasLocalStorage) {
                     if (secure) {
                         initSecureLs()
                             .then(() => {
-                                val = secureLs.remove(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                                val = secureLs.remove(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
                             })
                             .catch(reason => { ktl.log.clog('purple', reason); });
                     } else {
                         if (session)
-                            sessionStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                            sessionStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
                         else
-                            localStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + Knack.getUserAttributes().id));
+                            localStorage.removeItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
                     }
                 }
             },
