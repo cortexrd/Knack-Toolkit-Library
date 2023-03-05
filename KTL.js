@@ -709,7 +709,7 @@ function Ktl($, info) {
                 var ktlCSS = (document.querySelector('#ktlCSS') || ((ktlCSS = document.createElement('style')) && document.head.appendChild(ktlCSS)));
                 ktlCSS.id = 'ktlCSS';
                 ktlCSS.type = 'text/css';
-                ktlCSS.textContent += css + '\n\n';                
+                ktlCSS.textContent += css + '\n\n';
             },
 
             toggleMode: function () { //Prod <=> Dev modes
@@ -758,7 +758,7 @@ function Ktl($, info) {
                 return result;
             },
         }
-    }) (); //Core
+    })(); //Core
 
     //====================================================
     //Storage Feature
@@ -1845,7 +1845,7 @@ function Ktl($, info) {
             }
 
             if ($.isEmptyObject(formDataObj[viewId]))
-                delete(formDataObj[viewId]);
+                delete (formDataObj[viewId]);
 
             if ($.isEmptyObject(formDataObj))
                 ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA);
@@ -2168,8 +2168,8 @@ function Ktl($, info) {
                         newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
                         sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
                         sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
-                        
-                                                
+
+
                         initDone = true;
                         //console.log('Init complete, sysColors =', sysColors);
 
@@ -4449,7 +4449,7 @@ function Ktl($, info) {
                                 resolve();
                             })
                             .catch(() => {
-                                ktl.log.clog('red', 'Error refreshing views: ' + viewsToRefresh );
+                                ktl.log.clog('red', 'Error refreshing views: ' + viewsToRefresh);
                                 reject()
                             })
                             .finally(() => { clearTimeout(failsafe); })
@@ -5227,7 +5227,7 @@ function Ktl($, info) {
             //////////////////////////////////////////////////////////////////
             removeTableColumns: function (viewId = '', remove = true, columnsAr = [], fieldsAr = [], headersAr = []) {
                 if (!viewId ||
-                    ((fieldsAr && fieldsAr.length === 0) && (columnsAr && columnsAr.length === 0)) && (headersAr && headersAr.length === 0) ) {
+                    ((fieldsAr && fieldsAr.length === 0) && (columnsAr && columnsAr.length === 0)) && (headersAr && headersAr.length === 0)) {
                     ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
                     return;
                 }
@@ -7076,7 +7076,7 @@ function Ktl($, info) {
                     iFrameWnd.setAttribute('id', IFRAME_WND_ID);
                     iFrameWnd.src = window.location.href.slice(0, index + 1) + URL.attributes.slug;
 
-                    document.body.appendChild(iFrameWnd);                    
+                    document.body.appendChild(iFrameWnd);
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
 
                     //ktl.log.clog('blue', 'Created iFrameWnd');
