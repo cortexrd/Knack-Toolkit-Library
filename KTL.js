@@ -553,25 +553,25 @@ function Ktl($, info) {
 
             //Ensures that the context menu follows the mouse, but without overflowing outside of window.
             setContextMenuPostion: function (event, contextMenu) {
-                var mousePosition = {};
-                var menuPostion = {};
-                var menuDimension = {};
-                menuDimension.x = contextMenu.outerWidth();
-                menuDimension.y = contextMenu.outerHeight();
-                mousePosition.x = event.clientX;
-                mousePosition.y = event.clientY;
+                var mousePos = {};
+                var menuPos = {};
+                var menuSize = {};
+                menuSize.x = contextMenu.outerWidth();
+                menuSize.y = contextMenu.outerHeight();
+                mousePos.x = event.clientX;
+                mousePos.y = event.clientY;
 
-                if (mousePosition.x + menuDimension.x > $(window).width())
-                    menuPostion.x = mousePosition.x - menuDimension.x;
+                if (mousePos.x + menuSize.x > $(window).width())
+                    menuPos.x = mousePos.x - menuSize.x;
                 else
-                    menuPostion.x = mousePosition.x;
+                    menuPos.x = mousePos.x;
 
-                if (mousePosition.y + menuDimension.y > $(window).height())
-                    menuPostion.y = mousePosition.y - menuDimension.y;
+                if (mousePos.y + menuSize.y > $(window).height())
+                    menuPos.y = mousePos.y - menuSize.y;
                 else
-                    menuPostion.y = mousePosition.y;
+                    menuPos.y = mousePos.y;
 
-                return menuPostion;
+                return menuPos;
             },
 
             getObjectIdByName: function (objectName = '') {
@@ -3044,7 +3044,9 @@ function Ktl($, info) {
             menuDiv = document.createElement('div');
             menuDiv.setAttribute('class', 'menuDiv');
             $('#' + e.target.id).append(menuDiv);
-            $('.menuDiv').css({ 'margin-top': '-100px' });
+
+            var pos = ktl.core.setContextMenuPostion(e, $('.menuDiv'));
+            $('.menuDiv').css({ 'left': pos.x + 'px', 'top': pos.y + 'px' });
 
             var ul = document.createElement('ul');
             menuDiv.appendChild(ul);
