@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.3 */
+/* KTL CSS version: 0.2.4 */
 
 /************ General Settings **************/
 /* Hide header and scene render will put it back if not an iFrame. */
@@ -69,6 +69,12 @@
 
 .ktlDisplayNone {
 	display: none!important;
+}
+
+.cell-edit.ktlNoInlineEdit {
+	pointer-events: none;
+	background-color: transparent !important;
+	font-weight: initial;
 }
 
 /************ Tooltips **************/
