@@ -5435,8 +5435,13 @@ function Ktl($, info) {
                                 //Attempt to support Search views but crashes with a "URL" problem after fetch() below.
                                 Knack.models[viewId].fetch({
                                     success: () => {
-                                        Knack.hideSpinner();
-                                        ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                                        //If we don't add this delay, the inverted sort only works about 75% of the time.
+                                        setTimeout(() => {
+                                            ktl.views.refreshView(viewId).then(() => {
+                                                Knack.hideSpinner();
+                                                ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
+                                            });
+                                        }, 200)
                                     }
                                 });
                             }
