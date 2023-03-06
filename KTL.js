@@ -61,12 +61,24 @@ function Ktl($, info) {
         MSG_APP: 'MSG_APP',
     }
 
-    //jQuery extension that searches a selector for text like :contains, but with an exact match, and after a spaces trim.
+    //jQuery extensions - BEGIN
+    //Searches a selector for text like : contains, but with an exact match, and after a spaces trim.
     $.expr[':'].textEquals = function (el, i, m) {
         var searchText = m[3];
         var match = $(el).text().trim().match("^" + searchText + "$")
         return match && match.length > 0;
     }
+
+    //Checks is selected element is visible or off screen.
+    $.expr.filters.offscreen = function (el) {
+        var rect = el.getBoundingClientRect();
+        return (
+            (rect.x + rect.width) < 0
+            || (rect.y + rect.height) < 0
+            || (rect.x > window.innerWidth || rect.y > window.innerHeight)
+        );
+    };
+    //jQuery extensions - END
 
     /**
         * Core functions
@@ -2514,6 +2526,9 @@ function Ktl($, info) {
                             if (masterView.type === 'report')
                                 linkedViewIds.push(masterViewId);
 
+                            //Add checkbox to toggle visiblity of Filters and Search.
+                            //$('.kn-view:not(#view_x) .kn-records-nav').css('display', 'block')
+
                             for (var v = 0; v < linkedViewIds.length; v++) {
                                 var linkedViewId = linkedViewIds[v];
                                 if (Knack.models[linkedViewId].view.type === 'report') {
@@ -4141,13 +4156,50 @@ function Ktl($, info) {
                                         ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
                                     }
                                 } else {
-                                    //ktl.log.clog('green', 'Date match found!');
+                                    ktl.log.clog('green', 'Date match found!');
                                     console.log(viewId, i, data.models[i]);
                                 }
                             }
                         });
                     }, 500);
                 })(viewId, 10); //Retries
+
+
+/*
+                function refreshViewArray (viewsToRefresh) {
+                    return new Promise(function (resolve, reject) {
+                        if (viewsToRefresh.length === 0)
+                            resolve();
+                        else {
+                            var promisesArray = [];
+                            viewsToRefresh.forEach(function (viewId) {
+                                promisesArray.push(
+                                    ktl.views.refreshView(viewId)
+                                        .then(() => {
+                                            //ktl.log.clog('green', 'View refreshed successfully: ' + viewId);
+                                        })
+                                )
+                            })
+
+                            Promise.all(promisesArray)
+                                .then(() => {
+                                    //ktl.log.clog('green', 'All views refreshed: ' + viewsToRefresh);
+                                    resolve();
+                                })
+                                .catch(() => {
+                                    ktl.log.clog('red', 'Error refreshing views: ' + viewsToRefresh);
+                                    reject()
+                                })
+                                .finally(() => { clearTimeout(failsafe); })
+                        }
+
+                        var failsafe = setTimeout(() => {
+                            ktl.log.clog('red', 'Failsafe timeout in refreshViewArray: ' + viewsToRefresh);
+                            reject();
+                        }, 60000);
+                    })
+                }
+*/
             }
 
             handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
@@ -4177,7 +4229,7 @@ function Ktl($, info) {
                 $('#' + viewId + ' #gotoDate-label').remove();
             }
 
-            var focusGoto = (document.activeElement === document.querySelector('#gotoDate'));
+            var focusGoto = (document.activeElement === document.querySelector('#' + viewId + '_gotoDate'));
             if (calView) {
                 if (prevStartDate !== calView.visStart && !focusGoto) {
                     prevStartDate = calView.visStart;
@@ -4185,15 +4237,18 @@ function Ktl($, info) {
                 }
             }
 
-            var gotoDateIso = ktl.core.convertDateToIso(gotoDateObj, period);//ktl.core.convertDateTimeToString(gotoDateObj, true, true);
+            var gotoDateIso = ktl.core.convertDateToIso(gotoDateObj, period);
 
-            var gotoDateField = document.querySelector('#' + viewId + ' #gotoDate');
+            var gotoDateField = document.querySelector('#' + viewId + ' #' + viewId + '_gotoDate');
             if (!gotoDateField) {
+                console.log('Creating calendar', viewId);
                 var div = document.createElement('div');
                 ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .fc-header-left'));
 
-                var gotoDateField = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, 'gotoDate', 'width: 200px; height: 25px;');
-                gotoDateField.focus();
+                var gotoDateField = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, viewId + '_gotoDate', 'width: 200px; height: 25px;');
+                //if (Knack.scenes._byId[Knack.router.current_scene].views.length === 1)
+                //    gotoDateField.focus();
+                ktl.scenes.autoFocus();
 
                 gotoDateField.addEventListener('change', (e) => {
                     var dt = e.target.value;
@@ -4205,7 +4260,7 @@ function Ktl($, info) {
 
             if (!focusGoto) {
                 gotoDateField.value = gotoDateIso;
-                gotoDateField.focus();
+                //gotoDateField.focus();
             }
         }
 
@@ -5789,8 +5844,7 @@ function Ktl($, info) {
             },
 
             autoFocus: function () {
-                if (!ktl.core.getCfg().enabled.autoFocus)
-                    return;
+                if (!ktl.core.getCfg().enabled.autoFocus) return;
 
                 if (!document.querySelector('#cell-editor')) //If inline editing uses chznBetter, keep focus here after a succesful search.
                     autoFocus && autoFocus();
@@ -7541,6 +7595,8 @@ function Ktl($, info) {
                             optObj[opt.value] = opt.checked;
                         })
                         bulkOpsNewValue = optObj;
+                    } else if (fieldAttr.format && fieldAttr.format.type === 'single') {
+                        bulkOpsNewValue = $('#cell-editor .kn-input-multiple_choice .kn-select .select').val();
                     }
                 } else {
                     bulkOpsNewValue = $('#cell-editor .chzn-select.select.chzn-done').val()
@@ -7627,7 +7683,10 @@ function Ktl($, info) {
 
         //Called when user clicks on Submit from an Inline Editing form and when there are some checkboxes enabled.
         function processBulkOps() {
-            if (bulkOpsNewValue === null) return;
+            if (bulkOpsNewValue === null) {
+                ktl.core.timedPopup('Error - Attempted Bulk Edit without a value.', 'error');
+                return;
+            }
 
             var object = Knack.router.scene_view.model.views._byId[bulkOpsViewId].attributes.source.object;
             var objName = Knack.objects._byId[object].attributes.name;  //Create function getObjNameForView
@@ -7654,7 +7713,8 @@ function Ktl($, info) {
                             if (bulkOpsNewValue[opt])
                                 apiData[bulkOpsFieldId].push(opt);
                         })
-                    }
+                    } else if (fieldAttr.format && fieldAttr.format.type === 'single')
+                        apiData[bulkOpsFieldId] = bulkOpsNewValue;
                 }
 
                 if ($.isEmptyObject(apiData)) {
@@ -7679,8 +7739,12 @@ function Ktl($, info) {
 
                 function updateRecord(recId) {
                     showProgress();
+                    //console.log('apiData =', apiData);
+                    //console.log('recId =', recId);
+                    //console.log('bulkOpsRecIdArray =', bulkOpsRecIdArray);
                     ktl.core.knAPI(bulkOpsViewId, recId, apiData, 'PUT')
                         .then(function () {
+                            //console.log('countDone =', countDone);
                             if (++countDone === bulkOpsRecIdArray.length) {
                                 Knack.showSpinner();
                                 ktl.core.removeInfoPopup();
