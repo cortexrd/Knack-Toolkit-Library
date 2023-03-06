@@ -217,21 +217,20 @@ var KnackApp = function ($, info = {}) {
         if (field !== undefined) {
             $('#' + field).focus();
         } else {
-            var field = document.querySelector('.kn-input:not(.kn-input-connection) input');
-            if (field)
-                field.focus();
+            var sel = $('.kn-input:not(.kn-input-connection) input, input[type="date"]').first();
+            if (sel.length && !sel.is(':offscreen')) //Prevent annoying scroll down.
+                sel[0].focus();
             else {
-                var sel = $('.input[name=keyword]').first(); //When nothing found, use first Search field, if within viewport.
-                if (sel.length > 0) {
-                    if (!sel.is(':offscreen')) //Prevent annoying scroll down.
-                        sel[0].focus();
+                sel = $('.input[name=keyword]').first(); //When nothing found, use first Search field, if within viewport.
+                if (sel.length && !sel.is(':offscreen')) {
+                    sel[0].focus();
                 } else { //Search field not found.
                     sel = $('.kn-textarea'); //Text area is Paragraph text.
-                    if (sel.length > 0)
+                    if (sel.length && !sel.is(':offscreen'))
                         sel[0].focus();
                     else {
                         sel = $('.input:not(input[name=keyword]):not(input[name=date])'); //Try any text input field except a Search and Calendar.
-                        if (sel.length > 0)
+                        if (sel.length && !sel.is(':offscreen'))
                             sel[0].focus();
                         else {
                             sel = $('button'); //Try button
@@ -242,15 +241,6 @@ var KnackApp = function ($, info = {}) {
                 }
             }
         }
-
-        $.expr.filters.offscreen = function (el) {
-            var rect = el.getBoundingClientRect();
-            return (
-                (rect.x + rect.width) < 0
-                || (rect.y + rect.height) < 0
-                || (rect.x > window.innerWidth || rect.y > window.innerHeight)
-            );
-        };
     }
 
     //When there is no keypress or mouse click for a certin time, by default reload the page.
