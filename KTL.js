@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.9.2';
+    const KTL_VERSION = '0.9.3';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -504,7 +504,7 @@ function Ktl($, info) {
 
                 if (!progressWnd) {
                     timedPopupEl = document.createElement('div');
-                    var style = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%);min-width:300px;min-height:50px;line-height:50px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px;white-space:pre';
+                    var style = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%);min-width:300px;min-height:50px;line-height:50px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px;white-space:pre;z-index:10';
 
                     if (status === 'warning')
                         style += ';background-color:#fffa5e;border:2px solid #7e8060;top:15%';
@@ -535,9 +535,7 @@ function Ktl($, info) {
                 var el = (document.querySelector('#kn-modeless-wnd') || ((el = document.createElement('div')) && document.body.appendChild(el)));
 
                 //Default style, that can be modified or incremented by parameter.
-                var style = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%)';
-                style += ';min-width:300px;min-height:50px;line-height:50px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px';
-                style += ';background-color:#81b378;border:5px solid #294125; white-space:pre';
+                var style = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%);min-width:300px;min-height:50px;line-height:50px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px;background-color:#81b378;border:5px solid #294125;white-space:pre;z-index:10';
                 el.id = 'kn-modeless-wnd';
                 el.setAttribute('style', style + ';' + addedStyle);
                 progressWnd = el;
@@ -4091,7 +4089,7 @@ function Ktl($, info) {
                             //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
                             if (keywords._ni && !ktl.account.isDeveloper()) {
                                 if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
-                                    $('#' + view.key + ' .cell-edit').css({ 'pointer-events': 'none', 'background-color': '', 'font-weight': '' });
+                                    $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit');
                             }
 
                             //IMPORTANT: _qc must be processed BEFORE _mc.
@@ -4246,8 +4244,6 @@ function Ktl($, info) {
                 ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .fc-header-left'));
 
                 var gotoDateField = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, viewId + '_gotoDate', 'width: 200px; height: 25px;');
-                //if (Knack.scenes._byId[Knack.router.current_scene].views.length === 1)
-                //    gotoDateField.focus();
                 ktl.scenes.autoFocus();
 
                 gotoDateField.addEventListener('change', (e) => {
@@ -4258,10 +4254,8 @@ function Ktl($, info) {
                 })
             }
 
-            if (!focusGoto) {
+            if (!focusGoto)
                 gotoDateField.value = gotoDateIso;
-                //gotoDateField.focus();
-            }
         }
 
         //Replace Knack's default mouse click handler on headers by KTL's handleClickSort for more flexibility.
@@ -6207,6 +6201,38 @@ function Ktl($, info) {
                 monitorActivity();
         })
 
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            if (view.type !== 'table' && view.type !== 'search') return;
+
+            var bulkOpsLudFieldId = '';
+            var bulkOpsLubFieldId = '';
+            var descr = '';
+            var fields = view.fields;
+            for (var f = 0; f < view.fields.length; f++) {
+                var field = fields[f];
+                descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
+                descr === '_lud' && (bulkOpsLudFieldId = field.key);
+                descr === '_lub' && (bulkOpsLubFieldId = field.key);
+            }
+            
+            if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
+                $('#' + view.key + ' .cell-edit.' + bulkOpsLudFieldId).addClass('ktlNoInlineEdit');
+                $('#' + view.key + ' .cell-edit.' + bulkOpsLubFieldId).addClass('ktlNoInlineEdit');
+                $(document).off('knack-cell-update.' + view.key).on('knack-cell-update.' + view.key, function (event, view, record) {
+                    Knack.showSpinner();
+                    var apiData = {};
+                    apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false).substr(0, 10);
+                    apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
+                    ktl.core.knAPI(view.key, record.id, apiData, 'PUT', [view.key])
+                        .then((updated) => { Knack.hideSpinner(); })
+                        .catch(function (reason) {
+                            Knack.hideSpinner();
+                            alert('Error while processing Auto-Update log operation, reason: ' + JSON.stringify(reason));
+                        })
+                });
+            }
+        })
+
         function monitorActivity() {
             if (isActive || ktl.scenes.isiFrameWnd() || !ktl.storage.hasLocalStorage() || Knack.getUserAttributes() === 'No user found')
                 return;
@@ -7546,12 +7572,31 @@ function Ktl($, info) {
         var bulkOpsFieldId = null;
         var bulkOpsNewValue = null;
         var bulkOpsViewId = null;
+        var bulkOpsLudFieldId = null;
+        var bulkOpsLubFieldId = null;
         var bulkOpsInProgress = false; //Needed to prevent re-entering because pressing Enter on Sumbit causes two Click events.
         var bulkOpsDeleteAll = false;
 
         $(document).on('knack-view-render.table', function (event, view, data) {
             if (ktl.scenes.isiFrameWnd() || (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
                 return;
+
+            //Put code below in a shared function (see _lud in ktl.log).
+            var lud = '';
+            var lub = '';
+            var descr = '';
+            var fields = view.fields;
+            for (var f = 0; f < view.fields.length; f++) {
+                var field = fields[f];
+                descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
+                descr === '_lud' && (lud = field.key);
+                descr === '_lub' && (lub = field.key);
+            }
+
+            if (lud && lub) {
+                bulkOpsLudFieldId = lud;
+                bulkOpsLubFieldId = lub;
+            }
 
             var viewModel = Knack.router.scene_view.model.views._byId[view.key];
             if (viewModel) {
@@ -7573,7 +7618,7 @@ function Ktl($, info) {
             //Prepare all we need for Bulk Operations. Take note of view, field and new value.
 
             //Did we click on Submit during inline editing?
-            var submit = e.target.closest('#cell-editor .kn-button');
+            var submit = e.target.closest('#cell-editor .kn-button.is-primary');
             if (submit && !bulkOpsInProgress && bulkOpsRecIdArray.length > 0) {
                 bulkOpsNewValue = null;
                 bulkOpsInProgress = true;
@@ -7722,6 +7767,12 @@ function Ktl($, info) {
                     return;
                 }
 
+
+                if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
+                    apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false).substr(0, 10);
+                    apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
+                }
+
                 ktl.core.infoPopup();
                 ktl.views.autoRefresh(false);
                 ktl.scenes.spinnerWatchdog(false);
@@ -7744,7 +7795,6 @@ function Ktl($, info) {
                     //console.log('bulkOpsRecIdArray =', bulkOpsRecIdArray);
                     ktl.core.knAPI(bulkOpsViewId, recId, apiData, 'PUT')
                         .then(function () {
-                            //console.log('countDone =', countDone);
                             if (++countDone === bulkOpsRecIdArray.length) {
                                 Knack.showSpinner();
                                 ktl.core.removeInfoPopup();
