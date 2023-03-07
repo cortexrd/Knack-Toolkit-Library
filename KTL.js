@@ -4124,80 +4124,50 @@ function Ktl($, info) {
 
         function ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
             var keywords = Knack.views[view.key].model.view.keywords;
+            if (!keywords._rvd) return;
+
             var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvd, view.key);
             var eventField = view.events.event_field.key;
             console.log('eventField =', eventField);
-            var recId = event.id;
 
+            var recId = event.id;
             for (var v = 0; v < viewIds.length; v++) {
                 var viewId = viewIds[v];
+                console.log('RVD viewId =', viewId);
                 (function tryRefresh(viewId, retryCtr) { //These retries are important due to the latency chain: calendar > server > view being updated.
                     setTimeout(() => {
-                        var found = false;
+                        var confirmed = false;
                         ktl.views.refreshView(viewId).then(function (data) {
-                            for (var i = 0; i < data.models.length; i++) {
-                                if (data.models[i].id === recId) {
-                                    found = true;
-                                    //console.log('Found data =', viewId, data);
-                                    break;
-                                }
-                            }
+                            //console.log('render view data', viewId, data);
 
-                            if (found) {
-                                var date = data.models[i].attributes[eventField + '_raw'].timestamp;
-                                var eventDate = event.start;
-                                if (Date.parse(date) !== Date.parse(eventDate)) {
-                                    if (retryCtr-- > 0) {
-                                        ktl.log.clog('purple', 'date mismatch', retryCtr);
-                                        tryRefresh(viewId, retryCtr);
+                            ktl.core.knAPI(viewId, recId, {}, 'GET')
+                                .then((record) => {
+                                    //console.log('GET record =', viewId, record);
+
+                                    var date = record[eventField + '_raw'].timestamp;
+                                    //console.log('date =', date);
+                                    var eventDate = event.start;
+                                    if (Date.parse(date) === Date.parse(eventDate)) {
+                                        ktl.log.clog('green', 'Date match found!');
+                                        confirmed = true;
                                     } else {
-                                        ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
+                                        if (retryCtr-- > 0) {
+                                            ktl.log.clog('purple', 'date mismatch', retryCtr);
+                                            tryRefresh(viewId, retryCtr);
+                                        } else {
+                                            ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
+                                        }
                                     }
-                                } else {
-                                    ktl.log.clog('green', 'Date match found!');
-                                    console.log(viewId, i, data.models[i]);
-                                }
+                                })
+                                .catch(function (reason) {
+                                    alert('Error reason: ' + JSON.stringify(reason));
+                                })
+
+                            if (confirmed) {
                             }
                         });
                     }, 500);
                 })(viewId, 10); //Retries
-
-
-/*
-                function refreshViewArray (viewsToRefresh) {
-                    return new Promise(function (resolve, reject) {
-                        if (viewsToRefresh.length === 0)
-                            resolve();
-                        else {
-                            var promisesArray = [];
-                            viewsToRefresh.forEach(function (viewId) {
-                                promisesArray.push(
-                                    ktl.views.refreshView(viewId)
-                                        .then(() => {
-                                            //ktl.log.clog('green', 'View refreshed successfully: ' + viewId);
-                                        })
-                                )
-                            })
-
-                            Promise.all(promisesArray)
-                                .then(() => {
-                                    //ktl.log.clog('green', 'All views refreshed: ' + viewsToRefresh);
-                                    resolve();
-                                })
-                                .catch(() => {
-                                    ktl.log.clog('red', 'Error refreshing views: ' + viewsToRefresh);
-                                    reject()
-                                })
-                                .finally(() => { clearTimeout(failsafe); })
-                        }
-
-                        var failsafe = setTimeout(() => {
-                            ktl.log.clog('red', 'Failsafe timeout in refreshViewArray: ' + viewsToRefresh);
-                            reject();
-                        }, 60000);
-                    })
-                }
-*/
             }
 
             handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
