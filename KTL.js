@@ -131,7 +131,6 @@ function Ktl($, info) {
                         reject(new Error('Called knAPI with invalid parameters: view = ' + viewId + ', recId = ' + recId + ', reqType = ' + requestType));
                         return;
                     }
-
                     var failsafeTimeout = setTimeout(function () {
                         if (intervalId) {
                             clearInterval(intervalId);
@@ -4047,6 +4046,12 @@ function Ktl($, info) {
                         return originalEventDropHandler.call(this, ...arguments);
                     };
 
+                    const originalEventResizeHandler = fc.options.eventResize;
+                    fc.options.eventResize = function (event, dayDelta, minuteDelta, revertFunc) {
+                        ktlHandleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc);
+                        return originalEventResizeHandler.call(this, ...arguments);
+                    };
+
                     //Callback when the calendar view changes type or range.
                     const viewDisplay = fc.options.viewDisplay;
                     fc.options.viewDisplay = function (calView) {
@@ -4123,55 +4128,52 @@ function Ktl($, info) {
         }
 
         function ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
-            var keywords = Knack.views[view.key].model.view.keywords;
-            if (!keywords._rvd) return;
-
-            var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvd, view.key);
-            var eventField = view.events.event_field.key;
-            console.log('eventField =', eventField);
-
-            var recId = event.id;
-            for (var v = 0; v < viewIds.length; v++) {
-                var viewId = viewIds[v];
-                console.log('RVD viewId =', viewId);
-                (function tryRefresh(viewId, retryCtr) { //These retries are important due to the latency chain: calendar > server > view being updated.
-                    setTimeout(() => {
-                        var confirmed = false;
-                        ktl.views.refreshView(viewId).then(function (data) {
-                            //console.log('render view data', viewId, data);
-
-                            ktl.core.knAPI(viewId, recId, {}, 'GET')
-                                .then((record) => {
-                                    //console.log('GET record =', viewId, record);
-
-                                    var date = record[eventField + '_raw'].timestamp;
-                                    //console.log('date =', date);
-                                    var eventDate = event.start;
-                                    if (Date.parse(date) === Date.parse(eventDate)) {
-                                        ktl.log.clog('green', 'Date match found!');
-                                        confirmed = true;
-                                    } else {
-                                        if (retryCtr-- > 0) {
-                                            ktl.log.clog('purple', 'date mismatch', retryCtr);
-                                            tryRefresh(viewId, retryCtr);
-                                        } else {
-                                            ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
-                                        }
-                                    }
-                                })
-                                .catch(function (reason) {
-                                    alert('Error reason: ' + JSON.stringify(reason));
-                                })
-
-                            if (confirmed) {
-                            }
-                        });
-                    }, 500);
-                })(viewId, 10); //Retries
-            }
+            processRvd(view, event);
 
             handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
         }
+
+        function ktlHandleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc) {
+            processRvd(view, event);
+
+            //TODO: handleCalendarEventResize && handleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc);
+        }
+
+        function processRvd(view, event) {
+            var keywords = Knack.views[view.key].model && Knack.views[view.key].model.view.keywords;
+            if (!keywords._rvd || keywords._rvd.length < 1) return;
+
+            var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvd, view.key);
+            var eventField = view.events.event_field.key;
+            var recId = event.id;
+            var DndConfViewId = viewIds[0]; //First view is always the DnD Confirmation view.
+            //These retries are important due to the latency chain: calendar > server > view being updated.
+            (function tryRefresh(DndConfViewId, retryCtr) {
+                setTimeout(() => {
+                    ktl.views.refreshView(DndConfViewId).then(function (data) {
+                        ktl.core.knAPI(DndConfViewId, recId, {}, 'GET')
+                            .then((record) => {
+                                var dateFrom = record[eventField + '_raw'].timestamp;
+                                var dateTo = record[eventField + '_raw'].to.timestamp;
+                                if ((Date.parse(dateFrom) === Date.parse(event.start)) && (Date.parse(dateTo) === Date.parse(event.end))) {
+                                    ktl.log.clog('green', 'Date match found!');
+                                    ktl.views.refreshViewArray(viewIds); //Must refresh all views, including the DND Conf, otherwise the view is not always updated.
+                                } else {
+                                    if (retryCtr-- > 0) {
+                                        ktl.log.clog('purple', 'date mismatch', retryCtr);
+                                        tryRefresh(DndConfViewId, retryCtr);
+                                    } else {
+                                        ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
+                                    }
+                                }
+                            })
+                            .catch(function (reason) {
+                                alert('Error reason: ' + JSON.stringify(reason));
+                            })
+                    });
+                }, 500);
+            })(DndConfViewId, 10); //Retries
+        }        
 
         function addGotoDate(viewId, calView) {
             if (!viewId) return;
@@ -4483,9 +4485,11 @@ function Ktl($, info) {
 
             refreshViewArray: function (viewsToRefresh) {
                 return new Promise(function (resolve, reject) {
-                    if (viewsToRefresh.length === 0)
+                    if (viewsToRefresh.length === 0) {
                         resolve();
-                    else {
+                        clearTimeout(failsafe);
+                        return;
+                    } else {
                         var promisesArray = [];
                         viewsToRefresh.forEach(function (viewId) {
                             promisesArray.push(
@@ -8179,7 +8183,6 @@ function Ktl($, info) {
                             firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                             if (firstKeywordIdx >= 0) {
                                 cleanedUpDescription = description.substring(0, firstKeywordIdx);
-
                                 parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
                             }
                         }
@@ -8197,6 +8200,8 @@ function Ktl($, info) {
                             $('#' + view.id + ' .view-header h1').text(cleanedUpTitle); //Search Views use H1 instead of H2.
                             $('#' + view.id + ' .view-header h2').text(cleanedUpTitle);
                             $('#' + view.id + ' .kn-description').text(cleanedUpDescription);
+                            $('#' + view.id + ' .kn-subtitle').text(cleanedUpDescription); //For Calendars.
+
                             Knack.views[view.id].model.view.title = cleanedUpTitle;
                             Knack.views[view.id].model.view.description = cleanedUpDescription;
                             Knack.views[view.id].model.view.orgTitle = orgTitle;
