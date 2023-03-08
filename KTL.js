@@ -4128,43 +4128,76 @@ function Ktl($, info) {
         }
 
         function ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
-            processRvd(view, event);
+            processRvd(view, event, revertFunc);
 
             handleCalendarEventDrop && handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
         }
 
         function ktlHandleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc) {
-            processRvd(view, event);
+            processRvd(view, event, revertFunc);
 
             //TODO: handleCalendarEventResize && handleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc);
         }
 
-        function processRvd(view, event) {
+        function processRvd(view, event, revertFunc) {
             var keywords = Knack.views[view.key].model && Knack.views[view.key].model.view.keywords;
             if (!keywords._rvd || keywords._rvd.length < 1) return;
 
             var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvd, view.key);
-            var eventField = view.events.event_field.key;
+            var eventFieldId = view.events.event_field.key;
             var recId = event.id;
-            var DndConfViewId = viewIds[0]; //First view is always the DnD Confirmation view.
-            //These retries are important due to the latency chain: calendar > server > view being updated.
+            var dndConfViewId = viewIds[0]; //First view must always be the DnD Confirmation view.
+
+            //The retries are necessary due to the latency chain: calendar > server > view being updated.
             (function tryRefresh(DndConfViewId, retryCtr) {
                 setTimeout(() => {
                     ktl.views.refreshView(DndConfViewId).then(function (data) {
                         ktl.core.knAPI(DndConfViewId, recId, {}, 'GET')
                             .then((record) => {
-                                var dateFrom = record[eventField + '_raw'].timestamp;
-                                var dateTo = record[eventField + '_raw'].to.timestamp;
-                                if ((Date.parse(dateFrom) === Date.parse(event.start)) && (Date.parse(dateTo) === Date.parse(event.end))) {
-                                    ktl.log.clog('green', 'Date match found!');
-                                    ktl.views.refreshViewArray(viewIds); //Must refresh all views, including the DND Conf, otherwise the view is not always updated.
-                                } else {
-                                    if (retryCtr-- > 0) {
-                                        ktl.log.clog('purple', 'date mismatch', retryCtr);
-                                        tryRefresh(DndConfViewId, retryCtr);
-                                    } else {
-                                        ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
+                                try {
+                                    if (!record[eventFieldId] || (record.records && record.records.length === 0)) {
+                                        ktl.log.clog('purple', 'Empty record found in processRvd.');
+                                        return;
                                     }
+
+                                    var dtFrom = record[eventFieldId + '_raw'].timestamp;
+                                    var dtTo = dtFrom;
+                                    var eventEnd = dtTo;
+                                    var eventStart = event.start;
+
+                                    if (event.allDay) {
+                                        eventStart = new Date(new Date(eventStart).toDateString());
+                                    } else {
+                                        var format = Knack.objects.getField(eventFieldId).attributes.format.time_format;
+                                        if (format === 'Ignore Time') {
+                                            alert('This event type only supports "All Day"');
+                                            revertFunc();
+                                            return;
+                                        }
+                                    }
+
+                                    if (Date.parse(dtFrom) === Date.parse(eventStart)) {
+                                        if (!event.allDay) {
+                                            dtTo = record[eventFieldId + '_raw'].to ? record[eventFieldId + '_raw'].to.timestamp : dtFrom;
+                                            eventEnd = event.end ? event.end : dtTo;
+                                        }
+
+                                        if (Date.parse(dtTo) === Date.parse(eventEnd)) {
+                                            ktl.log.clog('green', 'Date match found!');
+
+                                            //Must refresh all views, including the DnD Confirmation, otherwise the view is not always updated.
+                                            ktl.views.refreshViewArray(viewIds);
+                                        }
+                                    } else {
+                                        if (retryCtr-- > 0) {
+                                            //ktl.log.clog('purple', 'date mismatch', retryCtr);
+                                            tryRefresh(DndConfViewId, retryCtr);
+                                        } else
+                                            ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
+                                    }
+                                }
+                                catch (e) {
+                                    console.log('processRvd exception:\n', e);
                                 }
                             })
                             .catch(function (reason) {
@@ -4172,8 +4205,8 @@ function Ktl($, info) {
                             })
                     });
                 }, 500);
-            })(DndConfViewId, 10); //Retries
-        }        
+            })(dndConfViewId, 10); //10 retries, is more than enough.
+        }
 
         function addGotoDate(viewId, calView) {
             if (!viewId) return;
