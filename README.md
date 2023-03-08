@@ -1,6 +1,6 @@
 # ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
-Last update: March 3, 2023
+Last update: March 8, 2023
 
 # Contents
 
@@ -348,6 +348,10 @@ Here is the list:
 
 **\_ip**: enforce IP format, with automatic colons and hex char real-time validation (not yet implemented).
 
+**\_lud**: Last Updated Date. Used with Inline Editing tables, to keep track of the last edit that occurred in any editable field. This field is a Date/Time type, with both date and time enabled and default to current date/time.
+
+**\_lub**: Last Updated By. Used with \_lud above, and both must exist to work properly. This field is a connection to an Account and will contain the currently logged-in account.
+
 ## Views
 
 ### Usage
@@ -396,7 +400,7 @@ This option is “somewhat” a bit more secure than \_hc since it’s not as ea
 
 **\_nf=field_x, field_y, field_z**: No Filtering. Will prevent filtering on these fields, even if they are visible in the table.
 
-**\_ni**: No Inline editing. Disables inline editing for the user, even if enabled in the Builder. Enabling inline editing is required for API calls in tables, but not always desirable at the user interface. This provides a solution.
+**\_ni=colHeader1, colHeader2**: No Inline editing on columns with specified headers. If no parameter is supplied, it will apply to the whole table. Disables inline editing for the user, even if enabled in the Builder. Enabling inline editing is required for API calls in tables, but not always desirable at the user interface. This provides a solution.
 
 \* Note about \_ni security: use this keyword with caution as it only disables the user interface. Someone with coding skills and bad intentions could still modify the data using commands in the console.
 
@@ -414,7 +418,7 @@ Here, the form’s visible title will be “Customer Sales”, and when submitte
 
 **\_rvr=vTitle1,vTitle2**: Refresh Views after a Refresh. Same syntax as \_rvs. Used to trigger a refresh to other views. Care must be taken to avoid infinite circular loops: A\>B\>C\>A\>B\>C…
 
-**\_rvd=vTitle1,vTitle2**: Refresh Views after a Drop. Same syntax as \_rvs. Used to trigger a refresh to other views, after an event has been drag’n dropped in a Calendar view.
+**\_rvd=vConfTitle,vTitle1,vTitle2**: Refresh Views after a Drop. Used to confirm that a drag’n drop operation has completed successfully after an event has been moved or resized in a Calendar view. Optionally, if additional view titles are supplied, those will be refreshed. The first parameter **vConfTitle** is a List view of same object as the calendar, with the events’ date/time field, that must be added in the same page as the Calendar view. It should have the **\_hv** keyword since it’s a utility view that displays no useful information. It only serves to perform a GET API call on it.
 
 **\_qt=bgColorTrue,bgColorFalse**: Quick Toggle of Boolean fields in a Table or Search view. Will queue all clicks on cells with a Yes/No type of fields and will invert their state in a background processing loop. Optional true/false/pending colors can be specified, compatible with all web formats like \#rrggbbaa, \#rgba and named colors (ex: darkolivegreen). The colors can be app-wide or on a per-view basis, as desired. See quickToggleParams for details in the KTL_KnackApp.js file.
 
@@ -514,7 +518,7 @@ To use this feature, you must:
 2.  Create an account role named "Bulk Edit" and assign it diligently to very trusty and liable users.
 3.  For each applicable table, enable Inline editing and be sure to disable all the fields that should be protected against unintended modifications.
 
-These field types are supported: all text fields, connected fields, date time picker, Yes/No, multiple choices: radio buttons and checkboxes.
+These field types are supported: all text fields, connected fields, date time picker, Yes/No, multiple choices: single selection, radio buttons and checkboxes.
 
 Usage: In the table, select all the checkboxes for the records to be modified. Then click on any cell to edit its value (inline). After submitting the change, a prompt will ask you if the value should also apply to all selected records. Click yes to apply to all. A confirmation message will pop up after completion.
 
@@ -696,20 +700,16 @@ The **KTL_KnackApp.js** file is subject to frequent changes over time, mainly du
 
 # Advanced Features
 
-These features are considered "advanced" in the sense that they require additional setup. Also, some of them can provide communication between various parts of your app, thus leveraging quite powerful administration features.
+These features are considered "advanced" in the sense that they require additional setup. Some of them provide communication methods between various parts of your app, thus leveraging quite powerful administration features.
 
 Namely:
 
 1.  iFrameWnd
-    1.  Heartbeat Monitoring
-    2.  User Preferences
-    3.  Account Logging
-    4.  Remote SW Updates (the page and view setup will come soon)
-    5.  Public Filters
-2.  Bulk Operations
-    1.  Edit
-    2.  Delete
-3.  User and Public Filters automatic Upload and Download (save/restore)
+2.  Heartbeat Monitoring
+3.  User Preferences
+4.  Account Logging
+5.  Remote SW Updates (the page and view setup will come soon)
+6.  User and Public Filters automatic Upload and Download
 
 ## Setup
 
@@ -789,7 +789,7 @@ To support automatic Upload and Download, follow this procedure:
 
 Open two different browsers (ex: Chrome and Edge) and log-in with the same account - yours. Open both to the same page, where there’s a table with filtering enabled. Create a couple of filters in the first browser, wait about 30 seconds and you will see those filters appear in the second browser. Same applies for Public Filters: set a filter to Public, make changes to it, and all will be reflected in the other browser, but also for all users of that view.
 
-\*Note about browsers: the localStorage is not shared across different browsers (and also within the same browser but in private/incognito mode). This is when the automatic Upload/Download feature then comes to the rescue, by allowing this transfer to occur in real-time, within about 30 seconds.
+\*Note about browsers: the localStorage is not shared across different browsers (and also within the same browser but in private/incognito mode). This is when the automatic Upload/Download feature then comes in handy, by allowing this transfer to occur in real-time, within about 30 seconds.
 
 #### Account Logging
 
@@ -848,38 +848,38 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 # List of all Keywords
 
-| **Keyword**                   | **Description**                                | **Where to use it**                                      | **Example**                     |
-|-------------------------------|------------------------------------------------|----------------------------------------------------------|---------------------------------|
-| \_ar=n                        | Auto-Refresh a view every *n* seconds          | View Title or Description                                | \_ar=60                         |
-| \_hv                          | Hidden View                                    |                                                          |                                 |
-| \_ht                          | Hidden Title                                   |                                                          |                                 |
-| \_ni                          | No Inline editing                              |                                                          |                                 |
-| \_ts                          | Adds a Time Stamp to a view                    |                                                          |                                 |
-| \_dtp                         | Adds Date/Time Pickers                         |                                                          |                                 |
-| \_rvs=vTitle1, vTitle2…       | Refresh Views after Submit                     |                                                          | \_rvs=Monthly Sales, Clients    |
-| \_rvr=vTitle1, vTitle2…       | Refresh Views after Refresh                    |                                                          | \_rvr=Monthly Sales, Clients    |
-| \_rvd=vTitle1, vTitle2…       | Refresh Views after calendar event Drag’n Drop |                                                          | \_rvd=Monthly Sales, Clients    |
-| \_lf= vTitle1,vTitle2…        | Linked Filters                                 |                                                          | \_lf=Monthly Sales, Clients     |
-| \_qt=colorTrue,colorFalse     | Quick Toggle of Boolean fields                 |                                                          | \_qt=\#0F07,pink                |
-| \_mc=colHeader                | Match Color for whole row to a given column    |                                                          | \_mc=Sales                      |
-| \_hc= colHeader1, colHeader2… | Hide Columns, but keep in DOM                  |                                                          |                                 |
-| \_rc= colHeader1, colHeader2… | Remove Columns, including DOM                  |                                                          |                                 |
-| \_nf=field_1,field_2…         | No Filtering on specified fields               |                                                          | \_nf=field_1,field_2            |
-|                               |                                                |                                                          |                                 |
-| \_al                          | Auto-Login                                     | View Title or Description of a login page                |                                 |
-|                               |                                                |                                                          |                                 |
-| \_oln=url                     | Open Link in a New page (tab)                  | Rich Text view with link                                 | Support \_oln=https://ctrnd.com |
-| \_ols=url                     | Open Link in Same page                         | Rich Text view with link                                 | Support \_ols=https://ctrnd.com |
-|                               |                                                |                                                          |                                 |
-| \_uc                          | Convert to Uppercase                           | Field Description                                        |                                 |
-| \_num                         | Numeric                                        |                                                          |                                 |
-| \_int                         | Integer                                        |                                                          |                                 |
-| \_ip                          | Validate IP format (to do)                     |                                                          |                                 |
-|                               |                                                |                                                          |                                 |
-| \_kr                          | Kiosk add Refresh button                       | View Title or Description. Effective in Kiosk mode only. |                                 |
-| \_kb                          | Kiosk add Back button                          |                                                          |                                 |
-| \_kd                          | Kiosk add Done button                          |                                                          |                                 |
-| \_kn                          | Kiosk No buttons (to clarify)                  |                                                          |                                 |
+| **Keyword**                        | **Description**                                | **Where to use it**                                      | **Example**                                |
+|------------------------------------|------------------------------------------------|----------------------------------------------------------|--------------------------------------------|
+| \_ar=n                             | Auto-Refresh a view every *n* seconds          | View Title or Description                                | \_ar=60                                    |
+| \_hv                               | Hidden View                                    |                                                          |                                            |
+| \_ht                               | Hidden Title                                   |                                                          |                                            |
+| \_ni=colHeader1, colHeader2…       | No Inline editing                              |                                                          | \_ni=Email,Phone                           |
+| \_ts                               | Adds a Time Stamp to a view                    |                                                          |                                            |
+| \_dtp                              | Adds Date/Time Pickers                         |                                                          |                                            |
+| \_rvs=vTitle1, vTitle2…            | Refresh Views after Submit                     |                                                          | \_rvs=Monthly Sales, Clients               |
+| \_rvr=vTitle1, vTitle2…            | Refresh Views after Refresh                    |                                                          | \_rvr=Monthly Sales, Clients               |
+| \_rvd=vConfTitle,vTitle1, vTitle2… | Refresh Views after calendar event Drag’n Drop |                                                          | \_rvd=Confirmation, Monthly Sales, Clients |
+| \_lf= vTitle1,vTitle2…             | Linked Filters                                 |                                                          | \_lf=Monthly Sales, Clients                |
+| \_qt=colorTrue,colorFalse          | Quick Toggle of Boolean fields                 |                                                          | \_qt=\#0F07,pink                           |
+| \_mc=colHeader                     | Match Color for whole row to a given column    |                                                          | \_mc=Sales                                 |
+| \_hc= colHeader1, colHeader2…      | Hide Columns, but keep in DOM                  |                                                          |                                            |
+| \_rc= colHeader1, colHeader2…      | Remove Columns, including DOM                  |                                                          |                                            |
+| \_nf=field_1,field_2…              | No Filtering on specified fields               |                                                          | \_nf=field_1,field_2                       |
+|                                    |                                                |                                                          |                                            |
+| \_al                               | Auto-Login                                     | View Title or Description of a login page                |                                            |
+|                                    |                                                |                                                          |                                            |
+| \_oln=url                          | Open Link in a New page (tab)                  | Rich Text view with link                                 | Support \_oln=https://ctrnd.com            |
+| \_ols=url                          | Open Link in Same page                         | Rich Text view with link                                 | Support \_ols=https://ctrnd.com            |
+|                                    |                                                |                                                          |                                            |
+| \_uc                               | Convert to Uppercase                           | Field Description                                        |                                            |
+| \_num                              | Numeric                                        |                                                          |                                            |
+| \_int                              | Integer                                        |                                                          |                                            |
+| \_ip                               | Validate IP format (to do)                     |                                                          |                                            |
+|                                    |                                                |                                                          |                                            |
+| \_kr                               | Kiosk add Refresh button                       | View Title or Description. Effective in Kiosk mode only. |                                            |
+| \_kb                               | Kiosk add Back button                          |                                                          |                                            |
+| \_kd                               | Kiosk add Done button                          |                                                          |                                            |
+| \_kn                               | Kiosk No buttons (to clarify)                  |                                                          |                                            |
 
 ## 
 
