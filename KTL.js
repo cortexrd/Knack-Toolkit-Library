@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.9.3';
+    const KTL_VERSION = '0.9.4';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4091,11 +4091,7 @@ function Ktl($, info) {
                                 $('#' + view.key + ' .view-header h2').css({ 'position': 'absolute', 'left': '-9000px' });
                             }
 
-                            //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
-                            if (keywords._ni && !ktl.account.isDeveloper()) {
-                                if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
-                                    $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit');
-                            }
+                            keywords._ni && ktl.views.noInlineEditing(view, keywords);
 
                             //IMPORTANT: _qc must be processed BEFORE _mc.
                             keywords._qt && ktl.views.quickToggle(view.key, keywords, data);
@@ -5726,6 +5722,18 @@ function Ktl($, info) {
                         foundViewIds.push(foundViewId);
                 }
                 return foundViewIds;
+            },
+
+            //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
+            noInlineEditing: function (view, keywords) {
+                if (!view || !keywords._ni || ktl.scenes.isiFrameWnd()) return;
+
+                var ignoreDevloper = false; //TODO: put this as a global on-the-fly flag.
+                if (ignoreDevloper && ktl.account.isDeveloper()) return;
+
+                var model = (Knack.views[view.key] && Knack.views[view.key].model);
+                if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
+                    $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit');
             },
         }
     })(); //views
