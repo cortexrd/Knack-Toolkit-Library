@@ -5712,12 +5712,12 @@ function Ktl($, info) {
                 })
             },
 
-            convertTitlesToViewIds: function (viewTitles = [], viewId = '') {
+            convertTitlesToViewIds: function (viewTitles = [], excludeViewId = '') {
                 if (!viewTitles.length) return;
                 var foundViewIds = [];
                 for (var i = 0; i < viewTitles.length; i++) {
                     var viewTitle = viewTitles[i].trim();
-                    var foundViewId = ktl.scenes.findViewWithTitle(viewTitle, false, viewId);
+                    var foundViewId = ktl.scenes.findViewWithTitle(viewTitle, false, excludeViewId);
                     if (foundViewId)
                         foundViewIds.push(foundViewId);
                 }
@@ -5725,15 +5725,24 @@ function Ktl($, info) {
             },
 
             //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
+            //Each parameter is a column header text where disable applies. If no parameter, the whole table is disabled.
             noInlineEditing: function (view, keywords) {
                 if (!view || !keywords._ni || ktl.scenes.isiFrameWnd()) return;
 
-                var ignoreDevloper = false; //TODO: put this as a global on-the-fly flag.
-                if (ignoreDevloper && ktl.account.isDeveloper()) return;
-
                 var model = (Knack.views[view.key] && Knack.views[view.key].model);
-                if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor)
-                    $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit');
+                if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor) {
+                    var ignoreDevloper = false; //TODO: put this as a global on-the-fly flag.
+                    if (ignoreDevloper && ktl.account.isDeveloper()) return;
+
+                    if (keywords._ni.length) {
+                        keywords._ni.forEach(colHeader => {
+                            var thead = $('#' + view.key + ' thead tr th:textEquals("' + colHeader + '")');
+                            if (thead.length)
+                                $('#' + view.key + ' tbody tr td:nth-child(' + (thead[0].cellIndex + 1) + ')').addClass('ktlNoInlineEdit');
+                        })
+                    } else
+                        $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit');
+                }
             },
         }
     })(); //views
