@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.9.4';
+    const KTL_VERSION = '0.9.5';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -6222,12 +6222,15 @@ function Ktl($, info) {
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.type !== 'table' && view.type !== 'search') return;
+            if (ktl.scenes.isiFrameWnd() || (view.type !== 'table' && view.type !== 'search')) return;
+
+            var fields = view.fields;
+            if (!fields) return;
 
             var bulkOpsLudFieldId = '';
             var bulkOpsLubFieldId = '';
             var descr = '';
-            var fields = view.fields;
+
             for (var f = 0; f < view.fields.length; f++) {
                 var field = fields[f];
                 descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
@@ -7602,10 +7605,12 @@ function Ktl($, info) {
                 return;
 
             //Put code below in a shared function (see _lud in ktl.log).
+            var fields = view.fields;
+            if (!fields) return;
+
             var lud = '';
             var lub = '';
             var descr = '';
-            var fields = view.fields;
             for (var f = 0; f < view.fields.length; f++) {
                 var field = fields[f];
                 descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
