@@ -3,8 +3,8 @@
  * See documentation for more details on github:  https://github.com/cortexrd/Knack-Toolkit-Library
  *
  * @author  Normand Defayette <nd@ctrnd.com>
- * @license GPLv3
- * 2019-2022
+ * @license MIT
+ * 2019-2023
  * */
 
 const IFRAME_WND_ID = 'iFrameWnd';
@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.9.6';
+    const KTL_VERSION = '0.9.7';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -6862,7 +6862,7 @@ function Ktl($, info) {
 
             acctSwVersionFld: ktl.core.getFieldIdByName('SW Version', accountsObj),
             acctUtcHbFld: ktl.core.getFieldIdByName('UTC HB', accountsObj),
-            acctTimeZoneFld: ktl.core.getFieldIdByName('Time Zone', accountsObj),
+            acctTimeZoneFld: ktl.core.getFieldIdByName('TZ', accountsObj),
             acctLocHbFld: ktl.core.getFieldIdByName('LOC HB', accountsObj),
             acctOnlineFld: ktl.core.getFieldIdByName('Online', accountsObj),
             acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
