@@ -348,9 +348,7 @@ Here is the list:
 
 **\_ip**: enforce IP format, with automatic colons and hex char real-time validation (not yet implemented).
 
-**\_lud**: Last Updated Date. Used with Inline Editing tables, to keep track of the last edit that occurred in any editable field. This field is a Date/Time type, with both date and time enabled and default to current date/time.
-
-**\_lub**: Last Updated By. Used with \_lud above, and both must exist to work properly. This field is a connection to an Account and will contain the currently logged-in account.
+**\_lud and \_lub**: Last Updated Date and Last Updated By. Both must be used together. \_lud is a date/time field and \_lub is a connection to an account. When this pair of fields are included in a table that has Inline Editing enabled, each time the user modifies **any** cell, an API call will automatically update these two values with the current date/time and the logged-in account.
 
 ## Views
 
@@ -851,38 +849,40 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 # List of all Keywords
 
-| **Keyword**                        | **Description**                                | **Where to use it**                                      | **Example**                                |
-|------------------------------------|------------------------------------------------|----------------------------------------------------------|--------------------------------------------|
-| \_ar=n                             | Auto-Refresh a view every *n* seconds          | View Title or Description                                | \_ar=60                                    |
-| \_hv                               | Hidden View                                    |                                                          |                                            |
-| \_ht                               | Hidden Title                                   |                                                          |                                            |
-| \_ni=colHeader1, colHeader2…       | No Inline editing                              |                                                          | \_ni=Email,Phone                           |
-| \_ts                               | Adds a Time Stamp to a view                    |                                                          |                                            |
-| \_dtp                              | Adds Date/Time Pickers                         |                                                          |                                            |
-| \_rvs=vTitle1, vTitle2…            | Refresh Views after Submit                     |                                                          | \_rvs=Monthly Sales, Clients               |
-| \_rvr=vTitle1, vTitle2…            | Refresh Views after Refresh                    |                                                          | \_rvr=Monthly Sales, Clients               |
-| \_rvd=vConfTitle,vTitle1, vTitle2… | Refresh Views after calendar event Drag’n Drop |                                                          | \_rvd=Confirmation, Monthly Sales, Clients |
-| \_lf= vTitle1,vTitle2…             | Linked Filters                                 |                                                          | \_lf=Monthly Sales, Clients                |
-| \_qt=colorTrue,colorFalse          | Quick Toggle of Boolean fields                 |                                                          | \_qt=\#0F07,pink                           |
-| \_mc=colHeader                     | Match Color for whole row to a given column    |                                                          | \_mc=Sales                                 |
-| \_hc= colHeader1, colHeader2…      | Hide Columns, but keep in DOM                  |                                                          |                                            |
-| \_rc= colHeader1, colHeader2…      | Remove Columns, including DOM                  |                                                          |                                            |
-| \_nf=field_1,field_2…              | No Filtering on specified fields               |                                                          | \_nf=field_1,field_2                       |
-|                                    |                                                |                                                          |                                            |
-| \_al                               | Auto-Login                                     | View Title or Description of a login page                |                                            |
-|                                    |                                                |                                                          |                                            |
-| \_oln=url                          | Open Link in a New page (tab)                  | Rich Text view with link                                 | Support \_oln=https://ctrnd.com            |
-| \_ols=url                          | Open Link in Same page                         | Rich Text view with link                                 | Support \_ols=https://ctrnd.com            |
-|                                    |                                                |                                                          |                                            |
-| \_uc                               | Convert to Uppercase                           | Field Description                                        |                                            |
-| \_num                              | Numeric                                        |                                                          |                                            |
-| \_int                              | Integer                                        |                                                          |                                            |
-| \_ip                               | Validate IP format (to do)                     |                                                          |                                            |
-|                                    |                                                |                                                          |                                            |
-| \_kr                               | Kiosk add Refresh button                       | View Title or Description. Effective in Kiosk mode only. |                                            |
-| \_kb                               | Kiosk add Back button                          |                                                          |                                            |
-| \_kd                               | Kiosk add Done button                          |                                                          |                                            |
-| \_kn                               | Kiosk No buttons (to clarify)                  |                                                          |                                            |
+| **Keyword**                        | **Description**                                       | **Where to use it**                                      | **Example**                                |
+|------------------------------------|-------------------------------------------------------|----------------------------------------------------------|--------------------------------------------|
+| \_ar=n                             | Auto-Refresh a view every *n* seconds                 | View Title or Description                                | \_ar=60                                    |
+| \_hv                               | Hidden View                                           |                                                          |                                            |
+| \_ht                               | Hidden Title                                          |                                                          |                                            |
+| \_ni=colHeader1, colHeader2…       | No Inline editing                                     |                                                          | \_ni=Email,Phone                           |
+| \_ts                               | Adds a Time Stamp to a view                           |                                                          |                                            |
+| \_dtp                              | Adds Date/Time Pickers                                |                                                          |                                            |
+| \_rvs=vTitle1, vTitle2…            | Refresh Views after Submit                            |                                                          | \_rvs=Monthly Sales, Clients               |
+| \_rvr=vTitle1, vTitle2…            | Refresh Views after Refresh                           |                                                          | \_rvr=Monthly Sales, Clients               |
+| \_rvd=vConfTitle,vTitle1, vTitle2… | Refresh Views after calendar event Drag’n Drop        |                                                          | \_rvd=Confirmation, Monthly Sales, Clients |
+| \_lf= vTitle1,vTitle2…             | Linked Filters                                        |                                                          | \_lf=Monthly Sales, Clients                |
+| \_qt=colorTrue,colorFalse          | Quick Toggle of Boolean fields                        |                                                          | \_qt=\#0F07,pink                           |
+| \_mc=colHeader                     | Match Color for whole row to a given column           |                                                          | \_mc=Sales                                 |
+| \_hc= colHeader1, colHeader2…      | Hide Columns, but keep in DOM                         |                                                          |                                            |
+| \_rc= colHeader1, colHeader2…      | Remove Columns, including DOM                         |                                                          |                                            |
+| \_nf=field_1,field_2…              | No Filtering on specified fields                      |                                                          | \_nf=field_1,field_2                       |
+|                                    |                                                       |                                                          |                                            |
+| \_al                               | Auto-Login                                            | View Title or Description of a login page                |                                            |
+|                                    |                                                       |                                                          |                                            |
+| \_oln=url                          | Open Link in a New page (tab)                         | Rich Text view with link                                 | Support \_oln=https://ctrnd.com            |
+| \_ols=url                          | Open Link in Same page                                | Rich Text view with link                                 | Support \_ols=https://ctrnd.com            |
+|                                    |                                                       |                                                          |                                            |
+| \_uc                               | Convert to Uppercase                                  | Field Description                                        |                                            |
+| \_num                              | Numeric                                               |                                                          |                                            |
+| \_int                              | Integer                                               |                                                          |                                            |
+| \_ip                               | Validate IP format (to do)                            |                                                          |                                            |
+| \_lud                              | Last Updated Date. For Inline edits, used with \_lub. |                                                          |                                            |
+| \_lub                              | Last Updated By. For Inline edits, used with \_lud.   |                                                          |                                            |
+|                                    |                                                       |                                                          |                                            |
+| \_kr                               | Kiosk add Refresh button                              | View Title or Description. Effective in Kiosk mode only. |                                            |
+| \_kb                               | Kiosk add Back button                                 |                                                          |                                            |
+| \_kd                               | Kiosk add Done button                                 |                                                          |                                            |
+| \_kn                               | Kiosk No buttons (to clarify)                         |                                                          |                                            |
 
 ## 
 
