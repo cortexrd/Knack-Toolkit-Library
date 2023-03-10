@@ -56,7 +56,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                     callback();
                 } else
                     LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_KnackApp.js'], () => {
-                        console.log('Loaded default KnackApp.');
+                        //console.log('Loaded default KnackApp.');
                         KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
                         callback();
                     });
