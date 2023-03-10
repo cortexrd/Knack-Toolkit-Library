@@ -28,6 +28,32 @@ You do not need any coding skills to benefit from the KTL. The simple **“keywo
 
 For the few features that require API calls, everything is done to minimize their usage as much as possible. All calls are 100% view-based, so **your API key is never used**.
 
+# What are Keywords?
+
+KTL uses reserved keywords to trigger features. You decide if and where you need them. All keywords are created in the Builder and are **never visible** in the app. All keywords must start with an underscore followed by a letter, ex: **\_ts**.
+
+They are used in two ways: per view and per field.
+
+## Per View
+
+Keywords can be added in the view’s **title** or **description** - interchangeably or together. Each keywords are separated by a space, or line feeds (return) when used in the description box.
+
+## Per Field
+
+Keywords can be added in the field’s **description** in the object.
+
+## Placement
+
+For views, all keywords must be placed **after** the last word that you intend to keep as visible. Everything after the first keyword found will be truncated (invisible) in the app. For fields, it is not relevant since descriptions are “internal” notes for developers only and not visible in the app anyways.
+
+## Parameters
+
+Some keywords require one or more parameters, and some may be optional. When using parameters, the equal sign “=”operator is added after the keyword, followed by the parameter(s). If multiple parameters are used, the comma is the separator and spaces are allowed.
+
+Ex: \_rvs=vTitle1, vTitle2
+
+The keywords are not case-sensitive, but the parameters are and must always be an **exact match** to take effect.
+
 # Installation
 
 ## No time to read all this now - How about a quick tryout?
@@ -192,9 +218,9 @@ Provides field-related features like auto-select all text on focus, convert from
 -   **getFieldFromDescription**: Returns an object with the field ID and view ID of a field containing specified text in its description.
 -   **getFieldDescription**: Returns the description text from the field ID parameter.
 
-### Using field’s Description text box as keywords to trigger special behavior
+### Adding keywords to a field’s description to trigger features
 
-In the Builder, when you edit a field in the schema view, there’s a Description text box, where you can put your own notes, as a developer. Now, this can also be used by the KTL to trigger special behavior. You can add the keyword **at the end** of your description, or on a separate line, as you wish.
+In the Builder, when you edit a field in the schema view, there’s a Description text box, where you can put your own notes, as a developer. Now, this can also be used by the KTL to trigger special behavior. See [What are Keywords?](#what-are-keywords) For more details.
 
 Here is the list:
 
@@ -236,9 +262,9 @@ Provides view-related features.
 -   **handleCalendarEventDrop**: Provides notification that a drag’n drop operation has been done on a calendar event. This can be used to sync a table to a calendar.
 -   **getDataFromRecId**: returns the data record for a given view and record ID. Works with Tables and Search views.
 
-### Using view’s Title or Description to add keywords to trigger special behavior
+### Adding keywords to a view’s title or description to trigger features
 
-You can add reserved keywords **at the end of your view’s title** **or description** to trigger special behavior. The **first keyword found** - and any text that follows - will be truncated, thus not visible to the user. Some keywords require extra parameters, following the equal sign. Each parameter must be separated by a comma and spaces are allowed. The keywords are not case-sensitive, but the parameters are and must always be an **exact match** to take effect.
+You can add reserved keywords **at the end of your view’s title** **or description** to trigger special behavior. See [What are Keywords?](#what-are-keywords) For more details.
 
 Here is the list:
 
@@ -314,9 +340,11 @@ Provides scene-related features.
 -   **isiFrameWnd**: returns whether the window is the top-level app, or the hidden child utility page called iFrameWnd.
 -   **onSceneRender**: Callback to your app's handler of a “knack-scene-render.any” event.
 
-### Using a page’s Rich Text view with keywords to trigger special behavior
+### Adding keywords to a rich text view to trigger features
 
-In the Builder, you can add a rich text view with these keywords to trigger special behavior. The page must have **only one view,** have the “Include this page in the Page Menu” flag active and be in the **top** **menu** (not in a sub-menu).
+In the Builder, you can add a rich text view with these keywords to trigger special behavior. See [What are Keywords?](#what-are-keywords) For more details.
+
+The page must have **only one view,** have the “Include this page in the Page Menu” flag active and be in the **top** **menu** (not in a sub-menu).
 
 **\_ols=url** : Open Link in Same page. To redirect your browser to another URL, on the same page. In the rich text, add the keyword **\_ols=** as plain text, followed by a **link** to the website and a descriptive text (or same URL).
 
