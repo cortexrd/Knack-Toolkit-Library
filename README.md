@@ -6,19 +6,15 @@ Last update: March 10, 2023
 
 [Introduction](#introduction)
 
-[Overview](#installation)
-
-[Zero config needed for Basic Features](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
-
-[No time to read all this now - How about a quick tryout?](#no-time-to-read-all-this-now---how-about-a-quick-tryout)
-
-[How to use the KTL](#how-to-use-the-ktl)
+[Installation](#installation)
 
 [KTL Features](#ktl-features)
 
 [Customizing Features](#customizing-features)
 
 [Advanced Features](#advanced-features)
+
+[Advanced KTL Development Modes](#advanced-ktl-development-modes)
 
 [List of all Keywords](#list-of-all-keywords)
 
