@@ -69,7 +69,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 
 ## Advanced Setup
 
-Click the following links if you are interested to know more about [Advanced Features](#advanced-features) and [Advanced KTL Development Modes](#_Advanced_KTL_Development).
+Click the following links if you are interested to know more about [Advanced Features](#advanced-features) and [Advanced KTL Development Modes](#advanced-ktl-development-modes).
 
 # KTL Features
 
