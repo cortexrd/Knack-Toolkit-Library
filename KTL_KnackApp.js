@@ -1,20 +1,12 @@
 //====================================================
 //====================================================
 var KnackApp = function ($, info = {}) {
-    window.$ = $;
-
     window.APP_VERSION = '1.0.0'; //Your App version.
 
-    const IFRAME_WND_ID = 'iFrameWnd';
-
+    window.$ = $;
     var ktl = new Ktl($, info);
     window.ktl = ktl;
-
-    //====================================================
-    //App constants - BEGIN
-    //Add any constants shared between your app and the KTL, like scene, view and field IDs.
-    const HOME_SCN = 'scene_1'; //As an example.
-    //App constants - END
+    const IFRAME_WND_ID = 'iFrameWnd';
 
     //====================================================
     //KTL Setup - BEGIN
@@ -199,12 +191,13 @@ var KnackApp = function ($, info = {}) {
                 versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; border-style:none; padding-bottom:2px; left: 50%; transform: translate(-50%, -50%);';
 
             ktl.scenes.addVersionInfo(info, versionStyle);
+            autoFocus();
         }
     }
 
     //Positions the cursor at a convenient place for the user to enter the next data.
     function autoFocus() {
-        if (window.self.frameElement) //Never in iFrames.  Prevents parent from working properly.
+        if (!ktl.core.getCfg().enabled.autoFocus || window.self.frameElement) //Never in iFrames.  Prevents parent from working properly.
             return;
 
         const autoFocusFields = [/*'field_xx', 'field_yy'*/]; //Add specific fields you want the focus on, if any.
