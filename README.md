@@ -30,7 +30,7 @@ For the few features that require API calls, everything is done to minimize thei
 
 # What are Keywords?
 
-KTL uses reserved keywords to trigger features. You decide if and where you need them. All keywords are created in the Builder and are **never visible** in the app. All keywords must start with an underscore followed by a letter, ex: **\_ts**.
+KTL uses reserved keywords to trigger features. You decide *if* and *where* you need them. All keywords are created in the Builder and are **never visible** in the app. All keywords must start with an underscore followed by a letter, ex: **\_ts**.
 
 They are used in two ways: per view and per field.
 
@@ -44,7 +44,7 @@ Keywords can be added in the field’s **description** in the object.
 
 ## Placement
 
-For views, all keywords must be placed **after** the last word that you intend to keep as visible. Everything after the first keyword found will be truncated (invisible) in the app. For fields, it is not relevant since descriptions are “internal” notes for developers only and not visible in the app anyways.
+For views, all keywords must be placed **after** the last word that you intend to keep visible. Everything after the first keyword found will be truncated (invisible) in the app. For fields, it is not relevant since descriptions are “internal notes” for developers only and not visible in the app anyways.
 
 ## Parameters
 
@@ -58,7 +58,7 @@ The keywords are not case-sensitive, but the parameters are and must always be a
 
 ## No time to read all this now - How about a quick tryout?
 
-If you want to try/use the basic, default setup version of the KTL, all you need to do is copy the **5 lines** of code from this file [**KTL_Loader.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Loader.js) at the **top** of the Javascript pane of the Builder. See the next section for the list of basic features.
+If you want to try/use the basic default setup version of the KTL, all you need to do is copy the **5 lines** of code from this file [**KTL_Loader.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Loader.js) at the **top** of the Javascript pane of the Builder. See the next section for the list of basic features.
 
 If you already have your own code, it will not conflict with the KTL. Just leave it after those added lines.
 
@@ -68,7 +68,7 @@ If you do not like some features, you can turn them off individually – [see he
 
 **Zero config needed for Basic Features**
 
-Right out of the box, without any coding or complex setup, the KTL will provide many nice additions to your app:
+Right out of the box, without any coding or complex setup, the KTL will provide these nice additions to your app:
 
 -   Using reserved keywords to trigger special behavior. [See list](#list-of-all-keywords).
 -   User filters to save your filters to named buttons
