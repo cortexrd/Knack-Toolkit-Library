@@ -4082,13 +4082,13 @@ function Ktl($, info) {
                             //Hide the whole view, typically used when doing background searches.
                             if (keywords._hv) {
                                 if (!Knack.getUserRoleNames().includes('Developer'))
-                                    $('#' + view.key).css({ 'position': 'absolute', 'left': '-9000px' });
+                                    $('#' + view.key).addClass('ktlHidden');
                             }
 
                             //Hide the view title only, typically used to save space when real estate is critical.
                             if (keywords._ht) {
-                                $('#' + view.key + ' .view-header h1').css({ 'position': 'absolute', 'left': '-9000px' }); //Search Views use H1 instead of H2.
-                                $('#' + view.key + ' .view-header h2').css({ 'position': 'absolute', 'left': '-9000px' });
+                                $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
+                                $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
                             }
 
                             keywords._ni && ktl.views.noInlineEditing(view, keywords);
