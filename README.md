@@ -28,7 +28,7 @@ Last update: March 10, 2023
 
 The Knack Toolkit Library, or KTL for short, is a collection of open-source Javascript utilities that eases Knack application development by adding several features that are not easily created from the ground up.
 
-For the most part, you do not need to have any coding skills to benefit from the KTL. The simple **“keyword-based”** approach allows you to use the Builder to trigger the desired features and specific behavior.
+You do not need any coding skills to benefit from the KTL. The simple **“keyword-based”** approach allows you to use the Builder to trigger the desired features and specific behavior.
 
 For the few features that require API calls, everything is done to minimize their usage as much as possible. All calls are 100% view-based, so **your API key is never used**.
 
