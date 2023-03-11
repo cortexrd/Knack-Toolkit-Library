@@ -3139,18 +3139,22 @@ function Ktl($, info) {
                 if (newFilterName && newFilterName !== filterName) {
                     var foundFilter = getFilter(viewId, newFilterName);
                     if (foundFilter.index >= 0) {
-                        alert('Filter name already exists.  Please use another one.');
-                        return;
+                        if (foundFilter.filterObj.filterName === newFilterName) {
+                            alert('Filter name already exists.  Please use another one.');
+                            return;
+                        } else
+                            foundFilter.filterObj.filterName = newFilterName;
                     } else {
                         if (activeFilterName === filterName)
                             activeFilterName = newFilterName;
 
                         var updatedFilter = getFilter(viewId, filterName).filterObj;
                         updatedFilter.filterName = newFilterName;
-                        saveFilters(filterType, viewId);
-                        ktl.userFilters.addFilterButtons(viewId);
-                        ktl.userFilters.setActiveFilter(activeFilterName, viewId);
                     }
+
+                    saveFilters(filterType, viewId);
+                    ktl.userFilters.addFilterButtons(viewId);
+                    ktl.userFilters.setActiveFilter(activeFilterName, viewId);
                 }
             });
 
@@ -3512,7 +3516,7 @@ function Ktl($, info) {
                     if (flt.index >= 0)
                         filterName = flt.filterObj.filterName;
                 } else {
-                    filterName = prompt('Filter Name: ', '');
+                    filterName = prompt('Filter Name: ', getFilter(filterDivId).filterObj.filterName);
                     if (!filterName) return;
 
                     flt = getFilter(filterDivId, filterName);
