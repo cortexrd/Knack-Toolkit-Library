@@ -4232,8 +4232,8 @@ function Ktl($, info) {
 
             if (prevType !== inputType) {
                 prevType = inputType;
-                $('#' + viewId + ' #gotoDate').remove();
-                $('#' + viewId + ' #gotoDate-label').remove();
+                $('#' + viewId + '_gotoDate').remove();
+                $('#' + viewId + '_gotoDate-label').remove();
             }
 
             var focusGoto = (document.activeElement === document.querySelector('#' + viewId + '_gotoDate'));
@@ -4248,11 +4248,10 @@ function Ktl($, info) {
 
             var gotoDateField = document.querySelector('#' + viewId + ' #' + viewId + '_gotoDate');
             if (!gotoDateField) {
-                console.log('Creating calendar', viewId);
                 var div = document.createElement('div');
                 ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .fc-header-left'));
 
-                var gotoDateField = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, viewId + '_gotoDate', 'width: 200px; height: 25px;');
+                var gotoDateField = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, viewId + '_gotoDate', 'width: 150px; height: 25px;');
                 ktl.scenes.autoFocus();
 
                 gotoDateField.addEventListener('change', (e) => {
