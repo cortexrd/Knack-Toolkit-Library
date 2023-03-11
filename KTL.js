@@ -5028,8 +5028,8 @@ function Ktl($, info) {
                         return;
                     }
 
-                    //if (dropdownSearching[fieldId])
-                    //    return; //Exit if a search is already in progress for this field.
+                    if (dropdownSearching[fieldId])
+                        return; //Exit if a search is already in progress for this field.
 
                     dropdownSearching[fieldId] = fieldId;
 
