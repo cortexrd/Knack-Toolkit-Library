@@ -982,6 +982,8 @@ function Ktl($, info) {
                 } else if (document.querySelector('#cell-editor .kn-button[disabled=disabled]'))
                     e.preventDefault();
 
+                //Some inline editors do not Submit. This solves the problem.
+                $('#cell-editor .is-primary').click();
 
                 //Filters: enables using the enter key to select and submit.
                 setTimeout(function () { $('#kn-submit-filters').trigger('click'); }, 200);
@@ -1160,7 +1162,6 @@ function Ktl($, info) {
                             //When focus is switched to input in background, leave it there,
                             //but copy input text to foreground chznBetter field so user can see it.
                             inputVal = inputVal.trim();
-
                             chznBetterTxt = inputVal;
                             chznBetter.val(chznBetterTxt);
 
@@ -1247,11 +1248,11 @@ function Ktl($, info) {
                         var forms = document.querySelectorAll('.kn-form');
                         forms.forEach(form => {
                             var viewId = form.id;
-                            var fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text,.kn-input-number');
+                            var fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text,.kn-input-number,.kn-input-currency');
                             fields.forEach(field => {
                                 var fieldId = field.attributes['data-input-id'].value;
                                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
-                                if (field.classList.contains('kn-input-number') || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
+                                if (field.classList.contains('kn-input-number') || field.classList.contains('kn-input-currency') || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
                                     if (!field.getAttribute('numeric')) {
                                         field.setAttribute('numeric', true);
 
@@ -1272,44 +1273,47 @@ function Ktl($, info) {
             //If an error is detected, the Submit button is disabled and the field is colored in pink.
             //It may seem be inefficient to scan all views and fields, but it must be so in order to support persistent form data.
             enforceNumeric: function () {
-                var forms = document.querySelectorAll('.kn-form') || document.querySelectorAll('#cell-editor');
-                forms.forEach((form) => {
+                var forms = document.querySelectorAll('#cell-editor');
+                if (!forms.length)
+                    forms = document.querySelectorAll('.kn-form');
+
+                forms.forEach(form => {
+                    var viewId = form.id;
                     var formValid = true;
                     var fields = document.querySelectorAll('#cell-editor #chznBetter[numeric=true]');
                     if (!fields.length)
                         fields = document.querySelectorAll('#cell-editor .kn-input[numeric=true]');
                     if (!fields.length)
-                        fields = document.querySelectorAll('#' + form.id + ' .kn-input[numeric=true]');
+                        fields = document.querySelectorAll('#' + viewId + ' .kn-input[numeric=true]');
 
-                    fields.forEach((field) => {
-                        var viewId = field.closest('.kn-view') || field.closest('#cell-editor');
-                        if (viewId) {
-                            viewId = viewId.id;
-                            var inputFld = document.querySelector('#chznBetter[numeric=true]') || document.querySelector('#' + form.id + ' #' + field.getAttribute('data-input-id'));
-                            if (inputFld) {
-                                var value = inputFld.value;
-                                var fieldValid = !isNaN(value);
+                    var submit = document.querySelector('#' + viewId + ' .is-primary');
+                    if (!submit.validity)
+                        submit.validity = { invalidItemObj: {} };
 
-                                var fieldDesc = ktl.fields.getFieldDescription(inputFld.id);
-                                if (fieldDesc && fieldDesc.includes('_int'))
-                                    fieldValid = fieldValid && (value.search(/[^0-9]/) === -1);
+                    fields.forEach(field => {
+                        var inputFld = document.querySelector('#chznBetter[numeric=true]') ||
+                            document.querySelector('#' + viewId + ' #' + field.getAttribute('data-input-id'));
 
-                                formValid = formValid && fieldValid;
-                                inputFld.setAttribute('valid', fieldValid);
-                                $(inputFld).css('background-color', !fieldValid ? '#fdb0b0' : ''); //Same color as Knack errors.
+                        if (inputFld) {
+                            var value = inputFld.value;
+                            var fieldValid = !isNaN(value);
 
-                                var submit = document.querySelector('#' + viewId + ' .is-primary');
-                                var validity = submit.validity ? submit.validity : true;
+                            var fieldDesc = ktl.fields.getFieldDescription(inputFld.id);
+                            if (fieldDesc && fieldDesc.includes('_int'))
+                                fieldValid = fieldValid && (value.search(/[^0-9]/) === -1);
 
-                                if (formValid)
-                                    validity.invalidItemObj && (delete validity.invalidItemObj.numericValid);
-                                else
-                                    validity.invalidItemObj ? validity.invalidItemObj.numericValid = false : validity.invalidItemObj = { numericValid: false };
-
-                                ktl.views.updateSubmitButtonState(viewId);
-                            }
+                            formValid = formValid && fieldValid;
+                            inputFld.setAttribute('valid', fieldValid);
+                            $(inputFld).css('background-color', !fieldValid ? '#fdb0b0' : ''); //Same color as Knack errors.
                         }
                     })
+
+                    if (formValid)
+                        submit.validity.invalidItemObj && (delete submit.validity.invalidItemObj.numericValid);
+                    else
+                        submit.validity.invalidItemObj ? submit.validity.invalidItemObj.numericValid = false : submit.validity.invalidItemObj = { numericValid: false };
+
+                    ktl.views.updateSubmitButtonState(viewId);
                 })
             },
 
@@ -3135,18 +3139,22 @@ function Ktl($, info) {
                 if (newFilterName && newFilterName !== filterName) {
                     var foundFilter = getFilter(viewId, newFilterName);
                     if (foundFilter.index >= 0) {
-                        alert('Filter name already exists.  Please use another one.');
-                        return;
+                        if (foundFilter.filterObj.filterName === newFilterName) {
+                            alert('Filter name already exists.  Please use another one.');
+                            return;
+                        } else
+                            foundFilter.filterObj.filterName = newFilterName;
                     } else {
                         if (activeFilterName === filterName)
                             activeFilterName = newFilterName;
 
                         var updatedFilter = getFilter(viewId, filterName).filterObj;
                         updatedFilter.filterName = newFilterName;
-                        saveFilters(filterType, viewId);
-                        ktl.userFilters.addFilterButtons(viewId);
-                        ktl.userFilters.setActiveFilter(activeFilterName, viewId);
                     }
+
+                    saveFilters(filterType, viewId);
+                    ktl.userFilters.addFilterButtons(viewId);
+                    ktl.userFilters.setActiveFilter(activeFilterName, viewId);
                 }
             });
 
@@ -3508,7 +3516,7 @@ function Ktl($, info) {
                     if (flt.index >= 0)
                         filterName = flt.filterObj.filterName;
                 } else {
-                    filterName = prompt('Filter Name: ', '');
+                    filterName = prompt('Filter Name: ', getFilter(filterDivId).filterObj.filterName);
                     if (!filterName) return;
 
                     flt = getFilter(filterDivId, filterName);
@@ -4224,8 +4232,8 @@ function Ktl($, info) {
 
             if (prevType !== inputType) {
                 prevType = inputType;
-                $('#' + viewId + ' #gotoDate').remove();
-                $('#' + viewId + ' #gotoDate-label').remove();
+                $('#' + viewId + '_gotoDate').remove();
+                $('#' + viewId + '_gotoDate-label').remove();
             }
 
             var focusGoto = (document.activeElement === document.querySelector('#' + viewId + '_gotoDate'));
@@ -4240,11 +4248,10 @@ function Ktl($, info) {
 
             var gotoDateField = document.querySelector('#' + viewId + ' #' + viewId + '_gotoDate');
             if (!gotoDateField) {
-                console.log('Creating calendar', viewId);
                 var div = document.createElement('div');
                 ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .fc-header-left'));
 
-                var gotoDateField = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, viewId + '_gotoDate', 'width: 200px; height: 25px;');
+                var gotoDateField = ktl.fields.addInput(div, 'Go to date', inputType, gotoDateIso, viewId + '_gotoDate', 'width: 150px; height: 25px;');
                 ktl.scenes.autoFocus();
 
                 gotoDateField.addEventListener('change', (e) => {
@@ -5024,14 +5031,19 @@ function Ktl($, info) {
                         return;
                     }
 
-                    //if (dropdownSearching[fieldId])
-                    //    return; //Exit if a search is already in progress for this field.
+                    if (dropdownSearching[fieldId])
+                        return; //Exit if a search is already in progress for this field.
 
                     dropdownSearching[fieldId] = fieldId;
 
                     //If we're editing a cell, then it becomes our view by default and ignore viewId parameter.
                     //If viewId not specified, find first fieldId in page.
                     var viewSel = document.activeElement.closest('#cell-editor') ? '#cell-editor ' : ''; //Support inline editing.
+                    if (!viewId) {
+                        viewId = document.activeElement.closest('.kn-view');
+                        viewId && (viewId = viewId.id);
+                    }
+
                     viewSel = viewId ? '#' + viewId + ' ' : viewSel;
                     var dropdownObj = $(viewSel + '[name="' + fieldId + '"].select');
 
