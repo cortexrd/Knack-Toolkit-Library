@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.9.7';
+    const KTL_VERSION = '0.10.0';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -5399,28 +5399,23 @@ function Ktl($, info) {
             },
 
             //This is a Search view, where you pass the value, fieldId and viewId to be searched.
+            //Resolves with an array of data records found.
             findRecordByValue: function (viewId, fieldId, value) {
                 return new Promise(function (resolve, reject) {
                     if (!value || !fieldId || !viewId) {
-                        reject('Called findRecordByValue with invalid parameters');
+                        reject('Called findRecordByValue with invalid parameters.');
                     } else {
                         if (viewId === '_uvx') {
-                            console.log('findRecordByValue', viewId, fieldId, value);
-
                             var uvxViewId = ktl.scenes.findViewWithTitle('_uvx', false, viewId);
                             if (uvxViewId) {
                                 $('#' + uvxViewId + ' input').val('');
                                 var field = Knack.objects.getField(fieldId);
-
                                 var fieldName = field.attributes.name;
-                                console.log('fieldName =', fieldName);
-
                                 var srchFields = $('#' + uvxViewId + ' .kn-search-filter').find('.kn-label:contains("' + fieldName + '")').parent().find('input');
-                                console.log('srchFields =', srchFields);
                                 srchFields.val(value);
-
                                 $('#' + uvxViewId + ' .kn-button.is-primary').click();
-                                $(document).off('knack-view-render.' + uvxViewId).on('knack-view-render.' + uvxViewId, function (event, view, data) {
+                                $(document).on('knack-view-render.' + uvxViewId, function (event, view, data) {
+                                    $(document).off('knack-view-render.' + uvxViewId);
                                     resolve(data);
                                 })
                             }
@@ -5434,50 +5429,66 @@ function Ktl($, info) {
                 var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
                 if (!$.isEmptyObject(fieldsWithKwObj)) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                    for (var f = 0; f < fieldsWithKwAr.length; f++) {
+                    var outcomeObj = { msg: '' }; //We can add more properties if ever we need them.
+
+                    (function processKeywordsLoop(f) {
                         var fieldId = fieldsWithKwAr[f];
                         var keywords = fieldsWithKwObj[fieldId];
-                        processFieldsKeywords(viewId, fieldId, keywords, e);
-                    }
+                        ktl.views.processFieldsKeywords(viewId, fieldId, keywords, e)
+                            .then(ocObj => {
+                                outcomeObj.msg += ocObj.msg;
+                            })
+                            .catch(err => {
+                                console.log('preprocessSubmit Exception:', err);
+                            })
+                            .finally(() => {
+                                if (++f < fieldsWithKwAr.length)
+                                    processKeywordsLoop(f);
+                                else {
+                                    if (outcomeObj.msg !== '')
+                                        alert(outcomeObj.msg);
+                                    else
+                                        $('#' + viewId + ' form').submit();
+                                }
+                            })
+                    })(0);
                 }
+            },
 
-                function processFieldsKeywords(viewId, fieldId, keywords, e) {
-                    if (!viewId || !fieldId) return;
+            processFieldsKeywords: function (viewId, fieldId, keywords, e) {
+                return new Promise(function (resolve, reject) {
+                    if (!viewId || !fieldId) {
+                        reject('Called processFieldsKeywords with invalid parameters.');
+                        return;
+                    } else {
+                        //Unique Value Exceptions
+                        if (keywords._uvx && keywords._uvx.length) {
+                            e.preventDefault();
 
-                    console.log('processFieldsKeywords', viewId, fieldId, keywords, e);
-
-                    //Unique Value Exceptions
-                    if (keywords._uvx && keywords._uvx.length) {
-                        e.preventDefault();
-
-                        console.log('keywords._uvx =', fieldId, keywords._uvx);
-                        var field = Knack.objects.getField(fieldId);
-                        var fieldName = field.attributes.name;
-                        var fieldValue = $('#' + viewId + ' .kn-label:contains("' + fieldName + '")').closest('.kn-input').find('input').val();
-                        if (fieldValue && keywords._uvx.includes(fieldValue)) return;
-
-                        console.log('fieldValue =', fieldValue);
-                        var srchInProgress = true;
-
-
-                        var itv = setInterval(() => {
-                            if (!srchInProgress) {
-                                clearInterval(itv);
-
-                                ktl.views.findRecordByValue('_uvx', fieldId, fieldValue)
-                                    .then(foundRecords => {
-                                        console.log('found =', foundRecords);
-                                        if (foundRecords.length)
-                                            ktl.core.timedPopup('Error - ' + fieldName + ' ' + fieldValue + ' already exists.', 'warning', 2000);
-                                        srchInProgress = false;
-                                    })
-                                    .catch(err => {
-                                        console.log('preprocessSubmit Exception:', err);
-                                    })
+                            var outcomeObj = { msg: '' };
+                            var field = Knack.objects.getField(fieldId);
+                            var fieldName = field.attributes.name;
+                            var fieldValue = $('#' + viewId + ' .kn-label:contains("' + fieldName + '")').closest('.kn-input').find('input').val();
+                            if (fieldValue === '' || (fieldValue !== '' && keywords._uvx.includes(fieldValue.toLowerCase()))) {
+                                resolve(outcomeObj);
+                                return;
                             }
-                        }, 100);
+
+                            ktl.views.findRecordByValue('_uvx', fieldId, fieldValue)
+                                .then(foundRecords => {
+                                    if (foundRecords.length) {
+                                        if (outcomeObj.msg !== '')
+                                            outcomeObj.msg = outcomeObj.msg + '\n';
+                                        else
+                                            outcomeObj.msg = 'Error:\n'
+                                        outcomeObj.msg += fieldName + ' ' + fieldValue + ' already exists.';
+                                    }
+                                    resolve(outcomeObj);
+                                })
+                                .catch(err => { reject(err); })
+                        }
                     }
-                }
+                })
             },
 
             //Scans all view fields in view for keywords in their description.
