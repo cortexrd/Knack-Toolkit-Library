@@ -1757,7 +1757,8 @@ function Ktl($, info) {
                             eraseFormData(view.id);
                         })
                         .catch(failure => {
-                            ktl.log.clog('red', 'Persistent Form - waitSubmitOutcome failed: ' + failure);
+                            //Normal in many cases, so log is removed.  Put back to debug, if ever.
+                            //ktl.log.clog('red', 'Persistent Form - waitSubmitOutcome failed: ' + failure);
                         });
                 }
             }
@@ -4285,6 +4286,13 @@ function Ktl($, info) {
             //Pause auto-refresh when on a tables's search field.
             if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword' /*Needed to discriminate checkboxes.  We only want Search fields*/)
                 ktl.views.autoRefresh(false);
+
+
+            var viewId = e.target.closest('.kn-view');
+            viewId = viewId ? viewId.id : null;
+
+            if (viewId && e.target.closest('#' + viewId + ' .kn-button.is-primary'))
+                ktl.views.preprocessSubmit(viewId, e);
         })
 
         document.addEventListener('focusout', function (e) {
@@ -5388,6 +5396,113 @@ function Ktl($, info) {
                     if (data[i][fieldId] === value)
                         return data[i];
                 }
+            },
+
+            //This is a Search view, where you pass the value, fieldId and viewId to be searched.
+            findRecordByValue: function (viewId, fieldId, value) {
+                return new Promise(function (resolve, reject) {
+                    if (!value || !fieldId || !viewId) {
+                        reject('Called findRecordByValue with invalid parameters');
+                    } else {
+                        if (viewId === '_uvx') {
+                            console.log('findRecordByValue', viewId, fieldId, value);
+
+                            var uvxViewId = ktl.scenes.findViewWithTitle('_uvx', false, viewId);
+                            if (uvxViewId) {
+                                $('#' + uvxViewId + ' input').val('');
+                                var field = Knack.objects.getField(fieldId);
+
+                                var fieldName = field.attributes.name;
+                                console.log('fieldName =', fieldName);
+
+                                var srchFields = $('#' + uvxViewId + ' .kn-search-filter').find('.kn-label:contains("' + fieldName + '")').parent().find('input');
+                                console.log('srchFields =', srchFields);
+                                srchFields.val(value);
+
+                                $('#' + uvxViewId + ' .kn-button.is-primary').click();
+                                $(document).off('knack-view-render.' + uvxViewId).on('knack-view-render.' + uvxViewId, function (event, view, data) {
+                                    resolve(data);
+                                })
+                            }
+                        }
+                    }
+                })
+            },
+
+            preprocessSubmit: function (viewId, e) {
+                if (!viewId) return;
+                var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
+                if (!$.isEmptyObject(fieldsWithKwObj)) {
+                    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                    for (var f = 0; f < fieldsWithKwAr.length; f++) {
+                        var fieldId = fieldsWithKwAr[f];
+                        var keywords = fieldsWithKwObj[fieldId];
+                        processFieldsKeywords(viewId, fieldId, keywords, e);
+                    }
+                }
+
+                function processFieldsKeywords(viewId, fieldId, keywords, e) {
+                    if (!viewId || !fieldId) return;
+
+                    console.log('processFieldsKeywords', viewId, fieldId, keywords, e);
+
+                    //Unique Value Exceptions
+                    if (keywords._uvx && keywords._uvx.length) {
+                        e.preventDefault();
+
+                        console.log('keywords._uvx =', fieldId, keywords._uvx);
+                        var field = Knack.objects.getField(fieldId);
+                        var fieldName = field.attributes.name;
+                        var fieldValue = $('#' + viewId + ' .kn-label:contains("' + fieldName + '")').closest('.kn-input').find('input').val();
+                        if (fieldValue && keywords._uvx.includes(fieldValue)) return;
+
+                        console.log('fieldValue =', fieldValue);
+                        var srchInProgress = true;
+
+
+                        var itv = setInterval(() => {
+                            if (!srchInProgress) {
+                                clearInterval(itv);
+
+                                ktl.views.findRecordByValue('_uvx', fieldId, fieldValue)
+                                    .then(foundRecords => {
+                                        console.log('found =', foundRecords);
+                                        if (foundRecords.length)
+                                            ktl.core.timedPopup('Error - ' + fieldName + ' ' + fieldValue + ' already exists.', 'warning', 2000);
+                                        srchInProgress = false;
+                                    })
+                                    .catch(err => {
+                                        console.log('preprocessSubmit Exception:', err);
+                                    })
+                            }
+                        }, 100);
+                    }
+                }
+            },
+
+            //Scans all view fields in view for keywords in their description.
+            getFieldsKeywords: function (viewId) {
+                if (!viewId) return;
+
+                //Scan all fields in form to find any keywords.
+                var fields = (Knack.views[viewId].fields && Knack.views[viewId].fields.models) || (Knack.views[viewId].form_object && Knack.views[viewId].form_object.fields.models);
+                if (!fields) return;
+
+                var fieldsWithKwObj = {};
+                for (var i = 0; i < fields.length; i++) {
+                    var field = fields[i];
+                    var fieldId = field.id;
+                    var fieldDesc = ktl.fields.getFieldDescription(fieldId);
+                    if (fieldDesc) {
+                        var keywords = {};
+                        fieldDesc = fieldDesc.toLowerCase().replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
+                        parseKeywords(keywords, fieldDesc);
+                        if (!$.isEmptyObject(keywords))
+                            fieldsWithKwObj[fieldId] = keywords;
+                    }
+                }
+
+                return fieldsWithKwObj;
             },
 
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
@@ -8278,37 +8393,6 @@ function Ktl($, info) {
                 }
             }
 
-            function parseKeywords(keywords, strToParse) {
-                var kwAr = [];
-                if (strToParse && strToParse !== '') {
-                    var kwAr = strToParse.split(/(_[a-zA-Z]{2,})/gm);
-                    kwAr.splice(0, 1);
-                    for (var i = 0; i < kwAr.length; i++) {
-                        kwAr[i] = kwAr[i].trim();
-                        parseParams(kwAr[i], i);
-                    }
-                }
-
-                function parseParams(kwString, kwIdx) {
-                    var kw = [];
-                    if (kwAr[i].startsWith('_')) {
-                        keywords[kwAr[i].toLowerCase()] = [];
-                        return;
-                    } else if (kwAr[i].startsWith('='))
-                        kw = kwString.split('=');
-
-                    var params = [];
-                    if (kw.length > 1) {
-                        params = kw[1].split(',');
-                        params.forEach((param, idx) => {
-                            params[idx] = param.trim();
-                        })
-                    }
-
-                    keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
-                }
-            }
-
             //Future improvement: use a rich text view to store all config by user without code.
             var ktlConfig = Knack.scenes._byId['ktl-app-cfg'];
             if (ktlConfig) {
@@ -8320,6 +8404,37 @@ function Ktl($, info) {
             keywordsCleanupDone = true;
         }
     }, 10);
+
+    function parseKeywords(keywords, strToParse) {
+        var kwAr = [];
+        if (strToParse && strToParse !== '') {
+            var kwAr = strToParse.split(/(_[a-zA-Z]{2,})/gm);
+            kwAr.splice(0, 1);
+            for (var i = 0; i < kwAr.length; i++) {
+                kwAr[i] = kwAr[i].trim();
+                parseParams(kwAr[i], i);
+            }
+        }
+
+        function parseParams(kwString, kwIdx) {
+            var kw = [];
+            if (kwAr[i].startsWith('_')) {
+                keywords[kwAr[i].toLowerCase()] = [];
+                return;
+            } else if (kwAr[i].startsWith('='))
+                kw = kwString.split('=');
+
+            var params = [];
+            if (kw.length > 1) {
+                params = kw[1].split(',');
+                params.forEach((param, idx) => {
+                    params[idx] = param.trim();
+                })
+            }
+
+            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+        }
+    }
 
     return { //KTL exposed objects
         const: this.const,
