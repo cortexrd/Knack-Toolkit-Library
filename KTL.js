@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.0';
+    const KTL_VERSION = '0.10.1';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -5731,7 +5731,7 @@ function Ktl($, info) {
                                             viewsToRefresh.push(viewId);
 
                                         quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
-                                        $(e.target.closest('td')).css('background', quickToggleParams.bgColorPending); //Visual cue that the process is started.
+                                        $(e.target.closest('td')).css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
                                         clearTimeout(refreshTimer);
                                     }
                                 })
@@ -5744,15 +5744,16 @@ function Ktl($, info) {
                 var bgColorFalse = quickToggleParams.bgColorFalse;
 
                 //Supports both named colors and hex style like #FF08 (RGBA).
-                if (keywords._qt.length >= 1)
+                if (keywords._qt.length >= 1 && keywords._qt[0])
                     bgColorTrue = keywords._qt[0];
-                if (keywords._qt.length >= 2)
+
+                if (keywords._qt.length >= 2 && keywords._qt[1])
                     bgColorFalse = keywords._qt[1];
 
                 if (fields.length) {
                     data.forEach(row => {
                         fields.forEach(fieldId => {
-                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background', (row[fieldId + '_raw'] === true) ? bgColorTrue : bgColorFalse);
+                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background-color', (row[fieldId + '_raw'] === true) ? bgColorTrue : bgColorFalse);
                         })
                     })
                 }
@@ -5845,7 +5846,7 @@ function Ktl($, info) {
                         var bgColor = rowSel.style.backgroundColor;
                         document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor = ''; //Need to remove current bg color otherwise transparency can add up and play tricks.
 
-                        $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background', bgColor);
+                        $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background-color', bgColor);
                     }
                 })
             },
