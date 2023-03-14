@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.1';
+    const KTL_VERSION = '0.10.2';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -5502,18 +5502,21 @@ function Ktl($, info) {
                 var fieldsWithKwObj = {};
                 for (var i = 0; i < fields.length; i++) {
                     var field = fields[i];
-                    var fieldId = field.id;
-                    var fieldDesc = ktl.fields.getFieldDescription(fieldId);
-                    if (fieldDesc) {
-                        var keywords = {};
-                        fieldDesc = fieldDesc.toLowerCase().replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
-                        parseKeywords(keywords, fieldDesc);
-                        if (!$.isEmptyObject(keywords))
-                            fieldsWithKwObj[fieldId] = keywords;
-                    }
+                    ktl.views.getFieldKeywords(field.id, fieldsWithKwObj);
                 }
 
                 return fieldsWithKwObj;
+            },
+
+            getFieldKeywords: function (fieldId, fieldsWithKwObj = {}) {
+                var fieldDesc = ktl.fields.getFieldDescription(fieldId);
+                if (fieldDesc) {
+                    var keywords = {};
+                    fieldDesc = fieldDesc.toLowerCase().replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
+                    parseKeywords(keywords, fieldDesc);
+                    if (!$.isEmptyObject(keywords))
+                        fieldsWithKwObj[fieldId] = keywords;
+                }
             },
 
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
@@ -5677,10 +5680,10 @@ function Ktl($, info) {
             },
 
             getDataFromRecId: function (viewId = '', recId = '') {
-                if (!viewId || !recId) return;
+                if (!viewId || !recId || !Knack.views[viewId]) return {};
                 const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
                 if (viewType === 'table')
-                    return Knack.views[viewId] && Knack.views[viewId].model.data._byId[recId].attributes;
+                    return Knack.views[viewId].model.data._byId[recId].attributes;
                 else if (viewType === 'search')
                     return Knack.views[viewId].model.results_model.data._byId[recId].attributes;
             },
@@ -5706,7 +5709,20 @@ function Ktl($, info) {
 
                 if (!inlineEditing) return;
 
-                var fields = [];
+                //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
+                //Start with hard coded default colors.
+                var bgColorTrue = quickToggleParams.bgColorTrue;
+                var bgColorFalse = quickToggleParams.bgColorFalse;
+
+                //Override with view-specific colors, if any.
+                if (keywords._qt.length >= 1 && keywords._qt[0])
+                    bgColorTrue = keywords._qt[0];
+
+                if (keywords._qt.length >= 2 && keywords._qt[1])
+                    bgColorFalse = keywords._qt[1];
+
+                var fieldKeywords = {};
+                var fieldsColor = {};
                 const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
                 for (var i = 0; i < cols.length; i++) {
                     var col = cols[i];
@@ -5715,7 +5731,24 @@ function Ktl($, info) {
                         if (field && !col.connection) { //Field must be local to view's object, not a connected field.
                             if (field.attributes.type === 'boolean') {
                                 const fieldId = col.field.key;
-                                fields.push(fieldId);
+
+                                //Override with field-specific colors, if any.
+                                var tmpColorObj = {
+                                    bgColorTrue: bgColorTrue,
+                                    bgColorFalse: bgColorFalse
+                                }
+
+                                ktl.views.getFieldKeywords(fieldId, fieldKeywords);
+                                if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._qt) {
+                                    if (fieldKeywords[fieldId]._qt.length >= 1 && fieldKeywords[fieldId]._qt[0] !== '')
+                                        tmpColorObj.bgColorTrue = fieldKeywords[fieldId]._qt[0];
+                                    if (fieldKeywords[fieldId]._qt.length >= 2 && fieldKeywords[fieldId]._qt[1] !== '')
+                                        tmpColorObj.bgColorFalse = fieldKeywords[fieldId]._qt[1];
+                                }
+
+                                fieldsColor[fieldId] = tmpColorObj;
+
+                                //Process cell clicks.
                                 $('.' + fieldId + '.cell-edit').off('click').on('click', e => {
                                     e.stopImmediatePropagation();
                                     !qtScanItv && startQtScanning();
@@ -5740,20 +5773,12 @@ function Ktl($, info) {
                     }
                 }
 
-                var bgColorTrue = quickToggleParams.bgColorTrue;
-                var bgColorFalse = quickToggleParams.bgColorFalse;
-
-                //Supports both named colors and hex style like #FF08 (RGBA).
-                if (keywords._qt.length >= 1 && keywords._qt[0])
-                    bgColorTrue = keywords._qt[0];
-
-                if (keywords._qt.length >= 2 && keywords._qt[1])
-                    bgColorFalse = keywords._qt[1];
-
-                if (fields.length) {
+                //Update table colors
+                if (!$.isEmptyObject(fieldsColor)) {
                     data.forEach(row => {
-                        fields.forEach(fieldId => {
-                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background-color', (row[fieldId + '_raw'] === true) ? bgColorTrue : bgColorFalse);
+                        const keys = Object.keys(fieldsColor);
+                        keys.forEach(fieldId => {
+                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background-color', (row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
                         })
                     })
                 }
