@@ -191,8 +191,9 @@ var KnackApp = function ($, info = {}) {
                 versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; border-style:none; padding-bottom:2px; left: 50%; transform: translate(-50%, -50%);';
 
             ktl.scenes.addVersionInfo(info, versionStyle);
-            autoFocus();
         }
+
+        autoFocus();
     }
 
     //Positions the cursor at a convenient place for the user to enter the next data.
