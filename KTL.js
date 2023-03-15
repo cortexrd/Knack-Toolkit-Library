@@ -8328,42 +8328,50 @@ function Ktl($, info) {
                 return sInfo;
             },
 
+            //See list here: https://github.com/cortexrd/Knack-Toolkit-Library#list-of-all-keywords
             findAllKeywords: function () {
-                //See list here: https://github.com/cortexrd/Knack-Toolkit-Library#list-of-all-keywords
-                const titleKeywords = ['_sw_update', '_ar', '_hv', '_ht', '_ni', '_ts', '_dtp', '_rvs', '_rvd', '_rvr', '_kr', '_kb', '_kd', '_kn', '_qt', '_mc', '_al'];
-
                 var st = window.performance.now();
-                var keywordViews = {};
+
+                var allKeywords = {};
+
                 for (var i = 0; i < Knack.scenes.length; i++) {
                     var scn = Knack.scenes.models[i];
                     var views = scn.views;
                     views.forEach(view => {
-                        var title = view.attributes.orgTitle;
-                        if (title) {
-                            titleKeywords.forEach(kw => {
-                                if (title.toLowerCase().includes(kw)) {
-                                    var newView = { scnId: scn.attributes.key, viewId: view.attributes.key, title: title };
-                                    if (!keywordViews[kw])
-                                        keywordViews[kw] = [];
+                        var keywords = view.attributes.keywords;
+                        var viewId = view.attributes.key;
+                        var title = view.attributes.title;
+                        var kwInfo = { sceneId: scn.attributes.key, viewId: viewId, title: title, keywords: keywords };
+                        title
+                        if (!$.isEmptyObject(keywords)) {
+                            console.log('kwInfo =', JSON.stringify(kwInfo, null, 4));
+                    //        if (!keywordViews[keywords])
+                    //            keywordViews[keywords] = [];
 
-                                    keywordViews[kw].push(newView);
-                                }
-                            })
+                    //        keywordViews[keywords].push(kwInfo);
                         }
                     })
-
-                    //Add view keywords from description.
-                    //var fieldDesc = ktl.fields.getFieldDescription(e.target.id);
-
-                    //Add field keywords from description.
-                    //todo...
                 }
-                //console.log('keywordViews =', JSON.stringify(keywordViews, null, 4));
+
+                var objects = Knack.objects.models;
+                var fieldKeywords = {};
+                objects.forEach(obj => {
+                    var fields = obj.attributes.fields;
+                    fields.forEach(field => {
+                        ktl.views.getFieldKeywords(field.key, fieldKeywords);
+                    })
+                })
+
+                console.log('fieldKeywords =', JSON.stringify(fieldKeywords, null, 4));
+                
+
+
+                //firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
 
                 var en = window.performance.now();
                 console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
 
-                return keywordViews;
+                //return allKeywords;
             },
         }
     })(); //sysInfo
