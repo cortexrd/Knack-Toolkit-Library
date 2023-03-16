@@ -4647,6 +4647,7 @@ function Ktl($, info) {
                             } else
                                 $('#' + view.key + ' .kn-title').css({ 'display': 'inline-flex' }).append(label);
                         } else {
+                            //Why Search views don't show it the first render?
                             $('#' + view.key).css({ 'display': 'inline-flex' }).append(label);//.prepend(label);
                         }
                     } else {
@@ -6973,7 +6974,7 @@ function Ktl($, info) {
                     }
                 } else {
                     //First time - AL needed not yet specified.
-                    if (confirm('Do you need Auto-Login on this machine?')) {
+                    if (confirm('Do you need Auto-Login on this page?')) {
                         ktl.storage.initSecureLs()
                             .then(() => {
                                 var email = prompt('Email:', '');
@@ -8332,8 +8333,6 @@ function Ktl($, info) {
             findAllKeywords: function () {
                 var st = window.performance.now();
 
-                var allKeywords = {};
-
                 for (var i = 0; i < Knack.scenes.length; i++) {
                     var scn = Knack.scenes.models[i];
                     var views = scn.views;
@@ -8343,13 +8342,8 @@ function Ktl($, info) {
                         var title = view.attributes.title;
                         var kwInfo = { sceneId: scn.attributes.key, viewId: viewId, title: title, keywords: keywords };
                         title
-                        if (!$.isEmptyObject(keywords)) {
+                        if (!$.isEmptyObject(keywords))
                             console.log('kwInfo =', JSON.stringify(kwInfo, null, 4));
-                    //        if (!keywordViews[keywords])
-                    //            keywordViews[keywords] = [];
-
-                    //        keywordViews[keywords].push(kwInfo);
-                        }
                     })
                 }
 
@@ -8364,14 +8358,8 @@ function Ktl($, info) {
 
                 console.log('fieldKeywords =', JSON.stringify(fieldKeywords, null, 4));
                 
-
-
-                //firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-
                 var en = window.performance.now();
                 console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
-
-                //return allKeywords;
             },
         }
     })(); //sysInfo
