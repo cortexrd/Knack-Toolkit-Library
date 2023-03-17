@@ -77,6 +77,10 @@
 	font-weight: initial;
 }
 
+.ktlNotValid {
+	background-color: #fdb0b0; /*Same color as Knack error*/
+}
+
 /************ Tooltips **************/
 .tooltip {
 	position: relative;
