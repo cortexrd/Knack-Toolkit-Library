@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.2';
+    const KTL_VERSION = '0.10.3';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1304,7 +1304,10 @@ function Ktl($, info) {
 
                             formValid = formValid && fieldValid;
                             inputFld.setAttribute('valid', fieldValid);
-                            $(inputFld).css('background-color', !fieldValid ? '#fdb0b0' : ''); //Same color as Knack errors.
+                            if (fieldValid)
+                                $(inputFld).removeClass('ktlNotValid');
+                            else
+                                $(inputFld).addClass('ktlNotValid');
                         }
                     })
 
@@ -4837,6 +4840,29 @@ function Ktl($, info) {
                 startDateInput.value = startDateIso;
                 endDateInput.value = endDateIso;
 
+                if (endDateUs < startDateUs)
+                    document.querySelector('#endDateInput').classList.add('ktlNotValid');
+
+                /* This code was an attempt to allow using the keyboard up/down arrows to properly scroll through dates, but it doesn't work well.
+                 * It only increases the day (in date type), or month (in month type), but the year can't be changed.
+                 * We'd have to split the d/m/y into separate inputs and control each separately depending on focus.
+                 * 
+                startDateInput.addEventListener('keydown', (e) => { processDtpKeydown(e); })
+                endDateInput.addEventListener('keydown', (e) => { processDtpKeydown(e); })
+                function processDtpKeydown(e) {
+                    if (e.target.id !== 'startDateInput' && e.target.id !== 'endDateInput') return;
+                    if (e.code === 'ArrowDown') {
+                        e.preventDefault();
+                        document.querySelector('#' + e.target.id).stepDown();
+                        document.querySelector('#' + e.target.id).dispatchEvent(new Event('change'));
+                    } else if (e.code === 'ArrowUp') {
+                        e.preventDefault();
+                        document.querySelector('#' + e.target.id).stepUp();
+                        document.querySelector('#' + e.target.id).dispatchEvent(new Event('change'));
+                    }
+                }
+                */
+
                 startDateInput.addEventListener('change', (e) => {
                     var sd = e.target.value.replaceAll('-', '/');
                     startDateUs = new Date(sd);
@@ -4853,6 +4879,7 @@ function Ktl($, info) {
 
                 endDateInput.addEventListener('change', (e) => {
                     endDateUs = new Date(e.target.value.replace(/-/g, '/'));
+
                     ktl.views.saveViewDates(
                         viewId,
                         ktl.core.convertDateTimeToString(startDateUs, false, true),
@@ -4912,7 +4939,7 @@ function Ktl($, info) {
                     var curRules = [];
                     var foundAnd = true;
                     if (!$.isEmptyObject(currentFilters)) {
-                        //Sometimes, the filters have a roles key, but not always.
+                        //Sometimes, the filters have a rules key, but not always.
                         //If not, then the object itself is the array that contain the rules.
                         var rules;
                         if (currentFilters.rules && currentFilters.rules.length > 0)
@@ -4939,7 +4966,12 @@ function Ktl($, info) {
 
                     //Must adjust end date due to "is before" nature of date filter.
                     startDateUs.setDate(startDateUs.getDate() - 1);
-                    endDateUs.setDate(endDateUs.getDate() + 1);
+
+                    if (period === 'monthly')
+                        endDateUs = new Date(endDateUs.getFullYear(), endDateUs.getMonth() + 1);
+                    else
+                        endDateUs.setDate(endDateUs.getDate() + 1);
+
                     startDateUs = ktl.core.convertDateTimeToString(startDateUs, false, true);
                     endDateUs = ktl.core.convertDateTimeToString(endDateUs, false, true);
 
