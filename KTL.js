@@ -3520,7 +3520,8 @@ function Ktl($, info) {
                     if (flt.index >= 0)
                         filterName = flt.filterObj.filterName;
                 } else {
-                    filterName = prompt('Filter Name: ', getFilter(filterDivId).filterObj.filterName);
+                    const fn = getFilter(filterDivId).filterObj.filterName;
+                    filterName = prompt('Filter Name: ', fn ? fn : '');
                     if (!filterName) return;
 
                     flt = getFilter(filterDivId, filterName);
