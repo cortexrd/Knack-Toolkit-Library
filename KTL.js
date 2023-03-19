@@ -1681,7 +1681,7 @@ function Ktl($, info) {
             },
 
             //Returns the fieldId with the specified view and label.
-            //The label is the one displayed, not the object's name.
+            //The label is the one displayed, not the field's real name.
             getFieldIdFromLabel: function (viewId, fieldLabel, exactMatch = true) {
                 if (!viewId || !fieldLabel) return;
 
@@ -5448,7 +5448,8 @@ function Ktl($, info) {
                 }
             },
 
-            //This is used in a Search view, where you pass the value, fieldId and viewId to be searched.
+            //This is used in a Search view, where you pass the viewId and value to be searched.
+            //The fieldId is used to set the value in the proper input field, when more than one.
             //Resolves with an array of data records found.
             findRecordByValue: function (viewId, fieldId, value) {
                 return new Promise(function (resolve, reject) {
@@ -5458,7 +5459,7 @@ function Ktl($, info) {
                         if (viewId === '_uvx') {
                             var uvxViewId = ktl.scenes.findViewWithKeyword('_uvx', viewId);
                             if (uvxViewId) {
-                                $('#' + uvxViewId + ' input').val('');
+                                $('#' + uvxViewId + ' input').val(''); //Clear all inputs.
                                 var field = Knack.objects.getField(fieldId);
                                 var fieldName = field.attributes.name;
                                 var srchFields = $('#' + uvxViewId + ' .kn-search-filter').find('.kn-label:contains("' + fieldName + '")').parent().find('input');
@@ -5466,6 +5467,20 @@ function Ktl($, info) {
                                 $('#' + uvxViewId + ' .kn-button.is-primary').click();
                                 $(document).on('knack-view-render.' + uvxViewId, function (event, view, data) {
                                     $(document).off('knack-view-render.' + uvxViewId);
+                                    resolve(data);
+                                })
+                            }
+                        } else if (viewId === '_uvc') {
+                            var uvcViewId = ktl.scenes.findViewWithKeyword('_uvc', viewId);
+                            if (uvcViewId) {
+                                $('#' + uvcViewId + ' input').val(''); //Clear all inputs.
+                                var field = Knack.objects.getField(fieldId);
+                                var fieldName = field.attributes.name;
+                                var srchFields = $('#' + uvcViewId + ' .kn-search-filter').find('.kn-label:contains("' + fieldName + '")').parent().find('input');
+                                srchFields.val(value);
+                                $('#' + uvcViewId + ' .kn-button.is-primary').click();
+                                $(document).on('knack-view-render.' + uvcViewId, function (event, view, data) {
+                                    $(document).off('knack-view-render.' + uvcViewId);
                                     resolve(data);
                                 })
                             }
@@ -5485,13 +5500,9 @@ function Ktl($, info) {
                                 console.log('Resolved preprocessViews');
                                 $('#' + viewId + ' form').submit();
                             })
-                            .catch(err => {
-                                console.log('Failed preprocessViews', err);
-                            })
+                            .catch(err => { console.log('Failed preprocessViews', err); })
                     })
-                    .catch(err => {
-                        console.log('Failed preprocessFields');
-                    })
+                    .catch(err => { console.log('Failed preprocessFields'); })
 
                 function preprocessFields(viewId, e) {
                     return new Promise(function (resolve, reject) {
@@ -5504,12 +5515,8 @@ function Ktl($, info) {
                                 var fieldId = fieldsWithKwAr[f];
                                 var keywords = fieldsWithKwObj[fieldId];
                                 ktl.views.processFieldsKeywords(viewId, fieldId, keywords, e)
-                                    .then(ocObj => {
-                                        outcomeObj.msg += ocObj.msg;
-                                    })
-                                    .catch(err => {
-                                        console.log('preprocessFields Exception:', err);
-                                    })
+                                    .then(ocObj => { outcomeObj.msg += ocObj.msg; })
+                                    .catch(err => { console.log('preprocessFields Exception:', err); })
                                     .finally(() => {
                                         if (++f < fieldsWithKwAr.length)
                                             processKeywordsLoop(f);
@@ -5522,9 +5529,8 @@ function Ktl($, info) {
                                         }
                                     })
                             })(0);
-                        } else {
-                            preprocessViews(viewId, e);
-                        }
+                        } else
+                            resolve();
                     })
                 }
 
@@ -5551,31 +5557,24 @@ function Ktl($, info) {
                                         value += document.querySelector('#' + viewId + ' [name="' + fieldId + '"].chzn-select').selectedOptions[0].innerText;
                                     } else if (fieldType === 'short_text')
                                         value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] input').val();
-
                                 }
-
-                                console.log('value =', value);
 
                                 //Search for duplicate in _uvc Search view.
                                 var uvcSearchViewId = ktl.scenes.findViewWithKeyword('_uvc', viewId);
                                 var fieldToCheck = ktl.views.getFieldWithKeyword(uvcSearchViewId, '_uvc');
-                                console.log('fieldToCheck =', fieldToCheck);
+                                var field = Knack.objects.getField(fieldToCheck);
+                                var fieldName = field.attributes.name;
 
                                 ktl.views.findRecordByValue('_uvc', fieldToCheck, value)
                                     .then(foundRecords => {
                                         if (foundRecords.length) {
-                                            if (outcomeObj.msg !== '')
-                                                outcomeObj.msg = outcomeObj.msg + '\n';
-                                            else
-                                                outcomeObj.msg = 'Error:\n'
-                                            outcomeObj.msg += fieldName + ' ' + fieldValue + ' already exists.';
-                                        }
-
-                                        resolve(outcomeObj);
+                                            alert('Error: ' + fieldName + ' ' + value + ' already exists.');
+                                            reject();
+                                        } else
+                                            resolve();
                                     })
                                     .catch(err => { reject(err); })
                             }
-
                         }
                     })
                 }
@@ -5595,13 +5594,8 @@ function Ktl($, info) {
 
                             var field = Knack.objects.getField(fieldId);
                             var fieldName = field.attributes.name;
-
-
-                            var fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
-
-                            var fieldValue = $('#' + viewId + ' #' + fieldId).val();//.closest('.kn-input').find('input').val();
-
-                            if (fieldValue === '' || (fieldValue !== '' && keywords._uvx.includes(fieldValue.toLowerCase()))) {
+                            var fieldValue = $('#' + viewId + ' #' + fieldId).val();
+                            if (!fieldValue || fieldValue === '' || (fieldValue !== '' && keywords._uvx.includes(fieldValue.toLowerCase()))) {
                                 resolve(outcomeObj);
                                 return;
                             }
@@ -5609,11 +5603,8 @@ function Ktl($, info) {
                             ktl.views.findRecordByValue('_uvx', fieldId, fieldValue)
                                 .then(foundRecords => {
                                     if (foundRecords.length) {
-                                        if (outcomeObj.msg !== '')
-                                            outcomeObj.msg = outcomeObj.msg + '\n';
-                                        else
-                                            outcomeObj.msg = 'Error:\n'
-                                        outcomeObj.msg += fieldName + ' ' + fieldValue + ' already exists.';
+                                        if (!outcomeObj.msg) outcomeObj.msg = 'Error:\n';
+                                        outcomeObj.msg += fieldName + ' ' + fieldValue + ' already exists\n';
                                     }
                                     resolve(outcomeObj);
                                 })
@@ -5625,24 +5616,52 @@ function Ktl($, info) {
                 })
             },
 
-            //Scans all view fields in view for keywords in their description.
+            //Scans all fields in view and returns an object with those having keywords in their description.
             getFieldsKeywords: function (viewId) {
                 if (!viewId) return;
 
                 //Scan all fields in form to find any keywords.
-                var fields = (Knack.views[viewId].fields && Knack.views[viewId].fields.models) || (Knack.views[viewId].form_object && Knack.views[viewId].form_object.fields.models);
+                var fields = [];
+
+                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                if (viewType === 'search') {
+                    const view = Knack.views[viewId].model.view;
+                    var groups = view.groups;
+                    if (groups && groups.length) {
+                        groups.forEach(grp => {
+                            grp.columns.forEach(col => {
+                                col.fields.forEach(fld => {
+                                    fields.push(fld.field);
+                                })
+                            })
+                        })
+                    }
+                } else {
+                    var flds = document.querySelectorAll('#' + viewId + ' .kn-input');
+                    for (var i = 0; i < flds.length; i++) {
+                        field = flds[i];
+                        var fieldId = field.getAttribute('data-input-id');
+                        fields.push(fieldId);
+                    }
+                }
+
                 if (!fields) return;
+
+                console.log('viewId =', viewId);
+                console.log('viewType =', viewType);
+                console.log('fields =', fields);
 
                 var fieldsWithKwObj = {};
                 for (var i = 0; i < fields.length; i++) {
                     var field = fields[i];
-                    ktl.views.getFieldKeywords(field.id, fieldsWithKwObj);
+                    ktl.views.getFieldKeywords(field, fieldsWithKwObj);
                 }
 
                 return fieldsWithKwObj;
             },
 
             getFieldKeywords: function (fieldId, fieldsWithKwObj = {}) {
+                if (!fieldId) return;
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 if (fieldDesc) {
                     var keywords = {};
@@ -5653,15 +5672,19 @@ function Ktl($, info) {
                 }
             },
 
-            //Finds the first field with specified keyword.
+            //Finds the first field in view with the specified keyword in its field description.
             getFieldWithKeyword: function (viewId, keyword) {
                 if (!viewId || !keyword) return;
+
                 var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
                 if (!$.isEmptyObject(fieldsWithKwObj)) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                    var foundKwObj = {};
                     for (var i = 0; i < fieldsWithKwAr.length; i++) {
                         var field = fieldsWithKwAr[i];
-                        console.log('field =', field);
+                        ktl.views.getFieldKeywords(field, foundKwObj);
+                        if (!$.isEmptyObject(foundKwObj))
+                            return field;
                     }
                 }
             },
@@ -6475,8 +6498,11 @@ function Ktl($, info) {
                     for (var i = 0; i < views.length; i++) {
                         viewId = views[i].attributes.key;
                         if (viewId === excludeViewId || $.isEmptyObject(views[i].attributes.keywords)) continue;
-                        if (views[i].attributes.keywords[keyword])
-                            return viewId;
+                        if (views[i].attributes.keywords[keyword]) {
+                            if (keyword === '_uvc' && views[i].attributes.type !== 'search') continue;
+                            else
+                                return viewId;
+                        }
                     }
                 }
                 catch (e) {
