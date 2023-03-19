@@ -8,6 +8,8 @@ var KnackApp = function ($, info = {}) {
     window.ktl = ktl;
     const IFRAME_WND_ID = 'iFrameWnd';
 
+    window.ktlkw = ktl.sysInfo.findAllKeywords;
+
     //====================================================
     //KTL Setup - BEGIN
     (function () {
