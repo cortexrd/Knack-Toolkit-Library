@@ -65,7 +65,7 @@ function Ktl($, info) {
     //Searches a selector for text like : contains, but with an exact match, and after a spaces trim.
     $.expr[':'].textEquals = function (el, i, m) {
         var searchText = m[3];
-        var match = $(el).text().trim().match("^" + searchText + "$")
+        var match = $(el).text().trim().match("^" + searchText + "$");
         return match && match.length > 0;
     }
 
@@ -630,7 +630,7 @@ function Ktl($, info) {
                         ktl.core.waitSelector('#kn-mobile-menu.is-visible')
                             .then(() => {
                                 var allMenus = $('#kn-mobile-menu').find('.kn-dropdown-menu-list');
-                                for (i = 0; i < allMenus.length - 1; i++)
+                                for (var i = 0; i < allMenus.length - 1; i++)
                                     ktl.core.sortUList(allMenus[i]);
                             })
                             .catch((err) => { console.log('Failed finding menu.', err); });
@@ -654,12 +654,12 @@ function Ktl($, info) {
             sortUList: function (uListElem) {
                 if (!uListElem) return;
 
-                var i, switching, allListElements, shouldSwitch;
+                var switching, allListElements, shouldSwitch;
                 switching = true;
                 while (switching) {
                     switching = false;
                     allListElements = uListElem.getElementsByTagName("LI");
-                    for (i = 0; i < allListElements.length - 1; i++) {
+                    for (var i = 0; i < allListElements.length - 1; i++) {
                         shouldSwitch = false;
                         if (allListElements[i].innerText.toLowerCase() > allListElements[i + 1].innerText.toLowerCase()) {
                             shouldSwitch = true;
@@ -1680,8 +1680,20 @@ function Ktl($, info) {
                 }
             },
 
-            getFieldData: function (p = {}) {
-                if (p.e) {
+            //Returns the fieldId with the specified view and label.
+            //The label is the one displayed, not the object's name.
+            getFieldIdFromLabel: function (viewId, fieldLabel, exactMatch = true) {
+                if (!viewId || !fieldLabel) return;
+
+                var field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
+                if (field.length) {
+                    if (exactMatch && field[0].textContent === fieldLabel)
+                        field = field[0].closest('.kn-input');
+                    else
+                        if (field[0].textContent.includes(fieldLabel))
+                            field = field[0].closest('.kn-input');
+
+                    return field ? field.attributes['data-input-id'].value : undefined;
                 }
             },
         }
@@ -1984,6 +1996,9 @@ function Ktl($, info) {
                                     if (typeof fieldText === 'object') {
                                         subField = Object.keys(formDataObj[view.key][fieldId]);
                                         fieldText = formDataObj[view.key][fieldId][subField];
+                                        fieldText && ktl.views.searchDropdown(fieldText, fieldId, true, false, '', false)
+                                            .then(function () { })
+                                            .catch(function () { })
                                     } else if (field.attributes.format.type === 'radios') {
                                         var rb = document.querySelector('#kn-input-' + fieldId + ' [value="' + fieldText + '"]');
                                         rb && (rb.checked = true);
@@ -2525,7 +2540,7 @@ function Ktl($, info) {
                         var keywords = Knack.views[masterViewId].model.view.keywords;
                         var useUrlAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
 
-                        var linkedViewIds = ktl.views.convertTitlesToViewIds(keywords._lf, masterViewId);
+                        var linkedViewIds = ktl.views.convertViewTitlesToViewIds(keywords._lf, masterViewId);
                         if (linkedViewIds) {
                             var masterView = Knack.models[masterViewId].view;
                             if (masterView.type === 'report')
@@ -2754,7 +2769,7 @@ function Ktl($, info) {
                 var viewError = '';
                 views.forEach(function (viewId) {
                     if (viewId.startsWith('view_')) {
-                        for (i = 0; i < userFiltersObj[viewId].filters.length; i++) {
+                        for (var i = 0; i < userFiltersObj[viewId].filters.length; i++) {
                             if (userFiltersObj[viewId].filters[i].public) {
                                 viewError = viewId;
                                 break;
@@ -3671,7 +3686,7 @@ function Ktl($, info) {
                     var foundConflict = false;
                     views.forEach(function (viewId) {
                         if (viewId.startsWith('view_')) {
-                            for (i = 0; i < userFiltersObj[viewId].filters.length; i++) {
+                            for (var i = 0; i < userFiltersObj[viewId].filters.length; i++) {
                                 var flt = userFiltersObj[viewId].filters[i];
                                 var fn = flt.filterName;
                                 var fnp = getFilter(viewId, fn, LS_UFP);
@@ -4153,7 +4168,7 @@ function Ktl($, info) {
             var keywords = Knack.views[view.key].model && Knack.views[view.key].model.view.keywords;
             if (!keywords._rvd || keywords._rvd.length < 1) return;
 
-            var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvd, view.key);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvd, view.key);
             var eventFieldId = view.events.event_field.key;
             var recId = event.id;
             var dndConfViewId = viewIds[0]; //First view must always be the DnD Confirmation view.
@@ -4390,7 +4405,7 @@ function Ktl($, info) {
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
             if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
-            var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvs, viewId);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs, viewId);
             if (viewIds.length) {
                 $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
                     ktl.views.refreshViewArray(viewIds)
@@ -4400,7 +4415,7 @@ function Ktl($, info) {
 
         function refreshViewsAfterRefresh(viewId = '', keywords) {
             if (!viewId) return;
-            var viewIds = ktl.views.convertTitlesToViewIds(keywords._rvr, viewId);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvr, viewId);
             if (viewIds.length)
                 ktl.views.refreshViewArray(viewIds)
         }
@@ -4729,7 +4744,7 @@ function Ktl($, info) {
                     //For groups, extend line up to end.
                     var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
                     var groupingFound = false;
-                    for (i = 0; i < cols.length; i++) {
+                    for (var i = 0; i < cols.length; i++) {
                         if (cols[i].grouping) {
                             groupingFound = true;
                             break;
@@ -5427,13 +5442,13 @@ function Ktl($, info) {
             //It returns the record found, or undefined if nothing is found.
             findRecord: function (data = [], fieldId = '', value = '') {
                 if (!data.length || !fieldId || !value) return;
-                for (i = 0; i < data.length; i++) {
+                for (var i = 0; i < data.length; i++) {
                     if (data[i][fieldId] === value)
                         return data[i];
                 }
             },
 
-            //This is a Search view, where you pass the value, fieldId and viewId to be searched.
+            //This is used in a Search view, where you pass the value, fieldId and viewId to be searched.
             //Resolves with an array of data records found.
             findRecordByValue: function (viewId, fieldId, value) {
                 return new Promise(function (resolve, reject) {
@@ -5441,7 +5456,7 @@ function Ktl($, info) {
                         reject('Called findRecordByValue with invalid parameters.');
                     } else {
                         if (viewId === '_uvx') {
-                            var uvxViewId = ktl.scenes.findViewWithTitle('_uvx', false, viewId);
+                            var uvxViewId = ktl.scenes.findViewWithKeyword('_uvx', viewId);
                             if (uvxViewId) {
                                 $('#' + uvxViewId + ' input').val('');
                                 var field = Knack.objects.getField(fieldId);
@@ -5461,32 +5476,108 @@ function Ktl($, info) {
 
             preprocessSubmit: function (viewId, e) {
                 if (!viewId) return;
-                var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
-                if (!$.isEmptyObject(fieldsWithKwObj)) {
-                    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                    var outcomeObj = { msg: '' }; //We can add more properties if ever we need them.
 
-                    (function processKeywordsLoop(f) {
-                        var fieldId = fieldsWithKwAr[f];
-                        var keywords = fieldsWithKwObj[fieldId];
-                        ktl.views.processFieldsKeywords(viewId, fieldId, keywords, e)
-                            .then(ocObj => {
-                                outcomeObj.msg += ocObj.msg;
+                preprocessFields(viewId, e)
+                    .then(() => {
+                        console.log('Resolved preprocessFields');
+                        preprocessViews(viewId, e)
+                            .then(() => {
+                                console.log('Resolved preprocessViews');
+                                $('#' + viewId + ' form').submit();
                             })
                             .catch(err => {
-                                console.log('preprocessSubmit Exception:', err);
+                                console.log('Failed preprocessViews', err);
                             })
-                            .finally(() => {
-                                if (++f < fieldsWithKwAr.length)
-                                    processKeywordsLoop(f);
-                                else {
-                                    if (outcomeObj.msg !== '')
-                                        alert(outcomeObj.msg);
-                                    else
-                                        $('#' + viewId + ' form').submit();
+                    })
+                    .catch(err => {
+                        console.log('Failed preprocessFields');
+                    })
+
+                function preprocessFields(viewId, e) {
+                    return new Promise(function (resolve, reject) {
+                        var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
+                        if (!$.isEmptyObject(fieldsWithKwObj)) {
+                            var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                            var outcomeObj = { msg: '' }; //We can add more properties if ever we need them.
+
+                            (function processKeywordsLoop(f) {
+                                var fieldId = fieldsWithKwAr[f];
+                                var keywords = fieldsWithKwObj[fieldId];
+                                ktl.views.processFieldsKeywords(viewId, fieldId, keywords, e)
+                                    .then(ocObj => {
+                                        outcomeObj.msg += ocObj.msg;
+                                    })
+                                    .catch(err => {
+                                        console.log('preprocessFields Exception:', err);
+                                    })
+                                    .finally(() => {
+                                        if (++f < fieldsWithKwAr.length)
+                                            processKeywordsLoop(f);
+                                        else {
+                                            if (outcomeObj.msg !== '') {
+                                                alert(outcomeObj.msg);
+                                                reject('preprocessFields');
+                                            } else
+                                                resolve();
+                                        }
+                                    })
+                            })(0);
+                        } else {
+                            preprocessViews(viewId, e);
+                        }
+                    })
+                }
+
+                function preprocessViews(viewId, e) {
+                    return new Promise(function (resolve, reject) {
+                        var keywords = Knack.views[viewId].model.view.keywords;
+                        if (!$.isEmptyObject(keywords)) {
+                            var outcomeObj = { msg: '' };
+
+                            //Unique Value Check
+                            if (keywords._uvc && keywords._uvc.length) {
+                                e.preventDefault();
+                                console.log('Entering preprocessViews', keywords);
+
+                                var value = '';
+                                for (var f = 0; f < keywords._uvc.length; f++) {
+                                    var fieldLabel = keywords._uvc[f];
+                                    console.log('fieldLabel =', fieldLabel);
+                                    var fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                                    var fieldType = Knack.objects.getField(fieldId).attributes.type;
+                                    if (fieldType === 'multiple_choice')
+                                        value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] .kn-select .select').val();
+                                    else if (fieldType === 'connection') {
+                                        value += document.querySelector('#' + viewId + ' [name="' + fieldId + '"].chzn-select').selectedOptions[0].innerText;
+                                    } else if (fieldType === 'short_text')
+                                        value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] input').val();
+
                                 }
-                            })
-                    })(0);
+
+                                console.log('value =', value);
+
+                                //Search for duplicate in _uvc Search view.
+                                var uvcSearchViewId = ktl.scenes.findViewWithKeyword('_uvc', viewId);
+                                var fieldToCheck = ktl.views.getFieldWithKeyword(uvcSearchViewId, '_uvc');
+                                console.log('fieldToCheck =', fieldToCheck);
+
+                                ktl.views.findRecordByValue('_uvc', fieldToCheck, value)
+                                    .then(foundRecords => {
+                                        if (foundRecords.length) {
+                                            if (outcomeObj.msg !== '')
+                                                outcomeObj.msg = outcomeObj.msg + '\n';
+                                            else
+                                                outcomeObj.msg = 'Error:\n'
+                                            outcomeObj.msg += fieldName + ' ' + fieldValue + ' already exists.';
+                                        }
+
+                                        resolve(outcomeObj);
+                                    })
+                                    .catch(err => { reject(err); })
+                            }
+
+                        }
+                    })
                 }
             },
 
@@ -5496,14 +5587,20 @@ function Ktl($, info) {
                         reject('Called processFieldsKeywords with invalid parameters.');
                         return;
                     } else {
+                        var outcomeObj = { msg: '' };
+
                         //Unique Value Exceptions
                         if (keywords._uvx && keywords._uvx.length) {
                             e.preventDefault();
 
-                            var outcomeObj = { msg: '' };
                             var field = Knack.objects.getField(fieldId);
                             var fieldName = field.attributes.name;
-                            var fieldValue = $('#' + viewId + ' .kn-label:contains("' + fieldName + '")').closest('.kn-input').find('input').val();
+
+
+                            var fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
+                            var fieldValue = $('#' + viewId + ' #' + fieldId).val();//.closest('.kn-input').find('input').val();
+
                             if (fieldValue === '' || (fieldValue !== '' && keywords._uvx.includes(fieldValue.toLowerCase()))) {
                                 resolve(outcomeObj);
                                 return;
@@ -5522,6 +5619,8 @@ function Ktl($, info) {
                                 })
                                 .catch(err => { reject(err); })
                         }
+
+                        resolve(outcomeObj);
                     }
                 })
             },
@@ -5551,6 +5650,19 @@ function Ktl($, info) {
                     parseKeywords(keywords, fieldDesc);
                     if (!$.isEmptyObject(keywords))
                         fieldsWithKwObj[fieldId] = keywords;
+                }
+            },
+
+            //Finds the first field with specified keyword.
+            getFieldWithKeyword: function (viewId, keyword) {
+                if (!viewId || !keyword) return;
+                var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
+                if (!$.isEmptyObject(fieldsWithKwObj)) {
+                    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                    for (var i = 0; i < fieldsWithKwAr.length; i++) {
+                        var field = fieldsWithKwAr[i];
+                        console.log('field =', field);
+                    }
                 }
             },
 
@@ -5911,7 +6023,7 @@ function Ktl($, info) {
                 })
             },
 
-            convertTitlesToViewIds: function (viewTitles = [], excludeViewId = '') {
+            convertViewTitlesToViewIds: function (viewTitles = [], excludeViewId = '') {
                 if (!viewTitles.length) return;
                 var foundViewIds = [];
                 for (var i = 0; i < viewTitles.length; i++) {
@@ -6332,21 +6444,19 @@ function Ktl($, info) {
                 idleWatchDogTimeout && idleWatchDogTimeout();
             },
 
-            findViewWithTitle: function (srch = '', exact = false, excludeViewId = '') {
+            findViewWithTitle: function (viewTitle = '', exact = false, excludeViewId = '') {
                 var views = Knack.router.scene_view.model.views.models; //Search only in current scene.
                 var title = '';
                 var viewId = '';
-                srch = srch.toLowerCase();
+                viewTitle = viewTitle.toLowerCase();
                 try {
                     for (var i = 0; i < views.length; i++) {
                         viewId = views[i].attributes.key;
-                        if (viewId === excludeViewId) continue;
-                        if (!views[i].attributes.orgTitle)
-                            continue;
+                        if (viewId === excludeViewId || !views[i].attributes.orgTitle) continue;
                         title = views[i].attributes.orgTitle.toLowerCase();
-                        if (exact && title === srch)
+                        if (exact && title === viewTitle)
                             return viewId;
-                        if (!exact && title.includes(srch))
+                        if (!exact && title.includes(viewTitle))
                             return viewId;
                     }
                 }
@@ -6355,6 +6465,24 @@ function Ktl($, info) {
                     console.log(e);
                 }
                 return '';
+            },
+
+            findViewWithKeyword: function (keyword = '', excludeViewId = '') {
+                var views = Knack.router.scene_view.model.views.models; //Search only in current scene.
+                var viewId = '';
+                keyword = keyword.toLowerCase();
+                try {
+                    for (var i = 0; i < views.length; i++) {
+                        viewId = views[i].attributes.key;
+                        if (viewId === excludeViewId || $.isEmptyObject(views[i].attributes.keywords)) continue;
+                        if (views[i].attributes.keywords[keyword])
+                            return viewId;
+                    }
+                }
+                catch (e) {
+                    ktl.log.clog('purple', 'Exception in findViewWithKeyword:');
+                    console.log(e);
+                }
             },
 
             scrollToTop: function () {
