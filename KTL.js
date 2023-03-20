@@ -1763,14 +1763,6 @@ function Ktl($, info) {
             inputHasChanged(e);
         })
 
-        document.addEventListener('focusout', function (e) {
-            if (!pfInitDone || !document.hasFocus() || !ktl.core.getCfg().enabled.persistentForm ||
-                scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() ||
-                e.target.type === 'radio') return;
-
-            inputHasChanged(e);
-        }, true);
-
         $(document).on('click', function (e) {
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
                 return;
