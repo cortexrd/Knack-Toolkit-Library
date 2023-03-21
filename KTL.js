@@ -629,7 +629,7 @@ function Ktl($, info) {
             },
 
             sortMenu: function () {
-                if (ktl.scenes.isiFrameWnd()) return;
+                if (!ktl.core.getCfg().enabled.sortedMenus || ktl.scenes.isiFrameWnd()) return;
 
                 if (Knack.isMobile()) {
                     $('.kn-mobile-controls').mousedown(function (e) {
@@ -2118,7 +2118,7 @@ function Ktl($, info) {
                 $('.table-row-highlighted').css({ 'color': sysColors.text.rgb + '!important' });
 
                 ktl.systemColors.getSystemColors().then(sc => {
-                    if (sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
+                    if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
                         $('#' + view.key + ' .kn-table').removeClass('knTable--rowHover');
                         $('#' + view.key + ' .kn-table').addClass('ktlTable--rowHover');
                     }
@@ -2137,7 +2137,7 @@ function Ktl($, info) {
                 else
                     sysColors.inlineEditFontWeight = '500';
 
-                if (sysColors.inlineEditBkgColor) {
+                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor) {
                     ktl.core.injectCSS(
                         '.cell-editable td.cell-edit {' +
                         'background-color: ' + sysColors.inlineEditBkgColor + ';' +
@@ -2148,7 +2148,7 @@ function Ktl($, info) {
                 if (cfgObj.tableRowHoverBkgColor && cfgObj.tableRowHoverBkgColor !== '')
                     sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
 
-                if (sysColors.tableRowHoverBkgColor && sysColors.tableRowHoverBkgColor !== '') {
+                if (ktl.core.getCfg().enabled.rowHoverHighlight && sysColors.tableRowHoverBkgColor && sysColors.tableRowHoverBkgColor !== '') {
                     ktl.core.injectCSS(
                         '.ktlTable--rowHover tbody tr:hover {' +
                         'background-color: ' + sysColors.tableRowHoverBkgColor + '!important;' +
