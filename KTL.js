@@ -91,7 +91,7 @@ function Ktl($, info) {
 
         var cfg = {
             //Let the App do the settings.  See function ktl.core.setCfg in KTL_KnackApp.js file.
-            ktlConfig: '',
+            enabled: {},
         };
 
         var isKiosk = null;
@@ -112,9 +112,14 @@ function Ktl($, info) {
             setCfg: function (cfgObj = {}) {
                 cfgObj.developerName && (cfg.developerName = cfgObj.developerName);
                 cfgObj.developerEmail && (cfg.developerEmail = cfgObj.developerEmail);
-                cfgObj.enabled && (cfg.enabled = cfgObj.enabled);
                 cfgObj.isKiosk && (isKiosk = cfgObj.isKiosk);
-                cfgObj.ktlConfig && (cfg.ktlConfig = cfgObj.ktlConfig);
+
+                //This one is different.  We want to give the user specific control over each flag from the Builder.
+                if (cfgObj.enabled) {
+                    for (key in cfgObj.enabled) {
+                        cfg.enabled[key] = cfgObj.enabled[key];
+                    }
+                }
             },
 
             getCfg: function () {
@@ -1280,6 +1285,8 @@ function Ktl($, info) {
             //If an error is detected, the Submit button is disabled and the field is colored in pink.
             //It may seem be inefficient to scan all views and fields, but it must be so in order to support persistent form data.
             enforceNumeric: function () {
+                if (!ktl.core.getCfg().enabled.formPreValidation) return;
+
                 var forms = document.querySelectorAll('#cell-editor');
                 if (!forms.length)
                     forms = document.querySelectorAll('.kn-form');
@@ -5537,7 +5544,10 @@ function Ktl($, info) {
             preprocessSubmit: function (viewId, e) {
                 if (!viewId) return;
 
-                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                const view = Knack.router.scene_view.model.views._byId[viewId];
+                if (!view) return;
+
+                const viewType = view.attributes.type;
                 if (viewType !== 'form')
                     return;
 
@@ -5847,7 +5857,7 @@ function Ktl($, info) {
             },
 
             updateSubmitButtonState: function (viewId = '') {
-                if (!viewId) return;
+                if (!viewId || !ktl.core.getCfg().enabled.formPreValidation) return;
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
                 var validity = submit.validity ? submit.validity : true;
@@ -7059,7 +7069,7 @@ function Ktl($, info) {
                 console.log('User:\t', userId);
             })
 
-            if (ktl.core.getCfg().enabled.rememberMe)
+            if ($('.remember input').length && ktl.core.getCfg().enabled.rememberMe)
                 $('.remember input')[0].checked = true;
         })
 
@@ -8634,12 +8644,27 @@ function Ktl($, info) {
                 }
             }
 
-            //Future improvement: use a rich text view to store all config by user without code.
-            var ktlConfig = Knack.scenes._byId['ktl-app-cfg'];
-            if (ktlConfig) {
-                ktlConfig = ktlConfig.views.models[0].attributes.content.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
-                //console.log('ktlConfig =', ktlConfig);
-                ktl.core.setCfg({ ktlConfig: ktlConfig });
+            //Use a rich text view to setup the app settings by user without code.
+            //Currently, only features' enabled flags are supported.
+            var appSettings = Knack.scenes._byId['app-settings'];
+            if (appSettings) {
+                appSettings = appSettings.views.models[0].attributes.content.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+
+                var paramsStr = '{';
+                var ar = appSettings.split(',');
+                ar.forEach(param => {
+                    param = param.trim().replace(/"/g, '');
+                    var pair = param.split(':');
+                    if (pair[0]) {
+                        pair[0] = '"' + pair[0] + '":';
+                        pair[1] = pair[1] + ',';
+                        paramsStr += pair[0] + pair[1];
+                    }
+                })
+
+                paramsStr = paramsStr.slice(0, -1) + '}';
+                appSettings = JSON.parse(paramsStr);
+                ktl.core.setCfg({ enabled: appSettings });
             }
 
             keywordsCleanupDone = true;

@@ -16,7 +16,9 @@ var KnackApp = function ($, info = {}) {
         ktl.core.setCfg({
             developerName: 'Firstname Lastname', //Put your name here to get super powers!
             developerEmail: '', //yourmail@provider.com
-            enabled: { //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
+
+            //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
+            enabled: {
                 showAppInfo: true,
                 showKtlInfo: true,
                 showMenuInTitle: true,
@@ -30,8 +32,9 @@ var KnackApp = function ($, info = {}) {
                 spinnerWatchDog: true,
                 calendarGotoDate: true,
                 rememberMe: true,
+                formPreValidation: true,
 
-                //Those below nust also be properly setup to have any effect.  See documentation.
+                //Those below must also be properly setup to have any effect.  See documentation.
                 iFrameWnd: false,
                 logging: {
                     logins: false,
