@@ -27,14 +27,14 @@ var KnackApp = function ($, info = {}) {
                 autoFocus: true,
                 userFilters: true,
                 persistentForm: true,
-                debugWnd: true,
-                idleWatchDog: true,
-                spinnerWatchDog: true,
                 calendarGotoDate: true,
                 rememberMe: true,
                 formPreValidation: true,
+                spinnerWatchDog: true,
+                idleWatchDog: true,
+                debugWnd: true,
 
-                //Those below must also be properly setup to have any effect.  See documentation.
+                //Those below must also be properly set up to have any effect.  See documentation.
                 iFrameWnd: false,
                 logging: {
                     logins: false,
