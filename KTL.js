@@ -6087,6 +6087,12 @@ function Ktl($, info) {
                         $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit');
                 }
             },
+
+            getViewSourceName: function (viewId = '') {
+                if (!viewId) return;
+                var object = Knack.router.scene_view.model.views._byId[viewId].attributes.source.object;
+                return Knack.objects._byId[object].attributes.name;
+            },
         }
     })(); //views
 
@@ -8130,10 +8136,9 @@ function Ktl($, info) {
                 return;
             }
 
-            var object = Knack.router.scene_view.model.views._byId[bulkOpsViewId].attributes.source.object;
-            var objName = Knack.objects._byId[object].attributes.name;  //Create function getObjNameForView
 
             if (bulkOpsInProgress && confirm('Are you sure you want to apply this value to all selected items?')) {
+                const objName = ktl.views.getViewSourceName(bulkOpsViewId);
                 bulkOpsInProgress = false;
                 var apiData = {};
 
@@ -8326,8 +8331,8 @@ function Ktl($, info) {
                                     else
                                         totalRecords = data.length;
 
-                                    source.object
-                                    if (confirm('Are you sure you want to delete all ' + totalRecords + ' logs?\nNote:  you can abort the process at any time by pressing F5.'))
+                                    const objName = ktl.views.getViewSourceName(view.key);
+                                    if (confirm('Are you sure you want to delete all ' + totalRecords + ' ' + objName + ((totalRecords > 1 && objName.slice(-1) !== 's') ? 's' : '') + '?\nNote:  you can abort the process at any time by pressing F5.'))
                                         bulkOpsDeleteAll = true;
                                     //Note that pressing Escape on keyboard to exit the "confim" dialog causes a loss of focus.  Search stops working since you can't type in text.
                                     //You must click Delete All again and click Cancel with the mouse to restore to normal behavior!  Weird...
@@ -8371,8 +8376,7 @@ function Ktl($, info) {
                     if (arrayLen === 0)
                         reject('Called deleteRecords with empty array.');
 
-                    var objName = Knack.objects._byId[Knack.views[view.key].model.view.source.object].attributes.name; //Get object's name.  TODO:  put in a function getObjNameForView
-
+                    const objName = ktl.views.getViewSourceName(view.key);
                     ktl.core.infoPopup();
 
                     var idx = 0;
