@@ -1962,7 +1962,7 @@ function Ktl($, info) {
                                             document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
 
                                         if (el) {
-                                            //The condition !el.value means 'Write value only if currently empty' 
+                                            //The condition !el.value means 'Write value only if currently empty'
                                             //and prevents overwriting fields just populated by code elsewhere.
                                             !el.value && (el.value = fieldText);
                                         }
@@ -2050,7 +2050,7 @@ function Ktl($, info) {
             })
         }
 
-        //Remove all saved data for this view after a submit 
+        //Remove all saved data for this view after a submit
         //If changing scene, erase for all previous scene's views.
         //If viewId is empty, erase all current scene's views.
         function eraseFormData(viewId = '') {
@@ -3051,7 +3051,7 @@ function Ktl($, info) {
             }];
 
             var i = {};
-            i[viewId + "_sort"] = sortAr[0] + "|" + sortAr[1]; //{ "view_1264_sort": "field_182-field_182|asc" }           
+            i[viewId + "_sort"] = sortAr[0] + "|" + sortAr[1]; //{ "view_1264_sort": "field_182-field_182|asc" }
             var r = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
             Knack.router.navigate(r);
             Knack.setHashVars();
@@ -4295,7 +4295,7 @@ function Ktl($, info) {
         $(document).on('mousedown', function (e) {
             $(".thead").not(".kn-search .thead").off('click'); //Exclude Search views until we find a fix to sorting.
             //This is what we want:  $('thead').off('click');
-            //Search this for more details:  Attempt to support Search views but crashes with a "URL" problem 
+            //Search this for more details:  Attempt to support Search views but crashes with a "URL" problem
         })
 
         $(document).on('click', function (e) {
@@ -4662,7 +4662,7 @@ function Ktl($, info) {
                         var divTitle = document.querySelector('#' + view.key + ' .kn-title')
                         if (divTitle) {
                             var display = window.getComputedStyle(divTitle).display;
-                            //console.log(view.key, 'display =', display); 
+                            //console.log(view.key, 'display =', display);
                             if (display && (display === 'none' || !divHdr.innerText)) {
                                 if (submitBtn.length)
                                     submitBtn.append(label);
@@ -4867,7 +4867,7 @@ function Ktl($, info) {
                 /* This code was an attempt to allow using the keyboard up/down arrows to properly scroll through dates, but it doesn't work well.
                  * It only increases the day (in date type), or month (in month type), but the year can't be changed.
                  * We'd have to split the d/m/y into separate inputs and control each separately depending on focus.
-                 * 
+                 *
                 startDateInput.addEventListener('keydown', (e) => { processDtpKeydown(e); })
                 endDateInput.addEventListener('keydown', (e) => { processDtpKeydown(e); })
                 function processDtpKeydown(e) {
@@ -5138,7 +5138,7 @@ function Ktl($, info) {
                                 if (isSingleSelection || isMultipleChoice) {
                                     //The dropdown has finished searching and came up with some results, but we must now
                                     //filter them to exclude any found elements that are not an exact match (whole word only).
-                                    //Otherwise, we may end up with wrong results.  
+                                    //Otherwise, we may end up with wrong results.
                                     //Ex: Typing 1234 could select 12345 if it was part of the results and before 1234.
 
                                     var id = '';
@@ -5290,7 +5290,7 @@ function Ktl($, info) {
                                                     ktl.fields.ktlChznBetterSetFocus();
                                                 }
 
-                                                //autoFocus(); <- Leave out in this case!  
+                                                //autoFocus(); <- Leave out in this case!
                                                 //...User input is required with a physical click, otherwise the existing entry is replaced by new for some reason.
                                             }
                                         }, 200);
@@ -5374,14 +5374,14 @@ function Ktl($, info) {
             /*//////////////////////////////////////////////////////////////////
             Removes or hides any table's columns, including those
             with Action, Edit and Delete.
-                
+
             Input parameters:
-                
+
                 - viewId: must be a view.key string, ex: 'view_123'
                 - remove: true removes elements from DOM, false only hides them.  Useful to hide them when you need to access data, but not secure.
                 - columnsArray: must be an array of 1-based integers, ex: [5, 2, 1] to remove 1st, 2nd and 5th columns.  Order MUST be decreasing.
                 - fieldsArray: must be an array of strings, ex: ['field_XXX', 'field_YYY'].  Order is not important.
-                
+
                 You may use both arrays at same time, but columnsArray has precedence.
             */
             //////////////////////////////////////////////////////////////////
@@ -5400,7 +5400,7 @@ function Ktl($, info) {
                 for (var i = columns.length - 1; i >= 0; i--) {
                     var col = columns[i];
                     var header = col.header.trim();
-                    if (headersAr.includes(header) || columnsAr.includes(i) || fieldsAr.includes(col.id)) {
+                    if (headersAr.includes(header) || columnsAr.includes(i + 1) || fieldsAr.includes(col.id)) {
                         var thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
                         if (thead.length) {
                             var cellIndex = thead[0].cellIndex;
@@ -6140,7 +6140,7 @@ function Ktl($, info) {
                 spinnerCtrDelay = 60;
 
             if (ktl.core.isKiosk()) {
-                //Add extra space at bottom of screen in kiosk mode, to allow editing with the 
+                //Add extra space at bottom of screen in kiosk mode, to allow editing with the
                 //virtual keyboard without blocking the input field.
                 if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
                     $('body').css({ 'padding-bottom': '' });
@@ -6251,7 +6251,7 @@ function Ktl($, info) {
                                     else if (title.includes('_kd'))
                                         backBtnText = 'Done';
 
-                                    //Messaging button    
+                                    //Messaging button
                                     var messagingBtn = null;
                                     if (kioskButtons.ADD_MESSAGING && !kioskButtons.ADD_MESSAGING.scenesToExclude.includes(Knack.router.current_scene_key)) {
                                         messagingBtn = document.getElementById(kioskButtons.ADD_MESSAGING.id);
@@ -6609,7 +6609,7 @@ function Ktl($, info) {
                 descr === '_lud' && (bulkOpsLudFieldId = field.key);
                 descr === '_lub' && (bulkOpsLubFieldId = field.key);
             }
-            
+
             if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
                 $('#' + view.key + ' .cell-edit.' + bulkOpsLudFieldId).addClass('ktlNoInlineEdit');
                 $('#' + view.key + ' .cell-edit.' + bulkOpsLubFieldId).addClass('ktlNoInlineEdit');
@@ -7636,7 +7636,7 @@ function Ktl($, info) {
     this.wndMsg = (function () {
         //TODO: Make these two below adjustable with setCfg.
         const SEND_RETRIES = 5;
-        const MSG_EXP_DELAY = 10000; //Time between req and ack.  Typically less than 5 seconds.  
+        const MSG_EXP_DELAY = 10000; //Time between req and ack.  Typically less than 5 seconds.
 
         var lastMsgId = 0;
         var msgQueue = {};
@@ -7890,7 +7890,7 @@ function Ktl($, info) {
                 }
 
                 //Sends a Heartbeat every minute.
-                //This is mostly useful for monitoring the sanity of critical accounts.  
+                //This is mostly useful for monitoring the sanity of critical accounts.
                 //For example, in an industrial production line, where each device has its own account,
                 //the Sysop can be notified by email if a device goes down for any reason.
                 sendHB(); //Send first HB immediately.
@@ -8320,13 +8320,14 @@ function Ktl($, info) {
                             if (data.length > 0) {
                                 if (!bulkOpsDeleteAll) { //First time, kick start process.
                                     //Get total number of records to delete.  Either get it from summary, or from data length when summary not shown (less than ~7 records).
-                                    var totalLogs = $('#' + view.key + ' .kn-entries-summary').last();
-                                    if (totalLogs.length > 0)
-                                        totalLogs = totalLogs.html().substring(totalLogs.html().lastIndexOf('of</span> ') + 10).replace(/\s/g, '');
+                                    var totalRecords = $('#' + view.key + ' .kn-entries-summary').last();
+                                    if (totalRecords.length > 0)
+                                        totalRecords = totalRecords.html().substring(totalRecords.html().lastIndexOf('of</span> ') + 10).replace(/\s/g, '');
                                     else
-                                        totalLogs = data.length;
+                                        totalRecords = data.length;
 
-                                    if (confirm('Are you sure you want to delete all ' + totalLogs + ' logs?\nNote:  you can abort the process at any time by pressing F5.'))
+                                    source.object
+                                    if (confirm('Are you sure you want to delete all ' + totalRecords + ' logs?\nNote:  you can abort the process at any time by pressing F5.'))
                                         bulkOpsDeleteAll = true;
                                     //Note that pressing Escape on keyboard to exit the "confim" dialog causes a loss of focus.  Search stops working since you can't type in text.
                                     //You must click Delete All again and click Cancel with the mouse to restore to normal behavior!  Weird...
@@ -8439,7 +8440,7 @@ function Ktl($, info) {
             var isOpera = ((!!window.opr && !!opr.addons) || !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0) ? 'Opera' : '';
             // Firefox 1.0+
             var isFirefox = (typeof InstallTrigger !== 'undefined') ? 'Firefox' : '';
-            // Safari 3.0+ "[object HTMLElementConstructor]" 
+            // Safari 3.0+ "[object HTMLElementConstructor]"
             var isSafari = (/constructor/i.test(window.HTMLElement) || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!window['safari'] || (typeof safari !== 'undefined' && window['safari'].pushNotification))) ? 'Safari' : '';
             // Internet Explorer 6-11
             var isIE = (/*@cc_on!@*/false || !!document.documentMode) ? 'IE' : '';
@@ -8555,7 +8556,7 @@ function Ktl($, info) {
                 })
 
                 console.log('fieldKeywords =', JSON.stringify(fieldKeywords, null, 4));
-                
+
                 var en = window.performance.now();
                 console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
             },
