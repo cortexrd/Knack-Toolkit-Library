@@ -601,6 +601,7 @@ function Ktl($, info) {
                 }
             },
 
+            //pageUrl is also called a slug.  It's what you find in the scene's Settings / Page URL field in the Builder.
             getViewIdByTitle: function (srchTitle = '', pageUrl = ''/*Empty to search all (but takes longer)*/, exactMatch = false) {
                 if (!srchTitle) return;
                 if (!pageUrl) {
@@ -766,6 +767,12 @@ function Ktl($, info) {
                 }
                 return result;
             },
+
+            findLongestWord: function (str) {
+                var longestWord = str.split(/[^a-zA-Z0-9]/).sort(function (a, b) { return b.length - a.length; });
+                return longestWord[0];
+            },
+
         }
     })(); //Core
 
@@ -2078,15 +2085,10 @@ function Ktl($, info) {
             //For KTL internal use.  Add Change event handlers for Dropdowns, Calendars, etc.
             ktlOnFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 if (!fieldsToExclude.includes(fieldId)) {
-                    text = findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
+                    text = ktl.core.findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
 
                     recId && (text += '-' + recId);
                     saveFormData(text, viewId, fieldId);
-                }
-
-                function findLongestWord(str) {
-                    var longestWord = str.split(/[^a-zA-Z0-9]/).sort(function (a, b) { return b.length - a.length; });
-                    return longestWord[0];
                 }
             },
         }
@@ -4238,7 +4240,7 @@ function Ktl($, info) {
         }
 
         function addGotoDate(viewId, calView) {
-            if (!viewId) return;
+            if (!viewId || !ktl.core.getCfg().enabled.calendarGotoDate) return;
 
             var inputType = 'date';
             var period = 'weekly-daily';
@@ -7056,6 +7058,9 @@ function Ktl($, info) {
                 console.log('LS key:\t', APP_ROOT_NAME);
                 console.log('User:\t', userId);
             })
+
+            if (ktl.core.getCfg().enabled.rememberMe)
+                $('.remember input')[0].checked = true;
         })
 
         //Handle log-in/out events.
@@ -7583,7 +7588,7 @@ function Ktl($, info) {
                 //console.log('URL =', URL);
                 //console.log('URL slug =', URL.attributes.slug);
 
-                //Create invisible iFrame logging object.
+                //Create invisible iFrameWnd window below the app page.
                 if (!iFrameWnd && $('.kn-login').length === 0
                     && !window.self.frameElement && Knack.getUserAttributes() != 'No user found') {
                     var index = window.location.href.indexOf('#');
@@ -7635,7 +7640,7 @@ function Ktl($, info) {
                 return iFrameWnd;
             },
         }
-    })();
+    })(); //iFrameWnd
 
     //====================================================
     //Window message queue feature
