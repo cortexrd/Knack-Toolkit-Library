@@ -63,12 +63,12 @@
 }
 
 .ktlHidden {
-	position: absolute!important;
+	position: absolute !important;
 	left: -9000px;
 }
 
 .ktlDisplayNone {
-	display: none!important;
+	display: none !important;
 }
 
 .cell-edit.ktlNoInlineEdit {
@@ -127,7 +127,7 @@
 
 /************ User Filters **************/
 .activeFilter {
-	outline:double;
+	outline: double;
 }
 
 .filterControl {
@@ -185,7 +185,3 @@
 }
 
 /**** KTL_RELATED - END ****/
-
-
-
-
