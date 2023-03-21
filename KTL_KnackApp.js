@@ -28,6 +28,8 @@ var KnackApp = function ($, info = {}) {
                 debugWnd: true,
                 idleWatchDog: true,
                 spinnerWatchDog: true,
+                calendarGotoDate: true,
+                rememberMe: true,
 
                 //Those below nust also be properly setup to have any effect.  See documentation.
                 iFrameWnd: false,
@@ -89,7 +91,9 @@ var KnackApp = function ($, info = {}) {
             },
             chznBetterToExclude: [],
             chznBetterSetFocus: chznBetterSetFocus,
-            //horizontalRadioButtons: true, //Uncomment these two lines to get horizontal layout for CBs and RBs.
+
+            //Uncomment the two lines below to get horizontal layout for RBs and CBs.
+            //horizontalRadioButtons: true,
             //horizontalCheckboxes: true,
         })
 
@@ -257,9 +261,16 @@ var KnackApp = function ($, info = {}) {
 
     //Keypress event handler
     function onKeyPressed(e) {
-        var key = String.fromCharCode(e.which);
+        //var key = String.fromCharCode(e.which);
         //console.log('Key pressed =', key);
     }
+
+    //Keydown event, with the convenient F2 as an example to debug or do other action.
+    $(document).keydown(function (e) {
+        if (e.keyCode === 113) { //F2
+            //debugger;
+        }
+    })
 
     function chznBetterSetFocus() {
         try {
@@ -403,7 +414,7 @@ var KnackApp = function ($, info = {}) {
     }
 
     function handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
-        console.log('eventDrop', { view, event, dayDelta, minuteDelta, allDay, revertFunc });
+        //console.log('eventDrop', { view, event, dayDelta, minuteDelta, allDay, revertFunc });
     }
 
     //KTL callbacks to your App - END
@@ -431,7 +442,6 @@ var KnackApp = function ($, info = {}) {
 
     //====================================================
     //  Add your code here...
-
 
 
 };
