@@ -750,7 +750,7 @@ function Ktl($, info) {
             loadLib: function (libName = '') {
                 return new Promise(function (resolve, reject) {
                     if (!libName) {
-                        reject();
+                        reject('No library name provided.');
                         return;
                     }
 
@@ -1712,7 +1712,7 @@ function Ktl($, info) {
                 }
             },
 
-            getFieldKeywords: function (fieldId, fieldsWithKwObj = {}) {
+            getFieldKeywords: function (fieldId, fieldKeywords = {}) {
                 if (!fieldId) return;
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 if (fieldDesc) {
@@ -1720,7 +1720,7 @@ function Ktl($, info) {
                     fieldDesc = fieldDesc.toLowerCase().replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
                     parseKeywords(keywords, fieldDesc);
                     if (!$.isEmptyObject(keywords))
-                        fieldsWithKwObj[fieldId] = keywords;
+                        fieldKeywords[fieldId] = keywords;
                 }
             },
         }
@@ -4151,7 +4151,7 @@ function Ktl($, info) {
                         }
                     }
 
-                    if (view.type === 'rich_text') {
+                    if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
                         var txt = view.content.toLowerCase();
 
                         if (txt.includes('_ol')) {
@@ -5503,6 +5503,7 @@ function Ktl($, info) {
                 })
             },
 
+            //For KTL internal use.
             processFieldKeywords: function (viewId, fieldId, keywords, e) {
                 return new Promise(function (resolve, reject) {
                     if (!viewId || !fieldId) {
@@ -5542,6 +5543,7 @@ function Ktl($, info) {
                 })
             },
 
+            //For KTL internal use.
             preprocessSubmit: function (viewId, e) {
                 if (!viewId) return;
 
@@ -5649,6 +5651,8 @@ function Ktl($, info) {
                 }
             },
 
+
+            //For KTL internal use.
             //Scans all fields in view and returns an object with those having keywords in their description.
             getFieldsKeywords: function (viewId) {
                 if (!viewId) return;
@@ -5694,6 +5698,7 @@ function Ktl($, info) {
                 return fieldsWithKwObj;
             },
 
+            //For KTL internal use.
             //Finds the first field in view with the specified keyword in its field description.
             getFieldWithKeyword: function (viewId, keyword) {
                 if (!viewId || !keyword) return;
@@ -5711,6 +5716,7 @@ function Ktl($, info) {
                 }
             },
 
+            //For KTL internal use.
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
             //Note: this function replaces the Knack's default handler completely.
             handleClickSort: function (e) {
@@ -5880,6 +5886,7 @@ function Ktl($, info) {
                     return Knack.views[viewId].model.results_model.data._byId[recId].attributes;
             },
 
+            //For KTL internal use.
             quickToggle: function (viewId = '', keywords, data = []) {
                 if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
                 var qtScanItv = null;
@@ -6022,6 +6029,7 @@ function Ktl($, info) {
                 }
             },
 
+            //For KTL internal use.
             matchColor: function (viewId = '', keywords, data = []) {
                 if (!viewId || ktl.scenes.isiFrameWnd()) return;
 
@@ -6068,6 +6076,7 @@ function Ktl($, info) {
                 })
             },
 
+            //For KTL internal use.
             convertViewTitlesToViewIds: function (viewTitles = [], excludeViewId = '') {
                 if (!viewTitles.length) return;
                 var foundViewIds = [];
@@ -6080,6 +6089,7 @@ function Ktl($, info) {
                 return foundViewIds;
             },
 
+            //For KTL internal use.
             //Disable mouse clicks when a table's Inline Edit is enabled for PUT/POST API calls, but you don't want users to modify cells.
             //Each parameter is a column header text where disable applies. If no parameter, the whole table is disabled.
             noInlineEditing: function (view, keywords) {
@@ -6518,6 +6528,7 @@ function Ktl($, info) {
                 return '';
             },
 
+            //For KTL internal use.
             findViewWithKeyword: function (keyword = '', excludeViewId = '') {
                 var views = Knack.router.scene_view.model.views.models; //Search only in current scene.
                 var viewId = '';
@@ -6771,7 +6782,8 @@ function Ktl($, info) {
                 }
             },
 
-            //For KTL internal use.  Returns the oldest log's date/time from array.  Resolution is 1 minute.
+            //For KTL internal use.
+            //Returns the oldest log's date/time from array.  Resolution is 1 minute.
             getLogArrayAge: function (category = '') {
                 if (category === '') return null;
 
@@ -8646,7 +8658,7 @@ function Ktl($, info) {
             }
 
             //Read the config from the Javascript pane, if exists.
-            if (!$.isEmptyObject(ktlFeatures))
+            if (typeof ktlFeatures === 'object' && !$.isEmptyObject(ktlFeatures))
                 ktl.core.setCfg({ enabled: ktlFeatures });
 
             keywordsCleanupDone = true;
