@@ -1,6 +1,6 @@
 # ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
-Last update: March 10, 2023
+Last update: March 22, 2023
 
 # Contents
 
@@ -44,7 +44,7 @@ Keywords can be added in the field’s **description** in the object.
 
 ## Placement
 
-For views, all keywords must be placed **after** the last word that you intend to keep visible. Everything after the first keyword found will be truncated (invisible) in the app. For fields, it is not relevant since descriptions are “internal notes” for developers only and not visible in the app anyways.
+For views, all keywords must be placed **after** the last word that you intend to keep visible. All text beyond the first keyword found will be truncated (invisible) in the app. For fields, it is not relevant since descriptions are “internal notes” for developers only and not visible in the app anyways.
 
 ## Parameters
 
@@ -560,7 +560,9 @@ The callbacks play a major role, and can be seen as a “bridge” between the K
 
 ## Disabling a Feature
 
-You can turn off a feature by setting its flag to false in the function **ktl.core.setCfg**, in the **//KTL Setup** section.
+You can turn off a feature by setting its flag to false by using one of these two method:
+
+1.  in the function **ktl.core.setCfg**, in the **//KTL Setup** section.
 
 For example, you don’t want to see the version info bar at top-right of the page, set this to false: **showAppInfo: false**
 
@@ -637,16 +639,16 @@ If you want to add Heartbeat Monitoring to your app to assess an account's prese
 
 1.  Add the [User Preferences](#user-preferences-1) feature from the above procedure.
 2.  In the Accounts object, add these fields:
-    1.  **SW Version**: Type: Short text.
-    2.  **UTC HB**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: none, Time Format: military, Default Time: none.
-    3.  **Time Zone**: Type: Number, no decimals.
-    4.  **LOC HB**: Type: Equation, Equation Type: Date, Date Type: hours, Result Type: Date, Equation Editor: {UTC HB}+{Time Zone}, Date Format: mm/dd/yyyy, Time Format: military.
-    5.  **Online**: Type: Yes/No, Default No, Input: Checkbox.
-    6.  **UTC Last Activity**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
+    -   **SW Version**: Type: Short text.
+    -   **UTC HB**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: none, Time Format: military, Default Time: none.
+    -   **Time Zone**: Type: Number, no decimals.
+    -   **LOC HB**: Type: Equation, Equation Type: Date, Date Type: hours, Result Type: Date, Equation Editor: {UTC HB}+{Time Zone}, Date Format: mm/dd/yyyy, Time Format: military.
+    -   **Online**: Type: Yes/No, Default No, Input: Checkbox.
+    -   **UTC Last Activity**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
 3.  Create a **new object** called **App Settings** with these fields:
-    1.  Rename the default first field from App Settings Name to **Item**: Type: Short Text, set as object’s Display Field and Sort in Alphabetic order.
-    2.  **Value**: Type: Paragraph Text.
-    3.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
+    -   Rename the default first field from App Settings Name to **Item**: Type: Short Text, set as object’s Display Field and Sort in Alphabetic order.
+    -   **Value**: Type: Paragraph Text.
+    -   **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
 4.  In the iFrameWnd page created above, add a Form view that updates the currently logged-in account. Once the view is added, remove all fields, then add on a first line: SW Version, UTC HB and LOC HB. Set LOC HB as read-only. Then on a second line: Online, UTC Last Activity and Time Zone. Set the view title to **Heartbeat**. In the form’s Submit rules, enable auto-reload and set the Confirmation message to “Heartbeat sent successfully.”.
 5.  Still in the iFrameWnd, add a table view that displays **App Settings**, with title: **App Settings \_ar=20**. Source filter: **Item Starting with APP**, sorted alphabetically A to Z. No Search, inline editing = On, 10 records at a time, no filtering allowed. Add all fields. Set Value’s Truncate Text to 75 characters.
 6.  Be sure you have the Show iFrameWnd checkbox on in [User Prefs](#user-preferences-1) above.
@@ -663,11 +665,11 @@ In addition to being able to create named buttons for the User Filters that are 
 To support automatic Upload and Download, follow this procedure:
 
 1.  Create an object named **User Filters** and add these fields:
-    1.  **Account**: Type: Connection to Accounts, all settings at default.
-    2.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: Current Date, Time Format: military, Default Time: Current Time.
-    3.  **Filters Code**: Type: Paragraph Text.
-    4.  Object Settings : Display Field: Account, Sort Order: Account, a to z.
-    5.  Delete the first default field created: User Filters Name.
+    -   **Account**: Type: Connection to Accounts, all settings at default.
+    -   **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: Current Date, Time Format: military, Default Time: Current Time.
+    -   **Filters Code**: Type: Paragraph Text.
+    -   Object Settings : Display Field: Account, Sort Order: Account, a to z.
+    -   Delete the first default field created: User Filters Name.
 2.  Go to the **iFrameWnd** page and add a new Table that displays **User Filters** connected to the logged-in account. Call it **User Filters**, remove the Account column and leave only the Date/Time and Filters Code. Set Filters Code’s Truncate Text to 75 characters.
 3.  Source: Limit number of records to 1.
 4.  Settings: no search, Inline Editing = On, 10 records at a time, no filtering. Title: **User Filters \_ar=30** (you can change the 30 for 10 seconds temporarily for quicker testing, then put back to 30)
@@ -683,20 +685,20 @@ Open two different browsers (ex: Chrome and Edge) and log-in with your own accou
 If you want to add Account Logging to your app, follow this procedure:
 
 1.  Create an object named Account Logs and add these fields:
-    1.  **Log Nb**: Type: Auto-Increment.
-    2.  **Account**: Type: Connection to Accounts, all settings at default.
-    3.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: Current Date, Time Format: military, Default Time: Current Time.
-    4.  **Log Type**: Type: Short Text.
-    5.  **Details**: Type: Paragraph Text.
-    6.  **Log Id**: Type: Short Text. See note below for details.
-    7.  **Email To**: Type: Email.
-    8.  In the Object Settings: Display Field: Account, Sort Order: Log Nb, low to high.
+    -   **Log Nb**: Type: Auto-Increment.
+    -   **Account**: Type: Connection to Accounts, all settings at default.
+    -   **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: Current Date, Time Format: military, Default Time: Current Time.
+    -   **Log Type**: Type: Short Text.
+    -   **Details**: Type: Paragraph Text.
+    -   **Log Id**: Type: Short Text. See note below for details.
+    -   **Email To**: Type: Email.
+    -   In the Object Settings: Display Field: Account, Sort Order: Log Nb, low to high.
 2.  In the iFrameWnd, add a view: Type: Table, For: Account Logs, connected to the logged-in Account.
-    1.  Once the view is added, remove all fields, then add Date/Time, Log Type, Details, Log ID, Email To and an Custom Email action with these settings, as from the screen capture [**KTL Account Logs Email Settings.jpg**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Docs/KTL%20Account%20Logs%20Email%20Settings.jpg).
-    2.  The blank value to Email To in Action \#2 is intended. This field also acts as a flag and resetting it to blank prevents sending the email more than once.
-    3.  The Outcome phrase “Account Logs - Email sent successfully” is used in the code to confirm completion, so it must be exactly the same.
-    4.  Set the view title to **Account Logs \_ar=30**, disable search, enable Inline editing, 10 records at a time, no filter.
-    5.  Sort by Log Nb: high to low, limit to 5 records.
+    -   Once the view is added, remove all fields, then add Date/Time, Log Type, Details, Log ID, Email To and an Custom Email action with these settings, as from the screen capture [**KTL Account Logs Email Settings.jpg**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Docs/KTL%20Account%20Logs%20Email%20Settings.jpg).
+    -   The blank value to Email To in Action \#2 is intended. This field also acts as a flag and resetting it to blank prevents sending the email more than once.
+    -   The Outcome phrase “Account Logs - Email sent successfully” is used in the code to confirm completion, so it must be exactly the same.
+    -   Set the view title to **Account Logs \_ar=30**, disable search, enable Inline editing, 10 records at a time, no filter.
+    -   Sort by Log Nb: high to low, limit to 5 records.
 
 \*Note about the **Log Id** field: This is a unique ID that is a UTC millisecond timestamp. It is generated by the code at the moment the log is sent via the API call. Its purpose is to validate that the log has been sent and received properly. With that confirmation, the log can safely be deleted from localStorage.
 
