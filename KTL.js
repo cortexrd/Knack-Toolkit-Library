@@ -89,6 +89,7 @@ function Ktl($, info) {
             ktl.core.sortMenu(); //To resize menu and prevent overflowing out of screen bottom when Sticky is used.
         });
 
+
         var cfg = {
             //Let the App do the settings.  See function ktl.core.setCfg in KTL_KnackApp.js file.
             enabled: {},
@@ -8644,28 +8645,9 @@ function Ktl($, info) {
                 }
             }
 
-            //Use a rich text view to setup the app settings by user without code.
-            //Currently, only features' enabled flags are supported.
-            var appSettings = Knack.scenes._byId['app-settings'];
-            if (appSettings) {
-                appSettings = appSettings.views.models[0].attributes.content.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
-
-                var paramsStr = '{';
-                var ar = appSettings.split(',');
-                ar.forEach(param => {
-                    param = param.trim().replace(/"/g, '');
-                    var pair = param.split(':');
-                    if (pair[0]) {
-                        pair[0] = '"' + pair[0] + '":';
-                        pair[1] = pair[1] + ',';
-                        paramsStr += pair[0] + pair[1];
-                    }
-                })
-
-                paramsStr = paramsStr.slice(0, -1) + '}';
-                appSettings = JSON.parse(paramsStr);
-                ktl.core.setCfg({ enabled: appSettings });
-            }
+            //Read the config from the Javascript pane, if exists.
+            if (!$.isEmptyObject(ktlFeatures))
+                ktl.core.setCfg({ enabled: ktlFeatures });
 
             keywordsCleanupDone = true;
         }
