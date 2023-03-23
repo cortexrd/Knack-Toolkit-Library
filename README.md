@@ -14,7 +14,7 @@ Last update: March 22, 2023
 
 [Advanced Features](#advanced-features)
 
-[Advanced KTL Development Modes](#advanced-ktl-development-modes)
+[Advanced KTL Development Modes](#advanced-keywords-setup)
 
 [List of all Keywords](#list-of-all-keywords)
 
@@ -91,7 +91,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 
 ## Advanced Setup
 
-Click the following links if you are interested to know more about [Advanced Features](#advanced-features) and [Advanced KTL Development Modes](#advanced-ktl-development-modes).
+Click the following links if you are interested to know more about [Advanced Features](#advanced-features) and [Advanced KTL Development Modes](#advanced-keywords-setup).
 
 # KTL Features
 
@@ -171,6 +171,9 @@ This contains generic utility functions, used by most other features internally,
 -   **getLastDayOfMonth**: Pass a date string and it will return the last day of that month, as a string, is ISO or US format.
 -   **injectCSS**: Used internally to add custom styles at run-time based on user’s settings.
 -   **toggleMode**: Toggles back and forth between the Prod and Dev modes. Only for Developer role. This is invoked when the version info bar is clicked.
+-   **loadLib**: Loads an external Javascript library. Used when additional libraries are required upon activation of a specific feature. Ex: SecureLS for encrypting data in localStorage.
+-   **generateRandomChars**: Utility that generates random characters of a specified length. Currently used for AES-256 encryption.
+-   **findLongestWord**: Utility that returns the longest word in a phrase.
 
 ### A note about knAPI
 
@@ -217,6 +220,8 @@ Provides field-related features like auto-select all text on focus, convert from
 -   **onFieldValueChanged**: Callback to your app to process value change events for Dropdowns and Calendars. Driven by processFieldChanged function. More field types will be added eventually.
 -   **getFieldFromDescription**: Returns an object with the field ID and view ID of a field containing specified text in its description.
 -   **getFieldDescription**: Returns the description text from the field ID parameter.
+-   **getFieldIdFromLabel**: Returns the field ID with the specified view and label. The label is the one displayed, not the field's real name. Exact match as option.
+-   **getFieldKeywords**: Returns the keywords for the specified field ID.
 
 ### Adding keywords to a field’s description to trigger features
 
@@ -254,6 +259,8 @@ Provides view-related features.
 -   **findInSearchView**: Uses a Search view to find text, with exact match. Very useful to prevent duplicate entries on a connected field, for example, by doing a hidden search on that view before submitting a new connected record.
 -   **removeTableColumns**: Will hide or remove columns from a table. Pass it an array of field ids, and/or array of columns indexes to remove. Also works with action links, which is useful to remove a Delete action if the logged-in role should not be allowed for example.
 -   **findFirstExistingField**: Pass a list of field IDs and returns the first found in scene.
+-   **findRecord**: When a table is rendered, pass its data to this function along with the field and a value to search. It returns the record found, or undefined if nothing is found.
+-   **searchRecordByValue**: This is used in a Search view, where you pass the view ID and value to be searched. The field ID is used to set the value in the proper input field, when more than one. Resolves with an array of data records found.
 -   **handleClickSort**: Inverts the sort order if the data type is Date/Time. In several apps, we’ve been told that too often users need to click the header twice because they want to see the most recent entries. You can also do a Ctrl+Click to sort it ascending like Knack’s default behavior.
 -   **submitAndWait**: Pass a form’s view ID and an object containing pairs of field IDs and values. It will fill in the form and submit automatically, then return with a success or failure outcome. If successful, the resulting record is also returned and can be used for further processing.
 -   **waitSubmitOutcome**: After submitting a form programmatically, this Promise function will wait for the outcome and resolve with the success message and reject with the failure reason.
@@ -261,6 +268,7 @@ Provides view-related features.
 -   **ktlProcessKeywords**: This is an internal function that is not exposed. But worth some additional explaining, nonetheless. It parses the view's title for keywords that trigger special behavior. See the list and details below.
 -   **handleCalendarEventDrop**: Provides notification that a drag’n drop operation has been done on a calendar event. This can be used to sync a table to a calendar.
 -   **getDataFromRecId**: returns the data record for a given view and record ID. Works with Tables and Search views.
+-   **getViewSourceName**: Returns the object’s name for the given view ID.
 
 ### Adding keywords to a view’s title or description to trigger features
 
@@ -306,13 +314,17 @@ Here, the form’s visible title will be “Customer Sales”, and when submitte
 
 **\_mc=colHeader**: Match Color of the whole row to the cell at a specific column in a table. Can be used in conjunction with the \_qt feature to use its colors.
 
+**\_uvc=fldName1, fldName2**: Unique Value Check. Used when it is not possible to use the Builder’s **Must be unique** option due to the nature of the field. This is the case for Connected and Text Formula fields. This features requires additional setup in the field’s description and a dedicated hidden Search view. See instructions in the [Advanced Keywords Setup](#advanced-keywords-setup).
+
+**\_uvx=str1, str2**: Unique Values Exceptions. Used when we need unique values, but with a few specific exceptions. See instructions in the [Advanced Keywords Setup](#advanced-keywords-setup).
+
 **\_kr**: Kiosk add Refresh button. For Kiosk mode only, when there’s no keyboard/mouse.
 
 **\_kb**: Kiosk add Back button.
 
 **\_kd**: Kiosk add Done button.
 
-**\_al**: Auto-Login, with AES encrypted email/pw stored in localStorage. This must be in the view title of the **login page**. Used to automate boot-up of Dashboards or other unattended devices. A first-time setup procedure must be done manually, by entering an encryption key then the email/pw information. This is done for each new device and can be bypassed if desired.
+**\_al**: Auto-Login, with AES encrypted email/pw stored in localStorage. This must be in the view title of the **login page**. Used to automate boot-up of Kiosks, Dashboards or any unattended devices. A first-time setup procedure must be done manually, by entering an encryption key then the email/pw information. This is done for each new device and can be bypassed if desired.
 
 **\_yourOwnKeywords**: You can also add your own app-specific keywords and process them in the callback function processViewKeywords.
 
@@ -535,7 +547,7 @@ This is also where the SW Update broadcast takes place.
 ### Functions
 
 -   **getSysInfo**: Returns an object with the above-mentioned properties.
--   **findAllKeywords**: Scans through all views and fields and creates a catalog of keywords used with info about Scene ID, View ID and Title. This can be invoked from the browser’s console with this command: ktl.sysInfo.findAllKeywords()
+-   **findAllKeywords**: Scans through all views and fields and creates a catalog of keywords used with info about Scene ID, View ID and Title. This can be invoked from the browser’s console with this command: **ktlkw()**
 
 ## System Colors
 
@@ -560,11 +572,14 @@ The callbacks play a major role, and can be seen as a “bridge” between the K
 
 ## Disabling a Feature
 
-You can turn off a feature by setting its flag to false by using one of these two method:
+You can turn off a feature by setting its flag to false by using one of these two method – **but not both**:
 
-1.  in the function **ktl.core.setCfg**, in the **//KTL Setup** section.
+1.  **Simple method**: Copy the content of the [KTL_Features.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Features.js) in the Javascript pane after the KTL_Loader.js code. This will **disable all features**. To enable a feature, either remove the line or set its flag to true. Keep the colons and commas in place, as they are required.
+2.  **Advanced method**: Copy the content of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file in the Javascript pane and edit the function **ktl.core.setCfg**, in the **//KTL Setup** section, under the **enabled** section.
 
 For example, you don’t want to see the version info bar at top-right of the page, set this to false: **showAppInfo: false**
+
+The advanced method involves more lines of code but offers extra flexibility to the developers who want to experiment with the callbacks and specific configurations.
 
 ## Editing the KTL_KnackApp file
 
@@ -639,16 +654,16 @@ If you want to add Heartbeat Monitoring to your app to assess an account's prese
 
 1.  Add the [User Preferences](#user-preferences-1) feature from the above procedure.
 2.  In the Accounts object, add these fields:
-    -   **SW Version**: Type: Short text.
-    -   **UTC HB**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: none, Time Format: military, Default Time: none.
-    -   **Time Zone**: Type: Number, no decimals.
-    -   **LOC HB**: Type: Equation, Equation Type: Date, Date Type: hours, Result Type: Date, Equation Editor: {UTC HB}+{Time Zone}, Date Format: mm/dd/yyyy, Time Format: military.
-    -   **Online**: Type: Yes/No, Default No, Input: Checkbox.
-    -   **UTC Last Activity**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
+    1.  **SW Version**: Type: Short text.
+    2.  **UTC HB**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: none, Time Format: military, Default Time: none.
+    3.  **Time Zone**: Type: Number, no decimals.
+    4.  **LOC HB**: Type: Equation, Equation Type: Date, Date Type: hours, Result Type: Date, Equation Editor: {UTC HB}+{Time Zone}, Date Format: mm/dd/yyyy, Time Format: military.
+    5.  **Online**: Type: Yes/No, Default No, Input: Checkbox.
+    6.  **UTC Last Activity**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
 3.  Create a **new object** called **App Settings** with these fields:
-    -   Rename the default first field from App Settings Name to **Item**: Type: Short Text, set as object’s Display Field and Sort in Alphabetic order.
-    -   **Value**: Type: Paragraph Text.
-    -   **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
+    1.  Rename the default first field from App Settings Name to **Item**: Type: Short Text, set as object’s Display Field and Sort in Alphabetic order.
+    2.  **Value**: Type: Paragraph Text.
+    3.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
 4.  In the iFrameWnd page created above, add a Form view that updates the currently logged-in account. Once the view is added, remove all fields, then add on a first line: SW Version, UTC HB and LOC HB. Set LOC HB as read-only. Then on a second line: Online, UTC Last Activity and Time Zone. Set the view title to **Heartbeat**. In the form’s Submit rules, enable auto-reload and set the Confirmation message to “Heartbeat sent successfully.”.
 5.  Still in the iFrameWnd, add a table view that displays **App Settings**, with title: **App Settings \_ar=20**. Source filter: **Item Starting with APP**, sorted alphabetically A to Z. No Search, inline editing = On, 10 records at a time, no filtering allowed. Add all fields. Set Value’s Truncate Text to 75 characters.
 6.  Be sure you have the Show iFrameWnd checkbox on in [User Prefs](#user-preferences-1) above.
@@ -665,11 +680,11 @@ In addition to being able to create named buttons for the User Filters that are 
 To support automatic Upload and Download, follow this procedure:
 
 1.  Create an object named **User Filters** and add these fields:
-    -   **Account**: Type: Connection to Accounts, all settings at default.
-    -   **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: Current Date, Time Format: military, Default Time: Current Time.
-    -   **Filters Code**: Type: Paragraph Text.
-    -   Object Settings : Display Field: Account, Sort Order: Account, a to z.
-    -   Delete the first default field created: User Filters Name.
+    1.  **Account**: Type: Connection to Accounts, all settings at default.
+    2.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: Current Date, Time Format: military, Default Time: Current Time.
+    3.  **Filters Code**: Type: Paragraph Text.
+    4.  Object Settings : Display Field: Account, Sort Order: Account, a to z.
+    5.  Delete the first default field created: User Filters Name.
 2.  Go to the **iFrameWnd** page and add a new Table that displays **User Filters** connected to the logged-in account. Call it **User Filters**, remove the Account column and leave only the Date/Time and Filters Code. Set Filters Code’s Truncate Text to 75 characters.
 3.  Source: Limit number of records to 1.
 4.  Settings: no search, Inline Editing = On, 10 records at a time, no filtering. Title: **User Filters \_ar=30** (you can change the 30 for 10 seconds temporarily for quicker testing, then put back to 30)
@@ -685,22 +700,58 @@ Open two different browsers (ex: Chrome and Edge) and log-in with your own accou
 If you want to add Account Logging to your app, follow this procedure:
 
 1.  Create an object named Account Logs and add these fields:
-    -   **Log Nb**: Type: Auto-Increment.
-    -   **Account**: Type: Connection to Accounts, all settings at default.
-    -   **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: Current Date, Time Format: military, Default Time: Current Time.
-    -   **Log Type**: Type: Short Text.
-    -   **Details**: Type: Paragraph Text.
-    -   **Log Id**: Type: Short Text. See note below for details.
-    -   **Email To**: Type: Email.
-    -   In the Object Settings: Display Field: Account, Sort Order: Log Nb, low to high.
+    1.  **Log Nb**: Type: Auto-Increment.
+    2.  **Account**: Type: Connection to Accounts, all settings at default.
+    3.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: Current Date, Time Format: military, Default Time: Current Time.
+    4.  **Log Type**: Type: Short Text.
+    5.  **Details**: Type: Paragraph Text.
+    6.  **Log Id**: Type: Short Text. See note below for details.
+    7.  **Email To**: Type: Email.
+    8.  In the Object Settings: Display Field: Account, Sort Order: Log Nb, low to high.
 2.  In the iFrameWnd, add a view: Type: Table, For: Account Logs, connected to the logged-in Account.
-    -   Once the view is added, remove all fields, then add Date/Time, Log Type, Details, Log ID, Email To and an Custom Email action with these settings, as from the screen capture [**KTL Account Logs Email Settings.jpg**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Docs/KTL%20Account%20Logs%20Email%20Settings.jpg).
-    -   The blank value to Email To in Action \#2 is intended. This field also acts as a flag and resetting it to blank prevents sending the email more than once.
-    -   The Outcome phrase “Account Logs - Email sent successfully” is used in the code to confirm completion, so it must be exactly the same.
-    -   Set the view title to **Account Logs \_ar=30**, disable search, enable Inline editing, 10 records at a time, no filter.
-    -   Sort by Log Nb: high to low, limit to 5 records.
+    1.  Once the view is added, remove all fields, then add Date/Time, Log Type, Details, Log ID, Email To and an Custom Email action with these settings, as from the screen capture [**KTL Account Logs Email Settings.jpg**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Docs/KTL%20Account%20Logs%20Email%20Settings.jpg).
+    2.  The blank value to Email To in Action \#2 is intended. This field also acts as a flag and resetting it to blank prevents sending the email more than once.
+    3.  The Outcome phrase “Account Logs - Email sent successfully” is used in the code to confirm completion, so it must be exactly the same.
+    4.  Set the view title to **Account Logs \_ar=30**, disable search, enable Inline editing, 10 records at a time, no filter.
+    5.  Sort by Log Nb: high to low, limit to 5 records.
 
 \*Note about the **Log Id** field: This is a unique ID that is a UTC millisecond timestamp. It is generated by the code at the moment the log is sent via the API call. Its purpose is to validate that the log has been sent and received properly. With that confirmation, the log can safely be deleted from localStorage.
+
+# Advanced Keywords Setup
+
+Some keywords require additional setup, and this section provides the step-by-step procedure that applies to each.
+
+## Unique Value Check \_uvc
+
+1.  In the field of interest, add the \_uvc keyword in its description.
+2.  Create an **Add form** containing the \_uvc field, and add in the title or description: **\_uvc=fieldName1, fieldName2, fieldName3**
+3.  In this example, the field is a Formula Text that concatenates three fields together. The number of fields is not important, but all must match, i.e. both what is displayed and the real field name in the schema.
+4.  Those fields must all be in that same form.
+5.  Add a **Search view** that has the same source and the \_uvc field as the search input.
+6.  The search input must have “Users can choose from different filter options” unchecked and Exact Match selected.
+7.  Result in a grid, one column with \_uvc field.
+8.  Add \_uvc to the view title or description.
+9.  Adding duplicate values should prevent submitting and show an error message.
+
+## Unique Values Exceptions \_uvx
+
+1.  In the field of interest, add the \_uvx keyword in its description with this format:
+
+**\_uvx=excText1, excText2**
+
+In this example, there will be two expressions that will be accepted as duplicates for that field.
+
+1.  Add a **Search view** that has the same source and the \_uvx field as the search input.
+2.  The search input must have “Users can choose from different filter options” unchecked and Exact Match selected.
+3.  Result in a grid, one column with \_uvx field.
+4.  Add \_uvx to the view title or description.
+5.  Adding duplicate values should prevent submitting and show an error message, unless they are among the exceptions allowed.
+
+**Additional notes about \_uvc and \_uvx:**
+
+The \_uvx feature can combine more than one field in the same Add form, as long as all fields are also included in the Search view.
+
+Furthermore, the \_uvc and \_uvx are inter-compatible, i.e. they can be used together in the same Search view. In that case both the \_uvc and \_uvx keywords must be included in its title or description.
 
 # Advanced KTL Development Modes
 
@@ -716,7 +767,7 @@ Traditionally, all your app code resides in the Builder's Javascript pane. This 
 
 But with the KTL, it is now possible to switch to Dev mode instantly to load your Javascript and CSS code at run-time directly from your hard drive. This means you can now code and save on your workstation, without having to copy/paste the code to the Builder every time you want to test a change.
 
-This mode enables you (the developer) to work more efficiently by using your favorite code editor with all its bells and whistles, instead of the basic Builder's Javascript pane editor. You must install **Node.js** (<https://nodejs.org>) on your computer and run the **NodeJS_FileServer.js** script provided. Then, each time you save your code, all you have to do is refresh the browser to see the changes take effect immediately. In this mode, writing and testing code simply won’t ever get any faster.
+This mode enables you (the developer) to work more efficiently by using your favorite code editor with all its bells and whistles, instead of the basic Builder's Javascript pane editor. You must install **Node.js** (<https://nodejs.org>) on your computer and run the [**NodeJS_FileServer.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/NodeJS/NodeJS_FileServer.js) script provided. Then, each time you save your code, all you have to do is refresh the browser to see the changes take effect immediately. In this mode, writing and testing code simply won’t ever get any faster.
 
 Another great advantage is that it opens the possibility of teamwork. Currently, only one developer at a time can edit the code. With the Loader and Node.js file server, there is no conflict because each developer works with his own "sandboxed" local copy and pulls external changes whenever he/she chooses to do so.
 
@@ -900,6 +951,8 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | \_ip                               | Validate IP format (to do)                            |                                                          |                                            |
 | \_lud                              | Last Updated Date. For Inline edits, used with \_lub. |                                                          |                                            |
 | \_lub                              | Last Updated By. For Inline edits, used with \_lud.   |                                                          |                                            |
+| \_uvc                              | Unique Value Check                                    | See Advanced Keywords Setup                              |                                            |
+| \_uvx                              | Unique Values Exceptions                              | See Advanced Keywords Setup                              |                                            |
 |                                    |                                                       |                                                          |                                            |
 | \_kr                               | Kiosk add Refresh button                              | View Title or Description. Effective in Kiosk mode only. |                                            |
 | \_kb                               | Kiosk add Back button                                 |                                                          |                                            |
