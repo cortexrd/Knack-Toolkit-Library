@@ -5482,6 +5482,7 @@ function Ktl($, info) {
                                 $(document).on('knack-view-render.' + uvxViewId, function (event, view, data) {
                                     $(document).off('knack-view-render.' + uvxViewId);
                                     resolve(data);
+                                    return;
                                 })
                             }
                         } else if (viewId === '_uvc') {
@@ -5496,9 +5497,11 @@ function Ktl($, info) {
                                 $(document).on('knack-view-render.' + uvcViewId, function (event, view, data) {
                                     $(document).off('knack-view-render.' + uvcViewId);
                                     resolve(data);
+                                    return;
                                 })
                             }
-                        }
+                        } else
+                            resolve([]);
                     }
                 })
             },
