@@ -730,7 +730,7 @@ Some keywords require additional setup, and this section provides the step-by-st
 5.  Add a **Search view** that has the same source and the \_uvc field as the search input.
 6.  The search input must have “Users can choose from different filter options” unchecked and Exact Match selected.
 7.  Result in a grid, one column with \_uvc field.
-8.  Add \_uvc to the view title or description.
+8.  Add \_uvc and \_hv to the view title or description.
 9.  Adding duplicate values should prevent submitting and show an error message.
 
 ## Unique Values Exceptions \_uvx
@@ -744,7 +744,7 @@ In this example, there will be two expressions that will be accepted as duplicat
 1.  Add a **Search view** that has the same source and the \_uvx field as the search input.
 2.  The search input must have “Users can choose from different filter options” unchecked and Exact Match selected.
 3.  Result in a grid, one column with \_uvx field.
-4.  Add \_uvx to the view title or description.
+4.  Add \_uvx and \_hv to the view title or description.
 5.  Adding duplicate values should prevent submitting and show an error message, unless they are among the exceptions allowed.
 
 **Additional notes about \_uvc and \_uvx:**
