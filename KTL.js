@@ -4079,6 +4079,11 @@ function Ktl($, info) {
             ktlProcessKeywords(view, data);
             ktl.views.addViewId(view);
 
+            //Fix problem with re-appearing filter button when filtring is disabled in views.
+            //Reported here: https://forums.knack.com/t/add-filter-buttons-keep-coming-back/13966
+            if (!Knack.views[view.key].model.view.filter)
+                $('#' + view.key + ' .kn-filters-nav').remove();
+
             if (view.type === 'calendar') {
                 try {
                     const fc = Knack.views[view.key].$('.knack-calendar').data('fullCalendar');
@@ -4369,9 +4374,23 @@ function Ktl($, info) {
                         mutations.forEach(mutRec => {
                             const knView = mutRec.target.closest('.kn-view');
                             viewId = knView && knView.id;
-                            if (viewId && mutRec.target.localName === 'tbody') {
-                                var keywords = Knack.views[viewId].model.view.keywords;
-                                (keywords._hc || keywords._rc) && kwHideColumns(Knack.views[viewId].model.view, keywords);
+                            if (viewId) {
+                                var view = Knack.views[viewId];
+                                if (typeof view.model === 'object') {
+                                    var model = Knack.views[viewId].model;
+                                    var keywords = model.view.keywords;
+
+                                    if (viewId && mutRec.target.localName === 'tbody')
+                                        (keywords._hc || keywords._rc) && kwHideColumns(Knack.views[viewId].model.view, keywords);
+
+                                    if (keywords._km) {
+                                        var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
+                                        if (!sessionKiosk) {
+                                            ktl.storage.lsSetItem('KIOSK', true, false, true);
+                                            location.reload(true);
+                                        }
+                                    }
+                                }
                             }
                         })
                     });
@@ -6271,16 +6290,15 @@ function Ktl($, info) {
                         if (keywordsCleanupDone) {
                             clearInterval(itv);
 
-                            var title = Knack.views[viewId].model.view.orgTitle;
-                            if (!title) return;
-                            title = title.toLowerCase();
-                            if (title.includes('_kn'))
+                            var keywords = Knack.views[viewId].model.view.keywords;
+                            if (!keywords) return;
+                            if (keywords._kn)
                                 return;
                             else {
-                                if (title.includes('_kr')) {
-                                    if (title.includes('_kb'))
+                                if (keywords._kr) {
+                                    if (keywords._kb)
                                         backBtnText = 'Back';
-                                    else if (title.includes('_kd'))
+                                    else if (keywords._kd)
                                         backBtnText = 'Done';
 
                                     //Messaging button
