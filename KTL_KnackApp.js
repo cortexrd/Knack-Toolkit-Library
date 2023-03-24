@@ -140,12 +140,6 @@ var KnackApp = function ($, info = {}) {
                         href: function () { location.reload(true) },
                         scenesToExclude: [],
                     },
-                    ADD_MESSAGING: {
-                        html: '<i class="fa fa-envelope-o"></i>',
-                        id: 'kn-button-messaging',
-                        href: window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'messaging',
-                        scenesToExclude: [/*MESSAGING_SCN*/],
-                    },
                     ADD_BACK: {
                         html: '<i class="fa fa-arrow-left"></i>',
                         id: 'kn-button-back',
@@ -158,12 +152,18 @@ var KnackApp = function ($, info = {}) {
                         href: function () { window.history.back(); },
                         scenesToExclude: [],
                     },
-                    ADD_SHIFT: {
-                        html: updateWorkShiftItems,
-                        id: 'kn-button-shift',
-                        href: window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'change-shift',
-                        scenesToExclude: [/*CHANGE_SHIFT_SCN, MESSAGING_SCN*/],
-                    },
+                //    ADD_MESSAGING: {
+                //        html: '<i class="fa fa-envelope-o"></i>',
+                //        id: 'kn-button-messaging',
+                //        href: window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'messaging',
+                //        scenesToExclude: [/*MESSAGING_SCN*/],
+                //    },
+                //    ADD_SHIFT: {
+                //        html: updateWorkShiftItems,
+                //        id: 'kn-button-shift',
+                //        href: window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'change-shift',
+                //        scenesToExclude: [/*CHANGE_SHIFT_SCN, MESSAGING_SCN*/],
+                //    },
                 },
 
                 versionDisplayName: Knack.app.attributes.name.toUpperCase(),
