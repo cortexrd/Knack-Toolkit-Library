@@ -81,6 +81,11 @@
 	background-color: #fdb0b0; /*Same color as Knack error*/
 }
 
+.bulkEditSelectedCol.bulkEditSelectedRow {
+	border-style: dashed;
+	border-width: medium!important;
+}
+
 /************ Tooltips **************/
 .tooltip {
 	position: relative;

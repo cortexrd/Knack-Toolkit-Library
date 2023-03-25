@@ -2142,7 +2142,10 @@ function Ktl($, info) {
                     ktl.core.injectCSS(
                         '.cell-editable td.cell-edit {' +
                         'background-color: ' + sysColors.inlineEditBkgColor + ';' +
-                        'font-weight: ' + sysColors.inlineEditFontWeight + '}'
+                        'font-weight: ' + sysColors.inlineEditFontWeight + '}' +
+                        '.bulkEditSelectedCol.bulkEditSelectedRow {' +
+                        'background-color: ' + sysColors.header.rgb + '66!important;' +
+                        'border-color: ' + sysColors.header.rgb + ';}'
                     );
                 }
 
@@ -4720,32 +4723,6 @@ function Ktl($, info) {
                     if (!ktl.userPrefs.getUserPrefs().showViewId) {
                         $('#' + view.key + '-label-id').remove();
                     }
-                }
-            },
-
-            //Params: masterCheckBoxCallback is the function to be called when the top checkbox is clicked.
-            //        It is used to do an action upon change like ena/disable a button or show number of items checked.
-            addCheckboxesToTable: function (viewId, masterCheckBoxCallback = null) {
-                var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
-
-                //Only add checkboxes if there's data and checkboxes not yet added.
-                if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]')) {
-                    // Add the checkbox to to the header to select/unselect all
-                    $('#' + viewId + '.kn-table thead tr').prepend('<th><input type="checkbox"></th>');
-                    $('#' + viewId + '.kn-table thead input').change(function () {
-                        $('.' + viewId + '.kn-table tbody tr input').each(function () {
-                            $(this).attr('checked', $('#' + viewId + '.kn-table thead input').attr('checked') !== undefined);
-                        });
-
-                        var numChecked = $('#' + viewId + ' tbody input[type=checkbox]:checked').length;
-                        masterCheckBoxCallback && masterCheckBoxCallback(numChecked);
-                    });
-
-                    //Add a checkbox to each row in the table body
-                    $('#' + viewId + ' .kn-table tbody tr').each(function () {
-                        if (!this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group'))
-                            $(this).prepend('<td><input type="checkbox"></td>');
-                    });
                 }
             },
 
@@ -8111,7 +8088,7 @@ function Ktl($, info) {
                 if (thisView) {
                     var viewId = thisView.getAttribute('id');
                     if (e.target.closest('td')) //If click in td row, uncheck master checkbox in th.
-                        $('.' + viewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
+                        $('.' + viewId + '.kn-table thead tr input[type=checkbox]').first().prop('checked', false);
 
                     if (bulkOpsViewId !== viewId) {
                         if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
@@ -8134,7 +8111,7 @@ function Ktl($, info) {
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
         //Called upon each view rendering.
         function enableBulkOperations(view, data) {
-            ktl.views.addCheckboxesToTable(view.key, masterCheckBoxCallback);
+            addCheckboxesToTable(view.key, masterCheckBoxCallback);
             ktl.views.fixTableRowsAlignment(view.key);
 
             var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
@@ -8160,13 +8137,79 @@ function Ktl($, info) {
             }
         }
 
+        //Params: masterCheckBoxCallback is the function to be called when the top checkbox is clicked.
+        //        It is used to do an action upon change like ena/disable a button or show number of items checked.
+        function addCheckboxesToTable(viewId, masterCheckBoxCallback = null) {
+            var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
+
+            //Only add checkboxes if there's data and checkboxes not yet added.
+            if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]')) {
+                // Add the checkbox to to the header to select/unselect all
+                $('#' + viewId + '.kn-table thead tr').prepend('<th><input type="checkbox"></th>');
+                $('#' + viewId + '.kn-table thead input').change(function () {
+                    $('.' + viewId + '.kn-table tbody tr input').each(function () {
+                        $(this).attr('checked', $('#' + viewId + '.kn-table thead input').attr('checked') !== undefined);
+                    });
+
+                    var numChecked = $('#' + viewId + ' tbody input[type=checkbox]:checked').length;
+                    if (numChecked)
+                        $('.bulkEditHeaderCbox').removeClass('ktlDisplayNone');
+                    else
+                        $('.bulkEditHeaderCbox').addClass('ktlDisplayNone');
+
+                    masterCheckBoxCallback && masterCheckBoxCallback(numChecked);
+                });
+
+                //Add a checkbox to each header that is inline-editable.
+                $('#' + viewId + ' .kn-table thead th').each((idx, el) => {
+                    var inline = $('#' + viewId + ' tbody tr:first td:nth-child(' + (idx) + ')');
+                    if (idx > 0 && inline.length && inline[0].classList.contains('cell-edit')) {
+                        $(el).find('.table-fixed-label').css('display', 'inline-flex').append('<input type="checkbox">').addClass('bulkEditTh');
+                        $(el).find(':checkbox').addClass('bulkEditHeaderCbox');
+                    }
+                })
+
+                $('.bulkEditTh').css({ 'display': 'inline-flex', 'margin-right': '15px' });
+                $('.bulkEditHeaderCbox').css({ 'top': '10px', 'right': '5px', 'position': 'absolute' });
+                $('.bulkEditHeaderCbox').addClass('ktlDisplayNone');
+
+                $('.bulkEditHeaderCbox').change(el => {
+                    var fieldId = $(el.target).closest('th').attr('class');
+                    if (fieldId.startsWith('field_')) {
+                        if (el.target.checked)
+                            $('#' + viewId + ' td.' + fieldId).addClass('bulkEditSelectedCol');
+                        else
+                            $('#' + viewId + ' td.' + fieldId).removeClass('bulkEditSelectedCol');
+                        updateBulkOpCheckboxes();
+                    }
+                })
+
+                //Add a checkbox to each row in the table body
+                $('#' + viewId + ' .kn-table tbody tr').each(function () {
+                    if (!this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
+                        $(this).prepend('<td><input type="checkbox"></td>');
+                    }
+                });
+
+                $('#' + viewId + '.kn-table tbody tr td :checkbox').change(function (e) {
+                    var numChecked = $('#' + viewId + ' tbody input[type=checkbox]:checked').length;
+                    if (numChecked)
+                        $('.bulkEditHeaderCbox').removeClass('ktlDisplayNone');
+                    else
+                        $('.bulkEditHeaderCbox').addClass('ktlDisplayNone');
+                })
+            }
+        }
+
         //Called to refresh the record array to be modified.
         //Can be changed by user clicks, table filtering change, view refresh.
         function updateBulkOpCheckboxes() {
             bulkOpsRecIdArray = [];
+            $('#' + bulkOpsViewId + ' .bulkEditSelectedRow').removeClass('bulkEditSelectedRow');
             $('#' + bulkOpsViewId + ' tbody input[type=checkbox]:checked').each(function () {
                 var id = $(this).closest('tr').attr('id');
                 bulkOpsRecIdArray.push(id);
+                $(this).closest('tr').find('td').addClass('bulkEditSelectedRow');
             });
 
             if (bulkOpsRecIdArray.length > 0)
