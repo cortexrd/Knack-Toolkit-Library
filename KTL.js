@@ -4383,9 +4383,8 @@ function Ktl($, info) {
                                     if (viewId && mutRec.target.localName === 'tbody')
                                         (keywords._hc || keywords._rc) && kwHideColumns(Knack.views[viewId].model.view, keywords);
 
-                                    if (keywords._km) {
-                                        var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
-                                        if (!sessionKiosk) {
+                                    if (keywords._km && !ktl.account.isDeveloper()) {
+                                        if (!ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
                                             ktl.storage.lsSetItem('KIOSK', true, false, true);
                                             location.reload(true);
                                         }
