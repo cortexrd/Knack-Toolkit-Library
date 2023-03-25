@@ -8205,11 +8205,12 @@ function Ktl($, info) {
         //Can be changed by user clicks, table filtering change, view refresh.
         function updateBulkOpCheckboxes() {
             bulkOpsRecIdArray = [];
-            $('#' + bulkOpsViewId + ' .bulkEditSelectedRow').removeClass('bulkEditSelectedRow');
+            $('#' + bulkOpsViewId + ' .bulkEditSelectedRow').removeClass('bulkEditSelectedRow ktlNoInlineEdit');
             $('#' + bulkOpsViewId + ' tbody input[type=checkbox]:checked').each(function () {
                 var id = $(this).closest('tr').attr('id');
                 bulkOpsRecIdArray.push(id);
-                $(this).closest('tr').find('td').addClass('bulkEditSelectedRow');
+                $(this).closest('tr').find('td').addClass('bulkEditSelectedRow ktlNoInlineEdit');
+                $(this).closest('tr').find('td :checkbox').parent().removeClass('bulkEditSelectedRow ktlNoInlineEdit')
             });
 
             if (bulkOpsRecIdArray.length > 0)

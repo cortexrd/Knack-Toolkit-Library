@@ -83,7 +83,11 @@
 
 .bulkEditSelectedCol.bulkEditSelectedRow {
 	border-style: dashed;
-	border-width: medium!important;
+	border-width: medium !important;
+}
+
+.bulkEditSelectedRow {
+	pointer-events: none;
 }
 
 /************ Tooltips **************/
