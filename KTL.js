@@ -4383,7 +4383,7 @@ function Ktl($, info) {
                             viewId = knView && knView.id;
                             if (viewId) {
                                 var view = Knack.views[viewId];
-                                if (typeof view.model === 'object') {
+                                if (view && typeof view.model === 'object') {
                                     var model = Knack.views[viewId].model;
                                     var keywords = model.view.keywords;
 
@@ -4638,7 +4638,8 @@ function Ktl($, info) {
                                 var view = eachView.attributes;
                                 var keywords = view.keywords;
                                 if (keywords._ar) {
-                                    var intervalDelay = keywords._ar[0];
+                                    var intervalDelay = parseInt(keywords._ar[0]);
+                                    intervalDelay = isNaN(intervalDelay) ? 60 : intervalDelay;
                                     intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 
                                     //Add view to auto refresh list.
@@ -8003,6 +8004,14 @@ function Ktl($, info) {
         var bulkOpsLudFieldId = null;
         var bulkOpsLubFieldId = null;
         var bulkOpsDeleteAll = false;
+        var previousScene = '';
+
+        $(document).on('knack-scene-render.any', function (event, scene) {
+            if (previousScene !== scene.key) {
+                previousScene = scene.key;
+                bulkOpsRecIdArray = [];
+            }
+        })
 
         $(document).on('knack-view-render.table', function (event, view, data) {
             if (ktl.scenes.isiFrameWnd() || (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
@@ -8038,18 +8047,17 @@ function Ktl($, info) {
                 }
             }
 
-
+            //When user clicks on a row, to indicate the record source.
             $('#' + view.key + ' tr td:not(:has(:checkbox))').off('click').on('click', e => {
-                //Did user clicked on a row, to indicate the record source?
                 var tableRow = e.target.closest('tr');
                 if (tableRow) {
                     if (bulkOpsRecIdArray.length > 0) {
+                        //Prevent Inline Edit.
                         e.stopImmediatePropagation();
                         processBulkOps(view.key, e);
                     }
                 }
             })
-
         })
 
         $(document).on('click', function (e) {
@@ -8108,9 +8116,8 @@ function Ktl($, info) {
                 if (arrayLen > 0) {
                     for (var i = bulkOpsRecIdArray.length - 1; i >= 0; i--) {
                         var sel = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"]');
-                        if (sel.length > 0) {
+                        if (sel.length > 0)
                             $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] > td:nth-child(1) > input[type=checkbox]').prop('checked', true);
-                        }
                     }
                 }
             }
@@ -8119,9 +8126,8 @@ function Ktl($, info) {
         //Params: masterCheckBoxCallback is the function to be called when the top checkbox is clicked.
         //        It is used to do an action upon change like ena/disable a button or show number of items checked.
         function addCheckboxesToTable(viewId, masterCheckBoxCallback = null) {
-            var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
-
             //Only add checkboxes if there's data and checkboxes not yet added.
+            var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
             if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]')) {
                 // Add the checkbox to to the header to select/unselect all
                 $('#' + viewId + '.kn-table thead tr').prepend('<th><input type="checkbox"></th>');
