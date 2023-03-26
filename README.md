@@ -1,6 +1,6 @@
 # ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
-Last update: March 22, 2023
+Last update: March 26, 2023
 
 # Contents
 
@@ -318,7 +318,9 @@ Here, the form’s visible title will be “Customer Sales”, and when submitte
 
 **\_uvx=str1, str2**: Unique Values Exceptions. Used when we need unique values, but with a few specific exceptions. See instructions in the [Advanced Keywords Setup](#advanced-keywords-setup).
 
-**\_kr**: Kiosk add Refresh button. For Kiosk mode only, when there’s no keyboard/mouse.
+**\_km:** Triggers the Kiosk mode for that page. This only applies for any role other than Developer. For the accounts having the Developer role, it is possible to switch back and forth between the Normal and Kiosk modes by doing a Ctrl+Click on the version info bar.
+
+**\_kr**: Kiosk add Refresh button. For Kiosk mode only, when there’s no keyboard/mouse. When this keyword is used, any menu on the page will be moved next to it to save space.
 
 **\_kb**: Kiosk add Back button.
 
@@ -340,7 +342,7 @@ Provides scene-related features.
 -   **getCfg**: To read the idle watchdog delay value.
 -   **autoFocus**: Callback to your app's handler of autoFocus. By default, Knack does not set the focus to a field. But this enables you to choose when and how to do it – your way. For your convenience, a sample snippet is included, but feel free to adapt it to your needs.
 -   **renderViews**: Renders all views in the current scene.
--   **addKioskButtons**: In kiosk mode, most of the time there is no mouse or keyboard. This enables adding specific buttons, typically for navigation: Back, Done, Refresh. We've also added Work Shift and Messaging buttons, if ever you need them (more information provided upon request).
+-   **addKioskButtons**: In kiosk mode, most of the time there is no mouse or keyboard. This enables adding specific buttons, typically for navigation: Back, Done, Refresh. We've also added support for Work Shift and Messaging buttons, but they are currently disabled by default. If ever you need them, more information will be provided upon request.
 -   **spinnerWatchdog**: This is a timer that checks if the app is in a waiting state. If the spinner takes more than a specified amount of time (default is 30s), you can gain back control, typically by reloading the page. Most of the time, this solves the "infinite waiting" problem after a Submit or any page load/refresh, especially for kiosks without a keyboard, where users would otherwise have to reboot the device. After quite a bit of experimentation, we were surprised to observe that a submitted form was indeed sent successfully, but it was the screen refresh that never came back. This forced refresh solved the problem at least 90% of the time.
 -   **isSpinnerWdRunning**: Returns true if page is busy and spinner is shown.
 -   **flashBackground**: Simple attention getter, useful on small devices monitored from a distant area, to show status like success or failure.
@@ -410,17 +412,37 @@ There are two types of bulk operations: Bulk Edit and Bulk Delete. As their name
 
 To use this feature, you must:
 
-1.  Enable the bulkEdit flag in the ktl.core.setCfg function
+1.  Make sure that the bulkEdit flag is enabled in the ktl.core.setCfg function. This is already done in the default basic setup.
 2.  Create an account role named "Bulk Edit" and assign it diligently to very trusty and liable users.
 3.  For each applicable table, enable Inline editing and be sure to disable all the fields that should be protected against unintended modifications.
 
-These field types are supported: all text fields, connected fields, date time picker, Yes/No, multiple choices: single selection, radio buttons and checkboxes.
+**Setting up the source record**
 
-Usage: In the table, select all the checkboxes for the records to be modified. Then click on any cell to edit its value (inline). After submitting the change, a prompt will ask you if the value should also apply to all selected records. Click yes to apply to all. A confirmation message will pop up after completion.
+Make sure that your desired data is visible in one of the records in the table. This will be the **source record**, i.e. the one being copied from. If it is not the case, you would typically a few do inline edits to suit your needs.
 
-After a modification is completed, the selected records are retained in memory – even if not visible due to a table refresh. This allows performing multiple bulk edits one after another, on different fields.
+**Selecting records to be modified**
+
+Select all the checkboxes for the records to be modified in the first column. A highlight will indicate each selected row.
+
+The mouse cursor will change to a **target**, indicating that you can now select the **source record**. At that point, you have two options: single or multiple fields edit.
+
+**Single Field**
+
+If you only want to modify one field, click on any field in the table and its content will be applied to all selected rows, same field. A pop-up message will ask for confirmation before proceeding.
+
+**Multiple Fields**
+
+If you want to modify several fields at once, click on the desired checkboxes in the headers of those fields, at the top of the table. All cells to be affected by the operation will be highlighted at the intersection of the selected rows and columns.
+
+You can click anywhere in the table and this cell’s row will determine the source record whose data will be applied to the selected rows. A pop-up message will ask for confirmation before proceeding.
+
+**Progress and completion**
+
+A progress indicator will show up and a confirmation message will pop up after completion.
 
 \*\* Important note\*\* the table's sort+filter combination may cause your changes to disappear due to becoming out of scope. This is normal. You can prevent this by first choosing a sort+filter combination that will not cause this. Ideally set the filtering to show only a very restricted number of records, but still include the ones you need. Experimenting with only a few records at a time (less than 10) or even better “test records” is recommended as a starting point.
+
+**Interrupting the process**
 
 If you realize you’ve made an error, the process can be interrupted (but not undone) at any time by pressing F5 to reload the page.
 
@@ -428,7 +450,7 @@ If you realize you’ve made an error, the process can be interrupted (but not u
 
 To use this feature, you must:
 
-1.  Enable the bulkDelete flag in the ktl.core.setCfg function
+1.  Make sure that the bulkDelete flag is enabled in the ktl.core.setCfg function. This is already done in the default basic setup.
 2.  Create an account role named "Bulk Delete" and assign it diligently to very trusty and liable users.
 3.  For each applicable table, a Delete action link must be added.
 
@@ -925,39 +947,40 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | **Keyword**                        | **Description**                                       | **Where to use it**                                      | **Example**                                |
 |------------------------------------|-------------------------------------------------------|----------------------------------------------------------|--------------------------------------------|
 | \_ar=n                             | Auto-Refresh a view every *n* seconds                 | View Title or Description                                | \_ar=60                                    |
-| \_hv                               | Hidden View                                           |                                                          |                                            |
-| \_ht                               | Hidden Title                                          |                                                          |                                            |
-| \_ni=colHeader1, colHeader2…       | No Inline editing                                     |                                                          | \_ni=Email,Phone                           |
-| \_ts                               | Adds a Time Stamp to a view                           |                                                          |                                            |
-| \_dtp                              | Adds Date/Time Pickers                                |                                                          |                                            |
-| \_rvs=vTitle1, vTitle2…            | Refresh Views after Submit                            |                                                          | \_rvs=Monthly Sales, Clients               |
-| \_rvr=vTitle1, vTitle2…            | Refresh Views after Refresh                           |                                                          | \_rvr=Monthly Sales, Clients               |
-| \_rvd=vConfTitle,vTitle1, vTitle2… | Refresh Views after calendar event Drag’n Drop        |                                                          | \_rvd=Confirmation, Monthly Sales, Clients |
-| \_lf= vTitle1,vTitle2…             | Linked Filters                                        |                                                          | \_lf=Monthly Sales, Clients                |
-| \_qt=colorTrue,colorFalse          | Quick Toggle of Boolean fields                        |                                                          | \_qt=\#0F07,pink                           |
-| \_mc=colHeader                     | Match Color for whole row to a given column           |                                                          | \_mc=Sales                                 |
-| \_hc= colHeader1, colHeader2…      | Hide Columns, but keep in DOM                         |                                                          |                                            |
-| \_rc= colHeader1, colHeader2…      | Remove Columns, including DOM                         |                                                          |                                            |
-| \_nf=field_1,field_2…              | No Filtering on specified fields                      |                                                          | \_nf=field_1,field_2                       |
-|                                    |                                                       |                                                          |                                            |
+| \_hv                               | Hidden View                                           | ‘’                                                       |                                            |
+| \_ht                               | Hidden Title                                          | ‘’                                                       |                                            |
+| \_ni=colHeader1, colHeader2…       | No Inline editing                                     | ‘’                                                       | \_ni=Email,Phone                           |
+| \_ts                               | Adds a Time Stamp to a view                           | ‘’                                                       |                                            |
+| \_dtp                              | Adds Date/Time Pickers                                | ‘’                                                       |                                            |
+| \_rvs=vTitle1, vTitle2…            | Refresh Views after Submit                            | ‘’                                                       | \_rvs=Monthly Sales, Clients               |
+| \_rvr=vTitle1, vTitle2…            | Refresh Views after Refresh                           | ‘’                                                       | \_rvr=Monthly Sales, Clients               |
+| \_rvd=vConfTitle,vTitle1, vTitle2… | Refresh Views after calendar event Drag’n Drop        | ‘’                                                       | \_rvd=Confirmation, Monthly Sales, Clients |
+| \_lf= vTitle1,vTitle2…             | Linked Filters                                        | ‘’                                                       | \_lf=Monthly Sales, Clients                |
+| \_qt=colorTrue,colorFalse          | Quick Toggle of Boolean fields                        | ‘’                                                       | \_qt=\#0F07,pink                           |
+| \_mc=colHeader                     | Match Color for whole row to a given column           | ‘’                                                       | \_mc=Sales                                 |
+| \_hc= colHeader1, colHeader2…      | Hide Columns, but keep in DOM                         | ‘’                                                       |                                            |
+| \_rc= colHeader1, colHeader2…      | Remove Columns, including DOM                         | ‘’                                                       |                                            |
+| \_nf=field_1,field_2…              | No Filtering on specified fields                      | ‘’                                                       | \_nf=field_1,field_2                       |
+|                                    |                                                       | ‘’                                                       |                                            |
 | \_al                               | Auto-Login                                            | View Title or Description of a login page                |                                            |
-|                                    |                                                       |                                                          |                                            |
+|                                    |                                                       | ‘’                                                       |                                            |
 | \_oln=url                          | Open Link in a New page (tab)                         | Rich Text view with link                                 | Support \_oln=https://ctrnd.com            |
 | \_ols=url                          | Open Link in Same page                                | Rich Text view with link                                 | Support \_ols=https://ctrnd.com            |
-|                                    |                                                       |                                                          |                                            |
+|                                    |                                                       | ‘’                                                       |                                            |
 | \_uc                               | Convert to Uppercase                                  | Field Description                                        |                                            |
-| \_num                              | Numeric                                               |                                                          |                                            |
-| \_int                              | Integer                                               |                                                          |                                            |
-| \_ip                               | Validate IP format (to do)                            |                                                          |                                            |
-| \_lud                              | Last Updated Date. For Inline edits, used with \_lub. |                                                          |                                            |
-| \_lub                              | Last Updated By. For Inline edits, used with \_lud.   |                                                          |                                            |
+| \_num                              | Numeric                                               | ‘’                                                       |                                            |
+| \_int                              | Integer                                               | ‘’                                                       |                                            |
+| \_ip                               | Validate IP format (to do)                            | ‘’                                                       |                                            |
+| \_lud                              | Last Updated Date. For Inline edits, used with \_lub. | ‘’                                                       |                                            |
+| \_lub                              | Last Updated By. For Inline edits, used with \_lud.   | ‘’                                                       |                                            |
 | \_uvc                              | Unique Value Check                                    | See Advanced Keywords Setup                              |                                            |
-| \_uvx                              | Unique Values Exceptions                              | See Advanced Keywords Setup                              |                                            |
+| \_uvx                              | Unique Values Exceptions                              | ‘’                                                       |                                            |
+|                                    |                                                       | ‘’                                                       |                                            |
+| \_km                               | Kiosk Mode                                            | View Title or Description. Effective in Kiosk mode only. |                                            |
+| \_kr                               | Kiosk add Refresh button                              | ‘’                                                       |                                            |
+| \_kb                               | Kiosk add Back button                                 | ‘’                                                       |                                            |
+| \_kd                               | Kiosk add Done button                                 | ‘’                                                       |                                            |
 |                                    |                                                       |                                                          |                                            |
-| \_kr                               | Kiosk add Refresh button                              | View Title or Description. Effective in Kiosk mode only. |                                            |
-| \_kb                               | Kiosk add Back button                                 |                                                          |                                            |
-| \_kd                               | Kiosk add Done button                                 |                                                          |                                            |
-| \_kn                               | Kiosk No buttons (to clarify)                         |                                                          |                                            |
 
 ## 
 
