@@ -73,12 +73,29 @@
 
 .cell-edit.ktlNoInlineEdit {
 	pointer-events: none;
-	background-color: transparent !important;
+	background-color: #ffe0e0!important;
 	font-weight: initial;
 }
 
 .ktlNotValid {
-	background-color: #fdb0b0; /*Same color as Knack error*/
+	background-color: #fdb0b0; /* Same pinkish color as Knack error */
+}
+
+/* Bulk Operations */
+.bulkEditCb {
+	width: 18px;
+	height: 18px;
+}
+
+.bulkEditHeaderCbox {
+	top: 7px;
+	right: 7px;
+	position: absolute;
+}
+
+.bulkEditTh {
+	display: inline-flex;
+	margin-right: 25px;
 }
 
 .bulkEditSelectedCol.bulkEditSelectedRow {
@@ -86,9 +103,11 @@
 	border-width: medium !important;
 }
 
-.bulkEditSelectedRow {
-	pointer-events: none;
+.bulkEditSelectSrc {
+	cursor: url('https://ctrnd.com/Lib/KTL/Prod/target.png') 5 5, auto !important;
+	pointer-events: all;
 }
+
 
 /************ Tooltips **************/
 .tooltip {
