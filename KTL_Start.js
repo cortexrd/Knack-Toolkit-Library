@@ -9,7 +9,7 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.10.6';
+    const KTL_LATEST_JS_VERSION = '0.10.7';
     const KTL_LATEST_CSS_VERSION = '0.2.6';
 
     var cssVersion = KTL_LATEST_CSS_VERSION;

@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.6';
+    const KTL_VERSION = '0.10.7';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -8196,7 +8196,7 @@ function Ktl($, info) {
         }
 
         //Called to refresh the record array to be modified.
-        //Can be changed by user clicks, table filtering change, view refresh.
+        //Can be changed by user clicks, table filtering change, page reload and page change.
         //Returns the number of selected records (checked).
         function updateBulkOpsRecIdArray(viewId) {
             if (!viewId) return;
