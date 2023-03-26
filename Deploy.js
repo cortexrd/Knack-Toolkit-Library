@@ -130,8 +130,8 @@ function upload() {
 
         //Copy CSS file as versioned Prod.
         const cssPathName = filePath + fileName + '.css';
-        var code = fs.readFileSync(cssPathName, 'utf8');
-        var version = code.match(/KTL CSS version: [\d.]+/);
+        code = fs.readFileSync(cssPathName, 'utf8');
+        version = code.match(/KTL CSS version: [\d.]+/);
         version = version[0].match(/[\d.]+/)[0];
         console.log('CSS version found:', version);
         const cssProd = fileName + '-' + version + '.css';
