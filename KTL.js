@@ -8062,17 +8062,14 @@ function Ktl($, info) {
 
         $(document).on('click', function (e) {
             if (ktl.scenes.isiFrameWnd()) return;
-            //On every click event, we process Inline Submit and Checkbox clicks.
-            //Prepare all we need for Bulk Operations. Take note of view, field and new value.
 
-            var tableRow = e.target.closest('tr');
-            if (tableRow) {
+            if (e.target.closest('tr')) {
+                //If check boxes spread across more than one view, discard all and start again in current target view.
                 if (e.target.getAttribute('type') === 'checkbox') {
-                    //If check boxes spread across more than one view, discard all and start again in latest view.
-                    var thisView = e.target.closest('.kn-table.kn-view');
-                    if (thisView) {
-                        var viewId = thisView.getAttribute('id');
-                        if (e.target.closest('td')) //If click in td row, uncheck master checkbox in th.
+                    var viewId = e.target.closest('.kn-table.kn-view');
+                    if (viewId) {
+                        viewId = viewId.getAttribute('id');
+                        if (e.target.closest('td')) //If click in td row, uncheck master checkbox in header.
                             $('.' + viewId + '.kn-table thead tr input[type=checkbox]').first().prop('checked', false);
 
                         if (bulkOpsViewId !== viewId) {
@@ -8082,33 +8079,40 @@ function Ktl($, info) {
                                     $(this).prop('checked', false);
                                 });
 
-                                updateDeleteButtonStatus(bulkOpsViewId, 0);
+                                updateBulkOpsGuiElements(bulkOpsViewId);
                             }
 
                             bulkOpsViewId = viewId;
                         }
 
-                        updateBulkOpCheckboxes();
+                        updateBulkOpsGuiElements(viewId);
                     }
                 }
             }
         })
 
+        function updateBulkOpsGuiElements(viewId = '') {
+            if (!viewId) return;
+
+            const numChecked = updateBulkOpsRecIdArray(viewId);
+            updateDeleteButtonStatus(viewId, numChecked);
+            updateHeaderCheckboxes(viewId, numChecked);
+
+            if (numChecked > 0)
+                ktl.views.autoRefresh(false);
+            else
+                ktl.views.autoRefresh();
+        }
+
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
         //Called upon each view rendering.
         function enableBulkOperations(view, data) {
-            addCheckboxesToTable(view.key, masterCheckBoxCallback);
-            $('#' + view.key + '')
+            addCheckboxesToTable(view.key);
             ktl.views.fixTableRowsAlignment(view.key);
 
             var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
             if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
                 addBulkDeleteButtons(view, data);
-
-            function masterCheckBoxCallback(numChecked) {
-                canDelete && updateDeleteButtonStatus(view.key, numChecked);
-                updateBulkOpCheckboxes();
-            }
 
             //Put back checkboxes that were checked before view refresh.
             if (view.key === bulkOpsViewId) {
@@ -8121,36 +8125,34 @@ function Ktl($, info) {
                     }
                 }
             }
+
+            updateBulkOpsGuiElements(view.key);
         }
 
-        //Params: masterCheckBoxCallback is the function to be called when the top checkbox is clicked.
-        //        It is used to do an action upon change like ena/disable a button or show number of items checked.
-        function addCheckboxesToTable(viewId, masterCheckBoxCallback = null) {
+        function addCheckboxesToTable(viewId) {
+            if (!viewId) return;
             //Only add checkboxes if there's data and checkboxes not yet added.
             var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
             if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]')) {
-                // Add the checkbox to to the header to select/unselect all
+                // Add the master checkbox to to the header to select/unselect all
                 $('#' + viewId + '.kn-table thead tr').prepend('<th><input type="checkbox"></th>');
-                $('#' + viewId + '.kn-table thead input').change(function () {
-                    $('.' + viewId + '.kn-table tbody tr input').each(function () {
-                        $(this).attr('checked', $('#' + viewId + '.kn-table thead input').attr('checked') !== undefined);
+                $('#' + viewId + '.kn-table thead input').addClass('masterSelector');
+                $('#' + viewId + ' .masterSelector').change(function () {
+                    $('#' + viewId + ' tr td input:checkbox').each(function () {
+                        $(this).attr('checked', $('#' + viewId + ' th input:checkbox').attr('checked') !== undefined);
                     });
 
-                    var numChecked = $('#' + viewId + ' tbody input[type=checkbox]:checked').length;
-                    masterCheckBoxCallback && masterCheckBoxCallback(numChecked);
-                    updateHeaderCheckboxes();
+                    updateBulkOpsGuiElements(viewId);
                 });
 
                 //Add a checkbox to each header that is inline-editable.
-                $('#' + viewId + ' .kn-table thead th').each((idx, el) => {
+                $('#' + viewId + ' thead th').each((idx, el) => {
                     var inline = $('#' + viewId + ' tbody tr:first td:nth-child(' + (idx) + ')');
                     if (idx > 0 && inline.length && inline[0].classList.contains('cell-edit')) {
                         $(el).find('.table-fixed-label').css('display', 'inline-flex').append('<input type="checkbox">').addClass('bulkEditTh');
-                        $(el).find(':checkbox').addClass('bulkEditHeaderCbox');
+                        $(el).find('input:checkbox').addClass('bulkEditHeaderCbox');
                     }
                 })
-
-                updateHeaderCheckboxes();
 
                 $('.bulkEditHeaderCbox').change(e => {
                     var fieldId = $(e.target).closest('th');
@@ -8160,55 +8162,54 @@ function Ktl($, info) {
                             $('#' + viewId + ' td.' + fieldId).addClass('bulkEditSelectedCol');
                         else
                             $('#' + viewId + ' td.' + fieldId).removeClass('bulkEditSelectedCol');
-                        updateBulkOpCheckboxes();
+
+                        updateBulkOpsGuiElements(viewId);
                     }
                 })
 
                 //Add a checkbox to each row in the table body
-                $('#' + viewId + ' .kn-table tbody tr').each(function () {
+                $('#' + viewId + ' tbody tr').each(function () {
                     if (!this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
                         $(this).prepend('<td><input type="checkbox"></td>');
                     }
                 });
 
-                $('#' + viewId + '.kn-table thead :checkbox').addClass('bulkEditCb');
-                $('#' + viewId + '.kn-table tbody tr td :checkbox').addClass('bulkEditCb');
-
-                $('#' + viewId + '.kn-table tbody tr td :checkbox').change(function (e) {
-                    updateHeaderCheckboxes();
+                $('#' + viewId + ' tbody tr td input:checkbox').change(function (e) {
+                    updateBulkOpsGuiElements(viewId);
                 })
 
-                function updateHeaderCheckboxes() {
-                    var numChecked = $('#' + viewId + ' tbody input[type=checkbox]:checked').length;
-                    if (numChecked) {
-                        $('.bulkEditHeaderCbox').removeClass('ktlDisplayNone');
-                        $('#' + viewId + ' tbody tr td').addClass('bulkEditSelectSrc');
-                    } else {
-                        $('.bulkEditHeaderCbox').addClass('ktlDisplayNone');
-                        $('#' + viewId + ' tbody tr td').removeClass('bulkEditSelectSrc');
-                    }
-                }
+                $('#' + viewId + ' thead input:checkbox').addClass('bulkEditCb');
+                $('#' + viewId + ' tbody tr td input:checkbox').addClass('bulkEditCb');
+
+            }
+        }
+
+        function updateHeaderCheckboxes(viewId, numChecked = 0) {
+            if (!viewId) return;
+            if (numChecked) {
+                $('.bulkEditHeaderCbox').removeClass('ktlDisplayNone');
+                $('#' + viewId + ' tbody tr td').addClass('bulkEditSelectSrc');
+            } else {
+                $('.bulkEditHeaderCbox').addClass('ktlDisplayNone');
+                $('#' + viewId + ' tbody tr td').removeClass('bulkEditSelectSrc');
             }
         }
 
         //Called to refresh the record array to be modified.
         //Can be changed by user clicks, table filtering change, view refresh.
-        function updateBulkOpCheckboxes() {
+        //Returns the number of selected records (checked).
+        function updateBulkOpsRecIdArray(viewId) {
+            if (!viewId) return;
             bulkOpsRecIdArray = [];
-            $('#' + bulkOpsViewId + ' .bulkEditSelectedRow').removeClass('bulkEditSelectedRow');
-            $('#' + bulkOpsViewId + ' tbody input[type=checkbox]:checked').each(function () {
+            $('#' + viewId + ' .bulkEditSelectedRow').removeClass('bulkEditSelectedRow');
+            $('#' + viewId + ' tbody input[type=checkbox]:checked').each(function () {
                 var id = $(this).closest('tr').attr('id');
                 bulkOpsRecIdArray.push(id);
                 $(this).closest('tr').find('td').addClass('bulkEditSelectedRow');
                 $(this).closest('tr').find('td :checkbox').parent().removeClass('bulkEditSelectedRow')
             });
 
-            if (bulkOpsRecIdArray.length > 0)
-                ktl.views.autoRefresh(false);
-            else
-                ktl.views.autoRefresh();
-
-            updateDeleteButtonStatus(bulkOpsViewId, bulkOpsRecIdArray.length);
+            return bulkOpsRecIdArray.length;
         }
 
         //Called when user clicks on Submit from an Inline Editing form and when there are some checkboxes enabled.
@@ -8323,7 +8324,6 @@ function Ktl($, info) {
                 var deleteRecordsBtn = document.createElement('BUTTON');
                 deleteRecordsBtn.setAttribute('class', 'kn-button');
                 deleteRecordsBtn.id = 'kn-button-delete-selected-' + view.key;
-                deleteRecordsBtn.innerHTML = 'Delete Selected';
                 prepend ? (deleteRecordsBtn.style.marginBottom = '10px') : (deleteRecordsBtn.style.marginInlineStart = '30px');
                 deleteRecordsBtn.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
                 deleteRecordsBtn.disabled = true;
@@ -8384,7 +8384,6 @@ function Ktl($, info) {
                     var deleteAllRecordsBtn = document.createElement('BUTTON');
                     deleteAllRecordsBtn.setAttribute('class', 'kn-button');
                     deleteAllRecordsBtn.id = 'kn-button-delete-all-' + view.key;
-                    deleteAllRecordsBtn.innerHTML = 'Delete All';
                     deleteAllRecordsBtn.style.marginLeft = '5%';
                     deleteAllRecordsBtn.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
                     if (data.length > 0)
@@ -8394,18 +8393,20 @@ function Ktl($, info) {
 
                     div.appendChild(deleteAllRecordsBtn);
 
+                    //Get total number of records to delete.  Either get it from summary, or from data length when summary not shown (less than ~7 records).
+                    var totalRecords = $('#' + view.key + ' .kn-entries-summary').last();
+                    if (totalRecords.length > 0)
+                        totalRecords = totalRecords.html().substring(totalRecords.html().lastIndexOf('of</span> ') + 10).replace(/\s/g, '');
+                    else
+                        totalRecords = data.length;
+
+                    deleteAllRecordsBtn.textContent = 'Delete All: ' + totalRecords;
+
                     deleteAllRecordsBtn.addEventListener('click', function (event) {
                         var allChk = $('#' + view.key + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]');
                         if (allChk.length > 0) {
                             if (data.length > 0) {
                                 if (!bulkOpsDeleteAll) { //First time, kick start process.
-                                    //Get total number of records to delete.  Either get it from summary, or from data length when summary not shown (less than ~7 records).
-                                    var totalRecords = $('#' + view.key + ' .kn-entries-summary').last();
-                                    if (totalRecords.length > 0)
-                                        totalRecords = totalRecords.html().substring(totalRecords.html().lastIndexOf('of</span> ') + 10).replace(/\s/g, '');
-                                    else
-                                        totalRecords = data.length;
-
                                     const objName = ktl.views.getViewSourceName(view.key);
                                     if (confirm('Are you sure you want to delete all ' + totalRecords + ' ' + objName + ((totalRecords > 1 && objName.slice(-1) !== 's') ? 's' : '') + '?\nNote:  you can abort the process at any time by pressing F5.'))
                                         bulkOpsDeleteAll = true;
@@ -8439,7 +8440,11 @@ function Ktl($, info) {
 
         function updateDeleteButtonStatus(viewId = '', numChecked) {
             var deleteRecordsBtn = document.querySelector('#kn-button-delete-selected-' + viewId);
-            deleteRecordsBtn && (deleteRecordsBtn.disabled = !numChecked);
+            if (deleteRecordsBtn) {
+                deleteRecordsBtn.disabled = !numChecked;
+                deleteRecordsBtn.textContent = 'Delete Selected: ' + numChecked;
+            }
+
             ktl.views.autoRefresh(!numChecked); //If a checkbox is clicked, pause auto-refresh otherwise user will lose all selections.
         }
 
