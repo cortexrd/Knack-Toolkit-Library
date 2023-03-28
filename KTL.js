@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.7';
+    const KTL_VERSION = '0.10.8';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4160,6 +4160,7 @@ function Ktl($, info) {
                             keywords._nf && disableFilterOnFields(view, keywords);
                             (keywords._hc || keywords._rc) && kwHideColumns(view, keywords);
                             keywords._dr && numDisplayedRecords(view, keywords);
+                            keywords._cfv && colorizeFieldValue(view.key, keywords, data);
                         }
                     }
 
@@ -4481,7 +4482,25 @@ function Ktl($, info) {
                     success: () => { Knack.hideSpinner(); }
                 });
             }
+        }
 
+        function colorizeFieldValue(viewId, keywords, data) {
+            if (!viewId || !keywords._cfv || !keywords._cfv.length) return;
+
+            const paramGroups = [];
+            for (let i = 0; i < keywords._cfv.length; i += 4) {
+                const group = keywords._cfv.slice(i, i + 4);
+                paramGroups.push(group);
+            }
+
+            paramGroups.forEach(params => {
+                var compareMode = 'contains';
+                if (params[0] === 'x')
+                    compareMode = 'textEquals';
+
+                var sel = '#' + viewId + ' span:' + compareMode + '("' + params[1] + '")';
+                $(sel).css({ 'color': params[2], 'background-color': params[3] });
+            })
         }
 
         return {
