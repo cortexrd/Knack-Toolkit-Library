@@ -856,7 +856,7 @@ function Ktl($, info) {
 
                 if (hasLocalStorage) {
                     if (secure) {
-                        initSecureLs()
+                        ktl.storage.initSecureLs()
                             .then(() => {
                                 val = secureLs.remove(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
                             })
@@ -4391,7 +4391,7 @@ function Ktl($, info) {
                                         (keywords._hc || keywords._rc) && kwHideColumns(Knack.views[viewId].model.view, keywords);
 
                                     if (keywords._km && !ktl.account.isDeveloper()) {
-                                        if (!ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
+                                        if (ktl.storage.lsGetItem('KIOSK', false, true) !== 'true') {
                                             ktl.storage.lsSetItem('KIOSK', true, false, true);
                                             location.reload(true);
                                         }
@@ -8631,15 +8631,19 @@ function Ktl($, info) {
                 }
 
                 var objects = Knack.objects.models;
-                var fieldKeywords = {};
+                var objectFieldsKw = {};
                 objects.forEach(obj => {
+                    var fieldKeywords = {};
                     var fields = obj.attributes.fields;
                     fields.forEach(field => {
                         ktl.fields.getFieldKeywords(field.key, fieldKeywords);
                     })
+
+                    if (!$.isEmptyObject(fieldKeywords))
+                        objectFieldsKw[obj.attributes.name + ' (' + obj.attributes.key + ')'] = fieldKeywords;
                 })
 
-                console.log('fieldKeywords =', JSON.stringify(fieldKeywords, null, 4));
+                console.log('Objects/Fields with keywords:\n', JSON.stringify(objectFieldsKw, null, 4));
 
                 var en = window.performance.now();
                 console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
@@ -8720,7 +8724,7 @@ function Ktl($, info) {
     function parseKeywords(keywords, strToParse) {
         var kwAr = [];
         if (strToParse && strToParse !== '') {
-            var kwAr = strToParse.split(/(_[a-zA-Z]{2,})/gm);
+            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
             kwAr.splice(0, 1);
             for (var i = 0; i < kwAr.length; i++) {
                 kwAr[i] = kwAr[i].trim();
