@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.8';
+    const KTL_VERSION = '0.10.9';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -6578,50 +6578,56 @@ function Ktl($, info) {
             },
 
             addVersionInfo: function (info, style = '', div) {
-                if (!ktl.core.getCfg().enabled.showAppInfo || window.self.frameElement) return;
+                var itv = setInterval(() => {
+                    if (keywordsCleanupDone) { //TODO: Convert all these to a Promise.
+                        clearInterval(itv);
 
-                //By default, version numbers are added at top right of screen
-                if ($('#verButtonId').length === 0) {
-                    var ktlVer = ktl.core.getCfg().enabled.showKtlInfo ? '    KTL v' + KTL_VERSION : '';
-                    var versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; top:5px; right:0px; border-style:none; padding-bottom:2px';
+                        if (!ktl.core.getCfg().enabled.showAppInfo || window.self.frameElement) return;
 
-                    if (style) //If style already exist, use it as is, otherwise, use KTL's default.
-                        versionStyle = style;
+                        //By default, version numbers are added at top right of screen
+                        if ($('#verButtonId').length === 0) {
+                            var ktlVer = ktl.core.getCfg().enabled.showKtlInfo ? '    KTL v' + KTL_VERSION : '';
+                            var versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; top:5px; right:0px; border-style:none; padding-bottom:2px';
 
-                    var versionInfo = ' v' + APP_VERSION + ktlVer + (info.ktlVersion === 'dev' ? '-dev' : '') + (info.hostname ? '    ' + info.hostname : '');
-                    if (localStorage.getItem(info.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
-                        versionStyle += '; color:#0008; background-color:#FFF3;';
-                    else //Dev mode, make version bright yellow/red font.
-                        versionStyle += '; background-color:gold; color:red; font-weight: bold';
+                            if (style) //If style already exist, use it as is, otherwise, use KTL's default.
+                                versionStyle = style;
 
-                    versionInfo = ktl.scenes.getCfg().versionDisplayName + versionInfo;
+                            var versionInfo = ' v' + APP_VERSION + ktlVer + (info.ktlVersion === 'dev' ? '-dev' : '') + (info.hostname ? '    ' + info.hostname : '');
+                            if (localStorage.getItem(info.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
+                                versionStyle += '; color:#0008; background-color:#FFF3;';
+                            else //Dev mode, make version bright yellow/red font.
+                                versionStyle += '; background-color:gold; color:red; font-weight: bold';
 
-                    ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
-                    $('#verButtonId').on('click touchstart', function (e) {
-                        if (ktl.account.isDeveloper()) {
-                            if (e.ctrlKey) {
-                                var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
-                                if (sessionKiosk) {
-                                    ktl.core.timedPopup('Switching to Normal mode...');
-                                    ktl.storage.lsRemoveItem('KIOSK', false, true);
-                                } else {
-                                    ktl.core.timedPopup('Switching to Kiosk mode...');
-                                    ktl.storage.lsSetItem('KIOSK', true, false, true);
+                            versionInfo = ktl.scenes.getCfg().versionDisplayName + versionInfo;
+
+                            ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
+                            $('#verButtonId').on('click touchstart', function (e) {
+                                if (ktl.account.isDeveloper()) {
+                                    if (e.ctrlKey) {
+                                        var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
+                                        if (sessionKiosk) {
+                                            ktl.core.timedPopup('Switching to Normal mode...');
+                                            ktl.storage.lsRemoveItem('KIOSK', false, true);
+                                        } else {
+                                            ktl.core.timedPopup('Switching to Kiosk mode...');
+                                            ktl.storage.lsSetItem('KIOSK', true, false, true);
+                                        }
+                                        location.reload(true);
+                                    } else {
+                                        e.preventDefault();
+                                        ktl.core.toggleMode();
+                                    }
                                 }
-                                location.reload(true);
-                            } else {
-                                e.preventDefault();
-                                ktl.core.toggleMode();
-                            }
-                        }
-                    })
+                            })
 
-                    //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
-                    if (ktl.core.isKiosk() && !ktl.scenes.isiFrameWnd())
-                        $('body').css({ 'padding-top': '15px' });
-                    else
-                        $('body').css({ 'padding-top': '' });
-                }
+                            //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
+                            if (ktl.core.isKiosk() && !ktl.scenes.isiFrameWnd())
+                                $('body').css({ 'padding-top': '15px' });
+                            else
+                                $('body').css({ 'padding-top': '' });
+                        }
+                    }
+                }, 50);
             },
 
             isiFrameWnd: function () {
