@@ -747,6 +747,29 @@ function Ktl($, info) {
                 }
             },
 
+            //If mode is undefined, it will toggle.  If true, Kiosk is enabled, if false, Normal mode is enabled.
+            kioskMode: function (mode) {
+                if (typeof mode === 'undefined') {
+                    var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
+                    if (sessionKiosk) {
+                        ktl.core.timedPopup('Switching to Normal mode...');
+                        ktl.storage.lsRemoveItem('KIOSK', false, true);
+                    } else {
+                        ktl.core.timedPopup('Switching to Kiosk mode...');
+                        ktl.storage.lsSetItem('KIOSK', true, false, true);
+                    }
+                    location.reload(true);
+                } else if (mode) {
+                    ktl.core.timedPopup('Switching to Kiosk mode...');
+                    ktl.storage.lsSetItem('KIOSK', true, false, true);
+                    location.reload(true);
+                } else {
+                    ktl.core.timedPopup('Switching to Normal mode...');
+                    ktl.storage.lsRemoveItem('KIOSK', false, true);
+                    location.reload(true);
+                }
+            },
+
             loadLib: function (libName = '') {
                 return new Promise(function (resolve, reject) {
                     if (!libName) {
@@ -4374,6 +4397,8 @@ function Ktl($, info) {
             }
         }
 
+        //This is for early notifications of DOM changes.
+        //Prevents spurious GUI updates (flickering).
         if (!observer) {
             var itv = setInterval(() => {
                 if (keywordsCleanupDone) {
@@ -6603,17 +6628,9 @@ function Ktl($, info) {
                             ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
                             $('#verButtonId').on('click touchstart', function (e) {
                                 if (ktl.account.isDeveloper()) {
-                                    if (e.ctrlKey) {
-                                        var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
-                                        if (sessionKiosk) {
-                                            ktl.core.timedPopup('Switching to Normal mode...');
-                                            ktl.storage.lsRemoveItem('KIOSK', false, true);
-                                        } else {
-                                            ktl.core.timedPopup('Switching to Kiosk mode...');
-                                            ktl.storage.lsSetItem('KIOSK', true, false, true);
-                                        }
-                                        location.reload(true);
-                                    } else {
+                                    if (e.ctrlKey)
+                                        ktl.core.kioskMode();
+                                    else {
                                         e.preventDefault();
                                         ktl.core.toggleMode();
                                     }
