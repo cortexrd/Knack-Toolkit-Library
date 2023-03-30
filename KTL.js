@@ -698,7 +698,7 @@ function Ktl($, info) {
 
                     //yyyy-mm-dd hh:mm:ss format when time is included.
                     if (!dateOnly)
-                        isoDate += ' ' + dateTimeObj.toLocaleString(undefined, { 'hour': '2-digit', 'minute': '2-digit', hourCycle: 'h23', 'second': '2-digit' });
+                        isoDate += ' ' + dateTimeObj.toTimeString(undefined, { 'hour': '2-digit', 'minute': '2-digit', hourCycle: 'h23', 'second': '2-digit' });
 
                     return isoDate;
                 } else {
