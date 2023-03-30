@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.9';
+    const KTL_VERSION = '0.10.10';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -695,6 +695,11 @@ function Ktl($, info) {
                     var month = dateTimeObj.toLocaleString(undefined, { month: '2-digit' });
                     var day = dateTimeObj.toLocaleString(undefined, { day: '2-digit' });
                     var isoDate = year + '-' + month + '-' + day;
+
+                    //yyyy-mm-dd hh:mm:ss format when time is included.
+                    if (!dateOnly)
+                        isoDate += ' ' + dateTimeObj.toLocaleString(undefined, { 'hour': '2-digit', 'minute': '2-digit', hourCycle: 'h23', 'second': '2-digit' });
+
                     return isoDate;
                 } else {
                     //mm-dd-yyyy Knack's default format.
@@ -714,10 +719,7 @@ function Ktl($, info) {
             },
 
             getLastDayOfMonth: function (dateObj, iso = false) {
-                //var date = new Date(dateStr);
                 var lastDayOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
-
-                //return ktl.core.convertDateTimeToString(lastDayOfMonth, iso, true);
                 return lastDayOfMonth;
             },
 
@@ -802,6 +804,12 @@ function Ktl($, info) {
                 return longestWord[0];
             },
 
+            addMinutes: function (date, minutes) {
+                const dateCopy = new Date(date);
+                dateCopy.setMinutes(date.getMinutes() + minutes);
+
+                return dateCopy;
+            },
         }
     })(); //Core
 
