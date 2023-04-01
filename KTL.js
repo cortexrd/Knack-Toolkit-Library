@@ -8114,14 +8114,16 @@ function Ktl($, info) {
                     var checked = $('#' + viewId + ' .bulkEditHeaderCbox:checked');
                     if (checked.length) {
                         //Deselect all
-                        $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', false);
                         e.stopImmediatePropagation();
                         preventClick = true;
+                        $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', false);
+                        updateBulkOpsGuiElements(viewId);
                     } else {
                         //Select all
-                        $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', true);
                         e.stopImmediatePropagation();
                         preventClick = true;
+                        $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', true);
+                        updateBulkOpsGuiElements(viewId);
                     }
                 }
             }
@@ -8166,6 +8168,17 @@ function Ktl($, info) {
 
         function updateBulkOpsGuiElements(viewId = '') {
             if (!viewId) return;
+
+            $('.bulkEditHeaderCbox').each((idx, cb) => {
+                var fieldId = $(cb).closest('th');
+                fieldId = fieldId.attr('class').split(' ')[0];
+                if (fieldId.startsWith('field_')) {
+                    if (cb.checked)
+                        $('#' + viewId + ' td.' + fieldId).addClass('bulkEditSelectedCol');
+                    else
+                        $('#' + viewId + ' td.' + fieldId).removeClass('bulkEditSelectedCol');
+                }
+            })
 
             const numChecked = updateBulkOpsRecIdArray(viewId);
             updateDeleteButtonStatus(viewId, numChecked);
@@ -8228,16 +8241,7 @@ function Ktl($, info) {
                 })
 
                 $('.bulkEditHeaderCbox').change(e => {
-                    var fieldId = $(e.target).closest('th');
-                    fieldId = fieldId.attr('class').split(' ')[0];
-                    if (fieldId.startsWith('field_')) {
-                        if (e.target.checked)
-                            $('#' + viewId + ' td.' + fieldId).addClass('bulkEditSelectedCol');
-                        else
-                            $('#' + viewId + ' td.' + fieldId).removeClass('bulkEditSelectedCol');
-
-                        updateBulkOpsGuiElements(viewId);
-                    }
+                    updateBulkOpsGuiElements(viewId);
                 })
 
                 //Add a checkbox to each row in the table body
