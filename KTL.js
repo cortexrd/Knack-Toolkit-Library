@@ -450,10 +450,11 @@ function Ktl($, info) {
                         date = ktl.core.addZero(today.getMonth() + 1) + '/' + ktl.core.addZero(today.getDate()) + '/' + today.getFullYear();
 
                     time = ktl.core.addZero(today.getHours()) + ':' + ktl.core.addZero(today.getMinutes());
-                    if (withSeconds)
+                    if (withSeconds) {
                         time += ':' + ktl.core.addZero(today.getSeconds());
-                    if (withMilliseconds)
-                        time += ':' + ktl.core.addZero(today.getMilliseconds(), 3, withMilliseconds);
+                        if (withMilliseconds)
+                            time += ':' + ktl.core.addZero(today.getMilliseconds(), 3, withMilliseconds);
+                    }
                 }
 
                 return date + ' ' + time;
@@ -6691,7 +6692,7 @@ function Ktl($, info) {
                 $(document).off('knack-cell-update.' + view.key).on('knack-cell-update.' + view.key, function (event, view, record) {
                     Knack.showSpinner();
                     var apiData = {};
-                    apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false).substr(0, 10);
+                    apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false, false).substr(0, 16);
                     apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
                     ktl.core.knAPI(view.key, record.id, apiData, 'PUT', [view.key])
                         .then((updated) => { Knack.hideSpinner(); })
