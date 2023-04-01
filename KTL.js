@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.10';
+    const KTL_VERSION = '0.10.11';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -728,20 +728,18 @@ function Ktl($, info) {
             toggleMode: function () { //Prod <=> Dev modes
                 if (Knack.isMobile()) return; //Dev mode only works in a desktop environment.
                 var prod = (localStorage.getItem(info.lsShortName + 'dev') === null);
-                if (confirm('Are you sure you want to switch to ' + (prod ? 'DEV' : 'PROD') + ' mode?')) {
-                    if (prod)
-                        ktl.storage.lsSetItem('dev', '', true);
-                    else
-                        ktl.storage.lsRemoveItem('dev', true);
+                if (prod)
+                    ktl.storage.lsSetItem('dev', '', true);
+                else
+                    ktl.storage.lsRemoveItem('dev', true);
 
-                    ktl.debugWnd.lsLog('Switching mode to: ' + (prod ? 'DEV' : 'PROD'));
-                    setTimeout(() => {
-                        if (ktl.scenes.isiFrameWnd())
-                            ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'MANUAL_REFRESH' });
-                        else
-                            location.reload(true);
-                    }, 500);
-                }
+                ktl.debugWnd.lsLog('Switching mode to: ' + (prod ? 'DEV' : 'PROD'));
+                setTimeout(() => {
+                    if (ktl.scenes.isiFrameWnd())
+                        ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'MANUAL_REFRESH' });
+                    else
+                        location.reload(true);
+                }, 500);
             },
 
             //If mode is undefined, it will toggle.  If true, Kiosk is enabled, if false, Normal mode is enabled.
@@ -1743,7 +1741,7 @@ function Ktl($, info) {
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 if (fieldDesc) {
                     var keywords = {};
-                    fieldDesc = fieldDesc.toLowerCase().replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
+                    fieldDesc = fieldDesc.toLowerCase().replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
                     parseKeywords(keywords, fieldDesc);
                     if (!$.isEmptyObject(keywords))
                         fieldKeywords[fieldId] = keywords;
@@ -6682,7 +6680,7 @@ function Ktl($, info) {
 
             for (var f = 0; f < view.fields.length; f++) {
                 var field = fields[f];
-                descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
+                descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
                 descr === '_lud' && (bulkOpsLudFieldId = field.key);
                 descr === '_lub' && (bulkOpsLubFieldId = field.key);
             }
@@ -8062,7 +8060,7 @@ function Ktl($, info) {
             if (ktl.scenes.isiFrameWnd() || (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
                 return;
 
-            //Put code below in a shared function (see _lud in ktl.log).
+            //Put code below in a shared function (see _lud in this.log).
             var fields = view.fields;
             if (!fields) return;
 
@@ -8071,7 +8069,7 @@ function Ktl($, info) {
             var descr = '';
             for (var f = 0; f < view.fields.length; f++) {
                 var field = fields[f];
-                descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();;
+                descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
                 descr === '_lud' && (lud = field.key);
                 descr === '_lub' && (lub = field.key);
             }
