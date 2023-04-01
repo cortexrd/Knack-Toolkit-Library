@@ -8110,12 +8110,41 @@ function Ktl($, info) {
             })
         })
 
+        var preventClick = false;
+        $(document).on('mousedown', function (e) {
+            //Upon Ctrl+click on a header checkboxes, toggle all on or off.
+            if (e.ctrlKey && e.target.getAttribute('type') === 'checkbox' && e.target.classList.contains('bulkEditHeaderCbox')) {
+                var viewId = e.target.closest('.kn-table.kn-view');
+                if (viewId) {
+                    viewId = viewId.getAttribute('id');
+                    var checked = $('#' + viewId + ' .bulkEditHeaderCbox:checked');
+                    if (checked.length) {
+                        //Deselect all
+                        $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', false);
+                        e.stopImmediatePropagation();
+                        preventClick = true;
+                    } else {
+                        //Select all
+                        $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', true);
+                        e.stopImmediatePropagation();
+                        preventClick = true;
+                    }
+                }
+            }
+        })
+
         $(document).on('click', function (e) {
             if (ktl.scenes.isiFrameWnd()) return;
 
             if (e.target.closest('tr')) {
                 //If check boxes spread across more than one view, discard all and start again in current target view.
                 if (e.target.getAttribute('type') === 'checkbox') {
+                    if (preventClick) {
+                        preventClick = false;
+                        e.preventDefault();
+                        return;
+                    }
+
                     var viewId = e.target.closest('.kn-table.kn-view');
                     if (viewId) {
                         viewId = viewId.getAttribute('id');
@@ -8219,7 +8248,7 @@ function Ktl($, info) {
 
                 //Add a checkbox to each row in the table body
                 $('#' + viewId + ' tbody tr').each(function () {
-                    if (!this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
+                    if (this.id && !this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
                         $(this).prepend('<td><input type="checkbox"></td>');
                     }
                 });
@@ -8267,7 +8296,7 @@ function Ktl($, info) {
             if (!viewId) return;
 
             if (confirm('Are you sure you want to apply this value to all selected items?')) {
-                ktl.core.knAPI(viewId, e.target.closest('tr').id, {}, 'GET')
+                ktl.core.knAPI(viewId, e.target.closest('tr[id]').id, {}, 'GET')
                     .then(src => {
                         const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
@@ -8287,7 +8316,7 @@ function Ktl($, info) {
                             })
                         } else {
                             //If no column selected, use field clicked.
-                            var clickedFieldId = $(e.target).closest('td');
+                            var clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
                             if (clickedFieldId.length && clickedFieldId.attr('data-field-key').startsWith('field_')) {
                                 clickedFieldId = clickedFieldId.attr('data-field-key');
                                 apiData[clickedFieldId] = src[clickedFieldId + '_raw'];
