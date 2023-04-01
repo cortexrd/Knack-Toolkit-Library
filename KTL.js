@@ -401,13 +401,8 @@ function Ktl($, info) {
             },
 
             isIPFormat: function (ipAddress) {
-                var ipformat = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-                if (ipAddress.match(ipformat)) {
-                    return true;
-                }
-                else {
-                    return false;
-                }
+                const ipRegex = /^([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.([01]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])$/;
+                return ipRegex.test(ipAddress);
             },
 
             //Used to generate a clean element ID from any string.  Ex: from a button's text.
