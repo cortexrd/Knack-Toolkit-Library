@@ -9,6 +9,7 @@ var KnackApp = function ($, info = {}) {
     const IFRAME_WND_ID = 'iFrameWnd';
 
     window.ktlkw = ktl.sysInfo.findAllKeywords;
+    window.ktltm = ktl.core.toggleMode;
 
     //====================================================
     //KTL Setup - BEGIN
