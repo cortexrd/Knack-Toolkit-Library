@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.13';
+    const KTL_VERSION = '0.10.14';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -8738,6 +8738,125 @@ function Ktl($, info) {
         }
     })(); //sysInfo
 
+
+    //Clean up any titles and description that contain keywords.
+    //All keywords must be at the end, i.e. after any text that should remain as visible.
+    //All keywords must start with an underscore.
+    //Initially, this was done using a MutationObserver, but it wasn't reliable, randomly stopping after a few hours.
+    var appPreProcessDone = false
+    function appPreProcess() {
+        return new Promise(function (resolve) {
+            if (appPreProcessDone) {
+                resolve();
+                return;
+            }
+
+            var kwCleanupItv = setInterval(function () {
+                if (Knack.router) {
+                    appPreProcessDone = true;
+                    clearInterval(kwCleanupItv);
+                    clearTimeout(failsafe);
+
+                    for (var i = 0; i < Knack.scenes.length; i++) {
+                        var scn = Knack.scenes.models[i];
+                        var views = scn.views;
+                        for (var j = 0; j < views.models.length; j++) {
+                            var view = views.models[j];
+                            if (view) {
+                                var keywords = {};
+                                var attr = view.attributes;
+                                var title = attr.title;
+                                var cleanedUpTitle = title;
+                                var firstKeywordIdx;
+                                if (title) {
+                                    firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                                    if (firstKeywordIdx >= 0) {
+                                        cleanedUpTitle = title.substring(0, firstKeywordIdx);
+                                        parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
+                                    }
+                                }
+
+                                var description = attr.description;
+                                var cleanedUpDescription = description;
+                                if (description) {
+                                    firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                                    if (firstKeywordIdx >= 0) {
+                                        cleanedUpDescription = description.substring(0, firstKeywordIdx);
+                                        parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
+                                    }
+                                }
+
+                                //Only write once - first time, when not yet existing.
+                                !attr.orgTitle && (attr.orgTitle = attr.title);
+                                !attr.keywords && (attr.keywords = keywords);
+
+                                var orgTitle = attr.orgTitle;
+                                attr.title = cleanedUpTitle;
+                                attr.description = cleanedUpDescription;
+
+                                //Apply to those views that are currently being displayed.
+                                if (Knack.views[view.id]) {
+                                    $('#' + view.id + ' .view-header h1').text(cleanedUpTitle); //Search Views use H1 instead of H2.
+                                    $('#' + view.id + ' .view-header h2').text(cleanedUpTitle);
+                                    $('#' + view.id + ' .kn-description').text(cleanedUpDescription);
+                                    $('#' + view.id + ' .kn-subtitle').text(cleanedUpDescription); //For Calendars.
+
+                                    Knack.views[view.id].model.view.title = cleanedUpTitle;
+                                    Knack.views[view.id].model.view.description = cleanedUpDescription;
+                                    Knack.views[view.id].model.view.orgTitle = orgTitle;
+                                    Knack.views[view.id].model.view.keywords = keywords;
+                                }
+                            }
+                        }
+                    }
+
+                    //Read the config from the Javascript pane, if exists.
+                    if (typeof ktlFeatures === 'object' && !$.isEmptyObject(ktlFeatures))
+                        ktl.core.setCfg({ enabled: ktlFeatures });
+
+                    resolve();
+                }
+            }, 10);
+
+            var failsafe = setTimeout(function () {
+                alert('appPreProcess timeout error.');
+                resolve();
+            }, 20000);
+        })
+    };
+
+    function parseKeywords(keywords, strToParse) {
+        var kwAr = [];
+        if (strToParse && strToParse !== '') {
+            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
+            kwAr.splice(0, 1);
+            for (var i = 0; i < kwAr.length; i++) {
+                kwAr[i] = kwAr[i].trim();
+                parseParams(kwAr[i], i);
+            }
+        }
+
+        function parseParams(kwString, kwIdx) {
+            var kw = [];
+            if (kwAr[i].startsWith('_')) {
+                keywords[kwAr[i].toLowerCase()] = [];
+                return;
+            } else if (kwAr[i].startsWith('='))
+                kw = kwString.split('=');
+
+            var params = [];
+            if (kw.length > 1) {
+                params = kw[1].split(',');
+                params.forEach((param, idx) => {
+                    params[idx] = param.trim();
+                })
+            }
+
+            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+        }
+    }
+
+
     return { //KTL exposed objects
         const: this.const,
         core: this.core,
@@ -8759,117 +8878,6 @@ function Ktl($, info) {
     };
 };
 
-//Clean up any titles and description that contain keywords.
-//All keywords must be at the end, i.e. after any text that should remain as visible.
-//All keywords must start with an underscore.
-//Initially, this was done using a MutationObserver, but it wasn't reliable, randomly stopping after a few hours.
-function appPreProcess() {
-    return new Promise(function (resolve) {
-        var kwCleanupItv = setInterval(function () {
-            if (Knack.router) {
-                clearInterval(kwCleanupItv);
-                clearTimeout(failsafe);
-
-                for (var i = 0; i < Knack.scenes.length; i++) {
-                    var scn = Knack.scenes.models[i];
-                    var views = scn.views;
-                    for (var j = 0; j < views.models.length; j++) {
-                        var view = views.models[j];
-                        if (view) {
-                            var keywords = {};
-                            var attr = view.attributes;
-                            var title = attr.title;
-                            var cleanedUpTitle = title;
-                            var firstKeywordIdx;
-                            if (title) {
-                                firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-                                if (firstKeywordIdx >= 0) {
-                                    cleanedUpTitle = title.substring(0, firstKeywordIdx);
-                                    parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
-                                }
-                            }
-
-                            var description = attr.description;
-                            var cleanedUpDescription = description;
-                            if (description) {
-                                firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-                                if (firstKeywordIdx >= 0) {
-                                    cleanedUpDescription = description.substring(0, firstKeywordIdx);
-                                    parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
-                                }
-                            }
-
-                            //Only write once - first time, when not yet existing.
-                            !attr.orgTitle && (attr.orgTitle = attr.title);
-                            !attr.keywords && (attr.keywords = keywords);
-
-                            var orgTitle = attr.orgTitle;
-                            attr.title = cleanedUpTitle;
-                            attr.description = cleanedUpDescription;
-
-                            //Apply to those views that are currently being displayed.
-                            if (Knack.views[view.id]) {
-                                $('#' + view.id + ' .view-header h1').text(cleanedUpTitle); //Search Views use H1 instead of H2.
-                                $('#' + view.id + ' .view-header h2').text(cleanedUpTitle);
-                                $('#' + view.id + ' .kn-description').text(cleanedUpDescription);
-                                $('#' + view.id + ' .kn-subtitle').text(cleanedUpDescription); //For Calendars.
-
-                                Knack.views[view.id].model.view.title = cleanedUpTitle;
-                                Knack.views[view.id].model.view.description = cleanedUpDescription;
-                                Knack.views[view.id].model.view.orgTitle = orgTitle;
-                                Knack.views[view.id].model.view.keywords = keywords;
-                            }
-                        }
-                    }
-                }
-
-                //Read the config from the Javascript pane, if exists.
-                if (typeof ktlFeatures === 'object' && !$.isEmptyObject(ktlFeatures))
-                    ktl.core.setCfg({ enabled: ktlFeatures });
-
-                resolve();
-            }
-        }, 10);
-
-        var failsafe = setTimeout(function () {
-            alert('appPreProcess timeout error.');
-            resolve();
-        }, 20000);
-    })
-};
-
-function parseKeywords(keywords, strToParse) {
-    var kwAr = [];
-    if (strToParse && strToParse !== '') {
-        var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
-        kwAr.splice(0, 1);
-        for (var i = 0; i < kwAr.length; i++) {
-            kwAr[i] = kwAr[i].trim();
-            parseParams(kwAr[i], i);
-        }
-    }
-
-    function parseParams(kwString, kwIdx) {
-        var kw = [];
-        if (kwAr[i].startsWith('_')) {
-            keywords[kwAr[i].toLowerCase()] = [];
-            return;
-        } else if (kwAr[i].startsWith('='))
-            kw = kwString.split('=');
-
-        var params = [];
-        if (kw.length > 1) {
-            params = kw[1].split(',');
-            params.forEach((param, idx) => {
-                params[idx] = param.trim();
-            })
-        }
-
-        keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
-    }
-}
-
-appPreProcess();
 
 
 ////////////////  End of KTL /////////////////////
