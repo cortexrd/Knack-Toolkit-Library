@@ -5603,6 +5603,9 @@ function Ktl($, info) {
                 if (viewType !== 'form')
                     return;
 
+                $('#' + viewId + ' .kn-message').remove();
+                $('#' + viewId + ' input').removeClass('input-error');
+
                 preprocessFields(viewId, e)
                     .then(() => {
                         preprocessViews(viewId, e)
@@ -5610,13 +5613,11 @@ function Ktl($, info) {
                                 $('#' + viewId + ' form').submit();
                             })
                             .catch(outcomeObj => {
-                                if (outcomeObj.msg)
-                                    alert(outcomeObj.msg);
+                                outcomeObj.msg && Knack.$['utility_forms'].renderMessage($('#' + viewId + ' form'), '<b>KTL Error: ' + outcomeObj.msg + '</b>', 'error');
                             })
                     })
                     .catch(outcomeObj => {
-                        if (outcomeObj.msg)
-                            alert(outcomeObj.msg);
+                        outcomeObj.msg && Knack.$['utility_forms'].renderMessage($('#' + viewId + ' form'), '<b>KTL Error: ' + outcomeObj.msg + '</b>', 'error');
                     })
 
                 function preprocessFields(viewId, e) {
@@ -5664,36 +5665,59 @@ function Ktl($, info) {
 
                                 var value = '';
                                 for (var f = 0; f < keywords._uvc.length; f++) {
-                                    var fieldLabel = keywords._uvc[f];
-                                    var fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
-                                    var fieldType = Knack.objects.getField(fieldId).attributes.type;
-                                    if (fieldType === 'multiple_choice')
-                                        value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] .kn-select .select').val();
-                                    else if (fieldType === 'connection') {
-                                        value += document.querySelector('#' + viewId + ' [name="' + fieldId + '"].chzn-select').selectedOptions[0].innerText;
-                                    } else if (fieldType === 'short_text')
-                                        value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] input').val();
+                                    var uvcParam = keywords._uvc[f];
+                                    if ((uvcParam.match(/['"]/g) || []).length === 2) {
+                                        const matches = uvcParam.match(/(['"])(.*?)\1/);
+                                        if (matches) {
+                                            const content = matches[2];
+                                            value += content;
+                                        }
+                                    } else {
+                                        var fieldId = ktl.fields.getFieldIdFromLabel(viewId, uvcParam);
+                                        if (fieldId) {
+                                            var fieldType = Knack.objects.getField(fieldId).attributes.type;
+                                            if (fieldType === 'multiple_choice')
+                                                value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] .kn-select .select').val();
+                                            else if (fieldType === 'connection') {
+                                                const sel = document.querySelector('#' + viewId + ' [name="' + fieldId + '"].chzn-select').selectedOptions[0].innerText;
+                                                if (sel && sel !== '' && sel !== 'Select')
+                                                    value += sel;
+                                            } else if (fieldType === 'short_text')
+                                                value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] input').val();
+                                        }
+                                    }
                                 }
 
                                 //Search for duplicate in _uvc Search view.
-                                var uvcSearchViewId = ktl.scenes.findViewWithKeyword('_uvc', viewId);
-                                var fieldToCheck = ktl.views.getFieldWithKeyword(uvcSearchViewId, '_uvc');
-                                var field = Knack.objects.getField(fieldToCheck);
-                                var fieldName = field.attributes.name;
+                                if (value && value !== '' && value !== 'Type to search') {
+                                    var uvcSearchViewId = ktl.scenes.findViewWithKeyword('_uvc', viewId);
+                                    if (uvcSearchViewId) {
+                                        var fieldToCheck = ktl.views.getFieldWithKeyword(uvcSearchViewId, '_uvc');
+                                        if (fieldToCheck) {
+                                            var field = Knack.objects.getField(fieldToCheck);
+                                            var fieldName = field.attributes.name;
 
-                                ktl.views.searchRecordByValue('_uvc', fieldToCheck, value)
-                                    .then(foundRecords => {
-                                        if (foundRecords.length) {
-                                            outcomeObj.msg = 'Error: ' + fieldName + ' ' + value + ' already exists.';
-                                            reject(outcomeObj);
-                                        } else
-                                            resolve();
-                                    })
-                                    .catch(err => {
-                                        console.log('preprocessViews Exception:', err);
-                                        outcomeObj.msg = 'preprocessViews Exception: ' + err;
-                                        reject(outcomeObj);
-                                    })
+                                            ktl.views.searchRecordByValue('_uvc', fieldToCheck, value)
+                                                .then(foundRecords => {
+                                                    if (foundRecords.length) {
+                                                        outcomeObj.msg = fieldName + ' must be unique. "' + value + '" is already being used.';
+                                                        reject(outcomeObj);
+                                                        return;
+                                                    } else {
+                                                        resolve();
+                                                        return
+                                                    }
+                                                })
+                                                .catch(err => {
+                                                    console.log('preprocessViews Exception:', err);
+                                                    outcomeObj.msg = 'preprocessViews Exception: ' + err;
+                                                    reject(outcomeObj);
+                                                    return;
+                                                })
+                                        }
+                                    }
+                                } else
+                                    resolve();
                             }
                         }
                     })
@@ -5859,8 +5883,8 @@ function Ktl($, info) {
 
                         var success = null, failure = null;
                         var intervalId = setInterval(function () {
-                            success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
-                            failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
+                            success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success').textContent.replace(/\n/g, '').trim();
+                            failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body').textContent.replace(/\n/g, '').trim();
                             if (!$.isEmptyObject(resultRecord) && (success || failure)) {
                                 clearInterval(intervalId);
                                 clearTimeout(failsafe);
@@ -5892,10 +5916,10 @@ function Ktl($, info) {
                     var success = null, failure = null;
                     var loggedIn = (Knack.getUserAttributes() !== 'No user found');
                     var intervalId = setInterval(function () {
-                        success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success > p').innerText;
+                        success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success').textContent.replace(/\n/g, '').trim();
                         if (!loggedIn && (Knack.getUserAttributes() !== 'No user found'))
                             success = true;
-                        failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body > p').innerText;
+                        failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body').textContent.replace(/\n/g, '').trim();
                         if (success || failure) {
                             clearInterval(intervalId);
                             clearTimeout(failsafe);
