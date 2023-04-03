@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.12';
+    const KTL_VERSION = '0.10.13';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -2140,7 +2140,6 @@ function Ktl($, info) {
         $(document).on('knack-view-render.any', function (event, view, data) {
             //Apply System Colors
             if (initDone) {
-                $('.kn-table').css({ 'color': sysColors.text.rgb });
                 $('.table-row-highlighted').css({ 'color': sysColors.text.rgb + '!important' });
 
                 ktl.systemColors.getSystemColors().then(sc => {
@@ -2572,14 +2571,12 @@ function Ktl($, info) {
         $(document).on('knack-records-render.report knack-records-render.table', function (e, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
-            const viewId = view.key;
+            appPreProcess()
+                .then(() => {
+                    const viewId = view.key;
 
-            if (!window.self.frameElement && allowUserFilters() && $('#' + viewId + ' .kn-add-filter').length > 0) {
-                ktl.userFilters.addFilterButtons(viewId);
-
-                var itv = setInterval(() => {
-                    if (keywordsCleanupDone) { //TODO: Convert all these to a Promise.
-                        clearInterval(itv);
+                    if (!window.self.frameElement && allowUserFilters() && $('#' + viewId + ' .kn-add-filter').length > 0) {
+                        ktl.userFilters.addFilterButtons(viewId);
 
                         //Linked Filters feature
                         var masterViewId = viewId; //Just to make it easier to understand when reading.
@@ -2619,7 +2616,6 @@ function Ktl($, info) {
                                     }
                                 }
                             }
-
 
 
                             if (useUrlAr.length) {
@@ -2680,51 +2676,50 @@ function Ktl($, info) {
                             }
                         }
                     }
-                }, 50);
-            }
 
-            if (view.type == 'table') {
-                var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
-                if (perPageDropdown) {
-                    perPageDropdown.addEventListener('change', function (e) {
-                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                    });
-                }
+                    if (view.type == 'table') {
+                        var perPageDropdown = document.querySelector('#' + view.key + ' .kn-pagination .kn-select');
+                        if (perPageDropdown) {
+                            perPageDropdown.addEventListener('change', function (e) {
+                                ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                            });
+                        }
 
-                //When the Search button is clicked in table.
-                var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
-                if (searchBtn) {
-                    searchBtn.addEventListener('click', function () {
-                        var tableSrchTxt = document.querySelector('#' + view.key + ' .table-keyword-search input').value;
-                        var actFlt = getFilter(view.key);
-                        if (actFlt.filterObj) {
-                            var fltSrchTxt = actFlt.filterObj.search;
-                            if (tableSrchTxt !== fltSrchTxt) {
+                        //When the Search button is clicked in table.
+                        var searchBtn = document.querySelector('#' + view.key + ' .kn-button.search');
+                        if (searchBtn) {
+                            searchBtn.addEventListener('click', function () {
+                                var tableSrchTxt = document.querySelector('#' + view.key + ' .table-keyword-search input').value;
+                                var actFlt = getFilter(view.key);
+                                if (actFlt.filterObj) {
+                                    var fltSrchTxt = actFlt.filterObj.search;
+                                    if (tableSrchTxt !== fltSrchTxt) {
+                                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
+                                        updateSearchInFilter(view.key);
+                                    }
+                                }
+                            });
+                        }
+
+                        //When Enter is pressed in Search table field.
+                        var searchField = document.querySelector('#' + view.key + ' .table-keyword-search');
+                        if (searchField) {
+                            searchField.addEventListener('submit', function () {
                                 ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
                                 updateSearchInFilter(view.key);
-                            }
+                            })
                         }
-                    });
-                }
 
-                //When Enter is pressed in Search table field.
-                var searchField = document.querySelector('#' + view.key + ' .table-keyword-search');
-                if (searchField) {
-                    searchField.addEventListener('submit', function () {
-                        ktl.userFilters.onSaveFilterBtnClicked(null, view.key, true);
-                        updateSearchInFilter(view.key);
-                    })
-                }
-
-                //When the Reset button is clicked in table's search.
-                var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
-                if (resetSearch) {
-                    resetSearch.addEventListener('click', function () {
-                        document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
-                        updateSearchInFilter(view.key);
-                    })
-                }
-            }
+                        //When the Reset button is clicked in table's search.
+                        var resetSearch = document.querySelector('#' + view.key + ' .reset.kn-button.is-link');
+                        if (resetSearch) {
+                            resetSearch.addEventListener('click', function () {
+                                document.querySelector('#' + view.key + ' .table-keyword-search input').value = ''; //Force to empty otherwise we sometimes get current search string.
+                                updateSearchInFilter(view.key);
+                            })
+                        }
+                    }
+                })
         })
 
         //Retrieves the searched string from the field and saves it in the localStorage's filter entry.
@@ -4146,62 +4141,61 @@ function Ktl($, info) {
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data) {
-            if (!view || ktl.scenes.isiFrameWnd()) return;
-            try {
-                var itv = setInterval(() => {
-                    var model = (Knack.views[view.key] && Knack.views[view.key].model);
+            appPreProcess()
+                .then(() => {
+                    if (!view || ktl.scenes.isiFrameWnd()) return;
+                    try {
+                        var model = (Knack.views[view.key] && Knack.views[view.key].model);
 
-                    //Can't rely on view.title: Search forms have no title when the results are rendered.
-                    if (model && keywordsCleanupDone) {
-                        clearInterval(itv);
+                        //Can't rely on view.title: Search forms have no title when the results are rendered.
+                        if (model) {
+                            var keywords = Knack.views[view.key].model.view.keywords;
+                            if (!$.isEmptyObject(keywords)) {
+                                //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
-                        var keywords = Knack.views[view.key].model.view.keywords;
-                        if (!$.isEmptyObject(keywords)) {
-                            //console.log('keywords =', JSON.stringify(keywords, null, 4));
+                                //Hide the whole view, typically used when doing background searches.
+                                if (keywords._hv) {
+                                    if (!Knack.getUserRoleNames().includes('Developer'))
+                                        $('#' + view.key).addClass('ktlHidden');
+                                }
 
-                            //Hide the whole view, typically used when doing background searches.
-                            if (keywords._hv) {
-                                if (!Knack.getUserRoleNames().includes('Developer'))
-                                    $('#' + view.key).addClass('ktlHidden');
+                                //Hide the view title only, typically used to save space when real estate is critical.
+                                if (keywords._ht) {
+                                    $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
+                                    $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
+                                }
+
+                                keywords._ni && ktl.views.noInlineEditing(view, keywords);
+
+                                //IMPORTANT: _qc must be processed BEFORE _mc.
+                                keywords._qt && ktl.views.quickToggle(view.key, keywords, data);
+                                keywords._mc && ktl.views.matchColor(view.key, keywords, data);
+
+                                keywords._ts && ktl.views.addTimeStampToHeader(view.key);
+                                keywords._dtp && ktl.views.addDateTimePickers(view.key);
+                                keywords._al && ktl.account.autoLogin(view.key);
+                                keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
+                                keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
+                                keywords._nf && disableFilterOnFields(view, keywords);
+                                (keywords._hc || keywords._rc) && kwHideColumns(view, keywords);
+                                keywords._dr && numDisplayedRecords(view, keywords);
+                                keywords._cfv && colorizeFieldValue(view.key, keywords, data);
                             }
+                        }
 
-                            //Hide the view title only, typically used to save space when real estate is critical.
-                            if (keywords._ht) {
-                                $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
-                                $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
+                        if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
+                            var txt = view.content.toLowerCase();
+
+                            if (txt.includes('_ol')) {
+                                var innerHTML = document.querySelector('#' + view.key).innerHTML;
+                                document.querySelector('#' + view.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
                             }
-
-                            keywords._ni && ktl.views.noInlineEditing(view, keywords);
-
-                            //IMPORTANT: _qc must be processed BEFORE _mc.
-                            keywords._qt && ktl.views.quickToggle(view.key, keywords, data);
-                            keywords._mc && ktl.views.matchColor(view.key, keywords, data);
-
-                            keywords._ts && ktl.views.addTimeStampToHeader(view.key);
-                            keywords._dtp && ktl.views.addDateTimePickers(view.key);
-                            keywords._al && ktl.account.autoLogin(view.key);
-                            keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
-                            keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
-                            keywords._nf && disableFilterOnFields(view, keywords);
-                            (keywords._hc || keywords._rc) && kwHideColumns(view, keywords);
-                            keywords._dr && numDisplayedRecords(view, keywords);
-                            keywords._cfv && colorizeFieldValue(view.key, keywords, data);
                         }
+
+                        processViewKeywords && processViewKeywords(view, data);
                     }
-
-                    if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
-                        var txt = view.content.toLowerCase();
-
-                        if (txt.includes('_ol')) {
-                            var innerHTML = document.querySelector('#' + view.key).innerHTML;
-                            document.querySelector('#' + view.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
-                        }
-                    }
-
-                    processViewKeywords && processViewKeywords(view, data);
-                }, 50);
-            }
-            catch (err) { console.log('err', err); };
+                    catch (err) { console.log('err', err); };
+                })
         }
 
         function ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
@@ -4402,9 +4396,8 @@ function Ktl($, info) {
         //This is for early notifications of DOM changes.
         //Prevents spurious GUI updates (flickering).
         if (!observer) {
-            var itv = setInterval(() => {
-                if (keywordsCleanupDone) {
-                    clearInterval(itv);
+            appPreProcess()
+                .then(() => {
                     observer = new MutationObserver((mutations) => {
                         mutations.forEach(mutRec => {
                             const knView = mutRec.target.closest('.kn-view');
@@ -4433,8 +4426,7 @@ function Ktl($, info) {
                         childList: true,
                         subtree: true,
                     });
-                }
-            }, 50);
+                })
         }
 
         function kwHideColumns(view = '', keywords = {}) {
@@ -4671,10 +4663,8 @@ function Ktl($, info) {
             //Parse the Knack object to find all views and start any applicable auto refresh interval timers for each, based on title.
             //Triggered when view title contains _ar=30 (for 30 seconds interval in this example).
             autoRefresh: function (run = true, autoRestart = true) {
-                var itv = setInterval(() => {
-                    if (keywordsCleanupDone) {
-                        clearInterval(itv);
-
+                appPreProcess()
+                    .then(() => {
                         clearTimeout(unPauseTimer);
                         if (run) {
                             if (!$.isEmptyObject(autoRefreshViews))
@@ -4724,8 +4714,7 @@ function Ktl($, info) {
                                 }
                             }
                         }
-                    }
-                }, 50);
+                    })
             },
 
             addViewId: function (view, fontStyle = 'color: red; font-weight: bold; font-size:small') {
@@ -6213,72 +6202,75 @@ function Ktl($, info) {
         var idleWatchDogTimeout = null;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
-            if (Knack.router.current_scene_key !== scene.key) {
-                alert('ERROR - Scene keys do not match!');
-                return;
-            }
-
-            //Link Menu feature
-            $('.kn-navigation-bar ul li').on('click', e => {
-                setTimeout(() => {
-                    if (Knack.router.scene_view.model.views.models.length) {
-                        var view = Knack.router.scene_view.model.views.models[0];
-                        if (view.attributes.type === 'rich_text') {
-                            var txt = view.attributes.content.toLowerCase();
-                            if (txt.includes('_ol')) {
-                                var innerHTML = document.querySelector('#' + view.attributes.key).innerHTML;
-                                document.querySelector('#' + view.attributes.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
-                                var href = innerHTML.split('href="')[1].split('\"')[0];
-                                window.open(href, txt.includes('_ols') ? '_self' : '_blank');
-                            }
-                        }
+            appPreProcess()
+                .then(() => {
+                    if (Knack.router.current_scene_key !== scene.key) {
+                        alert('ERROR - Scene keys do not match!');
+                        return;
                     }
-                }, 100);
-            });
 
-            //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
-            //Anyways... no one is getting impatient at an invisible window!
-            if (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID))
-                spinnerCtrDelay = 60;
+                    //Link Menu feature
+                    $('.kn-navigation-bar ul li').on('click', e => {
+                        setTimeout(() => {
+                            if (Knack.router.scene_view.model.views.models.length) {
+                                var view = Knack.router.scene_view.model.views.models[0];
+                                if (view.attributes.type === 'rich_text') {
+                                    var txt = view.attributes.content.toLowerCase();
+                                    if (txt.includes('_ol')) {
+                                        var innerHTML = document.querySelector('#' + view.attributes.key).innerHTML;
+                                        document.querySelector('#' + view.attributes.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
+                                        var href = innerHTML.split('href="')[1].split('\"')[0];
+                                        window.open(href, txt.includes('_ols') ? '_self' : '_blank');
+                                    }
+                                }
+                            }
+                        }, 100);
+                    });
 
-            if (ktl.core.isKiosk()) {
-                //Add extra space at bottom of screen in kiosk mode, to allow editing with the
-                //virtual keyboard without blocking the input field.
-                if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
-                    $('body').css({ 'padding-bottom': '' });
-                else
-                    $('body').css({ 'padding-bottom': '500px' });
-            } else {
-                if (!window.self.frameElement) //If not an iFrame, put back header hidden by CSS.
-                    (document.querySelector("#kn-app-header") || document.querySelector('.knHeader')).setAttribute('style', 'display:block !important');
-            }
+                    //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
+                    //Anyways... no one is getting impatient at an invisible window!
+                    if (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID))
+                        spinnerCtrDelay = 60;
 
-            ktl.scenes.spinnerWatchdog();
-            ktl.iFrameWnd.create();
-            ktl.views.autoRefresh();
-            ktl.scenes.resetIdleWatchdog();
-            ktl.fields.convertNumToTel();
-            ktl.core.sortMenu();
+                    if (ktl.core.isKiosk()) {
+                        //Add extra space at bottom of screen in kiosk mode, to allow editing with the
+                        //virtual keyboard without blocking the input field.
+                        if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
+                            $('body').css({ 'padding-bottom': '' });
+                        else
+                            $('body').css({ 'padding-bottom': '500px' });
+                    } else {
+                        if (!window.self.frameElement) //If not an iFrame, put back header hidden by CSS.
+                            (document.querySelector("#kn-app-header") || document.querySelector('.knHeader')).setAttribute('style', 'display:block !important');
+                    }
 
-            //Handle Scene change.
-            if (prevScene !== scene.key) {
-                var page = ktl.core.getMenuInfo().page;
-                (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
+                    ktl.scenes.spinnerWatchdog();
+                    ktl.iFrameWnd.create();
+                    ktl.views.autoRefresh();
+                    ktl.scenes.resetIdleWatchdog();
+                    ktl.fields.convertNumToTel();
+                    ktl.core.sortMenu();
 
-                if (prevScene) //Do not log navigation on first page - useless and excessive.  We only want transitions.
-                    ktl.log.addLog(ktl.const.LS_NAVIGATION, scene.key + ', ' + JSON.stringify(ktl.core.getMenuInfo()), false);
+                    //Handle Scene change.
+                    if (prevScene !== scene.key) {
+                        var page = ktl.core.getMenuInfo().page;
+                        (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
 
-                prevScene = scene.key;
-            }
+                        if (prevScene) //Do not log navigation on first page - useless and excessive.  We only want transitions.
+                            ktl.log.addLog(ktl.const.LS_NAVIGATION, scene.key + ', ' + JSON.stringify(ktl.core.getMenuInfo()), false);
 
-            var lastSavedVersion = ktl.storage.lsGetItem('APP_KTL_VERSIONS');
-            if (!lastSavedVersion || lastSavedVersion !== APP_KTL_VERSIONS) {
-                ktl.log.addLog(ktl.const.LS_INFO, 'KEC_1013 - Updated software: ' + APP_KTL_VERSIONS);
-                ktl.storage.lsSetItem('APP_KTL_VERSIONS', APP_KTL_VERSIONS);
-                ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
-            }
+                        prevScene = scene.key;
+                    }
 
-            onSceneRender && onSceneRender(event, scene);
+                    var lastSavedVersion = ktl.storage.lsGetItem('APP_KTL_VERSIONS');
+                    if (!lastSavedVersion || lastSavedVersion !== APP_KTL_VERSIONS) {
+                        ktl.log.addLog(ktl.const.LS_INFO, 'KEC_1013 - Updated software: ' + APP_KTL_VERSIONS);
+                        ktl.storage.lsSetItem('APP_KTL_VERSIONS', APP_KTL_VERSIONS);
+                        ktl.storage.lsRemoveItem('SW_VERSION'); //Remove obsolete key.  TODO: Delete in a few weeks.
+                    }
+
+                    onSceneRender && onSceneRender(event, scene);
+                })
         })
 
 
@@ -6337,10 +6329,8 @@ function Ktl($, info) {
                     if (typeof Knack.views[viewId] === 'undefined' || typeof Knack.views[viewId].model.view.title === 'undefined')
                         return;
 
-                    var itv = setInterval(() => {
-                        if (keywordsCleanupDone) {
-                            clearInterval(itv);
-
+                    appPreProcess()
+                        .then(() => {
                             var keywords = Knack.views[viewId].model.view.keywords;
                             if (!keywords) return;
                             if (keywords._kn)
@@ -6490,8 +6480,7 @@ function Ktl($, info) {
                                 }
                             }
 
-                        }
-                    }, 50);
+                        })
                 }
                 catch (e) {
                     ktl.log.clog('purple', 'addKioskButtons exception:');
@@ -6629,10 +6618,8 @@ function Ktl($, info) {
             },
 
             addVersionInfo: function (info, style = '', div) {
-                var itv = setInterval(() => {
-                    if (keywordsCleanupDone) { //TODO: Convert all these to a Promise.
-                        clearInterval(itv);
-
+                appPreProcess()
+                    .then(() => {
                         if (!ktl.core.getCfg().enabled.showAppInfo || window.self.frameElement) return;
 
                         //By default, version numbers are added at top right of screen
@@ -6669,8 +6656,7 @@ function Ktl($, info) {
                             else
                                 $('body').css({ 'padding-top': '' });
                         }
-                    }
-                }, 50);
+                    })
             },
 
             isiFrameWnd: function () {
@@ -8752,107 +8738,6 @@ function Ktl($, info) {
         }
     })(); //sysInfo
 
-    //Clean up any titles and description that contain keywords.
-    //All keywords must be at the end, i.e. after any text that should remain as visible.
-    //All keywords must start with an underscore.
-    //Initially, this was done using a MutationObserver, but it wasn't reliable, randomly stopping after a few hours.
-    var keywordsCleanupDone = false;
-    var kwCleanupItv = setInterval(function () {
-        if (Knack.router) {
-            clearInterval(kwCleanupItv);
-
-            for (var i = 0; i < Knack.scenes.length; i++) {
-                var scn = Knack.scenes.models[i];
-                var views = scn.views;
-                for (var j = 0; j < views.models.length; j++) {
-                    var view = views.models[j];
-                    if (view) {
-                        var keywords = {};
-                        var attr = view.attributes;
-                        var title = attr.title;
-                        var cleanedUpTitle = title;
-                        var firstKeywordIdx;
-                        if (title) {
-                            firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-                            if (firstKeywordIdx >= 0) {
-                                cleanedUpTitle = title.substring(0, firstKeywordIdx);
-                                parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
-                            }
-                        }
-
-                        var description = attr.description;
-                        var cleanedUpDescription = description;
-                        if (description) {
-                            firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-                            if (firstKeywordIdx >= 0) {
-                                cleanedUpDescription = description.substring(0, firstKeywordIdx);
-                                parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
-                            }
-                        }
-
-                        //Only write once - first time, when not yet existing.
-                        !attr.orgTitle && (attr.orgTitle = attr.title);
-                        !attr.keywords && (attr.keywords = keywords);
-
-                        var orgTitle = attr.orgTitle;
-                        attr.title = cleanedUpTitle;
-                        attr.description = cleanedUpDescription;
-
-                        //Apply to those views that are currently being displayed.
-                        if (Knack.views[view.id]) {
-                            $('#' + view.id + ' .view-header h1').text(cleanedUpTitle); //Search Views use H1 instead of H2.
-                            $('#' + view.id + ' .view-header h2').text(cleanedUpTitle);
-                            $('#' + view.id + ' .kn-description').text(cleanedUpDescription);
-                            $('#' + view.id + ' .kn-subtitle').text(cleanedUpDescription); //For Calendars.
-
-                            Knack.views[view.id].model.view.title = cleanedUpTitle;
-                            Knack.views[view.id].model.view.description = cleanedUpDescription;
-                            Knack.views[view.id].model.view.orgTitle = orgTitle;
-                            Knack.views[view.id].model.view.keywords = keywords;
-                        }
-                    }
-                }
-            }
-
-            //Read the config from the Javascript pane, if exists.
-            if (typeof ktlFeatures === 'object' && !$.isEmptyObject(ktlFeatures))
-                ktl.core.setCfg({ enabled: ktlFeatures });
-
-            keywordsCleanupDone = true;
-        }
-    }, 10);
-
-    function parseKeywords(keywords, strToParse) {
-        var kwAr = [];
-        if (strToParse && strToParse !== '') {
-            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
-            kwAr.splice(0, 1);
-            for (var i = 0; i < kwAr.length; i++) {
-                kwAr[i] = kwAr[i].trim();
-                parseParams(kwAr[i], i);
-            }
-        }
-
-        function parseParams(kwString, kwIdx) {
-            var kw = [];
-            if (kwAr[i].startsWith('_')) {
-                keywords[kwAr[i].toLowerCase()] = [];
-                return;
-            } else if (kwAr[i].startsWith('='))
-                kw = kwString.split('=');
-
-            var params = [];
-            if (kw.length > 1) {
-                params = kw[1].split(',');
-                params.forEach((param, idx) => {
-                    params[idx] = param.trim();
-                })
-            }
-
-            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
-        }
-    }
-
     return { //KTL exposed objects
         const: this.const,
         core: this.core,
@@ -8873,6 +8758,119 @@ function Ktl($, info) {
         systemColors: this.systemColors,
     };
 };
+
+//Clean up any titles and description that contain keywords.
+//All keywords must be at the end, i.e. after any text that should remain as visible.
+//All keywords must start with an underscore.
+//Initially, this was done using a MutationObserver, but it wasn't reliable, randomly stopping after a few hours.
+function appPreProcess() {
+    return new Promise(function (resolve) {
+        var kwCleanupItv = setInterval(function () {
+            if (Knack.router) {
+                clearInterval(kwCleanupItv);
+                clearTimeout(failsafe);
+
+                for (var i = 0; i < Knack.scenes.length; i++) {
+                    var scn = Knack.scenes.models[i];
+                    var views = scn.views;
+                    for (var j = 0; j < views.models.length; j++) {
+                        var view = views.models[j];
+                        if (view) {
+                            var keywords = {};
+                            var attr = view.attributes;
+                            var title = attr.title;
+                            var cleanedUpTitle = title;
+                            var firstKeywordIdx;
+                            if (title) {
+                                firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                                if (firstKeywordIdx >= 0) {
+                                    cleanedUpTitle = title.substring(0, firstKeywordIdx);
+                                    parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
+                                }
+                            }
+
+                            var description = attr.description;
+                            var cleanedUpDescription = description;
+                            if (description) {
+                                firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                                if (firstKeywordIdx >= 0) {
+                                    cleanedUpDescription = description.substring(0, firstKeywordIdx);
+                                    parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
+                                }
+                            }
+
+                            //Only write once - first time, when not yet existing.
+                            !attr.orgTitle && (attr.orgTitle = attr.title);
+                            !attr.keywords && (attr.keywords = keywords);
+
+                            var orgTitle = attr.orgTitle;
+                            attr.title = cleanedUpTitle;
+                            attr.description = cleanedUpDescription;
+
+                            //Apply to those views that are currently being displayed.
+                            if (Knack.views[view.id]) {
+                                $('#' + view.id + ' .view-header h1').text(cleanedUpTitle); //Search Views use H1 instead of H2.
+                                $('#' + view.id + ' .view-header h2').text(cleanedUpTitle);
+                                $('#' + view.id + ' .kn-description').text(cleanedUpDescription);
+                                $('#' + view.id + ' .kn-subtitle').text(cleanedUpDescription); //For Calendars.
+
+                                Knack.views[view.id].model.view.title = cleanedUpTitle;
+                                Knack.views[view.id].model.view.description = cleanedUpDescription;
+                                Knack.views[view.id].model.view.orgTitle = orgTitle;
+                                Knack.views[view.id].model.view.keywords = keywords;
+                            }
+                        }
+                    }
+                }
+
+                //Read the config from the Javascript pane, if exists.
+                if (typeof ktlFeatures === 'object' && !$.isEmptyObject(ktlFeatures))
+                    ktl.core.setCfg({ enabled: ktlFeatures });
+
+                resolve();
+            }
+        }, 10);
+
+        var failsafe = setTimeout(function () {
+            alert('appPreProcess timeout error.');
+            resolve();
+        }, 20000);
+    })
+};
+
+function parseKeywords(keywords, strToParse) {
+    var kwAr = [];
+    if (strToParse && strToParse !== '') {
+        var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
+        kwAr.splice(0, 1);
+        for (var i = 0; i < kwAr.length; i++) {
+            kwAr[i] = kwAr[i].trim();
+            parseParams(kwAr[i], i);
+        }
+    }
+
+    function parseParams(kwString, kwIdx) {
+        var kw = [];
+        if (kwAr[i].startsWith('_')) {
+            keywords[kwAr[i].toLowerCase()] = [];
+            return;
+        } else if (kwAr[i].startsWith('='))
+            kw = kwString.split('=');
+
+        var params = [];
+        if (kw.length > 1) {
+            params = kw[1].split(',');
+            params.forEach((param, idx) => {
+                params[idx] = param.trim();
+            })
+        }
+
+        keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+    }
+}
+
+appPreProcess();
+
 
 ////////////////  End of KTL /////////////////////
 
