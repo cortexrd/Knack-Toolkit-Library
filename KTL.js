@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.14';
+    const KTL_VERSION = '0.10.15';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -746,24 +746,21 @@ function Ktl($, info) {
             //If mode is undefined, it will toggle.  If true, Kiosk is enabled, if false, Normal mode is enabled.
             kioskMode: function (mode) {
                 if (typeof mode === 'undefined') {
-                    var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
-                    if (sessionKiosk) {
-                        ktl.core.timedPopup('Switching to Normal mode...');
+                    if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true')
                         ktl.storage.lsRemoveItem('KIOSK', false, true);
-                    } else {
-                        ktl.core.timedPopup('Switching to Kiosk mode...');
+                    else
                         ktl.storage.lsSetItem('KIOSK', true, false, true);
-                    }
-                    location.reload(true);
-                } else if (mode) {
-                    ktl.core.timedPopup('Switching to Kiosk mode...');
+                } else if (mode)
                     ktl.storage.lsSetItem('KIOSK', true, false, true);
-                    location.reload(true);
-                } else {
-                    ktl.core.timedPopup('Switching to Normal mode...');
+                else
                     ktl.storage.lsRemoveItem('KIOSK', false, true);
-                    location.reload(true);
-                }
+
+                if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true')
+                    ktl.core.timedPopup('Switching to Kiosk mode...');
+                else
+                    ktl.core.timedPopup('Switching back to Normal mode...');
+
+                Knack.router.scene_view.renderViews();
             },
 
             loadLib: function (libName = '') {
@@ -6640,12 +6637,25 @@ function Ktl($, info) {
 
                             ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
                             $('#verButtonId').on('click touchstart', function (e) {
-                                if (ktl.account.isDeveloper()) {
-                                    if (e.ctrlKey)
-                                        ktl.core.kioskMode();
-                                    else {
-                                        e.preventDefault();
+                                if (ktl.account.isDeveloper() || prompt('Enter PW:') === '6672') {
+                                    var cmd = prompt('1=DevProd, 2=Kiosk, 3=Dbg, 4=Frm, 5=AES', 1);
+                                    if (cmd == 1)
                                         ktl.core.toggleMode();
+                                    else if (cmd == 2)
+                                        ktl.core.kioskMode();
+                                    else if (cmd == 3) {
+                                        if (!ktl.core.getCfg().enabled.debugWnd) return;
+                                        ktl.debugWnd.showDebugWnd(true);
+                                    } else if (cmd == 4) {
+                                        if (!ktl.core.getCfg().enabled.iFrameWnd) return;
+                                        ktl.iFrameWnd.showIFrame(true);
+                                    } else if (cmd == 5) {
+                                        ktl.storage.lsRemoveItem('AES_LI', true, false, true);
+                                        ktl.storage.lsRemoveItem('AES_EK', true, false, false);
+                                        $('.kn-login.kn-view').removeClass('ktlHidden');
+                                        $('.kn-log-out').click();
+                                        location.reload(true);
+                                    } else if (cmd == 6) {
                                     }
                                 }
                             })
