@@ -5,7 +5,7 @@ var fs = require('fs'),
 console.log('Starting server, waiting for requests...');
 
 http.createServer(function (req, res) {
-    var url = __dirname + req.url;
+    var url = process.cwd() + req.url;
     url = url.replace(/\\/g, '/');
     url = decodeURI(url.trim());
     fs.readFile(url, function (err, data) {
