@@ -9,7 +9,7 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.10.11';
+    const KTL_LATEST_JS_VERSION = '0.10.12';
     const KTL_LATEST_CSS_VERSION = '0.2.6';
 
     var cssVersion = KTL_LATEST_CSS_VERSION;
@@ -39,8 +39,10 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         LazyLoad.js([appUrl], () => { })
     }
 
-    if (ktlVersion === 'dev')
+    if (ktlVersion === 'dev') {
+        fullCode = 'full';
         cssVersion = 'dev';
+    }
 
     LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js']);
     LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']);
@@ -66,8 +68,14 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                     callback();
                 } else {
                     var fileName = prompt('Error - Cannot find KnackApp file:\n' + appUrl + '\nWhat is file name (without .js)?');
-                    localStorage.setItem(lsShortName + 'fileName', fileName);
-                    location.reload(true);
+                    if (fileName) {
+                        localStorage.setItem(lsShortName + 'fileName', fileName);
+                        location.reload(true);
+                    } else {
+                        localStorage.removeItem(lsShortName + 'dev'); //JIC
+                        alert('Reverting to Prod mode.');
+                        location.reload(true);
+                    }
                 }
             }
         } else {
