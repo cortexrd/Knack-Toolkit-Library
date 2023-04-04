@@ -17,6 +17,8 @@ var KnackApp = function ($, info = {}) {
         ktl.core.setCfg({
             developerName: 'Firstname Lastname', //Put your name here to get super powers!
             developerEmail: '', //yourmail@provider.com
+            devOptionsPin: '0000',
+            devDebugCode: '',
 
             //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
             enabled: {
