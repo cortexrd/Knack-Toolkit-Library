@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.15';
+    const KTL_VERSION = '0.10.16';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -28,6 +28,133 @@ function Ktl($, info) {
 
     //KEC stands for "KTL Event Code".  Next:  KEC_1026
     //
+
+
+    //Application pre-processing is done here to scan keywords.
+    //Clean up any titles and description that contain keywords.
+    //All keywords must be at the end, i.e. after any text that should remain as visible.
+    //All keywords must start with an underscore.
+    //Initially, this was done using a MutationObserver, but it wasn't reliable, randomly stopping after a few hours.
+    var appPreProcessStatus = 'INIT';
+    function appPreProcess() {
+        return new Promise(function (resolve) {
+            if (appPreProcessStatus === 'INIT') {
+                appPreProcessStatus = 'ONGOING';
+                var kwCleanupItv = setInterval(function () {
+                    if (Knack.router) {
+                        clearInterval(kwCleanupItv);
+                        clearTimeout(failsafe);
+
+                        for (var i = 0; i < Knack.scenes.models.length; i++) {
+                            var scn = Knack.scenes.models[i];
+                            var views = scn.views;
+                            for (var j = 0; j < views.models.length; j++) {
+                                var view = views.models[j];
+                                if (view) {
+                                    var keywords = {};
+                                    var attr = view.attributes;
+                                    var title = attr.title;
+                                    var cleanedUpTitle = title;
+                                    var firstKeywordIdx;
+                                    if (title) {
+                                        firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                                        if (firstKeywordIdx >= 0) {
+                                            cleanedUpTitle = title.substring(0, firstKeywordIdx);
+                                            parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
+                                        }
+                                    }
+
+                                    var description = attr.description;
+                                    var cleanedUpDescription = description;
+                                    if (description) {
+                                        firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                                        if (firstKeywordIdx >= 0) {
+                                            cleanedUpDescription = description.substring(0, firstKeywordIdx);
+                                            parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
+                                        }
+                                    }
+
+                                    //Only write once - first time, when not yet existing.
+                                    !attr.orgTitle && (attr.orgTitle = attr.title);
+                                    !attr.keywords && (attr.keywords = keywords);
+
+                                    var orgTitle = attr.orgTitle;
+                                    attr.title = cleanedUpTitle;
+                                    attr.description = cleanedUpDescription;
+
+                                    //Apply to those views that are currently being displayed.
+                                    if (Knack.views[view.id]) {
+                                        $('#' + view.id + ' .view-header h1').text(cleanedUpTitle); //Search Views use H1 instead of H2.
+                                        $('#' + view.id + ' .view-header h2').text(cleanedUpTitle);
+                                        $('#' + view.id + ' .kn-description').text(cleanedUpDescription);
+                                        $('#' + view.id + ' .kn-subtitle').text(cleanedUpDescription); //For Calendars.
+
+                                        Knack.views[view.id].model.view.title = cleanedUpTitle;
+                                        Knack.views[view.id].model.view.description = cleanedUpDescription;
+                                        Knack.views[view.id].model.view.orgTitle = orgTitle;
+                                        Knack.views[view.id].model.view.keywords = keywords;
+                                    }
+                                }
+                            }
+                        }
+
+                        //Read the config from the Javascript pane, if exists.
+                        if (typeof ktlFeatures === 'object' && !$.isEmptyObject(ktlFeatures))
+                            ktl.core.setCfg({ enabled: ktlFeatures });
+
+                        appPreProcessStatus = 'DONE';
+                    }
+                }, 10);
+
+                var failsafe = setTimeout(function () {
+                    alert('appPreProcess timeout error.');
+                    resolve();
+                }, 20000);
+            } else if (appPreProcessStatus === 'ONGOING') {
+                var itv = setInterval(() => {
+                    if (appPreProcessStatus === 'DONE') {
+                        clearInterval(itv);
+                        resolve();
+                        return;
+                    }
+                }, 10)
+            } else if (appPreProcessStatus === 'DONE')
+                resolve();
+        })
+    };
+
+    function parseKeywords(keywords, strToParse) {
+        var kwAr = [];
+        if (strToParse && strToParse !== '') {
+            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
+            kwAr.splice(0, 1);
+            for (var i = 0; i < kwAr.length; i++) {
+                kwAr[i] = kwAr[i].trim();
+                parseParams(kwAr[i], i);
+            }
+        }
+
+        function parseParams(kwString, kwIdx) {
+            var kw = [];
+            if (kwAr[i].startsWith('_')) {
+                keywords[kwAr[i].toLowerCase()] = [];
+                return;
+            } else if (kwAr[i].startsWith('='))
+                kw = kwString.split('=');
+
+            var params = [];
+            if (kw.length > 1) {
+                params = kw[1].split(',');
+                params.forEach((param, idx) => {
+                    params[idx] = param.trim();
+                })
+            }
+
+            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+        }
+    }
+
+
 
     /**
     * Exposed constant strings
@@ -113,6 +240,8 @@ function Ktl($, info) {
             setCfg: function (cfgObj = {}) {
                 cfgObj.developerName && (cfg.developerName = cfgObj.developerName);
                 cfgObj.developerEmail && (cfg.developerEmail = cfgObj.developerEmail);
+                cfgObj.devOptionsPin && (cfg.devOptionsPin = cfgObj.devOptionsPin);
+                cfgObj.devDebugCode && (cfg.devDebugCode = cfgObj.devDebugCode);
                 cfgObj.isKiosk && (isKiosk = cfgObj.isKiosk);
 
                 //This one is different.  We want to give the user specific control over each flag from the Builder.
@@ -6636,9 +6765,14 @@ function Ktl($, info) {
                             versionInfo = ktl.scenes.getCfg().versionDisplayName + versionInfo;
 
                             ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
+
+                            //Special Dev Switches, require a PIN to access options.
                             $('#verButtonId').on('click touchstart', function (e) {
-                                if (ktl.account.isDeveloper() || prompt('Enter PW:') === '6672') {
-                                    var cmd = prompt('1=DevProd, 2=Kiosk, 3=Dbg, 4=Frm, 5=AES', 1);
+                                if (ktl.account.isDeveloper() || (prompt('Enter PW:') === ktl.core.getCfg().devOptionsPin)) {
+                                    var remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
+                                    var promptStr = '1) Dev/Prod\n2) Toggle Kiosk\n3) DebugWnd\n4) iFrameWnd\n5) Reset Auto-Login\n'
+                                        + '6) Remote Dev: ' + remoteDev + '\n7) Exec';
+                                    var cmd = prompt(promptStr,1);
                                     if (cmd == 1)
                                         ktl.core.toggleMode();
                                     else if (cmd == 2)
@@ -6650,14 +6784,38 @@ function Ktl($, info) {
                                         if (!ktl.core.getCfg().enabled.iFrameWnd) return;
                                         ktl.iFrameWnd.showIFrame(true);
                                     } else if (cmd == 5) {
-                                        ktl.storage.lsRemoveItem('AES_LI', true, false, true);
-                                        ktl.storage.lsRemoveItem('AES_EK', true, false, false);
-                                        $('.kn-login.kn-view').removeClass('ktlHidden');
-                                        $('.kn-log-out').click();
-                                        location.reload(true);
+                                        var key = ktl.storage.lsGetItem('AES_EK', true, false, false);
+                                        if (key && key !== '') {
+                                            ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
+                                            ktl.storage.lsRemoveItem('AES_LI', true, false, true); //Delete this first.
+                                            setTimeout(() => {
+                                                ktl.storage.lsRemoveItem('AES_EK', true, false, false);
+                                                //A short delay required before deleting key.
+                                                $('.kn-log-out').click();
+                                                if (typeof Android === 'object')
+                                                    Android.restartApplication()
+                                                else
+                                                    location.reload(true);
+                                            }, 2000)
+                                        } else
+                                            ktl.core.timedPopup('Nothing to delete.', 'warning', 1800);
                                     } else if (cmd == 6) {
+                                        //This forces loading 'KTL-dev.js' debug code from CTRND's CDN, in Prod folder.
+                                        //See 'remoteDev' in KTL_Start.js
+                                        if (confirm('Use remote KTL-Dev.js code on this device?'))
+                                            ktl.storage.lsSetItem('remoteDev', true, true);
+                                        else
+                                            ktl.storage.lsRemoveItem('remoteDev', true);
+                                        location.reload(true);
+                                    } else if (cmd == 7) {
+                                        //Execute custom code that is fetched from core's config.
+                                        var devDebugCode = ktl.core.getCfg().devDebugCode;
+                                        const exec = new Function('ktl', devDebugCode);
+                                        exec(ktl);
                                     }
                                 }
+
+                                return false; //False to prevent firing both events on mobile devices.
                             })
 
                             //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
@@ -7249,7 +7407,7 @@ function Ktl($, info) {
             },
 
             autoLogin: function (viewId = '') {
-                if (!viewId) return;
+                 if (!viewId) return;
                 var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
                 if (loginInfo && loginInfo !== '') {
                     if (loginInfo === 'SkipAutoLogin') {
@@ -8747,124 +8905,6 @@ function Ktl($, info) {
             },
         }
     })(); //sysInfo
-
-
-    //Clean up any titles and description that contain keywords.
-    //All keywords must be at the end, i.e. after any text that should remain as visible.
-    //All keywords must start with an underscore.
-    //Initially, this was done using a MutationObserver, but it wasn't reliable, randomly stopping after a few hours.
-    var appPreProcessDone = false
-    function appPreProcess() {
-        return new Promise(function (resolve) {
-            if (appPreProcessDone) {
-                resolve();
-                return;
-            }
-
-            var kwCleanupItv = setInterval(function () {
-                if (Knack.router) {
-                    appPreProcessDone = true;
-                    clearInterval(kwCleanupItv);
-                    clearTimeout(failsafe);
-
-                    for (var i = 0; i < Knack.scenes.length; i++) {
-                        var scn = Knack.scenes.models[i];
-                        var views = scn.views;
-                        for (var j = 0; j < views.models.length; j++) {
-                            var view = views.models[j];
-                            if (view) {
-                                var keywords = {};
-                                var attr = view.attributes;
-                                var title = attr.title;
-                                var cleanedUpTitle = title;
-                                var firstKeywordIdx;
-                                if (title) {
-                                    firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-                                    if (firstKeywordIdx >= 0) {
-                                        cleanedUpTitle = title.substring(0, firstKeywordIdx);
-                                        parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
-                                    }
-                                }
-
-                                var description = attr.description;
-                                var cleanedUpDescription = description;
-                                if (description) {
-                                    firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-                                    if (firstKeywordIdx >= 0) {
-                                        cleanedUpDescription = description.substring(0, firstKeywordIdx);
-                                        parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
-                                    }
-                                }
-
-                                //Only write once - first time, when not yet existing.
-                                !attr.orgTitle && (attr.orgTitle = attr.title);
-                                !attr.keywords && (attr.keywords = keywords);
-
-                                var orgTitle = attr.orgTitle;
-                                attr.title = cleanedUpTitle;
-                                attr.description = cleanedUpDescription;
-
-                                //Apply to those views that are currently being displayed.
-                                if (Knack.views[view.id]) {
-                                    $('#' + view.id + ' .view-header h1').text(cleanedUpTitle); //Search Views use H1 instead of H2.
-                                    $('#' + view.id + ' .view-header h2').text(cleanedUpTitle);
-                                    $('#' + view.id + ' .kn-description').text(cleanedUpDescription);
-                                    $('#' + view.id + ' .kn-subtitle').text(cleanedUpDescription); //For Calendars.
-
-                                    Knack.views[view.id].model.view.title = cleanedUpTitle;
-                                    Knack.views[view.id].model.view.description = cleanedUpDescription;
-                                    Knack.views[view.id].model.view.orgTitle = orgTitle;
-                                    Knack.views[view.id].model.view.keywords = keywords;
-                                }
-                            }
-                        }
-                    }
-
-                    //Read the config from the Javascript pane, if exists.
-                    if (typeof ktlFeatures === 'object' && !$.isEmptyObject(ktlFeatures))
-                        ktl.core.setCfg({ enabled: ktlFeatures });
-
-                    resolve();
-                }
-            }, 10);
-
-            var failsafe = setTimeout(function () {
-                alert('appPreProcess timeout error.');
-                resolve();
-            }, 20000);
-        })
-    };
-
-    function parseKeywords(keywords, strToParse) {
-        var kwAr = [];
-        if (strToParse && strToParse !== '') {
-            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
-            kwAr.splice(0, 1);
-            for (var i = 0; i < kwAr.length; i++) {
-                kwAr[i] = kwAr[i].trim();
-                parseParams(kwAr[i], i);
-            }
-        }
-
-        function parseParams(kwString, kwIdx) {
-            var kw = [];
-            if (kwAr[i].startsWith('_')) {
-                keywords[kwAr[i].toLowerCase()] = [];
-                return;
-            } else if (kwAr[i].startsWith('='))
-                kw = kwString.split('=');
-
-            var params = [];
-            if (kw.length > 1) {
-                params = kw[1].split(',');
-                params.forEach((param, idx) => {
-                    params[idx] = param.trim();
-                })
-            }
-
-            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
-        }
-    }
 
 
     return { //KTL exposed objects

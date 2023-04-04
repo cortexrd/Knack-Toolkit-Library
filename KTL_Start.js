@@ -9,7 +9,7 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.10.15';
+    const KTL_LATEST_JS_VERSION = '0.10.16';
     const KTL_LATEST_CSS_VERSION = '0.2.6';
 
     var cssVersion = KTL_LATEST_CSS_VERSION;
@@ -21,6 +21,11 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     callback = _callback;
     ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
     const lsShortName = Knack.app.attributes.name.substr(0, 6).replace(/ /g, '') + '_' + app_id.substr(-4, 4) + '_';
+
+    //Debug this specific device, if it has the remoteDev entry in localStorage.
+    if (localStorage.getItem(lsShortName + 'remoteDev') === 'true')
+        ktlVersion = 'dev';
+
     var prod = (localStorage.getItem(lsShortName + 'dev') === null);
     if (!prod) {
         ktlVersion = '';
@@ -38,9 +43,6 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         }
         LazyLoad.js([appUrl], () => { })
     }
-
-    var debugThis = (localStorage.getItem(lsShortName + 'debugThis') !== null);
-    if (debugThis) ktlVersion = 'dev';
 
     if (ktlVersion === 'dev') {
         fullCode = 'full';
