@@ -39,6 +39,9 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         LazyLoad.js([appUrl], () => { })
     }
 
+    var debugThis = (localStorage.getItem(lsShortName + 'debugThis') !== null);
+    if (debugThis) ktlVersion = 'dev';
+
     if (ktlVersion === 'dev') {
         fullCode = 'full';
         cssVersion = 'dev';
