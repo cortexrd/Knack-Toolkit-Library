@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.16';
+    const KTL_VERSION = '0.10.17';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -103,6 +103,8 @@ function Ktl($, info) {
                             ktl.core.setCfg({ enabled: ktlFeatures });
 
                         appPreProcessStatus = 'DONE';
+                        resolve();
+                        return;
                     }
                 }, 10);
 
@@ -117,7 +119,7 @@ function Ktl($, info) {
                         resolve();
                         return;
                     }
-                }, 10)
+                }, 100)
             } else if (appPreProcessStatus === 'DONE')
                 resolve();
         })
@@ -1123,6 +1125,7 @@ function Ktl($, info) {
         var chznBetterThresholds = {};
         var chznBetterToExclude = [];
         var chznBetterSetFocus = null;
+        var inlineEditActive = null;
         var convertNumDone = false;
         var horizontalRadioButtons = false;
         var horizontalCheckboxes = false;
@@ -1193,48 +1196,15 @@ function Ktl($, info) {
                 }
             }
 
-            /*
+
             //Work in progress:  When user clicks on a cell for inline editing, provide a method to change its style, to make it wider for example.
-            console.log('e.target =', e.target);
-
-            var popover = e.target.closest('.kn-popover');
-            if (popover) {
-                console.log('popover =', popover);
-                console.log('e.target.parentElement =', e.target.parentElement);
-            }
-
             if (e.target.classList) {
-                console.log('e.target.classList =', e.target.classList);
-                var target = e.target;
-                if (e.target.classList.value.includes('col-'))
-                    target = e.target.parentElement;
-
-                console.log('target =', target);
-                if (target.classList && target.classList.value.includes('cell-edit')) {
-                    var fieldId = target.attributes['data-field-key'].value;
-                    console.log('fieldId =', fieldId);
-                    if (true || fieldId === 'field_x') { //TODO provide an array of fields and their style to apply.
-                        ktl.core.waitSelector('#cell-editor ' + ' #' + fieldId)
-                            .then(() => {
-                                console.log('Found inline 1');
-                                ktl.fields.inlineEditChangeStyle();
-                            })
-                            .catch(() => {
-                                console.log('1 - Failed waiting for cell editor.');
-                            });
-
-                        ktl.core.waitSelector('#cell-editor ' + ' #kn-input-' + fieldId)
-                            .then(() => {
-                                console.log('Found inline 2');
-                                ktl.fields.inlineEditChangeStyle();
-                            })
-                            .catch(() => {
-                                console.log('2 - Failed waiting for cell editor.');
-                            });
-                    }
+                if (e.target.closest('.cell-edit')) {
+                    ktl.core.waitSelector('#cell-editor .control input')
+                        .then(() => { ktl.fields.ktlInlineEditActive(e); })
+                        .catch(err => { console.log('Failed waiting for cell editor.', err); });
                 }
             }
-            */
         })
 
         document.addEventListener('focus', function (e) {
@@ -1398,6 +1368,7 @@ function Ktl($, info) {
                 cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
                 cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
                 cfgObj.chznBetterSetFocus && (chznBetterSetFocus = cfgObj.chznBetterSetFocus);
+                cfgObj.inlineEditActive && (inlineEditActive = cfgObj.inlineEditActive);
                 cfgObj.horizontalRadioButtons && (horizontalRadioButtons = cfgObj.horizontalRadioButtons);
                 cfgObj.horizontalCheckboxes && (horizontalCheckboxes = cfgObj.horizontalCheckboxes);
             },
@@ -1760,13 +1731,12 @@ function Ktl($, info) {
                 }
             },
 
-            //TODO, detect inline edit cell and modify its style dyanmically.  Typical use: make them wider to see more context when typing.
-            inlineEditChangeStyle: function () {
-                setTimeout(function () {
-                    $('.kn-form-col.column.is-constrained').css({ 'max-width': '100vw', 'width': '75vw' }); //Example here that enlarges width.
-                    //var sel = document.querySelector('.kn-form-col.column.is-constrained');
-                    //console.log('sel =', sel);
-                }, 500);
+            //TODO: allow modifying style dyanmically.
+            //Typical use: make them wider to see more context when typing, or make font larger.
+            ktlInlineEditActive: function (e) {
+                const viewId = e.target.closest('.kn-view').id;
+                var fieldId = e.target.closest('.cell-edit').attributes['data-field-key'].value;
+                inlineEditActive && inlineEditActive(viewId, fieldId, e);
             },
 
             //Handles Change events for Dropdowns, Calendars, etc.
