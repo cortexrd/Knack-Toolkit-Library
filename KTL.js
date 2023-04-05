@@ -6593,7 +6593,7 @@ function Ktl($, info) {
                                     if (!$.isEmptyObject(style))
                                         $('.kn-button').css(style);
                                     else
-                                        $('.kn-button').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '33px', 'line-height': '0px' });
+                                        $('.kn-button:not(.search)').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '33px', 'line-height': '0px' });
 
                                     $('.kiosk-btn').css({ 'margin-left': '20px' });
 
@@ -8236,7 +8236,8 @@ function Ktl($, info) {
         })
 
         $(document).on('knack-view-render.table', function (event, view, data) {
-            if (ktl.scenes.isiFrameWnd() || (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
+            if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() ||
+                (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
                 return;
 
             //Put code below in a shared function (see _lud in this.log).
