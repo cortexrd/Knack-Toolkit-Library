@@ -86,28 +86,41 @@ function minify(file) {
         const minifiedOutput = fileName + '-' + version + '.min.js';
         console.log('Minified output file: ', minifiedOutput);
 
-        rl.question('Create Source Maps? (y/[n])\n> ', function (op) {
-            var srcMapOpt = {};
-            if (op.toLowerCase() === 'y')
-                srcMapOpt = {
-                    sourceMap: {
-                        filename: minifiedOutput,
-                        url: 'KTL-' + version + '.min.js.map',
-                        root: 'https://ctrnd.com/Lib/KTL/Prod',
-                    }
-                }
+        //This "no-source-map" code is temporary and replaces commented block below...
+        var result = UglifyJS.minify(code)
+        if (result.error) { //Runtime error, or `undefined` if no error
+            reject(result.error);
+        } else {
+            fs.writeFileSync(minifiedOutput, result.code);
+            if (result.map)
+                fs.writeFileSync(minifiedOutput + '.map', result.map);
+            console.log('\x1b[32m%s\x1b[0m', 'Minification complete\n');
+            resolve();
+        }
 
-            var result = UglifyJS.minify(code, srcMapOpt)
-            if (result.error) { //Runtime error, or `undefined` if no error
-                reject(result.error);
-            } else {
-                fs.writeFileSync(minifiedOutput, result.code);
-                if (result.map)
-                    fs.writeFileSync(minifiedOutput + '.map', result.map);
-                console.log('\x1b[32m%s\x1b[0m', 'Minification complete\n');
-                resolve();
-            }
-        })
+        //Stubbed until we find out why this doesn't work.
+    //    rl.question('Create Source Maps? (y/[n])\n> ', function (op) {
+    //        var srcMapOpt = {};
+    //        if (op.toLowerCase() === 'y')
+    //            srcMapOpt = {
+    //                sourceMap: {
+    //                    filename: minifiedOutput,
+    //                    url: 'KTL-' + version + '.min.js.map',
+    //                    root: 'https://ctrnd.com/Lib/KTL/Prod',
+    //                }
+    //            }
+
+    //        var result = UglifyJS.minify(code, srcMapOpt)
+    //        if (result.error) { //Runtime error, or `undefined` if no error
+    //            reject(result.error);
+    //        } else {
+    //            fs.writeFileSync(minifiedOutput, result.code);
+    //            if (result.map)
+    //                fs.writeFileSync(minifiedOutput + '.map', result.map);
+    //            console.log('\x1b[32m%s\x1b[0m', 'Minification complete\n');
+    //            resolve();
+    //        }
+    //    })
     })
 }
 
