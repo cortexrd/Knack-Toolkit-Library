@@ -9,35 +9,6 @@
 /* KTL CSS version: 0.2.7 */
 
 /************ General Settings **************/
-/* Hide header and scene render will put it back if not an iFrame. */
-#kn-app-header, .knHeader {
-	display: none !important;
-}
-
-.kn-info-bar {
-	display: none !important;
-}
-
-.show-menu #kn-app-header {
-	display: block !important;
-}
-
-.show-menu .knHeader {
-	display: block !important;
-}
-
-.show-menu .kn-info-bar {
-	display: block !important;
-}
-
-.kn-records-nav {
-	display: none;
-}
-
-.show-menu .kn-records-nav {
-	display: block;
-}
-
 .pointer {
 	cursor: pointer;
 }
@@ -86,6 +57,18 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
+}
+
+.bottomExtraSpaces {
+	padding-bottom: 500px;
+}
+
+.sortDisabled thead {
+	pointer-events: none;
+}
+
+.singleLineTable {
+	white-space: nowrap;
 }
 
 /* Bulk Operations */
@@ -244,6 +227,11 @@
 	height: 33px !important;
 }
 
+.kn-menu .kioskButtons {
+	margin-left: 20px;
+	margin-right: 20px;
+}
+
 .formKioskButtons {
 	height: 40px !important;
 }
@@ -251,5 +239,6 @@
 .smallKioskButtons {
 	margin-left: 20px !important;
 }
+
 
 /**** KTL_RELATED - END ****/

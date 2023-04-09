@@ -34,7 +34,6 @@ function Ktl($, info) {
     //Clean up any titles and description that contain keywords.
     //All keywords must be at the end, i.e. after any text that should remain as visible.
     //All keywords must start with an underscore.
-    //Initially, this was done using a MutationObserver, but it wasn't reliable, randomly stopping after a few hours.
     var appPreProcessStatus = 'INIT';
     function appPreProcess() {
         return new Promise(function (resolve) {
@@ -124,6 +123,42 @@ function Ktl($, info) {
                 resolve();
         })
     };
+
+    //This is for early notifications of DOM changes.
+    //Prevents spurious GUI updates (flickering).
+    var observer = null;
+    if (!observer) {
+        observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutRec => {
+                if (!ktl.scenes.isiFrameWnd())
+                    ktl.scenes.getCfg().processMutation && ktl.scenes.getCfg().processMutation(mutRec);
+
+                appPreProcess()
+                    .then(() => {
+                        const knView = mutRec.target.closest('.kn-view');
+                        viewId = knView && knView.id;
+                        if (viewId) {
+                            var view = Knack.views[viewId];
+                            if (view && typeof view.model === 'object') {
+                                var model = Knack.views[viewId].model;
+                                var keywords = model.view.keywords;
+
+                                if (viewId && mutRec.target.localName === 'tbody')
+                                    (keywords._hc || keywords._rc) && kwHideColumns(Knack.views[viewId].model.view, keywords);
+
+                                if (keywords._km && !ktl.account.isDeveloper())
+                                    ktl.core.kioskMode(true);
+                            }
+                        }
+                    })
+            });
+        })
+
+        observer.observe(document.querySelector('.kn-content'), {
+            childList: true,
+            subtree: true,
+        });
+    }
 
     function parseKeywords(keywords, strToParse) {
         var kwAr = [];
@@ -886,15 +921,22 @@ function Ktl($, info) {
                 else
                     ktl.storage.lsRemoveItem('KIOSK', false, true);
 
-                if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true')
-                    ktl.core.timedPopup('Switching to Kiosk mode...');
-                else {
-                    ktl.core.timedPopup('Switching back to Normal mode...');
+                if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
+                    $('#kn-app-header,.kn-info-bar').addClass('ktlDisplayNone');
+                    $('body').addClass('kiosk-mode');
+
+                    //Add extra space at bottom of screen in kiosk mode, to allow editing
+                    //with the virtual keyboard without blocking the input field.
+                    if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
+                        $('body').removeClass('bottomExtraSpaces');
+                    else
+                        $('body').addClass('bottomExtraSpaces');
+                } else {
                     $('.formKioskButtons').removeClass('formKioskButtons');
                     $('.kioskButtons').removeClass('kioskButtons');
+                    $('#kn-app-header,.kn-info-bar').removeClass('ktlDisplayNone');
+                    $('body').removeClass('kiosk-mode bottomExtraSpaces');
                 }
-
-                Knack.router.scene_view.renderViews();
             },
 
             loadLib: function (libName = '') {
@@ -4187,7 +4229,6 @@ function Ktl($, info) {
             bgColorFalse: '#f04a3b',
             bgColorPending: '#dd08',
         };
-        var observer = null;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
@@ -4493,42 +4534,6 @@ function Ktl($, info) {
                     })
                 })
             }
-        }
-
-        //This is for early notifications of DOM changes.
-        //Prevents spurious GUI updates (flickering).
-        if (!observer) {
-            appPreProcess()
-                .then(() => {
-                    observer = new MutationObserver((mutations) => {
-                        mutations.forEach(mutRec => {
-                            const knView = mutRec.target.closest('.kn-view');
-                            viewId = knView && knView.id;
-                            if (viewId) {
-                                var view = Knack.views[viewId];
-                                if (view && typeof view.model === 'object') {
-                                    var model = Knack.views[viewId].model;
-                                    var keywords = model.view.keywords;
-
-                                    if (viewId && mutRec.target.localName === 'tbody')
-                                        (keywords._hc || keywords._rc) && kwHideColumns(Knack.views[viewId].model.view, keywords);
-
-                                    if (keywords._km && !ktl.account.isDeveloper()) {
-                                        if (ktl.storage.lsGetItem('KIOSK', false, true) !== 'true') {
-                                            ktl.storage.lsSetItem('KIOSK', true, false, true);
-                                            location.reload(true);
-                                        }
-                                    }
-                                }
-                            }
-                        })
-                    });
-
-                    observer.observe(document.querySelector('.kn-content'), {
-                        childList: true,
-                        subtree: true,
-                    });
-                })
         }
 
         function kwHideColumns(view = '', keywords = {}) {
@@ -6302,6 +6307,7 @@ function Ktl($, info) {
         var autoFocus = null;
         var spinnerWatchDogTimeout = null;
         var idleWatchDogTimeout = null;
+        var processMutation = null;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             appPreProcess()
@@ -6333,18 +6339,6 @@ function Ktl($, info) {
                     //Anyways... no one is getting impatient at an invisible window!
                     if (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID))
                         spinnerCtrDelay = 60;
-
-                    if (ktl.core.isKiosk()) {
-                        //Add extra space at bottom of screen in kiosk mode, to allow editing with the
-                        //virtual keyboard without blocking the input field.
-                        if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
-                            $('body').css({ 'padding-bottom': '' });
-                        else
-                            $('body').css({ 'padding-bottom': '500px' });
-                    } else {
-                        if (!window.self.frameElement) //If not an iFrame, put back header hidden by CSS.
-                            (document.querySelector("#kn-app-header") || document.querySelector('.knHeader')).setAttribute('style', 'display:block !important');
-                    }
 
                     ktl.scenes.spinnerWatchdog();
                     ktl.iFrameWnd.create();
@@ -6402,6 +6396,7 @@ function Ktl($, info) {
                 cfgObj.kioskButtons && (kioskButtons = cfgObj.kioskButtons);
                 cfgObj.onSceneRender && (onSceneRender = cfgObj.onSceneRender);
                 cfgObj.versionDisplayName && (versionDisplayName = cfgObj.versionDisplayName);
+                cfgObj.processMutation && (processMutation = cfgObj.processMutation);
             },
 
             getCfg: function () {
@@ -6409,6 +6404,7 @@ function Ktl($, info) {
                     idleWatchDogDelay,
                     versionDisplayName,
                     kioskButtons,
+                    processMutation,
                 }
             },
 
@@ -6772,7 +6768,13 @@ function Ktl($, info) {
                                     })
 
                                     ktl.fields.addButton(devBtnsDiv, 'Kiosk', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                        if (ktl.core.isKiosk())
+                                            ktl.core.timedPopup('Switching back to Normal mode...');
+                                        else
+                                            ktl.core.timedPopup('Switching to Kiosk mode...');
+
                                         ktl.core.kioskMode();
+                                        Knack.router.scene_view.renderViews();
                                     })
 
                                     ktl.fields.addButton(devBtnsDiv, 'iFrameWnd', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
