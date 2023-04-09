@@ -212,4 +212,29 @@
 	background-color: #ffffff;
 }
 
+.center {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.devBtnsDiv {
+	background-color: #ffffff;
+	border: dimgrey;
+	border-width: 3px;
+	border-style: solid;
+	display: grid;
+	padding-block: 5px;
+	padding-inline: 10px;
+}
+
+.devBtn {
+	font-size: 20px;
+	margin-block: 5px;
+	padding: 10px;
+	white-space: nowrap;
+	width: 260px;
+}
+
 /**** KTL_RELATED - END ****/

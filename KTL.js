@@ -119,7 +119,7 @@ function Ktl($, info) {
                         resolve();
                         return;
                     }
-                }, 100)
+                }, 50)
             } else if (appPreProcessStatus === 'DONE')
                 resolve();
         })
@@ -1466,6 +1466,9 @@ function Ktl($, info) {
                 if (!id) {
                     id = ktl.core.getCleanId(label);
                     var viewId = $(div).closest('.kn-view').attr('id');
+                    if (!viewId)
+                        viewId = div.id;
+
                     id = viewId + '_' + id;
                 }
 
@@ -3961,7 +3964,7 @@ function Ktl($, info) {
                                 debugWndClear.style['box-sizing'] = 'border-box';
                                 debugWndClear.style['line-height'] = '200%'; //Trick to center text vertically.
                                 debugWndClear.innerText = 'Clear';
-                                debugWndClear.classList.add('pointer');
+                                debugWndClear.classList.add('pointer', 'kn-button');
                                 debugWndHeader.appendChild(debugWndClear);
                                 debugWndClear.addEventListener('click', function (e) { clearLsLogs(); })
                                 debugWndClear.addEventListener('touchstart', function (e) { clearLsLogs(); })
@@ -3982,7 +3985,7 @@ function Ktl($, info) {
                                 debugWndClose.style['background-color'] = sysColors.button.rgb;
                                 debugWndClose.style['line-height'] = '200%'; //Trick to center text vertically.
                                 debugWndClose.innerText = 'Close';
-                                debugWndClose.classList.add('pointer');
+                                debugWndClose.classList.add('pointer', 'kn-button');
                                 debugWndHeader.appendChild(debugWndClose);
                                 debugWndClose.addEventListener('click', function (e) { ktl.debugWnd.showDebugWnd(false); })
                                 debugWndClose.addEventListener('touchstart', function (e) { ktl.debugWnd.showDebugWnd(false); })
@@ -6378,6 +6381,12 @@ function Ktl($, info) {
         $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('mousemove', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
+        $(document).on('click', function (e) {
+            //For Dev Options popup, act like a modal window: close when clicking oustide.
+            if (e.target.closest('.kn-content'))
+                $('#devBtnsDivId').remove();
+        })
+
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -6736,40 +6745,64 @@ function Ktl($, info) {
 
                             ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
 
-                            //Special Dev Switches, require a PIN to access options.
+                            //Special Dev Options popup, require a PIN to access options.
                             $('#verButtonId').on('click touchstart', function (e) {
-                                if (ktl.account.isDeveloper() || (prompt('Enter PW:') === ktl.core.getCfg().devOptionsPin)) {
+                                const pinAlreadyEntered = ktl.storage.lsGetItem('pinAlreadyEntered', false, true);
+                                if (ktl.account.isDeveloper() || (pinAlreadyEntered || (prompt('Enter PW:') === ktl.core.getCfg().devOptionsPin))) {
+
+                                    ktl.storage.lsSetItem('pinAlreadyEntered', true, false, true);
+
+                                    if ($('#devBtnsDivId').length) return;
+
                                     var remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
-                                    var promptStr = '1) Dev/Prod\n2) Toggle Kiosk\n3) DebugWnd\n4) iFrameWnd\n5) Reset Auto-Login\n'
-                                        + '6) Remote Dev: ' + remoteDev + '\n7) Exec';
-                                    var cmd = prompt(promptStr,1);
-                                    if (cmd == 1)
+
+                                    var devBtnsDiv = document.createElement('div');
+                                    devBtnsDiv.setAttribute('id', 'devBtnsDivId');
+                                    devBtnsDiv.classList.add('devBtnsDiv', 'center');
+                                    document.body.appendChild(devBtnsDiv);
+
+                                    ktl.fields.addButton(devBtnsDiv, 'Dev/Prod', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                         ktl.core.toggleMode();
-                                    else if (cmd == 2)
+                                    })
+
+                                    ktl.fields.addButton(devBtnsDiv, 'View IDs', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                        userPrefs = ktl.userPrefs.getUserPrefs();
+                                        userPrefs.showViewId = !userPrefs.showViewId;
+                                        userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefs));
+                                        ktl.scenes.renderViews();
+                                    })
+
+                                    ktl.fields.addButton(devBtnsDiv, 'Kiosk', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                         ktl.core.kioskMode();
-                                    else if (cmd == 3) {
-                                        if (!ktl.core.getCfg().enabled.debugWnd) return;
+                                    })
+
+                                    ktl.fields.addButton(devBtnsDiv, 'iFrameWnd', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                        userPrefs = ktl.userPrefs.getUserPrefs();
+                                        userPrefs.showIframeWnd = !userPrefs.showIframeWnd;
+                                        userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefs));
+                                    })
+
+                                    ktl.fields.addButton(devBtnsDiv, 'DebugWnd', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                         ktl.debugWnd.showDebugWnd(true);
-                                    } else if (cmd == 4) {
-                                        if (!ktl.core.getCfg().enabled.iFrameWnd) return;
-                                        ktl.iFrameWnd.showIFrame(true);
-                                    } else if (cmd == 5) {
-                                        var key = ktl.storage.lsGetItem('AES_EK', true, false, false);
-                                        if (key && key !== '') {
-                                            ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
-                                            ktl.storage.lsRemoveItem('AES_LI', true, false, true); //Delete this first.
-                                            setTimeout(() => {
-                                                ktl.storage.lsRemoveItem('AES_EK', true, false, false);
-                                                //A short delay required before deleting key.
-                                                $('.kn-log-out').click();
-                                                if (typeof Android === 'object')
-                                                    Android.restartApplication()
-                                                else
-                                                    location.reload(true);
-                                            }, 2000)
-                                        } else
-                                            ktl.core.timedPopup('Nothing to delete.', 'warning', 1800);
-                                    } else if (cmd == 6) {
+                                    })
+
+                                    ktl.fields.addButton(devBtnsDiv, 'Reset Auto-Login', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                        ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
+                                        var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
+                                        if (loginInfo && loginInfo !== '') {
+                                            if (loginInfo === 'SkipAutoLogin')
+                                                ktl.storage.lsRemoveItem('AES_LI', true, false);
+                                            else
+                                                ktl.storage.lsRemoveItem('AES_LI', true, false, true);
+                                        }
+
+                                        ktl.storage.lsRemoveItem('AES_EK', true, false, false);
+                                        Knack.handleLogout();
+                                    })
+
+                                    ktl.fields.addButton(devBtnsDiv, 'CTRND Dev: ' + remoteDev, '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                         //This forces loading 'KTL-dev.js' debug code from CTRND's CDN, in Prod folder.
                                         //See 'remoteDev' in KTL_Start.js
                                         if (confirm('Use remote KTL-Dev.js code on this device?'))
@@ -6777,12 +6810,27 @@ function Ktl($, info) {
                                         else
                                             ktl.storage.lsRemoveItem('remoteDev', true);
                                         location.reload(true);
-                                    } else if (cmd == 7) {
-                                        //Execute custom code that is fetched from core's config.
-                                        var devDebugCode = ktl.core.getCfg().devDebugCode;
-                                        const exec = new Function('ktl', devDebugCode);
-                                        exec(ktl);
+                                    })
+
+                                    //Execute custom code that is fetched from core's config.
+                                    var devDebugCode = ktl.core.getCfg().devDebugCode;
+                                    if (devDebugCode && devDebugCode !== '') {
+                                        ktl.fields.addButton(devBtnsDiv, 'Exec devDebugCode', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                            const exec = new Function('ktl', devDebugCode);
+                                            exec(ktl);
+                                        })
                                     }
+
+                                    ktl.fields.addButton(devBtnsDiv, 'Logout', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                        Knack.handleLogout();
+                                    })
+
+                                    var closeBtn = ktl.fields.addButton(devBtnsDiv, 'Close', '', ['devBtn', 'kn-button']);
+                                    closeBtn.addEventListener('click', () => {
+                                        $('#devBtnsDivId').remove();
+                                    })
+
+                                    $(closeBtn).css('margin-top', '20px');
                                 }
 
                                 return false; //False to prevent firing both events on mobile devices.
@@ -7125,7 +7173,7 @@ function Ktl($, info) {
                             delete prefsTmpObj['iFrameRefresh'];
                             var updatedPrefs = JSON.stringify(prefsTmpObj);
                             ktl.views.submitAndWait(ktl.iFrameWnd.getCfg().updUserPrefsViewId, { [acctPrefsFld]: updatedPrefs })
-                                .then(success => { location.reload(true); })
+                                .then(() => { Knack.router.scene_view.render(); })
                                 .catch(failure => { ktl.log.clog('red', 'iFrameRefresh failure: ' + failure); })
                         } else if (prefsStr.includes('reloadApp')) {
                             delete prefsTmpObj['reloadApp'];
@@ -7838,11 +7886,18 @@ function Ktl($, info) {
                 }
             },
 
-            showIFrame: function (show = false) {
+            //No param = toggle.
+            showIFrame: function (show) {
                 if (!iFrameWnd)
                     return;
 
-                if (show) {
+                if (typeof show === 'undefined') {
+                    show = true;
+                    if (iFrameWnd.style.visibility === 'visible')
+                        show = false;
+                }
+
+                if (show === true) {
                     iFrameWnd.style.width = '100vw';
                     iFrameWnd.style.height = '100vh';
                     iFrameWnd.style.visibility = 'visible';
@@ -7977,12 +8032,12 @@ function Ktl($, info) {
                                 if (!formId || !fieldId) return;
 
                                 $(document).off('knack-form-submit.' + formId); //Prevent multiple re-entry.
-                                document.querySelector('#' + fieldId).value = event.data.msgData;
+                                document.querySelector('#' + fieldId).value = event.data.msgData; //Stringified UserPrefsObj.
                                 document.querySelector('#' + formId + ' .kn-button.is-primary').click();
                                 ktl.log.clog('green', 'Uploading prefs to cloud');
 
                                 //Wait until Submit is completed and ack parent
-                                $(document).on('knack-form-submit.' + formId, function (event, view, record) {
+                                $(document).on('knack-form-submit.' + formId, function (evt, view, record) {
                                     ktl.wndMsg.send(event.data.msgType, 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
                                     ktl.views.refreshView(ktl.iFrameWnd.getCfg().curUserPrefsViewId);
                                 });
