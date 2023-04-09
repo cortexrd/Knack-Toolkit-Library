@@ -888,8 +888,11 @@ function Ktl($, info) {
 
                 if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true')
                     ktl.core.timedPopup('Switching to Kiosk mode...');
-                else
+                else {
                     ktl.core.timedPopup('Switching back to Normal mode...');
+                    $('.formKioskButtons').removeClass('formKioskButtons');
+                    $('.kioskButtons').removeClass('kioskButtons');
+                }
 
                 Knack.router.scene_view.renderViews();
             },
@@ -6405,6 +6408,7 @@ function Ktl($, info) {
                 return {
                     idleWatchDogDelay,
                     versionDisplayName,
+                    kioskButtons,
                 }
             },
 
@@ -6425,7 +6429,7 @@ function Ktl($, info) {
 
             //Add default extra buttons to facilitate Kiosk mode:  Refresh, Back, Done and Messaging
             //Excludes all iFrames and all view titles must not contain _kn keyword.
-            addKioskButtons: function (viewId = '', style = {}) {
+            addKioskButtons: function (viewId = '') {
                 if (!viewId || window.self.frameElement || !ktl.core.isKiosk())
                     return;
 
@@ -6453,7 +6457,7 @@ function Ktl($, info) {
                                         messagingBtn = document.getElementById(kioskButtons.ADD_MESSAGING.id);
                                         if (messagingBtn === null) {
                                             messagingBtn = document.createElement('BUTTON');
-                                            messagingBtn.classList.add('kn-button', 'kiosk-btn');
+                                            messagingBtn.classList.add('kn-button', 'smallKioskButtons');
                                             messagingBtn.id = kioskButtons.ADD_MESSAGING.id;
                                             messagingBtn.innerHTML = kioskButtons.ADD_MESSAGING.html;
 
@@ -6469,7 +6473,7 @@ function Ktl($, info) {
                                     var refreshBtn = document.getElementById(kioskButtons.ADD_REFRESH.id);
                                     if (kioskButtons.ADD_REFRESH && !refreshBtn) {
                                         refreshBtn = document.createElement('BUTTON');
-                                        refreshBtn.classList.add('kn-button', 'kiosk-btn');
+                                        refreshBtn.classList.add('kn-button', 'smallKioskButtons');
 
                                         refreshBtn.id = kioskButtons.ADD_REFRESH.id;
                                         refreshBtn.innerHTML = kioskButtons.ADD_REFRESH.html;
@@ -6484,7 +6488,7 @@ function Ktl($, info) {
                                     var backBtn = document.getElementById(kioskButtons.ADD_BACK.id);
                                     if (backBtnText && !backBtn) {
                                         backBtn = document.createElement('BUTTON');
-                                        backBtn.classList.add('kn-button', 'kiosk-btn');
+                                        backBtn.classList.add('kn-button', 'smallKioskButtons');
                                         var backOrDone = backBtnText === 'Back' ? 'ADD_BACK' : 'ADD_DONE';
                                         backBtn.id = kioskButtons[backOrDone].id;
                                         backBtn.innerHTML = kioskButtons[backOrDone].html;
@@ -6569,16 +6573,10 @@ function Ktl($, info) {
 
                                 //Make all buttons same size and style.
                                 function applyStyle() {
-                                    if (!$.isEmptyObject(style))
-                                        $('.kn-button').css(style);
-                                    else
-                                        $('.kn-button:not(.search)').css({ 'font-size': '20px', 'background-color': '#5b748a!important', 'color': '#ffffff', 'height': '33px', 'line-height': '0px' });
-
-                                    $('.kiosk-btn').css({ 'margin-left': '20px' });
-
+                                    $('.kn-button:not(.search,.devBtn)').addClass('kioskButtons');
                                     for (var i = 0; i < Knack.router.scene_view.model.views.length; i++) {
                                         if (Knack.router.scene_view.model.views.models[i].attributes.type === 'form') {
-                                            $('.kn-button').css({ 'height': '40px' });
+                                            $('.kn-button:not(.search,.devBtn)').addClass('formKioskButtons');
                                             break;
                                         }
                                     }

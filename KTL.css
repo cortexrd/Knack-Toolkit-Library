@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.6 */
+/* KTL CSS version: 0.2.7 */
 
 /************ General Settings **************/
 /* Hide header and scene render will put it back if not an iFrame. */
@@ -73,12 +73,19 @@
 
 .cell-edit.ktlNoInlineEdit {
 	pointer-events: none;
-	background-color: #ffe0e0!important;
+	background-color: #ffe0e0 !important;
 	font-weight: initial;
 }
 
 .ktlNotValid {
 	background-color: #fdb0b0; /* Same pinkish color as Knack error */
+}
+
+.center {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
 }
 
 /* Bulk Operations */
@@ -212,13 +219,7 @@
 	background-color: #ffffff;
 }
 
-.center {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-}
-
+/* Dev Options popup */
 .devBtnsDiv {
 	background-color: #ffffff;
 	border: dimgrey;
@@ -235,6 +236,20 @@
 	padding: 10px;
 	white-space: nowrap;
 	width: 260px;
+}
+
+/* Kiosk buttons */
+.kioskButtons {
+	font-size: 20px !important;
+	height: 33px !important;
+}
+
+.formKioskButtons {
+	height: 40px !important;
+}
+
+.smallKioskButtons {
+	margin-left: 20px !important;
 }
 
 /**** KTL_RELATED - END ****/
