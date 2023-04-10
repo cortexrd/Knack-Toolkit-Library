@@ -10,6 +10,7 @@ var KnackApp = function ($, info = {}) {
 
     window.ktlkw = ktl.sysInfo.findAllKeywords;
     window.ktltm = ktl.core.toggleMode;
+    window.ktlkm = ktl.core.kioskMode;
 
     //====================================================
     //KTL Setup - BEGIN
@@ -100,7 +101,7 @@ var KnackApp = function ($, info = {}) {
             },
             chznBetterToExclude: [],
             chznBetterSetFocus: chznBetterSetFocus,
-
+            inlineEditActive: inlineEditActive,
             //Uncomment the two lines below to get horizontal layout for RBs and CBs.
             //horizontalRadioButtons: true,
             //horizontalCheckboxes: true,
@@ -169,8 +170,9 @@ var KnackApp = function ($, info = {}) {
                 //    },
                 },
 
-                versionDisplayName: Knack.app.attributes.name.toUpperCase(),
                 //versionDisplayName: 'CTRND', //As an example, when you prefer to use a shorter name.
+                versionDisplayName: Knack.app.attributes.name.toUpperCase(),
+                processMutation: processMutation,
             })
 
             ktl.userFilters.setCfg({
@@ -198,8 +200,6 @@ var KnackApp = function ($, info = {}) {
         if (ktl.core.isKiosk()) {
             ktl.scenes.addVersionInfo(info, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
         } else {
-            document.body.classList.add('show-menu');
-
             var versionStyle = '';
             var bottomCenter = false; //Set this to true to have the version info at bottom center of page, as an example.
             if (bottomCenter)
@@ -268,6 +268,9 @@ var KnackApp = function ($, info = {}) {
         location.reload(true);
     }
 
+    function processMutation(mutRec) {
+    }
+
     //Keypress event handler
     function onKeyPressed(e) {
         //var key = String.fromCharCode(e.which);
@@ -294,6 +297,13 @@ var KnackApp = function ($, info = {}) {
             ktl.log.clog('red', 'Exception in chznBetterSetFocus:');
             console.log(e);
         }
+    }
+
+    function inlineEditActive(viewId, fieldId, e) {
+        //Example to stretch the text input field.
+        //$('.kn-form-col.column.is-constrained').css({ 'max-width': '100vw', 'width': '75vw' }); //Example here that enlarges width.
+        //var sel = document.querySelector('.kn-form-col.column.is-constrained');
+        //console.log('sel =', sel);
     }
 
     function onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
