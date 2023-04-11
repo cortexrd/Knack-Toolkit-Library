@@ -8,9 +8,11 @@ var KnackApp = function ($, info = {}) {
     window.ktl = ktl;
     const IFRAME_WND_ID = 'iFrameWnd';
 
+    //Debug helper to open the app code by clicking the VM log at right.
+    if (ktl.storage.lsGetItem('remoteDev', true) === 'true')
+        console.log('Open App code by clicking VM here -=>');
+
     window.ktlkw = ktl.sysInfo.findAllKeywords;
-    window.ktltm = ktl.core.toggleMode;
-    window.ktlkm = ktl.core.kioskMode;
 
     //====================================================
     //KTL Setup - BEGIN
@@ -313,9 +315,8 @@ var KnackApp = function ($, info = {}) {
     }
 
     //Special app-specific keywords.  Note that all keywords must start by an underscore "_".
-    function processViewKeywords(view, data) {
-        if (!view.orgTitle) return;
-        if (view.orgTitle.includes('_my_app_keyword')) {
+    function processViewKeywords(view, keywords, data) {
+        if (keywords._my_app_keyword) {
             //Do something here...
         }
     }
@@ -380,7 +381,6 @@ var KnackApp = function ($, info = {}) {
                     //Process your msg here...
                 }
             }
-            //Ack is always handled by ktl.
         }
         catch (e) {
             ktl.log.clog('purple', 'App message handler error:');
@@ -400,7 +400,7 @@ var KnackApp = function ($, info = {}) {
         else if (msg.src === 'iFrame_App1' && msg.dst === 'App2_iFrame') //Can be app to app, app to iframe, iframe to App, but not iframe to iframe.
             parent.postMessage(msg, '*');
         else {
-            console.log('Called sendAppMsg with unsupported src/dst.');//$$$
+            console.log('Called sendAppMsg with unsupported src/dst.');
         }
     }
 

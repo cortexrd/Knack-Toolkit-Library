@@ -1997,7 +1997,7 @@ function Ktl($, info) {
 
                     var data = e.target.value;
                     var field = Knack.objects.getField(fieldId);
-                    if (field.attributes && field.attributes.format) {
+                    if (field && field.attributes && field.attributes.format) {
                         if (field.attributes.format.type === 'checkboxes') {
                             var options = document.querySelectorAll('#' + viewId + ' [data-input-id=' + fieldId + '] input.checkbox');
                             var optObj = {};
@@ -4325,6 +4325,8 @@ function Ktl($, info) {
                                 (keywords._hc || keywords._rc) && kwHideColumns(view, keywords);
                                 keywords._dr && numDisplayedRecords(view, keywords);
                                 keywords._cfv && colorizeFieldValue(view.key, keywords, data);
+
+                                processViewKeywords && processViewKeywords(view, keywords, data);
                             }
                         }
 
@@ -4336,8 +4338,6 @@ function Ktl($, info) {
                                 document.querySelector('#' + view.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
                             }
                         }
-
-                        processViewKeywords && processViewKeywords(view, data);
                     }
                     catch (err) { console.log('err', err); };
                 })
