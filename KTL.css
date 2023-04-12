@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.7 */
+/* KTL CSS version: 0.2.8 */
 
 /************ General Settings **************/
 .pointer {
@@ -63,7 +63,7 @@
 	padding-bottom: 500px;
 }
 
-.sortDisabled thead {
+.sortDisabled {
 	pointer-events: none;
 }
 

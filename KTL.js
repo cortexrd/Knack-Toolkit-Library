@@ -2763,7 +2763,6 @@ function Ktl($, info) {
                                 }
                             }
 
-
                             if (useUrlAr.length) {
                                 var filterUrlPart = filterDivIdToUrl(masterViewId);
                                 var parts = ktl.core.splitUrl(window.location.href);
@@ -4286,9 +4285,9 @@ function Ktl($, info) {
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data) {
+            if (!view || ktl.scenes.isiFrameWnd()) return;
             appPreProcess()
                 .then(() => {
-                    if (!view || ktl.scenes.isiFrameWnd()) return;
                     try {
                         var model = (Knack.views[view.key] && Knack.views[view.key].model);
 
@@ -4325,6 +4324,7 @@ function Ktl($, info) {
                                 (keywords._hc || keywords._rc) && kwHideColumns(view, keywords);
                                 keywords._dr && numDisplayedRecords(view, keywords);
                                 keywords._cfv && colorizeFieldValue(view.key, keywords, data);
+                                keywords._nsg && noSortingOnGrid(view.key);
 
                                 processViewKeywords && processViewKeywords(view, keywords, data);
                             }
@@ -4629,6 +4629,11 @@ function Ktl($, info) {
                 var sel = '#' + viewId + ' span:' + compareMode + '("' + params[1] + '")';
                 $(sel).css({ 'color': params[2], 'background-color': params[3] });
             })
+        }
+
+        function noSortingOnGrid(viewId) {
+            if (!viewId) return;
+            $('#' + viewId + ' thead [href]').addClass('sortDisabled');
         }
 
         return {
@@ -6750,8 +6755,6 @@ function Ktl($, info) {
 
                                     if ($('#devBtnsDivId').length) return;
 
-                                    var remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
-
                                     var devBtnsDiv = document.createElement('div');
                                     devBtnsDiv.setAttribute('id', 'devBtnsDivId');
                                     devBtnsDiv.classList.add('devBtnsDiv', 'center');
@@ -6804,6 +6807,7 @@ function Ktl($, info) {
                                         Knack.handleLogout();
                                     })
 
+                                    var remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
                                     ktl.fields.addButton(devBtnsDiv, 'CTRND Dev: ' + remoteDev, '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                         //This forces loading 'KTL-dev.js' debug code from CTRND's CDN, in Prod folder.
                                         //See 'remoteDev' in KTL_Start.js
