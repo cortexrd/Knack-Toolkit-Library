@@ -6595,8 +6595,10 @@ function Ktl($, info) {
             },
 
             spinnerWatchdog: function (run = true) {
-                if (!ktl.core.getCfg().enabled.spinnerWatchDog || spinnerWdExcludeScn.includes(Knack.router.current_scene_key))
-                    return;
+                if (!ktl.core.getCfg().enabled.spinnerWatchDog) return;
+
+                if (spinnerWdExcludeScn.includes(Knack.router.current_scene_key))
+                    run = false;
 
                 if (run) {
                     //ktl.log.clog('green', 'SWD running ' + Knack.router.current_scene_key);
@@ -8208,7 +8210,8 @@ function Ktl($, info) {
             ktlProcessServerErrors: function (msg = {}) {
                 if ($.isEmptyObject(msg)) return;
 
-                if (ktl.scenes.isiFrameWnd()) { //If an error id detect in the iFrameWnd, redirect it to the app for processing, since all desicions are taken there.
+                //If an error is detected in the iFrameWnd, redirect it to the app for processing, since all decisions are taken there.
+                if (ktl.scenes.isiFrameWnd()) {
                     ktl.wndMsg.send('ktlProcessServerErrorsMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, msg);
                     return;
                 }
