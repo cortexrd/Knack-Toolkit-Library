@@ -40,7 +40,7 @@ function Ktl($, info) {
             if (appPreProcessStatus === 'INIT') {
                 appPreProcessStatus = 'ONGOING';
                 var kwCleanupItv = setInterval(function () {
-                    if (Knack.router) {
+                    if (Knack.scenes.models.length) {
                         clearInterval(kwCleanupItv);
                         clearTimeout(failsafe);
 
@@ -160,36 +160,36 @@ function Ktl($, info) {
         });
     }
 
-    function parseKeywords(keywords, strToParse) {
-        var kwAr = [];
-        if (strToParse && strToParse !== '') {
-            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
-            kwAr.splice(0, 1);
-            for (var i = 0; i < kwAr.length; i++) {
-                kwAr[i] = kwAr[i].trim();
-                parseParams(kwAr[i], i);
-            }
-        }
+    //function parseKeywords(keywords, strToParse) {
+    //    var kwAr = [];
+    //    if (strToParse && strToParse !== '') {
+    //        var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9]{2,})/gm);
+    //        kwAr.splice(0, 1);
+    //        for (var i = 0; i < kwAr.length; i++) {
+    //            kwAr[i] = kwAr[i].trim();
+    //            parseParams(kwAr[i], i);
+    //        }
+    //    }
 
-        function parseParams(kwString, kwIdx) {
-            var kw = [];
-            if (kwAr[i].startsWith('_')) {
-                keywords[kwAr[i].toLowerCase()] = [];
-                return;
-            } else if (kwAr[i].startsWith('='))
-                kw = kwString.split('=');
+    //    function parseParams(kwString, kwIdx) {
+    //        var kw = [];
+    //        if (kwAr[i].startsWith('_')) {
+    //            keywords[kwAr[i].toLowerCase()] = [];
+    //            return;
+    //        } else if (kwAr[i].startsWith('='))
+    //            kw = kwString.split('=');
 
-            var params = [];
-            if (kw.length > 1) {
-                params = kw[1].split(',');
-                params.forEach((param, idx) => {
-                    params[idx] = param.trim();
-                })
-            }
+    //        var params = [];
+    //        if (kw.length > 1) {
+    //            params = kw[1].split(',');
+    //            params.forEach((param, idx) => {
+    //                params[idx] = param.trim();
+    //            })
+    //        }
 
-            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
-        }
-    }
+    //        keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+    //    }
+    //}
 
 
 
@@ -8236,7 +8236,7 @@ function Ktl($, info) {
                         }
                     } else if (msg.status == 500) {
                         ktl.core.timedPopup('Error 500 has occurred - reloading page...', 'warning');
-                        ktl.core.waitAndReload(2000);
+                        ktl.core.waitAndReload(2000); //Problem:  interrupts the process if happens during a Bulk Edit.
                         //TODO: 1-Add stats counter here   2-Reboot after 3+ times in 3 minutes if Android.
                     } else {
                         //Future errors here.
