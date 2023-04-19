@@ -9,8 +9,81 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.10.20';
+    const KTL_LATEST_JS_VERSION = '0.10.21';
     const KTL_LATEST_CSS_VERSION = '0.2.8';
+
+    //Extract all keywords form app structure.
+    for (var i = 0; i < Knack.scenes.models.length; i++) {
+        var scn = Knack.scenes.models[i];
+        var views = scn.views;
+        for (var j = 0; j < views.models.length; j++) {
+            var view = views.models[j];
+            if (view) {
+                var keywords = {};
+                var attr = view.attributes;
+                var title = attr.title;
+                var cleanedUpTitle = title;
+                var firstKeywordIdx;
+                if (title) {
+                    firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                    if (firstKeywordIdx >= 0) {
+                        cleanedUpTitle = title.substring(0, firstKeywordIdx);
+                        parseKeywords(keywords, title.substring(firstKeywordIdx).trim());
+                    }
+                }
+
+                var description = attr.description;
+                var cleanedUpDescription = description;
+                if (description) {
+                    firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                    if (firstKeywordIdx >= 0) {
+                        cleanedUpDescription = description.substring(0, firstKeywordIdx);
+                        parseKeywords(keywords, description.substring(firstKeywordIdx).trim());
+                    }
+                }
+
+                //Only write once - first time, when not yet existing.
+                !attr.orgTitle && (attr.orgTitle = attr.title);
+                !attr.keywords && (attr.keywords = keywords);
+
+                attr.title = cleanedUpTitle;
+                attr.description = cleanedUpDescription;
+            }
+        }
+    }
+
+    function parseKeywords(keywords, strToParse) {
+        var kwAr = [];
+        if (strToParse && strToParse !== '') {
+            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
+            kwAr.splice(0, 1);
+            for (var i = 0; i < kwAr.length; i++) {
+                kwAr[i] = kwAr[i].trim();
+                parseParams(kwAr[i], i);
+            }
+        }
+
+        function parseParams(kwString, kwIdx) {
+            var kw = [];
+            if (kwAr[i].startsWith('_')) {
+                keywords[kwAr[i].toLowerCase()] = [];
+                return;
+            } else if (kwAr[i].startsWith('='))
+                kw = kwString.split('=');
+
+            var params = [];
+            if (kw.length > 1) {
+                params = kw[1].split(',');
+                params.forEach((param, idx) => {
+                    params[idx] = param.trim();
+                })
+            }
+
+            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+        }
+    }
+
+    this.parseKeywords = parseKeywords;
 
     var cssVersion = KTL_LATEST_CSS_VERSION;
     var prodFolder = 'Prod/';

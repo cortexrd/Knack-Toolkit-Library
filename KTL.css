@@ -221,6 +221,11 @@
 	width: 260px;
 }
 
+/* Kiosk Mode */
+body.kiosk-mode { /* Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects. */
+	padding-top: 15px;
+}
+
 /* Kiosk buttons */
 .kioskButtons {
 	font-size: 20px !important;
