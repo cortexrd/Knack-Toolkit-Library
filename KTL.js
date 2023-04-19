@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.20';
+    const KTL_VERSION = '0.10.21';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -6655,7 +6655,7 @@ function Ktl($, info) {
                                     ktl.core.timedPopup('Switching to Kiosk mode...');
 
                                 ktl.core.kioskMode();
-                                Knack.router.scene_view.renderViews();
+                                Knack.router.scene_view.render();
                             })
 
                             const iFrmWndBtn = ktl.fields.addButton(devBtnsDiv, 'iFrameWnd', '', ['devBtn', 'kn-button']);
@@ -6722,12 +6722,6 @@ function Ktl($, info) {
 
                         return false; //False to prevent firing both events on mobile devices.
                     })
-
-                    //Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects.
-                    if (ktl.core.isKiosk() && !ktl.scenes.isiFrameWnd())
-                        $('body').css({ 'padding-top': '15px' });
-                    else
-                        $('body').css({ 'padding-top': '' });
                 }
             },
 

@@ -9,7 +9,7 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.10.20';
+    const KTL_LATEST_JS_VERSION = '0.10.21';
     const KTL_LATEST_CSS_VERSION = '0.2.8';
 
     //Extract all keywords form app structure.
