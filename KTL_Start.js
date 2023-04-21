@@ -110,10 +110,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         ktlSvr = 'http://localhost:3000/';
         var appUrl = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
         appUrl = encodeURI(appUrl);
-        if (typeof KnackApp === 'function') {
-            delete KnackApp;
-            KnackApp = undefined; //Required for those account where the delete doesn't work.
-        }
+        delete KnackApp;
         LazyLoad.js([appUrl], () => { })
     }
 

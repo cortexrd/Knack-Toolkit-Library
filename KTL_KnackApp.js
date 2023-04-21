@@ -1,6 +1,6 @@
 //====================================================
 //====================================================
-var KnackApp = function ($, info = {}) {
+window.KnackApp = function ($, info = {}) {
     window.APP_VERSION = '1.0.0'; //Your App version.
 
     window.$ = $;
