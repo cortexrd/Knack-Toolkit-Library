@@ -1,6 +1,6 @@
 //====================================================
 //====================================================
-var KnackApp = function ($, info = {}) {
+window.KnackApp = function ($, info = {}) {
     window.APP_VERSION = '1.0.0'; //Your App version.
 
     window.$ = $;
@@ -84,6 +84,7 @@ var KnackApp = function ($, info = {}) {
         ktl.views.setCfg({
             processViewKeywords: processViewKeywords,
             handleCalendarEventDrop: handleCalendarEventDrop,
+            handlePreprocessSubmitError: handlePreprocessSubmitError,
             //Uncomment below to override default Quick Toggle colors.
             //    quickToggleParams: {
             //        bgColorTrue: '#39d91f',
@@ -434,6 +435,9 @@ var KnackApp = function ($, info = {}) {
 
     function handleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc) {
         //console.log('eventDrop', { view, event, dayDelta, minuteDelta, allDay, revertFunc });
+    }
+
+    function handlePreprocessSubmitError(viewId, outcomeObj) {
     }
 
     //KTL callbacks to your App - END

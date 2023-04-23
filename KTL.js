@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.21';
+    const KTL_VERSION = '0.10.22';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -28,6 +28,77 @@ function Ktl($, info) {
 
     //KEC stands for "KTL Event Code".  Next:  KEC_1026
     //
+
+    //First thing: Extract all keywords from app structure.
+    for (var i = 0; i < Knack.scenes.models.length; i++) {
+        var scn = Knack.scenes.models[i];
+        var views = scn.views;
+        for (var j = 0; j < views.models.length; j++) {
+            var view = views.models[j];
+            if (view) {
+                var keywordsObj = {};
+                var attr = view.attributes;
+                var title = attr.title;
+                var cleanedUpTitle = title;
+                var firstKeywordIdx;
+                if (title) {
+                    firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                    if (firstKeywordIdx >= 0) {
+                        cleanedUpTitle = title.substring(0, firstKeywordIdx);
+                        parseKeywords(keywordsObj, title.substring(firstKeywordIdx).trim());
+                    }
+                }
+
+                var description = attr.description;
+                var cleanedUpDescription = description;
+                if (description) {
+                    firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+                    if (firstKeywordIdx >= 0) {
+                        cleanedUpDescription = description.substring(0, firstKeywordIdx);
+                        parseKeywords(keywordsObj, description.substring(firstKeywordIdx).trim());
+                    }
+                }
+
+                //Only write once - first time, when not yet existing.
+                !attr.orgTitle && (attr.orgTitle = attr.title);
+                !attr.keywords && (attr.keywords = keywordsObj);
+
+                attr.title = cleanedUpTitle;
+                attr.description = cleanedUpDescription;
+            }
+        }
+    }
+
+    function parseKeywords(keywords, strToParse) {
+        var kwAr = [];
+        if (strToParse && strToParse !== '') {
+            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
+            kwAr.splice(0, 1);
+            for (var i = 0; i < kwAr.length; i++) {
+                kwAr[i] = kwAr[i].trim().replace(/\u200B/g, ''); //u200B is a "zero width space".  Caught that once during a copy/paste!
+                parseParams(kwAr[i], i);
+            }
+        }
+
+        function parseParams(kwString, kwIdx) {
+            var kw = [];
+            if (kwAr[i].startsWith('_')) {
+                keywords[kwAr[i].toLowerCase()] = [];
+                return;
+            } else if (kwAr[i].startsWith('='))
+                kw = kwString.split('=');
+
+            var params = [];
+            if (kw.length > 1) {
+                params = kw[1].split(',');
+                params.forEach((param, idx) => {
+                    params[idx] = param.trim();
+                })
+            }
+
+            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+        }
+    }
 
     //This is for early notifications of DOM changes.
     //Prevents spurious GUI updates (flickering).
@@ -1162,8 +1233,6 @@ function Ktl($, info) {
             //Do we need to add the chznBetter object?
             //chznBetter is ktl's fix to a few chzn dropdown problems.
             //Note that support of multi-selection type has been removed.  Too buggy for now, and needs more work.
-            //console.log('e =', e);
-            //if (ktl.core.getCfg().enabled.chznBetter && e.path.length >= 1 && !ktl.fields.getUsingBarcode()) {
             if (ktl.core.getCfg().enabled.chznBetter && !ktl.fields.getUsingBarcode()) {
                 //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
                 var dropdownId = $(e.target).closest('.chzn-container').attr('id');
@@ -1251,12 +1320,18 @@ function Ktl($, info) {
         //Add Change event handlers for Dropdowns, Calendars, etc.
         $(document).on('knack-scene-render.any', function (event, scene) {
             //Dropdowns
+            var timeout = null;
             $('.chzn-select').chosen().change(function (e, p) {
                 if (e.target.id && e.target.selectedOptions[0]) {
                     var text = e.target.selectedOptions[0].innerText;
                     var recId = e.target.selectedOptions[0].value; //@@@ TODO: create a function called hasRecIdFormat() to validate hex and 24 chars.
-                    if (text !== '' && text !== 'Select' && text !== 'Type to search')
-                        processFieldChanged({ text: text, recId: recId, e: e });
+                    if (text !== '' && text !== 'Select' && text !== 'Type to search') {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => {
+                            processFieldChanged({ text: text, recId: recId, e: e });
+                        }, 500);
+
+                    }
                 }
             })
 
@@ -1276,6 +1351,9 @@ function Ktl($, info) {
                         || document.querySelector('#' + viewId + ' .kn-search-filter #' + e.target.id).getAttribute('name'); //TODO: Need to support multiple search fields.
 
                     var p = { viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e };
+                    console.log('p =', p);
+                    //console.log('changed 2', { text: text, recId: recId, e: e });
+
                     ktl.persistentForm.ktlOnFieldValueChanged(p);
                     ktl.fields.onFieldValueChanged(p); //Notify app of change
                 } catch { /*ignore*/ }
@@ -1369,7 +1447,7 @@ function Ktl($, info) {
 
                         if (inputFld) {
                             var value = inputFld.value;
-                            var fieldValid = !isNaN(value);
+                            var fieldValid = validateNumericValue(value);
 
                             var fieldDesc = ktl.fields.getFieldDescription(inputFld.id);
                             if (fieldDesc && fieldDesc.includes('_int'))
@@ -1390,6 +1468,29 @@ function Ktl($, info) {
                         submit.validity.invalidItemObj ? submit.validity.invalidItemObj.numericValid = false : submit.validity.invalidItemObj = { numericValid: false };
 
                     ktl.views.updateSubmitButtonState(viewId);
+
+                    function validateNumericValue(value) {
+                        // Remove all spaces from the value.
+                        value = value.replace(/\s/g, '');
+                        if (value === '') return true;
+
+                        // Check if the value is a valid number with decimal or comma separator.
+                        if (!/^[-+]?\d{1,3}(?:([.,])\d{3})*\1?\d*(?:\.\d+)?$/.test(value))
+                            return false;
+
+                        // Replace comma separator with a period, if necessary.
+                        if (value.indexOf(',') !== -1 && value.indexOf('.') !== -1) {
+                            value = value.replace(/,/g, '');
+                        } else if (value.indexOf(',') !== -1) {
+                            value = value.replace(/,/g, '.');
+                        }
+
+                        // Check if the value is a valid number without decimal or comma separator.
+                        if (!/^[-+]?\d*\.?\d+$/.test(value))
+                            return false;
+
+                        return true;
+                    }
                 })
             },
 
@@ -1778,7 +1879,7 @@ function Ktl($, info) {
                 if (fieldDesc) {
                     var keywords = {};
                     fieldDesc = fieldDesc.toLowerCase().replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
-                    window.parseKeywords(keywords, fieldDesc);
+                    parseKeywords(keywords, fieldDesc);
                     if (!$.isEmptyObject(keywords))
                         fieldKeywords[fieldId] = keywords;
                 }
@@ -4108,6 +4209,7 @@ function Ktl($, info) {
         var unPauseTimer = null;
         var processViewKeywords = null;
         var handleCalendarEventDrop = null;
+        var handlePreprocessSubmitError = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
         var currentFocus = null;
         var gotoDateObj = new Date();
@@ -4387,7 +4489,7 @@ function Ktl($, info) {
             var viewId = e.target.closest('.kn-view');
             viewId = viewId ? viewId.id : null;
 
-            if (viewId && e.target.closest('#' + viewId + ' .kn-button.is-primary'))
+            if (viewId && e.target.closest('#' + viewId + ' .kn-button.is-primary') && !ktl.scenes.isiFrameWnd())
                 ktl.views.preprocessSubmit(viewId, e);
         })
 
@@ -4493,6 +4595,7 @@ function Ktl($, info) {
                 cfgObj.processViewKeywords && (processViewKeywords = cfgObj.processViewKeywords);
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
                 cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
+                cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
             },
 
             refreshView: function (viewId) {
@@ -5565,12 +5668,19 @@ function Ktl($, info) {
                                 $('#' + viewId + ' form').submit();
                             })
                             .catch(outcomeObj => {
-                                outcomeObj.msg && Knack.$['utility_forms'].renderMessage($('#' + viewId + ' form'), '<b>KTL Error: ' + outcomeObj.msg + '</b>', 'error');
+                                ktlHandlePreprocessSubmitError(outcomeObj);
                             })
                     })
                     .catch(outcomeObj => {
-                        outcomeObj.msg && Knack.$['utility_forms'].renderMessage($('#' + viewId + ' form'), '<b>KTL Error: ' + outcomeObj.msg + '</b>', 'error');
+                        ktlHandlePreprocessSubmitError(outcomeObj);
                     })
+
+                function ktlHandlePreprocessSubmitError(outcomeObj) {
+                    outcomeObj.msg && Knack.$['utility_forms'].renderMessage($('#' + viewId + ' form'), '<b>KTL Error: ' + outcomeObj.msg + '</b>', 'error');
+                    setTimeout(() => {
+                        handlePreprocessSubmitError && handlePreprocessSubmitError(viewId, outcomeObj);
+                    }, 100)
+                }
 
                 function preprocessFields(viewId, e) {
                     return new Promise(function (resolve, reject) {
@@ -5694,7 +5804,10 @@ function Ktl($, info) {
                         groups.forEach(grp => {
                             grp.columns.forEach(col => {
                                 col.fields.forEach(fld => {
-                                    foundFields.push(fld.field);
+                                    if (fld.connection)
+                                        foundFields.push(fld.connection.key);
+                                    else
+                                        foundFields.push(fld.field);
                                 })
                             })
                         })
@@ -6376,6 +6489,7 @@ function Ktl($, info) {
                                     e.preventDefault();
 
                                     //Exceptions, where we want to jump to a specific URL.
+                                    //Also used to bypass history, like when user does a few searches.
                                     var href = $('#' + kioskButtons[backOrDone].id).attr('href');
                                     if (href)
                                         window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
