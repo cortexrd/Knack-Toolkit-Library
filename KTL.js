@@ -5760,6 +5760,7 @@ function Ktl($, info) {
                                                 .then(foundRecords => {
                                                     if (foundRecords.length) {
                                                         outcomeObj.msg = fieldName + ' must be unique. "' + value + '" is already being used.';
+                                                        outcomeObj.foundRecords = foundRecords;
                                                         reject(outcomeObj);
                                                         return;
                                                     } else {

@@ -445,6 +445,7 @@ window.KnackApp = function ($, info = {}) {
     }
 
     function handlePreprocessSubmitError(viewId, outcomeObj) {
+        //console.log('outcomeObj =', outcomeObj);
     }
 
     //KTL callbacks to your App - END
