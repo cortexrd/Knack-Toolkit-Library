@@ -310,6 +310,13 @@ window.KnackApp = function ($, info = {}) {
     }
 
     function onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
+        //console.log('onFieldValueChanged:');
+        //console.log('viewId =', viewId);
+        //console.log('fieldId =', fieldId);
+        //console.log('recId =', recId);
+        //console.log('text =', text);
+        //console.log('e =', e);
+
         if (viewId === 'view_xyz') {
             //Your specific code here...
         }

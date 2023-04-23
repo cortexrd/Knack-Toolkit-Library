@@ -1351,9 +1351,6 @@ function Ktl($, info) {
                         || document.querySelector('#' + viewId + ' .kn-search-filter #' + e.target.id).getAttribute('name'); //TODO: Need to support multiple search fields.
 
                     var p = { viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e };
-                    console.log('p =', p);
-                    //console.log('changed 2', { text: text, recId: recId, e: e });
-
                     ktl.persistentForm.ktlOnFieldValueChanged(p);
                     ktl.fields.onFieldValueChanged(p); //Notify app of change
                 } catch { /*ignore*/ }
