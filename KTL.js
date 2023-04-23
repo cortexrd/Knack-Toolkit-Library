@@ -6747,9 +6747,12 @@ function Ktl($, info) {
                             devBtnsDiv.classList.add('devBtnsDiv', 'center');
                             document.body.appendChild(devBtnsDiv);
 
-                            ktl.fields.addButton(devBtnsDiv, 'Dev/Prod', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                                ktl.core.toggleMode();
-                            })
+                            //Requires NodeJS and file server to run otherwise crashes.
+                            if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
+                                ktl.fields.addButton(devBtnsDiv, 'Dev/Prod', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                    ktl.core.toggleMode();
+                                })
+                            }
 
                             ktl.fields.addButton(devBtnsDiv, 'View IDs', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                 userPrefsObj.showViewId = !userPrefsObj.showViewId;
