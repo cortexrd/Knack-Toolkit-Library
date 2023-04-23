@@ -1,4 +1,4 @@
-var ktlFeatures = {
+window.ktlFeatures = {
     showAppInfo: false,
     showKtlInfo: false,
     showMenuInTitle: false,
