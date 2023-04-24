@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.10.23';
+    const KTL_VERSION = '0.10.24';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -8252,7 +8252,6 @@ function Ktl($, info) {
         var previousScene = '';
         var apiData = {};
 
-
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (previousScene !== scene.key) {
                 previousScene = scene.key;
@@ -8390,14 +8389,6 @@ function Ktl($, info) {
             updateDeleteButtonStatus(viewId, numChecked);
             updateHeaderCheckboxes(viewId, numChecked);
 
-            if (!$.isEmptyObject(apiData)) {
-                const reuseLastSrcBtn = ktl.fields.addButton(devBtnsDiv, 'Close', '', ['devBtn', 'kn-button']);
-                reuseLastSrcBtn.addEventListener('click', () => {
-                    $('#devBtnsDivId').remove();
-                })
-
-            }
-
             if (numChecked > 0)
                 ktl.views.autoRefresh(false);
             else
@@ -8409,11 +8400,8 @@ function Ktl($, info) {
         function enableBulkOperations(view, data) {
             addCheckboxesToTable(view.key);
             addBulkOpsButtons(view, data);
-            ktl.views.fixTableRowsAlignment(view.key);
 
-            var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
-            if (canDelete && ktl.core.getCfg().enabled.bulkOps.bulkDelete && Knack.getUserRoleNames().includes('Bulk Delete'))
-                addBulkDeleteButtons(view, data);
+            ktl.views.fixTableRowsAlignment(view.key);
 
             //Put back checkboxes that were checked before view refresh.
             if (view.key === bulkOpsViewId) {
@@ -8428,9 +8416,6 @@ function Ktl($, info) {
             }
 
             updateBulkOpsGuiElements(view.key);
-        }
-
-        function addBulkOpsButtons() {
         }
 
         function addCheckboxesToTable(viewId) {
@@ -8477,6 +8462,154 @@ function Ktl($, info) {
                 $('#' + viewId + ' tbody tr td input:checkbox').addClass('bulkEditCb');
 
             }
+        }
+
+        function addBulkOpsButtons(view, data) {
+            if (document.querySelector('#' + view.key + ' .bulkOpsControlsDiv')) return;
+
+            var prepend = false;
+            var div = document.querySelector('#' + view.key + ' .table-keyword-search') || document.querySelector('#' + view.key + ' .view-header');
+            if (!div) {
+                div = document.querySelector('#' + view.key);
+                if (!div) return; //Support other layout options as we go.
+                prepend = true;
+            }
+
+            var bulkOpsControlsDiv = document.createElement('div');
+            bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv');
+            prepend ? $(div).prepend(bulkOpsControlsDiv) : $(div).append(bulkOpsControlsDiv);
+
+            addBulkDeleteButtons(view, data);
+            addReuseLastSourceButton(view);
+        }
+
+        function addBulkDeleteButtons(view, data) {
+            if (!document.querySelector('#' + view.key + ' .kn-link-delete')
+                || !ktl.core.getCfg().enabled.bulkOps.bulkDelete
+                || !Knack.getUserRoleNames().includes('Bulk Delete')
+                || !data.length
+                || ktl.scenes.isiFrameWnd())
+                return;
+
+            //Add Delete Selected button.
+            if (!document.querySelector('#kn-button-delete-selected-' + view.key)) {
+                var deleteRecordsBtn = ktl.fields.addButton(document.querySelector('.bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'kn-button-delete-selected-' + view.key);
+                deleteRecordsBtn.addEventListener('click', function (event) {
+                    var deleteArray = [];
+                    $('#' + view.key + ' tbody input[type=checkbox]:checked').each(function () {
+                        if (!$(this).closest('.kn-table-totals').length) {
+                            deleteArray.push($(this).closest('tr').attr('id'));
+                        }
+                    });
+
+                    ktl.scenes.spinnerWatchdog(false);
+                    ktl.bulkOps.deleteRecords(deleteArray, view)
+                        .then(function () {
+                            ktl.scenes.spinnerWatchdog();
+                            $.blockUI({
+                                message: '',
+                                overlayCSS: {
+                                    backgroundColor: '#ddd',
+                                    opacity: 0.2,
+                                    //cursor: 'wait'
+                                },
+                            })
+
+                            //The next two timeouts are needed to allow enough time for table to update itself, otherwise, we don't get updated results.
+                            setTimeout(function () {
+                                ktl.views.refreshView(view.key).then(function (model) {
+                                    setTimeout(function () {
+                                        $.unblockUI();
+                                        if (bulkOpsDeleteAll) {
+                                            if (model && model.length > 0) {
+                                                $('#kn-button-delete-all-' + view.key).click();
+                                            } else {
+                                                bulkOpsDeleteAll = false;
+                                                alert('Delete All has completed successfully');
+                                            }
+                                        } else
+                                            alert('Deleted Selected has completed successfully');
+                                    }, 2000);
+                                });
+                            }, 2000);
+                        })
+                        .catch(function (response) {
+                            $.unblockUI();
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1024 - Bulk Delete failed, reason: ' + response);
+                            alert('Failed deleting record.\n' + response);
+                        })
+                });
+            }
+
+            //Delete All button for massive delete operations, with automated looping over all pages automatically.
+            //Only possible when filtering is used.
+            if (document.querySelector('#' + view.key + ' .kn-tag-filter') && !document.querySelector('#kn-button-delete-all-' + view.key)) {
+                var deleteAllRecordsBtn = ktl.fields.addButton(document.querySelector('.bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'kn-button-delete-all-' + view.key);
+                if (data.length > 0)
+                    deleteAllRecordsBtn.disabled = false;
+                else
+                    deleteAllRecordsBtn.disabled = true;
+
+                //Get total number of records to delete.  Either get it from summary, or from data length when summary not shown (less than ~7 records).
+                var totalRecords = $('#' + view.key + ' .kn-entries-summary').last();
+                if (totalRecords.length > 0)
+                    totalRecords = totalRecords.html().substring(totalRecords.html().lastIndexOf('of</span> ') + 10).replace(/\s/g, '');
+                else
+                    totalRecords = data.length;
+
+                deleteAllRecordsBtn.textContent = 'Delete All: ' + totalRecords;
+
+                deleteAllRecordsBtn.addEventListener('click', function (event) {
+                    var allChk = $('#' + view.key + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]');
+                    if (allChk.length > 0) {
+                        if (data.length > 0) {
+                            if (!bulkOpsDeleteAll) { //First time, kick start process.
+                                const objName = ktl.views.getViewSourceName(view.key);
+                                if (confirm('Are you sure you want to delete all ' + totalRecords + ' ' + objName + ((totalRecords > 1 && objName.slice(-1) !== 's') ? 's' : '') + '?\nNote:  you can abort the process at any time by pressing F5.'))
+                                    bulkOpsDeleteAll = true;
+                                //Note that pressing Escape on keyboard to exit the "confim" dialog causes a loss of focus.  Search stops working since you can't type in text.
+                                //You must click Delete All again and click Cancel with the mouse to restore to normal behavior!  Weird...
+                            }
+
+                            if (bulkOpsDeleteAll) {
+                                allChk[0].click();
+                                setTimeout(function () {
+                                    $('#kn-button-delete-selected-' + view.key).click();
+                                }, 500);
+                            }
+                        } else { //For good luck - should never happen since button is disabled when no data.
+                            bulkOpsDeleteAll = false;
+                            console.log('DELETE ALL MODE - No data to delete');
+                        }
+                    }
+                });
+            }
+
+            $('#' + view.key + ' input[type=checkbox]').on('click', function (e) {
+                var numChecked = $('#' + view.key + ' tbody input[type=checkbox]:checked').length;
+
+                //If Delete All was used, just keep going!
+                if (numChecked && bulkOpsDeleteAll)
+                    $('#kn-button-delete-selected-' + view.key).click();
+            });
+        }
+
+        function updateDeleteButtonStatus(viewId = '', numChecked) {
+            var deleteRecordsBtn = document.querySelector('#kn-button-delete-selected-' + viewId);
+            if (deleteRecordsBtn) {
+                deleteRecordsBtn.disabled = !numChecked;
+                deleteRecordsBtn.textContent = 'Delete Selected: ' + numChecked;
+            }
+
+            ktl.views.autoRefresh(!numChecked); //If a checkbox is clicked, pause auto-refresh otherwise user will lose all selections.
+        }
+
+        function addReuseLastSourceButton(view) {
+            if ($.isEmptyObject(apiData) || document.querySelector('kn-button-reuse-last-src-' + view.key)) return;
+            var reuseLastSourceBtn = ktl.fields.addButton(document.querySelector('.bulkOpsControlsDiv'), 'Reuse Last Source', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'kn-button-reuse-last-src-' + view.key);
+            reuseLastSourceBtn.addEventListener('click', function (event) {
+                processBulkOps(view.key);
+            })
         }
 
         function updateHeaderCheckboxes(viewId, numChecked = 0) {
@@ -8605,149 +8738,6 @@ function Ktl($, info) {
                     }
                 }
             }
-        }
-
-        function addBulkDeleteButtons(view, data, div = null) {
-            if (!ktl.core.getCfg().enabled.bulkOps.bulkDelete || !data.length || ktl.scenes.isiFrameWnd())
-                return;
-
-            var prepend = false;
-            if (!div) { //If no div is supplied, try other options.
-                div = document.querySelector('#' + view.key + ' .table-keyword-search') || document.querySelector('#' + view.key + ' .view-header');
-                if (!div) {
-                    div = document.querySelector('#' + view.key);
-                    if (!div) return; //TODO: Support other layout options as we go.
-                    prepend = true;
-                }
-            }
-
-            //Add Delete Selected button.
-            if (!document.querySelector('#kn-button-delete-selected-' + view.key)) {
-                var deleteRecordsBtn = document.createElement('BUTTON');
-                deleteRecordsBtn.setAttribute('class', 'kn-button');
-                deleteRecordsBtn.id = 'kn-button-delete-selected-' + view.key;
-                prepend ? (deleteRecordsBtn.style.marginBottom = '10px') : (deleteRecordsBtn.style.marginInlineStart = '30px');
-                deleteRecordsBtn.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
-                deleteRecordsBtn.disabled = true;
-                prepend ? $(div).prepend(deleteRecordsBtn) : $(div).append(deleteRecordsBtn);
-
-                deleteRecordsBtn.addEventListener('click', function (event) {
-                    var deleteArray = [];
-                    $('#' + view.key + ' tbody input[type=checkbox]:checked').each(function () {
-                        if (!$(this).closest('.kn-table-totals').length) {
-                            deleteArray.push($(this).closest('tr').attr('id'));
-                        }
-                    });
-
-                    ktl.scenes.spinnerWatchdog(false);
-                    ktl.bulkOps.deleteRecords(deleteArray, view)
-                        .then(function () {
-                            ktl.scenes.spinnerWatchdog();
-                            $.blockUI({
-                                message: '',
-                                overlayCSS: {
-                                    backgroundColor: '#ddd',
-                                    opacity: 0.2,
-                                    //cursor: 'wait'
-                                },
-                            })
-
-                            //The next two timeouts are needed to allow enough time for table to update itself, otherwise, we don't get updated results.
-                            setTimeout(function () {
-                                ktl.views.refreshView(view.key).then(function (model) {
-                                    setTimeout(function () {
-                                        $.unblockUI();
-                                        if (bulkOpsDeleteAll) {
-                                            if (model && model.length > 0) {
-                                                $('#kn-button-delete-all-' + view.key).click();
-                                            } else {
-                                                bulkOpsDeleteAll = false;
-                                                alert('Delete All has completed successfully');
-                                            }
-                                        } else
-                                            alert('Deleted Selected has completed successfully');
-                                    }, 2000);
-                                });
-                            }, 2000);
-                        })
-                        .catch(function (response) {
-                            $.unblockUI();
-                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1024 - Bulk Delete failed, reason: ' + response);
-                            alert('Failed deleting record.\n' + response);
-                        })
-                });
-            }
-
-            //Delete All button for massive delete operations, with automated looping over all pages automatically.
-            //Only possible when filtering is used.
-            var filter = $('#' + view.key + '_filters > ul > li');
-            if (filter.length > 0) {
-                if ($('#kn-button-delete-all-' + view.key).length === 0) {
-                    var deleteAllRecordsBtn = document.createElement('BUTTON');
-                    deleteAllRecordsBtn.setAttribute('class', 'kn-button');
-                    deleteAllRecordsBtn.id = 'kn-button-delete-all-' + view.key;
-                    deleteAllRecordsBtn.style.marginLeft = '5%';
-                    deleteAllRecordsBtn.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
-                    if (data.length > 0)
-                        deleteAllRecordsBtn.disabled = false;
-                    else
-                        deleteAllRecordsBtn.disabled = true;
-
-                    div.appendChild(deleteAllRecordsBtn);
-
-                    //Get total number of records to delete.  Either get it from summary, or from data length when summary not shown (less than ~7 records).
-                    var totalRecords = $('#' + view.key + ' .kn-entries-summary').last();
-                    if (totalRecords.length > 0)
-                        totalRecords = totalRecords.html().substring(totalRecords.html().lastIndexOf('of</span> ') + 10).replace(/\s/g, '');
-                    else
-                        totalRecords = data.length;
-
-                    deleteAllRecordsBtn.textContent = 'Delete All: ' + totalRecords;
-
-                    deleteAllRecordsBtn.addEventListener('click', function (event) {
-                        var allChk = $('#' + view.key + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]');
-                        if (allChk.length > 0) {
-                            if (data.length > 0) {
-                                if (!bulkOpsDeleteAll) { //First time, kick start process.
-                                    const objName = ktl.views.getViewSourceName(view.key);
-                                    if (confirm('Are you sure you want to delete all ' + totalRecords + ' ' + objName + ((totalRecords > 1 && objName.slice(-1) !== 's') ? 's' : '') + '?\nNote:  you can abort the process at any time by pressing F5.'))
-                                        bulkOpsDeleteAll = true;
-                                    //Note that pressing Escape on keyboard to exit the "confim" dialog causes a loss of focus.  Search stops working since you can't type in text.
-                                    //You must click Delete All again and click Cancel with the mouse to restore to normal behavior!  Weird...
-                                }
-
-                                if (bulkOpsDeleteAll) {
-                                    allChk[0].click();
-                                    setTimeout(function () {
-                                        $('#kn-button-delete-selected-' + view.key).click();
-                                    }, 500);
-                                }
-                            } else { //For good luck - should never happen since button is disabled when no data.
-                                bulkOpsDeleteAll = false;
-                                console.log('DELETE ALL MODE - No data to delete');
-                            }
-                        }
-                    });
-                }
-            }
-
-            $('#' + view.key + ' input[type=checkbox]').on('click', function (e) {
-                var numChecked = $('#' + view.key + ' tbody input[type=checkbox]:checked').length;
-
-                //If Delete All was used, just keep going!
-                if (numChecked && bulkOpsDeleteAll)
-                    $('#kn-button-delete-selected-' + view.key).click();
-            });
-        }
-
-        function updateDeleteButtonStatus(viewId = '', numChecked) {
-            var deleteRecordsBtn = document.querySelector('#kn-button-delete-selected-' + viewId);
-            if (deleteRecordsBtn) {
-                deleteRecordsBtn.disabled = !numChecked;
-                deleteRecordsBtn.textContent = 'Delete Selected: ' + numChecked;
-            }
-
-            ktl.views.autoRefresh(!numChecked); //If a checkbox is clicked, pause auto-refresh otherwise user will lose all selections.
         }
 
         return {

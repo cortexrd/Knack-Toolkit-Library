@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.8 */
+/* KTL CSS version: 0.2.9 */
 
 /************ General Settings **************/
 .pointer {
@@ -72,6 +72,15 @@
 }
 
 /* Bulk Operations */
+.bulkOpsControlsDiv{
+	display: flex;
+	margin-inline-start: 20px;
+}
+
+.ktlButtonMargin {
+	margin-inline: 5px !important;
+}
+
 .bulkEditCb {
 	width: 18px;
 	height: 18px;
