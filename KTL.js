@@ -8250,6 +8250,8 @@ function Ktl($, info) {
         var bulkOpsLubFieldId = null;
         var bulkOpsDeleteAll = false;
         var previousScene = '';
+        var apiData = {};
+
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (previousScene !== scene.key) {
@@ -8304,6 +8306,8 @@ function Ktl($, info) {
                     }
                 }
             })
+
+            //When user clicks on Reuse Last Source.
         })
 
         var preventClick = false;
@@ -8386,6 +8390,14 @@ function Ktl($, info) {
             updateDeleteButtonStatus(viewId, numChecked);
             updateHeaderCheckboxes(viewId, numChecked);
 
+            if (!$.isEmptyObject(apiData)) {
+                const reuseLastSrcBtn = ktl.fields.addButton(devBtnsDiv, 'Close', '', ['devBtn', 'kn-button']);
+                reuseLastSrcBtn.addEventListener('click', () => {
+                    $('#devBtnsDivId').remove();
+                })
+
+            }
+
             if (numChecked > 0)
                 ktl.views.autoRefresh(false);
             else
@@ -8396,6 +8408,7 @@ function Ktl($, info) {
         //Called upon each view rendering.
         function enableBulkOperations(view, data) {
             addCheckboxesToTable(view.key);
+            addBulkOpsButtons(view, data);
             ktl.views.fixTableRowsAlignment(view.key);
 
             var canDelete = document.querySelector('#' + view.key + ' .kn-link-delete');
@@ -8415,6 +8428,9 @@ function Ktl($, info) {
             }
 
             updateBulkOpsGuiElements(view.key);
+        }
+
+        function addBulkOpsButtons() {
         }
 
         function addCheckboxesToTable(viewId) {
@@ -8495,92 +8511,99 @@ function Ktl($, info) {
         function processBulkOps(viewId, e) {
             if (!viewId) return;
 
-            if (confirm('Are you sure you want to apply this value to all selected items?')) {
-                ktl.core.knAPI(viewId, e.target.closest('tr[id]').id, {}, 'GET')
-                    .then(src => {
-                        const objName = ktl.views.getViewSourceName(bulkOpsViewId);
+            if (confirm('Are you sure you want to apply this source data to all selected records?')) {
+                if (!$.isEmptyObject(apiData)) {
+                    doBulkEditNow(); //Reuse Last Source button.
+                } else {
+                    ktl.core.knAPI(viewId, e.target.closest('tr[id]').id, {}, 'GET')
+                        .then(src => {
+                            bulkOpsNewValue = {};
 
-                        var apiData = {};
-                        bulkOpsNewValue = {};
-
-                        //Add all selected fields from header.
-                        var checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
-                        if (checkedFields.length) {
-                            checkedFields.each((idx, cbox) => {
-                                var fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
-                                if (fieldId.startsWith('field_')) {
-                                    if (cbox.checked) {
-                                        apiData[fieldId] = src[fieldId + '_raw'];
+                            //Add all selected fields from header.
+                            var checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
+                            if (checkedFields.length) {
+                                checkedFields.each((idx, cbox) => {
+                                    var fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
+                                    if (fieldId.startsWith('field_')) {
+                                        if (cbox.checked) {
+                                            apiData[fieldId] = src[fieldId + '_raw'];
+                                        }
                                     }
+                                })
+                            } else {
+                                //If no column selected, use field clicked.
+                                var clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
+                                if (clickedFieldId.length && clickedFieldId.attr('data-field-key').startsWith('field_')) {
+                                    clickedFieldId = clickedFieldId.attr('data-field-key');
+                                    apiData[clickedFieldId] = src[clickedFieldId + '_raw'];
                                 }
-                            })
-                        } else {
-                            //If no column selected, use field clicked.
-                            var clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
-                            if (clickedFieldId.length && clickedFieldId.attr('data-field-key').startsWith('field_')) {
-                                clickedFieldId = clickedFieldId.attr('data-field-key');
-                                apiData[clickedFieldId] = src[clickedFieldId + '_raw'];
                             }
-                        }
 
-                        if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
-                            apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false).substr(0, 10);
-                            apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
-                        }
+                            doBulkEditNow();
+                        })
+                        .catch(function (reason) {
+                            console.log('reason =', reason);
+                        })
+                }
 
-                        ktl.core.infoPopup();
-                        ktl.views.autoRefresh(false);
-                        ktl.scenes.spinnerWatchdog(false);
+                function doBulkEditNow() {
+                    const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
-                        var arrayLen = bulkOpsRecIdArray.length;
+                    if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
+                        apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false).substr(0, 10);
+                        apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
+                    }
 
-                        var idx = 0;
-                        var countDone = 0;
-                        var itv = setInterval(() => {
-                            if (idx < arrayLen)
-                                updateRecord(bulkOpsRecIdArray[idx++]);
-                            else
-                                clearInterval(itv);
-                        }, 150);
+                    ktl.core.infoPopup();
+                    ktl.views.autoRefresh(false);
+                    ktl.scenes.spinnerWatchdog(false);
+
+                    var arrayLen = bulkOpsRecIdArray.length;
+
+                    var idx = 0;
+                    var countDone = 0;
+                    var itv = setInterval(() => {
+                        if (idx < arrayLen)
+                            updateRecord(bulkOpsRecIdArray[idx++]);
+                        else
+                            clearInterval(itv);
+                    }, 150);
 
 
-                        function updateRecord(recId) {
-                            showProgress();
-                            ktl.core.knAPI(bulkOpsViewId, recId, apiData, 'PUT')
-                                .then(function () {
-                                    if (++countDone === bulkOpsRecIdArray.length) {
-                                        bulkOpsRecIdArray = [];
-                                        Knack.showSpinner();
-                                        ktl.core.removeInfoPopup();
-                                        ktl.views.refreshView(bulkOpsViewId).then(function () {
-                                            ktl.core.removeTimedPopup();
-                                            ktl.scenes.spinnerWatchdog();
-                                            setTimeout(function () {
-                                                ktl.views.autoRefresh();
-                                                Knack.hideSpinner();
-                                                alert('Bulk operation completed successfully');
-                                            }, 1000);
-                                        })
-                                    } else
-                                        showProgress();
-                                })
-                                .catch(function (reason) {
+                    function updateRecord(recId) {
+                        showProgress();
+                        ktl.core.knAPI(bulkOpsViewId, recId, apiData, 'PUT')
+                            .then(function () {
+                                if (++countDone === bulkOpsRecIdArray.length) {
+                                    bulkOpsRecIdArray = [];
+                                    Knack.showSpinner();
                                     ktl.core.removeInfoPopup();
-                                    ktl.core.removeTimedPopup();
-                                    Knack.hideSpinner();
-                                    ktl.scenes.spinnerWatchdog();
-                                    ktl.views.autoRefresh();
-                                    alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
-                                })
+                                    ktl.views.refreshView(bulkOpsViewId).then(function () {
+                                        ktl.core.removeTimedPopup();
+                                        ktl.scenes.spinnerWatchdog();
+                                        setTimeout(function () {
+                                            ktl.views.autoRefresh();
+                                            Knack.hideSpinner();
+                                            alert('Bulk operation completed successfully');
+                                        }, 1000);
+                                    })
+                                } else
+                                    showProgress();
+                            })
+                            .catch(function (reason) {
+                                ktl.core.removeInfoPopup();
+                                ktl.core.removeTimedPopup();
+                                Knack.hideSpinner();
+                                ktl.scenes.spinnerWatchdog();
+                                ktl.views.autoRefresh();
+                                alert('Error code KEC_1017 while processing bulk operations, reason: ' + JSON.stringify(reason));
+                            })
 
-                            function showProgress() {
-                                ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
-                            }
+                        function showProgress() {
+                            ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
                         }
-                    })
-                    .catch(function (reason) {
-                        console.log('reason =', reason);
-                    })
+                    }
+                }
             }
         }
 
