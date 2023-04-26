@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.0';
+    const KTL_VERSION = '0.11.1';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -30,6 +30,7 @@ function Ktl($, info) {
     //
 
     //First thing: Extract all keywords from app structure.
+    var ktlKeywords = {};
     for (var i = 0; i < Knack.scenes.models.length; i++) {
         var scn = Knack.scenes.models[i];
         var views = scn.views;
@@ -59,9 +60,9 @@ function Ktl($, info) {
                     }
                 }
 
-                //Only write once - first time, when not yet existing.
-                !attr.orgTitle && (attr.orgTitle = attr.title);
-                !attr.keywords && (attr.keywords = keywordsObj);
+                attr.orgTitle = attr.title; //Can probably be removed - not really used anymore.
+                attr.keywords = keywordsObj; //Remove when fully converted to using new ktlKeywords object.
+                ktlKeywords[view.id] = keywordsObj;
 
                 attr.title = cleanedUpTitle;
                 attr.description = cleanedUpDescription;
@@ -4273,45 +4274,40 @@ function Ktl($, info) {
         function ktlProcessKeywords(view, data) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
             try {
-                var model = (Knack.views[view.key] && Knack.views[view.key].model);
+                var keywords = ktlKeywords[view.key];
+                if (!$.isEmptyObject(keywords)) {
+                    //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
-                //Can't rely on view.title: Search forms have no title when the results are rendered.
-                if (model) {
-                    var keywords = Knack.views[view.key].model.view.keywords;
-                    if (!$.isEmptyObject(keywords)) {
-                        //console.log('keywords =', JSON.stringify(keywords, null, 4));
-
-                        //Hide the whole view, typically used when doing background searches.
-                        if (keywords._hv) {
-                            //TODO: add Dev Option. Hidden Views: Auto, On, Off
-                            $('#' + view.key).addClass('ktlHidden');
-                        }
-
-                        //Hide the view title only, typically used to save space when real estate is critical.
-                        if (keywords._ht) {
-                            $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
-                            $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
-                        }
-
-                        keywords._ni && ktl.views.noInlineEditing(view, keywords);
-
-                        //IMPORTANT: _qc must be processed BEFORE _mc.
-                        keywords._qt && ktl.views.quickToggle(view.key, keywords, data);
-                        keywords._mc && ktl.views.matchColor(view.key, keywords, data);
-
-                        keywords._ts && ktl.views.addTimeStampToHeader(view.key);
-                        keywords._dtp && ktl.views.addDateTimePickers(view.key);
-                        keywords._al && ktl.account.autoLogin(view.key);
-                        keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
-                        keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
-                        keywords._nf && disableFilterOnFields(view, keywords);
-                        (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
-                        keywords._dr && numDisplayedRecords(view, keywords);
-                        keywords._cfv && colorizeFieldValue(view.key, keywords, data);
-                        keywords._nsg && noSortingOnGrid(view.key);
-
-                        processViewKeywords && processViewKeywords(view, keywords, data);
+                    //Hide the whole view, typically used when doing background searches.
+                    if (keywords._hv) {
+                        //TODO: add Dev Option. Hidden Views: Auto, On, Off
+                        $('#' + view.key).addClass('ktlHidden');
                     }
+
+                    //Hide the view title only, typically used to save space when real estate is critical.
+                    if (keywords._ht) {
+                        $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
+                        $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
+                    }
+
+                    keywords._ni && ktl.views.noInlineEditing(view, keywords);
+
+                    //IMPORTANT: _qc must be processed BEFORE _mc.
+                    keywords._qt && ktl.views.quickToggle(view.key, keywords, data);
+                    keywords._mc && ktl.views.matchColor(view.key, keywords, data);
+
+                    keywords._ts && ktl.views.addTimeStampToHeader(view.key);
+                    keywords._dtp && ktl.views.addDateTimePickers(view.key);
+                    keywords._al && ktl.account.autoLogin(view.key);
+                    keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
+                    keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
+                    keywords._nf && disableFilterOnFields(view, keywords);
+                    (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
+                    keywords._dr && numDisplayedRecords(view, keywords);
+                    keywords._cfv && colorizeFieldValue(view.key, keywords, data);
+                    keywords._nsg && noSortingOnGrid(view.key);
+
+                    processViewKeywords && processViewKeywords(view, keywords, data);
                 }
 
                 if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
@@ -6726,6 +6722,8 @@ function Ktl($, info) {
                         versionStyle += '; background-color:gold; color:red; font-weight: bold';
 
                     versionInfo = ktl.scenes.getCfg().versionDisplayName + versionInfo;
+                    info.pre && (versionInfo = info.pre + '    ' + versionInfo);
+                    info.post && (versionInfo = versionInfo + '    ' + info.post);
 
                     ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
 
@@ -6744,7 +6742,7 @@ function Ktl($, info) {
                             document.body.appendChild(devBtnsDiv);
 
                             //Requires NodeJS and file server to run otherwise crashes.
-                            if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
+                            if (true /*Knack.getUserAttributes().name === ktl.core.getCfg().developerName*/) {
                                 ktl.fields.addButton(devBtnsDiv, 'Dev/Prod', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                     ktl.core.toggleMode();
                                 })
@@ -7618,12 +7616,17 @@ function Ktl($, info) {
                 if (rec) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
                     if (newSWVersion !== APP_KTL_VERSIONS) {
-                        if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
-                            if (localStorage.getItem(info.lsShortName + 'dev') === null) //Only warn when in Prod mode.
-                                ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                        if (localStorage.getItem(info.lsShortName + 'dev') !== null) {
+                            //Dev = Ignore
                         } else {
-                            console.log('sending reloadAppMsg with ver:', newSWVersion);
-                            ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: newSWVersion });
+                            //Prod
+                            if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
+                                //Only warn when in Prod mode.
+                                ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                            } else {
+                                console.log('sending reloadAppMsg with ver:', newSWVersion);
+                                ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: newSWVersion });
+                            }
                         }
                     }
                 } else {
