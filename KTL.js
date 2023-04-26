@@ -8619,8 +8619,16 @@ function Ktl($, info) {
             if ($.isEmptyObject(apiData) || document.querySelector('#ktl-bulk-reuse-last-src-' + view.key)) return;
             var reuseLastSourceBtn = ktl.fields.addButton(document.querySelector('.bulkOpsControlsDiv'), 'Reuse Last Source', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktl-bulk-reuse-last-src-' + view.key);
             reuseLastSourceBtn.addEventListener('click', function (e) {
-                processBulkOps(view.key, e);
+                if (e.ctrlKey)
+                    previewLastBulkEditData();
+                else
+                    processBulkOps(view.key, e);
             })
+        }
+
+        function previewLastBulkEditData() {
+            var lastData = JSON.stringify(apiData, null, 4);
+            alert(lastData);
         }
 
         function updateHeaderCheckboxes(viewId, numChecked = 0) {
