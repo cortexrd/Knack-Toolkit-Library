@@ -44,7 +44,7 @@
 
 .cell-edit.ktlNoInlineEdit {
 	pointer-events: none;
-	background-color: #ffe0e0 !important;
+	background-color: transparent !important;
 	font-weight: initial;
 }
 
