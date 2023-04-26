@@ -8444,7 +8444,20 @@ function Ktl($, info) {
                 //Add a checkbox to each header that is inline-editable.
                 $('#' + viewId + ' thead th').each((idx, el) => {
                     var inline = $('#' + viewId + ' tbody tr:first td:nth-child(' + (idx) + ')');
-                    if (idx > 0 && inline.length && inline[0].classList.contains('cell-edit')) {
+
+                    //Don't add checkboxes for headers having fields with these keywords.
+                    var kwNoCheckBox = false;
+                    var kw = {};
+                    var fieldId = el.classList[0];
+                    if (fieldId && fieldId.startsWith('field_')) {
+                        ktl.fields.getFieldKeywords(fieldId, kw);
+                        if (!$.isEmptyObject(kw)) {
+                            if (kw[fieldId]._lud || kw[fieldId]._lub)
+                                kwNoCheckBox = true;
+                        }
+                    }
+
+                    if (idx > 0 && inline.length && inline[0].classList.contains('cell-edit') && !kwNoCheckBox) {
                         $(el).find('.table-fixed-label').css('display', 'inline-flex').append('<input type="checkbox">').addClass('bulkEditTh');
                         $(el).find('input:checkbox').addClass('bulkEditHeaderCbox');
                     }
