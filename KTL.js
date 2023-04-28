@@ -2579,7 +2579,6 @@ function Ktl($, info) {
 
     //====================================================
     //User Filters feature
-
     const LS_UF = 'UF';
     const LS_UFP = 'UFP';
     const LS_UF_ACT = 'UF_ACTIVE';
@@ -4280,8 +4279,8 @@ function Ktl($, info) {
 
                     //Hide the whole view, typically used when doing background searches.
                     if (keywords._hv) {
-                        //TODO: add Dev Option. Hidden Views: Auto, On, Off
-                        $('#' + view.key).addClass('ktlHidden');
+                        if (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) !== 'true')
+                            $('#' + view.key).addClass('ktlHidden');
                     }
 
                     //Hide the view title only, typically used to save space when real estate is critical.
@@ -6588,7 +6587,7 @@ function Ktl($, info) {
                             $('.kn-spinner').is(':visible') ||
                             $('.kn-button.is-primary').is(':disabled')) {
                             if (spinnerCtr-- > 0) {
-                                if (spinnerCtr < spinnerCtrDelay - 5)
+                                if (spinnerCtr < spinnerCtrDelay - 10)
                                     ktl.core.timedPopup('Please wait... ' + (spinnerCtr + 1).toString() + ' seconds', 'success', 1100); //Allow a 100ms overlap to prevent blinking.
                             } else {
                                 ktl.log.addLog(ktl.const.LS_INFO, 'KEC_1010 - Spinner Watchdog Timeout in ' + Knack.router.current_scene_key); //@@@ Replace by a weekly counter.
@@ -6757,6 +6756,19 @@ function Ktl($, info) {
                                     ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
                             })
 
+                            var showHiddenViews = (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) === 'true');
+                            var showHiddenViewsBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Views: ' + (showHiddenViews ? 'SHOW' : 'HIDE'), '', ['devBtn', 'kn-button']);
+                            showHiddenViewsBtn.addEventListener('click', () => {
+                                showHiddenViews = !showHiddenViews;
+                                showHiddenViewsBtn.textContent = 'Hidden Views: ' + (showHiddenViews ? 'SHOW' : 'HIDE');
+                                if (showHiddenViews)
+                                    ktl.storage.lsSetItem('SHOW_HIDDEN_VIEWS', true, false, true);
+                                else
+                                    ktl.storage.lsRemoveItem('SHOW_HIDDEN_VIEWS', false, true);
+
+                                Knack.router.scene_view.render();
+                            })
+
                             ktl.fields.addButton(devBtnsDiv, 'Kiosk', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                 if (ktl.core.isKiosk())
                                     ktl.core.timedPopup('Switching back to Normal mode...');
@@ -6794,7 +6806,10 @@ function Ktl($, info) {
                                 }
 
                                 ktl.storage.lsRemoveItem('AES_EK', true, false, false);
-                                Knack.handleLogout();
+
+                                setTimeout(() => {
+                                    Knack.handleLogout();
+                                }, 500)
                             })
 
                             var remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
