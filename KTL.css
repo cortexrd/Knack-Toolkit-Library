@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.9 */
+/* KTL CSS version: 0.2.10 */
 
 /************ General Settings **************/
 .pointer {
@@ -72,9 +72,13 @@
 }
 
 /* Bulk Operations */
-.bulkOpsControlsDiv{
+.bulkOpsControlsDiv {
 	display: flex;
-	margin-inline-start: 20px;
+}
+
+.bulkOpsControlsWithSearchDiv{
+	position: absolute;
+	margin-inline-start: 20%;
 }
 
 .ktlButtonMargin {
