@@ -208,6 +208,9 @@ window.KnackApp = function ($, info = {}) {
             if (bottomCenter)
                 versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; border-style:none; padding-bottom:2px; left: 50%; transform: translate(-50%, -50%);';
 
+            //If you want to add pre/post version info text, use these below.
+            //info.pre = '';
+            //info.post = '';
             ktl.scenes.addVersionInfo(info, versionStyle);
         }
 
