@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.1';
+    const KTL_VERSION = '0.11.2';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -8497,7 +8497,18 @@ function Ktl($, info) {
             if (document.querySelector('#' + view.key + ' .bulkOpsControlsDiv')) return;
 
             var prepend = false;
-            var div = document.querySelector('#' + view.key + ' .table-keyword-search') || document.querySelector('#' + view.key + ' .view-header');
+            var searchFound = false;
+            var div = document.querySelector('#' + view.key + ' .table-keyword-search');
+            if (div) {
+                //We can't add the div directly after the .table-keyword-search,
+                //otherwise, for some reason, the Search field doesn't respond to Enter anymore.
+                div = div.closest('.kn-records-nav .level');
+                searchFound = true;
+            }
+
+            if (!div)
+                div = document.querySelector('#' + view.key + ' .view-header');
+
             if (!div) {
                 div = document.querySelector('#' + view.key);
                 if (!div) return; //Support other layout options as we go.
@@ -8506,6 +8517,8 @@ function Ktl($, info) {
 
             var bulkOpsControlsDiv = document.createElement('div');
             bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv');
+            if (searchFound)
+                bulkOpsControlsDiv.classList.add('bulkOpsControlsWithSearchDiv');
             prepend ? $(div).prepend(bulkOpsControlsDiv) : $(div).append(bulkOpsControlsDiv);
 
             addBulkDeleteButtons(view, data);
