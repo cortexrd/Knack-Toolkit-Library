@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.2';
+    const KTL_VERSION = '0.11.3';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -4828,7 +4828,7 @@ function Ktl($, info) {
             fixTableRowsAlignment: function (viewId) {
                 if (!viewId || document.querySelector('#' + viewId + ' tr.kn-tr-nodata')) return;
 
-                if (ktl.bulkOps.bulkOpsActive()) {
+                if (ktl.bulkOps.getBulkOpsActive(viewId)) {
                     //For summary lines, prepend a space if Bulk Ops are enabled.
                     const hasSummary = Knack.router.scene_view.model.views._byId[viewId].attributes.totals;
                     if (hasSummary && hasSummary.length) {
@@ -8257,7 +8257,7 @@ function Ktl($, info) {
     //Need to create a role called 'Bulk Edit' and assign it to 'trusty' users who will not wreak havoc.
     //For super users, a role named 'Bulk Delete' can be created to delete records in batches.
     this.bulkOps = (function () {
-        var bulkOpsActive = false;
+        var bulkOpsActive = {};
         var bulkOpsRecIdArray = [];
         var bulkOpsHeaderArray = [];
         var bulkOpsViewId = null;
@@ -8307,7 +8307,7 @@ function Ktl($, info) {
                     || (inlineEditing
                         && (Knack.getUserRoleNames().includes('Bulk Edit') || Knack.getUserRoleNames().includes('Bulk Copy'))))
                 {
-                    bulkOpsActive = true;
+                    bulkOpsActive[view.key] = true;
                     enableBulkOperations(view, data);
                 }
             }
@@ -8931,8 +8931,8 @@ function Ktl($, info) {
                 })
             },
 
-            bulkOpsActive: function () {
-                return bulkOpsActive;
+            getBulkOpsActive: function (viewId) {
+                return bulkOpsActive[viewId] === true;
             },
         }
     })();
