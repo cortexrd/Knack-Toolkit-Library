@@ -6106,26 +6106,7 @@ function Ktl($, info) {
 
                                 fieldsColor[fieldId] = tmpColorObj;
 
-                                //Process cell clicks.
-                                $('.' + fieldId + '.cell-edit').off('click').on('click', e => {
-                                    e.stopImmediatePropagation();
-                                    !qtScanItv && startQtScanning();
-                                    var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
-                                    if (viewId) {
-                                        viewId = viewId.getAttribute('id');
-
-                                        const dt = Date.now();
-                                        var recId = e.target.closest('tr').id;
-                                        var value = ktl.views.getDataFromRecId(viewId, recId, fieldId)[fieldId + '_raw'];
-                                        value = (value === true ? false : true);
-                                        if (!viewsToRefresh.includes(viewId))
-                                            viewsToRefresh.push(viewId);
-
-                                        quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
-                                        $(e.target.closest('td')).css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
-                                        clearTimeout(refreshTimer);
-                                    }
-                                })
+                                $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
                             }
                         }
                     }
@@ -6141,12 +6122,38 @@ function Ktl($, info) {
                     })
                 }
 
+                //Process cell clicks.
+                //$('.qtCell').off('mousedown').on('mousedown', e => {
+                $('.qtCell').off('click').on('click', e => {
+                    console.log('click', e.target);
+                    e.stopImmediatePropagation();
+                    var fieldId = e.target.getAttribute('data-field-key');
+
+                    var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
+                    if (viewId) {
+                        viewId = viewId.getAttribute('id');
+
+                        const dt = Date.now();
+                        var recId = e.target.closest('tr').id;
+                        var value = ktl.views.getDataFromRecId(viewId, recId, fieldId)[fieldId + '_raw'];
+                        value = (value === true ? false : true);
+                        if (!viewsToRefresh.includes(viewId))
+                            viewsToRefresh.push(viewId);
+
+                        quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
+                        $(e.target.closest('td')).css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
+                        clearTimeout(refreshTimer);
+
+                        startQtScanning();
+                    }
+                })
+
                 function startQtScanning() {
+                    if (qtScanItv) return;
+                    ktl.views.autoRefresh(false);
+                    ktl.scenes.spinnerWatchdog(false);
                     qtScanItv = setInterval(() => {
                         if (!$.isEmptyObject(quickToggleObj)) {
-                            ktl.views.autoRefresh(false);
-                            ktl.scenes.spinnerWatchdog(false);
-
                             var dt = Object.keys(quickToggleObj)[0];
                             if (!quickToggleObj[dt].processed) {
                                 quickToggleObj[dt].processed = true;
@@ -6158,14 +6165,22 @@ function Ktl($, info) {
 
                 function quickToggle(dt) {
                     var recObj = quickToggleObj[dt];
-                    if ($.isEmptyObject(recObj)) return;
+                    if ($.isEmptyObject(recObj)) {
+                        console.log('empty');
+                        return;
+                    }
+
                     var viewId = recObj.viewId;
                     var fieldId = recObj.fieldId;
-                    if (!viewId || !fieldId) return;
+                    var recId = recObj.recId;
+                    if (!viewId || !fieldId) {
+                        console.log('error2');
+                        return;
+                    }
 
                     var apiData = {};
                     apiData[recObj.fieldId] = recObj.value;
-                    ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT')
+                    ktl.core.knAPI(viewId, recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
                         .then(() => {
                             delete quickToggleObj[dt];
                             if ($.isEmptyObject(quickToggleObj)) {
