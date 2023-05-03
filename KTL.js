@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.3';
+    const KTL_VERSION = '0.11.4';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -6050,6 +6050,7 @@ function Ktl($, info) {
                 if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
                 var qtScanItv = null;
                 var quickToggleObj = {};
+                var numToProcess = 0;
                 var refreshTimer = null;
                 var viewsToRefresh = [];
                 var viewModel = Knack.router.scene_view.model.views._byId[viewId];
@@ -6105,7 +6106,6 @@ function Ktl($, info) {
                                 }
 
                                 fieldsColor[fieldId] = tmpColorObj;
-
                                 $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
                             }
                         }
@@ -6123,12 +6123,10 @@ function Ktl($, info) {
                 }
 
                 //Process cell clicks.
-                //$('.qtCell').off('mousedown').on('mousedown', e => {
-                $('.qtCell').off('click').on('click', e => {
-                    console.log('click', e.target);
+                $('#' + viewId + ' .qtCell').off('click').on('click', e => {
                     e.stopImmediatePropagation();
-                    var fieldId = e.target.getAttribute('data-field-key');
 
+                    var fieldId = e.target.getAttribute('data-field-key') || e.target.parentElement.getAttribute('data-field-key');
                     var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
                     if (viewId) {
                         viewId = viewId.getAttribute('id');
@@ -6144,14 +6142,17 @@ function Ktl($, info) {
                         $(e.target.closest('td')).css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
                         clearTimeout(refreshTimer);
 
+                        numToProcess++;
                         startQtScanning();
                     }
                 })
 
                 function startQtScanning() {
+                    ktl.core.infoPopup();
+                    showProgress();
+
                     if (qtScanItv) return;
                     ktl.views.autoRefresh(false);
-                    ktl.scenes.spinnerWatchdog(false);
                     qtScanItv = setInterval(() => {
                         if (!$.isEmptyObject(quickToggleObj)) {
                             var dt = Object.keys(quickToggleObj)[0];
@@ -6160,47 +6161,44 @@ function Ktl($, info) {
                                 quickToggle(dt);
                             }
                         }
-                    }, 200);
+                    }, 500);
                 }
 
                 function quickToggle(dt) {
                     var recObj = quickToggleObj[dt];
-                    if ($.isEmptyObject(recObj)) {
-                        console.log('empty');
-                        return;
-                    }
-
-                    var viewId = recObj.viewId;
-                    var fieldId = recObj.fieldId;
-                    var recId = recObj.recId;
-                    if (!viewId || !fieldId) {
-                        console.log('error2');
-                        return;
-                    }
+                    if ($.isEmptyObject(recObj) || !recObj.viewId || !recObj.fieldId) return;
 
                     var apiData = {};
                     apiData[recObj.fieldId] = recObj.value;
-                    ktl.core.knAPI(viewId, recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
+                    ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
                         .then(() => {
+                            showProgress();
+                            numToProcess--;
                             delete quickToggleObj[dt];
                             if ($.isEmptyObject(quickToggleObj)) {
                                 clearInterval(qtScanItv);
                                 qtScanItv = null;
+                                Knack.showSpinner();
                                 refreshTimer = setTimeout(() => {
-                                    ktl.views.refreshViewArray(viewsToRefresh);
-                                    Knack.hideSpinner();
-                                    ktl.scenes.spinnerWatchdog();
-                                    ktl.views.autoRefresh();
-                                }, 2000);
+                                    ktl.core.removeInfoPopup();
+                                    ktl.views.refreshViewArray(viewsToRefresh)
+                                        .then(() => {
+                                            Knack.hideSpinner();
+                                            ktl.views.autoRefresh();
+                                        })
+                                }, 500);
                             }
                         })
                         .catch(function (reason) {
-                            Knack.hideSpinner();
-                            ktl.scenes.spinnerWatchdog();
                             ktl.views.autoRefresh();
                             alert('Error code KEC_1025 while processing Quick Toggle operation, reason: ' + JSON.stringify(reason));
                         })
                 }
+
+                function showProgress() {
+                    ktl.core.setInfoPopupText('Toggling ' + numToProcess + ' items');
+                }
+
             }, //quickToggle
 
             //For KTL internal use.
@@ -8357,7 +8355,7 @@ function Ktl($, info) {
             }
 
             //When user clicks on a row, to indicate the record source.
-            $('#' + view.key + ' tr td:not(:has(:checkbox))').off('click').on('click', e => {
+            $('#' + view.key + ' tr td:not(:has(:checkbox)):not(.qtCell)').off('click').on('click', e => {
                 var tableRow = e.target.closest('tr');
                 if (tableRow) {
                     if (bulkOpsRecIdArray.length > 0) {
