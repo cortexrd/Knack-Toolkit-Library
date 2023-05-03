@@ -214,6 +214,9 @@ window.KnackApp = function ($, info = {}) {
             ktl.scenes.addVersionInfo(info, versionStyle);
         }
 
+        //Uncomment below to get invisible bar, but yet clickable for Dev Options.
+        //$('#verButtonId').css('opacity', '0%'); //Or 10% for barely visible
+
         autoFocus();
     }
 
