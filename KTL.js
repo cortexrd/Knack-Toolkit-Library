@@ -1858,16 +1858,32 @@ function Ktl($, info) {
             getFieldIdFromLabel: function (viewId, fieldLabel, exactMatch = true) {
                 if (!viewId || !fieldLabel) return;
 
-                var field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
-                if (field.length) {
-                    if (exactMatch && field[0].textContent === fieldLabel)
-                        field = field[0].closest('.kn-input');
-                    else
-                        if (field[0].textContent.includes(fieldLabel))
+                var field;
+                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                if (viewType === 'form') {
+                    field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
+                    if (field.length) {
+                        if (exactMatch && field[0].textContent === fieldLabel)
                             field = field[0].closest('.kn-input');
+                        else
+                            if (field[0].textContent.includes(fieldLabel))
+                                field = field[0].closest('.kn-input');
 
-                    return field ? field.attributes['data-input-id'].value : undefined;
-                }
+                        return field ? field.attributes['data-input-id'].value : undefined;
+                    }
+                } else if (viewType === 'details') {
+                    if (exactMatch)
+                        field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
+                    else
+                        field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
+
+                    if (field.length) {
+                        var classes = $(field).parent()[0].classList.value;
+                        const match = classes.match(/field_\w+/);
+                        if (match)
+                            return match[0];
+                    }
+                } //Support more view types as we go.
             },
 
             getFieldKeywords: function (fieldId, fieldKeywords = {}) {
@@ -4305,6 +4321,7 @@ function Ktl($, info) {
                     keywords._dr && numDisplayedRecords(view, keywords);
                     keywords._cfv && colorizeFieldValue(view.key, keywords, data);
                     keywords._nsg && noSortingOnGrid(view.key);
+                    keywords._hf && hideFields(view.key, keywords);
 
                     processViewKeywords && processViewKeywords(view, keywords, data);
                 }
@@ -4579,6 +4596,18 @@ function Ktl($, info) {
         function noSortingOnGrid(viewId) {
             if (!viewId) return;
             $('#' + viewId + ' thead [href]').addClass('sortDisabled');
+        }
+
+        function hideFields(viewId, keywords) {
+            if (!viewId || !keywords._hf || !keywords._hf.length) return;
+            keywords._hf.forEach(fieldLabel => {
+                var fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                if (fieldId) {
+                    var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
+                        || document.querySelector('#' + viewId + ' .' + fieldId);
+                    obj && obj.classList.add('ktlHidden')
+                }
+            })
         }
 
         return {
@@ -6157,7 +6186,7 @@ function Ktl($, info) {
                             alert('Error code KEC_1025 while processing Quick Toggle operation, reason: ' + JSON.stringify(reason));
                         })
                 }
-            },
+            }, //quickToggle
 
             //For KTL internal use.
             matchColor: function (viewId = '', keywords, data = []) {
@@ -9001,7 +9030,7 @@ function Ktl($, info) {
 
             getPublicIP()
                 .then((ip) => { sInfo.ip = ip; })
-                .catch(() => { console.log('getPublicIP failed.  Make sure uBlock not active.'); })
+                .catch(() => { console.log('KTL\'s getPublicIP failed.  Make sure uBlock not active.'); })
         })();
 
         function getPublicIP() {
