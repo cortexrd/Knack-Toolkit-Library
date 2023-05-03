@@ -6196,7 +6196,7 @@ function Ktl($, info) {
                 }
 
                 function showProgress() {
-                    ktl.core.setInfoPopupText('Toggling ' + numToProcess + ' items');
+                    ktl.core.setInfoPopupText('Toggling... ' + numToProcess + ' items remaining.');
                 }
 
             }, //quickToggle
