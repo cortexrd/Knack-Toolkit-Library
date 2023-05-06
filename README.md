@@ -352,7 +352,7 @@ Provides scene-related features.
 -   **idleWatchDogTimeout**: The idle callback to your app, typically for reloading the page or logging out the user.
 -   **findViewWithTitle**: Searches through each view in the current scene and returns the first view ID containing specific text in its title, with optional exact match.
 -   **scrollToTop**: Scrolls the page all the way up.
--   **addVersionNumber**: Adds the app and optionally the KTL version numbers on the page. It is possible to make the version info bar invisible or to move it to the bottom of the page if desired. If made invisible by setting its opacity to 0, it will become visible upon mouse hovering. See the usage and examples in the onSceneRender function in the KTL_KnackApp.js file. The version info bar is used to trigger a popup with useful Developer on-the-fly features. This popup can also be used by other roles, by entering the PIN setup by devOptionsPin.
+-   **addVersionInfo**: Adds the app and optionally the KTL version numbers on the page. It is possible to make the version info bar invisible or to move it to the bottom of the page if desired. If made invisible by setting its opacity to 0, it will become visible upon mouse hovering. See the usage and examples in the onSceneRender function in the KTL_KnackApp.js file. The version info bar is used to trigger a popup with useful Developer on-the-fly features. This popup can also be used by other roles, by entering the PIN setup by devOptionsPin.
 -   **isiFrameWnd**: returns whether the window is the top-level app, or the hidden child utility page called iFrameWnd.
 -   **onSceneRender**: Callback to your app's handler of a “knack-scene-render.any” event.
 
