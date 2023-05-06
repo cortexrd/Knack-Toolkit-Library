@@ -1,6 +1,6 @@
 # ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
-Last update: March 26, 2023
+Last updated: April 6, 2023
 
 # Contents
 
@@ -72,7 +72,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 
 -   Using reserved keywords to trigger special behavior. [See list](#list-of-all-keywords).
 -   User filters to save your filters to named buttons
--   Bulk Operations: Edit and Delete
+-   Bulk Operations: Edit, Copy and Delete
 -   Form data persistence that saves as you type, and will load back your data if a page is reloaded after a submit failure or power outage
 -   Dropdown selector improvements
 -   Numeric pre-validation
@@ -278,13 +278,15 @@ Here is the list:
 
 **\_ar=n**: Auto Refresh view. The view will be refreshed periodically every “*n*” seconds. It is possible to manually start/stop the process using the autoRefresh function.
 
-**\_hv**: Hide View. Moves the view away from screen but kept in DOM. Used to save real-estate, while maintaining API calls and automated search capabilities.
+**\_hv**: Hidden View. Moves the view away from screen but kept in DOM. Used to save real-estate, while maintaining API calls and automated search capabilities.
 
-**\_ht**: Hide view Title. Used to save real-estate while keeping the title in the Builder.
+**\_ht**: Hidden view Title. Used to save real-estate while keeping the title in the Builder.
 
-**\_hc=colHeader1, colHeader2**: Hide Columns. To hide the columns based on the header’s exact text. The columns are only hidden but still exist in DOM. The visibility can be reversed on the fly with a bit of extra code. Hiding a column is useful to save real-estate or hide its data, while maintaining API calls capability or allow filtering on all fields.
+**\_hc=colHeader1, colHeader2**: Hidden Columns. To hide a grid’s columns, based on the header’s exact text. The columns are only hidden but still exist in DOM. The visibility can be reversed on the fly with a bit of extra code. Hiding a column is useful to save real-estate or hide its data, while maintaining API calls capability or allow filtering on all fields.
 
-**\_rc=colHeader1, colHeader2**: Remove Columns. To delete de columns based on the header’s exact text. This will delete them from the table **and** the DOM. Like \_hc, removing a column will maintain API calls capability and allow filtering on its field.
+**\_hf=fieldName1, fieldName2**: Hidden Fields. To hide fields in a view, based on their exact names. Typically used with utility fields that don’t need to be visible.
+
+**\_rc=colHeader1, colHeader2**: Removed Columns. To delete de columns based on the header’s exact text. This will delete them from the table **and** the DOM. Like \_hc, removing a column will maintain API calls capability and allow filtering on its field.
 
 This option is “somewhat” a bit more secure than \_hc since it’s not as easy to peek at data from the browser’s console. Though someone could intercept the data *before* it’s been removed, i.e. while it’s being sent by the server, so keep this in mind.
 
@@ -350,7 +352,7 @@ Provides scene-related features.
 -   **idleWatchDogTimeout**: The idle callback to your app, typically for reloading the page or logging out the user.
 -   **findViewWithTitle**: Searches through each view in the current scene and returns the first view ID containing specific text in its title, with optional exact match.
 -   **scrollToTop**: Scrolls the page all the way up.
--   **addVersionNumber**: Adds the app and optionally the KTL version numbers on the page.
+-   **addVersionNumber**: Adds the app and optionally the KTL version numbers on the page. It is possible to make the version info bar invisible or to move it to the bottom of the page if desired. If made invisible by setting its opacity to 0, it will become visible upon mouse hovering. See the usage and examples in the onSceneRender function in the KTL_KnackApp.js file. The version info bar is used to trigger a popup with useful Developer on-the-fly features. This popup can also be used by other roles, by entering the PIN setup by devOptionsPin.
 -   **isiFrameWnd**: returns whether the window is the top-level app, or the hidden child utility page called iFrameWnd.
 -   **onSceneRender**: Callback to your app's handler of a “knack-scene-render.any” event.
 
@@ -406,11 +408,13 @@ Then, create a **Public Filters** role and assign it to the privileged users of 
 
 ### Usage
 
-There are two types of bulk operations: Bulk Edit and Bulk Delete. As their names imply, they provide the ability to perform multiple record modifications or delete operations in batches. Both work with table views and have a global flag to enable each of them separately.
+There are three types of bulk operations: Bulk Edit, Copy and Delete. As their names imply, they provide the ability to perform multiple record modifications, duplications or delete operations in batches. They work with table views and have a global flag to enable each of them separately.
+
+Tip: When selecting rows and headers, it is possible to Ctrl+Click on checkboxes to toggle them all Off or On at once.
 
 ### Bulk Edit
 
-To use this feature, you must:
+This allows copying one or many fields from one record to many other records. To use this feature, you must:
 
 1.  Make sure that the bulkEdit flag is enabled in the ktl.core.setCfg function. This is already done in the default basic setup.
 2.  Create an account role named "Bulk Edit" and assign it diligently to very trusty and liable users.
@@ -418,7 +422,7 @@ To use this feature, you must:
 
 **Setting up the source record**
 
-Make sure that your desired data is visible in one of the records in the table. This will be the **source record**, i.e. the one being copied from. If it is not the case, you would typically a few do inline edits to suit your needs.
+Make sure that your desired data is visible in one of the records in the table. This will be the **source record**, i.e. the one being copied from. If all the source row fields are not exactly as you wish, you would typically choose another record, or do a few inline edits until they match your requirements.
 
 **Selecting records to be modified**
 
@@ -446,9 +450,33 @@ A progress indicator will show up and a confirmation message will pop up after c
 
 If you realize you’ve made an error, the process can be interrupted (but not undone) at any time by pressing F5 to reload the page.
 
+**Reuse Last Source**
+
+Once you’ve completed the first Bulk Edit operation, a new button will show up labeled “Reuse Last Source”. As its name implies, it allows applying successive Bulk Edits with the same data, over and over. Just select a new set of records with the left checkboxes and click the button. Note that the header checkboxes are not relevant and will be ignored in this case. The last data source tied to the button will remain in memory as long as the page is not refreshed. You can navigate back and forth to any pages to see something, come back to the original page and reuse that same data again. Also, as a reminder of the last operation, it is possible to peek at the data source by doing Ctrl+Click on the button.
+
+### Bulk Copy
+
+This allows the creation of a desired number of records based on a source record and specified fields. To use this feature, you must:
+
+1.  Make sure that the bulkCopy flag is enabled in the ktl.core.setCfg function. This is already done in the default basic setup.
+2.  Create an account role named "Bulk Copy" and assign it diligently to very trusty and liable users.
+3.  For each applicable table, enable Inline editing and be sure to disable all the fields that should be protected against unintended copying.
+
+**Setting up the source record**
+
+Make sure that your desired data is visible in one of the records in the table. This will be the **source record**, i.e. the one being copied from. For a Bulk Copy to be possible, you must select **only one row** and **at least one header**. If all the source row fields are not exactly as you wish, you would typically choose another record, or do a few inline edits until they match your requirements.
+
+You can click on the Bulk Copy button and enter the desired number of copies. A pop-up message will ask for confirmation before proceeding.
+
+Progress will be displayed, and it is possible to interrupt the process just like the Bulk Edit (see above).
+
+**Finding the new records**
+
+It is strongly recommended that an Auto Increment field is added to the table, in order to be able to find the newly created records by sorting them on this field in decrementing order. This will conveniently place all new records at the top of the table and ready for a session of manual fine-tuning.
+
 ### Bulk Delete
 
-To use this feature, you must:
+This allows deleting records based on manual selection or on all records resulting from a filter being applied. To use this feature, you must:
 
 1.  Make sure that the bulkDelete flag is enabled in the ktl.core.setCfg function. This is already done in the default basic setup.
 2.  Create an account role named "Bulk Delete" and assign it diligently to very trusty and liable users.
@@ -692,7 +720,7 @@ If you want to add Heartbeat Monitoring to your app to assess an account's prese
 7.  Refresh the app and you should see in the iFrameWnd the heartbeat being submitted every minute and the Online being set to Yes.
 8.  **VIEWER**: To view the heartbeats, online status, latest activity, SW Version, etc., create a Sysop Dashboard page accessible to Developer role only, with a table view that shows the Accounts having an Active status. Title: **Account Status \_ar=60**. Fields: Name, Online, LOC HB, UTC HB, UTC Last Activity, SW Version and User Prefs. This view will refresh itself every minute, so you can assess the presence, latest activity and SW Version for each account.
 9.  **Note**: The Online status flag is set, but not reset automatically. You’ll need to create a daily task to reset it. We also have some existing code that does it with API calls and will add it to the KTL soon. We will also provide all code for Online updates, emails and audio alerts, custom status colorizing, etc.
-10. **For SW Updates**: In the Status Monitoring page, add a table view for App Settings object. Title: **BROADCAST_SW_UPDATE**. Filter Source on Item contains APP_KTL_VERSIONS. Settings: no search, Inline Edit = On, 10 records, no filtering. Leave three fields Item, Value and Date/Time.
+10. **For SW Updates**: In the Status Monitoring page, add a table view for App Settings object. Title: **SW Update**. Filter Source on Item contains APP_KTL_VERSIONS. Settings: no search, Inline Edit = On, 10 records, no filtering. Leave three fields: Item, Value and Date/Time.
 11. Add an action column: Header: Broadcast SW Update, Link Text: BROADCAST NOW. Action is Update this record, Item to a field value Item. Confirmation msg: SW Update in progress.... You can set the text style in bold red with the display rule: when Item is not blank.
 
 #### User Filters
@@ -819,8 +847,6 @@ To use this mode, you have two options:
 
 \*Note about **KTL_KnackApp.js**: throughout the document, we will refer to this file name as the “app code”, but you can substitute it to anything that would better match your app’s name. As long as you modify the merge utility files accordingly, if you are planning to use it. See the **-filename** parameter in the batch file.
 
-Open the KTL_KnackApp_Prod.js file, copy its content to your Javascript pane in the Builder and save.
-
 ### Setup
 
 You will need to modify the KTL_KnackApp.js file to match your needs if you want to go beyond the basic default setup. [See Editing the KTL_KnackApp file](#editing-the-ktl_knackapp-file).
@@ -901,17 +927,15 @@ You will end up with the following folder structure on your favorite “code” 
 
 .code\\Lib\\KTL\\Docs
 
-And more…
+Etc …
 
-You can also add your own files, like this:
+And still under the .**code** folder, this is where you add your own app files. The filename must also be inside a folder having the same name, like this:
 
-.code\\MyKnackApps\\App1\\App1.js
+.code\\KnackApps\\**My App**\\**My App.js**
 
-.code\\MyKnackApps\\App2\\App2.js
+Then any additional libraries that you’re using:
 
-.code\\MyKnackApps\\App3\\App3.js
-
-.code\\Lib\\SomeOtherCoolLib\\CoolCode.js
+.code\\Lib\\SomeOtherCoolLib\\CoolLibCode.js
 
 # Additional utilities
 
@@ -949,6 +973,7 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | \_ar=n                             | Auto-Refresh a view every *n* seconds                 | View Title or Description                                | \_ar=60                                    |
 | \_hv                               | Hidden View                                           | ‘’                                                       |                                            |
 | \_ht                               | Hidden Title                                          | ‘’                                                       |                                            |
+| \_hf=fld1, fld2…                   | Hidden Fields                                         | “                                                        | \_hf=Work Shift                            |
 | \_ni=colHeader1, colHeader2…       | No Inline editing                                     | ‘’                                                       | \_ni=Email,Phone                           |
 | \_ts                               | Adds a Time Stamp to a view                           | ‘’                                                       |                                            |
 | \_dtp                              | Adds Date/Time Pickers                                | ‘’                                                       |                                            |
@@ -959,7 +984,7 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 | \_qt=colorTrue,colorFalse          | Quick Toggle of Boolean fields                        | ‘’                                                       | \_qt=\#0F07,pink                           |
 | \_mc=colHeader                     | Match Color for whole row to a given column           | ‘’                                                       | \_mc=Sales                                 |
 | \_hc= colHeader1, colHeader2…      | Hide Columns, but keep in DOM                         | ‘’                                                       |                                            |
-| \_rc= colHeader1, colHeader2…      | Remove Columns, including DOM                         | ‘’                                                       |                                            |
+| \_rc= colHeader1, colHeader2…      | Removed Columns, including DOM                        | ‘’                                                       |                                            |
 | \_nf=field_1,field_2…              | No Filtering on specified fields                      | ‘’                                                       | \_nf=field_1,field_2                       |
 |                                    |                                                       | ‘’                                                       |                                            |
 | \_al                               | Auto-Login                                            | View Title or Description of a login page                |                                            |

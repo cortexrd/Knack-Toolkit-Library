@@ -53,6 +53,7 @@ window.KnackApp = function ($, info = {}) {
 
                 bulkOps: {
                     bulkEdit: true,
+                    bulkCopy: true,
                     bulkDelete: true,
                 },
             },
@@ -104,7 +105,7 @@ window.KnackApp = function ($, info = {}) {
             },
             chznBetterToExclude: [],
             chznBetterSetFocus: chznBetterSetFocus,
-            inlineEditActive: inlineEditActive,
+            onInlineEditPopup: onInlineEditPopup,
             //Uncomment the two lines below to get horizontal layout for RBs and CBs.
             //horizontalRadioButtons: true,
             //horizontalCheckboxes: true,
@@ -308,7 +309,7 @@ window.KnackApp = function ($, info = {}) {
         }
     }
 
-    function inlineEditActive(viewId, fieldId, e) {
+    function onInlineEditPopup(viewId, fieldId, e) {
         //Example to stretch the text input field.
         //$('.kn-form-col.column.is-constrained').css({ 'max-width': '100vw', 'width': '75vw' }); //Example here that enlarges width.
         //var sel = document.querySelector('.kn-form-col.column.is-constrained');

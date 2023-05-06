@@ -1132,7 +1132,7 @@ function Ktl($, info) {
         var chznBetterThresholds = {};
         var chznBetterToExclude = [];
         var chznBetterSetFocus = null;
-        var inlineEditActive = null;
+        var onInlineEditPopup = null;
         var convertNumDone = false;
         var horizontalRadioButtons = false;
         var horizontalCheckboxes = false;
@@ -1379,7 +1379,7 @@ function Ktl($, info) {
                 cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
                 cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
                 cfgObj.chznBetterSetFocus && (chznBetterSetFocus = cfgObj.chznBetterSetFocus);
-                cfgObj.inlineEditActive && (inlineEditActive = cfgObj.inlineEditActive);
+                cfgObj.onInlineEditPopup && (onInlineEditPopup = cfgObj.onInlineEditPopup);
                 cfgObj.horizontalRadioButtons && (horizontalRadioButtons = cfgObj.horizontalRadioButtons);
                 cfgObj.horizontalCheckboxes && (horizontalCheckboxes = cfgObj.horizontalCheckboxes);
             },
@@ -1773,7 +1773,7 @@ function Ktl($, info) {
             ktlInlineEditActive: function (e) {
                 const viewId = e.target.closest('.kn-view').id;
                 var fieldId = e.target.closest('.cell-edit').attributes['data-field-key'].value;
-                inlineEditActive && inlineEditActive(viewId, fieldId, e);
+                onInlineEditPopup && onInlineEditPopup(viewId, fieldId, e);
             },
 
             //Handles Change events for Dropdowns, Calendars, etc.
@@ -8318,7 +8318,7 @@ function Ktl($, info) {
 
         $(document).on('knack-view-render.table', function (event, view, data) {
             if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() ||
-                (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
+                (!ktl.core.getCfg().enabled.bulkOps.bulkEdit && !ktl.core.getCfg().enabled.bulkOps.bulkCopy && !ktl.core.getCfg().enabled.bulkOps.bulkDelete))
                 return;
 
             //Put code below in a shared function (see _lud in this.log).
@@ -8911,7 +8911,7 @@ function Ktl($, info) {
         }
 
         function enableBulkCopy(viewId, enable = false) {
-            if (!Knack.getUserRoleNames().includes('Bulk Copy')) return;
+            if (!ktl.core.getCfg().enabled.bulkOps.bulkCopy || !Knack.getUserRoleNames().includes('Bulk Copy')) return;
             if (enable) {
                 var bulkCopyBtn = ktl.fields.addButton(document.querySelector('.bulkOpsControlsDiv'), 'Bulk Copy', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktl-bulk-copy-' + viewId);
                 bulkCopyBtn.disabled = ($('.bulkEditHeaderCbox:is(:checked)').length === 0);
