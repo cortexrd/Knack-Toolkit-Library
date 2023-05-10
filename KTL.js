@@ -125,7 +125,7 @@ function Ktl($, info) {
                 }
 
                 const knView = mutRec.target.closest('.kn-view');
-                viewId = knView && knView.id;
+                var viewId = (knView && knView.id);
                 if (viewId) {
                     var view = Knack.views[viewId];
                     if (view && typeof view.model === 'object') {
@@ -8345,19 +8345,6 @@ function Ktl($, info) {
                 bulkOpsActive[view.key] = true;
                 enableBulkOperations(view, data);
             }
-
-        //    //When user clicks on a row, to indicate the record source.
-        //    $('#' + view.key + ' tr td:not(:has(:checkbox)):not(.qtCell)').off('click').on('click', e => {
-        //        var tableRow = e.target.closest('tr');
-        //        if (tableRow) {
-        //            if (bulkOpsRecIdArray.length > 0) {
-        //                //Prevent Inline Edit.
-        //                e.stopImmediatePropagation();
-        //                apiData = {};
-        //                processBulkOps(view.key, e);
-        //            }
-        //        }
-        //    })
         })
 
         var preventClick = false;
