@@ -76,7 +76,7 @@
 	display: flex;
 }
 
-.bulkOpsControlsWithSearchDiv{
+.bulkOpsControlsWithSearchDiv {
 	position: absolute;
 	margin-inline-start: 20%;
 }
@@ -258,7 +258,7 @@ body.kiosk-mode { /* Add extra space at top of screen in kiosk mode, to prevent 
 	margin-left: 20px !important;
 }
 
-#verButtonId:hover{
+#verButtonId:hover {
 	opacity: 100% !important;
 }
 
