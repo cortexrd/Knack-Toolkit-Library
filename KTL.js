@@ -5579,7 +5579,7 @@ function Ktl($, info) {
             },
 
             //When a table is rendered, pass its data to this function along with the field and a value to search.
-            //It returns the record found, or undefined if nothing is found.
+            //It returns the first record found, or undefined if nothing is found.
             findRecord: function (data = [], fieldId = '', value = '') {
                 if (!data.length || !fieldId || !value) return;
                 for (var i = 0; i < data.length; i++) {
@@ -7605,9 +7605,9 @@ function Ktl($, info) {
             }
         })
 
-        //Logs cleanup and processing of email action.
         $(document).on('knack-view-render.any', function (event, view, data) {
             if (view.key === cfg.acctLogsViewId) {
+                //Logs cleanup and processing of email action.
                 var recId = '';
                 for (var i = 0; i < data.length; i++) {
                     ktl.log.removeLogById(data[i][cfg.alLogIdFld]);
