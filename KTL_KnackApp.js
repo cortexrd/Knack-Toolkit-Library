@@ -253,7 +253,7 @@ window.KnackApp = function ($, info = {}) {
                             sel[0].focus();
                         else {
                             sel = $('button'); //Try button
-                            if (sel.length > 0 && sel[0].id !== 'verButtonId')
+                            if (sel.length && sel[0].id !== 'verButtonId' && !sel.is(':offscreen'))
                                 sel[0].focus();
                         }
                     }

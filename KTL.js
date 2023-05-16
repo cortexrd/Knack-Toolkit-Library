@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.6';
+    const KTL_VERSION = '0.11.7';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -284,7 +284,11 @@ function Ktl($, info) {
                             clearTimeout(failsafeTimeout);
 
                             sceneKey = sceneKey.attributes.scene.key;
-                            var apiURL = 'https://api.knack.com/v1/pages/' + sceneKey + '/views/' + viewId + '/records/';
+
+                            var apiURL = 'https://api.knack.com/v1/pages/';
+                            if (Knack.app.attributes.account.settings.hipaa.enabled === true && Knack.app.attributes.account.settings.hipaa.region === 'us-govcloud')
+                                apiURL = 'https://usgc-api.knack.com/v1/pages/';
+                            apiURL += sceneKey + '/views/' + viewId + '/records/';
 
                             if (recId) apiURL += recId;
 
@@ -5575,7 +5579,7 @@ function Ktl($, info) {
             },
 
             //When a table is rendered, pass its data to this function along with the field and a value to search.
-            //It returns the record found, or undefined if nothing is found.
+            //It returns the first record found, or undefined if nothing is found.
             findRecord: function (data = [], fieldId = '', value = '') {
                 if (!data.length || !fieldId || !value) return;
                 for (var i = 0; i < data.length; i++) {
@@ -7601,9 +7605,9 @@ function Ktl($, info) {
             }
         })
 
-        //Logs cleanup and processing of email action.
         $(document).on('knack-view-render.any', function (event, view, data) {
             if (view.key === cfg.acctLogsViewId) {
+                //Logs cleanup and processing of email action.
                 var recId = '';
                 for (var i = 0; i < data.length; i++) {
                     ktl.log.removeLogById(data[i][cfg.alLogIdFld]);
