@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.7';
+    const KTL_VERSION = '0.11.8';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -1776,9 +1776,12 @@ function Ktl($, info) {
             //TODO: allow modifying style dyanmically.
             //Typical use: make them wider to see more context when typing, or make font larger.
             ktlInlineEditActive: function (e) {
-                const viewId = e.target.closest('.kn-view').id;
-                var fieldId = e.target.closest('.cell-edit').attributes['data-field-key'].value;
-                onInlineEditPopup && onInlineEditPopup(viewId, fieldId, e);
+                var viewId = e.target.closest('.kn-view');
+                if (viewId) {
+                    viewId = viewId.id;
+                    var fieldId = e.target.closest('.cell-edit').attributes['data-field-key'].value;
+                    onInlineEditPopup && onInlineEditPopup(viewId, fieldId, e);
+                }
             },
 
             //Handles Change events for Dropdowns, Calendars, etc.
@@ -8727,7 +8730,7 @@ function Ktl($, info) {
             return bulkOpsRecIdArray.length;
         }
 
-        //For Bulk Edit, called when user clicks on Submit from an Inline Editing form and when there are some checkboxes enabled.
+        //For Bulk Edit, called when user clicks on a row and when there are some checkboxes enabled.
         //For Bulk Copy, called when user clicks on Bulk Copy button, when one row is selected and at least one column.
         function processBulkOps(viewId, e) {
             if (!viewId) return;
@@ -8756,36 +8759,32 @@ function Ktl($, info) {
                     processBulkEdit(); //Reuse Last Source button.
                 } else {
                     recId = recId || e.target.closest('tr[id]').id;
-                    ktl.core.knAPI(viewId, recId, {}, 'GET')
-                        .then(src => {
-                            //Add all selected fields from header.
-                            var checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
-                            if (checkedFields.length) {
-                                checkedFields.each((idx, cbox) => {
-                                    var fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
-                                    if (fieldId.startsWith('field_')) {
-                                        if (cbox.checked) {
-                                            apiData[fieldId] = src[fieldId + '_raw'];
-                                        }
-                                    }
-                                })
-                            } else {
-                                //If no column selected, use field clicked.
-                                var clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
-                                if (clickedFieldId.length && clickedFieldId.attr('data-field-key').startsWith('field_')) {
-                                    clickedFieldId = clickedFieldId.attr('data-field-key');
-                                    apiData[clickedFieldId] = src[clickedFieldId + '_raw'];
+                    const src = Knack.views[viewId].model.data._byId[recId].attributes;
+
+                    //Add all selected fields from header.
+                    var checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
+                    if (checkedFields.length) {
+                        checkedFields.each((idx, cbox) => {
+                            var fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
+                            if (fieldId.startsWith('field_')) {
+                                if (cbox.checked) {
+                                    apiData[fieldId] = src[fieldId + '_raw'];
                                 }
                             }
+                        })
+                    } else {
+                        //If no column selected, use field clicked.
+                        var clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
+                        if (clickedFieldId.length && clickedFieldId.attr('data-field-key').startsWith('field_')) {
+                            clickedFieldId = clickedFieldId.attr('data-field-key');
+                            apiData[clickedFieldId] = src[clickedFieldId + '_raw'];
+                        }
+                    }
 
-                            if (operation === 'ktl-bulk-copy-' + viewId)
-                                processBulkCopy();
-                            else
-                                processBulkEdit();
-                        })
-                        .catch(function (reason) {
-                            console.log('reason =', reason);
-                        })
+                    if (operation === 'ktl-bulk-copy-' + viewId)
+                        processBulkCopy();
+                    else
+                        processBulkEdit();
                 }
 
                 function processBulkEdit() {
