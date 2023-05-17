@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.11 */
+/* KTL CSS version: 0.2.12 */
 
 /************ General Settings **************/
 .pointer {
@@ -261,5 +261,10 @@ body.kiosk-mode { /* Add extra space at top of screen in kiosk mode, to prevent 
 #verButtonId:hover {
 	opacity: 100% !important;
 }
+
+#verButtonId {
+	z-index: 10; /*Need to be visible with sticky headers*/
+}
+
 
 /**** KTL_RELATED - END ****/
