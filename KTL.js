@@ -6277,24 +6277,33 @@ function Ktl($, info) {
 
                 var model = (Knack.views[view.key] && Knack.views[view.key].model);
                 if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor) {
-                    $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit'); //By default, all fields.
-
-                    //Process each field individually.
-                    //As an exception, if a field start with an exclamation mark, allow inline editing.
                     if (keywords._ni.length) {
+                        //Process each field individually.
+                        //As an exception, if a field start with an exclamation mark, allow inline editing.
                         var allowInline = {};
-                        keywords._ni.forEach(colHeader => {
-                            if (colHeader.charAt(0) === '!') {
-                                colHeader = colHeader.substring(1);
-                                allowInline[colHeader] = true;
-                            } else
-                                allowInline[colHeader] = false;
+                        if (keywords._ni[0].charAt(0) === '!') {
+                            //Found first param as an exception.
+                            $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit'); //By default, all fields.
+                            keywords._ni.forEach(colHeader => {
+                                if (colHeader.charAt(0) === '!') {
+                                    colHeader = colHeader.substring(1);
+                                    allowInline[colHeader] = true;
+                                } else
+                                    allowInline[colHeader] = false;
 
-                            var thead = $('#' + view.key + ' thead tr th:textEquals("' + colHeader + '")');
-                            if (thead.length && allowInline[colHeader] === true)
-                                $('#' + view.key + ' tbody tr td:nth-child(' + (thead[0].cellIndex + 1) + ')').removeClass('ktlNoInlineEdit');
-                        })
-                    }
+                                var thead = $('#' + view.key + ' thead tr th:textEquals("' + colHeader + '")');
+                                if (thead.length && allowInline[colHeader] === true)
+                                    $('#' + view.key + ' tbody tr td:nth-child(' + (thead[0].cellIndex + 1) + ')').removeClass('ktlNoInlineEdit');
+                            })
+                        } else {
+                            keywords._ni.forEach(colHeader => {
+                                var thead = $('#' + view.key + ' thead tr th:textEquals("' + colHeader + '")');
+                                if (thead.length)
+                                    $('#' + view.key + ' tbody tr td:nth-child(' + (thead[0].cellIndex + 1) + ')').addClass('ktlNoInlineEdit');
+                            })
+                        }
+                    } else
+                        $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit');
                 }
             },
 
