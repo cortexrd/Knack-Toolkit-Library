@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.8';
+    const KTL_VERSION = '0.11.9';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -6277,14 +6277,24 @@ function Ktl($, info) {
 
                 var model = (Knack.views[view.key] && Knack.views[view.key].model);
                 if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor) {
+                    $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit'); //By default, all fields.
+
+                    //Process each field individually.
+                    //As an exception, if a field start with an exclamation mark, allow inline editing.
                     if (keywords._ni.length) {
+                        var allowInline = {};
                         keywords._ni.forEach(colHeader => {
+                            if (colHeader.charAt(0) === '!') {
+                                colHeader = colHeader.substring(1);
+                                allowInline[colHeader] = true;
+                            } else
+                                allowInline[colHeader] = false;
+
                             var thead = $('#' + view.key + ' thead tr th:textEquals("' + colHeader + '")');
-                            if (thead.length)
-                                $('#' + view.key + ' tbody tr td:nth-child(' + (thead[0].cellIndex + 1) + ')').addClass('ktlNoInlineEdit');
+                            if (thead.length && allowInline[colHeader] === true)
+                                $('#' + view.key + ' tbody tr td:nth-child(' + (thead[0].cellIndex + 1) + ')').removeClass('ktlNoInlineEdit');
                         })
-                    } else
-                        $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit');
+                    }
                 }
             },
 
