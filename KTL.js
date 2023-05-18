@@ -16,9 +16,8 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.11';
-    const APP_VERSION = window.APP_VERSION;
-    const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
+    const KTL_VERSION = '0.11.12';
+    const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
     const APP_ROOT_NAME = info.lsShortName;
@@ -4909,8 +4908,10 @@ function Ktl($, info) {
                             })
                             .catch(function (e) { ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e); })
                     }
-                } else
-                    trimSummaryRows();
+                } else {
+                    if (ktlKeywords[viewId]._hc || ktlKeywords[viewId]._rc)
+                        trimSummaryRows();
+                }
 
                 //Alignment fix for Summary rows (totals).
                 function trimSummaryRows() {
@@ -6456,7 +6457,8 @@ function Ktl($, info) {
                 cfgObj.autoFocus && (autoFocus = cfgObj.autoFocus);
                 cfgObj.kioskButtons && (kioskButtons = cfgObj.kioskButtons);
                 cfgObj.onSceneRender && (onSceneRender = cfgObj.onSceneRender);
-                cfgObj.versionDisplayName && (versionDisplayName = cfgObj.versionDisplayName);
+                if (typeof cfgObj.versionDisplayName === 'string')
+                    (versionDisplayName = cfgObj.versionDisplayName);
                 cfgObj.processMutation && (processMutation = cfgObj.processMutation);
             },
 
@@ -6797,7 +6799,7 @@ function Ktl($, info) {
                     if (style) //If style already exist, use it as is, otherwise, use KTL's default.
                         versionStyle = style;
 
-                    var versionInfo = ' v' + APP_VERSION + ktlVer + (info.ktlVersion === 'dev' ? '-dev' : '') + (info.hostname ? '    ' + info.hostname : '');
+                    var versionInfo = ' v' + window.APP_VERSION + ktlVer + (info.ktlVersion === 'dev' ? '-dev' : '') + (info.hostname ? '    ' + info.hostname : '');
                     if (localStorage.getItem(info.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
                         versionStyle += '; color:#0008; background-color:#FFF3;';
                     else //Dev mode, make version bright yellow/red font.
