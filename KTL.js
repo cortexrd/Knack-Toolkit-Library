@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, info) {
-    const KTL_VERSION = '0.11.9';
+    const KTL_VERSION = '0.11.11';
     const APP_VERSION = window.APP_VERSION;
     const APP_KTL_VERSIONS = APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
@@ -64,6 +64,10 @@ function Ktl($, info) {
                 attr.keywords = keywordsObj; //Remove when fully converted to using new ktlKeywords object.
                 ktlKeywords[view.id] = keywordsObj;
 
+                //Add scene-wide keywords.
+                if (keywordsObj._km || keywordsObj._kbs)
+                    ktlKeywords[scn.attributes.key] = keywordsObj;
+
                 attr.title = cleanedUpTitle;
                 attr.description = cleanedUpDescription;
             }
@@ -104,20 +108,17 @@ function Ktl($, info) {
     //This is for early notifications of DOM changes.
     //Prevents spurious GUI updates (flickering).
     var observer = null;
+    var headerProcessed = false;
     if (!observer) {
         observer = new MutationObserver((mutations) => {
             mutations.forEach(mutRec => {
                 if (!ktl.scenes.isiFrameWnd()) {
-                    var targetId = mutRec.target.id;
-                    var knHeader = mutRec.target.closest('#kn-app-header,.knHeader');
-
-                    if (ktl.core.isKiosk()) {
-                        if (!document.querySelector('.kiosk-mode')) {
-                            if (targetId && knHeader && mutRec.addedNodes.length > 0)
+                    if (!headerProcessed) {
+                        headerProcessed = true;
+                        if (ktl.core.isKiosk()) {
+                            if (!document.querySelector('.kiosk-mode'))
                                 ktl.core.kioskMode(true);
-                        }
-                    } else {
-                        if (targetId && knHeader && mutRec.addedNodes.length > 0)
+                        } else
                             ktl.core.kioskMode(false);
                     }
 
@@ -132,8 +133,12 @@ function Ktl($, info) {
                         var model = Knack.views[viewId].model;
                         var keywords = model.view.keywords;
 
-                        if (viewId && mutRec.target.localName === 'tbody')
+                        if (viewId && mutRec.target.localName === 'tbody') {
+                            if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList && mutRec.addedNodes[0].classList.contains('kn-table-totals'))
+                                ktl.views.fixTableRowsAlignment(viewId);
+
                             (keywords._hc || keywords._rc) && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
+                        }
 
                         keywords._km && ktl.core.kioskMode(true);
                     }
@@ -889,7 +894,7 @@ function Ktl($, info) {
                     ktl.storage.lsRemoveItem('KIOSK', false, true);
 
                 if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
-                    $('#kn-app-header,.kn-info-bar').addClass('ktlDisplayNone');
+                    $('#kn-app-header,.knHeader,.kn-info-bar').addClass('ktlDisplayNone');
                     $('body').addClass('kiosk-mode');
 
                     //Add extra space at bottom of screen in kiosk mode, to allow editing
@@ -901,7 +906,7 @@ function Ktl($, info) {
                 } else {
                     $('.formKioskButtons').removeClass('formKioskButtons');
                     $('.kioskButtons').removeClass('kioskButtons');
-                    $('#kn-app-header,.kn-info-bar').removeClass('ktlDisplayNone');
+                    $('#kn-app-header,.knHeader,.kn-info-bar').removeClass('ktlDisplayNone');
                     $('body').removeClass('kiosk-mode bottomExtraSpaces');
                 }
             },
@@ -6490,7 +6495,7 @@ function Ktl($, info) {
                     if (typeof Knack.views[viewId] === 'undefined' || typeof Knack.views[viewId].model.view.title === 'undefined')
                         return;
 
-                    var keywords = Knack.views[viewId].model.view.keywords;
+                    var keywords = ktlKeywords[viewId];
                     if (!keywords) return;
                     if (keywords._kn)
                         return;
@@ -6557,7 +6562,7 @@ function Ktl($, info) {
                             }
 
                             //Find the first bar that exists, in this top-down order priority.
-                            var kioskButtonsParentDiv = document.querySelector('#' + viewId + ' .kn-submit');
+                            var kioskButtonsParentDiv = document.querySelector('#' + viewId + ' .kn-submit') || document.querySelector('.kn-submit');
                             if (!kioskButtonsParentDiv) {
                                 //Happens with pages without a Submit button.  Ex: When you only have a table.
                                 //Then, try with kn-title or kn-records-nav div.
@@ -6624,12 +6629,21 @@ function Ktl($, info) {
 
                         //Make all buttons same size and style.
                         function applyStyle() {
-                            $('.kn-button:not(.search,.devBtn)').addClass('kioskButtons');
-                            for (var i = 0; i < Knack.router.scene_view.model.views.length; i++) {
-                                if (Knack.router.scene_view.model.views.models[i].attributes.type === 'form') {
-                                    $('.kn-button:not(.search,.devBtn)').addClass('formKioskButtons');
-                                    break;
+                            const scnId = Knack.views[viewId].model.view.scene.key;
+                            const kbs = ktlKeywords[scnId]._kbs;
+                            if (!kbs) {
+                                //Apply plain, default style if no _kbs found.
+                                $('.kn-button:not(.search,.devBtn)').addClass('kioskButtons');
+                                for (var i = 0; i < Knack.router.scene_view.model.views.length; i++) {
+                                    if (Knack.router.scene_view.model.views.models[i].attributes.type === 'form') {
+                                        $('.kn-button:not(.search,.devBtn)').addClass('formKioskButtons');
+                                        break;
+                                    }
                                 }
+                            } else {
+                                //Apply custom style
+                                if (kbs && kbs.length)
+                                    $('.kn-button:not(.search,.devBtn)').css('cssText', kbs[0]);
                             }
                         }
                     }
