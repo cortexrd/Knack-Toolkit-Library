@@ -1,7 +1,8 @@
 //====================================================
 //====================================================
 window.KnackApp = function ($, info = {}) {
-    window.APP_VERSION = '1.0.0'; //Your App version.
+    if (typeof window.APP_VERSION === 'undefined')
+        window.APP_VERSION = '1.0.0'; //Your App version.
 
     window.$ = $;
     var ktl = new Ktl($, info);
