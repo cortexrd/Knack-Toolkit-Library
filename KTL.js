@@ -15,12 +15,12 @@ const ONE_MINUTE_DELAY = 60000;
 const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
-function Ktl($, info) {
+function Ktl($, appInfo) {
     const KTL_VERSION = '0.11.12';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
-    const APP_ROOT_NAME = info.lsShortName;
+    const APP_ROOT_NAME = appInfo.lsShortName;
     window.APP_ROOT_NAME = APP_ROOT_NAME;
 
     var ktl = this;
@@ -6428,7 +6428,7 @@ function Ktl($, info) {
                 ktl.storage.lsSetItem('APP_KTL_VERSIONS', APP_KTL_VERSIONS);
             }
 
-            onSceneRender && onSceneRender(event, scene);
+            onSceneRender && onSceneRender(event, scene, appInfo);
         })
 
 

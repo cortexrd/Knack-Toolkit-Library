@@ -1,11 +1,11 @@
 //====================================================
 //====================================================
-window.KnackApp = function ($, info = {}) {
+window.KnackApp = function ($, appInfo = {}) {
     if (typeof window.APP_VERSION === 'undefined')
         window.APP_VERSION = '1.0.0'; //Your App version.
 
     window.$ = $;
-    var ktl = new Ktl($, info);
+    var ktl = new Ktl($, appInfo);
     window.ktl = ktl;
     const IFRAME_WND_ID = 'iFrameWnd';
 
@@ -201,9 +201,9 @@ window.KnackApp = function ($, info = {}) {
     //====================================================
     //Same as $(document).on('knack-scene-render.any')
     //Called by KTL
-    function onSceneRender(event, scene) {
+    function onSceneRender(event, scene, appInfo) {
         if (ktl.core.isKiosk()) {
-            ktl.scenes.addVersionInfo(info, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
+            ktl.scenes.addVersionInfo(appInfo, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
         } else {
             var versionStyle = '';
             var bottomCenter = false; //Set this to true to have the version info at bottom center of page, as an example.
@@ -213,7 +213,7 @@ window.KnackApp = function ($, info = {}) {
             //If you want to add pre/post version info text, use these below.
             //info.pre = '';
             //info.post = '';
-            ktl.scenes.addVersionInfo(info, versionStyle);
+            ktl.scenes.addVersionInfo(appInfo, versionStyle);
         }
 
         //Uncomment below to get invisible bar, but yet clickable for Dev Options.
