@@ -865,7 +865,7 @@ function Ktl($, info) {
 
             toggleMode: function () { //Prod <=> Dev modes
                 if (Knack.isMobile()) return; //Dev mode only works in a desktop environment.
-                var prod = (localStorage.getItem(info.lsShortName + 'dev') === null);
+                var prod = (localStorage.getItem(APP_ROOT_NAME + 'dev') === null);
                 if (prod)
                     ktl.storage.lsSetItem('dev', '', true);
                 else
@@ -7716,7 +7716,7 @@ function Ktl($, info) {
                 if (rec) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
                     if (newSWVersion !== APP_KTL_VERSIONS) {
-                        if (localStorage.getItem(info.lsShortName + 'dev') !== null) {
+                        if (localStorage.getItem(APP_ROOT_NAME + 'dev') !== null) {
                             //Dev = Ignore
                         } else {
                             //Prod
@@ -8531,7 +8531,7 @@ function Ktl($, info) {
                 //Add a checkbox to each header that is inline-editable.
                 if (viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy')) {
                     $('#' + viewId + ' thead th').each((idx, el) => {
-                        var inline = $('#' + viewId + ' tbody tr:first td:nth-child(' + (idx) + ')');
+                        var inline = $('#' + viewId + ' tbody tr:not(.kn-table-group:first) td:nth-child(' + (idx) + ')');
 
                         //Don't add checkboxes for headers having fields with these keywords.
                         var kwNoCheckBox = false;
@@ -8610,7 +8610,7 @@ function Ktl($, info) {
 
             //Add Delete Selected button.
             if (!document.querySelector('#ktl-bulk-delete-selected-' + view.key)) {
-                var deleteRecordsBtn = ktl.fields.addButton(document.querySelector('.bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-selected-' + view.key);
+                var deleteRecordsBtn = ktl.fields.addButton(document.querySelector('#' + view.key + ' .bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-selected-' + view.key);
                 deleteRecordsBtn.addEventListener('click', function (event) {
                     var deleteArray = [];
                     $('#' + view.key + ' tbody input[type=checkbox]:checked').each(function () {
