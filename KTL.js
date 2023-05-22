@@ -104,6 +104,20 @@ function Ktl($, appInfo) {
         }
     }
 
+    //Used when there are many groups of parameters, separated by square brackets.
+    //Ex: _cfv=[c,C1,red,yellow,bold,iu], [x,Screwdriver,blue,#b9cbf5,700];
+    function extractParamGroups(keyword) {
+        const pattern = /\[(.*?)\]/g;
+        const paramsBatch = [];
+        let match;
+        while ((match = pattern.exec(keyword.join(' ')))) {
+            const innerArray = match[1].split(' ');
+            paramsBatch.push(innerArray);
+        }
+
+        return paramsBatch;
+    }
+
     //This is for early notifications of DOM changes.
     //Prevents spurious GUI updates (flickering).
     var observer = null;
@@ -4589,20 +4603,55 @@ function Ktl($, appInfo) {
         function colorizeFieldValue(viewId, keywords, data) {
             if (!viewId || !keywords._cfv || !keywords._cfv.length) return;
 
-            const paramGroups = [];
-            for (let i = 0; i < keywords._cfv.length; i += 4) {
-                const group = keywords._cfv.slice(i, i + 4);
-                paramGroups.push(group);
+            //console.log('data =', data);
+
+            var paramGroups = [];
+            if (keywords._cfv[0].startsWith('['))
+                paramGroups = extractParamGroups(keywords._cfv);
+            else
+                paramGroups.push(keywords._cfv);
+            console.log('paramGroups =', paramGroups);
+
+            for (var g = 0; g < paramGroups.length; g++) {
+                var group = paramGroups[g];
+
+                if (group.length >= 4) {
+                    console.log('group =', group);
+
+                    var operator = group[0];
+                    var value = group[1];
+                    var fgColor = group[2];
+                    var bgColor = group[3];
+
+                    var style = { 'color': fgColor, 'background-color': bgColor };
+
+                    if (group.length >= 5)
+                        style['font-weight'] = group[4];
+
+                    if (group.length >= 6) {
+                        if (group[5].includes('i'))
+                            style['font-style'] = 'italic';
+
+                        if (group[5].includes('u'))
+                            style['text-decoration'] = 'underline';
+                    }
+
+                    var compareMode = 'contains';
+                    if (operator === 'x')
+                        compareMode = 'textEquals';
+
+                    var sel = '#' + viewId + ' span:' + compareMode + '("' + value + '")';
+
+                    if (value === '' && sel.length && viewId === 'view_172')
+                        console.log('found', $(sel), $(sel).parent());
+
+
+                    $(sel).css(style);
+
+                    if (value === '' || (group.length >= 6 && !group[5].includes('t')))
+                        $(sel).parent().css({ 'color': fgColor, 'background-color': bgColor });
+                }
             }
-
-            paramGroups.forEach(params => {
-                var compareMode = 'contains';
-                if (params[0] === 'x')
-                    compareMode = 'textEquals';
-
-                var sel = '#' + viewId + ' span:' + compareMode + '("' + params[1] + '")';
-                $(sel).css({ 'color': params[2], 'background-color': params[3] });
-            })
         }
 
         function noSortingOnGrid(viewId) {
@@ -6382,7 +6431,7 @@ function Ktl($, appInfo) {
             }
 
             //Link Menu feature
-            $('.kn-navigation-bar ul li').on('click', e => {
+            $('.kn-navigation-bar ul li,.knHeader__menu-list-item').on('click', e => {
                 setTimeout(() => {
                     if (Knack.router.scene_view.model.views.models.length) {
                         var view = Knack.router.scene_view.model.views.models[0];
