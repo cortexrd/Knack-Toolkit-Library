@@ -29,7 +29,7 @@ function Ktl($, appInfo) {
     //
 
     //First thing: Extract all keywords from app structure.
-    window.ktlKeywords = {};
+    var ktlKeywords = {};
     for (var i = 0; i < Knack.scenes.models.length; i++) {
         var scn = Knack.scenes.models[i];
         var views = scn.views;
@@ -60,9 +60,6 @@ function Ktl($, appInfo) {
                 }
 
                 attr.orgTitle = attr.title; //Can probably be removed - not really used anymore.
-                attr.keywords = keywordsObj; //Remove when fully converted to using new ktlKeywords object.
-                if (view.id === 'view_172')
-                    console.log('found');
                 ktlKeywords[view.id] = keywordsObj;
 
                 //Add scene-wide keywords.
@@ -145,9 +142,7 @@ function Ktl($, appInfo) {
                 if (viewId) {
                     var view = Knack.views[viewId];
                     if (view && typeof view.model === 'object') {
-                        var model = Knack.views[viewId].model;
-                        var keywords = model.view.keywords;
-
+                        var keywords = ktlKeywords[viewId];
                         if (viewId && mutRec.target.localName === 'tbody') {
                             if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList && mutRec.addedNodes[0].classList.contains('kn-table-totals'))
                                 ktl.views.fixTableRowsAlignment(viewId);
@@ -2756,7 +2751,7 @@ function Ktl($, appInfo) {
 
                 //Linked Filters feature
                 var masterViewId = viewId; //Just to make it easier to understand when reading.
-                var keywords = Knack.views[masterViewId].model.view.keywords;
+                var keywords = ktlKeywords[masterViewId];
                 var useUrlAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
 
                 var linkedViewIds = ktl.views.convertViewTitlesToViewIds(keywords._lf, masterViewId);
@@ -4381,7 +4376,7 @@ function Ktl($, appInfo) {
         }
 
         function processRvd(view, event, revertFunc) {
-            var keywords = Knack.views[view.key].model && Knack.views[view.key].model.view.keywords;
+            var keywords = ktlKeywords[view.key];
             if (!keywords._rvd || keywords._rvd.length < 1) return;
 
             var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvd, view.key);
@@ -4635,6 +4630,7 @@ function Ktl($, appInfo) {
                 if (!$.isEmptyObject(fieldsWithKwObj)) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                     var foundKwObj = {};
+                    var keywords = {};
                     for (var i = 0; i < fieldsWithKwAr.length; i++) {
                         fieldId = fieldsWithKwAr[i];
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
@@ -4883,21 +4879,21 @@ function Ktl($, appInfo) {
                     if (!$.isEmptyObject(autoRefreshViews))
                         stopAutoRefresh(false); //Force a clean start.
 
-                    Knack.router.scene_view.model.views.models.forEach(function (eachView) {
-                        var view = eachView.attributes;
-                        var keywords = view.keywords;
+                    Knack.router.scene_view.model.views.models.forEach(function (view) {
+                        var viewId = view.id;
+                        var keywords = ktlKeywords[viewId];
                         if (keywords._ar) {
                             var intervalDelay = parseInt(keywords._ar[0]);
                             intervalDelay = isNaN(intervalDelay) ? 60 : intervalDelay;
                             intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 
                             //Add view to auto refresh list.
-                            if (!(view.key in autoRefreshViews)) {
+                            if (!(viewId in autoRefreshViews)) {
                                 var intervalId = setInterval(function () {
-                                    ktl.views.refreshView(view.key).then(function () { });
+                                    ktl.views.refreshView(viewId).then(function () { });
                                 }, intervalDelay * 1000);
 
-                                autoRefreshViews[view.key] = { delay: intervalDelay, intervalId: intervalId };
+                                autoRefreshViews[viewId] = { delay: intervalDelay, intervalId: intervalId };
                             }
                         }
                     })
@@ -5865,7 +5861,7 @@ function Ktl($, appInfo) {
 
                 function preprocessViews(viewId, e) {
                     return new Promise(function (resolve, reject) {
-                        var keywords = Knack.views[viewId].model.view.keywords;
+                        var keywords = ktlKeywords[viewId];
                         if (!$.isEmptyObject(keywords)) {
                             var outcomeObj = { msg: '' };
 
@@ -5974,9 +5970,9 @@ function Ktl($, appInfo) {
 
                 if (!foundFields.length) return {};
 
-                console.log('viewId =', viewId);
-                console.log('viewType =', viewType);
-                console.log('fields =', fields);
+                //console.log('viewId =', viewId);
+                //console.log('viewType =', viewType);
+                //console.log('fields =', fields);
 
                 var fieldsWithKwObj = {};
                 for (var j = 0; j < foundFields.length; j++)
@@ -6340,7 +6336,7 @@ function Ktl($, appInfo) {
                 const viewType = viewAttr.type;
                 if (!['table', 'search'].includes(viewType)) return;
 
-                var keywords = Knack.views[viewId].model.view.keywords;
+                var keywords = ktlKeywords[viewId];
                 var toMatch = keywords._mc;
                 if (toMatch.length !== 1 || !toMatch[0]) return;
                 toMatch = toMatch[0];
@@ -6859,8 +6855,8 @@ function Ktl($, appInfo) {
                 try {
                     for (var i = 0; i < views.length; i++) {
                         viewId = views[i].attributes.key;
-                        if (viewId === excludeViewId || !views[i].attributes.orgTitle) continue;
-                        title = views[i].attributes.orgTitle.toLowerCase();
+                        if (viewId === excludeViewId || !views[i].attributes.title) continue;
+                        title = views[i].attributes.title.toLowerCase();
                         if (exact && title === viewTitle)
                             return viewId;
                         if (!exact && title.includes(viewTitle))
@@ -6882,8 +6878,8 @@ function Ktl($, appInfo) {
                 try {
                     for (var i = 0; i < views.length; i++) {
                         viewId = views[i].attributes.key;
-                        if (viewId === excludeViewId || $.isEmptyObject(views[i].attributes.keywords)) continue;
-                        if (views[i].attributes.keywords[keyword]) {
+                        if (viewId === excludeViewId || $.isEmptyObject(ktlKeywords[viewId])) continue;
+                        if (ktlKeywords[viewId][keyword]) {
                             if ((keyword === '_uvx' || keyword === '_uvc') && views[i].attributes.type !== 'search')
                                 continue;
                             else
