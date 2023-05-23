@@ -29,7 +29,7 @@ function Ktl($, appInfo) {
     //
 
     //First thing: Extract all keywords from app structure.
-    var ktlKeywords = {};
+    window.ktlKeywords = {};
     for (var i = 0; i < Knack.scenes.models.length; i++) {
         var scn = Knack.scenes.models[i];
         var views = scn.views;
@@ -61,6 +61,8 @@ function Ktl($, appInfo) {
 
                 attr.orgTitle = attr.title; //Can probably be removed - not really used anymore.
                 attr.keywords = keywordsObj; //Remove when fully converted to using new ktlKeywords object.
+                if (view.id === 'view_172')
+                    console.log('found');
                 ktlKeywords[view.id] = keywordsObj;
 
                 //Add scene-wide keywords.
@@ -1917,7 +1919,7 @@ function Ktl($, appInfo) {
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 if (fieldDesc) {
                     var keywords = {};
-                    fieldDesc = fieldDesc.toLowerCase().replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+                    fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
                     parseKeywords(keywords, fieldDesc);
                     if (!$.isEmptyObject(keywords))
                         fieldKeywords[fieldId] = keywords;
@@ -4337,6 +4339,8 @@ function Ktl($, appInfo) {
                     keywords._qt && ktl.views.quickToggle(view.key, keywords, data);
                     keywords._mc && ktl.views.matchColor(view.key, keywords, data);
 
+                    colorizeFieldValue(view.key, keywords, data);
+
                     keywords._ts && ktl.views.addTimeStampToHeader(view.key);
                     keywords._dtp && ktl.views.addDateTimePickers(view.key);
                     keywords._al && ktl.account.autoLogin(view.key);
@@ -4345,9 +4349,9 @@ function Ktl($, appInfo) {
                     keywords._nf && disableFilterOnFields(view, keywords);
                     (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
                     keywords._dr && numDisplayedRecords(view, keywords);
-                    keywords._cfv && colorizeFieldValue(view.key, keywords, data);
                     keywords._nsg && noSortingOnGrid(view.key);
                     keywords._hf && hideFields(view.key, keywords);
+
 
                     processViewKeywords && processViewKeywords(view, keywords, data);
                 }
@@ -4601,55 +4605,120 @@ function Ktl($, appInfo) {
         }
 
         function colorizeFieldValue(viewId, keywords, data) {
-            if (!viewId || !keywords._cfv || !keywords._cfv.length) return;
-
-            //console.log('data =', data);
+            if (!viewId) return;
+            const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+            if (viewType !== 'table' && viewType !== 'list') return;
 
             var paramGroups = [];
-            if (keywords._cfv[0].startsWith('['))
-                paramGroups = extractParamGroups(keywords._cfv);
-            else
-                paramGroups.push(keywords._cfv);
-            console.log('paramGroups =', paramGroups);
+            var fieldId = '';
 
-            for (var g = 0; g < paramGroups.length; g++) {
-                var group = paramGroups[g];
+            if (keywords._cfv && keywords._cfv.length) {
+                console.log('doView', viewId);
+                if (keywords._cfv[0].startsWith('['))
+                    paramGroups = extractParamGroups(keywords._cfv);
+                else
+                    paramGroups.push(keywords._cfv);
 
-                if (group.length >= 4) {
-                    console.log('group =', group);
+                var fields = Knack.views[viewId].model.view.fields;
+                for (var f = 0; f < fields.length; f++) {
+                    fieldId = fields[f].key;
+                    colorizeField(viewId, fieldId, paramGroups, data);
+                }
 
-                    var operator = group[0];
-                    var value = group[1];
-                    var fgColor = group[2];
-                    var bgColor = group[3];
+                doFields(viewId, data);
+            } else
+                doFields(viewId, data);
 
-                    var style = { 'color': fgColor, 'background-color': bgColor };
+            function doFields(viewId, data) {
+                console.log('doField', viewId);
+                var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
+                if (!$.isEmptyObject(fieldsWithKwObj)) {
+                    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                    var foundKwObj = {};
+                    for (var i = 0; i < fieldsWithKwAr.length; i++) {
+                        fieldId = fieldsWithKwAr[i];
+                        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.length) {
+                            keywords._cfv = foundKwObj[fieldId]._cfv;
+                            if (keywords._cfv[0].startsWith('['))
+                                paramGroups = extractParamGroups(keywords._cfv);
+                            else
+                                paramGroups.push(keywords._cfv);
 
-                    if (group.length >= 5)
-                        style['font-weight'] = group[4];
-
-                    if (group.length >= 6) {
-                        if (group[5].includes('i'))
-                            style['font-style'] = 'italic';
-
-                        if (group[5].includes('u'))
-                            style['text-decoration'] = 'underline';
+                            colorizeField(viewId, fieldId, paramGroups, data);
+                        }
                     }
+                }
+            }
 
-                    var compareMode = 'contains';
-                    if (operator === 'x')
-                        compareMode = 'textEquals';
+            function colorizeField(viewId, fieldId, paramGroups, data) {
+                for (var d = 0; d < data.length; d++) {
+                    var rec = data[d];
 
-                    var sel = '#' + viewId + ' span:' + compareMode + '("' + value + '")';
+                    var cellText = rec[fieldId + '_raw'].toString();
+                    if (Array.isArray(cellText) && cellText.length === 1)
+                        cellText = cellText[0].identifier;
 
-                    if (value === '' && sel.length && viewId === 'view_172')
-                        console.log('found', $(sel), $(sel).parent());
+                    for (var g = 0; g < paramGroups.length; g++) {
+                        var group = paramGroups[g];
 
+                        if (group.length >= 4) {
+                            var operator = group[0];
+                            var value = group[1];
+                            var fgColor = group[2];
+                            var bgColor = group[3];
+                            var span = '';
+                            var includeBlanks = false; //When a cell value is blank it is considered as zero.  This flag determines when it is desireable.
 
-                    $(sel).css(style);
+                            var style = { 'color': fgColor, 'background-color': bgColor };
 
-                    if (value === '' || (group.length >= 6 && !group[5].includes('t')))
-                        $(sel).parent().css({ 'color': fgColor, 'background-color': bgColor });
+                            if (group.length >= 5)
+                                style['font-weight'] = group[4];
+
+                            if (group.length >= 6) {
+                                if (group[5].includes('i'))
+                                    style['font-style'] = 'italic';
+
+                                if (group[5].includes('u'))
+                                    style['text-decoration'] = 'underline';
+
+                                if (group[5].includes('t')) //Text only, not whole cell.
+                                    span = ' span';
+
+                                if (group[5].includes('b'))
+                                    includeBlanks = true;
+                            }
+
+                            var sel = '#' + viewId + ' tbody tr[id="' + rec.id + '"] .' + fieldId + span;
+                            if (viewType === 'list')
+                                sel = '#' + viewId + ' [data-record-id="' + rec.id + '"] .' + fieldId + ' .kn-detail-body' + span;
+
+                            const numCellValue = Number(cellText);
+                            const compareWith = Number(value);
+
+                            if (operator === 'eq' && cellText === value)
+                                $(sel).css(style);
+                            else if (operator === 'neq' && cellText !== value)
+                                $(sel).css(style);
+                            else if (operator === 'has' && cellText && cellText.includes(value))
+                                $(sel).css(style);
+                            else if (!isNaN(numCellValue) && !isNaN(compareWith)) {
+                                if (operator === 'lt') {
+                                    if (numCellValue < compareWith && (cellText || (!cellText && includeBlanks)))
+                                        $(sel).css(style);
+                                } else if (operator === 'lte') {
+                                    if (numCellValue <= compareWith && (cellText || (!cellText && includeBlanks)))
+                                        $(sel).css(style);
+                                } else if (operator === 'gt') {
+                                    if (numCellValue > compareWith)
+                                        $(sel).css(style);
+                                } else if (operator === 'gte') {
+                                    if (numCellValue >= compareWith)
+                                        $(sel).css(style);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -4729,13 +4798,9 @@ function Ktl($, appInfo) {
                                             if (response.status === 401 || response.status === 403 || response.status === 500)
                                                 procRefreshViewSvrErr(response);
                                             else {
-                                                var view = Knack.router.scene_view.model.views._byId[viewId];
-                                                if (view && view.attributes && view.attributes.orgTitle) {
-                                                    var keywords = view.attributes.keywords;
-                                                    if (keywords._ar) {
-                                                        resolve(); //Just ignore, we'll try again shortly anyways.
-                                                        return;
-                                                    }
+                                                if (ktlKeywords[viewId]._ar) {
+                                                    resolve(); //Just ignore, we'll try again shortly anyways.
+                                                    return;
                                                 }
 
                                                 if (retryCtr-- > 0) {
@@ -5874,10 +5939,11 @@ function Ktl($, appInfo) {
             //For KTL internal use.
             //Scans all fields in view and returns an object with those having keywords in their description.
             getFieldsKeywords: function (viewId) {
-                if (!viewId) return;
+                if (!viewId) return {};
 
                 //Scan all fields in form to find any keywords.
                 var foundFields = [];
+                var fields = [];
 
                 const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
                 if (viewType === 'search') {
@@ -5896,26 +5962,25 @@ function Ktl($, appInfo) {
                             })
                         })
                     }
-                } else {
-                    var fields = document.querySelectorAll('#' + viewId + ' .kn-input');
-                    for (var i = 0; i < fields.length; i++) {
-                        field = fields[i];
-                        var fieldId = field.getAttribute('data-input-id');
-                        foundFields.push(fieldId);
-                    }
+                } else if (viewType === 'form') {
+                    fields = document.querySelectorAll('#' + viewId + ' .kn-input');
+                    for (var i = 0; i < fields.length; i++)
+                        foundFields.push(fields[i].getAttribute('data-input-id'));
+                } else if (viewType === 'table' || viewType === 'list') {
+                    var fields = Knack.views[viewId].model.view.fields;
+                    for (var f = 0; f < fields.length; f++)
+                        foundFields.push(fields[f].key);
                 }
 
-                if (!foundFields) return;
+                if (!foundFields.length) return {};
 
-                //console.log('viewId =', viewId);
-                //console.log('viewType =', viewType);
-                //console.log('fields =', fields);
+                console.log('viewId =', viewId);
+                console.log('viewType =', viewType);
+                console.log('fields =', fields);
 
                 var fieldsWithKwObj = {};
-                for (var i = 0; i < foundFields.length; i++) {
-                    var field = foundFields[i];
-                    ktl.fields.getFieldKeywords(field, fieldsWithKwObj);
-                }
+                for (var j = 0; j < foundFields.length; j++)
+                    ktl.fields.getFieldKeywords(foundFields[j], fieldsWithKwObj);
 
                 return fieldsWithKwObj;
             },
@@ -9217,11 +9282,10 @@ function Ktl($, appInfo) {
                     var scn = Knack.scenes.models[i];
                     var views = scn.views;
                     views.forEach(view => {
-                        var keywords = view.attributes.keywords;
                         var viewId = view.attributes.key;
+                        var keywords = ktlKeywords[viewId];
                         var title = view.attributes.title;
                         var kwInfo = { sceneId: scn.attributes.key, viewId: viewId, title: title, keywords: keywords };
-                        title
                         if (!$.isEmptyObject(keywords))
                             console.log('kwInfo =', JSON.stringify(kwInfo, null, 4));
                     })
