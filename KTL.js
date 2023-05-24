@@ -4608,7 +4608,6 @@ function Ktl($, appInfo) {
             var fieldId = '';
 
             if (keywords._cfv && keywords._cfv.length) {
-                console.log('doView', viewId);
                 if (keywords._cfv[0].startsWith('['))
                     paramGroups = extractParamGroups(keywords._cfv);
                 else
@@ -4625,7 +4624,6 @@ function Ktl($, appInfo) {
                 doFields(viewId, data);
 
             function doFields(viewId, data) {
-                console.log('doField', viewId);
                 var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
                 if (!$.isEmptyObject(fieldsWithKwObj)) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
@@ -4665,6 +4663,7 @@ function Ktl($, appInfo) {
                             var bgColor = group[3];
                             var span = '';
                             var includeBlanks = false; //When a cell value is blank it is considered as zero.  This flag determines when it is desireable.
+                            var propagate = false; //Propagate style to whole row.
 
                             var style = { 'color': fgColor, 'background-color': bgColor };
 
@@ -4683,11 +4682,14 @@ function Ktl($, appInfo) {
 
                                 if (group[5].includes('b'))
                                     includeBlanks = true;
+
+                                if (group[5].includes('p'))
+                                    propagate = true;
                             }
 
-                            var sel = '#' + viewId + ' tbody tr[id="' + rec.id + '"] .' + fieldId + span;
+                            var sel = '#' + viewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + fieldId + span);
                             if (viewType === 'list')
-                                sel = '#' + viewId + ' [data-record-id="' + rec.id + '"] .' + fieldId + ' .kn-detail-body' + span;
+                                sel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + fieldId + ' .kn-detail-body' + span);
 
                             const numCellValue = Number(cellText);
                             const compareWith = Number(value);
