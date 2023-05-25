@@ -15,6 +15,9 @@ window.KnackApp = function ($, appInfo = {}) {
 
     window.ktlkw = ktl.sysInfo.findAllKeywords;
 
+    if (typeof window.ktlReady === 'function')
+        window.ktlReady();
+
     //====================================================
     //KTL Setup - BEGIN
     (function () {
@@ -459,29 +462,9 @@ window.KnackApp = function ($, appInfo = {}) {
     //KTL callbacks to your App - END
     //====================================================
 
-    //Setup default preferences - BEGIN
-    var userPrefs = ktl.userPrefs.getUserPrefs();
-
-    //Typically, only the developers are interested in seeing the view IDs.
-    if (ktl.account.isDeveloper())
-        userPrefs.showViewId = true;
-    else
-        userPrefs.showViewId = false;
-
-    userPrefs.showExtraDebugInfo = false;
-    userPrefs.showIframeWnd = false;
-    userPrefs.showDebugWnd = false;
-    userPrefs.workShift = '';
-
-    //Save back to localStorage.
-    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
-    //console.log('userPrefs =', userPrefs);
-    //Setup default preferences - END
-
 
     //====================================================
     //  Add your code here...
 
 
 };
-
