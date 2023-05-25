@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, appInfo) {
-    const KTL_VERSION = '0.11.12';
+    const KTL_VERSION = '0.11.13';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -875,7 +875,7 @@ function Ktl($, appInfo) {
             },
 
             toggleMode: function () { //Prod <=> Dev modes
-                if (Knack.isMobile()) return; //Dev mode only works in a desktop environment.
+                if (Knack.isMobile() && Knack.getUserAttributes().name !== ktl.core.getCfg().developerName) return; //Dev mode only works in a desktop environment.
                 var prod = (localStorage.getItem(APP_ROOT_NAME + 'dev') === null);
                 if (prod)
                     ktl.storage.lsSetItem('dev', '', true);
@@ -4701,6 +4701,7 @@ function Ktl($, appInfo) {
                             else if (operator === 'has' && cellText && cellText.includes(value))
                                 $(sel).css(style);
                             else if (!isNaN(numCellValue) && !isNaN(compareWith)) {
+                                //All numeric comparisons here.
                                 if (operator === 'lt') {
                                     if (numCellValue < compareWith && (cellText || (!cellText && includeBlanks)))
                                         $(sel).css(style);
@@ -4715,6 +4716,8 @@ function Ktl($, appInfo) {
                                         $(sel).css(style);
                                 }
                             }
+
+                            //Add support for date and time comparisons.
                         }
                     }
                 }
@@ -6938,7 +6941,7 @@ function Ktl($, appInfo) {
                             document.body.appendChild(devBtnsDiv);
 
                             //Requires NodeJS and file server to run otherwise crashes.
-                            if (true /*Knack.getUserAttributes().name === ktl.core.getCfg().developerName*/) {
+                            if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
                                 ktl.fields.addButton(devBtnsDiv, 'Dev/Prod', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                     ktl.core.toggleMode();
                                 })
@@ -7674,7 +7677,7 @@ function Ktl($, appInfo) {
     //====================================================
     //iFrameWnd feature
     this.iFrameWnd = (function () {
-        var iFrameWnd = null; //The actual object
+        var iFrameWnd = null; //The actual iframe window.
         var iFrameTimeout = null;
         var highPriLoggingInterval = null;
         var lowPriLoggingInterval = null;
@@ -7686,6 +7689,7 @@ function Ktl($, appInfo) {
 
         var cfg = {
             iFrameReady: false,
+            accountsObjName: 'Accounts',
 
             appSettingsViewId: ktl.core.getViewIdByTitle('App Settings', 'iframewnd'),
             appSettingsItemFld: ktl.core.getFieldIdByName('Item', appSettingsObj),
@@ -8040,6 +8044,19 @@ function Ktl($, appInfo) {
                 if (cfgObj.iFrameReady) {
                     cfg.iFrameReady = cfgObj.iFrameReady;
                     clearTimeout(iFrameTimeout);
+                }
+
+                if (cfgObj.accountsObjName) {
+                    cfg.accountsObjName = cfgObj.accountsObjName;
+                    accountsObj = ktl.core.getObjectIdByName(cfg.accountsObjName);
+
+                    cfg.acctSwVersionFld = ktl.core.getFieldIdByName('SW Version', accountsObj);
+                    cfg.acctUtcHbFld = ktl.core.getFieldIdByName('UTC HB', accountsObj);
+                    cfg.acctTimeZoneFld = ktl.core.getFieldIdByName('TZ', accountsObj);
+                    cfg.acctLocHbFld = ktl.core.getFieldIdByName('LOC HB', accountsObj);
+                    cfg.acctOnlineFld = ktl.core.getFieldIdByName('Online', accountsObj);
+                    cfg.acctUserPrefsFld = ktl.core.getFieldIdByName('User Prefs', accountsObj);
+                    cfg.acctUtcLastActFld = ktl.core.getFieldIdByName('UTC Last Activity', accountsObj);
                 }
             },
 
