@@ -4656,26 +4656,30 @@ function Ktl($, appInfo) {
                     for (var g = 0; g < paramGroups.length; g++) {
                         var group = paramGroups[g];
 
-                        if (group.length >= 4) {
+                        if (group.length >= 3) {
+                            var colorize = false;
                             var operator = group[0];
                             var value = group[1];
                             var fgColor = group[2];
-                            var bgColor = group[3];
+
+                            if (group.length >= 4)
+                                var bgColor = group[3];
+
                             var span = '';
                             var includeBlanks = false; //When a cell value is blank it is considered as zero.  This flag determines when it is desireable.
                             var propagate = false; //Propagate style to whole row.
 
-                            var style = { 'color': fgColor, 'background-color': bgColor };
+                            var style = 'color:' + fgColor + (bgColor ? '; background-color:' + bgColor : '');
 
                             if (group.length >= 5)
-                                style['font-weight'] = group[4];
+                                style += ('; font-weight' + group[4]);
 
                             if (group.length >= 6) {
                                 if (group[5].includes('i'))
-                                    style['font-style'] = 'italic';
+                                    style += ('; font-style: italic');
 
                                 if (group[5].includes('u'))
-                                    style['text-decoration'] = 'underline';
+                                    style += ('; text-decoration: underline');
 
                                 if (group[5].includes('t')) //Text only, not whole cell.
                                     span = ' span';
@@ -4695,29 +4699,35 @@ function Ktl($, appInfo) {
                             const compareWith = Number(value);
 
                             if (operator === 'eq' && cellText === value)
-                                $(sel).css(style);
+                                colorize = true;
                             else if (operator === 'neq' && cellText !== value)
-                                $(sel).css(style);
+                                colorize = true;
                             else if (operator === 'has' && cellText && cellText.includes(value))
-                                $(sel).css(style);
+                                colorize = true;
+                            else if (operator === 'sw' && cellText && cellText.startsWith(value))
+                                colorize = true;
+                            else if (operator === 'ew' && cellText && cellText.endsWith(value))
+                                colorize = true;
                             else if (!isNaN(numCellValue) && !isNaN(compareWith)) {
                                 //All numeric comparisons here.
                                 if (operator === 'lt') {
                                     if (numCellValue < compareWith && (cellText || (!cellText && includeBlanks)))
-                                        $(sel).css(style);
+                                        colorize = true;
                                 } else if (operator === 'lte') {
                                     if (numCellValue <= compareWith && (cellText || (!cellText && includeBlanks)))
-                                        $(sel).css(style);
+                                        colorize = true;
                                 } else if (operator === 'gt') {
                                     if (numCellValue > compareWith)
-                                        $(sel).css(style);
+                                        colorize = true;
                                 } else if (operator === 'gte') {
                                     if (numCellValue >= compareWith)
-                                        $(sel).css(style);
+                                        colorize = true;
                                 }
                             }
 
                             //Add support for date and time comparisons.
+
+                            colorize && $(sel).css('cssText', style);
                         }
                     }
                 }
