@@ -1,6 +1,6 @@
 # ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
-Last updated: April 6, 2023
+Last updated: May 26, 2023
 
 # Contents
 
@@ -239,6 +239,55 @@ Here is the list:
 
 **\_lud and \_lub**: Last Updated Date and Last Updated By. Both must be used together. \_lud is a date/time field and \_lub is a connection to an account. When this pair of fields are included in a table that has Inline Editing enabled, each time the user modifies **any** cell, an API call will automatically update these two values with the current date/time and the logged-in account.
 
+**\_cfv=[params1], [params2]**: Colorize Field by Value. Can be used with grids and lists. Used to change the color of the text and background of a cell, based on its value. It is also possible to set the following styles: font weight (bold, extrabold , 700), underline and italic. It is also possible to set the style to propagate across the whole row. The colors support named values (ex: red, purple) or hex values with optional transparency (ex: \#ff08, or \#ffff0080 for 50% transparent yellow).
+
+The parameters syntax is as follows:
+
+**\_cfv= [operator, value, textColor, backgroundColor, fontWeight, options]**
+
+operator (required):
+
+-   eq (equals)
+-   neq (not equals)
+-   gt (greater than)
+-   gte (greater than or equal to)
+-   lt (less than)
+-   lte (less than or equal to)
+-   sw (starts with)
+-   ew (ends with)
+
+value (required): Any textual or numeric value. For “empty” string, leave two consecutive commas.
+
+textColor (required): any standard “named colors” or hex values starting with \# and has 3, 4, 6, or 8 digits is supported.
+
+backgroundColor (optional): Same as above. Will colorize the cell or only the text if the “t” option is included.
+
+fontWeight (optional): Any named value like “bold”, or “lighter”, or a numeric values like 700. Omit or leave empty for default.
+
+options (optional): Possible values are
+
+u - underline
+
+i - italic
+
+t - text only
+
+p - propagate style to whole row
+
+Example: \_cfv=[ne,,,red,,iu], [gte,100, yellow,\#00F9]
+
+The first group between square brackets will set the background in red when the value is not blank and set the text style to default weight, italics and underlined. The second one will set the text color to yellow and the background in blue at 56.3 % transparency, when the value is greater than or equal to 100.
+
+Additional notes:
+
+-   The square brackets are optional if you have only one group of parameters
+-   Be careful to avoid conflicting conditions, since they will give unpredictable results.
+-   The group of parameters are applied from left to right, so that if you have overlapping conditions, the last one will have precedence.
+-   Transparency is useful to combine the visual effects of various colors
+-   This keyword must be used in the field’s description. It will take effect in all grids and lists where used.
+-   This keyword can also be used in the view title or description.
+-   Using both in the view and in the field is supported but need extra care to avoid conflicting conditions. When using both, the field keyword has precedence over the view’s.
+
 ## Views
 
 ### Usage
@@ -276,7 +325,7 @@ You can add reserved keywords **at the end of your view’s title** **or descrip
 
 Here is the list:
 
-**\_ar=n**: Auto Refresh view. The view will be refreshed periodically every “*n*” seconds. It is possible to manually start/stop the process using the autoRefresh function.
+**\_ar=n**: Auto Refresh view. The view will be refreshed periodically every “*n*” seconds. If no or invalid parameter is given, the default is 60 seconds. It is possible to manually start/stop the process using the autoRefresh function.
 
 **\_hv**: Hidden View. Moves the view away from screen but kept in DOM. Used to save real-estate, while maintaining API calls and automated search capabilities.
 
@@ -294,7 +343,10 @@ This option is “somewhat” a bit more secure than \_hc since it’s not as ea
 
 **\_ni=colHeader1, colHeader2**: No Inline editing on columns with specified headers. If no parameter is supplied, it will apply to the whole table. Disables inline editing for the user, even if enabled in the Builder. Enabling inline editing is required for API calls in tables, but not always desirable at the user interface. This provides a solution.
 
-\* Note about \_ni security: use this keyword with caution as it only disables the user interface. Someone with coding skills and bad intentions could still modify the data using commands in the console.
+Notes:
+
+-   It is possible to allow inline editing for a specific field by adding an exclamation mark as the first character. Ex: **\_ni=!Phone Number, !Address** will disable inline editing for the whole grid, except for the columns with headers Phone Number and Address.
+-   About \_ni security: use this keyword with caution as it only disables the user interface. Someone with coding skills and bad intentions could still modify the data using commands in the console.
 
 **\_dr=rowsNumber**: Displayed Records. Sets the initial number of rows in a table, allowing to go beyond the maximum value of 100 in the Builder. This is applied when the page is first opened.
 
@@ -320,7 +372,9 @@ Here, the form’s visible title will be “Customer Sales”, and when submitte
 
 **\_uvx=str1, str2**: Unique Values Exceptions. Used when we need unique values, but with a few specific exceptions. See instructions in the [Advanced Keywords Setup](#advanced-keywords-setup).
 
-**\_km:** Triggers the Kiosk mode for that page. This only applies for any role other than Developer. For the accounts having the Developer role, it is possible to switch back and forth between the Normal and Kiosk modes by doing a Ctrl+Click on the version info bar.
+**\_cfv=[params1], [params2]**: Colorize Field by Value. See \_cfv in fields description for all details.
+
+**\_km:** Triggers the Kiosk mode for that page. This only applies for any role other than Developer. For the accounts having the Developer role, it is possible to switch back and forth between the Normal and Kiosk modes by clicking on the version info bar, provided that it is accessible.
 
 **\_kr**: Kiosk add Refresh button. For Kiosk mode only, when there’s no keyboard/mouse. When this keyword is used, any menu on the page will be moved next to it to save space.
 
@@ -614,6 +668,12 @@ Retrieves information about Knack's colors and generates a few variations for KT
 
 # Customizing Features
 
+**IMPORTANT UPDATE, MAY 26, 2023**
+
+The procedure below has just been streamlined significantly, thus deprecating all information therein. Any customization of this file should not be implemented.
+
+Documentation will be updated shortly.
+
 You can customize how the KTL operates by modifying the **KTL_KnackApp.js** file. This is done by setting various flags and variables, but also by adding your own processing code in the callbacks.
 
 ## Callbacks
@@ -625,7 +685,7 @@ The callbacks play a major role, and can be seen as a “bridge” between the K
 You can turn off a feature by setting its flag to false by using one of these two method – **but not both**:
 
 1.  **Simple method**: Copy the content of the [KTL_Features.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Features.js) in the Javascript pane after the KTL_Loader.js code. This will **disable all features**. To enable a feature, either remove the line or set its flag to true. Keep the colons and commas in place, as they are required.
-2.  **Advanced method**: Copy the content of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file in the Javascript pane and edit the function **ktl.core.setCfg**, in the **//KTL Setup** section, under the **enabled** section.
+2.  **Advanced method (!!! Obsolete !!! – update coming soon)**: Copy the content of the [KTL_KnackApp.js](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_KnackApp.js) file in the Javascript pane and edit the function **ktl.core.setCfg**, in the **//KTL Setup** section, under the **enabled** section.
 
 For example, you don’t want to see the version info bar at top-right of the page, set this to false: **showAppInfo: false**
 
@@ -706,15 +766,15 @@ If you want to add Heartbeat Monitoring to your app to assess an account's prese
 2.  In the Accounts object, add these fields:
     1.  **SW Version**: Type: Short text.
     2.  **UTC HB**: Type: Date/Time, Date Format: mm/dd/yyyy, Default Date: none, Time Format: military, Default Time: none.
-    3.  **Time Zone**: Type: Number, no decimals.
-    4.  **LOC HB**: Type: Equation, Equation Type: Date, Date Type: hours, Result Type: Date, Equation Editor: {UTC HB}+{Time Zone}, Date Format: mm/dd/yyyy, Time Format: military.
+    3.  **TZ**: Type: Number, no decimals.
+    4.  **LOC HB**: Type: Equation, Equation Type: Date, Date Type: hours, Result Type: Date, Equation Editor: {UTC HB}+{TZ}, Date Format: mm/dd/yyyy, Time Format: military.
     5.  **Online**: Type: Yes/No, Default No, Input: Checkbox.
     6.  **UTC Last Activity**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
 3.  Create a **new object** called **App Settings** with these fields:
     1.  Rename the default first field from App Settings Name to **Item**: Type: Short Text, set as object’s Display Field and Sort in Alphabetic order.
     2.  **Value**: Type: Paragraph Text.
     3.  **Date/Time**: Type: Date/Time, Date Format: mm/dd/yyyy, Time Format: military.
-4.  In the iFrameWnd page created above, add a Form view that updates the currently logged-in account. Once the view is added, remove all fields, then add on a first line: SW Version, UTC HB and LOC HB. Set LOC HB as read-only. Then on a second line: Online, UTC Last Activity and Time Zone. Set the view title to **Heartbeat**. In the form’s Submit rules, enable auto-reload and set the Confirmation message to “Heartbeat sent successfully.”.
+4.  In the iFrameWnd page created above, add a Form view that updates the currently logged-in account. Once the view is added, remove all fields, then add on a first line: SW Version, UTC HB and LOC HB. Set LOC HB as read-only. Then on a second line: Online, UTC Last Activity and TZ. Set the view title to **Heartbeat**. In the form’s Submit rules, enable auto-reload and set the Confirmation message to “Heartbeat sent successfully.”.
 5.  Still in the iFrameWnd, add a table view that displays **App Settings**, with title: **App Settings \_ar=20**. Source filter: **Item Starting with APP**, sorted alphabetically A to Z. No Search, inline editing = On, 10 records at a time, no filtering allowed. Add all fields. Set Value’s Truncate Text to 75 characters.
 6.  Be sure you have the Show iFrameWnd checkbox on in [User Prefs](#user-preferences-1) above.
 7.  Refresh the app and you should see in the iFrameWnd the heartbeat being submitted every minute and the Online being set to Yes.
@@ -968,44 +1028,44 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 # List of all Keywords
 
-| **Keyword**                        | **Description**                                       | **Where to use it**                                      | **Example**                                |
-|------------------------------------|-------------------------------------------------------|----------------------------------------------------------|--------------------------------------------|
-| \_ar=n                             | Auto-Refresh a view every *n* seconds                 | View Title or Description                                | \_ar=60                                    |
-| \_hv                               | Hidden View                                           | ‘’                                                       |                                            |
-| \_ht                               | Hidden Title                                          | ‘’                                                       |                                            |
-| \_hf=fld1, fld2…                   | Hidden Fields                                         | “                                                        | \_hf=Work Shift                            |
-| \_ni=colHeader1, colHeader2…       | No Inline editing                                     | ‘’                                                       | \_ni=Email,Phone                           |
-| \_ts                               | Adds a Time Stamp to a view                           | ‘’                                                       |                                            |
-| \_dtp                              | Adds Date/Time Pickers                                | ‘’                                                       |                                            |
-| \_rvs=vTitle1, vTitle2…            | Refresh Views after Submit                            | ‘’                                                       | \_rvs=Monthly Sales, Clients               |
-| \_rvr=vTitle1, vTitle2…            | Refresh Views after Refresh                           | ‘’                                                       | \_rvr=Monthly Sales, Clients               |
-| \_rvd=vConfTitle,vTitle1, vTitle2… | Refresh Views after calendar event Drag’n Drop        | ‘’                                                       | \_rvd=Confirmation, Monthly Sales, Clients |
-| \_lf= vTitle1,vTitle2…             | Linked Filters                                        | ‘’                                                       | \_lf=Monthly Sales, Clients                |
-| \_qt=colorTrue,colorFalse          | Quick Toggle of Boolean fields                        | ‘’                                                       | \_qt=\#0F07,pink                           |
-| \_mc=colHeader                     | Match Color for whole row to a given column           | ‘’                                                       | \_mc=Sales                                 |
-| \_hc= colHeader1, colHeader2…      | Hide Columns, but keep in DOM                         | ‘’                                                       |                                            |
-| \_rc= colHeader1, colHeader2…      | Removed Columns, including DOM                        | ‘’                                                       |                                            |
-| \_nf=field_1,field_2…              | No Filtering on specified fields                      | ‘’                                                       | \_nf=field_1,field_2                       |
-|                                    |                                                       | ‘’                                                       |                                            |
-| \_al                               | Auto-Login                                            | View Title or Description of a login page                |                                            |
-|                                    |                                                       | ‘’                                                       |                                            |
-| \_oln=url                          | Open Link in a New page (tab)                         | Rich Text view with link                                 | Support \_oln=https://ctrnd.com            |
-| \_ols=url                          | Open Link in Same page                                | Rich Text view with link                                 | Support \_ols=https://ctrnd.com            |
-|                                    |                                                       | ‘’                                                       |                                            |
-| \_uc                               | Convert to Uppercase                                  | Field Description                                        |                                            |
-| \_num                              | Numeric                                               | ‘’                                                       |                                            |
-| \_int                              | Integer                                               | ‘’                                                       |                                            |
-| \_ip                               | Validate IP format (to do)                            | ‘’                                                       |                                            |
-| \_lud                              | Last Updated Date. For Inline edits, used with \_lub. | ‘’                                                       |                                            |
-| \_lub                              | Last Updated By. For Inline edits, used with \_lud.   | ‘’                                                       |                                            |
-| \_uvc                              | Unique Value Check                                    | See Advanced Keywords Setup                              |                                            |
-| \_uvx                              | Unique Values Exceptions                              | ‘’                                                       |                                            |
-|                                    |                                                       | ‘’                                                       |                                            |
-| \_km                               | Kiosk Mode                                            | View Title or Description. Effective in Kiosk mode only. |                                            |
-| \_kr                               | Kiosk add Refresh button                              | ‘’                                                       |                                            |
-| \_kb                               | Kiosk add Back button                                 | ‘’                                                       |                                            |
-| \_kd                               | Kiosk add Done button                                 | ‘’                                                       |                                            |
-|                                    |                                                       |                                                          |                                            |
+| **Keyword**                                          | **Description**                                       | **Where to use it**                                      | **Example**                                  |
+|------------------------------------------------------|-------------------------------------------------------|----------------------------------------------------------|----------------------------------------------|
+| \_ar=n Default is 60 seconds if parameter is omitted | Auto-Refresh a view every *n* seconds                 | View Title or Description                                | \_ar=60                                      |
+| \_hv                                                 | Hidden View                                           | ‘’                                                       |                                              |
+| \_ht                                                 | Hidden Title                                          | ‘’                                                       |                                              |
+| \_hf=fld1, fld2…                                     | Hidden Fields                                         | “                                                        | \_hf=Work Shift                              |
+| \_ni=colHeader1, colHeader2…                         | No Inline editing                                     | ‘’                                                       | \_ni=Email,!Phone (excl mark allows editing) |
+| \_ts                                                 | Adds a Time Stamp to a view                           | ‘’                                                       |                                              |
+| \_dtp                                                | Adds Date/Time Pickers                                | ‘’                                                       |                                              |
+| \_rvs=vTitle1, vTitle2…                              | Refresh Views after Submit                            | ‘’                                                       | \_rvs=Monthly Sales, Clients                 |
+| \_rvr=vTitle1, vTitle2…                              | Refresh Views after Refresh                           | ‘’                                                       | \_rvr=Monthly Sales, Clients                 |
+| \_rvd=vConfTitle,vTitle1, vTitle2…                   | Refresh Views after calendar event Drag’n Drop        | ‘’                                                       | \_rvd=Confirmation, Monthly Sales, Clients   |
+| \_lf= vTitle1,vTitle2…                               | Linked Filters                                        | ‘’                                                       | \_lf=Monthly Sales, Clients                  |
+| \_qt=colorTrue,colorFalse                            | Quick Toggle of Boolean fields                        | ‘’                                                       | \_qt=\#0F07,pink                             |
+| \_mc=colHeader                                       | Match Color for whole row to a given column           | ‘’                                                       | \_mc=Sales                                   |
+| \_hc= colHeader1, colHeader2…                        | Hide Columns, but keep in DOM                         | ‘’                                                       |                                              |
+| \_rc= colHeader1, colHeader2…                        | Removed Columns, including DOM                        | ‘’                                                       |                                              |
+| \_nf=field_1,field_2…                                | No Filtering on specified fields                      | ‘’                                                       | \_nf=field_1,field_2                         |
+|                                                      |                                                       |                                                          |                                              |
+| \_al                                                 | Auto-Login                                            | View Title or Description of a login page                |                                              |
+|                                                      |                                                       | ‘’                                                       |                                              |
+| \_oln=url                                            | Open Link in a New page (tab)                         | Rich Text view with link                                 | Support \_oln=https://ctrnd.com              |
+| \_ols=url                                            | Open Link in Same page                                | Rich Text view with link                                 | Support \_ols=https://ctrnd.com              |
+|                                                      |                                                       | ‘’                                                       |                                              |
+| \_uc                                                 | Convert to Uppercase                                  | Field Description                                        |                                              |
+| \_num                                                | Numeric                                               | ‘’                                                       |                                              |
+| \_int                                                | Integer                                               | ‘’                                                       |                                              |
+| \_ip                                                 | Validate IP format (to do)                            | ‘’                                                       |                                              |
+| \_lud                                                | Last Updated Date. For Inline edits, used with \_lub. | ‘’                                                       |                                              |
+| \_lub                                                | Last Updated By. For Inline edits, used with \_lud.   | ‘’                                                       |                                              |
+| \_uvc                                                | Unique Value Check                                    | See Advanced Keywords Setup                              |                                              |
+| \_uvx                                                | Unique Values Exceptions                              | ‘’                                                       |                                              |
+| \_cfv=[grp1],[grp2]…                                 | Colorize Field by Value                               | Field description or View Title or Description.          | \_cfv=[lte,5,red,\#ff08,bold,iu]             |
+| \_km                                                 | Kiosk Mode                                            | View Title or Description. Effective in Kiosk mode only. |                                              |
+| \_kr                                                 | Kiosk add Refresh button                              | ‘’                                                       |                                              |
+| \_kb                                                 | Kiosk add Back button                                 | ‘’                                                       |                                              |
+| \_kd                                                 | Kiosk add Done button                                 | ‘’                                                       |                                              |
+|                                                      |                                                       |                                                          |                                              |
 
 ## 
 
