@@ -4346,6 +4346,7 @@ function Ktl($, appInfo) {
                     keywords._dr && numDisplayedRecords(view, keywords);
                     keywords._nsg && noSortingOnGrid(view.key);
                     keywords._hf && hideFields(view.key, keywords);
+                    keywords._ha && headerAlignment(view, keywords);
 
 
                     processViewKeywords && processViewKeywords(view, keywords, data);
@@ -4727,7 +4728,8 @@ function Ktl($, appInfo) {
 
                             //Add support for date and time comparisons.
 
-                            colorize && $(sel).css('cssText', style);
+                            //Merge current and new styles.
+                            colorize && ($(sel).attr('style', $(sel).attr('style') + ' ;' + style));
                         }
                     }
                 }
@@ -4749,6 +4751,24 @@ function Ktl($, appInfo) {
                     obj && obj.classList.add('ktlHidden')
                 }
             })
+        }
+
+        function headerAlignment(view, keywords) {
+            if (!view || !keywords._ha) return;
+            const viewType = view.type;
+            if (viewType !== 'table') return;
+            var columns = view.columns;
+            if (!columns) return;
+
+            try {
+                columns.forEach(col => {
+                    var align = col.align;
+                    var thText = $('#' + view.key + ' thead th.' + col.field.key);
+                    thText.css('text-align', align);
+                })
+            } catch (e) {
+                console.log('headerAlignment error:', e);
+            }
         }
 
         return {
