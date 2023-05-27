@@ -38,6 +38,9 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         var appUrl = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
         appUrl = encodeURI(appUrl);
         delete KnackApp;
+
+        if (typeof window.ktlReady === 'function')
+            LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_KnackApp.js'], () => { })
         LazyLoad.js([appUrl], () => { })
     }
 
