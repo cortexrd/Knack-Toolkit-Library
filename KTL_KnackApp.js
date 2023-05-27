@@ -15,9 +15,6 @@ window.KnackApp = function ($, appInfo = {}) {
 
     window.ktlkw = ktl.sysInfo.findAllKeywords;
 
-    if (typeof window.ktlReady === 'function')
-        window.ktlReady();
-
     //====================================================
     //KTL Setup - BEGIN
     (function () {
@@ -191,6 +188,9 @@ window.KnackApp = function ($, appInfo = {}) {
                 logCategoryAllowed: logCategoryAllowed,
             });
         }
+
+        if (typeof window.ktlReady === 'function')
+            window.ktlReady();
     })();
     //KTL Setup - END
     //====================================================
