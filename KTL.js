@@ -30,6 +30,7 @@ function Ktl($, appInfo) {
 
     //First thing: Extract all keywords from app structure.
     var ktlKeywords = {};
+    window.ktlKeywords = ktlKeywords;
     for (var i = 0; i < Knack.scenes.models.length; i++) {
         var scn = Knack.scenes.models[i];
         var views = scn.views;
