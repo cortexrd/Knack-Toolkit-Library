@@ -19,7 +19,7 @@ window.KnackApp = function ($, appInfo = {}) {
     //KTL Setup - BEGIN
     (function () {
         ktl.core.setCfg({
-            developerName: 'Firstname Lastname', //Put your name here to get super powers!
+            developerNames: ['Firstname Lastname'], //Add your name here to get super powers!
             developerEmail: '', //yourmail@provider.com
             devOptionsPin: '0000',
             devDebugCode: '',
