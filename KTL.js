@@ -245,7 +245,7 @@ function Ktl($, appInfo) {
 
         return {
             setCfg: function (cfgObj = {}) {
-                cfgObj.developerName && (cfg.developerName = cfgObj.developerName);
+                cfgObj.developerNames && (cfg.developerNames = cfgObj.developerNames);
                 cfgObj.developerEmail && (cfg.developerEmail = cfgObj.developerEmail);
                 cfgObj.devOptionsPin && (cfg.devOptionsPin = cfgObj.devOptionsPin);
                 cfgObj.devDebugCode && (cfg.devDebugCode = cfgObj.devDebugCode);
@@ -414,7 +414,7 @@ function Ktl($, appInfo) {
                             ktl.log.addLog(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
                         } else if (outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
                             ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                        } else if (outcome === ktl.const.WAIT_SEL_ALERT && Knack.getUserAttributes().name === ktl.core.getCfg().developerName)
+                        } else if (outcome === ktl.const.WAIT_SEL_ALERT && ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name))
                             alert('waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
 
                         reject();
@@ -875,7 +875,9 @@ function Ktl($, appInfo) {
             },
 
             toggleMode: function () { //Prod <=> Dev modes
-                if (Knack.isMobile() && Knack.getUserAttributes().name !== ktl.core.getCfg().developerName) return; //Dev mode only works in a desktop environment.
+                //Dev mode on mobile devices is only possible if NodeJS runs with file server on main developer's machine.
+                if (Knack.isMobile() && !ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) return;
+
                 var prod = (localStorage.getItem(APP_ROOT_NAME + 'dev') === null);
                 if (prod)
                     ktl.storage.lsSetItem('dev', '', true);
@@ -1172,11 +1174,20 @@ function Ktl($, appInfo) {
                 //Inline editing: Leave just a bit of time for the chzn object to settle, then submit new cell-editor value.
                 if (document.querySelector('#cell-editor .chzn-container')) {
                     e.preventDefault(); //Do not submit whole form.
-                    setTimeout(function () { $('#cell-editor > div.submit > a').trigger('click'); }, 200);
+                    setTimeout(function () {
+                        $('#cell-editor > div.submit > a').trigger('click');
+                    }, 200);
                 } else if (document.querySelector('#cell-editor .kn-button[disabled=disabled]'))
                     e.preventDefault();
 
-                //Some inline editors do not Submit. This solves the problem.
+                //Some inline edit field types do not Submit on Enter. This solves the problem.
+
+                //For Paragraph Text, user need to press Ctrl+Enter to Submit.
+                //This allows using the more natural Enter to add a line feed.
+                //For some reason, Rich Text field types can't trapped the Ctrl+Enter event. The event is not fired at all.
+                if ((e.target.type === 'textarea' /*|| e.target.classList.contains('redactor-editor')*/) && !e.ctrlKey)
+                    return;
+
                 $('#cell-editor .is-primary').click();
 
                 //Filters: enables using the enter key to select and submit.
@@ -4994,7 +5005,7 @@ function Ktl($, appInfo) {
                         } else if ($('.kn-form.kn-view' + '.' + view.key).length) {
                             $('.kn-form.kn-view' + '.' + view.key).append(label);
                         } else if ($('#' + view.key + ' .control').length) {
-                            $('#' + view.key + ' .control').css({ 'display': 'inline-flex' }).append(label);
+                            $('#' + view.key + ' .control').append(label);
                         } else if ($('.kn-details.kn-view' + '.' + view.key).length) {
                             $('.kn-details.kn-view' + '.' + view.key).append(label);
                         } else {
@@ -6788,7 +6799,9 @@ function Ktl($, appInfo) {
                                     }
                                 }
                             } else {
-                                //Apply custom style
+                                //Apply custom style.
+                                //The style is a string that has the same format as in the Elements view.
+                                //Ex: 'height:50px;font-weight:700;min-width:150px;'
                                 if (kbs && kbs.length)
                                     $('.kn-button:not(.search,.devBtn)').css('cssText', kbs[0]);
                             }
@@ -6971,7 +6984,7 @@ function Ktl($, appInfo) {
                             document.body.appendChild(devBtnsDiv);
 
                             //Requires NodeJS and file server to run otherwise crashes.
-                            if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
+                            if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
                                 ktl.fields.addButton(devBtnsDiv, 'Dev/Prod', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                     ktl.core.toggleMode();
                                 })
@@ -7866,7 +7879,7 @@ function Ktl($, appInfo) {
                             //Dev = Ignore
                         } else {
                             //Prod
-                            if (Knack.getUserAttributes().name === ktl.core.getCfg().developerName) {
+                            if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
                                 //Only warn when in Prod mode.
                                 ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
                             } else {
