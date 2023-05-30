@@ -22,6 +22,8 @@ window.ktlReady = function (appInfo = {}) {
 
             //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
             enabled: {
+                //"Basic" features
+                //Enabled by default. To disable them, their flag must exist and be set to true.
                 showAppInfo: true,
                 showKtlInfo: true,
                 showMenuInTitle: true,
@@ -40,7 +42,8 @@ window.ktlReady = function (appInfo = {}) {
                 idleWatchDog: true,
                 debugWnd: true,
 
-                //Those below must also be set up properly to have any effect.  See documentation.
+                //"Advanced" features
+                //Disabled by default and/or must be set up properly to have any effect. See documentation.
                 iFrameWnd: false,
                 logging: {
                     logins: false,
@@ -59,7 +62,7 @@ window.ktlReady = function (appInfo = {}) {
     //KTL Setup - END
 
     /////////////////////////////////////////////////
-    //Your code goes here...
+    //Your App-specific code goes here...
 
 }
 
