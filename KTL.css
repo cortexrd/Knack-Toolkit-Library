@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.14 */
+/* KTL CSS version: 0.2.15 */
 
 /************ General Settings **************/
 .pointer {
@@ -267,15 +267,15 @@ body.kiosk-mode { /* Add extra space at top of screen in kiosk mode, to prevent 
 }
 
 /* Reduced page margins, to maximize available real-estate. */
-.narrowMarginsPage.kn-scene.kn-container {
+.ktlNarrowMarginsPage.kn-scene.kn-container {
 	padding: 2px;
 	margin-left: 2px !important;
 	margin-right: 2px !important;
 }
 
 /* For any page where high data density is required, typically for Dashboards */
-.denseGrid .knTable th,
-.denseGrid .knTable td {
+.ktlDenseGrid .knTable th,
+.ktlDenseGrid .knTable td {
 	padding: 1px 2px 1px 2px;
 }
 
