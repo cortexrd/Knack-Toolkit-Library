@@ -136,6 +136,11 @@ function Ktl($, appInfo) {
                     }
 
                     ktl.scenes.getCfg().processMutation && ktl.scenes.getCfg().processMutation(mutRec); //App's callback.
+                } else {
+                    if (!headerProcessed) {
+                        headerProcessed = true;
+                        $('#kn-app-header').addClass('ktlDisplayNone');
+                    }
                 }
 
                 const knView = mutRec.target.closest('.kn-view');
@@ -7795,7 +7800,6 @@ function Ktl($, appInfo) {
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) {
-                $('#kn-app-header').addClass('ktlDisplayNone');
                 var intervalId = setInterval(function () { //Wait until ready HB field is ready.
                     if (ktl.iFrameWnd.getCfg().hbViewId !== '') {
                         clearInterval(intervalId);
