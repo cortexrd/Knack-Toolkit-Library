@@ -34,7 +34,7 @@ function loop() {
                 .then(function () { loop(); })
                 .catch(function (reason) { console.log('\x1b[31m%s\x1b[0m', reason); })
         } else if (op === '3') {
-            runScript('.\\Lib\\KTL\\NodeJS\\NodeJS_MergeFiles.js', ['-ktlpath=.\\Lib\\KTL', '-filename=.\\Lib\\KTL\\KTL_KnackApp'],
+            runScript('.\\Lib\\KTL\\NodeJS\\NodeJS_MergeFiles.js', ['-ktlpath=.\\Lib\\KTL', '-filename=.\\Lib\\KTL\\KTL_Defaults'],
                 function (err) {
                     if (err) {
                         console.log('Error during merge:\n', err, '\n\n');
