@@ -1,4 +1,4 @@
-//This file shows how to customize the KTL for your application.
+//This file is a template that shows how to customize the KTL for your application.
 //Insert the code below in the Javascript pane of your app's Builder, just after the loader code.
 //Once the KTL is done loading, it will jump in the ktlReady function and apply your desired settings.
 //All code must be located inside the ktlReady section.
