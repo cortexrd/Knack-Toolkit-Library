@@ -44,7 +44,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 idleWatchDog: true,
                 debugWnd: true,
 
-                //Those below must also be properly set up to have any effect.  See documentation.
+                //Those below must also be set up properly to have any effect.  See documentation.
                 iFrameWnd: false,
                 logging: {
                     logins: false,
@@ -190,7 +190,7 @@ window.KnackApp = function ($, appInfo = {}) {
         }
 
         if (typeof window.ktlReady === 'function')
-            window.ktlReady();
+            window.ktlReady(appInfo);
     })();
     //KTL Setup - END
     //====================================================
@@ -333,7 +333,7 @@ window.KnackApp = function ($, appInfo = {}) {
         }
     }
 
-    //Special app-specific keywords.  Note that all keywords must start by an underscore "_".
+    //Special app-specific keywords.  Note that all keywords must start with an underscore "_".
     function processViewKeywords(view, keywords, data) {
         if (keywords._my_app_keyword) {
             //Do something here...

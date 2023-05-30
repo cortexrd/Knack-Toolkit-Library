@@ -9,8 +9,8 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.11.13';
-    const KTL_LATEST_CSS_VERSION = '0.2.13';
+    const KTL_LATEST_JS_VERSION = '0.11.14';
+    const KTL_LATEST_CSS_VERSION = '0.2.14';
 
     var cssVersion = KTL_LATEST_CSS_VERSION;
     var prodFolder = 'Prod/';
@@ -37,11 +37,25 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         ktlSvr = 'http://localhost:3000/';
         var appUrl = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
         appUrl = encodeURI(appUrl);
-        delete KnackApp;
+
+        delete KnackApp; //JIC, for users before the transition.  To be deleted in a few weeks.  Today: May 30, 2023.
 
         if (typeof window.ktlReady === 'function')
-            LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_KnackApp.js'], () => { })
-        LazyLoad.js([appUrl], () => { })
+            delete window.ktlReady;
+
+        LazyLoad.js([appUrl], () => {
+            if (typeof window.ktlReady !== 'function') {
+                var fileName = prompt('Error - Cannot find ktlReady file:\n' + appUrl + '\nWhat is file name (without .js)?');
+                if (fileName) {
+                    localStorage.setItem(lsShortName + 'fileName', fileName);
+                    location.reload(true);
+                } else {
+                    localStorage.removeItem(lsShortName + 'dev'); //JIC
+                    alert('Reverting to Prod mode.');
+                    location.reload(true);
+                }
+            }
+        })
     }
 
     if (ktlVersion === 'dev') {
@@ -57,32 +71,14 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     LazyLoad.css([cssFile], () => { });
     LazyLoad.js([ktlFile], () => {
         if (typeof Ktl === 'function') {
-            if (prod) {
+            LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_KnackApp.js'], () => {
                 if (typeof KnackApp === 'function') {
                     KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
-                    callback();
                 } else
-                    LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_KnackApp.js'], () => {
-                        //console.log('Loaded default KnackApp.');
-                        KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
-                        callback();
-                    });
-            } else { //Dev mode
-                if (typeof KnackApp === 'function') {
-                    KnackApp($, { hostname: ktlSvr, ktlVersion: ktlVersion, lsShortName: lsShortName });
-                    callback();
-                } else {
-                    var fileName = prompt('Error - Cannot find KnackApp file:\n' + appUrl + '\nWhat is file name (without .js)?');
-                    if (fileName) {
-                        localStorage.setItem(lsShortName + 'fileName', fileName);
-                        location.reload(true);
-                    } else {
-                        localStorage.removeItem(lsShortName + 'dev'); //JIC
-                        alert('Reverting to Prod mode.');
-                        location.reload(true);
-                    }
-                }
-            }
+                    alert('Error - KnackApp not found.');
+
+                callback();
+            })
         } else {
             if (prod) {
                 if (typeof Android !== 'undefined')
@@ -91,8 +87,8 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                 console.log("Error - can't locate KTL file:\n" + ktlFile);
                 localStorage.removeItem(lsShortName + 'dev'); //JIC
                 location.reload(true);
-            }
+            } else
+                alert('KTL not found');
         }
     })
 }
-

@@ -1185,9 +1185,18 @@ function Ktl($, appInfo) {
 
                 //For Paragraph Text, user need to press Ctrl+Enter to Submit.
                 //This allows using the more natural Enter to add a line feed.
-                //For some reason, in a Rich Text, the Ctrl+Enter event can't trapped.  To investigate.
-                if ((e.target.type === 'textarea' /*|| e.target.classList.contains('redactor-editor')*/) && !e.ctrlKey)
+                if ((e.target.type === 'textarea' && !e.ctrlKey))
                     return;
+
+                //For some reason, in a Rich Text, the Ctrl+Enter event can't be trapped.  To investigate...
+                if (e.target.classList.contains('redactor-editor')) {
+                    if (e.ctrlKey)
+                        console.log('RT with Ctrl'); //This one doesn't work as expected - we can't get here.
+                    else {
+                        //console.log('RT without Ctrl');
+                        return;
+                    }
+                }
 
                 $('#cell-editor .is-primary').click();
 

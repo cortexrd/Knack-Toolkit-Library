@@ -1,15 +1,19 @@
 //This file shows how to customize the KTL for your application.
 //Insert the code below in the Javascript pane of your app's Builder, just after the loader code.
-//Once the KTL is done loading, it will apply your desired settings.
-//Each block of code that starts with a line that contains "setCfg" must be located inside the ktlReady section.
-//The rest can be located anywhere.
+//Once the KTL is done loading, it will jump in the ktlReady function and apply your desired settings.
+//All code must be located inside the ktlReady section.
 //See documentation for more details.
 
+//Your app's version.
+window.APP_VERSION = '1.0.0';
+
+var ktl;
 window.ktlReady = function () {
+    ktl = window.ktl;
+
+    //KTL Setup - BEGIN
     ktl.scenes.setCfg({
         versionDisplayName: 'MyApp', //This will show a short version name of your app.  Leave empty to remove it.
-        onSceneRender: onSceneRender, //This is sample to show how to override the default implementation.
-        autoFocus: autoFocus, //Same as above.
     })
 
     ktl.core.setCfg({
@@ -35,7 +39,7 @@ window.ktlReady = function () {
             idleWatchDog: true,
             debugWnd: true,
 
-            //Those below must also be properly set up to have any effect.  See documentation.
+            //Those below must also be set up properly to have any effect.  See documentation.
             iFrameWnd: false,
             logging: {
                 logins: false,
@@ -50,21 +54,10 @@ window.ktlReady = function () {
             },
         },
     })
-}
+    //KTL Setup - END
 
-//Here's where you put all your customimzed versions of the KTL callback functions.
-function onSceneRender(event, scene, info) {
-    console.log('Customized scene render.');
-    var versionStyle = '';
-    if (Knack.getUserAttributes() !== 'No user found')
-        ktl.scenes.addVersionInfo(info, versionStyle);
+    /////////////////////////////////////////////////
+    //Your code goes here...
 
-    $('#verButtonId').css('opacity', '10%'); //Set Version Info Bar as barely visible.
-
-    autoFocus();
-}
-
-function autoFocus() {
-    console.log('Customized auto-focus');
 }
 
