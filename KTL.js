@@ -7795,6 +7795,7 @@ function Ktl($, appInfo) {
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) {
+                $('#kn-app-header').addClass('ktlDisplayNone');
                 var intervalId = setInterval(function () { //Wait until ready HB field is ready.
                     if (ktl.iFrameWnd.getCfg().hbViewId !== '') {
                         clearInterval(intervalId);
