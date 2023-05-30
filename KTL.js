@@ -226,7 +226,7 @@ function Ktl($, appInfo) {
 
 
         var cfg = {
-            //Let the App do the settings.  See function ktl.core.setCfg in KTL_KnackApp.js file.
+            //Let the App do the settings.  See function ktl.core.setCfg in KTL_Defaults.js file.
             enabled: {},
         };
 
