@@ -8,52 +8,54 @@
 window.APP_VERSION = '1.0.0';
 
 var ktl;
-window.ktlReady = function () {
+window.ktlReady = function (appInfo = {}) {
     ktl = window.ktl;
 
     //KTL Setup - BEGIN
-    ktl.scenes.setCfg({
-        versionDisplayName: 'MyApp', //This will show a short version name of your app.  Leave empty to remove it.
-    })
+    (function () {
+        ktl.scenes.setCfg({
+            versionDisplayName: 'MyApp', //This will show a short version name of your app.  Leave empty to remove it.
+        })
 
-    ktl.core.setCfg({
-        developerNames: ['Firstname Lastname'], //Add your name here to get super powers!
+        ktl.core.setCfg({
+            developerNames: ['Firstname Lastname'], //Add your name here to get super powers!
 
-        //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
-        enabled: {
-            showAppInfo: true,
-            showKtlInfo: true,
-            showMenuInTitle: true,
-            selTextOnFocus: true,
-            inlineEditColor: true,
-            rowHoverHighlight: true,
-            chznBetter: true,
-            autoFocus: true,
-            sortedMenus: true,
-            userFilters: true,
-            persistentForm: true,
-            calendarGotoDate: true,
-            rememberMe: true,
-            formPreValidation: true,
-            spinnerWatchDog: true,
-            idleWatchDog: true,
-            debugWnd: true,
+            //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
+            enabled: {
+                showAppInfo: true,
+                showKtlInfo: true,
+                showMenuInTitle: true,
+                selTextOnFocus: true,
+                inlineEditColor: true,
+                rowHoverHighlight: true,
+                chznBetter: true,
+                autoFocus: true,
+                sortedMenus: true,
+                userFilters: true,
+                persistentForm: true,
+                calendarGotoDate: true,
+                rememberMe: true,
+                formPreValidation: true,
+                spinnerWatchDog: true,
+                idleWatchDog: true,
+                debugWnd: true,
 
-            //Those below must also be set up properly to have any effect.  See documentation.
-            iFrameWnd: false,
-            logging: {
-                logins: false,
-                navigation: false,
-                activity: false,
+                //Those below must also be set up properly to have any effect.  See documentation.
+                iFrameWnd: false,
+                logging: {
+                    logins: false,
+                    navigation: false,
+                    activity: false,
+                },
+
+                bulkOps: {
+                    bulkEdit: true,
+                    bulkCopy: true,
+                    bulkDelete: true,
+                },
             },
-
-            bulkOps: {
-                bulkEdit: true,
-                bulkCopy: true,
-                bulkDelete: true,
-            },
-        },
-    })
+        })
+    }());
     //KTL Setup - END
 
     /////////////////////////////////////////////////
