@@ -6798,7 +6798,7 @@ function Ktl($, appInfo) {
                         //Make all buttons same size and style.
                         function applyStyle() {
                             const scnId = Knack.views[viewId].model.view.scene.key;
-                            const kbs = ktlKeywords[scnId]._kbs;
+                            const kbs = (ktlKeywords[scnId] && ktlKeywords[scnId]._kbs);
                             if (!kbs) {
                                 //Apply plain, default style if no _kbs found.
                                 $('.kn-button:not(.search,.devBtn)').addClass('kioskButtons');
