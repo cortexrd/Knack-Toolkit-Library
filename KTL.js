@@ -4783,7 +4783,7 @@ function Ktl($, appInfo) {
 
         //Adjust header alignment of Grids and Pivot Tables
         function headerAlignment(view, keywords) {
-            if (!view || (!cfg.headerAlignment && !keywords && !keywords._ha)) return;
+            if (!view || (!cfg.headerAlignment && (keywords && !keywords._ha))) return;
 
             const viewType = view.type;
 
@@ -6552,11 +6552,12 @@ function Ktl($, appInfo) {
                 if (!viewId) return;
                 var viewObj = Knack.views[viewId];
                 if (viewObj)
-                    viewObj = viewObj.model.view;
-                else
-                    viewObj = Knack.router.scene_view.model.views._byId[viewId].attributes; //Maybe this line is not necessary - to test.
-
-                return viewObj;
+                    return viewObj.model.view;
+                else {
+                    viewObj = Knack.router.scene_view.model.views._byId[viewId];
+                    if (viewObj)
+                        return viewObj.attributes;
+                }
             }
         }
     })(); //views
