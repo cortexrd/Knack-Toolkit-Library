@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.15 */
+/* KTL CSS version: 0.2.16 */
 
 /************ General Settings **************/
 .pointer {
@@ -59,7 +59,7 @@
 	transform: translate(-50%, -50%);
 }
 
-.bottomExtraSpaces {
+.ktlBottomExtraSpaces {
 	padding-bottom: 500px;
 }
 
@@ -235,22 +235,22 @@
 }
 
 /* Kiosk Mode */
-body.kiosk-mode { /* Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects. */
+body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects. */
 	padding-top: 15px;
 }
 
 /* Kiosk buttons */
-.kioskButtons {
+.ktlKioskButtons {
 	font-size: 20px !important;
 	height: 33px !important;
 }
 
-.kn-menu .kioskButtons {
+.kn-menu .ktlKioskButtons {
 	margin-left: 20px;
 	margin-right: 20px;
 }
 
-.formKioskButtons {
+.ktlFormKioskButtons {
 	height: 40px !important;
 }
 

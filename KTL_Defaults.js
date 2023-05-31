@@ -93,6 +93,7 @@ window.KnackApp = function ($, appInfo = {}) {
             //        bgColorFalse: '#f04a3b',
             //        bgColorPending: '#dd08',
             //    },
+            headerAlignment: false,
         })
 
         ktl.fields.setCfg({
@@ -142,7 +143,7 @@ window.KnackApp = function ($, appInfo = {}) {
         //Features that do not apply to the iFrameWnd.
         if (!window.self.frameElement) {
             ktl.scenes.setCfg({
-                kioskButtons: {
+                ktlKioskButtons: {
                     ADD_REFRESH: {
                         html: '<i class="fa fa-refresh"></i>',
                         id: 'kn-button-refresh',
