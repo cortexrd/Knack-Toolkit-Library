@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, appInfo) {
-    const KTL_VERSION = '0.12.1';
+    const KTL_VERSION = '0.12.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -129,7 +129,7 @@ function Ktl($, appInfo) {
                     if (!headerProcessed) {
                         headerProcessed = true;
                         if (ktl.core.isKiosk()) {
-                            if (!document.querySelector('.kiosk-mode'))
+                            if (!document.querySelector('.ktlKioskMode'))
                                 ktl.core.kioskMode(true);
                         } else
                             ktl.core.kioskMode(false);
@@ -139,7 +139,7 @@ function Ktl($, appInfo) {
                 } else {
                     if (!headerProcessed) {
                         headerProcessed = true;
-                        $('#kn-app-header').addClass('ktlDisplayNone');
+                        $('#kn-app-header,.knHeader').addClass('ktlDisplayNone');
                     }
                 }
 
@@ -913,19 +913,19 @@ function Ktl($, appInfo) {
 
                 if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
                     $('#kn-app-header,.knHeader,.kn-info-bar').addClass('ktlDisplayNone');
-                    $('body').addClass('kiosk-mode');
+                    $('body').addClass('ktlKioskMode');
 
                     //Add extra space at bottom of screen in kiosk mode, to allow editing
                     //with the virtual keyboard without blocking the input field.
                     if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
-                        $('body').removeClass('bottomExtraSpaces');
+                        $('body').removeClass('ktlBottomExtraSpaces');
                     else
-                        $('body').addClass('bottomExtraSpaces');
+                        $('body').addClass('ktlBottomExtraSpaces');
                 } else {
-                    $('.formKioskButtons').removeClass('formKioskButtons');
-                    $('.kioskButtons').removeClass('kioskButtons');
+                    $('.ktlFormKioskButtons').removeClass('ktlFormKioskButtons');
+                    $('.ktlKioskButtons').removeClass('ktlKioskButtons');
                     $('#kn-app-header,.knHeader,.kn-info-bar').removeClass('ktlDisplayNone');
-                    $('body').removeClass('kiosk-mode bottomExtraSpaces');
+                    $('body').removeClass('ktlKioskMode ktlBottomExtraSpaces');
                 }
             },
 
@@ -1908,7 +1908,7 @@ function Ktl($, appInfo) {
                 if (!viewId || !fieldLabel) return;
 
                 var field;
-                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'form') {
                     field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
                     if (field.length) {
@@ -4282,6 +4282,11 @@ function Ktl($, appInfo) {
             bgColorPending: '#dd08',
         };
 
+        //TODO: Migrate all variables here.
+        var cfg = {
+            headerAlignment: false,
+        }
+
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
             if (ktl.account.isDeveloper() && !ktl.scenes.isiFrameWnd()) {
@@ -4355,13 +4360,6 @@ function Ktl($, appInfo) {
                     }
 
                     keywords._ni && ktl.views.noInlineEditing(view, keywords);
-
-                    //IMPORTANT: _qc must be processed BEFORE _mc.
-                    keywords._qt && ktl.views.quickToggle(view.key, keywords, data);
-                    keywords._mc && ktl.views.matchColor(view.key, keywords, data);
-
-                    colorizeFieldValue(view.key, keywords, data);
-
                     keywords._ts && ktl.views.addTimeStampToHeader(view.key);
                     keywords._dtp && ktl.views.addDateTimePickers(view.key);
                     keywords._al && ktl.account.autoLogin(view.key);
@@ -4372,11 +4370,15 @@ function Ktl($, appInfo) {
                     keywords._dr && numDisplayedRecords(view, keywords);
                     keywords._nsg && noSortingOnGrid(view.key);
                     keywords._hf && hideFields(view.key, keywords);
-                    keywords._ha && headerAlignment(view, keywords);
 
 
                     processViewKeywords && processViewKeywords(view, keywords, data);
                 }
+
+                ktl.views.quickToggle(view.key, keywords, data); //IMPORTANT: _qc must be processed BEFORE _mc.
+                ktl.views.matchColor(view.key, keywords, data);
+                colorizeFieldValue(view.key, keywords, data);
+                headerAlignment(view, keywords);
 
                 if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
                     var txt = view.content.toLowerCase();
@@ -4536,7 +4538,7 @@ function Ktl($, appInfo) {
             var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
             if (viewId) {
                 viewId = viewId.getAttribute('id');
-                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'table')
                     ktl.views.handleClickSort(e);
             }
@@ -4628,13 +4630,13 @@ function Ktl($, appInfo) {
 
         function colorizeFieldValue(viewId, keywords, data) {
             if (!viewId) return;
-            const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+            const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list') return;
 
             var paramGroups = [];
             var fieldId = '';
 
-            if (keywords._cfv && keywords._cfv.length) {
+            if (keywords && keywords._cfv && keywords._cfv.length) {
                 if (keywords._cfv[0].startsWith('['))
                     paramGroups = extractParamGroups(keywords._cfv);
                 else
@@ -4779,30 +4781,40 @@ function Ktl($, appInfo) {
             })
         }
 
+        //Adjust header alignment of Grids and Pivot Tables
         function headerAlignment(view, keywords) {
-            if (!view || !keywords._ha) return;
-            const viewType = view.type;
-            if (viewType !== 'table') return;
-            var columns = view.columns;
-            if (!columns) return;
+            if (!view || (!cfg.headerAlignment && !keywords && !keywords._ha)) return;
 
-            try {
-                columns.forEach(col => {
-                    var align = col.align;
-                    var thText = $('#' + view.key + ' thead th.' + col.field.key);
-                    thText.css('text-align', align);
-                })
-            } catch (e) {
-                console.log('headerAlignment error:', e);
+            const viewType = view.type;
+
+            if (viewType === 'report') //Pivot Tables
+                $('#' + view.key + '.kn-report :is(thead th, tr.kn-table_summary td)').css('text-align', 'right');
+            else if (viewType === 'table') {
+                var columns = view.columns;
+                if (!columns) return;
+
+                try {
+                    columns.forEach(col => {
+                        if (col.field) {
+                            var align = col.align;
+                            var thText = $('#' + view.key + ' thead th.' + col.field.key);
+                            thText.css('text-align', align);
+                        }
+                    })
+                } catch (e) {
+                    console.log('headerAlignment error:', e);
+                }
             }
         }
 
+        //Views
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processViewKeywords && (processViewKeywords = cfgObj.processViewKeywords);
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
                 cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
+                cfgObj.headerAlignment && (cfg.headerAlignment = cfgObj.headerAlignment);
             },
 
             refreshView: function (viewId) {
@@ -5042,7 +5054,11 @@ function Ktl($, appInfo) {
 
                 if (ktl.bulkOps.getBulkOpsActive(viewId)) {
                     //For summary lines, prepend a space if Bulk Ops are enabled.
-                    const hasSummary = Knack.router.scene_view.model.views._byId[viewId].attributes.totals;
+                    var hasSummary;
+                    var viewObj = ktl.views.getViewObj(viewId);
+                    if (!viewObj) return;
+
+                    hasSummary = viewObj.totals;
                     if (hasSummary && hasSummary.length) {
                         var sel = '#' + viewId + ' tr.kn-table-totals';
                         ktl.core.waitSelector(sel, 10000) //Totals and groups usually need a bit of extra wait time due to delayed server response.
@@ -5060,7 +5076,7 @@ function Ktl($, appInfo) {
                     }
 
                     //For groups, extend line up to end.
-                    var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
+                    var cols = viewObj.columns;
                     var groupingFound = false;
                     for (var i = 0; i < cols.length; i++) {
                         if (cols[i].grouping) {
@@ -5825,7 +5841,7 @@ function Ktl($, appInfo) {
                         if (keywords._uvx && keywords._uvx.length) {
                             e.preventDefault();
 
-                            const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                            const viewType = ktl.views.getViewType(viewId);
                             var field = Knack.objects.getField(fieldId);
                             var fieldName = field.attributes.name;
                             var fieldValue = $('#' + viewId + ' #' + fieldId).val();
@@ -6002,7 +6018,7 @@ function Ktl($, appInfo) {
                 var foundFields = [];
                 var fields = [];
 
-                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'search') {
                     //For Search views, you can't get the fieldId from jQuery. You need to scan the Knack object.
                     const view = Knack.views[viewId].model.view;
@@ -6070,7 +6086,7 @@ function Ktl($, appInfo) {
                         viewId = viewId.getAttribute('id');
 
                         //Attempt to support Search views but crashes with a "URL" problem after fetch() below.
-                        const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                        const viewType = ktl.views.getViewType(viewId);
                         if (viewType === 'search') return; //Remove this line if ever we find the solution.
 
                         e.preventDefault();
@@ -6223,7 +6239,7 @@ function Ktl($, appInfo) {
 
             getDataFromRecId: function (viewId = '', recId = '') {
                 if (!viewId || !recId || !Knack.views[viewId]) return {};
-                const viewType = Knack.router.scene_view.model.views._byId[viewId].attributes.type;
+                const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'table')
                     return Knack.views[viewId].model.data._byId[recId].attributes;
                 else if (viewType === 'search')
@@ -6259,11 +6275,13 @@ function Ktl($, appInfo) {
                 var bgColorFalse = quickToggleParams.bgColorFalse;
 
                 //Override with view-specific colors, if any.
-                if (keywords._qt.length >= 1 && keywords._qt[0])
-                    bgColorTrue = keywords._qt[0];
+                if (keywords && keywords._qt) {
+                    if (keywords._qt.length >= 1 && keywords._qt[0])
+                        bgColorTrue = keywords._qt[0];
 
-                if (keywords._qt.length >= 2 && keywords._qt[1])
-                    bgColorFalse = keywords._qt[1];
+                    if (keywords._qt.length >= 2 && keywords._qt[1])
+                        bgColorFalse = keywords._qt[1];
+                }
 
                 var fieldKeywords = {};
                 var fieldsColor = {};
@@ -6387,8 +6405,8 @@ function Ktl($, appInfo) {
             }, //quickToggle
 
             //For KTL internal use.
-            matchColor: function (viewId = '', keywords, data = []) {
-                if (!viewId || ktl.scenes.isiFrameWnd()) return;
+            matchColor: function (viewId, keywords, data = []) {
+                if (!viewId || !keywords || !keywords._mc || ktl.scenes.isiFrameWnd()) return;
 
                 var viewModel = Knack.router.scene_view.model.views._byId[viewId];
                 if (!viewModel) return;
@@ -6517,11 +6535,29 @@ function Ktl($, appInfo) {
                     ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr, removedHeadersAr);
             },
 
-            getViewSourceName: function (viewId = '') {
+            getViewSourceName: function (viewId) {
                 if (!viewId) return;
                 var object = Knack.router.scene_view.model.views._byId[viewId].attributes.source.object;
                 return Knack.objects._byId[object].attributes.name;
             },
+
+            getViewType: function (viewId) {
+                if (!viewId) return;
+                var viewObj = ktl.views.getViewObj(viewId);
+                if (viewObj)
+                    return viewObj.type;
+            },
+
+            getViewObj: function (viewId) {
+                if (!viewId) return;
+                var viewObj = Knack.views[viewId];
+                if (viewObj)
+                    viewObj = viewObj.model.view;
+                else
+                    viewObj = Knack.router.scene_view.model.views._byId[viewId].attributes; //Maybe this line is not necessary - to test.
+
+                return viewObj;
+            }
         }
     })(); //views
 
@@ -6534,7 +6570,7 @@ function Ktl($, appInfo) {
         var spinnerWdExcludeScn = [];
         var spinnerWdRunning = false;
         var idleWatchDogTimer = null;
-        var kioskButtons = {};
+        var ktlKioskButtons = {};
         var prevScene = '';
         var idleWatchDogDelay = 0;
         var versionDisplayName = '';
@@ -6626,7 +6662,7 @@ function Ktl($, appInfo) {
                 cfgObj.spinnerWatchDogTimeout && (spinnerWatchDogTimeout = cfgObj.spinnerWatchDogTimeout);
                 cfgObj.spinnerCtrDelay && (spinnerCtrDelay = cfgObj.spinnerCtrDelay);
                 cfgObj.autoFocus && (autoFocus = cfgObj.autoFocus);
-                cfgObj.kioskButtons && (kioskButtons = cfgObj.kioskButtons);
+                cfgObj.ktlKioskButtons && (ktlKioskButtons = cfgObj.ktlKioskButtons);
                 cfgObj.onSceneRender && (onSceneRender = cfgObj.onSceneRender);
                 if (typeof cfgObj.versionDisplayName === 'string')
                     (versionDisplayName = cfgObj.versionDisplayName);
@@ -6637,7 +6673,7 @@ function Ktl($, appInfo) {
                 return {
                     idleWatchDogDelay,
                     versionDisplayName,
-                    kioskButtons,
+                    ktlKioskButtons,
                     processMutation,
                 }
             },
@@ -6681,56 +6717,56 @@ function Ktl($, appInfo) {
 
                             //Messaging button
                             var messagingBtn = null;
-                            if (kioskButtons.ADD_MESSAGING && !kioskButtons.ADD_MESSAGING.scenesToExclude.includes(Knack.router.current_scene_key)) {
-                                messagingBtn = document.getElementById(kioskButtons.ADD_MESSAGING.id);
+                            if (ktlKioskButtons.ADD_MESSAGING && !ktlKioskButtons.ADD_MESSAGING.scenesToExclude.includes(Knack.router.current_scene_key)) {
+                                messagingBtn = document.getElementById(ktlKioskButtons.ADD_MESSAGING.id);
                                 if (messagingBtn === null) {
                                     messagingBtn = document.createElement('BUTTON');
                                     messagingBtn.classList.add('kn-button', 'smallKioskButtons');
-                                    messagingBtn.id = kioskButtons.ADD_MESSAGING.id;
-                                    messagingBtn.innerHTML = kioskButtons.ADD_MESSAGING.html;
+                                    messagingBtn.id = ktlKioskButtons.ADD_MESSAGING.id;
+                                    messagingBtn.innerHTML = ktlKioskButtons.ADD_MESSAGING.html;
 
                                     messagingBtn.addEventListener('click', function (e) {
                                         e.preventDefault(); //Required otherwise calls Submit.
-                                        window.location.href = kioskButtons.ADD_MESSAGING.href;
+                                        window.location.href = ktlKioskButtons.ADD_MESSAGING.href;
                                         ktl.storage.lsRemoveItem(ktl.const.LS_SYSOP_MSG_UNREAD);
                                     });
                                 }
                             }
 
                             //Refresh button
-                            var refreshBtn = document.getElementById(kioskButtons.ADD_REFRESH.id);
-                            if (kioskButtons.ADD_REFRESH && !refreshBtn) {
+                            var refreshBtn = document.getElementById(ktlKioskButtons.ADD_REFRESH.id);
+                            if (ktlKioskButtons.ADD_REFRESH && !refreshBtn) {
                                 refreshBtn = document.createElement('BUTTON');
                                 refreshBtn.classList.add('kn-button', 'smallKioskButtons');
 
-                                refreshBtn.id = kioskButtons.ADD_REFRESH.id;
-                                refreshBtn.innerHTML = kioskButtons.ADD_REFRESH.html;
+                                refreshBtn.id = ktlKioskButtons.ADD_REFRESH.id;
+                                refreshBtn.innerHTML = ktlKioskButtons.ADD_REFRESH.html;
 
                                 refreshBtn.addEventListener('click', function (e) {
                                     e.preventDefault();
-                                    kioskButtons.ADD_REFRESH.href();
+                                    ktlKioskButtons.ADD_REFRESH.href();
                                 });
                             }
 
                             //Back button
-                            var backBtn = document.getElementById(kioskButtons.ADD_BACK.id);
+                            var backBtn = document.getElementById(ktlKioskButtons.ADD_BACK.id);
                             if (backBtnText && !backBtn) {
                                 backBtn = document.createElement('BUTTON');
                                 backBtn.classList.add('kn-button', 'smallKioskButtons');
                                 var backOrDone = backBtnText === 'Back' ? 'ADD_BACK' : 'ADD_DONE';
-                                backBtn.id = kioskButtons[backOrDone].id;
-                                backBtn.innerHTML = kioskButtons[backOrDone].html;
+                                backBtn.id = ktlKioskButtons[backOrDone].id;
+                                backBtn.innerHTML = ktlKioskButtons[backOrDone].html;
 
                                 backBtn.addEventListener('click', function (e) {
                                     e.preventDefault();
 
                                     //Exceptions, where we want to jump to a specific URL.
                                     //Also used to bypass history, like when user does a few searches.
-                                    var href = $('#' + kioskButtons[backOrDone].id).attr('href');
+                                    var href = $('#' + ktlKioskButtons[backOrDone].id).attr('href');
                                     if (href)
                                         window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
                                     else
-                                        kioskButtons[backOrDone].href();
+                                        ktlKioskButtons[backOrDone].href();
                                 });
                             }
 
@@ -6747,19 +6783,19 @@ function Ktl($, appInfo) {
                                 }
                             } else {
                                 //Add Shift button right next to Submit.
-                                var shiftBtn = kioskButtons.ADD_SHIFT && document.getElementById(kioskButtons.ADD_SHIFT.id);
-                                if (kioskButtons.ADD_SHIFT && !shiftBtn && !kioskButtons.ADD_SHIFT.scenesToExclude.includes(Knack.router.current_scene_key)) {
+                                var shiftBtn = ktlKioskButtons.ADD_SHIFT && document.getElementById(ktlKioskButtons.ADD_SHIFT.id);
+                                if (ktlKioskButtons.ADD_SHIFT && !shiftBtn && !ktlKioskButtons.ADD_SHIFT.scenesToExclude.includes(Knack.router.current_scene_key)) {
                                     shiftBtn = document.createElement('BUTTON');
                                     shiftBtn.classList.add('kn-button');
                                     shiftBtn.style.marginLeft = '30px';
-                                    shiftBtn.id = kioskButtons.ADD_SHIFT.id;
+                                    shiftBtn.id = ktlKioskButtons.ADD_SHIFT.id;
 
                                     kioskButtonsParentDiv.appendChild(shiftBtn);
-                                    kioskButtons.ADD_SHIFT.html(ktl.userPrefs.getUserPrefs().workShift);
+                                    ktlKioskButtons.ADD_SHIFT.html(ktl.userPrefs.getUserPrefs().workShift);
 
                                     shiftBtn.addEventListener('click', function (e) {
                                         e.preventDefault();
-                                        window.location.href = kioskButtons.ADD_SHIFT.href;
+                                        window.location.href = ktlKioskButtons.ADD_SHIFT.href;
                                     });
                                 }
                             }
@@ -6806,10 +6842,10 @@ function Ktl($, appInfo) {
                             const kbs = (ktlKeywords[scnId] && ktlKeywords[scnId]._kbs);
                             if (!kbs) {
                                 //Apply plain, default style if no _kbs found.
-                                $('.kn-button:not(.search,.devBtn)').addClass('kioskButtons');
+                                $('.kn-button:not(.search,.devBtn)').addClass('ktlKioskButtons');
                                 for (var i = 0; i < Knack.router.scene_view.model.views.length; i++) {
                                     if (Knack.router.scene_view.model.views.models[i].attributes.type === 'form') {
-                                        $('.kn-button:not(.search,.devBtn)').addClass('formKioskButtons');
+                                        $('.kn-button:not(.search,.devBtn)').addClass('ktlFormKioskButtons');
                                         break;
                                     }
                                 }
