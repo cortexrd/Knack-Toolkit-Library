@@ -4377,7 +4377,7 @@ function Ktl($, appInfo) {
 
                 ktl.views.quickToggle(view.key, keywords, data); //IMPORTANT: _qc must be processed BEFORE _mc.
                 ktl.views.matchColor(view.key, keywords, data);
-                colorizeFieldValue(view.key, keywords, data);
+                colorizeFieldByValue(view.key, keywords, data);
                 headerAlignment(view, keywords);
 
                 if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
@@ -4628,7 +4628,7 @@ function Ktl($, appInfo) {
             }
         }
 
-        function colorizeFieldValue(viewId, keywords, data) {
+        function colorizeFieldByValue(viewId, keywords, data) {
             if (!viewId) return;
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list') return;
@@ -5879,7 +5879,7 @@ function Ktl($, appInfo) {
                 if (viewType !== 'form')
                     return;
 
-                $('#' + viewId + ' .kn-message').remove();
+                $('#' + viewId + ' .kn-form-confirmation').css('display', 'none');
                 $('#' + viewId + ' input').removeClass('input-error');
 
                 preprocessFields(viewId, e)
@@ -6320,7 +6320,8 @@ function Ktl($, appInfo) {
                     data.forEach(row => {
                         const keys = Object.keys(fieldsColor);
                         keys.forEach(fieldId => {
-                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).css('background-color', (row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
+                            var style = 'background-color:' + ((row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
+                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).attr('style', style);
                         })
                     })
                 }
