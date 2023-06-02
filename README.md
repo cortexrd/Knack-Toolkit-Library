@@ -10,13 +10,13 @@ See our [YouTube channel for introductory tutorials](https://www.youtube.com/@co
 
 [Installation](#installation)
 
-[KTL Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Features-Overview) Overview
+[Features Overview](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Features-Overview)
 
-Customizing Features
+[Customizing Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features)
 
 [Advanced Features](#advanced-features)
 
-[Advanced KTL Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-KTL-Development-Modes)
+[Advanced Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-KTL-Development-Modes)
 
 [Keywords](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords)
 
