@@ -14,7 +14,7 @@ See our [YouTube channel for introductory tutorials](https://www.youtube.com/@co
 
 [Customizing Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features)
 
-[Advanced Features](#advanced-features)
+[Advanced Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Features)
 
 [Advanced Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Development-Modes)
 
