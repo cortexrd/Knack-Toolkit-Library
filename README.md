@@ -16,7 +16,7 @@ See our [YouTube channel for introductory tutorials](https://www.youtube.com/@co
 
 [Advanced Features](#advanced-features)
 
-[Advanced Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-KTL-Development-Modes)
+[Advanced Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Development-Modes)
 
 [Keywords](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords)
 
