@@ -10,15 +10,15 @@ See our [YouTube channel for introductory tutorials](https://www.youtube.com/@co
 
 [Installation](#installation)
 
-[KTL Features](#ktl-features)
+[KTL Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Features-Overview) Overview
 
-[Customizing Features](#future-improvements)
+Customizing Features
 
 [Advanced Features](#advanced-features)
 
-[Advanced KTL Development Modes](#advanced-keywords-setup)
+[Advanced KTL Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-KTL-Development-Modes)
 
-[List of all Keywords](#-1)
+[Keywords](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords)
 
 # Introduction
 
@@ -82,7 +82,7 @@ If you want to try/use the basic default setup version of the KTL, all you need 
 
 If you already have your own code, it will not conflict with the KTL. Just leave it after those added lines.
 
-If you do not like some features, you can turn them off or customize them individually – [see here](#disabling-a-feature).
+If you do not like some features, you can turn them off or customize them individually – [see here](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features).
 
 ## Basic Setup
 
@@ -90,7 +90,7 @@ If you do not like some features, you can turn them off or customize them indivi
 
 Right out of the box, without any coding or complex setup, the KTL will provide these nice additions to your app:
 
--   Using reserved keywords to trigger special behavior. [See list](#-1).
+-   Using reserved keywords to trigger special behavior. [See list](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords).
 -   User filters to save your filters to named buttons
 -   Bulk Operations: Edit, Copy and Delete
 -   Form data persistence that saves as you type, and will load back your data if a page is reloaded after a submit failure or power outage
@@ -113,7 +113,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 
 The KTL “keyword-based” approach is an ideal tool for non-coders. But behind each of those keywords lies a huge collection of “hidden” function waiting to be leveraged.
 
-If ever you’re interested in some basic or advanced coding, click the following links to know more about [Advanced Features](#advanced-features) and [Advanced KTL Development Modes](#advanced-keywords-setup).
+If ever you’re interested in some basic or advanced coding, click the following links to know more about [Advanced Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Features) and [Advanced KTL Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-KTL-Development-Modes).
 
 # Future Improvements
 
