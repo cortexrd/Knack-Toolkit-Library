@@ -22,7 +22,7 @@ window.ktlReady = function (appInfo = {}) {
         //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
         enabled: {
             //"Basic" features
-            //Enabled by default. To disable them, their flag must exist and be set to true.
+            //Enabled by default. To disable them, their flag must exist and be set to false.
             showAppInfo: true,
             showKtlInfo: true,
             showMenuInTitle: true,

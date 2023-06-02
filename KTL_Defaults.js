@@ -1,5 +1,6 @@
-//====================================================
-//====================================================
+//This file contains all the default implementations of the KTL.
+//You can override these by copying each part you want to customize
+//in your own file, referred to in the documentation as "MyApp.js".
 window.KnackApp = function ($, appInfo = {}) {
     if (typeof window.APP_VERSION === 'undefined')
         window.APP_VERSION = '1.0.0'; //Your App version.
