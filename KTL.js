@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, appInfo) {
-    const KTL_VERSION = '0.12.2';
+    const KTL_VERSION = '0.12.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6247,6 +6247,7 @@ function Ktl($, appInfo) {
             },
 
             //For KTL internal use.
+            //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
             quickToggle: function (viewId = '', keywords, data = []) {
                 if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
                 var qtScanItv = null;
@@ -6269,13 +6270,16 @@ function Ktl($, appInfo) {
 
                 if (!inlineEditing) return;
 
-                //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
                 //Start with hard coded default colors.
                 var bgColorTrue = quickToggleParams.bgColorTrue;
                 var bgColorFalse = quickToggleParams.bgColorFalse;
 
+                var fieldHasQt = false;
+
                 //Override with view-specific colors, if any.
                 if (keywords && keywords._qt) {
+                    fieldHasQt = true; //If view has QT, then all fields inherit also.
+
                     if (keywords._qt.length >= 1 && keywords._qt[0])
                         bgColorTrue = keywords._qt[0];
 
@@ -6295,21 +6299,25 @@ function Ktl($, appInfo) {
                                 const fieldId = col.field.key;
 
                                 //Override with field-specific colors, if any.
-                                var tmpColorObj = {
+                                var tmpFieldColors = {
                                     bgColorTrue: bgColorTrue,
                                     bgColorFalse: bgColorFalse
                                 }
 
                                 ktl.fields.getFieldKeywords(fieldId, fieldKeywords);
                                 if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._qt) {
+                                    fieldHasQt = true;
                                     if (fieldKeywords[fieldId]._qt.length >= 1 && fieldKeywords[fieldId]._qt[0] !== '')
-                                        tmpColorObj.bgColorTrue = fieldKeywords[fieldId]._qt[0];
+                                        tmpFieldColors.bgColorTrue = fieldKeywords[fieldId]._qt[0];
                                     if (fieldKeywords[fieldId]._qt.length >= 2 && fieldKeywords[fieldId]._qt[1] !== '')
-                                        tmpColorObj.bgColorFalse = fieldKeywords[fieldId]._qt[1];
+                                        tmpFieldColors.bgColorFalse = fieldKeywords[fieldId]._qt[1];
+
                                 }
 
-                                fieldsColor[fieldId] = tmpColorObj;
-                                $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
+                                if (fieldHasQt) {
+                                    fieldsColor[fieldId] = tmpFieldColors;
+                                    $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
+                                }
                             }
                         }
                     }
