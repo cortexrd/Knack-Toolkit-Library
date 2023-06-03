@@ -1164,10 +1164,17 @@ function Ktl($, appInfo) {
         var convertNumDone = false;
         var horizontalRadioButtons = false;
         var horizontalCheckboxes = false;
+        var processBarcode = null;
 
         var chznBetterTxt = '';
         var chznChoicesIntervalId = null;
         var chznLastKeyTimer = null;
+
+        //TODO: Migrate all variables here.
+        var cfg = {
+            barcoreTimeout: 20,
+            barcodeMinLength: 5,
+        }
 
         $(document).keydown(function (e) {
             if (e.keyCode === 13) { //Enter
@@ -1208,6 +1215,8 @@ function Ktl($, appInfo) {
                 //Filters: enables using the enter key to select and submit.
                 setTimeout(function () { $('#kn-submit-filters').trigger('click'); }, 200);
             }
+
+            readBarcode(e);
         })
 
         $(document).on('keypress', function (e) {
@@ -1415,6 +1424,33 @@ function Ktl($, appInfo) {
             }
         })
 
+        let barcode = '';
+        let timeoutId;
+        let lastCharTime = window.performance.now();
+        function readBarcode(e) {
+            if (e.key.length === 1)
+                barcode += e.key;
+
+            if (barcode.length >= 2)
+                ktl.fields.setUsingBarcode(true);
+
+            if (ktl.fields.getUsingBarcode() && (e.key === 'Tab' || e.key === 'Enter'))
+                e.preventDefault(); //Prevent Submitting form if terminator is CRLF or Tab.
+
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                if (window.performance.now() - lastCharTime > cfg.barcoreTimeout) {
+                    if (processBarcode && barcode.length >= cfg.barcodeMinLength)
+                        processBarcode(barcode);
+
+                    barcode = '';
+                    ktl.fields.setUsingBarcode(false);
+                }
+            }, cfg.barcoreTimeout);
+
+            lastCharTime = window.performance.now();
+        }
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.onKeyPressed && (onKeyPressed = cfgObj.onKeyPressed);
@@ -1428,6 +1464,7 @@ function Ktl($, appInfo) {
                 cfgObj.onInlineEditPopup && (onInlineEditPopup = cfgObj.onInlineEditPopup);
                 cfgObj.horizontalRadioButtons && (horizontalRadioButtons = cfgObj.horizontalRadioButtons);
                 cfgObj.horizontalCheckboxes && (horizontalCheckboxes = cfgObj.horizontalCheckboxes);
+                cfgObj.processBarcode && (processBarcode = cfgObj.processBarcode);
             },
 
             //Converts all applicable fields in the scene from text to numeric (telephone) type to allow numeric keypad on mobile devices.
