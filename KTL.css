@@ -9,6 +9,17 @@
 /* KTL CSS version: 0.2.16 */
 
 /************ General Settings **************/
+:root {
+}
+
+#verButtonId {
+	opacity: var(--viBarOpacity);
+}
+
+#verButtonId {
+	z-index: 10; /*Need to be visible with sticky headers*/
+}
+
 .pointer {
 	cursor: pointer;
 }
@@ -256,14 +267,6 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 
 .smallKioskButtons {
 	margin-left: 20px !important;
-}
-
-#verButtonId:hover {
-	opacity: 100% !important;
-}
-
-#verButtonId {
-	z-index: 10; /*Need to be visible with sticky headers*/
 }
 
 /* Reduced page margins, to maximize available real-estate. */

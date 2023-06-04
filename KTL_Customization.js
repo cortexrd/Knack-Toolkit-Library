@@ -41,6 +41,18 @@ window.ktlReady = function (appInfo = {}) {
             idleWatchDog: true,
             debugWnd: true,
 
+            versionInfo: {
+                viShowAppInfo: true,
+                viShowKtlInfo: true,
+                viShowToRoles: ['Developer'], //Add other roles who can see the version info bar.
+                viPosX: 'right', //right, center, left
+                viPosY: 'top', // top, bottom
+                viPosXMobile: 'center',
+                viPosYMobile: 'bottom',
+                viOpacity: 50, //0 to 100 %
+                viOpacityHover: 100, //0 to 100 %
+            },
+
             //"Advanced" features
             //Disabled by default and/or must be set up properly to have any effect. See documentation.
             iFrameWnd: false,

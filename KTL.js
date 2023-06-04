@@ -7090,17 +7090,42 @@ function Ktl($, appInfo) {
             },
 
             addVersionInfo: function (info, style = '', div) {
-                if (!ktl.core.getCfg().enabled.showAppInfo || window.self.frameElement) return;
+                if (!ktl.core.getCfg().enabled.showAppInfo || window.self.frameElement) return; //Deprecated.
+
+                const vi = ktl.core.getCfg().enabled.versionInfo;
+                if ((!vi.viShowAppInfo && !vi.viShowKtlInfo)
+                    || !ktl.account.checkUserRolesMatch(vi.viShowToRoles)
+                    || window.self.frameElement) return;
+
+                const showKtlInfo = vi.showKtlInfo || ktl.core.getCfg().enabled.showKtlInfo;
 
                 //By default, version numbers are added at top right of screen
                 if ($('#verButtonId').length === 0) {
-                    var ktlVer = ktl.core.getCfg().enabled.showKtlInfo ? '    KTL v' + KTL_VERSION : '';
-                    var versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; top:5px; right:0px; border-style:none; padding-bottom:2px';
+                    var ktlVer = showKtlInfo ? 'KTL v' + KTL_VERSION : '';
 
-                    if (style) //If style already exist, use it as is, otherwise, use KTL's default.
-                        versionStyle = style;
+                    //If style is provided use it, otherwise, use KTL's default.
+                    //var versionStyle = style ? style : 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; top:5px; right:0px; border-style:none; padding-bottom:2px';
+                    var versionStyle = style ? style : 'white-space: pre; font-size:small; font-weight:bold; border-style:none; padding-bottom:2px; position:absolute;';
 
-                    var versionInfo = ' v' + window.APP_VERSION + ktlVer + (info.ktlVersion === 'dev' ? '-dev' : '') + (info.hostname ? '    ' + info.hostname : '');
+                    const xPos = Knack.isMobile() ? vi.viPosXMobile : vi.viPosX;
+                    const yPos = Knack.isMobile() ? vi.viPosYMobile : vi.viPosY;
+
+                    if (xPos === 'left')
+                        versionStyle += '; margin-left: 5px; left: 0px;';
+                    else if (xPos === 'center')
+                        versionStyle += '; left: 50%; transform: translate(-50%, 0);';
+                    else if (xPos === 'right')
+                        versionStyle += '; margin-right: 5px; right: 0px;';
+
+                    if (yPos === 'top')
+                        versionStyle += '; top: 5px;';
+                    else if (yPos === 'bottom')
+                        versionStyle += '; bottom: 5px;';
+
+                    var versionInfo = ' v' + window.APP_VERSION + '    '
+                        + ktlVer + (info.ktlVersion === 'dev' ? '-dev' : '')
+                        + (info.hostname ? '    ' + info.hostname : '');
+
                     if (localStorage.getItem(info.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
                         versionStyle += '; color:#0008; background-color:#FFF3;';
                     else //Dev mode, make version bright yellow/red font.
@@ -7110,7 +7135,16 @@ function Ktl($, appInfo) {
                     info.pre && (versionInfo = info.pre + '    ' + versionInfo);
                     info.post && (versionInfo = versionInfo + '    ' + info.post);
 
-                    ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
+                    const button = ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
+                    document.documentElement.style.setProperty('--viBarOpacity', vi.viOpacity.toString() + '%');
+
+                    button.onmouseover = function () {
+                        document.documentElement.style.setProperty('--viBarOpacity', vi.viOpacityHover.toString() + '%');
+                    };
+
+                    button.onmouseout = function () {
+                        document.documentElement.style.setProperty('--viBarOpacity', vi.viOpacity.toString() + '%');
+                    };
 
                     //Special Dev Options popup, require a PIN to access options.
                     $('#verButtonId').on('click touchstart', function (e) {
@@ -7856,6 +7890,16 @@ function Ktl($, appInfo) {
                     } else
                         ktl.storage.lsSetItem('AES_LI', 'SkipAutoLogin', true, false, false);
                 }
+            },
+
+            checkUserRolesMatch: function (rolesToCheck = []/*Leave empty for any roles.*/) {
+                if (!rolesToCheck.length) return true;
+                const userRoles = Knack.getUserRoleNames().split(', ');
+                for (let i = 0; i < rolesToCheck.length; i++) {
+                    if (userRoles.includes(rolesToCheck[i]))
+                        return true;
+                }
+                return false;
             },
         }
     })(); //account
