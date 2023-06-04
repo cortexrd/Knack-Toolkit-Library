@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, appInfo) {
-    const KTL_VERSION = '0.12.3';
+    const KTL_VERSION = '0.12.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -941,7 +941,16 @@ function Ktl($, appInfo) {
                             LazyLoad.js(['https://ctrnd.com/Lib/Secure-LS/secure-ls.min.js'], function () {
                                 (typeof SecureLS === 'function') ? resolve() : reject('Cannot find SecureLS library.');
                             })
-                        }
+                        } else
+                            resolve();
+                    } else if (libName === 'QRGenerator') {
+                        //QR Code reader comes from here: https://github.com/jeromeetienne/jquery-qrcode
+                        if (typeof jQuery.fn.qrcode !== 'function') {
+                            LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.qrcode/1.0/jquery.qrcode.min.js'], function () {
+                                (typeof jQuery.fn.qrcode === 'function') ? resolve() : reject('Cannot find QRGenerator library.');
+                            })
+                        } else
+                            resolve();
                     }
                 })
             },
@@ -1173,7 +1182,7 @@ function Ktl($, appInfo) {
         //TODO: Migrate all variables here.
         var cfg = {
             barcoreTimeout: 20,
-            barcodeMinLength: 5,
+            barcodeMinLength: 3,
         }
 
         $(document).keydown(function (e) {
@@ -1424,14 +1433,14 @@ function Ktl($, appInfo) {
             }
         })
 
-        let barcode = '';
+        let barcodeText = '';
         let timeoutId;
         let lastCharTime = window.performance.now();
         function readBarcode(e) {
             if (e.key.length === 1)
-                barcode += e.key;
+                barcodeText += e.key;
 
-            if (barcode.length >= 2)
+            if (barcodeText.length >= 2)
                 ktl.fields.setUsingBarcode(true);
 
             if (ktl.fields.getUsingBarcode() && (e.key === 'Tab' || e.key === 'Enter'))
@@ -1440,10 +1449,10 @@ function Ktl($, appInfo) {
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
                 if (window.performance.now() - lastCharTime > cfg.barcoreTimeout) {
-                    if (processBarcode && barcode.length >= cfg.barcodeMinLength)
-                        processBarcode(barcode);
+                    if (processBarcode && barcodeText.length >= cfg.barcodeMinLength)
+                        processBarcode(barcodeText);
 
-                    barcode = '';
+                    barcodeText = '';
                     ktl.fields.setUsingBarcode(false);
                 }
             }, cfg.barcoreTimeout);
@@ -1982,6 +1991,42 @@ function Ktl($, appInfo) {
                     if (!$.isEmptyObject(keywords))
                         fieldKeywords[fieldId] = keywords;
                 }
+            },
+
+            generateBarcode: function (viewId, keywords) {
+                if (!viewId || !keywords || !keywords._bcg) return;
+
+                const size = (keywords._bcg.length ? Number(keywords._bcg[0]) : 200);
+                if (isNaN(size)) {
+                    ktl.log.clog('purple', 'generateBarcode called with invalid parameters in ' + viewId);
+                    return;
+                }
+
+                const text = $('#' + viewId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');;
+
+                barcodeData = {
+                    text: text,
+                    width: size,
+                    height: size,
+                }
+
+                ktl.core.loadLib('QRGenerator')
+                    .then(() => {
+                        //Reformat the QR String properly and display the QR code.
+
+                        var qrCodeDiv = document.getElementById('qrCodeDiv');
+                        if (!qrCodeDiv) {
+                            qrCodeDiv = document.createElement('div');
+                            $('#' + viewId).prepend(qrCodeDiv);
+                            qrCodeDiv.setAttribute('id', 'qrCodeDiv');
+                        }
+
+                        if (qrCodeDiv.lastChild)
+                            qrCodeDiv.removeChild(qrCodeDiv.lastChild);
+
+                        $('#qrCodeDiv').qrcode(barcodeData);
+                    })
+                    .catch(reason => { reject('generateBarcode error:', reason); })
             },
         }
     })(); //fields
@@ -4407,7 +4452,7 @@ function Ktl($, appInfo) {
                     keywords._dr && numDisplayedRecords(view, keywords);
                     keywords._nsg && noSortingOnGrid(view.key);
                     keywords._hf && hideFields(view.key, keywords);
-
+                    keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
 
                     processViewKeywords && processViewKeywords(view, keywords, data);
                 }
