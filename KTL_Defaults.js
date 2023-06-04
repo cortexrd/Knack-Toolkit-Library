@@ -27,8 +27,21 @@ window.KnackApp = function ($, appInfo = {}) {
 
             //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
             enabled: {
-                showAppInfo: true, //Deprecated, use versionInfo below.
-                showKtlInfo: true, //Deprecated, use versionInfo below.
+                versionInfo: {
+                    viShowAppInfo: true,
+                    viShowKtlInfo: true,
+                    viShowToRoles: ['Developer'], //Add other roles who can see the version info bar.
+                    viPosX: 'right', //right, center, left
+                    viPosY: 'top', // top, bottom
+                    viPosXMobile: 'center',
+                    viPosYMobile: 'bottom',
+                    viOpacity: 50, //0 to 100 %
+                    viOpacityHover: 100, //0 to 100 %
+                },
+
+                showAppInfo: true, //Deprecated, use viShowAppInfo above.
+                showKtlInfo: true, //Deprecated, use viShowKtlInfo above.
+
                 showMenuInTitle: true,
                 selTextOnFocus: true,
                 inlineEditColor: true,
@@ -44,18 +57,6 @@ window.KnackApp = function ($, appInfo = {}) {
                 spinnerWatchDog: true,
                 idleWatchDog: true,
                 debugWnd: true,
-
-                versionInfo: {
-                    viShowAppInfo: true,
-                    viShowKtlInfo: true,
-                    viShowToRoles: ['Developer'], //Add other roles who can see the version info bar.
-                    viPosX: 'right', //right, center, left
-                    viPosY: 'top', // top, bottom
-                    viPosXMobile: 'center',
-                    viPosYMobile: 'bottom',
-                    viOpacity: 50, //0 to 100 %
-                    viOpacityHover: 100, //0 to 100 %
-                },
 
                 //Those below must also be set up properly to have any effect.  See documentation.
                 iFrameWnd: false,
