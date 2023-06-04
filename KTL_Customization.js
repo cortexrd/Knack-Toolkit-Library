@@ -60,6 +60,10 @@ window.ktlReady = function (appInfo = {}) {
 
     //KTL Setup - END
 
+    //KTL callbacks to your App - BEGIN
+
+    //KTL callbacks to your App - END
+
     /////////////////////////////////////////////////
     //Your App-specific code goes here...
 
