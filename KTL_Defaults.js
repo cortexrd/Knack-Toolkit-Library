@@ -39,9 +39,6 @@ window.KnackApp = function ($, appInfo = {}) {
                     viOpacityHover: 100, //0 to 100
                 },
 
-                showAppInfo: true, //Deprecated, use viShowAppInfo above.
-                showKtlInfo: true, //Deprecated, use viShowKtlInfo above.
-
                 showMenuInTitle: true,
                 selTextOnFocus: true,
                 inlineEditColor: true,
