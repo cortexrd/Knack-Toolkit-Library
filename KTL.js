@@ -8819,7 +8819,8 @@ function Ktl($, appInfo) {
             const numChecked = updateBulkOpsRecIdArray(viewId);
             updateDeleteButtonStatus(viewId, numChecked);
             updateHeaderCheckboxes(viewId, numChecked);
-            enableBulkCopy(viewId, numChecked === 1);
+            enableBulkCopy(viewId, numChecked);
+            $('#ktl-bulk-reuse-last-src-' + viewId).prop('disabled', !numChecked);
 
             if (numChecked > 0)
                 ktl.views.autoRefresh(false);
@@ -9081,7 +9082,7 @@ function Ktl($, appInfo) {
 
         function addReuseLastSourceButton(view) {
             if ($.isEmptyObject(apiData) || document.querySelector('#ktl-bulk-reuse-last-src-' + view.key)) return;
-            var reuseLastSourceBtn = ktl.fields.addButton(document.querySelector('.bulkOpsControlsDiv'), 'Reuse Last Source', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktl-bulk-reuse-last-src-' + view.key);
+            var reuseLastSourceBtn = ktl.fields.addButton(document.querySelector('#' + view.key + ' .bulkOpsControlsDiv'), 'Reuse Last Source', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktl-bulk-reuse-last-src-' + view.key);
             reuseLastSourceBtn.addEventListener('click', function (e) {
                 if (e.ctrlKey)
                     previewLastBulkEditData();
@@ -9297,9 +9298,9 @@ function Ktl($, appInfo) {
             }
         }
 
-        function enableBulkCopy(viewId, enable = false) {
+        function enableBulkCopy(viewId, numChecked) {
             if (!viewCanDoBulkOp(viewId, 'copy')) return;
-            if (enable) {
+            if (numChecked === 1) {
                 var bulkCopyBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Bulk Copy', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktl-bulk-copy-' + viewId);
                 bulkCopyBtn.disabled = ($('#' + viewId + ' .bulkEditHeaderCbox:is(:checked)').length === 0);
                 $(bulkCopyBtn).off('click').on('click', function (e) {
@@ -9307,7 +9308,6 @@ function Ktl($, appInfo) {
                     processBulkOps(viewId, e);
                 })
 
-                $('#ktl-bulk-reuse-last-src-' + viewId).prop('disabled', !enable);
             } else
                 $('#ktl-bulk-copy-' + viewId).remove();
         }
