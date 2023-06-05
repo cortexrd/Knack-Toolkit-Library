@@ -28,11 +28,11 @@ window.ktlReady = function (appInfo = {}) {
                 viShowKtlInfo: true,
                 viShowToRoles: ['Developer'], //Add other roles who can see the version info bar.
                 viPosX: 'right', //right, center, left
-                viPosY: 'top', // top, bottom
-                viPosXMobile: 'center',
-                viPosYMobile: 'bottom',
-                viOpacity: 50, //0 to 100 %
-                viOpacityHover: 100, //0 to 100 %
+                viPosY: 'top', //top, bottom
+                viPosXMobile: 'center', //right, center, left
+                viPosYMobile: 'bottom', //top, bottom
+                viOpacity: 50, //0 to 100
+                viOpacityHover: 100, //0 to 100
             },
 
             showMenuInTitle: true,

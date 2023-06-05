@@ -32,11 +32,11 @@ window.KnackApp = function ($, appInfo = {}) {
                     viShowKtlInfo: true,
                     viShowToRoles: ['Developer'], //Add other roles who can see the version info bar.
                     viPosX: 'right', //right, center, left
-                    viPosY: 'top', // top, bottom
-                    viPosXMobile: 'center',
-                    viPosYMobile: 'bottom',
-                    viOpacity: 50, //0 to 100 %
-                    viOpacityHover: 100, //0 to 100 %
+                    viPosY: 'top', //top, bottom
+                    viPosXMobile: 'center', //right, center, left
+                    viPosYMobile: 'bottom', //top, bottom
+                    viOpacity: 50, //0 to 100
+                    viOpacityHover: 100, //0 to 100
                 },
 
                 showAppInfo: true, //Deprecated, use viShowAppInfo above.
@@ -223,15 +223,10 @@ window.KnackApp = function ($, appInfo = {}) {
         if (ktl.core.isKiosk()) {
             ktl.scenes.addVersionInfo(appInfo, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
         } else {
-            var versionStyle = '';
-            var bottomCenter = false; //Set this to true to have the version info at bottom center of page, as an example.
-            if (bottomCenter)
-                versionStyle = 'white-space: pre; margin-right: 5px; font-size:small; font-weight:bold; position:absolute; border-style:none; padding-bottom:2px; left: 50%; transform: translate(-50%, -50%);';
-
             //If you want to add pre/post version info text, use these below.
             //info.pre = '';
             //info.post = '';
-            ktl.scenes.addVersionInfo(appInfo, versionStyle);
+            ktl.scenes.addVersionInfo(appInfo);
         }
 
         //Uncomment below to get invisible bar, but yet clickable for Dev Options.
