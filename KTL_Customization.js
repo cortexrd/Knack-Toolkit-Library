@@ -26,7 +26,7 @@ window.ktlReady = function (appInfo = {}) {
             versionInfo: {
                 viShowAppInfo: true,
                 viShowKtlInfo: true,
-                viShowToRoles: ['Developer'], //Add other roles who can see the version info bar.
+                viShowToRoles: ['Developer'], //Array of Account Roles strings who can see the version info bar. Leave empty for all.
                 viPosX: 'right', //right, center, left
                 viPosY: 'top', //top, bottom
                 viPosXMobile: 'center', //right, center, left
