@@ -1437,6 +1437,7 @@ function Ktl($, appInfo) {
         let timeoutId;
         let lastCharTime = window.performance.now();
         function readBarcode(e) {
+            if (!e.key) return;
             if (e.key.length === 1)
                 barcodeText += e.key;
 
@@ -7220,7 +7221,7 @@ function Ktl($, appInfo) {
                             var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
                             if (loginInfo && loginInfo !== '') {
                                 if (loginInfo === 'SkipAutoLogin')
-                                    ktl.storage.lsRemoveItem('AES_LI', true, false);
+                                    ktl.storage.lsRemoveItem('AES_LI', true, false, false);
                                 else
                                     ktl.storage.lsRemoveItem('AES_LI', true, false, true);
                             }
@@ -7228,7 +7229,7 @@ function Ktl($, appInfo) {
                             ktl.storage.lsRemoveItem('AES_EK', true, false, false);
 
                             setTimeout(() => {
-                                Knack.handleLogout();
+                                ktl.account.logout();
                             }, 500)
                         })
 
@@ -7253,7 +7254,7 @@ function Ktl($, appInfo) {
                         }
 
                         ktl.fields.addButton(devBtnsDiv, 'Logout', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                            Knack.handleLogout();
+                            ktl.account.logout();
                         })
 
                         const closeBtn = ktl.fields.addButton(devBtnsDiv, 'Close', '', ['devBtn', 'kn-button']);
@@ -7830,7 +7831,7 @@ function Ktl($, appInfo) {
 
         if (!window.logout) { //Emergency logout
             window.logout = function () {
-                $('.kn-log-out').click();
+                ktl.account.logout();
             }
         }
 
@@ -7844,7 +7845,9 @@ function Ktl($, appInfo) {
             },
 
             logout: function () {
-                $('.kn-log-out').click();
+                if (ktl.scenes.isiFrameWnd()) return;
+                ktl.iFrameWnd.delete();
+                Knack.handleLogout();
             },
 
             autoLogin: function (viewId = '') {
@@ -8415,7 +8418,7 @@ function Ktl($, appInfo) {
                                     ktl.iFrameWnd.delete();
                                     ktl.iFrameWnd.create();
                                 }
-                            }, FIVE_MINUTES_DELAY);
+                            }, FIVE_MINUTES_DELAY * 2);
                             break;
                         case 'heartbeatMsg':
                             var viewId = ktl.iFrameWnd.getCfg().hbViewId;
@@ -8678,7 +8681,7 @@ function Ktl($, appInfo) {
                                 Android.restartApplication();
                         } else {
                             ktl.core.timedPopup('Your log-in has expired. Please log back in to continue.', 'warning', 4000);
-                            $('.kn-log-out').trigger('click'); //Login has expired, force logout.
+                            ktl.account.logout(); //Login has expired, force logout.
                         }
                     } else if (msg.status == 500) {
                         ktl.core.timedPopup('Error 500 has occurred - reloading page...', 'warning');
