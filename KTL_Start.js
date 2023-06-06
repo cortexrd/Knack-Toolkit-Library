@@ -45,9 +45,9 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
 
         LazyLoad.js([appUrl], () => {
             if (typeof window.ktlReady !== 'function') {
-                var fileName = prompt('Error - Cannot find ktlReady file:\n' + appUrl + '\nWhat is file name (without .js)?');
-                if (fileName) {
-                    localStorage.setItem(lsShortName + 'fileName', fileName);
+                var srcFileName = prompt('Error - Cannot find source file with ktlReady:\n' + appUrl + '\nWhat is file name (without .js)?', Knack.app.attributes.name);
+                if (srcFileName) {
+                    localStorage.setItem(lsShortName + 'fileName', srcFileName);
                     location.reload(true);
                 } else {
                     localStorage.removeItem(lsShortName + 'dev'); //JIC
