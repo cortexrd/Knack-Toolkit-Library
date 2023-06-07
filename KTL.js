@@ -150,10 +150,10 @@ function Ktl($, appInfo) {
                     if (view && typeof view.model === 'object') {
                         var keywords = ktlKeywords[viewId];
                         if (viewId && mutRec.target.localName === 'tbody') {
+                            (keywords._hc || keywords._rc) && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
+
                             if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList && mutRec.addedNodes[0].classList.contains('kn-table-totals'))
                                 ktl.views.fixTableRowsAlignment(viewId);
-
-                            (keywords._hc || keywords._rc) && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
                         }
 
                         keywords._km && ktl.core.kioskMode(true);
@@ -2760,7 +2760,7 @@ function Ktl($, appInfo) {
 
         loadAllFilters();
 
-        //Early detection of scene change to prevent multi-rendering of views and flickering.
+        //Early detection of scene change to prevent multi-rendering and flickering of views.
         var scn = '';
         setInterval(function () {
             if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
@@ -5152,7 +5152,7 @@ function Ktl($, appInfo) {
                                         var row = totalRows[i];
                                         $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
                                     }
-                                    trimSummaryRows();
+                                    fixSummaryRows();
                                 }
                             })
                             .catch(function (e) { ktl.log.clog('purple', 'Failed waiting for table totals.', viewId, e); })
@@ -5180,13 +5180,14 @@ function Ktl($, appInfo) {
                     }
                 } else {
                     if (ktlKeywords[viewId]._hc || ktlKeywords[viewId]._rc)
-                        trimSummaryRows();
+                        fixSummaryRows();
                 }
 
                 //Alignment fix for Summary rows (totals).
-                function trimSummaryRows() {
+                function fixSummaryRows() {
                     var headers = $('#' + viewId + ' thead tr th:visible').length;
-                    var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td').length;
+                    var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not(.ktlDisplayNone)').length;
+
                     for (var j = 0; j < (totals - headers); j++) {
                         $('#' + viewId + ' .kn-table-totals td:last-child').remove();
                     }
@@ -6746,6 +6747,22 @@ function Ktl($, appInfo) {
                 $('#devBtnsDivId').remove();
         })
 
+        //Early detection of scene change to prevent multi-rendering and flickering of views.
+        var sceneChangeObservers = [];
+        var newScene = '';
+        setInterval(function () {
+            if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
+                if (Knack.router.current_scene_key !== newScene) {
+                    const previousScene = newScene;
+                    newScene = Knack.router.current_scene_key;
+                    sceneChangeObservers.forEach(obs => {
+                        if (typeof obs === 'function')
+                            obs({ newScene: newScene, previousScene: previousScene });
+                    })
+                }
+            }
+        }, 100);
+
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -7271,6 +7288,12 @@ function Ktl($, appInfo) {
 
             isiFrameWnd: function () {
                 return (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID)) ? true : false;
+            },
+
+            sceneChangeNotificationSubscribe: function (callback) {
+                if (!callback) return;
+
+                sceneChangeObservers.push(callback);
             },
         }
     })(); //Scenes
