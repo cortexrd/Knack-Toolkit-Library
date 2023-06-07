@@ -201,6 +201,11 @@ window.KnackApp = function ($, appInfo = {}) {
             });
         }
 
+        ktl.iFrameWnd.setCfg({
+            accountsObjName: 'Accounts', //If your main accounts table is not "Accounts".
+        });
+
+
         if (typeof window.ktlReady === 'function')
             window.ktlReady(appInfo);
     })();
