@@ -5104,10 +5104,10 @@ function Ktl($, appInfo) {
                                 else
                                     $('#' + view.key + ' .view-header').append(label);
                             } else
-                                $('#' + view.key + ' .kn-title').css({ 'display': 'inline-flex' }).append(label);
+                                $('#' + view.key + ' .kn-title').append(label);
                         } else {
                             //Why Search views don't show it the first render?
-                            $('#' + view.key).css({ 'display': 'inline-flex' }).append(label);//.prepend(label);
+                            $('#' + view.key).append(label);
                         }
                     } else {
                         if (submitBtn.length) {
@@ -7624,7 +7624,6 @@ function Ktl($, appInfo) {
                         ktl.log.clog('green', 'Uploading default prefs to cloud');
                     }
                 } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) { //Form for user to update his own prefs
-                    var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                     var allow = allowShowPrefs ? allowShowPrefs() : {};
                     if ($.isEmptyObject(allow)) {
                         ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
@@ -7676,6 +7675,7 @@ function Ktl($, appInfo) {
 
                     function updateUserPrefsFormText() {
                         userPrefsTmp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                        var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                         document.querySelector('#' + acctPrefsFld).value = JSON.stringify(userPrefsTmp);
                     }
                 }
@@ -7974,20 +7974,9 @@ function Ktl($, appInfo) {
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) {
-                var intervalId = setInterval(function () { //Wait until ready HB field is ready.
-                    if (ktl.iFrameWnd.getCfg().hbViewId !== '') {
-                        clearInterval(intervalId);
-                        clearTimeout(timeout);
-                        ktl.wndMsg.send('iFrameWndReadyMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, APP_KTL_VERSIONS);
-                        startHighPriorityLogging();
-                        startLowPriorityLogging();
-                    }
-                }, 200);
-
-                var timeout = setTimeout(function () { //Failsafe
-                    clearInterval(intervalId);
-                    ktl.log.clog('purple', 'iFrameWndReadyMsg timeout');
-                }, 30000);
+                ktl.wndMsg.send('iFrameWndReadyMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, APP_KTL_VERSIONS);
+                startHighPriorityLogging();
+                startLowPriorityLogging();
             }
         })
 
@@ -8409,7 +8398,9 @@ function Ktl($, appInfo) {
                         case 'iFrameWndReadyMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.iFrameWnd.setCfg({ iFrameReady: true });
-                            ktl.wndMsg.startHeartbeat();
+
+                            if (ktl.iFrameWnd.getCfg().hbViewId && ktl.iFrameWnd.getCfg().hbViewId !== '')
+                                ktl.wndMsg.startHeartbeat();
 
                             //Delete iFrameWnd and re-create periodically.
                             setTimeout(function () {
