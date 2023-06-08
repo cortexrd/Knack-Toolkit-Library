@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, appInfo) {
-    const KTL_VERSION = '0.12.6';
+    const KTL_VERSION = '0.12.7';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -4391,7 +4391,7 @@ function Ktl($, appInfo) {
 
             //Fix problem with re-appearing filter button when filtring is disabled in views.
             //Reported here: https://forums.knack.com/t/add-filter-buttons-keep-coming-back/13966
-            if (Knack.views[view.key] && !Knack.views[view.key].model.view.filter)
+            if (Knack.views[view.key] && Knack.views[view.key].model.view.filter === false)
                 $('#' + view.key + ' .kn-filters-nav').remove();
 
             if (view.type === 'calendar') {
