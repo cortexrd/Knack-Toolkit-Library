@@ -2003,18 +2003,11 @@ function Ktl($, appInfo) {
                     return;
                 }
 
+                //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                 const text = $('#' + viewId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');;
-
-                barcodeData = {
-                    text: text,
-                    width: size,
-                    height: size,
-                }
-
+                barcodeData = { text: text, width: size, height: size };
                 ktl.core.loadLib('QRGenerator')
                     .then(() => {
-                        //Reformat the QR String properly and display the QR code.
-
                         var qrCodeDiv = document.getElementById('qrCodeDiv');
                         if (!qrCodeDiv) {
                             qrCodeDiv = document.createElement('div');
