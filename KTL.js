@@ -104,9 +104,9 @@ function Ktl($, appInfo) {
         }
     }
 
-    //Used when there are many groups of parameters, separated by square brackets.
+    //Used with keywords, when there are many groups of parameters, separated by square brackets.
     //Ex: _cfv=[c,C1,red,yellow,bold,iu], [x,Screwdriver,blue,#b9cbf5,700];
-    function extractParamGroups(keyword) {
+    function extractKeywordParamGroups(keyword) {
         if (!keyword | !keyword.length) return [];
 
         var paramGroups = [];
@@ -984,6 +984,10 @@ function Ktl($, appInfo) {
 
                 return dateCopy;
             },
+
+            extractKeywordParamGroups: function (keyword) {
+                return extractKeywordParamGroups(keyword);
+            }
         }
     })(); //Core
 
@@ -4722,7 +4726,7 @@ function Ktl($, appInfo) {
             if (keywords && keywords._cfv && keywords._cfv.length) {
                 //Start with View's _cfv.
                 var fieldId = '';
-                var paramGroups = extractParamGroups(keywords._cfv);
+                var paramGroups = extractKeywordParamGroups(keywords._cfv);
                 if (!paramGroups.length) return;
 
                 var fields = Knack.views[viewId].model.view.fields;
@@ -4750,7 +4754,7 @@ function Ktl($, appInfo) {
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
                         if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.length) {
                             keywords._cfv = foundKwObj[fieldId]._cfv;
-                            paramGroups = extractParamGroups(keywords._cfv);
+                            paramGroups = extractKeywordParamGroups(keywords._cfv);
                             colorizeField(viewId, fieldId, paramGroups, data);
                         }
                     }
@@ -6661,7 +6665,7 @@ function Ktl($, appInfo) {
             applyZoomLevel: function (viewId, keywords) {
                 if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.length) return;
 
-                var paramGroups = extractParamGroups(keywords._zoom);
+                var paramGroups = extractKeywordParamGroups(keywords._zoom);
                 if (!paramGroups.length) return;
 
                 var sel = '#' + viewId;
@@ -6681,7 +6685,7 @@ function Ktl($, appInfo) {
             addRemoveClass: function (viewId, keywords) {
                 if (!viewId || !keywords || !keywords._cls || !keywords._cls.length) return;
 
-                var paramGroups = extractParamGroups(keywords._cls);
+                var paramGroups = extractKeywordParamGroups(keywords._cls);
                 if (!paramGroups.length) return;
 
                 var sel = '#' + viewId;
