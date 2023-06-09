@@ -64,7 +64,7 @@ function Ktl($, appInfo) {
                 ktlKeywords[view.id] = keywordsObj;
 
                 //Add scene-wide keywords.
-                if (keywordsObj._km || keywordsObj._kbs)
+                if (keywordsObj._km || keywordsObj._kbs || keywordsObj._zoom)
                     ktlKeywords[scn.attributes.key] = keywordsObj;
 
                 attr.title = cleanedUpTitle;
@@ -4447,6 +4447,7 @@ function Ktl($, appInfo) {
                     keywords._nsg && noSortingOnGrid(view.key);
                     keywords._hf && hideFields(view.key, keywords);
                     keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
+                    keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
 
                     processViewKeywords && processViewKeywords(view, keywords, data);
                 }
@@ -6644,6 +6645,19 @@ function Ktl($, appInfo) {
                     if (viewObj)
                         return viewObj.attributes;
                 }
+            },
+
+            applyZoomLevel: function (viewId, keywords) {
+                if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.length || isNaN(keywords._zoom[0])) return;
+                var sel = '#' + viewId;
+                if (keywords._zoom.length >= 2) {
+                    if (keywords._zoom[1] === 'page')
+                        sel = '#knack-body';
+                    else if (keywords._zoom.length >= 3 && keywords._zoom[1] === 'sel')
+                        sel = keywords._zoom[2];
+                }
+
+                $(sel).css({ 'zoom': keywords._zoom[0] + '%' });
             }
         }
     })(); //views
