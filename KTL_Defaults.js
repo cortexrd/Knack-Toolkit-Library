@@ -14,9 +14,6 @@ window.KnackApp = function ($, appInfo = {}) {
     if (ktl.storage.lsGetItem('remoteDev', true) === 'true')
         console.log('Open App code by clicking VM here -=>');
 
-    window.ktlkw = ktl.sysInfo.findAllKeywords;
-    window.ktlpause = ktl.views.autoRefresh;
-
     //====================================================
     //KTL Setup - BEGIN
     (function () {
