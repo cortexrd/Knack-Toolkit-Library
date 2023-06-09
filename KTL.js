@@ -107,15 +107,23 @@ function Ktl($, appInfo) {
     //Used when there are many groups of parameters, separated by square brackets.
     //Ex: _cfv=[c,C1,red,yellow,bold,iu], [x,Screwdriver,blue,#b9cbf5,700];
     function extractParamGroups(keyword) {
-        const pattern = /\[(.*?)\]/g;
-        const paramsBatch = [];
-        let match;
-        while ((match = pattern.exec(keyword.join(' ')))) {
-            const innerArray = match[1].split(' ');
-            paramsBatch.push(innerArray);
-        }
+        if (!keyword | !keyword.length) return [];
 
-        return paramsBatch;
+        var paramGroups = [];
+        if (keyword[0].startsWith('[')) {
+            let match;
+            const pattern = /\[(.*?)\]/g;
+            while ((match = pattern.exec(keyword.join(' ')))) {
+                const innerArray = match[1].split(' ');
+                if (innerArray[0] === 'ktlSel') //Set the selector as first element, it will be more efficient at parsing later.
+                    paramGroups.unshift(innerArray);
+                else
+                    paramGroups.push(innerArray);
+            }
+        } else
+            paramGroups.push(keyword);
+
+        return paramGroups;
     }
 
     //This is for early notifications of DOM changes.
@@ -4448,6 +4456,7 @@ function Ktl($, appInfo) {
                     keywords._hf && hideFields(view.key, keywords);
                     keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
                     keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
+                    keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
 
                     processViewKeywords && processViewKeywords(view, keywords, data);
                 }
@@ -4710,14 +4719,11 @@ function Ktl($, appInfo) {
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list') return;
 
-            var paramGroups = [];
-            var fieldId = '';
-
             if (keywords && keywords._cfv && keywords._cfv.length) {
-                if (keywords._cfv[0].startsWith('['))
-                    paramGroups = extractParamGroups(keywords._cfv);
-                else
-                    paramGroups.push(keywords._cfv);
+                //Start with View's _cfv.
+                var fieldId = '';
+                var paramGroups = extractParamGroups(keywords._cfv);
+                if (!paramGroups.length) return;
 
                 var fields = Knack.views[viewId].model.view.fields;
                 for (var f = 0; f < fields.length; f++) {
@@ -4725,11 +4731,15 @@ function Ktl($, appInfo) {
                     colorizeField(viewId, fieldId, paramGroups, data);
                 }
 
+                //Then end with Field's _cfv, for precedence.
                 doFields(viewId, data);
             } else
-                doFields(viewId, data);
+                doFields(viewId, data); //No view, just the fields.
 
             function doFields(viewId, data) {
+                var paramGroups = [];
+                var fieldId = '';
+
                 var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
                 if (!$.isEmptyObject(fieldsWithKwObj)) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
@@ -4740,11 +4750,7 @@ function Ktl($, appInfo) {
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
                         if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.length) {
                             keywords._cfv = foundKwObj[fieldId]._cfv;
-                            if (keywords._cfv[0].startsWith('['))
-                                paramGroups = extractParamGroups(keywords._cfv);
-                            else
-                                paramGroups.push(keywords._cfv);
-
+                            paramGroups = extractParamGroups(keywords._cfv);
                             colorizeField(viewId, fieldId, paramGroups, data);
                         }
                     }
@@ -4752,6 +4758,8 @@ function Ktl($, appInfo) {
             }
 
             function colorizeField(viewId, fieldId, paramGroups, data) {
+                if (!viewId || !fieldId || !data.length || !paramGroups.length) return;
+
                 for (var d = 0; d < data.length; d++) {
                     var rec = data[d];
 
@@ -6648,17 +6656,46 @@ function Ktl($, appInfo) {
             },
 
             applyZoomLevel: function (viewId, keywords) {
-                if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.length || isNaN(keywords._zoom[0])) return;
-                var sel = '#' + viewId;
-                if (keywords._zoom.length >= 2) {
-                    if (keywords._zoom[1] === 'page')
-                        sel = '#knack-body';
-                    else if (keywords._zoom.length >= 3 && keywords._zoom[1] === 'sel')
-                        sel = keywords._zoom[2];
-                }
+                if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.length) return;
 
-                $(sel).css({ 'zoom': keywords._zoom[0] + '%' });
-            }
+                var paramGroups = extractParamGroups(keywords._zoom);
+                if (!paramGroups.length) return;
+
+                var sel = '#' + viewId;
+                paramGroups.forEach(grp => {
+                    if (grp[0] === 'ktlSel') {
+                        if (grp[1] === 'page')
+                            sel = '#knack-body';
+                        else
+                            sel = grp[1];
+                    } else {
+                        if (!isNaN(grp[0]))
+                            $(sel).css({ 'zoom': grp[0] + '%' });
+                    }
+                })
+            },
+
+            addRemoveClass: function (viewId, keywords) {
+                if (!viewId || !keywords || !keywords._cls || !keywords._cls.length) return;
+
+                var paramGroups = extractParamGroups(keywords._cls);
+                if (!paramGroups.length) return;
+
+                var sel = '#' + viewId;
+                paramGroups.forEach(grp => {
+                    if (grp[0] === 'ktlSel') {
+                        if (grp[1] === 'page')
+                            sel = '#knack-body';
+                        else
+                            sel = grp[1];
+                    } else {
+                        if (grp[0].startsWith('!'))
+                            $(sel).removeClass(grp[0].replace('!', ''));
+                        else
+                            $(sel).addClass(grp[0]);
+                    }
+                })
+            },
         }
     })(); //views
 
@@ -9543,8 +9580,10 @@ function Ktl($, appInfo) {
             },
 
             //See list here: https://github.com/cortexrd/Knack-Toolkit-Library#list-of-all-keywords
-            findAllKeywords: function () {
+            findAllKeywords: function (search = '' /*TODO: show only what contains this string*/) {
                 var st = window.performance.now();
+
+                search && console.log('Searching all keywords for:', search);
 
                 for (var i = 0; i < Knack.scenes.length; i++) {
                     var scn = Knack.scenes.models[i];
@@ -9602,6 +9641,14 @@ function Ktl($, appInfo) {
     };
 };
 
+//Global helper functions.
+window.ktlkw = function (param) {
+    ktl.sysInfo.findAllKeywords(param);
+}
+
+window.ktlpause = function () {
+    ktl.views.autoRefresh(false);
+}
 
 
 ////////////////  End of KTL /////////////////////
