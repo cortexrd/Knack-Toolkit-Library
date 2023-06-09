@@ -4783,17 +4783,17 @@ function Ktl($, appInfo) {
                             var includeBlanks = false; //When a cell value is blank it is considered as zero.  This flag determines when it is desireable.
                             var propagate = false; //Propagate style to whole row.
 
-                            var style = 'color:' + fgColor + (bgColor ? '; background-color:' + bgColor : '');
+                            var style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
 
-                            if (group.length >= 5)
-                                style += ('; font-weight' + group[4]);
+                            if (group.length >= 5 && group[4])
+                                style += ('font-weight: ' + group[4] + '!important; ');
 
                             if (group.length >= 6) {
                                 if (group[5].includes('i'))
-                                    style += ('; font-style: italic');
+                                    style += 'font-style: italic; ';
 
                                 if (group[5].includes('u'))
-                                    style += ('; text-decoration: underline');
+                                    style += 'text-decoration: underline; ';
 
                                 if (group[5].includes('t')) //Text only, not whole cell.
                                     span = ' span';
@@ -4842,7 +4842,10 @@ function Ktl($, appInfo) {
                             //Add support for date and time comparisons.
 
                             //Merge current and new styles.
-                            colorize && ($(sel).attr('style', $(sel).attr('style') + ' ;' + style));
+                            if (colorize) {
+                                const currentStyle = $(sel).attr('style');
+                                $(sel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                            }
                         }
                     }
                 }
