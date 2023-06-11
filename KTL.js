@@ -98,14 +98,64 @@ function Ktl($, appInfo) {
                 kw = kwString.split('=');
 
             var params = [];
+            var optObj = {};
             if (kw.length > 1) {
-                params = kw[1].split(',');
-                params.forEach((param, idx) => {
-                    params[idx] = param.trim();
-                })
+                kw.splice(0, 1);
+
+                if (kw[0].startsWith('[')) {
+                    var paramGroups = extractKwParamGroups(kw[0]);
+                    if (paramGroups.length) {
+                        console.log('paramGroups =', paramGroups);
+                        parseParamsGroups(paramGroups, optObj);
+                    }
+                } else {
+                    params = kw[0].split(',');
+                    params.forEach((param, idx) => {
+                        params[idx] = param.trim();
+                    })
+                }
             }
 
             keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+        }
+    }
+
+
+    function extractKwParamGroups(kwGroups) {
+        var result = [];
+
+        var cleanedStr = kwGroups.trim();
+        cleanedStr = cleanedStr.replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); //Remove spaces around square brackets.
+        var elements = cleanedStr.split('],[');
+
+        elements.forEach(function (element) {
+            var cleanedElement = element.replace('[', '').replace(']', '');
+            result.push(cleanedElement);
+        });
+
+        return result;
+    }
+
+    function parseParamsGroups(paramGroups, optObj) {
+        for (var i = 0; i < paramGroups.length; i++) {
+            var grp = paramGroups[i];
+            console.log('grp =', grp);
+
+            const firstParam = grp.split(',')[0].trim();;
+            if (['ktlSel', 'ktlRolesIncl', 'ktlRolesExcl'].includes(firstParam)) {
+                console.log('firstParam =', firstParam);
+
+                if (firstParam === 'ktlSel') {
+                    const param = grp.split(',')[1].trim();
+                    console.log('param =', param);
+                    optObj[firstParam] = param;
+                } else if (firstParam === 'ktlRoles') {
+                    const param = grp.split(',')[1].trim();
+                    optObj[firstParam] = param;
+                }
+
+                console.log('optObj =', optObj);
+            }
         }
     }
 
