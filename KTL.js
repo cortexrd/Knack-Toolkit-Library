@@ -28,7 +28,7 @@ function Ktl($, appInfo) {
     //KEC stands for "KTL Event Code".  Next:  KEC_1026
     //
 
-    //First thing: Extract all keywords from app structure.
+    //Parser step 1 : Extract all keywords from view titles and descriptions, and cleanup view titles and descriptions.
     var ktlKeywords = {};
     window.ktlKeywords = ktlKeywords;
     for (var i = 0; i < Knack.scenes.models.length; i++) {
@@ -73,7 +73,11 @@ function Ktl($, appInfo) {
         }
     }
 
+    //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
     function parseKeywords(keywords, strToParse) {
+        if (strToParse.includes('_zoom'))
+            console.log('zoom');
+
         var kwAr = [];
         if (strToParse && strToParse !== '') {
             var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
@@ -84,6 +88,7 @@ function Ktl($, appInfo) {
             }
         }
 
+        //Parser step 3 : Extract all sets of parameters for a given keyword - those after the equal sign and separated by commas.
         function parseParams(kwString, kwIdx) {
             var kw = [];
             if (kwAr[i].startsWith('_')) {
@@ -114,17 +119,36 @@ function Ktl($, appInfo) {
             let match;
             const pattern = /\[(.*?)\]/g;
             while ((match = pattern.exec(keyword.join(' ')))) {
-                const innerArray = match[1].split(' ');
-                if (innerArray[0] === 'ktlSel') //Set the selector as first element, it will be more efficient at parsing later.
-                    paramGroups.unshift(innerArray);
-                else
+                var specialKw = parseKwOptions(keyword);
+                if (!$.isEmptyObject(specialKw)) {
+                    console.log('specialKw =', specialKw);
+
+                    //Set the special keywords as first element, it will be more efficient at parsing later.
+                    paramGroups.unshift([specialKw.kw, specialKw.params]);
+                } else {
+                    const innerArray = match[1].split(' ');
                     paramGroups.push(innerArray);
+                }
             }
         } else
             paramGroups.push(keyword);
 
         return paramGroups;
     }
+
+    function parseKwOptions(keyword) {
+        var kwOptions = {};
+        for (var i = 0; i < keyword.length; i++) {
+            var kw = keyword[i].replace('[', '');
+            if (['ktlSel', 'ktlRolesIncl', 'ktlRolesExcl'].includes(kw)) {
+                kwOptions[kw] = keyword[i + 1].replace(']', '');
+                //return { kw: kw, params: keyword[i + 1].replace(']', '') }
+            }
+        }
+
+        return kwOptions;
+    }
+
 
     //This is for early notifications of DOM changes.
     //Prevents spurious GUI updates (flickering).
@@ -6669,17 +6693,18 @@ function Ktl($, appInfo) {
                 if (!paramGroups.length) return;
 
                 var sel = '#' + viewId;
-                paramGroups.forEach(grp => {
-                    if (grp[0] === 'ktlSel') {
-                        if (grp[1] === 'page')
+                for (var i = 0; i < paramGroups.length; i++) {
+                    var grp = paramGroups[i];
+                    if (grp[i] === 'ktlSel' && grp.length >= 2) {
+                        if (grp[i + 1] === 'page')
                             sel = '#knack-body';
                         else
-                            sel = grp[1];
+                            sel = grp[i + 1];
                     } else {
-                        if (!isNaN(grp[0]))
+                        if (!isNaN(grp[i]))
                             $(sel).css({ 'zoom': grp[0] + '%' });
                     }
-                })
+                }
             },
 
             addRemoveClass: function (viewId, keywords) {
