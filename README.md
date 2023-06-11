@@ -113,7 +113,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 
 The KTL “keyword-based” approach is an ideal tool for non-coders. But behind each of those keywords lies a huge collection of “hidden” function waiting to be leveraged.
 
-If ever you’re interested in some basic or advanced coding, click the following links to know more about [Advanced Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Features) and [Advanced KTL Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-KTL-Development-Modes).
+If ever you’re interested in some basic or advanced coding, click the following links to know more about [Advanced Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Features) and [Advanced Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Development-Modes).
 
 # Future Improvements
 
