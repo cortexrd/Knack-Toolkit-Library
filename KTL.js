@@ -75,8 +75,8 @@ function Ktl($, appInfo) {
 
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
     function parseKeywords(keywords, strToParse) {
-        if (strToParse.includes('_zoom'))
-            console.log('zoom');
+        if (strToParse.includes('_cfv'))
+            console.log('cfv');
 
         var kwAr = [];
         if (strToParse && strToParse !== '') {
@@ -109,10 +109,12 @@ function Ktl($, appInfo) {
                         parseParamsGroups(paramGroups, params, options);
                     }
                 } else {
-                    params = kw[0].split(',');
-                    params.forEach((param, idx) => {
-                        params[idx] = param.trim();
-                    })
+                    params.push(kw[0].trim());
+
+                //    params = kw[0].split(',');
+                //    params.forEach((param, idx) => {
+                //        params[idx] = param.trim();
+                //    })
                 }
             }
 
@@ -147,25 +149,22 @@ function Ktl($, appInfo) {
             console.log('grp =', grp);
 
             const firstParam = grp.split(',')[0].trim();;
-            if (['ktlSel', 'ktlRoles'].includes(firstParam)) {
-                console.log('firstParam =', firstParam);
+            console.log('firstParam =', firstParam);
 
-                if (firstParam === 'ktlSel') {
-                    const param = grp.split(',')[1].trim();
-                    console.log('param =', param);
-                    options[firstParam] = param;
-                } else if (firstParam === 'ktlRoles') {
-                    var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
-                    const param = grp.match(pattern)[1].trim();;
-                    options[firstParam] = param;
-                }
-
-                console.log('options =', options);
+            if (firstParam === 'ktlSel') {
+                const param = grp.split(',')[1].trim();
+                console.log('param =', param);
+                options[firstParam] = param;
+            } else if (firstParam === 'ktlRoles') {
+                var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
+                const param = grp.match(pattern)[1].trim();;
+                options[firstParam] = param;
             } else {
-                params.push(firstParam);
+                params.push(grp);
                 console.log('params =', params);
             }
 
+            console.log('options =', options);
             //var resultObj = {};
         }
     }
@@ -1070,9 +1069,9 @@ function Ktl($, appInfo) {
                 return dateCopy;
             },
 
-            extractKeywordParamGroups: function (keyword) {
-                return extractKeywordParamGroups(keyword);
-            }
+        //    extractKeywordParamGroups: function (keyword) {
+        //        return extractKeywordParamGroups(keyword);
+        //    }
         }
     })(); //Core
 
@@ -2094,7 +2093,7 @@ function Ktl($, appInfo) {
             generateBarcode: function (viewId, keywords) {
                 if (!viewId || !keywords || !keywords._bcg) return;
 
-                const size = (keywords._bcg.length ? Number(keywords._bcg[0]) : 200);
+                const size = (keywords._bcg.params.length ? Number(keywords._bcg.params[0]) : 200);
                 if (isNaN(size)) {
                     ktl.log.clog('purple', 'generateBarcode called with invalid parameters in ' + viewId);
                     return;
@@ -2953,7 +2952,7 @@ function Ktl($, appInfo) {
                 var keywords = ktlKeywords[masterViewId];
                 var useUrlAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
 
-                var linkedViewIds = ktl.views.convertViewTitlesToViewIds(keywords._lf, masterViewId);
+                var linkedViewIds = (keywords._lf && ktl.views.convertViewTitlesToViewIds(keywords._lf.params[0], masterViewId));
                 if (linkedViewIds) {
                     var masterView = Knack.models[masterViewId].view;
                     if (masterView.type === 'report')
@@ -4581,9 +4580,9 @@ function Ktl($, appInfo) {
 
         function processRvd(view, event, revertFunc) {
             var keywords = ktlKeywords[view.key];
-            if (!keywords._rvd || keywords._rvd.length < 1) return;
+            if (!keywords._rvd || keywords._rvd.params.length < 1) return;
 
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvd, view.key);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvd.params[0], view.key);
             var eventFieldId = view.events.event_field.key;
             var recId = event.id;
             var dndConfViewId = viewIds[0]; //First view must always be the DnD Confirmation view.
@@ -4751,7 +4750,7 @@ function Ktl($, appInfo) {
         function disableFilterOnFields(view, keywords) {
             if (!view) return;
             if (view.type === 'table' /*TODO: add more view types*/) {
-                var fieldsAr = keywords._nf;
+                var fieldsAr = keywords._nf.params;
                 $('.kn-add-filter,.kn-filters').on('click', function (e) {
                     var filterFields = document.querySelectorAll('.field.kn-select select option');
                     filterFields.forEach(field => {
@@ -4764,7 +4763,7 @@ function Ktl($, appInfo) {
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
             if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs, viewId);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs.params[0], viewId);
             if (viewIds.length) {
                 $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
                     ktl.views.refreshViewArray(viewIds)
@@ -4774,16 +4773,16 @@ function Ktl($, appInfo) {
 
         function refreshViewsAfterRefresh(viewId = '', keywords) {
             if (!viewId) return;
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvr, viewId);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvr.params[0], viewId);
             if (viewIds.length)
                 ktl.views.refreshViewArray(viewIds)
         }
 
         function numDisplayedRecords(view, keywords) {
-            if (!view || !keywords._dr || !keywords._dr.length) return;
+            if (!view || !keywords._dr || !keywords._dr.params.length) return;
 
             var viewId = view.key;
-            var perPage = keywords._dr[0];
+            var perPage = keywords._dr.params[0];
             var href = window.location.href;
             if (!href.includes(viewId + '_per_page=')) {
                 Knack.showSpinner();
@@ -4808,10 +4807,13 @@ function Ktl($, appInfo) {
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list') return;
 
-            if (keywords && keywords._cfv && keywords._cfv.length) {
+            if (keywords && keywords._cfv && keywords._cfv.params.length) {
                 //Start with View's _cfv.
                 var fieldId = '';
-                var paramGroups = extractKeywordParamGroups(keywords._cfv);
+
+                //var paramGroups = extractKeywordParamGroups(keywords._cfv.params);
+                var paramGroups = keywords._cfv.params;
+
                 if (!paramGroups.length) return;
 
                 var fields = Knack.views[viewId].model.view.fields;
@@ -4833,13 +4835,11 @@ function Ktl($, appInfo) {
                 if (!$.isEmptyObject(fieldsWithKwObj)) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                     var foundKwObj = {};
-                    var keywords = {};
                     for (var i = 0; i < fieldsWithKwAr.length; i++) {
                         fieldId = fieldsWithKwAr[i];
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.length) {
-                            keywords._cfv = foundKwObj[fieldId]._cfv;
-                            paramGroups = extractKeywordParamGroups(keywords._cfv);
+                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.params.length) {
+                            paramGroups = foundKwObj[fieldId]._cfv.params;
                             colorizeField(viewId, fieldId, paramGroups, data);
                         }
                     }
@@ -4857,7 +4857,10 @@ function Ktl($, appInfo) {
                         cellText = cellText[0].identifier;
 
                     for (var g = 0; g < paramGroups.length; g++) {
-                        var group = paramGroups[g];
+                        if (typeof paramGroups[g] !== 'string')
+                            debugger;
+
+                        var group = paramGroups[g].split(',');
 
                         if (group.length >= 3) {
                             var colorize = false;
@@ -4947,8 +4950,8 @@ function Ktl($, appInfo) {
         }
 
         function hideFields(viewId, keywords) {
-            if (!viewId || !keywords._hf || !keywords._hf.length) return;
-            keywords._hf.forEach(fieldLabel => {
+            if (!viewId || !keywords._hf || !keywords._hf.params.length) return;
+            keywords._hf.params.forEach(fieldLabel => {
                 var fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
                 if (fieldId) {
                     var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
@@ -5133,7 +5136,7 @@ function Ktl($, appInfo) {
                         var viewId = view.id;
                         var keywords = ktlKeywords[viewId];
                         if (keywords._ar) {
-                            var intervalDelay = parseInt(keywords._ar[0]);
+                            var intervalDelay = parseInt(keywords._ar.params[0]);
                             intervalDelay = isNaN(intervalDelay) ? 60 : intervalDelay;
                             intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 
@@ -6016,14 +6019,14 @@ function Ktl($, appInfo) {
                         var outcomeObj = { msg: '' };
 
                         //Unique Value Exceptions _uvx
-                        if (keywords._uvx && keywords._uvx.length) {
+                        if (keywords._uvx && keywords._uvx.params.length) {
                             e.preventDefault();
 
                             const viewType = ktl.views.getViewType(viewId);
                             var field = Knack.objects.getField(fieldId);
                             var fieldName = field.attributes.name;
                             var fieldValue = $('#' + viewId + ' #' + fieldId).val();
-                            if (viewType === 'search' || !fieldValue || fieldValue === '' || (fieldValue !== '' && keywords._uvx.includes(fieldValue.toLowerCase()))) {
+                            if (viewType === 'search' || !fieldValue || fieldValue === '' || (fieldValue !== '' && keywords._uvx.params.includes(fieldValue.toLowerCase()))) {
                                 resolve(outcomeObj);
                                 return;
                             }
@@ -6121,12 +6124,12 @@ function Ktl($, appInfo) {
                             var outcomeObj = { msg: '' };
 
                             //Unique Value Check
-                            if (keywords._uvc && keywords._uvc.length) {
+                            if (keywords._uvc && keywords._uvc.params.length) {
                                 e.preventDefault();
 
                                 var value = '';
-                                for (var f = 0; f < keywords._uvc.length; f++) {
-                                    var uvcParam = keywords._uvc[f];
+                                for (var f = 0; f < keywords._uvc.params.length; f++) {
+                                    var uvcParam = keywords._uvc.params[f];
                                     if ((uvcParam.match(/['"]/g) || []).length === 2) {
                                         const matches = uvcParam.match(/(['"])(.*?)\1/);
                                         if (matches) {
@@ -6458,11 +6461,11 @@ function Ktl($, appInfo) {
                 if (keywords && keywords._qt) {
                     fieldHasQt = true; //If view has QT, then all fields inherit also.
 
-                    if (keywords._qt.length >= 1 && keywords._qt[0])
-                        bgColorTrue = keywords._qt[0];
+                    if (keywords._qt.params.length >= 1 && keywords._qt.params[0])
+                        bgColorTrue = keywords._qt.params[0];
 
-                    if (keywords._qt.length >= 2 && keywords._qt[1])
-                        bgColorFalse = keywords._qt[1];
+                    if (keywords._qt.params.length >= 2 && keywords._qt.params[1])
+                        bgColorFalse = keywords._qt.params[1];
                 }
 
                 var fieldKeywords = {};
@@ -6603,7 +6606,7 @@ function Ktl($, appInfo) {
                 if (!['table', 'search'].includes(viewType)) return;
 
                 var keywords = ktlKeywords[viewId];
-                var toMatch = keywords._mc;
+                var toMatch = keywords._mc.params;
                 if (toMatch.length !== 1 || !toMatch[0]) return;
                 toMatch = toMatch[0];
 
@@ -6659,14 +6662,14 @@ function Ktl($, appInfo) {
 
                 var model = (Knack.views[view.key] && Knack.views[view.key].model);
                 if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor) {
-                    if (keywords._ni.length) {
+                    if (keywords._ni.params.length) {
                         //Process each field individually.
                         //As an exception, if a field start with an exclamation mark, allow inline editing.
                         var allowInline = {};
-                        if (keywords._ni[0].charAt(0) === '!') {
+                        if (keywords._ni.params[0].charAt(0) === '!') {
                             //Found first param as an exception.
                             $('#' + view.key + ' .cell-edit').addClass('ktlNoInlineEdit'); //By default, all fields.
-                            keywords._ni.forEach(colHeader => {
+                            keywords._ni.params.forEach(colHeader => {
                                 if (colHeader.charAt(0) === '!') {
                                     colHeader = colHeader.substring(1);
                                     allowInline[colHeader] = true;
@@ -6678,7 +6681,7 @@ function Ktl($, appInfo) {
                                     $('#' + view.key + ' tbody tr td:nth-child(' + (thead[0].cellIndex + 1) + ')').removeClass('ktlNoInlineEdit');
                             })
                         } else {
-                            keywords._ni.forEach(colHeader => {
+                            keywords._ni.params.forEach(colHeader => {
                                 var thead = $('#' + view.key + ' thead tr th:textEquals("' + colHeader + '")');
                                 if (thead.length)
                                     $('#' + view.key + ' tbody tr td:nth-child(' + (thead[0].cellIndex + 1) + ')').addClass('ktlNoInlineEdit');
@@ -6703,14 +6706,14 @@ function Ktl($, appInfo) {
 
                 columns.forEach(col => {
                     header = col.header.trim();
-                    if (keywords._hc && keywords._hc.includes(header))
+                    if (keywords._hc && keywords._hc.params.includes(header))
                         hiddenHeadersAr.push(header);
-                    else if (keywords._rc && keywords._rc.includes(header))
+                    else if (keywords._rc && keywords._rc.params.includes(header))
                         removedHeadersAr.push(header);
 
                     fieldId = (col.id || (col.field && col.field.key));
                     if (fieldId) {
-                        if (keywords._hc && keywords._hc.includes(fieldId))
+                        if (keywords._hc && keywords._hc.params.includes(fieldId))
                             hiddenFieldsAr.push(fieldId);
                     }
                 })
@@ -6748,9 +6751,9 @@ function Ktl($, appInfo) {
             },
 
             applyZoomLevel: function (viewId, keywords) {
-                if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.length) return;
+                if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.params.length) return;
 
-                var paramGroups = extractKeywordParamGroups(keywords._zoom);
+                var paramGroups = extractKeywordParamGroups(keywords._zoom.params);
                 if (!paramGroups.length) return;
 
                 var sel = '#' + viewId;
@@ -6769,9 +6772,9 @@ function Ktl($, appInfo) {
             },
 
             addRemoveClass: function (viewId, keywords) {
-                if (!viewId || !keywords || !keywords._cls || !keywords._cls.length) return;
+                if (!viewId || !keywords || !keywords._cls || !keywords._cls.params.length) return;
 
-                var paramGroups = extractKeywordParamGroups(keywords._cls);
+                var paramGroups = extractKeywordParamGroups(keywords._cls.params);
                 if (!paramGroups.length) return;
 
                 var sel = '#' + viewId;
