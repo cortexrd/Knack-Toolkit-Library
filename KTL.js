@@ -98,7 +98,7 @@ function Ktl($, appInfo) {
                 kw = kwString.split('=');
 
             var params = [];
-            var optObj = {};
+            var options = {};
             if (kw.length > 1) {
                 kw.splice(0, 1);
 
@@ -106,7 +106,7 @@ function Ktl($, appInfo) {
                     var paramGroups = extractKwParamGroups(kw[0]);
                     if (paramGroups.length) {
                         console.log('paramGroups =', paramGroups);
-                        parseParamsGroups(paramGroups, optObj);
+                        parseParamsGroups(paramGroups, params, options);
                     }
                 } else {
                     params = kw[0].split(',');
@@ -116,7 +116,12 @@ function Ktl($, appInfo) {
                 }
             }
 
-            keywords[kwAr[kwIdx - 1].toLowerCase()] = params;
+            const kwObj = {
+                params: params,
+                options: options,
+            }
+
+            keywords[kwAr[kwIdx - 1].toLowerCase()] = kwObj;
         }
     }
 
@@ -136,26 +141,32 @@ function Ktl($, appInfo) {
         return result;
     }
 
-    function parseParamsGroups(paramGroups, optObj) {
+    function parseParamsGroups(paramGroups, params, options) {
         for (var i = 0; i < paramGroups.length; i++) {
             var grp = paramGroups[i];
             console.log('grp =', grp);
 
             const firstParam = grp.split(',')[0].trim();;
-            if (['ktlSel', 'ktlRolesIncl', 'ktlRolesExcl'].includes(firstParam)) {
+            if (['ktlSel', 'ktlRoles'].includes(firstParam)) {
                 console.log('firstParam =', firstParam);
 
                 if (firstParam === 'ktlSel') {
                     const param = grp.split(',')[1].trim();
                     console.log('param =', param);
-                    optObj[firstParam] = param;
+                    options[firstParam] = param;
                 } else if (firstParam === 'ktlRoles') {
-                    const param = grp.split(',')[1].trim();
-                    optObj[firstParam] = param;
+                    var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
+                    const param = grp.match(pattern)[1].trim();;
+                    options[firstParam] = param;
                 }
 
-                console.log('optObj =', optObj);
+                console.log('options =', options);
+            } else {
+                params.push(firstParam);
+                console.log('params =', params);
             }
+
+            //var resultObj = {};
         }
     }
 
