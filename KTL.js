@@ -105,7 +105,7 @@ function Ktl($, appInfo) {
                 if (!kw[0].startsWith('['))
                     kw[0] = '[' + kw[0] + ']';
 
-                var paramGroups = extractKwParamGroups(kw[0]);
+                var paramGroups = extractKeywordParamGroups(kw[0]);
                 if (paramGroups.length)
                     parseParamsGroups(paramGroups, params, options);
             }
@@ -118,7 +118,7 @@ function Ktl($, appInfo) {
         }
     }
 
-    function extractKwParamGroups(kwGroups) {
+    function extractKeywordParamGroups(kwGroups) {
         var paramGroups = [];
         var cleanedStr = kwGroups.trim();
         cleanedStr = cleanedStr.replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); //Remove spaces around square brackets.
@@ -141,44 +141,6 @@ function Ktl($, appInfo) {
             } else
                 params.push(grp);
         }
-    }
-
-
-    //Used with keywords, when there are many groups of parameters, separated by square brackets.
-    //Ex: _cfv=[c,C1,red,yellow,bold,iu], [x,Screwdriver,blue,#b9cbf5,700];
-    function extractKeywordParamGroups(keyword) {
-        if (!keyword | !keyword.length) return [];
-
-        var paramGroups = [];
-        if (keyword[0].startsWith('[')) {
-            let match;
-            const pattern = /\[(.*?)\]/g;
-            while ((match = pattern.exec(keyword.join(' ')))) {
-                var specialKw = parseKwOptions(keyword);
-                if (!$.isEmptyObject(specialKw)) {
-                    //Set the special keywords as first element, it will be more efficient at parsing later.
-                    paramGroups.unshift([specialKw.kw, specialKw.params]);
-                } else {
-                    const innerArray = match[1].split(' ');
-                    paramGroups.push(innerArray);
-                }
-            }
-        } else
-            paramGroups.push(keyword);
-
-        return paramGroups;
-    }
-
-    function parseKwOptions(keyword) {
-        var kwOptions = {};
-        for (var i = 0; i < keyword.length; i++) {
-            var kw = keyword[i].replace('[', '');
-            if (['ktlSel', 'ktlRoles'].includes(kw)) {
-                kwOptions[kw] = keyword[i + 1].replace(']', '');
-            }
-        }
-
-        return kwOptions;
     }
 
 
@@ -1039,10 +1001,6 @@ function Ktl($, appInfo) {
                 dateCopy.setMinutes(date.getMinutes() + minutes);
 
                 return dateCopy;
-            },
-
-            extractKeywordParamGroups: function (keyword) {
-                return extractKeywordParamGroups(keyword);
             },
 
             processKeywordOptions: function (options) {
