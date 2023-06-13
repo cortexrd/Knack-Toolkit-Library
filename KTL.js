@@ -46,7 +46,7 @@ function Ktl($, appInfo) {
                     firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                     if (firstKeywordIdx >= 0) {
                         cleanedUpTitle = title.substring(0, firstKeywordIdx);
-                        parseKeywords(keywordsObj, title.substring(firstKeywordIdx).trim());
+                        parseKeywords(title.substring(firstKeywordIdx).trim(), keywordsObj);
                     }
                 }
 
@@ -56,7 +56,7 @@ function Ktl($, appInfo) {
                     firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                     if (firstKeywordIdx >= 0) {
                         cleanedUpDescription = description.substring(0, firstKeywordIdx);
-                        parseKeywords(keywordsObj, description.substring(firstKeywordIdx).trim());
+                        parseKeywords(description.substring(firstKeywordIdx).trim(), keywordsObj);
                     }
                 }
 
@@ -74,10 +74,7 @@ function Ktl($, appInfo) {
     }
 
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
-    function parseKeywords(keywords, strToParse) {
-        if (strToParse.includes('_cfv'))
-            console.log('cfv');
-
+    function parseKeywords(strToParse, keywords) {
         var kwAr = [];
         if (strToParse && strToParse !== '') {
             var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
@@ -102,72 +99,59 @@ function Ktl($, appInfo) {
             if (kw.length > 1) {
                 kw.splice(0, 1);
 
-                if (kw[0].startsWith('[')) {
-                    var paramGroups = extractKwParamGroups(kw[0]);
-                    if (paramGroups.length) {
-                        console.log('paramGroups =', paramGroups);
-                        parseParamsGroups(paramGroups, params, options);
-                    }
-                } else {
-                    params.push(kw[0].trim());
-
-                //    params = kw[0].split(',');
-                //    params.forEach((param, idx) => {
-                //        params[idx] = param.trim();
-                //    })
+                if (!kw[0].startsWith('[')) {
+                    kw[0] = '[' + kw[0] + ']';
                 }
+
+                var paramGroups = extractKwParamGroups(kw[0]);
+                if (paramGroups.length)
+                    parseParamsGroups(paramGroups, params, options);
+
+            //    if (kw[0].startsWith('[')) {
+            //        var paramGroups = extractKwParamGroups(kw[0]);
+            //        if (paramGroups.length)
+            //            parseParamsGroups(paramGroups, params, options);
+            //    } else {
+            //        params = kw[0].split(',');
+            //        params.forEach((param, idx) => {
+            //            params[idx] = param.trim();
+            //        })
+            //    }
             }
 
-            const kwObj = {
-                params: params,
-                options: options,
-            }
+            const kwObj = { params: params }
+            if (!$.isEmptyObject(options))
+                kwObj.options = options;
 
             keywords[kwAr[kwIdx - 1].toLowerCase()] = kwObj;
         }
     }
 
-
     function extractKwParamGroups(kwGroups) {
-        var result = [];
-
+        var paramGroups = [];
         var cleanedStr = kwGroups.trim();
         cleanedStr = cleanedStr.replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); //Remove spaces around square brackets.
         var elements = cleanedStr.split('],[');
-
         elements.forEach(function (element) {
             var cleanedElement = element.replace('[', '').replace(']', '');
-            result.push(cleanedElement);
+            paramGroups.push(cleanedElement);
         });
 
-        return result;
+        return paramGroups;
     }
 
     function parseParamsGroups(paramGroups, params, options) {
         for (var i = 0; i < paramGroups.length; i++) {
             var grp = paramGroups[i];
-            console.log('grp =', grp);
-
-            const firstParam = grp.split(',')[0].trim();;
-            console.log('firstParam =', firstParam);
-
-            if (firstParam === 'ktlSel') {
-                const param = grp.split(',')[1].trim();
-                console.log('param =', param);
-                options[firstParam] = param;
-            } else if (firstParam === 'ktlRoles') {
+            const firstParam = grp.split(',')[0].trim();
+            if (['ktlSel', 'ktlRoles'].includes(firstParam)) {
                 var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
-                const param = grp.match(pattern)[1].trim();;
-                options[firstParam] = param;
-            } else {
+                options[firstParam] = grp.match(pattern)[1].trim();
+            } else
                 params.push(grp);
-                console.log('params =', params);
-            }
-
-            console.log('options =', options);
-            //var resultObj = {};
         }
     }
+
 
     //Used with keywords, when there are many groups of parameters, separated by square brackets.
     //Ex: _cfv=[c,C1,red,yellow,bold,iu], [x,Screwdriver,blue,#b9cbf5,700];
@@ -181,8 +165,6 @@ function Ktl($, appInfo) {
             while ((match = pattern.exec(keyword.join(' ')))) {
                 var specialKw = parseKwOptions(keyword);
                 if (!$.isEmptyObject(specialKw)) {
-                    console.log('specialKw =', specialKw);
-
                     //Set the special keywords as first element, it will be more efficient at parsing later.
                     paramGroups.unshift([specialKw.kw, specialKw.params]);
                 } else {
@@ -200,9 +182,8 @@ function Ktl($, appInfo) {
         var kwOptions = {};
         for (var i = 0; i < keyword.length; i++) {
             var kw = keyword[i].replace('[', '');
-            if (['ktlSel', 'ktlRolesIncl', 'ktlRolesExcl'].includes(kw)) {
+            if (['ktlSel', 'ktlRoles'].includes(kw)) {
                 kwOptions[kw] = keyword[i + 1].replace(']', '');
-                //return { kw: kw, params: keyword[i + 1].replace(']', '') }
             }
         }
 
@@ -1069,9 +1050,32 @@ function Ktl($, appInfo) {
                 return dateCopy;
             },
 
-        //    extractKeywordParamGroups: function (keyword) {
-        //        return extractKeywordParamGroups(keyword);
-        //    }
+            extractKeywordParamGroups: function (keyword) {
+                return extractKeywordParamGroups(keyword);
+            },
+
+            processKeywordOptions: function (options) {
+                if (!options || $.isEmptyObject(options)) return;
+
+                //Allowed Roles are always the top priority.
+                if (options.ktlRoles) {
+                    var rolesToMatch = options.ktlRoles.split(',');
+                    rolesToMatch.forEach((role, idx) => { rolesToMatch[idx] = role.trim(); });
+                    if (!ktl.account.checkUserRolesMatch(rolesToMatch))
+                        return;
+                    else {
+                        var res = { rolesOk: true };
+
+                        //Selectors
+                        if (options.ktlSel)
+                            res.sel = options.ktlSel;
+
+                        return res;
+                    }
+                }
+
+                return;
+            },
         }
     })(); //Core
 
@@ -2084,7 +2088,7 @@ function Ktl($, appInfo) {
                 if (fieldDesc) {
                     var keywords = {};
                     fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
-                    parseKeywords(keywords, fieldDesc);
+                    parseKeywords(fieldDesc, keywords);
                     if (!$.isEmptyObject(keywords))
                         fieldKeywords[fieldId] = keywords;
                 }
@@ -2952,7 +2956,7 @@ function Ktl($, appInfo) {
                 var keywords = ktlKeywords[masterViewId];
                 var useUrlAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
 
-                var linkedViewIds = (keywords._lf && ktl.views.convertViewTitlesToViewIds(keywords._lf.params[0], masterViewId));
+                var linkedViewIds = (keywords._lf && ktl.views.convertViewTitlesToViewIds(keywords._lf.params, masterViewId));
                 if (linkedViewIds) {
                     var masterView = Knack.models[masterViewId].view;
                     if (masterView.type === 'report')
@@ -4582,7 +4586,7 @@ function Ktl($, appInfo) {
             var keywords = ktlKeywords[view.key];
             if (!keywords._rvd || keywords._rvd.params.length < 1) return;
 
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvd.params[0], view.key);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvd.params, view.key);
             var eventFieldId = view.events.event_field.key;
             var recId = event.id;
             var dndConfViewId = viewIds[0]; //First view must always be the DnD Confirmation view.
@@ -4763,7 +4767,7 @@ function Ktl($, appInfo) {
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
             if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs.params[0], viewId);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs.params, viewId);
             if (viewIds.length) {
                 $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
                     ktl.views.refreshViewArray(viewIds)
@@ -4773,7 +4777,7 @@ function Ktl($, appInfo) {
 
         function refreshViewsAfterRefresh(viewId = '', keywords) {
             if (!viewId) return;
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvr.params[0], viewId);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvr.params, viewId);
             if (viewIds.length)
                 ktl.views.refreshViewArray(viewIds)
         }
@@ -4810,12 +4814,7 @@ function Ktl($, appInfo) {
             if (keywords && keywords._cfv && keywords._cfv.params.length) {
                 //Start with View's _cfv.
                 var fieldId = '';
-
-                //var paramGroups = extractKeywordParamGroups(keywords._cfv.params);
                 var paramGroups = keywords._cfv.params;
-
-                if (!paramGroups.length) return;
-
                 var fields = Knack.views[viewId].model.view.fields;
                 for (var f = 0; f < fields.length; f++) {
                     fieldId = fields[f].key;
@@ -6462,6 +6461,7 @@ function Ktl($, appInfo) {
                     fieldHasQt = true; //If view has QT, then all fields inherit also.
 
                     if (keywords._qt.params.length >= 1 && keywords._qt.params[0])
+                        //const colors = keywords._qt.params[0].split(',');
                         bgColorTrue = keywords._qt.params[0];
 
                     if (keywords._qt.params.length >= 2 && keywords._qt.params[1])
@@ -6753,21 +6753,16 @@ function Ktl($, appInfo) {
             applyZoomLevel: function (viewId, keywords) {
                 if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.params.length) return;
 
-                var paramGroups = extractKeywordParamGroups(keywords._zoom.params);
-                if (!paramGroups.length) return;
+                var res = ktl.core.processKeywordOptions(keywords._zoom.options);
+                if (!res.rolesOk)
+                    return;
 
-                var sel = '#' + viewId;
+                var sel = res.sel ? res.sel : '#' + viewId;
+                var paramGroups = keywords._zoom.params;
                 for (var i = 0; i < paramGroups.length; i++) {
-                    var grp = paramGroups[i];
-                    if (grp[i] === 'ktlSel' && grp.length >= 2) {
-                        if (grp[i + 1] === 'page')
-                            sel = '#knack-body';
-                        else
-                            sel = grp[i + 1];
-                    } else {
-                        if (!isNaN(grp[i]))
-                            $(sel).css({ 'zoom': grp[0] + '%' });
-                    }
+                    var params = paramGroups[i];
+                    if (!isNaN(params))
+                        $(sel).css({ 'zoom': params + '%' });
                 }
             },
 
