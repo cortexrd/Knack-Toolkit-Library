@@ -99,24 +99,12 @@ function Ktl($, appInfo) {
             if (kw.length > 1) {
                 kw.splice(0, 1);
 
-                if (!kw[0].startsWith('[')) {
+                if (!kw[0].startsWith('['))
                     kw[0] = '[' + kw[0] + ']';
-                }
 
                 var paramGroups = extractKwParamGroups(kw[0]);
                 if (paramGroups.length)
                     parseParamsGroups(paramGroups, params, options);
-
-            //    if (kw[0].startsWith('[')) {
-            //        var paramGroups = extractKwParamGroups(kw[0]);
-            //        if (paramGroups.length)
-            //            parseParamsGroups(paramGroups, params, options);
-            //    } else {
-            //        params = kw[0].split(',');
-            //        params.forEach((param, idx) => {
-            //            params[idx] = param.trim();
-            //        })
-            //    }
             }
 
             const kwObj = { params: params }
@@ -1062,19 +1050,16 @@ function Ktl($, appInfo) {
                     var rolesToMatch = options.ktlRoles.split(',');
                     rolesToMatch.forEach((role, idx) => { rolesToMatch[idx] = role.trim(); });
                     if (!ktl.account.checkUserRolesMatch(rolesToMatch))
-                        return;
-                    else {
-                        var res = { rolesOk: true };
-
-                        //Selectors
-                        if (options.ktlSel)
-                            res.sel = options.ktlSel;
-
-                        return res;
-                    }
+                        return { };
                 }
 
-                return;
+                var res = { rolesOk: true };
+
+                //Selectors
+                if (options.ktlSel)
+                    res.sel = options.ktlSel;
+
+                return res;
             },
         }
     })(); //Core
@@ -6754,8 +6739,7 @@ function Ktl($, appInfo) {
                 if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.params.length) return;
 
                 var res = ktl.core.processKeywordOptions(keywords._zoom.options);
-                if (!res.rolesOk)
-                    return;
+                if (!res.rolesOk) return;
 
                 var sel = res.sel ? res.sel : '#' + viewId;
                 var paramGroups = keywords._zoom.params;
@@ -6769,23 +6753,19 @@ function Ktl($, appInfo) {
             addRemoveClass: function (viewId, keywords) {
                 if (!viewId || !keywords || !keywords._cls || !keywords._cls.params.length) return;
 
-                var paramGroups = extractKeywordParamGroups(keywords._cls.params);
-                if (!paramGroups.length) return;
+                var res = ktl.core.processKeywordOptions(keywords._cls.options);
+                if (!res.rolesOk) return;
 
-                var sel = '#' + viewId;
-                paramGroups.forEach(grp => {
-                    if (grp[0] === 'ktlSel') {
-                        if (grp[1] === 'page')
-                            sel = '#knack-body';
-                        else
-                            sel = grp[1];
-                    } else {
-                        if (grp[0].startsWith('!'))
-                            $(sel).removeClass(grp[0].replace('!', ''));
-                        else
-                            $(sel).addClass(grp[0]);
-                    }
-                })
+                var sel = res.sel ? res.sel : '#' + viewId;
+                var paramGroups = keywords._cls.params;
+                for (var i = 0; i < paramGroups.length; i++) {
+                    var params = paramGroups[i];
+
+                    if (params.startsWith('!'))
+                        $(sel).removeClass(params.replace('!', ''));
+                    else
+                        $(sel).addClass(params);
+                }
             },
         }
     })(); //views
@@ -8056,8 +8036,14 @@ function Ktl($, appInfo) {
                 if (!rolesToCheck.length) return true;
                 const userRoles = Knack.getUserRoleNames().split(', ');
                 for (let i = 0; i < rolesToCheck.length; i++) {
-                    if (userRoles.includes(rolesToCheck[i]))
-                        return true;
+                    if (rolesToCheck[i].startsWith('!')) {
+                        rolesToCheck[i] = rolesToCheck[i].replace('!', '');
+                        if (userRoles.includes(rolesToCheck[i]))
+                            return false;
+                    } else {
+                        if (userRoles.includes(rolesToCheck[i]))
+                            return true;
+                    }
                 }
                 return false;
             },
