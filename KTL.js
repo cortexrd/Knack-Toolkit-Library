@@ -9470,9 +9470,9 @@ function Ktl($, appInfo) {
 
         //bulkOp must be "edit", "copy" or "delete".  No parameter means disable ALL bulk ops.
         function viewCanDoBulkOp(viewId, bulkOp) {
-            if (!viewId || !bulkOp) return false;
+            if (!viewId || !bulkOp || !ktlKeywords[viewId]) return false;
 
-            const bulkOpDisabled = (ktlKeywords[viewId]._nbo !== undefined && (ktlKeywords[viewId]._nbo.includes(bulkOp) || ktlKeywords[viewId]._nbo.length === 0));
+            const bulkOpDisabled = (ktlKeywords[viewId]._nbo !== undefined && (ktlKeywords[viewId]._nbo.params.includes(bulkOp) || ktlKeywords[viewId]._nbo.length === 0));
             var tableHasInlineEditing = false;
             var viewModel = Knack.router.scene_view.model.views._byId[viewId];
             if (viewModel) {
