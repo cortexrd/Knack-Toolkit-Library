@@ -7424,6 +7424,9 @@ function Ktl($, appInfo) {
         var keyPressCtr = 0;
         var isActive = false; //Start monitoring activity only once.
         var logCategoryAllowed = null; //Callback function in your app that returns whether or not a category is to be logged, based on specific conditions.
+        var cfg = {
+            logEnabled: {},
+        };
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (logCategoryAllowed && logCategoryAllowed(ktl.const.LS_ACTIVITY) && !mouseClickCtr && !keyPressCtr)
@@ -7482,9 +7485,11 @@ function Ktl($, appInfo) {
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.logCategoryAllowed && (logCategoryAllowed = cfgObj.logCategoryAllowed);
+                cfgObj.logEnabled && (cfg.logEnabled = cfgObj.logEnabled);
             },
 
             getCfg: function () {
+                return cfg;
             },
 
             //Colorized log with multiple parameters.
