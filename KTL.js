@@ -1036,14 +1036,18 @@ function Ktl($, appInfo) {
                     var rolesToMatch = options.ktlRoles.split(',');
                     rolesToMatch.forEach((role, idx) => { rolesToMatch[idx] = role.trim(); });
                     if (!ktl.account.checkUserRolesMatch(rolesToMatch))
-                        return {};
+                        return;
                 }
 
                 var res = { rolesOk: true };
 
                 //Selectors
-                if (options.ktlSel)
-                    res.sel = options.ktlSel;
+                if (options.ktlSel) {
+                    if (options.ktlSel === 'page')
+                        res.sel = '#knack-body';
+                    else
+                        res.sel = options.ktlSel;
+                }
 
                 return res;
             },
@@ -4523,6 +4527,7 @@ function Ktl($, appInfo) {
                         keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
                         keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
                         keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
+                        keywords._style && ktl.views.setStyle(view.key, keywords);
 
                         processViewKeywords && processViewKeywords(view, keywords, data);
                     }
@@ -6732,9 +6737,9 @@ function Ktl($, appInfo) {
                 if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.params.length) return;
 
                 var res = ktl.core.processKeywordOptions(keywords._zoom.options);
-                if (!res.rolesOk) return;
+                if (res && !res.rolesOk) return;
 
-                var sel = res.sel ? res.sel : '#' + viewId;
+                var sel = (res && res.sel) ? res.sel : '#' + viewId;
                 var paramGroups = keywords._zoom.params;
                 for (var i = 0; i < paramGroups.length; i++) {
                     var params = paramGroups[i];
@@ -6747,9 +6752,9 @@ function Ktl($, appInfo) {
                 if (!viewId || !keywords || !keywords._cls || !keywords._cls.params.length) return;
 
                 var res = ktl.core.processKeywordOptions(keywords._cls.options);
-                if (!res.rolesOk) return;
+                if (res && !res.rolesOk) return;
 
-                var sel = res.sel ? res.sel : '#' + viewId;
+                var sel = (res && res.sel) ? res.sel : '#' + viewId;
                 var paramGroups = keywords._cls.params;
                 for (var i = 0; i < paramGroups.length; i++) {
                     var params = paramGroups[i];
@@ -6759,6 +6764,20 @@ function Ktl($, appInfo) {
                     else
                         $(sel).addClass(params);
                 }
+            },
+
+            setStyle: function (viewId, keywords) {
+                if (!viewId || !keywords || !keywords._style || !keywords._style.params.length) return;
+
+                var res = ktl.core.processKeywordOptions(keywords._style.options);
+                if (res && !res.rolesOk) return;
+
+                //Merge new style with existing one.
+                var sel = (res && res.sel) ? res.sel : '#' + viewId;
+                $(sel).each((ix, el) => {
+                    const currentStyle = $(el).attr('style');
+                    $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + keywords._style.params[0]);
+                })
             },
         }
     })(); //views
