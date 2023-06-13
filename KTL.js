@@ -28,14 +28,16 @@ function Ktl($, appInfo) {
     //KEC stands for "KTL Event Code".  Next:  KEC_1026
     //
 
-    //Parser step 1 : Extract all keywords from view titles and descriptions, and cleanup view titles and descriptions.
+    window.ktlParserStart = window.performance.now();
+    //Parser step 1 : Add view keywords.
+    //Extract all keywords from view titles and descriptions, and cleanup view titles and descriptions.
     var ktlKeywords = {};
     window.ktlKeywords = ktlKeywords;
-    for (var i = 0; i < Knack.scenes.models.length; i++) {
-        var scn = Knack.scenes.models[i];
+    for (var t = 0; t < Knack.scenes.models.length; t++) {
+        var scn = Knack.scenes.models[t];
         var views = scn.views;
-        for (var j = 0; j < views.models.length; j++) {
-            let view = views.models[j];
+        for (var v = 0; v < views.models.length; v++) {
+            let view = views.models[v];
             if (view) {
                 var keywordsObj = {};
                 var attr = view.attributes;
@@ -61,11 +63,13 @@ function Ktl($, appInfo) {
                 }
 
                 attr.orgTitle = attr.title; //Can probably be removed - not really used anymore.
-                ktlKeywords[view.id] = keywordsObj;
+                if (!$.isEmptyObject(keywordsObj)) {
+                    ktlKeywords[view.id] = keywordsObj;
 
-                //Add scene-wide keywords.
-                if (keywordsObj._km || keywordsObj._kbs || keywordsObj._zoom)
-                    ktlKeywords[scn.attributes.key] = keywordsObj;
+                    //Add scene keywords.
+                    if (keywordsObj._km || keywordsObj._kbs || keywordsObj._zoom)
+                        ktlKeywords[scn.attributes.key] = keywordsObj;
+                }
 
                 attr.title = cleanedUpTitle;
                 attr.description = cleanedUpDescription;
@@ -74,7 +78,26 @@ function Ktl($, appInfo) {
     }
 
     //Add field keywords.
-    //TODO
+    const objects = Knack.objects.models;
+    for (var o = 0; o < objects.length; o++) {
+        var obj = objects[o];
+        var fields = obj.attributes.fields;
+        for (f = 0; f < fields.length; f++) {
+            const fieldId = fields[f].key;
+            const field = Knack.fields[fieldId];
+            var fieldDesc = field.attributes && field.attributes.meta && field.attributes.meta.description;
+            if (fieldDesc) {
+                var keywords = {};
+                fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+                parseKeywords(fieldDesc, keywords);
+                if (!$.isEmptyObject(keywords))
+                    ktlKeywords[fieldId] = keywords;
+            }
+        }
+    }
+
+    window.ktlParserEnd = window.performance.now();
+    console.log(`KTL parser took ${Math.trunc(window.ktlParserEnd - window.ktlParserStart)} ms`);
 
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
     function parseKeywords(strToParse, keywords) {
@@ -175,14 +198,16 @@ function Ktl($, appInfo) {
                     var view = Knack.views[viewId];
                     if (view && typeof view.model === 'object') {
                         var keywords = ktlKeywords[viewId];
-                        if (viewId && mutRec.target.localName === 'tbody') {
-                            (keywords._hc || keywords._rc) && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
+                        if (keywords) {
+                            if (viewId && mutRec.target.localName === 'tbody') {
+                                (keywords._hc || keywords._rc) && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
 
-                            if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList && mutRec.addedNodes[0].classList.contains('kn-table-totals'))
-                                ktl.views.fixTableRowsAlignment(viewId);
+                                if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList && mutRec.addedNodes[0].classList.contains('kn-table-totals'))
+                                    ktl.views.fixTableRowsAlignment(viewId);
+                            }
+
+                            keywords._km && ktl.core.kioskMode(true);
                         }
-
-                        keywords._km && ktl.core.kioskMode(true);
                     }
                 }
             });
@@ -1011,7 +1036,7 @@ function Ktl($, appInfo) {
                     var rolesToMatch = options.ktlRoles.split(',');
                     rolesToMatch.forEach((role, idx) => { rolesToMatch[idx] = role.trim(); });
                     if (!ktl.account.checkUserRolesMatch(rolesToMatch))
-                        return { };
+                        return {};
                 }
 
                 var res = { rolesOk: true };
@@ -2900,96 +2925,98 @@ function Ktl($, appInfo) {
                 //Linked Filters feature
                 var masterViewId = viewId; //Just to make it easier to understand when reading.
                 var keywords = ktlKeywords[masterViewId];
-                var useUrlAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
+                if (keywords) {
+                    var useUrlAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
 
-                var linkedViewIds = (keywords._lf && ktl.views.convertViewTitlesToViewIds(keywords._lf.params, masterViewId));
-                if (linkedViewIds) {
-                    var masterView = Knack.models[masterViewId].view;
-                    if (masterView.type === 'report')
-                        linkedViewIds.push(masterViewId);
+                    var linkedViewIds = (keywords._lf && ktl.views.convertViewTitlesToViewIds(keywords._lf.params, masterViewId));
+                    if (linkedViewIds) {
+                        var masterView = Knack.models[masterViewId].view;
+                        if (masterView.type === 'report')
+                            linkedViewIds.push(masterViewId);
 
-                    //Add checkbox to toggle visiblity of Filters and Search.
-                    //$('.kn-view:not(#view_x) .kn-records-nav').css('display', 'block')
+                        //Add checkbox to toggle visiblity of Filters and Search.
+                        //$('.kn-view:not(#view_x) .kn-records-nav').css('display', 'block')
 
-                    for (var v = 0; v < linkedViewIds.length; v++) {
-                        var linkedViewId = linkedViewIds[v];
-                        if (Knack.models[linkedViewId].view.type === 'report') {
-                            var reportId = linkedViewId;
-                            useUrlAr.push(reportId);
-                        } else {
-                            if (masterView.type === 'table') {
-                                Knack.showSpinner();
-                                var srchVal = document.querySelector('#' + masterViewId + ' .table-keyword-search input');
-                                srchVal = srchVal ? srchVal.value : '';
-                                updateSearchTable(linkedViewId, srchVal);
-                                updatePerPage(linkedViewId, masterView.rows_per_page);
-                                updateSort(linkedViewId, masterView.source.sort[0].field + '|' + masterView.source.sort[0].order);
-                                updateFilters(linkedViewId, masterView.filters);
-
-                                Knack.models[linkedViewId].fetch({
-                                    success: () => { Knack.hideSpinner(); }
-                                });
+                        for (var v = 0; v < linkedViewIds.length; v++) {
+                            var linkedViewId = linkedViewIds[v];
+                            if (Knack.models[linkedViewId].view.type === 'report') {
+                                var reportId = linkedViewId;
+                                useUrlAr.push(reportId);
                             } else {
-                                //If the master is a report, then treat all view types as if they were reports.
-                                useUrlAr.push(linkedViewId);
+                                if (masterView.type === 'table') {
+                                    Knack.showSpinner();
+                                    var srchVal = document.querySelector('#' + masterViewId + ' .table-keyword-search input');
+                                    srchVal = srchVal ? srchVal.value : '';
+                                    updateSearchTable(linkedViewId, srchVal);
+                                    updatePerPage(linkedViewId, masterView.rows_per_page);
+                                    updateSort(linkedViewId, masterView.source.sort[0].field + '|' + masterView.source.sort[0].order);
+                                    updateFilters(linkedViewId, masterView.filters);
+
+                                    Knack.models[linkedViewId].fetch({
+                                        success: () => { Knack.hideSpinner(); }
+                                    });
+                                } else {
+                                    //If the master is a report, then treat all view types as if they were reports.
+                                    useUrlAr.push(linkedViewId);
+                                }
                             }
                         }
-                    }
 
-                    if (useUrlAr.length) {
-                        var filterUrlPart = filterDivIdToUrl(masterViewId);
-                        var parts = ktl.core.splitUrl(window.location.href);
+                        if (useUrlAr.length) {
+                            var filterUrlPart = filterDivIdToUrl(masterViewId);
+                            var parts = ktl.core.splitUrl(window.location.href);
 
-                        var filter = parts.params[filterUrlPart + '_filters'];
-                        if (masterView.type === 'report')
-                            filter = parts.params[filterUrlPart + '_0_filters']; //Always use first one as master.
+                            var filter = parts.params[filterUrlPart + '_filters'];
+                            if (masterView.type === 'report')
+                                filter = parts.params[filterUrlPart + '_0_filters']; //Always use first one as master.
 
-                        if (!filter)
-                            filter = '[]';
+                            if (!filter)
+                                filter = '[]';
 
-                        var encodedRef = encodeURIComponent(filter);
-                        var mergedParams = '';
-                        var otherParams = '';
-                        const params = Object.entries(parts.params);
-                        if (!$.isEmptyObject(params)) {
-                            params.forEach(function (param) {
-                                //Special case: skip for report charts, as we'll reconstruct below.
-                                if (param[0].search(/view_\d+_filters/) >= 0 && param[0].search(/view_\d+_\d+_filters/) === -1) {
-                                    if (mergedParams)
-                                        mergedParams += '&';
-                                    mergedParams += param[0] + '=' + encodedRef;
-                                }
-
-                                if (!param[0].includes('_filter')) {
-                                    if (otherParams)
-                                        otherParams += '&';
-                                    otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22");
-                                }
-                            })
-
-
-                            var chartFilter = '';
-                            for (var r = 0; r < useUrlAr.length; r++) {
-                                var rv = useUrlAr[r];
-                                if (Knack.views[rv].model.view.type === 'report') {
-                                    var rLen = Knack.views[rv].model.view.rows.length;
-                                    for (var c = 0; c < rLen; c++) {
-                                        chartFilter = rv + '_' + c + '_filters=' + encodedRef;
+                            var encodedRef = encodeURIComponent(filter);
+                            var mergedParams = '';
+                            var otherParams = '';
+                            const params = Object.entries(parts.params);
+                            if (!$.isEmptyObject(params)) {
+                                params.forEach(function (param) {
+                                    //Special case: skip for report charts, as we'll reconstruct below.
+                                    if (param[0].search(/view_\d+_filters/) >= 0 && param[0].search(/view_\d+_\d+_filters/) === -1) {
                                         if (mergedParams)
                                             mergedParams += '&';
-                                        mergedParams += chartFilter;
+                                        mergedParams += param[0] + '=' + encodedRef;
+                                    }
+
+                                    if (!param[0].includes('_filter')) {
+                                        if (otherParams)
+                                            otherParams += '&';
+                                        otherParams += param[0] + '=' + encodeURIComponent(param[1]).replace(/'/g, "%27").replace(/"/g, "%22");
+                                    }
+                                })
+
+
+                                var chartFilter = '';
+                                for (var r = 0; r < useUrlAr.length; r++) {
+                                    var rv = useUrlAr[r];
+                                    if (Knack.views[rv].model.view.type === 'report') {
+                                        var rLen = Knack.views[rv].model.view.rows.length;
+                                        for (var c = 0; c < rLen; c++) {
+                                            chartFilter = rv + '_' + c + '_filters=' + encodedRef;
+                                            if (mergedParams)
+                                                mergedParams += '&';
+                                            mergedParams += chartFilter;
+                                        }
                                     }
                                 }
+
+                                if (otherParams)
+                                    mergedParams += '&' + otherParams;
+
+                                var newUrl = parts.path + '?' + mergedParams;
+                                //console.log('decodeURI(window.location.href) =\n', decodeURI(window.location.href));
+                                //console.log('decodeURI(newUrl) =\n', decodeURI(newUrl));
+                                if (decodeURI(window.location.href) !== decodeURI(newUrl))
+                                    window.location.href = newUrl;
                             }
-
-                            if (otherParams)
-                                mergedParams += '&' + otherParams;
-
-                            var newUrl = parts.path + '?' + mergedParams;
-                            //console.log('decodeURI(window.location.href) =\n', decodeURI(window.location.href));
-                            //console.log('decodeURI(newUrl) =\n', decodeURI(newUrl));
-                            if (decodeURI(window.location.href) !== decodeURI(newUrl))
-                                window.location.href = newUrl;
                         }
                     }
                 }
@@ -4466,43 +4493,46 @@ function Ktl($, appInfo) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
             try {
                 var keywords = ktlKeywords[view.key];
-                if (!$.isEmptyObject(keywords)) {
-                    //console.log('keywords =', JSON.stringify(keywords, null, 4));
+                if (keywords) {
+                    if (!$.isEmptyObject(keywords)) {
+                        //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
-                    //Hide the whole view, typically used when doing background searches.
-                    if (keywords._hv) {
-                        if (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) !== 'true')
-                            $('#' + view.key).addClass('ktlHidden');
+                        //Hide the whole view, typically used when doing background searches.
+                        if (keywords._hv) {
+                            if (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) !== 'true')
+                                $('#' + view.key).addClass('ktlHidden');
+                        }
+
+                        //Hide the view title only, typically used to save space when real estate is critical.
+                        if (keywords._ht) {
+                            $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
+                            $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
+                        }
+
+                        keywords._ni && ktl.views.noInlineEditing(view, keywords);
+                        keywords._ts && ktl.views.addTimeStampToHeader(view.key);
+                        keywords._dtp && ktl.views.addDateTimePickers(view.key);
+                        keywords._al && ktl.account.autoLogin(view.key);
+                        keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
+                        keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
+                        keywords._nf && disableFilterOnFields(view, keywords);
+                        (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
+                        keywords._dr && numDisplayedRecords(view, keywords);
+                        keywords._nsg && noSortingOnGrid(view.key);
+                        keywords._hf && hideFields(view.key, keywords);
+                        keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
+                        keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
+                        keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
+
+                        processViewKeywords && processViewKeywords(view, keywords, data);
                     }
 
-                    //Hide the view title only, typically used to save space when real estate is critical.
-                    if (keywords._ht) {
-                        $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
-                        $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
-                    }
+                    ktl.views.quickToggle(view.key, keywords, data); //IMPORTANT: _qc must be processed BEFORE _mc.
+                    ktl.views.matchColor(view.key, keywords, data);
+                    colorizeFieldByValue(view.key, keywords, data);
+                    headerAlignment(view, keywords);
 
-                    keywords._ni && ktl.views.noInlineEditing(view, keywords);
-                    keywords._ts && ktl.views.addTimeStampToHeader(view.key);
-                    keywords._dtp && ktl.views.addDateTimePickers(view.key);
-                    keywords._al && ktl.account.autoLogin(view.key);
-                    keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
-                    keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
-                    keywords._nf && disableFilterOnFields(view, keywords);
-                    (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
-                    keywords._dr && numDisplayedRecords(view, keywords);
-                    keywords._nsg && noSortingOnGrid(view.key);
-                    keywords._hf && hideFields(view.key, keywords);
-                    keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
-                    keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
-                    keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
-
-                    processViewKeywords && processViewKeywords(view, keywords, data);
                 }
-
-                ktl.views.quickToggle(view.key, keywords, data); //IMPORTANT: _qc must be processed BEFORE _mc.
-                ktl.views.matchColor(view.key, keywords, data);
-                colorizeFieldByValue(view.key, keywords, data);
-                headerAlignment(view, keywords);
 
                 if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
                     var txt = view.content.toLowerCase();
@@ -4530,7 +4560,7 @@ function Ktl($, appInfo) {
 
         function processRvd(view, event, revertFunc) {
             var keywords = ktlKeywords[view.key];
-            if (!keywords._rvd || keywords._rvd.params.length < 1) return;
+            if (!keywords || !keywords._rvd || keywords._rvd.params.length < 1) return;
 
             var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvd.params, view.key);
             var eventFieldId = view.events.event_field.key;
@@ -5080,7 +5110,7 @@ function Ktl($, appInfo) {
                     Knack.router.scene_view.model.views.models.forEach(function (view) {
                         var viewId = view.id;
                         var keywords = ktlKeywords[viewId];
-                        if (keywords._ar) {
+                        if (keywords && keywords._ar) {
                             var intervalDelay = parseInt(keywords._ar.params[0]);
                             intervalDelay = isNaN(intervalDelay) ? 60 : intervalDelay;
                             intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
@@ -6039,6 +6069,8 @@ function Ktl($, appInfo) {
                             (function processKeywordsLoop(f) {
                                 var fieldId = fieldsWithKwAr[f];
                                 var keywords = fieldsWithKwObj[fieldId];
+                                if (!keywords) resolve();
+
                                 ktl.views.processFieldKeywords(viewId, fieldId, keywords, e)
                                     .then(ocObj => {
                                         outcomeObj.msg += ocObj.msg;
@@ -6065,7 +6097,7 @@ function Ktl($, appInfo) {
                 function preprocessViews(viewId, e) {
                     return new Promise(function (resolve, reject) {
                         var keywords = ktlKeywords[viewId];
-                        if (!$.isEmptyObject(keywords)) {
+                        if (keywords && !$.isEmptyObject(keywords)) {
                             var outcomeObj = { msg: '' };
 
                             //Unique Value Check
@@ -7975,7 +8007,7 @@ function Ktl($, appInfo) {
             },
 
             autoLogin: function (viewId = '') {
-                 if (!viewId) return;
+                if (!viewId) return;
                 var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
                 if (loginInfo && loginInfo !== '') {
                     if (loginInfo === 'SkipAutoLogin') {
@@ -9643,38 +9675,53 @@ function Ktl($, appInfo) {
             },
 
             //See list here: https://github.com/cortexrd/Knack-Toolkit-Library#list-of-all-keywords
-            findAllKeywords: function (search = '' /*TODO: show only what contains this string*/) {
+            //Show only what contains search string parameter, or all if empty.
+            findAllKeywords: function (search = '') {
                 var st = window.performance.now();
-
+                console.clear();
                 search && console.log('Searching all keywords for:', search);
+                const regex = new RegExp(search, 'i');
 
-                for (var i = 0; i < Knack.scenes.length; i++) {
-                    var scn = Knack.scenes.models[i];
-                    var views = scn.views;
-                    views.forEach(view => {
-                        var viewId = view.attributes.key;
-                        var keywords = ktlKeywords[viewId];
-                        var title = view.attributes.title;
-                        var kwInfo = { sceneId: scn.attributes.key, viewId: viewId, title: title, keywords: keywords };
-                        if (!$.isEmptyObject(keywords))
-                            console.log('kwInfo =', JSON.stringify(kwInfo, null, 4));
-                    })
+                var builderBaseUrl = 'https://builder.knack.com/' +
+                    Knack.mixpanel_track.account + '/' +
+                    Knack.mixpanel_track.app + '/pages/';
+
+
+                for (var kwKey in ktlKeywords) {
+                    const kwInfo = ktlKeywords[kwKey];
+                    const str = JSON.stringify(kwInfo, null, 4);
+                    if (regex.test(str)) {
+                        if (kwKey.startsWith('view_')) {
+                            for (var s = 0; s < Knack.scenes.models.length; s++) {
+                                var views = Knack.scenes.models[s].views;
+                                for (var v = 0; v < views.models.length; v++) {
+                                    let view = views.models[v];
+                                    if (view) {
+                                        const attr = view.attributes;
+                                        const viewId = attr.key;
+                                        if (viewId === kwKey) {
+                                            builderUrl = builderBaseUrl + attr.scene.key + '/views/' + viewId + '/' + attr.type;
+
+                                            console.log('Builder URL =', builderUrl);
+                                            console.log('Title =', attr.title);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (kwKey.startsWith('scene_')) {
+                            for (var t = 0; t < Knack.scenes.models.length; t++) {
+                                if (kwKey === Knack.scenes.models[t].attributes.key) {
+                                    builderUrl = builderBaseUrl + kwKey;
+                                    console.log('Builder URL =', builderUrl);
+                                    break;
+                                }
+                            }
+                        }
+
+                        console.log(kwKey + ':\n', str, '\n\n\n\n');
+                    }
                 }
-
-                var objects = Knack.objects.models;
-                var objectFieldsKw = {};
-                objects.forEach(obj => {
-                    var fieldKeywords = {};
-                    var fields = obj.attributes.fields;
-                    fields.forEach(field => {
-                        ktl.fields.getFieldKeywords(field.key, fieldKeywords);
-                    })
-
-                    if (!$.isEmptyObject(fieldKeywords))
-                        objectFieldsKw[obj.attributes.name + ' (' + obj.attributes.key + ')'] = fieldKeywords;
-                })
-
-                console.log('Objects/Fields with keywords:\n', JSON.stringify(objectFieldsKw, null, 4));
 
                 var en = window.performance.now();
                 console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
