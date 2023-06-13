@@ -196,11 +196,23 @@ window.KnackApp = function ($, appInfo = {}) {
 
             ktl.log.setCfg({
                 logCategoryAllowed: logCategoryAllowed,
+                logEnabled: {
+                    critical: false,
+                    error: false,
+                    serverErr: false,
+                    warning: false,
+                    info: false,
+                    debug: false,
+                    login: false,
+                    activity: false,
+                    navigation: false,
+                }
             });
         }
 
         ktl.iFrameWnd.setCfg({
             accountsObjName: 'Accounts', //If your main accounts table is not "Accounts".
+            sendHeartbeat: true,
         });
 
 

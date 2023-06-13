@@ -16,7 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, appInfo) {
-    const KTL_VERSION = '0.13.1';
+    const KTL_VERSION = '0.13.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -72,6 +72,9 @@ function Ktl($, appInfo) {
             }
         }
     }
+
+    //Add field keywords.
+    //TODO
 
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
     function parseKeywords(strToParse, keywords) {
@@ -7481,6 +7484,9 @@ function Ktl($, appInfo) {
                 cfgObj.logCategoryAllowed && (logCategoryAllowed = cfgObj.logCategoryAllowed);
             },
 
+            getCfg: function () {
+            },
+
             //Colorized log with multiple parameters.
             clog: function (color = 'purple', ...logArray) {
                 var msg = '';
@@ -7507,10 +7513,27 @@ function Ktl($, appInfo) {
                 if (!ktl.core.getCfg().enabled.iFrameWnd || category === '' || details === '' || lastDetails === details)
                     return;
 
+
+                //Old flags - to delete in a couple of months (today: Jun 13, 2023)
                 if ((category === ktl.const.LS_LOGIN && !ktl.core.getCfg().enabled.logging.logins) ||
                     (category === ktl.const.LS_ACTIVITY && !ktl.core.getCfg().enabled.logging.activity) ||
                     (category === ktl.const.LS_NAVIGATION && !ktl.core.getCfg().enabled.logging.navigation))
                     return;
+
+
+                //New flags
+                if ((category === ktl.const.LS_LOGIN && !ktl.log.getCfg().logEnabled.login) ||
+                    (category === ktl.const.LS_ACTIVITY && !ktl.log.getCfg().logEnabled.activity) ||
+                    (category === ktl.const.LS_NAVIGATION && !ktl.log.getCfg().logEnabled.navigation) ||
+                    (category === ktl.const.LS_INFO && !ktl.log.getCfg().logEnabled.info) ||
+                    (category === ktl.const.LS_DEBUG && !ktl.log.getCfg().logEnabled.debug) ||
+                    (category === ktl.const.LS_WRN && !ktl.log.getCfg().logEnabled.warning) ||
+                    (category === ktl.const.LS_APP_ERROR && !ktl.log.getCfg().logEnabled.error) ||
+                    (category === ktl.const.LS_SERVER_ERROR && !ktl.log.getCfg().logEnabled.serverErr) ||
+                    (category === ktl.const.LS_CRITICAL && !ktl.log.getCfg().logEnabled.critical))
+                    return;
+
+
 
                 //Use app's callback to check if log category is allowed.
                 if (logCategoryAllowed && !logCategoryAllowed(category, details)) {
