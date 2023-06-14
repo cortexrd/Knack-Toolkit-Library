@@ -9706,7 +9706,6 @@ function Ktl($, appInfo) {
             //Show only what contains search string parameter, or all if empty.
             findAllKeywords: function (search = '') {
                 var st = window.performance.now();
-                console.clear();
                 search && console.log('Searching all keywords for:', search);
                 const regex = new RegExp(search, 'i');
 
