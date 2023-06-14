@@ -8233,8 +8233,8 @@ function Ktl($, appInfo) {
                 if (rec) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
                     if (newSWVersion !== APP_KTL_VERSIONS) {
-                        if (localStorage.getItem(APP_ROOT_NAME + 'dev') !== null) {
-                            //Dev = Ignore
+                        if (localStorage.getItem(APP_ROOT_NAME + 'dev') !== null || ktl.storage.lsGetItem('remoteDev', true) === 'true') {
+                            //Dev or remoteDev, ignore.
                         } else {
                             //Prod
                             if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
