@@ -50,9 +50,13 @@ Keywords can be used in two places: in fields and views.
 
 Keywords can be added in a field’s **description**, in the table view.
 
+When used in a field, the keyword will be applied **across the board** in your app, in all views using this field.
+
 ## In Views
 
 Keywords can be added in a view’s **title** or **description** - interchangeably or together. Each keywords are separated by a space, or line feeds (return) when used in the description box. In some cases, it can also be used inside a Rich Text.
+
+When used in a view, the keyword will be applied **in that view only**.
 
 ## Placement
 
