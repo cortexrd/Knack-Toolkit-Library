@@ -121,6 +121,7 @@ If ever you’re interested in some basic or advanced coding, click the followin
 
 # Future Improvements
 
+-   Direct front-end external data Import from an Excel or CSV file.  We've done this successfully for Morbern Inc. the main sponsor of this project, and it works flawlessly.
 -   Use JSDoc to have an adequate auto-generated and detailed API documentation, for each function with parameter description, etc.
 -   Geofencing and other map-based features, with geo-based events and Google Maps integration.
 -   The sky's the limit! Let us see what we can come up with…
