@@ -16,7 +16,10 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 
 function Ktl($, appInfo) {
-    const KTL_VERSION = '0.13.3';
+    if (window.ktl)
+        return window.ktl;
+
+    const KTL_VERSION = '0.13.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -76,6 +79,7 @@ function Ktl($, appInfo) {
             }
         }
     }
+
 
     //Add field keywords.
     const objects = Knack.objects.models;
@@ -2087,7 +2091,7 @@ function Ktl($, appInfo) {
 
                 //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                 const text = $('#' + viewId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');;
-                barcodeData = { text: text, width: size, height: size };
+                const barcodeData = { text: text, width: size, height: size };
                 ktl.core.loadLib('QRGenerator')
                     .then(() => {
                         var qrCodeDiv = document.getElementById('qrCodeDiv');
@@ -4504,47 +4508,44 @@ function Ktl($, appInfo) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
             try {
                 var keywords = ktlKeywords[view.key];
-                if (keywords) {
-                    if (!$.isEmptyObject(keywords)) {
-                        //console.log('keywords =', JSON.stringify(keywords, null, 4));
+                if (keywords && !$.isEmptyObject(keywords)) {
+                    //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
-                        //Hide the whole view, typically used when doing background searches.
-                        if (keywords._hv) {
-                            if (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) !== 'true')
-                                $('#' + view.key).addClass('ktlHidden');
-                        }
-
-                        //Hide the view title only, typically used to save space when real estate is critical.
-                        if (keywords._ht) {
-                            $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
-                            $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
-                        }
-
-                        keywords._ni && ktl.views.noInlineEditing(view, keywords);
-                        keywords._ts && ktl.views.addTimeStampToHeader(view.key);
-                        keywords._dtp && ktl.views.addDateTimePickers(view.key);
-                        keywords._al && ktl.account.autoLogin(view.key);
-                        keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
-                        keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
-                        keywords._nf && disableFilterOnFields(view, keywords);
-                        (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
-                        keywords._dr && numDisplayedRecords(view, keywords);
-                        keywords._nsg && noSortingOnGrid(view.key);
-                        keywords._hf && hideFields(view.key, keywords);
-                        keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
-                        keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
-                        keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
-                        keywords._style && ktl.views.setStyle(view.key, keywords);
-
-                        processViewKeywords && processViewKeywords(view, keywords, data);
+                    //Hide the whole view, typically used when doing background searches.
+                    if (keywords._hv) {
+                        if (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) !== 'true')
+                            $('#' + view.key).addClass('ktlHidden');
                     }
 
-                    ktl.views.quickToggle(view.key, keywords, data); //IMPORTANT: _qc must be processed BEFORE _mc.
-                    ktl.views.matchColor(view.key, keywords, data);
-                    colorizeFieldByValue(view.key, keywords, data);
-                    headerAlignment(view, keywords);
+                    //Hide the view title only, typically used to save space when real estate is critical.
+                    if (keywords._ht) {
+                        $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
+                        $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
+                    }
 
+                    keywords._ni && ktl.views.noInlineEditing(view, keywords);
+                    keywords._ts && ktl.views.addTimeStampToHeader(view.key);
+                    keywords._dtp && ktl.views.addDateTimePickers(view.key);
+                    keywords._al && ktl.account.autoLogin(view.key);
+                    keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
+                    keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
+                    keywords._nf && disableFilterOnFields(view, keywords);
+                    (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
+                    keywords._dr && numDisplayedRecords(view, keywords);
+                    keywords._nsg && noSortingOnGrid(view.key);
+                    keywords._hf && hideFields(view.key, keywords);
+                    keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
+                    keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
+                    keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
+                    keywords._style && ktl.views.setStyle(view.key, keywords);
+
+                    processViewKeywords && processViewKeywords(view, keywords, data);
                 }
+
+                ktl.views.quickToggle(view.key, keywords, data); //IMPORTANT: _qc must be processed BEFORE _mc.
+                ktl.views.matchColor(view.key, keywords, data);
+                colorizeFieldByValue(view.key, keywords, data);
+                headerAlignment(view, keywords);
 
                 if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
                     var txt = view.content.toLowerCase();
@@ -4825,7 +4826,7 @@ function Ktl($, appInfo) {
                     for (var i = 0; i < fieldsWithKwAr.length; i++) {
                         fieldId = fieldsWithKwAr[i];
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.params.length) {
+                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.params.length) {
                             paramGroups = foundKwObj[fieldId]._cfv.params;
                             colorizeField(viewId, fieldId, paramGroups, data);
                         }
@@ -7937,7 +7938,7 @@ function Ktl($, appInfo) {
                             if (result === LOGIN_SUCCESSFUL) {
                                 result = JSON.stringify({ result: result, APP_KTL_VERSIONS: APP_KTL_VERSIONS, page: menuInfo, agent: navigator.userAgent });
 
-                                ktl.userFilters.loadAllFilters();
+                                ktl.userFilters.loadAllFilters(); //Move to a better place?  Let iframewnd drive this?
                                 ktl.storage.lsRemoveItem('PAUSE_SERVER_ERROR_LOGS');
                                 ktl.log.addLog(ktl.const.LS_LOGIN, result);
 
@@ -9758,7 +9759,8 @@ function Ktl($, appInfo) {
     })(); //sysInfo
 
 
-    return { //KTL exposed objects
+    window.ktl = {
+        //KTL exposed objects
         const: this.const,
         core: this.core,
         storage: this.storage,
@@ -9777,6 +9779,8 @@ function Ktl($, appInfo) {
         sysInfo: this.sysInfo,
         systemColors: this.systemColors,
     };
+
+    return window.ktl;
 };
 
 //Global helper functions.
