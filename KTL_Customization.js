@@ -7,9 +7,8 @@
 //Your app's version.
 window.APP_VERSION = '1.0.0';
 
-var ktl;
 window.ktlReady = function (appInfo = {}) {
-    ktl = window.ktl;
+    var ktl = new Ktl($, appInfo);
 
     //KTL Setup - BEGIN
     ktl.scenes.setCfg({

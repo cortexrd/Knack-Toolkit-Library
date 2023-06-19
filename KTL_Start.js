@@ -14,7 +14,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
 
     var cssVersion = KTL_LATEST_CSS_VERSION;
     var prodFolder = 'Prod/';
-    var ktlSvr = 'https://ctrnd.com/'; //CDN is Cortex R&D Inc server.
+    var ktlSvr = 'https://ctrnd.s3.amazonaws.com/'; //CDN is Cortex R&D Inc server.
     window.$ = $;
     window.jQuery = $; //For BlockUI
     window.KnackApp = _KnackApp;
