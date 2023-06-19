@@ -4542,8 +4542,8 @@ function Ktl($, appInfo) {
                     processViewKeywords && processViewKeywords(view, keywords, data);
                 }
 
-                ktl.views.quickToggle(view.key, keywords, data); //IMPORTANT: _qc must be processed BEFORE _mc.
-                ktl.views.matchColor(view.key, keywords, data);
+                quickToggle(view.key, data); //IMPORTANT: _qc must be processed BEFORE _mc.
+                matchColor(view.key, data);
                 colorizeFieldByValue(view.key, keywords, data);
                 headerAlignment(view, keywords);
 
@@ -4929,6 +4929,225 @@ function Ktl($, appInfo) {
             }
         }
 
+        //For KTL internal use.
+        //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
+        function quickToggle (viewId = '', data = []) {
+            if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
+            var qtScanItv = null;
+            var quickToggleObj = {};
+            var numToProcess = 0;
+            var refreshTimer = null;
+            var viewsToRefresh = [];
+            var viewModel = Knack.router.scene_view.model.views._byId[viewId];
+            if (!viewModel) return;
+
+            var viewAttr = viewModel.attributes;
+            const viewType = viewAttr.type;
+            if (!['table', 'search'].includes(viewType)) return;
+
+            var inlineEditing = false;
+            if (viewType === 'table')
+                inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
+            else
+                inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
+
+            if (!inlineEditing) return;
+
+            //Start with hard coded default colors.
+            var bgColorTrue = quickToggleParams.bgColorTrue;
+            var bgColorFalse = quickToggleParams.bgColorFalse;
+
+            var fieldHasQt = false;
+
+            //Override with view-specific colors, if any.
+            var keywords = ktlKeywords[viewId];
+            if (keywords && keywords._qt && keywords._qt.params.length && keywords._qt.params[0].length) {
+                fieldHasQt = true; //If view has QT, then all fields inherit also.
+
+                if (keywords._qt.params[0].length >= 1 && keywords._qt.params[0][0])
+                    bgColorTrue = keywords._qt.params[0][0];
+
+                if (keywords._qt.params[0].length >= 2 && keywords._qt.params[0][1])
+                    bgColorFalse = keywords._qt.params[0][1];
+            }
+
+            var fieldKeywords = {};
+            var fieldsColor = {};
+            const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
+            for (var i = 0; i < cols.length; i++) {
+                var col = cols[i];
+                if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
+                    var field = Knack.objects.getField(col.field.key);
+                    if (field && !col.connection) { //Field must be local to view's object, not a connected field.
+                        if (field.attributes.type === 'boolean') {
+                            const fieldId = col.field.key;
+
+                            //Override with field-specific colors, if any.
+                            var tmpFieldColors = {
+                                bgColorTrue: bgColorTrue,
+                                bgColorFalse: bgColorFalse
+                            }
+
+                            ktl.fields.getFieldKeywords(fieldId, fieldKeywords);
+                            if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._qt) {
+                                fieldHasQt = true;
+                                if (fieldKeywords[fieldId]._qt.params && fieldKeywords[fieldId]._qt.params.length > 0) {
+                                    if (fieldKeywords[fieldId]._qt.params[0].length >= 1 && fieldKeywords[fieldId]._qt.params[0][0] !== '')
+                                        tmpFieldColors.bgColorTrue = fieldKeywords[fieldId]._qt.params[0][0];
+                                    if (fieldKeywords[fieldId]._qt.params[0].length >= 2 && fieldKeywords[fieldId]._qt.params[0][1] !== '')
+                                        tmpFieldColors.bgColorFalse = fieldKeywords[fieldId]._qt.params[0][1];
+                                }
+                            }
+
+                            if (fieldHasQt) {
+                                fieldsColor[fieldId] = tmpFieldColors;
+                                $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
+                            }
+                        }
+                    }
+                }
+            }
+
+            //Update table colors
+            if (!$.isEmptyObject(fieldsColor)) {
+                data.forEach(row => {
+                    const keys = Object.keys(fieldsColor);
+                    keys.forEach(fieldId => {
+                        var style = 'background-color:' + ((row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
+                        $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).attr('style', style);
+                    })
+                })
+            }
+
+            //Process cell clicks.
+            $('#' + viewId + ' .qtCell').off('click').on('click', e => {
+                e.stopImmediatePropagation();
+
+                var fieldId = e.target.getAttribute('data-field-key') || e.target.parentElement.getAttribute('data-field-key');
+                var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
+                if (viewId) {
+                    viewId = viewId.getAttribute('id');
+
+                    const dt = Date.now();
+                    var recId = e.target.closest('tr').id;
+                    var value = ktl.views.getDataFromRecId(viewId, recId, fieldId)[fieldId + '_raw'];
+                    value = (value === true ? false : true);
+                    if (!viewsToRefresh.includes(viewId))
+                        viewsToRefresh.push(viewId);
+
+                    quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
+                    $(e.target.closest('td')).css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
+                    clearTimeout(refreshTimer);
+
+                    numToProcess++;
+                    startQtScanning();
+                }
+            })
+
+            function startQtScanning() {
+                ktl.core.infoPopup();
+                showProgress();
+
+                if (qtScanItv) return;
+                ktl.views.autoRefresh(false);
+                qtScanItv = setInterval(() => {
+                    if (!$.isEmptyObject(quickToggleObj)) {
+                        var dt = Object.keys(quickToggleObj)[0];
+                        if (!quickToggleObj[dt].processed) {
+                            quickToggleObj[dt].processed = true;
+                            doQuickToggle(dt);
+                        }
+                    }
+                }, 500);
+            }
+
+            function doQuickToggle(dt) {
+                var recObj = quickToggleObj[dt];
+                if ($.isEmptyObject(recObj) || !recObj.viewId || !recObj.fieldId) return;
+
+                var apiData = {};
+                apiData[recObj.fieldId] = recObj.value;
+                ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
+                    .then(() => {
+                        showProgress();
+                        numToProcess--;
+                        delete quickToggleObj[dt];
+                        if ($.isEmptyObject(quickToggleObj)) {
+                            clearInterval(qtScanItv);
+                            qtScanItv = null;
+                            Knack.showSpinner();
+                            refreshTimer = setTimeout(() => {
+                                ktl.core.removeInfoPopup();
+                                ktl.views.refreshViewArray(viewsToRefresh)
+                                    .then(() => {
+                                        Knack.hideSpinner();
+                                        ktl.views.autoRefresh();
+                                    })
+                            }, 500);
+                        }
+                    })
+                    .catch(function (reason) {
+                        ktl.views.autoRefresh();
+                        alert('Error code KEC_1025 while processing Quick Toggle operation, reason: ' + JSON.stringify(reason));
+                    })
+            }
+
+            function showProgress() {
+                ktl.core.setInfoPopupText('Toggling... ' + numToProcess + ' items remaining.');
+            }
+
+        } //quickToggle
+
+
+        //For KTL internal use.
+        function matchColor (viewId, data = []) {
+            if (!viewId || ktl.scenes.isiFrameWnd()) return;
+
+            var viewModel = Knack.router.scene_view.model.views._byId[viewId];
+            if (!viewModel) return;
+
+            var viewAttr = viewModel.attributes;
+            const viewType = viewAttr.type;
+            if (!['table', 'search'].includes(viewType)) return;
+
+            var keywords = ktlKeywords[viewId];
+            if (!keywords || !keywords._mc || !keywords._mc.params.length) return;
+
+            var toMatch = keywords._mc.params[0];
+            if (toMatch.length !== 1 || !toMatch[0]) return;
+            toMatch = toMatch[0];
+
+            var fieldId = '';
+            var fieldName = '';
+
+            const attr = Knack.router.scene_view.model.views._byId[viewId].attributes;
+            var cols = attr.columns.length ? attr.columns : attr.results.columns;
+            for (var i = 0; i < cols.length; i++) {
+                fieldId = cols[i].field.key;
+                var field = Knack.objects.getField(fieldId);
+                if (field && field.attributes) {
+                    fieldName = field.attributes.name;
+                    if (fieldName === toMatch)
+                        break;
+                }
+            }
+
+            if (!fieldId || !fieldName) {
+                ktl.core.timedPopup('This table doesn\'t have a column with that header: ' + toMatch, 'warning', 4000);
+                return;
+            }
+
+            data.forEach(row => {
+                var rowSel = document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId);
+                if (rowSel) {
+                    var bgColor = rowSel.style.backgroundColor;
+                    document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor = ''; //Need to remove current bg color otherwise transparency can add up and play tricks.
+
+                    $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background-color', bgColor);
+                }
+            })
+        }
+
         function noSortingOnGrid(viewId) {
             if (!viewId) return;
             $('#' + viewId + ' thead [href]').addClass('sortDisabled');
@@ -5032,7 +5251,7 @@ function Ktl($, appInfo) {
                                             if (response.status === 401 || response.status === 403 || response.status === 500)
                                                 procRefreshViewSvrErr(response);
                                             else {
-                                                if (ktlKeywords[viewId]._ar) {
+                                                if (ktlKeywords[viewId] && ktlKeywords[viewId]._ar) {
                                                     resolve(); //Just ignore, we'll try again shortly anyways.
                                                     return;
                                                 }
@@ -5261,7 +5480,7 @@ function Ktl($, appInfo) {
                             .catch(function (e) { ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e); })
                     }
                 } else {
-                    if (ktlKeywords[viewId]._hc || ktlKeywords[viewId]._rc)
+                    if (ktlKeywords[viewId] && (ktlKeywords[viewId]._hc || ktlKeywords[viewId]._rc))
                         fixSummaryRows();
                 }
 
@@ -6412,220 +6631,6 @@ function Ktl($, appInfo) {
                     return Knack.views[viewId].model.data._byId[recId].attributes;
                 else if (viewType === 'search')
                     return Knack.views[viewId].model.results_model.data._byId[recId].attributes;
-            },
-
-            //For KTL internal use.
-            //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
-            quickToggle: function (viewId = '', keywords, data = []) {
-                if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
-                var qtScanItv = null;
-                var quickToggleObj = {};
-                var numToProcess = 0;
-                var refreshTimer = null;
-                var viewsToRefresh = [];
-                var viewModel = Knack.router.scene_view.model.views._byId[viewId];
-                if (!viewModel) return;
-
-                var viewAttr = viewModel.attributes;
-                const viewType = viewAttr.type;
-                if (!['table', 'search'].includes(viewType)) return;
-
-                var inlineEditing = false;
-                if (viewType === 'table')
-                    inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
-                else
-                    inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
-
-                if (!inlineEditing) return;
-
-                //Start with hard coded default colors.
-                var bgColorTrue = quickToggleParams.bgColorTrue;
-                var bgColorFalse = quickToggleParams.bgColorFalse;
-
-                var fieldHasQt = false;
-
-                //Override with view-specific colors, if any.
-                if (keywords && keywords._qt && keywords._qt.params.length && keywords._qt.params[0].length) {
-                    fieldHasQt = true; //If view has QT, then all fields inherit also.
-
-                    if (keywords._qt.params[0].length >= 1 && keywords._qt.params[0][0])
-                        bgColorTrue = keywords._qt.params[0][0];
-
-                    if (keywords._qt.params[0].length >= 2 && keywords._qt.params[0][1])
-                        bgColorFalse = keywords._qt.params[0][1];
-                }
-
-                var fieldKeywords = {};
-                var fieldsColor = {};
-                const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
-                for (var i = 0; i < cols.length; i++) {
-                    var col = cols[i];
-                    if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
-                        var field = Knack.objects.getField(col.field.key);
-                        if (field && !col.connection) { //Field must be local to view's object, not a connected field.
-                            if (field.attributes.type === 'boolean') {
-                                const fieldId = col.field.key;
-
-                                //Override with field-specific colors, if any.
-                                var tmpFieldColors = {
-                                    bgColorTrue: bgColorTrue,
-                                    bgColorFalse: bgColorFalse
-                                }
-
-                                ktl.fields.getFieldKeywords(fieldId, fieldKeywords);
-                                if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._qt && fieldKeywords[fieldId]._qt.params[0].length) {
-                                    fieldHasQt = true;
-                                    if (fieldKeywords[fieldId]._qt.params[0].length >= 1 && fieldKeywords[fieldId]._qt.params[0][0] !== '')
-                                        tmpFieldColors.bgColorTrue = fieldKeywords[fieldId]._qt.params[0][0];
-                                    if (fieldKeywords[fieldId]._qt.params[0].length >= 2 && fieldKeywords[fieldId]._qt.params[0][1] !== '')
-                                        tmpFieldColors.bgColorFalse = fieldKeywords[fieldId]._qt.params[0][1];
-
-                                }
-
-                                if (fieldHasQt) {
-                                    fieldsColor[fieldId] = tmpFieldColors;
-                                    $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
-                                }
-                            }
-                        }
-                    }
-                }
-
-                //Update table colors
-                if (!$.isEmptyObject(fieldsColor)) {
-                    data.forEach(row => {
-                        const keys = Object.keys(fieldsColor);
-                        keys.forEach(fieldId => {
-                            var style = 'background-color:' + ((row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
-                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).attr('style', style);
-                        })
-                    })
-                }
-
-                //Process cell clicks.
-                $('#' + viewId + ' .qtCell').off('click').on('click', e => {
-                    e.stopImmediatePropagation();
-
-                    var fieldId = e.target.getAttribute('data-field-key') || e.target.parentElement.getAttribute('data-field-key');
-                    var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
-                    if (viewId) {
-                        viewId = viewId.getAttribute('id');
-
-                        const dt = Date.now();
-                        var recId = e.target.closest('tr').id;
-                        var value = ktl.views.getDataFromRecId(viewId, recId, fieldId)[fieldId + '_raw'];
-                        value = (value === true ? false : true);
-                        if (!viewsToRefresh.includes(viewId))
-                            viewsToRefresh.push(viewId);
-
-                        quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
-                        $(e.target.closest('td')).css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
-                        clearTimeout(refreshTimer);
-
-                        numToProcess++;
-                        startQtScanning();
-                    }
-                })
-
-                function startQtScanning() {
-                    ktl.core.infoPopup();
-                    showProgress();
-
-                    if (qtScanItv) return;
-                    ktl.views.autoRefresh(false);
-                    qtScanItv = setInterval(() => {
-                        if (!$.isEmptyObject(quickToggleObj)) {
-                            var dt = Object.keys(quickToggleObj)[0];
-                            if (!quickToggleObj[dt].processed) {
-                                quickToggleObj[dt].processed = true;
-                                quickToggle(dt);
-                            }
-                        }
-                    }, 500);
-                }
-
-                function quickToggle(dt) {
-                    var recObj = quickToggleObj[dt];
-                    if ($.isEmptyObject(recObj) || !recObj.viewId || !recObj.fieldId) return;
-
-                    var apiData = {};
-                    apiData[recObj.fieldId] = recObj.value;
-                    ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
-                        .then(() => {
-                            showProgress();
-                            numToProcess--;
-                            delete quickToggleObj[dt];
-                            if ($.isEmptyObject(quickToggleObj)) {
-                                clearInterval(qtScanItv);
-                                qtScanItv = null;
-                                Knack.showSpinner();
-                                refreshTimer = setTimeout(() => {
-                                    ktl.core.removeInfoPopup();
-                                    ktl.views.refreshViewArray(viewsToRefresh)
-                                        .then(() => {
-                                            Knack.hideSpinner();
-                                            ktl.views.autoRefresh();
-                                        })
-                                }, 500);
-                            }
-                        })
-                        .catch(function (reason) {
-                            ktl.views.autoRefresh();
-                            alert('Error code KEC_1025 while processing Quick Toggle operation, reason: ' + JSON.stringify(reason));
-                        })
-                }
-
-                function showProgress() {
-                    ktl.core.setInfoPopupText('Toggling... ' + numToProcess + ' items remaining.');
-                }
-
-            }, //quickToggle
-
-            //For KTL internal use.
-            matchColor: function (viewId, keywords, data = []) {
-                if (!viewId || !keywords || !keywords._mc || ktl.scenes.isiFrameWnd()) return;
-
-                var viewModel = Knack.router.scene_view.model.views._byId[viewId];
-                if (!viewModel) return;
-
-                var viewAttr = viewModel.attributes;
-                const viewType = viewAttr.type;
-                if (!['table', 'search'].includes(viewType)) return;
-
-                var keywords = ktlKeywords[viewId];
-                var toMatch = keywords._mc.params[0];
-                if (toMatch.length !== 1 || !toMatch[0]) return;
-                toMatch = toMatch[0];
-
-                var fieldId = '';
-                var fieldName = '';
-
-                const attr = Knack.router.scene_view.model.views._byId[viewId].attributes;
-                var cols = attr.columns.length ? attr.columns : attr.results.columns;
-                for (var i = 0; i < cols.length; i++) {
-                    fieldId = cols[i].field.key;
-                    var field = Knack.objects.getField(fieldId);
-                    if (field && field.attributes) {
-                        fieldName = field.attributes.name;
-                        if (fieldName === toMatch)
-                            break;
-                    }
-                }
-
-                if (!fieldId || !fieldName) {
-                    ktl.core.timedPopup('This table doesn\'t have a column with that header: ' + toMatch, 'warning', 4000);
-                    return;
-                }
-
-                data.forEach(row => {
-                    var rowSel = document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId);
-                    if (rowSel) {
-                        var bgColor = rowSel.style.backgroundColor;
-                        document.querySelector('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).style.backgroundColor = ''; //Need to remove current bg color otherwise transparency can add up and play tricks.
-
-                        $('#' + viewId + ' tbody tr[id="' + row.id + '"]').css('background-color', bgColor);
-                    }
-                })
             },
 
             //For KTL internal use.
@@ -8234,7 +8239,7 @@ function Ktl($, appInfo) {
                 if (rec) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
                     if (newSWVersion !== APP_KTL_VERSIONS) {
-                        if (localStorage.getItem(APP_ROOT_NAME + 'dev') !== null) {
+                        if (localStorage.getItem(APP_ROOT_NAME + 'dev') !== null || ktl.storage.lsGetItem('remoteDev', true) === 'true') {
                             //Dev = Ignore
                         } else {
                             //Prod
