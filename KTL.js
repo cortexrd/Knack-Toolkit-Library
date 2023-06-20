@@ -3520,30 +3520,27 @@ function Ktl($, appInfo) {
 
 
             //Delete Filter
-            var listDelete;
-            if (!isPublic) {
-                listDelete = document.createElement('li');
-                listDelete.innerHTML = '<i class="fa fa-trash-o" style="margin-top: 2px;"></i> Delete';
-                listDelete.style.marginBottom = '8px';
-                listDelete.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    $('.menuDiv').remove();
+            var listDelete = document.createElement('li');
+            listDelete.innerHTML = '<i class="fa fa-trash-o" style="margin-top: 2px;"></i> Delete';
+            listDelete.style.marginBottom = '8px';
+            listDelete.addEventListener('click', function (e) {
+                e.preventDefault();
+                $('.menuDiv').remove();
 
-                    if (confirm('Are you sure you want to delete filter "' + filterName + '" ?')) {
-                        filterSrc[viewId].filters.splice(filterIndex, 1);
-                        if (!filterSrc[viewId].filters.length)
-                            delete filterSrc[viewId];
+                if (confirm('Are you sure you want to delete filter "' + filterName + '" ?')) {
+                    filterSrc[viewId].filters.splice(filterIndex, 1);
+                    if (!filterSrc[viewId].filters.length)
+                        delete filterSrc[viewId];
 
-                        saveFilters(filterType, viewId);
-                        ktl.userFilters.addFilterButtons(viewId);
+                    saveFilters(filterType, viewId);
+                    ktl.userFilters.addFilterButtons(viewId);
 
-                        if (activeFilterName === filterName)
-                            ktl.userFilters.removeActiveFilter(viewId);
-                        else
-                            ktl.userFilters.setActiveFilter(activeFilterName, viewId);
-                    }
-                });
-            }
+                    if (activeFilterName === filterName)
+                        ktl.userFilters.removeActiveFilter(viewId);
+                    else
+                        ktl.userFilters.setActiveFilter(activeFilterName, viewId);
+                }
+            });
 
             //Rename Filter
             var listRename = document.createElement('li');
