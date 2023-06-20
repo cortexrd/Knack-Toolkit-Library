@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.16 */
+/* KTL CSS version: 0.2.17 */
 
 /************ General Settings **************/
 :root {
@@ -118,7 +118,7 @@
 }
 
 .bulkEditSelectSrc {
-	cursor: url('https://ctrnd.com/Lib/KTL/Prod/target.png') 5 5, auto !important;
+	cursor: url('https://ctrnd.s3.amazonaws.com/Lib/KTL/Prod/target.png') 5 5, auto !important;
 	pointer-events: all;
 }
 

@@ -19,7 +19,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.4';
+    const KTL_VERSION = '0.13.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1000,7 +1000,7 @@ function Ktl($, appInfo) {
 
                     if (libName === 'SecureLS') {
                         if (typeof SecureLS !== 'function') {
-                            LazyLoad.js(['https://ctrnd.com/Lib/Secure-LS/secure-ls.min.js'], function () {
+                            LazyLoad.js(['https://ctrnd.s3.amazonaws.com/Lib/Secure-LS/secure-ls.min.js'], function () {
                                 (typeof SecureLS === 'function') ? resolve() : reject('Cannot find SecureLS library.');
                             })
                         } else
