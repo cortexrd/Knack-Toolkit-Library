@@ -19,7 +19,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.5';
+    const KTL_VERSION = '0.13.6';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -460,7 +460,7 @@ function Ktl($, appInfo) {
             },
 
             //Param: sel is a string, not the jquery object.
-            waitSelector: function (sel = '', timeout = 2000, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
+            waitSelector: function (sel = '', timeout = 5000, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
                 return new Promise(function (resolve, reject) {
                     if (selIsValid(sel)) {
                         resolve();
@@ -1055,7 +1055,9 @@ function Ktl($, appInfo) {
                 //Selectors
                 if (options.ktlSel) {
                     if (options.ktlSel === 'page')
-                        res.sel = '#knack-body';
+                        res.sel = '.kn-content';
+                    else if (options.ktlSel === 'scene')
+                        res.sel = '.kn-scene';
                     else
                         res.sel = options.ktlSel;
                 }
@@ -3527,7 +3529,11 @@ function Ktl($, appInfo) {
                 e.preventDefault();
                 $('.menuDiv').remove();
 
-                if (confirm('Are you sure you want to delete filter "' + filterName + '" ?')) {
+                var confirmationMsg = 'Are you sure you want to delete filter "' + filterName + '" ?';
+                if (isPublic)
+                    confirmationMsg = 'Warning:  This is a PUBLIC filter !!!\n\n' + confirmationMsg;
+
+                if (confirm(confirmationMsg)) {
                     filterSrc[viewId].filters.splice(filterIndex, 1);
                     if (!filterSrc[viewId].filters.length)
                         delete filterSrc[viewId];
