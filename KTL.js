@@ -4934,7 +4934,7 @@ function Ktl($, appInfo) {
 
         //For KTL internal use.
         //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
-        function quickToggle (viewId = '', data = []) {
+        function quickToggle(viewId = '', data = []) {
             if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
             var qtScanItv = null;
             var quickToggleObj = {};
@@ -5024,6 +5024,7 @@ function Ktl($, appInfo) {
 
             //Process cell clicks.
             $('#' + viewId + ' .qtCell').off('click').on('click', e => {
+                if (document.querySelectorAll('.bulkEditCb:checked').length) return;
                 e.stopImmediatePropagation();
 
                 var fieldId = e.target.getAttribute('data-field-key') || e.target.parentElement.getAttribute('data-field-key');
@@ -5103,7 +5104,7 @@ function Ktl($, appInfo) {
 
 
         //For KTL internal use.
-        function matchColor (viewId, data = []) {
+        function matchColor(viewId, data = []) {
             if (!viewId || ktl.scenes.isiFrameWnd()) return;
 
             var viewModel = Knack.router.scene_view.model.views._byId[viewId];
@@ -9038,7 +9039,8 @@ function Ktl($, appInfo) {
 
             if (viewCanDoBulkOp(view.key, 'edit')) {
                 //When user clicks on a row, to indicate the record source.
-                $('#' + view.key + ' tr td:not(:has(:checkbox)):not(.qtCell)').off('click').on('click', e => {
+                //$('#' + view.key + ' tr td:not(:has(:checkbox)):not(.qtCell)').off('click').on('click', e => {
+                $('#' + view.key + ' tr td:not(:has(:checkbox))').off('click').on('click', e => {
                     var tableRow = e.target.closest('tr');
                     if (tableRow) {
                         if (bulkOpsRecIdArray.length > 0) {
