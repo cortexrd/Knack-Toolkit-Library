@@ -7117,6 +7117,7 @@ function Ktl($, appInfo) {
 
                                 $('.kioskButtonsDiv').css({ 'position': 'absolute', 'right': '2%' });
                             })
+                            .catch(() => { })
                     }
                 }
                 catch (e) {
@@ -9512,9 +9513,9 @@ function Ktl($, appInfo) {
 
         //bulkOp must be "edit", "copy" or "delete".  No parameter means disable ALL bulk ops.
         function viewCanDoBulkOp(viewId, bulkOp) {
-            if (!viewId || !bulkOp || !ktlKeywords[viewId]) return false;
+            if (!viewId || !bulkOp) return false;
 
-            const nbo = ktlKeywords[viewId]._nbo;
+            const nbo = ktlKeywords[viewId] && ktlKeywords[viewId]._nbo;
             var bulkOpDisabled = false;
             if (nbo !== undefined) {
                 if (!nbo.params.length)
