@@ -19,7 +19,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.7';
+    const KTL_VERSION = '0.13.8';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -7257,31 +7257,17 @@ function Ktl($, appInfo) {
                 document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
             },
 
+            //Note: if you provide your own div, then the viPos... options are ignored.
             addVersionInfo: function (info, style = '', div) {
                 const vi = ktl.core.getCfg().enabled.versionInfo;
                 if ((!vi.viShowAppInfo && !vi.viShowKtlInfo)
                     || !ktl.account.checkUserRolesMatch(vi.viShowToRoles)
                     || window.self.frameElement) return;
 
-                if (document.querySelector('#verButtonId')) return;
+                if (document.querySelector('#addVersionInfoDiv')) return;
 
                 //If style is provided use it, otherwise, use KTL's default.
-                var versionStyle = style ? style : 'white-space: pre; font-size:small; font-weight:bold; border-style:none; padding-bottom:2px; position:absolute;';
-
-                const xPos = Knack.isMobile() ? vi.viPosXMobile : vi.viPosX;
-                const yPos = Knack.isMobile() ? vi.viPosYMobile : vi.viPosY;
-
-                if (xPos === 'left')
-                    versionStyle += '; margin-left: 5px; left: 0px;';
-                else if (xPos === 'center')
-                    versionStyle += '; left: 50%; transform: translate(-50%, 0);';
-                else if (xPos === 'right')
-                    versionStyle += '; margin-right: 5px; right: 0px;';
-
-                if (yPos === 'top')
-                    versionStyle += '; top: 5px;';
-                else if (yPos === 'bottom')
-                    versionStyle += '; bottom: 5px;';
+                var versionStyle = style ? style : 'white-space: pre; font-size:small; font-weight:bold; border-style:none; padding-bottom:2px;';
 
                 if (localStorage.getItem(info.lsShortName + 'dev') === null) //TODO: lsGetItem - fix and allow returing null if key doesn't exist.
                     versionStyle += '; color:#0008; background-color:#FFF3;';
@@ -7303,14 +7289,40 @@ function Ktl($, appInfo) {
                 info.pre && (versionInfo = info.pre + '    ' + versionInfo);
                 info.post && (versionInfo = versionInfo + '    ' + info.post);
 
-                const button = ktl.fields.addButton(div ? div : document.body, versionInfo, versionStyle, [], 'verButtonId');
+                var addVersionInfoDiv = document.createElement('div');
+                addVersionInfoDiv.setAttribute('id', 'addVersionInfoDiv');
+
+                if (div)
+                    div.appendChild(addVersionInfoDiv);
+                else {
+                    document.body.appendChild(addVersionInfoDiv);
+
+                    const xPos = Knack.isMobile() ? vi.viPosXMobile : vi.viPosX;
+                    const yPos = Knack.isMobile() ? vi.viPosYMobile : vi.viPosY;
+
+                    $(addVersionInfoDiv).css({ 'position': 'absolute', 'z-index': '10' });
+
+                    if (xPos === 'left')
+                        $(addVersionInfoDiv).css({ 'margin-left': '5px', 'left': '0px' });
+                    else if (xPos === 'center')
+                        $(addVersionInfoDiv).css({ 'left': '50%', 'transform': 'translate(-50%, 0)' });
+                    else if (xPos === 'right')
+                        $(addVersionInfoDiv).css({ 'margin-right': '5px', 'right': '0px' });
+
+                    if (yPos === 'top')
+                        $(addVersionInfoDiv).css({ 'top': '5px' });
+                    else if (yPos === 'bottom')
+                        $(addVersionInfoDiv).css({ 'padding-bottom': '5px' });
+                }
+
+                const viButton = ktl.fields.addButton(addVersionInfoDiv, versionInfo, versionStyle, [], 'verButtonId');
                 document.documentElement.style.setProperty('--viBarOpacity', vi.viOpacity.toString() + '%');
 
-                button.onmouseover = function () {
+                viButton.onmouseover = function () {
                     document.documentElement.style.setProperty('--viBarOpacity', vi.viOpacityHover.toString() + '%');
                 };
 
-                button.onmouseout = function () {
+                viButton.onmouseout = function () {
                     document.documentElement.style.setProperty('--viBarOpacity', vi.viOpacity.toString() + '%');
                 };
 
