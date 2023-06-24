@@ -1271,6 +1271,7 @@ function Ktl($, appInfo) {
         var cfg = {
             barcoreTimeout: 20,
             barcodeMinLength: 3,
+            convertNumToTel: true,
         }
 
         $(document).keydown(function (e) {
@@ -1562,7 +1563,10 @@ function Ktl($, appInfo) {
                 cfgObj.onInlineEditPopup && (onInlineEditPopup = cfgObj.onInlineEditPopup);
                 cfgObj.horizontalRadioButtons && (horizontalRadioButtons = cfgObj.horizontalRadioButtons);
                 cfgObj.horizontalCheckboxes && (horizontalCheckboxes = cfgObj.horizontalCheckboxes);
+                cfgObj.barcoreTimeout && (cfg.barcoreTimeout = cfgObj.barcoreTimeout);
+                cfgObj.barcodeMinLength && (cfg.barcodeMinLength = cfgObj.barcodeMinLength);
                 cfgObj.processBarcode && (processBarcode = cfgObj.processBarcode);
+                cfgObj.convertNumToTel && (cfg.convertNumToTel = cfgObj.convertNumToTel);
             },
 
             //Converts all applicable fields in the scene from text to numeric (telephone) type to allow numeric keypad on mobile devices.
@@ -1584,7 +1588,8 @@ function Ktl($, appInfo) {
                                         field.setAttribute('numeric', true);
 
                                         //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
-                                        $('#' + viewId + ' #' + fieldId).clone().attr('type', 'tel').insertAfter($('#' + viewId + ' #' + fieldId)).prev().remove();
+                                        if (cfg.convertNumToTel)
+                                            $('#' + viewId + ' #' + fieldId).clone().attr('type', 'tel').insertAfter($('#' + viewId + ' #' + fieldId)).prev().remove();
                                     }
                                 }
                             })
@@ -4542,7 +4547,6 @@ function Ktl($, appInfo) {
                     keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
                     keywords._style && ktl.views.setStyle(view.key, keywords);
 
-                    processViewKeywords && processViewKeywords(view, keywords, data);
                 }
 
                 quickToggle(view.key, data); //IMPORTANT: _qc must be processed BEFORE _mc.
@@ -4558,6 +4562,8 @@ function Ktl($, appInfo) {
                         document.querySelector('#' + view.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
                     }
                 }
+
+                processViewKeywords && processViewKeywords(view, keywords, data);
             }
             catch (err) { console.log('err', err); };
         }

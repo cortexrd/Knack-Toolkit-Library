@@ -120,6 +120,10 @@ window.KnackApp = function ($, appInfo = {}) {
             //Uncomment the two lines below to get horizontal layout for RBs and CBs.
             //horizontalRadioButtons: true,
             //horizontalCheckboxes: true,
+
+            //barcoreTimeout: 20,
+            //barcodeMinLength: 3,
+            //convertNumToTel: true,
         })
 
         ktl.persistentForm.setCfg({
@@ -357,8 +361,10 @@ window.KnackApp = function ($, appInfo = {}) {
 
     //Special app-specific keywords.  Note that all keywords must start with an underscore "_".
     function processViewKeywords(view, keywords, data) {
-        if (keywords._my_app_keyword) {
-            //Do something here...
+        if (keywords && !$.isEmptyObject(keywords)) {
+            if (keywords._my_app_keyword) {
+                //Do something here...
+            }
         }
     }
 
