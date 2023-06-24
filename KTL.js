@@ -19,7 +19,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.8';
+    const KTL_VERSION = '0.13.9';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1047,7 +1047,7 @@ function Ktl($, appInfo) {
                     var rolesToMatch = options.ktlRoles.split(',');
                     rolesToMatch.forEach((role, idx) => { rolesToMatch[idx] = role.trim(); });
                     if (!ktl.account.checkUserRolesMatch(rolesToMatch))
-                        return;
+                        return { rolesOk: false };;
                 }
 
                 var res = { rolesOk: true };
@@ -4541,13 +4541,12 @@ function Ktl($, appInfo) {
                     keywords._nf && disableFilterOnFields(view, keywords);
                     (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
                     keywords._dr && numDisplayedRecords(view, keywords);
-                    keywords._nsg && noSortingOnGrid(view.key);
+                    keywords._nsg && noSortingOnGrid(view.key, keywords);
                     keywords._hf && hideFields(view.key, keywords);
                     keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
                     keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
                     keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
                     keywords._style && ktl.views.setStyle(view.key, keywords);
-
                 }
 
                 quickToggle(view.key, data); //IMPORTANT: _qc must be processed BEFORE _mc.
@@ -4752,6 +4751,10 @@ function Ktl($, appInfo) {
         //Filter Restriction Rules from view's Description.
         function disableFilterOnFields(view, keywords) {
             if (!view) return;
+
+            var res = ktl.core.processKeywordOptions(keywords._nf.options);
+            if (res && !res.rolesOk) return;
+
             if (view.type === 'table' /*TODO: add more view types*/) {
                 var fieldsAr = keywords._nf.params[0];
                 $('.kn-add-filter,.kn-filters').on('click', function (e) {
@@ -5162,11 +5165,19 @@ function Ktl($, appInfo) {
 
         function noSortingOnGrid(viewId) {
             if (!viewId) return;
+
+            var res = ktl.core.processKeywordOptions(keywords._nsg.options);
+            if (res && !res.rolesOk) return;
+
             $('#' + viewId + ' thead [href]').addClass('sortDisabled');
         }
 
         function hideFields(viewId, keywords) {
             if (!viewId || !keywords._hf || !keywords._hf.params.length) return;
+
+            var res = ktl.core.processKeywordOptions(keywords._hf.options);
+            if (res && !res.rolesOk) return;
+
             keywords._hf.params[0].forEach(fieldLabel => {
                 var fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
                 if (fieldId) {
@@ -6663,6 +6674,9 @@ function Ktl($, appInfo) {
             //Each parameter is a column header text where disable applies. If no parameter, the whole table is disabled.
             noInlineEditing: function (view, keywords) {
                 if (!view || !keywords._ni || ktl.scenes.isiFrameWnd()) return;
+
+                var res = ktl.core.processKeywordOptions(keywords._ni.options);
+                if (res && !res.rolesOk) return;
 
                 var model = (Knack.views[view.key] && Knack.views[view.key].model);
                 if (Knack.views[view.key] && model && model.view.options && model.view.options.cell_editor) {
