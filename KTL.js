@@ -5030,7 +5030,6 @@ function Ktl($, appInfo) {
             }
 
             //Process cell clicks.
-            //$('#' + viewId + ' .qtCell').off('click').on('click', e => {
             $('#' + viewId + ' .qtCell').on('click', e => {
                 if (document.querySelectorAll('.bulkEditCb:checked').length) return;
 
