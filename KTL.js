@@ -5030,8 +5030,10 @@ function Ktl($, appInfo) {
             }
 
             //Process cell clicks.
-            $('#' + viewId + ' .qtCell').off('click').on('click', e => {
+            //$('#' + viewId + ' .qtCell').off('click').on('click', e => {
+            $('#' + viewId + ' .qtCell').on('click', e => {
                 if (document.querySelectorAll('.bulkEditCb:checked').length) return;
+
                 e.stopImmediatePropagation();
 
                 var fieldId = e.target.getAttribute('data-field-key') || e.target.parentElement.getAttribute('data-field-key');
@@ -9072,8 +9074,7 @@ function Ktl($, appInfo) {
 
             if (viewCanDoBulkOp(view.key, 'edit')) {
                 //When user clicks on a row, to indicate the record source.
-                //$('#' + view.key + ' tr td:not(:has(:checkbox)):not(.qtCell)').off('click').on('click', e => {
-                $('#' + view.key + ' tr td:not(:has(:checkbox))').off('click').on('click', e => {
+                $('#' + view.key + ' tr td:not(:has(:checkbox))').on('click', e => {
                     var tableRow = e.target.closest('tr');
                     if (tableRow) {
                         if (bulkOpsRecIdArray.length > 0) {
@@ -9122,7 +9123,7 @@ function Ktl($, appInfo) {
                             }
                         }
 
-                        if (idx > 0 && inline.length && inline[0].classList.contains('cell-edit') && !kwNoCheckBox) {
+                        if (idx > 0 && inline.length && inline[0].classList.contains('cell-edit') && !inline[0].classList.contains('ktlNoInlineEdit') && !kwNoCheckBox) {
                             $(el).find('.table-fixed-label').css('display', 'inline-flex').append('<input type="checkbox">').addClass('bulkEditTh');
                             $(el).find('input:checkbox').addClass('bulkEditHeaderCbox');
                         }
