@@ -1566,7 +1566,8 @@ function Ktl($, appInfo) {
                 cfgObj.barcoreTimeout && (cfg.barcoreTimeout = cfgObj.barcoreTimeout);
                 cfgObj.barcodeMinLength && (cfg.barcodeMinLength = cfgObj.barcodeMinLength);
                 cfgObj.processBarcode && (processBarcode = cfgObj.processBarcode);
-                cfgObj.convertNumToTel && (cfg.convertNumToTel = cfgObj.convertNumToTel);
+                if (typeof cfgObj.convertNumToTel !== 'undefined')
+                    cfg.convertNumToTel = cfgObj.convertNumToTel;
             },
 
             //Converts all applicable fields in the scene from text to numeric (telephone) type to allow numeric keypad on mobile devices.
