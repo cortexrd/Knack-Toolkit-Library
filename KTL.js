@@ -6375,7 +6375,7 @@ function Ktl($, appInfo) {
                             var outcomeObj = { msg: '' };
 
                             //Unique Value Check
-                            if (keywords._uvc && keywords._uvc.params.length) {
+                            if (keywords._uvc && keywords._uvc.params[0].length) {
                                 e.preventDefault();
 
                                 var value = '';
@@ -6391,14 +6391,32 @@ function Ktl($, appInfo) {
                                         var fieldId = ktl.fields.getFieldIdFromLabel(viewId, uvcParam);
                                         if (fieldId) {
                                             var fieldType = Knack.objects.getField(fieldId).attributes.type;
-                                            if (fieldType === 'multiple_choice')
+                                            if (['short_text', 'phone', 'link'].includes(fieldType))
+                                                value += document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] input').value;
+                                            else if (fieldType === 'multiple_choice')
                                                 value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] .kn-select .select').val();
                                             else if (fieldType === 'connection') {
                                                 const sel = document.querySelector('#' + viewId + ' [name="' + fieldId + '"].chzn-select').selectedOptions[0].innerText;
                                                 if (sel && sel !== '' && sel !== 'Select')
                                                     value += sel;
-                                            } else if (fieldType === 'short_text')
-                                                value += $('#' + viewId + ' [data-input-id="' + fieldId + '"] input').val();
+                                            } else if (fieldType === 'name') {
+                                                const firstName = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] #first').value;
+                                                const lastName = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] #last').value;
+                                                value += (firstName + ' ' + lastName);
+                                            } else if (fieldType === 'address') {
+                                                const street = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] #street').value.trim();
+                                                const street2 = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] #street2').value.trim();
+                                                const city = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] #city').value.trim();
+                                                const state = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] #state').value.trim();
+                                                const zip = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] #zip').value.trim();
+                                                const country = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"] #country').value.trim();
+                                                value += (street ? street + ' ' : '')
+                                                    + (street2 ? street2 + ' ' : '')
+                                                    + (city ? city + ', ' : '')
+                                                    + (state ? state + ' ' : '')
+                                                    + (zip ? zip + ' ' : '')
+                                                    + (country ? country : '');
+                                            }
                                         }
                                     }
                                 }
@@ -6412,7 +6430,7 @@ function Ktl($, appInfo) {
                                             var field = Knack.objects.getField(fieldToCheck);
                                             var fieldName = field.attributes.name;
 
-                                            ktl.views.searchRecordByValue('_uvc', fieldToCheck, value)
+                                            ktl.views.searchRecordByValue('_uvc', fieldToCheck, value.trim())
                                                 .then(foundRecords => {
                                                     if (foundRecords.length) {
                                                         outcomeObj.msg = fieldName + ' must be unique. "' + value + '" is already being used.';
