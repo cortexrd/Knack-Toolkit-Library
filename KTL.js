@@ -2081,7 +2081,7 @@ function Ktl($, appInfo) {
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 if (fieldDesc) {
                     var keywords = {};
-                    fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+                    fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, ' ').replace(/ {2,}/g, ' ').trim();
                     parseKeywords(fieldDesc, keywords);
                     if (!$.isEmptyObject(keywords))
                         fieldKeywords[fieldId] = keywords;
@@ -4854,7 +4854,7 @@ function Ktl($, appInfo) {
                 var paramGroups = [];
                 var fieldId = '';
 
-                var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
+                var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
                 if (!$.isEmptyObject(fieldsWithKwObj)) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                     var foundKwObj = {};
@@ -6335,7 +6335,7 @@ function Ktl($, appInfo) {
 
                 function preprocessFields(viewId, e) {
                     return new Promise(function (resolve, reject) {
-                        var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
+                        var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
                         if (!$.isEmptyObject(fieldsWithKwObj)) {
                             var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                             var outcomeObj = { msg: '' }; //Using an object opens the door to adding more properties if ever we need them.
@@ -6443,7 +6443,7 @@ function Ktl($, appInfo) {
 
             //For KTL internal use.
             //Scans all fields in view and returns an object with those having keywords in their description.
-            getFieldsKeywords: function (viewId) {
+            getAllFieldsWithKeywordsInView: function (viewId) {
                 if (!viewId) return {};
 
                 //Scan all fields in form to find any keywords.
@@ -6495,7 +6495,7 @@ function Ktl($, appInfo) {
             getFieldWithKeyword: function (viewId, keyword) {
                 if (!viewId || !keyword) return;
 
-                var fieldsWithKwObj = ktl.views.getFieldsKeywords(viewId);
+                var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
                 if (!$.isEmptyObject(fieldsWithKwObj)) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                     var foundKwObj = {};
