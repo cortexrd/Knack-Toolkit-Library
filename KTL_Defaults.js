@@ -55,6 +55,8 @@ window.KnackApp = function ($, appInfo = {}) {
 
                 //Those below must also be set up properly to have any effect.  See documentation.
                 iFrameWnd: false,
+
+                //Legacy: replaced by logEnabled.
                 logging: {
                     logins: false,
                     navigation: false,
@@ -190,7 +192,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 },
 
                 //versionDisplayName: 'CTRND', //As an example, when you prefer to use a shorter name.
-                versionDisplayName: Knack.app.attributes.name.toUpperCase(),
+                versionDisplayName: Knack.app.attributes.name,
                 processMutation: processMutation,
             })
 
