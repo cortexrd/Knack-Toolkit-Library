@@ -2088,24 +2088,43 @@ function Ktl($, appInfo) {
                 }
             },
 
-            generateBarcode: function (viewId, keywords) {
-                if (!viewId || !keywords || !keywords._bcg) return;
 
-                const size = (keywords._bcg.params.length ? Number(keywords._bcg.params[0]) : 200);
-                if (isNaN(size)) {
-                    ktl.log.clog('purple', 'generateBarcode called with invalid parameters in ' + viewId);
-                    return;
+            //Parameters are size, field ID and hidden text flag "h".
+            generateBarcode: function (viewId, keywords) {
+                if (!viewId || !keywords || !keywords._bcg || ktl.views.getViewType(viewId) !== 'details') return;
+
+                var size = 200;
+                var hideText = false;
+                var fieldId = '';
+
+                if (keywords._bcg.params.length && keywords._bcg.params[0].length) {
+                    size = Number(keywords._bcg.params[0][0]);
+                    if (isNaN(size)) {
+                        ktl.log.clog('purple', 'generateBarcode called with invalid size:', viewId, size);
+                        return;
+                    }
+
+                    if (keywords._bcg.params[0].length >= 2) {
+                        fieldId = keywords._bcg.params[0][1];
+                        if (!$('#' + viewId + ' .' + fieldId).length) {
+                            ktl.log.clog('purple', 'generateBarcode called with invalid field ID:', viewId, fieldId);
+                            return;
+                        }
+                    }
+
+                    if (keywords._bcg.params[0].length >= 3 && keywords._bcg.params[0][2] === 'h')
+                        hideText = true;
                 }
 
                 //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
-                const text = $('#' + viewId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');;
+                const text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');;
                 const barcodeData = { text: text, width: size, height: size };
                 ktl.core.loadLib('QRGenerator')
                     .then(() => {
                         var qrCodeDiv = document.getElementById('qrCodeDiv');
                         if (!qrCodeDiv) {
                             qrCodeDiv = document.createElement('div');
-                            $('#' + viewId).prepend(qrCodeDiv);
+                            $('#' + viewId + ' .' + fieldId).prepend(qrCodeDiv);
                             qrCodeDiv.setAttribute('id', 'qrCodeDiv');
                         }
 
@@ -2113,6 +2132,9 @@ function Ktl($, appInfo) {
                             qrCodeDiv.removeChild(qrCodeDiv.lastChild);
 
                         $('#qrCodeDiv').qrcode(barcodeData);
+
+                        if (hideText)
+                            $('#' + viewId + ' .' + fieldId + ' .kn-detail-body').remove();
                     })
                     .catch(reason => { reject('generateBarcode error:', reason); })
             },
@@ -6713,6 +6735,17 @@ function Ktl($, appInfo) {
             hideColumns: function (view = '', keywords = {}) {
                 if (!view.key || (view.type !== 'table' && view.type === 'search')) return;
 
+                var res = {};
+                if (keywords._hc) {
+                    res = ktl.core.processKeywordOptions(keywords._hc.options);
+                    if (res && !res.rolesOk) return;
+                }
+
+                if (keywords._rc) {
+                    res = ktl.core.processKeywordOptions(keywords._rc.options);
+                    if (res && !res.rolesOk) return;
+                }
+
                 var model = (Knack.views[view.key] && Knack.views[view.key].model);
                 var columns = model.view.columns;
                 var hiddenFieldsAr = [];
@@ -8139,7 +8172,7 @@ function Ktl($, appInfo) {
                             return true;
                     }
                 }
-                return false;
+                return true;
             },
         }
     })(); //account
