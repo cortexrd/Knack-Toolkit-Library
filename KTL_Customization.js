@@ -2,7 +2,7 @@
 //Insert the code below in the Javascript pane of your app's Builder, just after the loader code.
 //Once the KTL is done loading, it will jump in the ktlReady function and apply your desired settings.
 //All code must be located inside the ktlReady section.
-//See documentation for more details.
+//See GitHub's Wiki for more details.
 
 //Your app's version.
 window.APP_VERSION = '1.0.0';
@@ -12,7 +12,7 @@ window.ktlReady = function (appInfo = {}) {
 
     //KTL Setup - BEGIN
     ktl.scenes.setCfg({
-        versionDisplayName: 'MyApp', //This will show a short version name of your app.  Leave empty to remove it.
+        versionDisplayName: 'MyApp', //Short version of your app name. Leave empty to hide it. Comment whole line for actual app name.
     })
 
     ktl.core.setCfg({
@@ -49,28 +49,12 @@ window.ktlReady = function (appInfo = {}) {
             spinnerWatchDog: true,
             idleWatchDog: true,
             debugWnd: true,
-
-            //"Advanced" features
-            //Disabled by default and/or must be set up properly to have any effect. See documentation.
-            iFrameWnd: false,
-            logging: {
-                logins: false,
-                navigation: false,
-                activity: false,
-            },
-
-            bulkOps: {
-                bulkEdit: true,
-                bulkCopy: true,
-                bulkDelete: true,
-            },
         },
     })
-
     //KTL Setup - END
 
-    //KTL callbacks to your App - BEGIN
 
+    //KTL callbacks to your App - BEGIN
     //KTL callbacks to your App - END
 
     /////////////////////////////////////////////////
