@@ -19,7 +19,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.10';
+    const KTL_VERSION = '0.13.11';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -105,7 +105,6 @@ function Ktl($, appInfo) {
 
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
     function parseKeywords(strToParse, keywords) {
-
         var kwAr = [];
         if (strToParse && strToParse !== '') {
             var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
@@ -8179,18 +8178,22 @@ function Ktl($, appInfo) {
 
             checkUserRolesMatch: function (rolesToCheck = []/*Leave empty for any roles.*/) {
                 if (!rolesToCheck.length) return true;
+                var defaultRes = false;
                 const userRoles = Knack.getUserRoleNames().split(', ');
                 for (let i = 0; i < rolesToCheck.length; i++) {
                     if (rolesToCheck[i].startsWith('!')) {
+                        defaultRes = true;
                         rolesToCheck[i] = rolesToCheck[i].replace('!', '');
                         if (userRoles.includes(rolesToCheck[i]))
                             return false;
                     } else {
+                        defaultRes = false;
                         if (userRoles.includes(rolesToCheck[i]))
                             return true;
                     }
                 }
-                return true;
+
+                return defaultRes;
             },
         }
     })(); //account
