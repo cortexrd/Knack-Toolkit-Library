@@ -165,7 +165,7 @@ function Ktl($, appInfo) {
         for (var i = 0; i < paramGroups.length; i++) {
             var grp = paramGroups[i];
             const firstParam = grp.split(',')[0].trim();
-            if (['ktlSel', 'ktlRoles'].includes(firstParam)) {
+            if (['ktlSel', 'ktlRoles', 'ktlRefVal'].includes(firstParam)) {
                 var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
                 options[firstParam] = grp.match(pattern)[1].trim();
             } else {
@@ -2072,7 +2072,20 @@ function Ktl($, appInfo) {
                         if (match)
                             return match[0];
                     }
-                } //Support more view types as we go.
+                } else if (viewType === 'table') {
+                    if (exactMatch)
+                        field = $('#' + viewId + ' .kn-table th:textEquals("' + fieldLabel + '")');
+                    else
+                        field = $('#' + viewId + ' .kn-table th:contains("' + fieldLabel + '")');
+
+                    if (field.length) {
+                        var classes = $(field)[0].classList.value;
+                        const match = classes.match(/field_\w+/);
+                        if (match)
+                            return match[0];
+                    }
+                }
+                //Support more view types as we go.
             },
 
             getFieldKeywords: function (fieldId, fieldKeywords = {}) {
@@ -4572,7 +4585,7 @@ function Ktl($, appInfo) {
 
                 quickToggle(view.key, data); //IMPORTANT: _qc must be processed BEFORE _mc.
                 matchColor(view.key, data);
-                colorizeFieldByValue(view.key, keywords, data);
+                colorizeFieldByValue(view.key, data);
                 headerAlignment(view, keywords);
 
                 if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
@@ -4829,10 +4842,21 @@ function Ktl($, appInfo) {
             }
         }
 
-        function colorizeFieldByValue(viewId, keywords, data) {
+        function colorizeFieldByValue(viewId, data) {
             if (!viewId) return;
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list') return;
+
+            const keywords = ktlKeywords[viewId];
+            if (!keywords || !keywords._cfv) return;
+
+            var res = ktl.core.processKeywordOptions(keywords._cfv.options);
+            if (res && !res.rolesOk) return;
+
+            var value = '';
+            const rvSel = keywords._cfv.options.ktlRefVal;
+            if (rvSel && rvSel !== '' && $(rvSel).length)
+                value = $(rvSel)[0].textContent;
 
             if (keywords && keywords._cfv && keywords._cfv.params.length) {
                 //Start with View's _cfv.
@@ -4883,12 +4907,16 @@ function Ktl($, appInfo) {
 
                         if (group.length >= 3) {
                             var colorize = false;
-                            var operator = group[0];
-                            var value = group[1];
-                            var fgColor = group[2];
+                            var fieldLabel = group[0];
+                            var fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                            if (fieldSrc && fieldSrc !== '' && fieldSrc !== fieldId) return;
+                            var operator = group[1];
+                            if (value === '')
+                                value = group[2];
+                            var fgColor = group[3];
 
-                            if (group.length >= 4)
-                                var bgColor = group[3];
+                            if (group.length >= 5)
+                                var bgColor = group[4];
 
                             var span = '';
                             var includeBlanks = false; //When a cell value is blank it is considered as zero.  This flag determines when it is desireable.
@@ -4896,23 +4924,23 @@ function Ktl($, appInfo) {
 
                             var style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
 
-                            if (group.length >= 5 && group[4])
-                                style += ('font-weight: ' + group[4] + '!important; ');
+                            if (group.length >= 6 && group[5])
+                                style += ('font-weight: ' + group[5] + '!important; ');
 
-                            if (group.length >= 6) {
-                                if (group[5].includes('i'))
+                            if (group.length >= 7) {
+                                if (group[6].includes('i'))
                                     style += 'font-style: italic; ';
 
-                                if (group[5].includes('u'))
+                                if (group[6].includes('u'))
                                     style += 'text-decoration: underline; ';
 
-                                if (group[5].includes('t')) //Text only, not whole cell.
+                                if (group[6].includes('t')) //Text only, not whole cell.
                                     span = ' span';
 
-                                if (group[5].includes('b'))
+                                if (group[6].includes('b'))
                                     includeBlanks = true;
 
-                                if (group[5].includes('p'))
+                                if (group[6].includes('p'))
                                     propagate = true;
                             }
 
