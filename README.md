@@ -40,7 +40,7 @@ A few examples:
 
 **\_ar=30** (to auto-refresh a view every 30 seconds)
 
-**\_cfv=has,On Sale,red,yellow** (to colorize a field in red text on yellow background when a value contains “On Sale”)
+**\_cfv=Deals,has,On Sale,red,yellow** (to colorize a field in red text on yellow background when a value contains “On Sale”)
 
 Keywords can be used in two places: in fields and views.
 
@@ -72,7 +72,7 @@ The keywords are not case-sensitive, but the parameters are and must always be a
 
 Some keywords can accept many **groups** of parameters in a chain. In those cases, the groups are enclosed in **square brackets**.
 
-Example with two groups: \_cfv=[neq,,,red,,iu], [gte,100, yellow,\#00F9]
+Example with two groups: \_cfv=[Column1,neq,,,red,,iu], [Column2,gte,100, yellow,\#00F9]
 
 # Installation
 
