@@ -1,7 +1,5 @@
 # ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
-Last updated: June 2, 2023
-
 See our [YouTube channel for introductory tutorials](https://www.youtube.com/@cortexrdinc.4479)
 
 # Contents
