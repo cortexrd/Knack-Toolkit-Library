@@ -1,3 +1,4 @@
+//TEST
 /**
  * Knack Toolkit Library (ktl) - Javascript
  * See documentation for more details on github:  https://github.com/cortexrd/Knack-Toolkit-Library
@@ -19,7 +20,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.12';
+    const KTL_VERSION = '0.13.13';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -778,14 +779,15 @@ function Ktl($, appInfo) {
             },
 
             //Ensures that the context menu follows the mouse, but without overflowing outside of window.
-            setContextMenuPostion: function (event, contextMenu) {
+            setContextMenuPostion: function (e, contextMenu) {
                 var mousePos = {};
                 var menuPos = {};
                 var menuSize = {};
                 menuSize.x = contextMenu.outerWidth();
                 menuSize.y = contextMenu.outerHeight();
-                mousePos.x = event.clientX;
-                mousePos.y = event.clientY;
+
+                mousePos.x = e.clientX || e.touches[0].clientX;
+                mousePos.y = e.clientY || e.touches[0].clientY;
 
                 if (mousePos.x + menuSize.x > $(window).width())
                     menuPos.x = mousePos.x - menuSize.x;
@@ -3350,8 +3352,23 @@ function Ktl($, appInfo) {
 
                         //================================================================
                         //Handle click event to apply filter and right-click to provide additional options in a popup.
+                        let touchTimeout;
                         filterBtn.addEventListener('click', e => { onFilterBtnClicked(e, filterDivId); });
-                        filterBtn.addEventListener('contextmenu', e => { contextMenuFilter(e, filterDivId, e.target.filter); })
+
+                        filterBtn.addEventListener('touchstart', e => {
+                            touchTimeout = setTimeout(() => {
+                                contextMenuFilter(e, filterDivId, e.target.filter);
+                            }, 500);
+                        });
+
+                        filterBtn.addEventListener('touchend', e => {
+                            clearTimeout(touchTimeout);
+                            if (!$('.menuDiv').length)
+                                onFilterBtnClicked(e, filterDivId);
+                        });
+
+                        //Prevent the default context menu from appearing
+                        filterBtn.addEventListener('contextmenu', e => { e.preventDefault(); });
                     }
 
                     if (errorFound) createFilterButtons(filterDivId, fltBtnsDivId);
@@ -3524,6 +3541,7 @@ function Ktl($, appInfo) {
         }
 
         function contextMenuFilter(e, viewId, filter) {
+            if (!e || !viewId || !filter) return;
             e.preventDefault();
 
             loadFilters(LS_UF);
@@ -3565,7 +3583,7 @@ function Ktl($, appInfo) {
             var listDelete = document.createElement('li');
             listDelete.innerHTML = '<i class="fa fa-trash-o" style="margin-top: 2px;"></i> Delete';
             listDelete.style.marginBottom = '8px';
-            listDelete.addEventListener('click', function (e) {
+            $(listDelete).on('click touchstart', function (e) {
                 e.preventDefault();
                 $('.menuDiv').remove();
 
@@ -3593,7 +3611,7 @@ function Ktl($, appInfo) {
             listRename.innerHTML = '<i class="fa fa-pencil-square-o" style="margin-top: 2px;"></i> Rename';
             listRename.style.marginBottom = '8px';
 
-            listRename.addEventListener('click', function (e) {
+            $(listRename).on('click touchstart', function (e) {
                 e.preventDefault();
                 $('.menuDiv').remove();
 
@@ -3632,7 +3650,7 @@ function Ktl($, appInfo) {
                 else
                     listPublicFilters.innerHTML += 'No';
 
-                listPublicFilters.addEventListener('click', function (e) {
+                $(listPublicFilters).on('click touchstart', function (e) {
                     e.preventDefault();
                     $('.menuDiv').remove();
 
@@ -5466,10 +5484,11 @@ function Ktl($, appInfo) {
 
                         //Just in case the user forgets, automatically 'un-pause' autoRefresh after five minutes to re-enable it.
                         //If user is a power developer, leave off for one hour.
+                        const unpauseDelay = (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) ? ONE_HOUR_DELAY : FIVE_MINUTES_DELAY;
                         if (restart && autoRestart) {
                             unPauseTimer = setTimeout(function () {
                                 ktl.views.autoRefresh();
-                            }, (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) ? ONE_HOUR_DELAY : FIVE_MINUTES_DELAY)
+                            }, unpauseDelay)
                         }
                     }
                 }
@@ -9286,8 +9305,14 @@ function Ktl($, appInfo) {
             bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv');
             bulkOpsControlsDiv.setAttribute('id', 'bulkOpsControlsDiv-' + view.key);
 
-            if (searchFound)
-                bulkOpsControlsDiv.classList.add('bulkOpsControlsWithSearchDiv');
+
+            if (searchFound) {
+                if (Knack.isMobile())
+                    $(bulkOpsControlsDiv).css('margin-top', '2%');
+                else
+                    bulkOpsControlsDiv.classList.add('bulkOpsControlsWithSearchDiv');
+            }
+
             prepend ? $(div).prepend(bulkOpsControlsDiv) : $(div).append(bulkOpsControlsDiv);
 
             addBulkDeleteButtons(view, data);
