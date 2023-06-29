@@ -14,9 +14,6 @@
 
 #verButtonId {
 	opacity: var(--viBarOpacity);
-}
-
-#verButtonId {
 	z-index: 10; /*Need to be visible with sticky headers*/
 }
 

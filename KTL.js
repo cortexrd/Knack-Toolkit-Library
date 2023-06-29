@@ -4847,29 +4847,32 @@ function Ktl($, appInfo) {
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list') return;
 
-            const keywords = ktlKeywords[viewId];
-            if (!keywords || !keywords._cfv) return;
-
-            var res = ktl.core.processKeywordOptions(keywords._cfv.options);
-            if (res && !res.rolesOk) return;
-
             var value = '';
-            const rvSel = keywords._cfv.options.ktlRefVal;
-            if (rvSel && rvSel !== '' && $(rvSel).length)
-                value = $(rvSel)[0].textContent;
+            var keywords = ktlKeywords[viewId];
 
-            if (keywords && keywords._cfv && keywords._cfv.params.length) {
-                //Start with View's _cfv.
-                var fieldId = '';
-                var paramGroups = keywords._cfv.params;
-                var fields = Knack.views[viewId].model.view.fields;
-                for (var f = 0; f < fields.length; f++) {
-                    fieldId = fields[f].key;
-                    colorizeField(viewId, fieldId, paramGroups, data);
+            if (keywords && keywords._cfv) {
+                //Begin with View's _cfv.
+                var res = ktl.core.processKeywordOptions(keywords._cfv.options);
+                if (res && !res.rolesOk) return;
+
+                if (keywords._cfv.options) {
+                    const rvSel = keywords._cfv.options.ktlRefVal;
+                    if (rvSel && rvSel !== '' && $(rvSel).length)
+                        value = $(rvSel)[0].textContent;
                 }
 
-                //Then end with Field's _cfv, for precedence.
-                doFields(viewId, data);
+                if (keywords._cfv.params.length) {
+                    var fieldId = '';
+                    var paramGroups = keywords._cfv.params;
+                    var fields = Knack.views[viewId].model.view.fields;
+                    for (var f = 0; f < fields.length; f++) {
+                        fieldId = fields[f].key;
+                        colorizeField(viewId, fieldId, value, paramGroups, data);
+                    }
+
+                    //Then end with Field's _cfv, for precedence.
+                    doFields(viewId, data);
+                }
             } else
                 doFields(viewId, data); //No view, just the fields.
 
@@ -4886,24 +4889,33 @@ function Ktl($, appInfo) {
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
                         if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.params.length) {
                             paramGroups = foundKwObj[fieldId]._cfv.params;
-                            colorizeField(viewId, fieldId, paramGroups, data);
+                            colorizeField(viewId, fieldId, value, paramGroups, data);
                         }
                     }
                 }
             }
 
-            function colorizeField(viewId, fieldId, paramGroups, data) {
+            function colorizeField(viewId, fieldId, value, paramGroups, data) {
                 if (!viewId || !fieldId || !data.length || !paramGroups.length) return;
 
                 for (var d = 0; d < data.length; d++) {
                     var rec = data[d];
 
-                    var cellText = rec[fieldId + '_raw'].toString();
-                    if (Array.isArray(cellText) && cellText.length === 1)
-                        cellText = cellText[0].identifier;
+                    const cell = rec[fieldId + '_raw'];
+                    var cellText = '';
+                    if (Array.isArray(cell) && cell.length === 1)
+                        cellText = cell[0].identifier;
+                    else
+                        cellText = cell.toString();
 
                     for (var g = 0; g < paramGroups.length; g++) {
                         var group = paramGroups[g];
+
+                        keywords = ktlKeywords[fieldId];
+                        if (keywords && keywords._cfv) {
+                            var res = ktl.core.processKeywordOptions(keywords._cfv.options);
+                            if (res && !res.rolesOk) return;
+                        }
 
                         if (group.length >= 3) {
                             var colorize = false;
@@ -4911,8 +4923,16 @@ function Ktl($, appInfo) {
                             var fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
                             if (fieldSrc && fieldSrc !== '' && fieldSrc !== fieldId) return;
                             var operator = group[1];
-                            if (value === '')
+
+                            if (!value && keywords && keywords._cfv && keywords._cfv.options) {
+                                const rvSel = keywords._cfv.options.ktlRefVal;
+                                if (rvSel && rvSel !== '' && $(rvSel).length)
+                                    value = $(rvSel)[0].textContent;
+                            }
+
+                            if (!value)
                                 value = group[2];
+
                             var fgColor = group[3];
 
                             if (group.length >= 5)
@@ -5444,11 +5464,12 @@ function Ktl($, appInfo) {
 
                         autoRefreshViews = {};
 
-                        //For safety reasons, automatically 'un-pause' autoRefresh after five minutes to re-enable it.
+                        //Just in case the user forgets, automatically 'un-pause' autoRefresh after five minutes to re-enable it.
+                        //If user is a power developer, leave off for one hour.
                         if (restart && autoRestart) {
                             unPauseTimer = setTimeout(function () {
                                 ktl.views.autoRefresh();
-                            }, FIVE_MINUTES_DELAY)
+                            }, (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) ? ONE_HOUR_DELAY : FIVE_MINUTES_DELAY)
                         }
                     }
                 }
