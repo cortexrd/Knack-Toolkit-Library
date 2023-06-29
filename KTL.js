@@ -2871,6 +2871,11 @@ function Ktl($, appInfo) {
         var viewToRefreshAfterFilterChg = null;  //This is necessary to remember the viewId to refresh after we exit filter editing.
         var publicFiltersLocked = true; //To prevent accidental modifications of public filters.
 
+        var touchTimeout;
+        var contextMenuFilterEnabled = true;
+        var ufDndEnabled;
+        var ufDndMoving = false;
+
         var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
 
         Object.defineProperty(userFiltersObj, "isEmpty", {
@@ -3175,6 +3180,14 @@ function Ktl($, appInfo) {
             }
         })
 
+        $('#knack-body').on('click touchstart', function (e) {
+            if ($('.menuDiv').length) {
+                $('.menuDiv').remove();
+                ktl.views.autoRefresh();
+                ufDndEnabled && ufDndEnabled.option('disabled', false);
+            }
+        });
+
         //Load all filters from local storage.
         function loadAllFilters() {
             loadFilters(LS_UF);
@@ -3317,7 +3330,6 @@ function Ktl($, appInfo) {
                         return;
                     }
 
-
                     for (var btnIndex = 0; btnIndex < fltSrc[filterDivId].filters.length; btnIndex++) {
                         var filter = fltSrc[filterDivId].filters[btnIndex];
 
@@ -3352,23 +3364,31 @@ function Ktl($, appInfo) {
 
                         //================================================================
                         //Handle click event to apply filter and right-click to provide additional options in a popup.
-                        let touchTimeout;
                         filterBtn.addEventListener('click', e => { onFilterBtnClicked(e, filterDivId); });
 
                         filterBtn.addEventListener('touchstart', e => {
                             touchTimeout = setTimeout(() => {
-                                contextMenuFilter(e, filterDivId, e.target.filter);
+                                contextMenuFilterEnabled && contextMenuFilter(e, filterDivId, e.target.filter);
                             }, 500);
                         });
 
+                        filterBtn.addEventListener('touchmove', e => {
+                            clearTimeout(touchTimeout);
+                            contextMenuFilterEnabled = false;
+                            ufDndMoving = true;
+                        })
+
                         filterBtn.addEventListener('touchend', e => {
                             clearTimeout(touchTimeout);
-                            if (!$('.menuDiv').length)
+                            if (!$('.menuDiv').length && !ufDndMoving)
                                 onFilterBtnClicked(e, filterDivId);
+                            ufDndMoving = false;
                         });
 
-                        //Prevent the default context menu from appearing
-                        filterBtn.addEventListener('contextmenu', e => { e.preventDefault(); });
+                        filterBtn.addEventListener('contextmenu', e => {
+                            e.preventDefault(); //Prevent the default context menu from appearing.
+                            contextMenuFilterEnabled && contextMenuFilter(e, filterDivId, e.target.filter);
+                        });
                     }
 
                     if (errorFound) createFilterButtons(filterDivId, fltBtnsDivId);
@@ -3544,6 +3564,8 @@ function Ktl($, appInfo) {
             if (!e || !viewId || !filter) return;
             e.preventDefault();
 
+            ufDndEnabled && ufDndEnabled.option('disabled', true);
+
             loadFilters(LS_UF);
             loadFilters(LS_UFP);
 
@@ -3586,6 +3608,7 @@ function Ktl($, appInfo) {
             $(listDelete).on('click touchstart', function (e) {
                 e.preventDefault();
                 $('.menuDiv').remove();
+                ufDndEnabled && ufDndEnabled.option('disabled', false);
 
                 var confirmationMsg = 'Are you sure you want to delete filter "' + filterName + '" ?';
                 if (isPublic)
@@ -3614,6 +3637,7 @@ function Ktl($, appInfo) {
             $(listRename).on('click touchstart', function (e) {
                 e.preventDefault();
                 $('.menuDiv').remove();
+                ufDndEnabled && ufDndEnabled.option('disabled', false);
 
                 var newFilterName = prompt('New Filter Name: ', filterName);
                 if (newFilterName && newFilterName !== filterName) {
@@ -3653,6 +3677,7 @@ function Ktl($, appInfo) {
                 $(listPublicFilters).on('click touchstart', function (e) {
                     e.preventDefault();
                     $('.menuDiv').remove();
+                    ufDndEnabled && ufDndEnabled.option('disabled', false);
 
                     if (filterIndex >= 0) {
                         //Toggle on/off
@@ -3758,12 +3783,13 @@ function Ktl($, appInfo) {
         function setupFiltersDragAndDrop(filterDivId = '') {
             //Setup Drag n Drop for filter buttons.
             if (document.getElementById(filterDivId + '-filterDivId')) {
-                new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
+                ufDndEnabled = new Sortable(document.getElementById(filterDivId + '-filterDivId'), {
                     swapThreshold: 0.96,
                     animation: 250,
                     easing: "cubic-bezier(1, 0, 0, 1)",
                     onMove: function (/**Event*/evt, /**Event*/originalEvent) {
                         if (evt.dragged.filter.public && !Knack.getUserRoleNames().includes('Public Filters')) {
+                            contextMenuFilterEnabled = true;
                             return false; //Cancel
                         }
                     },
@@ -3772,13 +3798,20 @@ function Ktl($, appInfo) {
                             var userFiltersAr = [];
                             var publicFiltersAr = [];
 
-                            evt.to.children.forEach(function (item) {
+                            for (var i = 0; i < evt.to.children.length; i++) {
+                                const item = evt.to.children[i];
                                 var flt = getFilter(filterDivId, item.innerText);
-                                if (evt.item.filter.public && flt.filterObj.public)
-                                    publicFiltersAr.push(flt.filterSrc[filterDivId].filters[flt.index]);
-                                else if (!evt.item.filter.public && !flt.filterObj.public)
-                                    userFiltersAr.push(flt.filterSrc[filterDivId].filters[flt.index]);
-                            });
+                                if (flt && flt.filterObj) {
+                                    if (evt.item.filter.public && flt.filterObj.public)
+                                        publicFiltersAr.push(flt.filterSrc[filterDivId].filters[flt.index]);
+                                    else if (!evt.item.filter.public && !flt.filterObj.public)
+                                        userFiltersAr.push(flt.filterSrc[filterDivId].filters[flt.index]);
+                                } else {
+                                    console.log('ERROR - Invalid filter found');
+                                    contextMenuFilterEnabled = true;
+                                    return false;
+                                }
+                            }
 
                             if (userFiltersAr.length) {
                                 userFiltersObj[filterDivId].filters = userFiltersAr;
@@ -3790,6 +3823,8 @@ function Ktl($, appInfo) {
 
                             ktl.userFilters.addFilterButtons(filterDivId);
                         }
+
+                        contextMenuFilterEnabled = true;
                     }
                 });
             }
@@ -7038,7 +7073,6 @@ function Ktl($, appInfo) {
                 }
             }
         }, 100);
-
 
         return {
             setCfg: function (cfgObj = {}) {
