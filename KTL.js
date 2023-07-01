@@ -166,7 +166,7 @@ function Ktl($, appInfo) {
         for (var i = 0; i < paramGroups.length; i++) {
             var grp = paramGroups[i];
             const firstParam = grp.split(',')[0].trim();
-            if (['ktlSel', 'ktlRoles', 'ktlRefVal'].includes(firstParam)) {
+            if (['ktlSel', 'ktlRoles', 'ktlRefVal', 'ktlField'].includes(firstParam)) {
                 var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
                 options[firstParam] = grp.match(pattern)[1].trim();
             } else {
@@ -217,7 +217,7 @@ function Ktl($, appInfo) {
                                     //console.log('Totals', viewId, JSON.stringify(mutRec.addedNodes[0]));
                                     //var total = $('.kn-table-totals:contains("Avg")');
                                     var total = $('.kn-table-totals strong');
-                                    total.length && console.log('total =', total);
+                                    //total.length && console.log('total =', total);
                                     ktl.views.fixTableRowsAlignment(viewId);
                                 }
                             }
@@ -1069,6 +1069,14 @@ function Ktl($, appInfo) {
                 }
 
                 return res;
+            },
+
+            extractNumericValue: function (inputString) {
+                var pattern = /[^0-9.-]+/g;
+                var numericValue = inputString.replace(pattern, '');
+                if (!isNaN(numericValue))
+                    return numericValue;
+                return null; // or any appropriate default value or error handling
             },
         }
     })(); //Core
@@ -4568,40 +4576,44 @@ function Ktl($, appInfo) {
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
-            ktlProcessKeywords(view, data);
-            ktl.views.addViewId(view);
+            ktl.bulkOps.waitSummaryFixed(view.key)
+                .then(() => {
+                    ktlProcessKeywords(view, data);
+                    ktl.views.addViewId(view);
 
-            //Fix problem with re-appearing filter button when filtring is disabled in views.
-            //Reported here: https://forums.knack.com/t/add-filter-buttons-keep-coming-back/13966
-            if (Knack.views[view.key] && Knack.views[view.key].model.view.filter === false)
-                $('#' + view.key + ' .kn-filters-nav').remove();
+                    //Fix problem with re-appearing filter button when filtring is disabled in views.
+                    //Reported here: https://forums.knack.com/t/add-filter-buttons-keep-coming-back/13966
+                    if (Knack.views[view.key] && Knack.views[view.key].model.view.filter === false)
+                        $('#' + view.key + ' .kn-filters-nav').remove();
 
-            if (view.type === 'calendar') {
-                try {
-                    const fc = Knack.views[view.key].$('.knack-calendar').data('fullCalendar');
+                    if (view.type === 'calendar') {
+                        try {
+                            const fc = Knack.views[view.key].$('.knack-calendar').data('fullCalendar');
 
-                    const originalEventDropHandler = fc.options.eventDrop;
-                    fc.options.eventDrop = function (event, dayDelta, minuteDelta, allDay, revertFunc) {
-                        ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
-                        return originalEventDropHandler.call(this, ...arguments);
-                    };
+                            const originalEventDropHandler = fc.options.eventDrop;
+                            fc.options.eventDrop = function (event, dayDelta, minuteDelta, allDay, revertFunc) {
+                                ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+                                return originalEventDropHandler.call(this, ...arguments);
+                            };
 
-                    const originalEventResizeHandler = fc.options.eventResize;
-                    fc.options.eventResize = function (event, dayDelta, minuteDelta, revertFunc) {
-                        ktlHandleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc);
-                        return originalEventResizeHandler.call(this, ...arguments);
-                    };
+                            const originalEventResizeHandler = fc.options.eventResize;
+                            fc.options.eventResize = function (event, dayDelta, minuteDelta, revertFunc) {
+                                ktlHandleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc);
+                                return originalEventResizeHandler.call(this, ...arguments);
+                            };
 
-                    //Callback when the calendar view changes type or range.
-                    const viewDisplay = fc.options.viewDisplay;
-                    fc.options.viewDisplay = function (calView) {
-                        addGotoDate(view.key, calView);
-                        return viewDisplay.call(this, ...arguments);
-                    };
+                            //Callback when the calendar view changes type or range.
+                            const viewDisplay = fc.options.viewDisplay;
+                            fc.options.viewDisplay = function (calView) {
+                                addGotoDate(view.key, calView);
+                                return viewDisplay.call(this, ...arguments);
+                            };
 
-                    addGotoDate(view.key);
-                } catch (e) { console.log(e); }
-            }
+                            addGotoDate(view.key);
+                        } catch (e) { console.log(e); }
+                    }
+                })
+                .catch(reason => { ktl.log.clog('purple', reason); })
         })
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
@@ -4916,28 +4928,34 @@ function Ktl($, appInfo) {
                 if (keywords._cfv.options) {
                     const rvSel = keywords._cfv.options.ktlRefVal;
                     if (rvSel && rvSel !== '') {
+                        //console.log('rvSel =', rvSel);
                         ktl.core.waitSelector(rvSel, 10000)
                             .then(() => {
                                 if ($(rvSel).length) {
                                     value = $(rvSel)[0].textContent;
+
+                                    if (rvSel.includes('.kn-table-totals'))
+                                        value = ktl.core.extractNumericValue(value);
+
                                     console.log('View :: value =', value);
-                                    cfvViewSub(viewId, keywords, value, data);
+                                    colorizeViewSub(viewId, keywords, value, data);
                                 }
                             })
                             .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue.', viewId, e); })
 
                     }
                 } else
-                    cfvViewSub(viewId, keywords, value, data);
+                    colorizeViewSub(viewId, keywords, value, data);
 
-                function cfvViewSub(viewId, keywords, value, data) {
+                function colorizeViewSub(viewId, keywords, value, data) {
                     if (keywords._cfv.params.length) {
+                        const options = keywords._cfv.options;
                         var fieldId = '';
                         var paramGroups = keywords._cfv.params;
                         var fields = Knack.views[viewId].model.view.fields;
                         for (var f = 0; f < fields.length; f++) {
                             fieldId = fields[f].key;
-                            colorizeField(viewId, fieldId, value, paramGroups, data);
+                            colorizeField(viewId, fieldId, value, paramGroups, data, options);
                         }
 
                         //Then end with field's _cfv, for precedence.
@@ -4960,13 +4978,13 @@ function Ktl($, appInfo) {
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
                         if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.params.length) {
                             paramGroups = foundKwObj[fieldId]._cfv.params;
-                            colorizeField(viewId, fieldId, value, paramGroups, data);
+                            colorizeField(viewId, fieldId, value, paramGroups, data, foundKwObj[fieldId]._cfv.options);
                         }
                     }
                 }
             }
 
-            function colorizeField(viewId, fieldId, value, paramGroups, data) {
+            function colorizeField(viewId, fieldId, value, paramGroups, data, options) {
                 if (!viewId || !fieldId || !data.length || !paramGroups.length) return;
 
                 for (var d = 0; d < data.length; d++) {
@@ -5001,17 +5019,17 @@ function Ktl($, appInfo) {
                                         .then(() => {
                                             if ($(rvSel).length) {
                                                 value = $(rvSel)[0].textContent;
-                                                console.log('View :: value =', value);
-                                                cfvFieldSub(viewId, group, value, data);
+                                                console.log('Field :: value =', value);
+                                                colorizeFieldSub(viewId, group, value, options);
                                             }
                                         })
-                                        .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue.', viewId, e); })
+                                        .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeField.', viewId, e); })
 
                                 }
                             } else
-                                cfvFieldSub(viewId, group, value, data);
+                                colorizeFieldSub(viewId, group, value, options);
 
-                            function cfvFieldSub(viewId, group, value, data) {
+                            function colorizeFieldSub(viewId, group, value, options) {
                                 if (!value)
                                     value = group[2];
 
@@ -5046,9 +5064,15 @@ function Ktl($, appInfo) {
                                         propagate = true;
                                 }
 
-                                var sel = '#' + viewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + fieldId + span);
-                                if (viewType === 'list')
-                                    sel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + fieldId + ' .kn-detail-body' + span);
+
+                                if (options && options.ktlField)
+                                    selFieldId = options.ktlField;
+
+                                var sel = '#' + viewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + selFieldId + span);
+                                if (options && options.ktlSel)
+                                    sel = options.ktlSel;
+                                else if (viewType === 'list')
+                                    sel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + selFieldId + ' .kn-detail-body' + span);
 
                                 const numCellValue = Number(cellText);
                                 const compareWith = Number(value);
@@ -9853,6 +9877,33 @@ function Ktl($, appInfo) {
 
             getBulkOpsActive: function (viewId) {
                 return bulkOpsActive[viewId] === true;
+            },
+
+            waitSummaryFixed: function (viewId) {
+                return new Promise(function (resolve, reject) {
+                    const viewType = ktl.views.getViewType(viewId);
+                    if (viewType !== 'table') {
+                        resolve();
+                        return;
+                    }
+
+                    var itv = setInterval(() => {
+                        var headers = $('#' + viewId + ' thead tr th:visible').length;
+                        var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not(.ktlDisplayNone)').length;
+                        if (headers === totals) {
+                            clearInterval(itv);
+                            clearTimeout(failsafe);
+                            console.log('Headers match summary!', viewId, headers, totals);
+                            resolve();
+                            return;
+                        }
+                    }, 100);
+
+                    var failsafe = setTimeout(() => {
+                        clearInterval(itv);
+                        reject('waitSummaryFixed failed with timeout');
+                    }, 10000)
+                })
             },
         }
     })();
