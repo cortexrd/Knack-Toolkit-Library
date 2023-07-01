@@ -213,8 +213,13 @@ function Ktl($, appInfo) {
                             if (viewId && mutRec.target.localName === 'tbody') {
                                 (keywords._hc || keywords._rc) && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
 
-                                if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList && mutRec.addedNodes[0].classList.contains('kn-table-totals'))
+                                if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList && mutRec.addedNodes[0].classList.contains('kn-table-totals')) {
+                                    //console.log('Totals', viewId, JSON.stringify(mutRec.addedNodes[0]));
+                                    //var total = $('.kn-table-totals:contains("Avg")');
+                                    var total = $('.kn-table-totals strong');
+                                    total.length && console.log('total =', total);
                                     ktl.views.fixTableRowsAlignment(viewId);
+                                }
                             }
 
                             keywords._km && ktl.core.kioskMode(true);
@@ -4636,7 +4641,7 @@ function Ktl($, appInfo) {
                     keywords._style && ktl.views.setStyle(view.key, keywords);
                 }
 
-                quickToggle(view.key, data); //IMPORTANT: _qc must be processed BEFORE _mc.
+                quickToggle(view.key, data); //IMPORTANT: _qt must be processed BEFORE _mc.
                 matchColor(view.key, data);
                 colorizeFieldByValue(view.key, data);
                 headerAlignment(view, keywords);
@@ -4910,26 +4915,39 @@ function Ktl($, appInfo) {
 
                 if (keywords._cfv.options) {
                     const rvSel = keywords._cfv.options.ktlRefVal;
-                    if (rvSel && rvSel !== '' && $(rvSel).length)
-                        value = $(rvSel)[0].textContent;
-                }
+                    if (rvSel && rvSel !== '') {
+                        ktl.core.waitSelector(rvSel, 10000)
+                            .then(() => {
+                                if ($(rvSel).length) {
+                                    value = $(rvSel)[0].textContent;
+                                    console.log('View :: value =', value);
+                                    cfvViewSub(viewId, keywords, value, data);
+                                }
+                            })
+                            .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue.', viewId, e); })
 
-                if (keywords._cfv.params.length) {
-                    var fieldId = '';
-                    var paramGroups = keywords._cfv.params;
-                    var fields = Knack.views[viewId].model.view.fields;
-                    for (var f = 0; f < fields.length; f++) {
-                        fieldId = fields[f].key;
-                        colorizeField(viewId, fieldId, value, paramGroups, data);
                     }
+                } else
+                    cfvViewSub(viewId, keywords, value, data);
 
-                    //Then end with Field's _cfv, for precedence.
-                    doFields(viewId, data);
+                function cfvViewSub(viewId, keywords, value, data) {
+                    if (keywords._cfv.params.length) {
+                        var fieldId = '';
+                        var paramGroups = keywords._cfv.params;
+                        var fields = Knack.views[viewId].model.view.fields;
+                        for (var f = 0; f < fields.length; f++) {
+                            fieldId = fields[f].key;
+                            colorizeField(viewId, fieldId, value, paramGroups, data);
+                        }
+
+                        //Then end with field's _cfv, for precedence.
+                        doFields(viewId, value, data);
+                    }
                 }
             } else
-                doFields(viewId, data); //No view, just the fields.
+                doFields(viewId, value, data); //No _cfv in view, skip to the fields.
 
-            function doFields(viewId, data) {
+            function doFields(viewId, value, data) {
                 var paramGroups = [];
                 var fieldId = '';
 
@@ -4962,14 +4980,13 @@ function Ktl($, appInfo) {
                         cellText = cell.toString();
 
                     for (var g = 0; g < paramGroups.length; g++) {
-                        var group = paramGroups[g];
-
                         keywords = ktlKeywords[fieldId];
                         if (keywords && keywords._cfv) {
                             var res = ktl.core.processKeywordOptions(keywords._cfv.options);
                             if (res && !res.rolesOk) return;
                         }
 
+                        var group = paramGroups[g];
                         if (group.length >= 3) {
                             var colorize = false;
                             var fieldLabel = group[0];
@@ -4979,84 +4996,97 @@ function Ktl($, appInfo) {
 
                             if (!value && keywords && keywords._cfv && keywords._cfv.options) {
                                 const rvSel = keywords._cfv.options.ktlRefVal;
-                                if (rvSel && rvSel !== '' && $(rvSel).length)
-                                    value = $(rvSel)[0].textContent;
-                            }
+                                if (rvSel && rvSel !== '') {
+                                    ktl.core.waitSelector(rvSel, 10000)
+                                        .then(() => {
+                                            if ($(rvSel).length) {
+                                                value = $(rvSel)[0].textContent;
+                                                console.log('View :: value =', value);
+                                                cfvFieldSub(viewId, group, value, data);
+                                            }
+                                        })
+                                        .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue.', viewId, e); })
 
-                            if (!value)
-                                value = group[2];
-
-                            var fgColor = group[3];
-
-                            if (group.length >= 5)
-                                var bgColor = group[4];
-
-                            var span = '';
-                            var includeBlanks = false; //When a cell value is blank it is considered as zero.  This flag determines when it is desireable.
-                            var propagate = false; //Propagate style to whole row.
-
-                            var style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
-
-                            if (group.length >= 6 && group[5])
-                                style += ('font-weight: ' + group[5] + '!important; ');
-
-                            if (group.length >= 7) {
-                                if (group[6].includes('i'))
-                                    style += 'font-style: italic; ';
-
-                                if (group[6].includes('u'))
-                                    style += 'text-decoration: underline; ';
-
-                                if (group[6].includes('t')) //Text only, not whole cell.
-                                    span = ' span';
-
-                                if (group[6].includes('b'))
-                                    includeBlanks = true;
-
-                                if (group[6].includes('p'))
-                                    propagate = true;
-                            }
-
-                            var sel = '#' + viewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + fieldId + span);
-                            if (viewType === 'list')
-                                sel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + fieldId + ' .kn-detail-body' + span);
-
-                            const numCellValue = Number(cellText);
-                            const compareWith = Number(value);
-
-                            if (operator === 'eq' && cellText === value)
-                                colorize = true;
-                            else if (operator === 'neq' && cellText !== value)
-                                colorize = true;
-                            else if (operator === 'has' && cellText && cellText.includes(value))
-                                colorize = true;
-                            else if (operator === 'sw' && cellText && cellText.startsWith(value))
-                                colorize = true;
-                            else if (operator === 'ew' && cellText && cellText.endsWith(value))
-                                colorize = true;
-                            else if (!isNaN(numCellValue) && !isNaN(compareWith)) {
-                                //All numeric comparisons here.
-                                if (operator === 'lt') {
-                                    if (numCellValue < compareWith && (cellText || (!cellText && includeBlanks)))
-                                        colorize = true;
-                                } else if (operator === 'lte') {
-                                    if (numCellValue <= compareWith && (cellText || (!cellText && includeBlanks)))
-                                        colorize = true;
-                                } else if (operator === 'gt') {
-                                    if (numCellValue > compareWith)
-                                        colorize = true;
-                                } else if (operator === 'gte') {
-                                    if (numCellValue >= compareWith)
-                                        colorize = true;
                                 }
-                            }
+                            } else
+                                cfvFieldSub(viewId, group, value, data);
 
-                            //Add support for date and time comparisons.
+                            function cfvFieldSub(viewId, group, value, data) {
+                                if (!value)
+                                    value = group[2];
 
-                            //Merge current and new styles.
-                            if (colorize) {
-                                const currentStyle = $(sel).attr('style');
-                                $(sel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                var fgColor = group[3];
+
+                                if (group.length >= 5)
+                                    var bgColor = group[4];
+
+                                var span = '';
+                                var includeBlanks = false; //When a cell value is blank it is considered as zero.  This flag determines when it is desireable.
+                                var propagate = false; //Propagate style to whole row.
+
+                                var style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
+
+                                if (group.length >= 6 && group[5])
+                                    style += ('font-weight: ' + group[5] + '!important; ');
+
+                                if (group.length >= 7) {
+                                    if (group[6].includes('i'))
+                                        style += 'font-style: italic; ';
+
+                                    if (group[6].includes('u'))
+                                        style += 'text-decoration: underline; ';
+
+                                    if (group[6].includes('t')) //Text only, not whole cell.
+                                        span = ' span';
+
+                                    if (group[6].includes('b'))
+                                        includeBlanks = true;
+
+                                    if (group[6].includes('p'))
+                                        propagate = true;
+                                }
+
+                                var sel = '#' + viewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + fieldId + span);
+                                if (viewType === 'list')
+                                    sel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + fieldId + ' .kn-detail-body' + span);
+
+                                const numCellValue = Number(cellText);
+                                const compareWith = Number(value);
+
+                                if (operator === 'eq' && cellText === value)
+                                    colorize = true;
+                                else if (operator === 'neq' && cellText !== value)
+                                    colorize = true;
+                                else if (operator === 'has' && cellText && cellText.includes(value))
+                                    colorize = true;
+                                else if (operator === 'sw' && cellText && cellText.startsWith(value))
+                                    colorize = true;
+                                else if (operator === 'ew' && cellText && cellText.endsWith(value))
+                                    colorize = true;
+                                else if (!isNaN(numCellValue) && !isNaN(compareWith)) {
+                                    //All numeric comparisons here.
+                                    if (operator === 'lt') {
+                                        if (numCellValue < compareWith && (cellText || (!cellText && includeBlanks)))
+                                            colorize = true;
+                                    } else if (operator === 'lte') {
+                                        if (numCellValue <= compareWith && (cellText || (!cellText && includeBlanks)))
+                                            colorize = true;
+                                    } else if (operator === 'gt') {
+                                        if (numCellValue > compareWith)
+                                            colorize = true;
+                                    } else if (operator === 'gte') {
+                                        if (numCellValue >= compareWith)
+                                            colorize = true;
+                                    }
+                                }
+
+                                //Add support for date and time comparisons.
+
+                                //Merge current and new styles.
+                                if (colorize) {
+                                    const currentStyle = $(sel).attr('style');
+                                    $(sel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                }
                             }
                         }
                     }
@@ -5167,7 +5197,7 @@ function Ktl($, appInfo) {
 
                     const dt = Date.now();
                     var recId = e.target.closest('tr').id;
-                    var value = ktl.views.getDataFromRecId(viewId, recId, fieldId)[fieldId + '_raw'];
+                    var value = ktl.views.getDataFromRecId(viewId, recId)[fieldId + '_raw'];
                     value = (value === true ? false : true);
                     if (!viewsToRefresh.includes(viewId))
                         viewsToRefresh.push(viewId);
@@ -5285,8 +5315,9 @@ function Ktl($, appInfo) {
             })
         }
 
-        function noSortingOnGrid(viewId) {
+        function noSortingOnGrid(viewId, keywords) {
             if (!viewId) return;
+            if (!keywords || !!keywords._nsg) return;
 
             var res = ktl.core.processKeywordOptions(keywords._nsg.options);
             if (res && !res.rolesOk) return;
@@ -6962,6 +6993,20 @@ function Ktl($, appInfo) {
                     const currentStyle = $(el).attr('style');
                     $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + keywords._style.params[0]);
                 })
+            },
+
+            //Returns a zero-based index of the first column from left that matches the header param.
+            getColumnIndexFromHeader: function (viewId, header) {
+                if (!viewId || !header) return;
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType !== 'table') return;
+
+                const headers = document.querySelectorAll('#' + viewId + ' .kn-table th');
+                for (var i = 0; i < headers.length; i++) {
+                    const headerTxt = headers[i].textContent.trim();
+                    if (headerTxt === header)
+                        return i;
+                }
             },
         }
     })(); //views
