@@ -166,7 +166,7 @@ function Ktl($, appInfo) {
         for (var i = 0; i < paramGroups.length; i++) {
             var grp = paramGroups[i];
             const firstParam = grp.split(',')[0].trim();
-            if (['ktlSel', 'ktlRoles', 'ktlRefVal', 'ktlField'].includes(firstParam)) {
+            if (['ktlSel', 'ktlRoles', 'ktlRefVal', 'ktlViewField'].includes(firstParam)) {
                 var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
                 options[firstParam] = grp.match(pattern)[1].trim();
             } else {
@@ -5064,15 +5064,23 @@ function Ktl($, appInfo) {
                                         propagate = true;
                                 }
 
+                                var selFieldId = fieldId;
+                                var selViewId = viewId;
+                                if (options && options.ktlViewField) {
+                                    const ktlViewField = options.ktlViewField.split(',');
+                                    for (var vf = 0; vf < ktlViewField.length; vf++) {
+                                        if (ktlViewField[vf].startsWith('view_'))
+                                            selViewId = ktlViewField[vf];
+                                        else if (ktlViewField[vf].startsWith('field_'))
+                                            selFieldId = ktlViewField[vf];
+                                    }
+                                }
 
-                                if (options && options.ktlField)
-                                    selFieldId = options.ktlField;
-
-                                var sel = '#' + viewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + selFieldId + span);
+                                var sel = '#' + selViewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + selFieldId + span);
                                 if (options && options.ktlSel)
                                     sel = options.ktlSel;
                                 else if (viewType === 'list')
-                                    sel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + selFieldId + ' .kn-detail-body' + span);
+                                    sel = '#' + selViewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + selFieldId + ' .kn-detail-body' + span);
 
                                 const numCellValue = Number(cellText);
                                 const compareWith = Number(value);
