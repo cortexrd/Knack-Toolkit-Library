@@ -1,4 +1,3 @@
-//TEST
 /**
  * Knack Toolkit Library (ktl) - Javascript
  * See documentation for more details on github:  https://github.com/cortexrd/Knack-Toolkit-Library
@@ -262,31 +261,35 @@ function Ktl($, appInfo) {
             if (!viewId) {
                 reject();
             } else {
-                console.log('entering waitSummaryReady');
+                const hasSummary = ktl.views.viewHasSummary(viewId);
+                if (hasSummary && hasSummary >= 1) {
+                    console.log('entering waitSummaryReady');
 
-                if ($('#' + viewId + '.summaryReady').length) {
-                    console.log('1 summaryReady', viewId);
-                    resolve();
-                    return;
-                } else {
-                    var itv = setInterval(() => {
+                    if ($('#' + viewId + '.summaryReady').length) {
+                        console.log('1 summaryReady', viewId);
+                        resolve();
+                        return;
+                    } else {
+                        var itv = setInterval(() => {
 
-                        console.log('summaryReady length', viewId, $('#' + viewId + '.summaryReady').length);
+                            console.log('summaryReady length', viewId, $('#' + viewId + '.summaryReady').length);
 
-                        if ($('#' + viewId + '.summaryReady').length) {
+                            if ($('#' + viewId + '.summaryReady').length) {
+                                clearInterval(itv);
+                                clearTimeout(failsafe);
+                                console.log('2 summaryReady', viewId);
+                                resolve();
+                                return;
+                            }
+                        }, 100);
+
+                        var failsafe = setTimeout(() => {
                             clearInterval(itv);
-                            clearTimeout(failsafe);
-                            console.log('2 summaryReady', viewId);
-                            resolve();
-                            return;
-                        }
-                    }, 100);
-
-                    var failsafe = setTimeout(() => {
-                        clearInterval(itv);
-                        reject('waitSummaryReady failed with timeout');
-                    }, 10000)
-                }
+                            reject('waitSummaryReady failed with timeout');
+                        }, 10000)
+                    }
+                } else
+                    resolve();
             }
         })
     }
@@ -7166,6 +7169,13 @@ function Ktl($, appInfo) {
                     if (headerTxt === header)
                         return i;
                 }
+            },
+
+            //Returns undefined if view type is not applicable, or the number of summaries, from 0 to 4.
+            viewHasSummary: function (viewId) {
+                var viewObj = ktl.views.getViewObj(viewId);
+                if (viewObj && viewObj.totals)
+                    return viewObj.totals.length;
             },
         }
     })(); //views
