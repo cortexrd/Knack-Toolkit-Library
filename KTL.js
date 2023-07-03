@@ -19,7 +19,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.13';
+    const KTL_VERSION = '0.13.14';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5499,11 +5499,11 @@ function Ktl($, appInfo) {
 
         //Adjust header alignment of Grids and Pivot Tables
         function headerAlignment(view, keywords) {
-            if (!view || (!cfg.headerAlignment && (keywords && !keywords._ha))) return;
+            if (!view || !cfg.headerAlignment || (keywords && !keywords._ha)) return;
 
             const viewType = view.type;
 
-            if (viewType === 'report') //Pivot Tables
+            if (viewType === 'report') //Pivot Tables.  Simpler: all data always right-aligned.
                 $('#' + view.key + '.kn-report :is(thead th, tr.kn-table_summary td)').css('text-align', 'right');
             else if (viewType === 'table') {
                 var columns = view.columns;
@@ -5513,8 +5513,15 @@ function Ktl($, appInfo) {
                     columns.forEach(col => {
                         if (col.field) {
                             var align = col.align;
-                            var thText = $('#' + view.key + ' thead th.' + col.field.key);
-                            thText.css('text-align', align);
+                            var fieldKey = col.field.key;
+
+                            //Remove anything after field_xxx, like pseudo selectors with colon.
+                            var extractedField = fieldKey.match(/field_\d+/);
+                            if (extractedField) {
+                                fieldKey = extractedField[0];
+                                var header = $('#' + view.key + ' thead th.' + fieldKey);
+                                header.css('text-align', align);
+                            }
                         }
                     })
                 } catch (e) {
