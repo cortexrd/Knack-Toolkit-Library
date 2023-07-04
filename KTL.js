@@ -5315,7 +5315,7 @@ function Ktl($, appInfo) {
             }
 
             //Process cell clicks.
-            $('#' + viewId + ' .qtCell').on('click', e => {
+            $('#' + viewId + ' .qtCell').off('click').on('click', e => {
                 if (document.querySelectorAll('.bulkEditCb:checked').length) return;
 
                 e.stopImmediatePropagation();
