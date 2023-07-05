@@ -210,7 +210,7 @@ function Ktl($, appInfo) {
                                     keywords._km && ktl.core.kioskMode(true);
                                 }
 
-                                ////Wait for summaries to complete, then call their observers.
+                                //Wait for summaries to complete, then call their observers.
                                 if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList
                                     && mutRec.addedNodes[0].classList.contains('kn-table-totals')) {
 
@@ -4632,7 +4632,24 @@ function Ktl($, appInfo) {
             }
         })
 
+        var originalRenderTotals;
         $(document).on('knack-view-render.any', function (event, view, data) {
+
+            if (ktl.views.viewHasSummary(view.key)) {
+
+                if (Knack.views[view.key].renderTotals) {
+                    if (typeof originalRenderTotals === 'undefined') {
+                        originalRenderTotals = Knack.views[view.key].renderTotals;
+                        Knack.views[view.key].renderTotals = function () {
+                            originalRenderTotals.call(this, ...arguments);
+                            console.log('post renderTotals', view.key);
+                        }
+                    }
+                }
+            }
+
+
+
             ktl.bulkOps.waitSummaryColumnsAlignmentFixed(view.key) //Needed for keywords that may require summary data to do their task.
                 .then(() => {
                     ktlProcessKeywords(view, data);
@@ -5114,16 +5131,16 @@ function Ktl($, appInfo) {
                                             if ($(rvSel).length) {
                                                 value = $(rvSel)[0].textContent;
                                                 console.log('Field :: value =', value);
-                                                colorizeFieldSub(viewId, group, value, options);
+                                                colorizeFieldSub(viewId, group, cellText, value, options);
                                             }
                                         })
                                         .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeField.', viewId, e); })
 
                                 }
                             } else
-                                colorizeFieldSub(viewId, group, value, options);
+                                colorizeFieldSub(viewId, group, cellText, value, options);
 
-                            function colorizeFieldSub(viewId, group, value, options) {
+                            function colorizeFieldSub(viewId, group, cellText, value, options) {
                                 if (!value)
                                     value = group[2];
 
@@ -5133,7 +5150,6 @@ function Ktl($, appInfo) {
                                     var bgColor = group[4];
 
                                 var span = '';
-                                var emptyAsZero = false; //When a cell value is blank it is considered as zero.  This flag determines when it is desireable.
                                 var propagate = false; //Propagate style to whole row.
 
                                 var style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
@@ -5151,15 +5167,15 @@ function Ktl($, appInfo) {
                                     if (group[6].includes('t')) //Text only, not whole cell.
                                         span = ' span';
 
-                                    if (group[6].includes('e'))
-                                        emptyAsZero = true;
+                                    if (!cellText && group[6].includes('b')) //Ignore blank cells.
+                                        return;
 
                                     if (group[6].includes('p'))
                                         propagate = true;
 
                                     //TODO:
                                     //h for hide
-                                    //b for blink
+                                    //f for flash
                                 }
 
                                 var selFieldId = fieldId;
@@ -5193,13 +5209,13 @@ function Ktl($, appInfo) {
                                     colorize = true;
                                 else if (operator === 'ew' && cellText && cellText.endsWith(value))
                                     colorize = true;
-                                else if (!isNaN(numCellValue) && !isNaN(compareWith)) {
+                                else if (!isNaN(compareWith) && !isNaN(numCellValue)) {
                                     //All numeric comparisons here.
                                     if (operator === 'lt') {
-                                        if (numCellValue < compareWith && (cellText || (!cellText && emptyAsZero)))
+                                        if (numCellValue < compareWith)
                                             colorize = true;
                                     } else if (operator === 'lte') {
-                                        if (numCellValue <= compareWith && (cellText || (!cellText && emptyAsZero)))
+                                        if (numCellValue <= compareWith)
                                             colorize = true;
                                     } else if (operator === 'gt') {
                                         if (numCellValue > compareWith)
