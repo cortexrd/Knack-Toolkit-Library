@@ -166,7 +166,7 @@ function Ktl($, appInfo) {
         for (var i = 0; i < paramGroups.length; i++) {
             var grp = paramGroups[i];
             const firstParam = grp.split(',')[0].trim();
-            if (['ktlSel', 'ktlRoles', 'ktlRefVal', 'ktlViewField'].includes(firstParam)) {
+            if (['ktlSel', 'ktlRoles', 'ktlRefVal', 'ktlTarget'].includes(firstParam)) {
                 var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
                 options[firstParam] = grp.match(pattern)[1].trim();
             } else {
@@ -226,6 +226,8 @@ function Ktl($, appInfo) {
             subtree: true,
         });
     }
+
+    const numericFieldTypes = ['number', 'currency', 'sum', 'min', 'max', 'average'/*, 'equation' not sure...*/];
 
     /**
     * Exposed constant strings
@@ -5001,7 +5003,6 @@ function Ktl($, appInfo) {
                             var columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
                             var viewTitleOrId = rvSelAr[3] ? rvSelAr[3] : viewId;
                             value = ktl.core.extractNumericValue(readSummaryValue(viewTitleOrId, columnHeader, summaryName));
-                            console.log('value =', value);
                             colorizeViewSub(viewId, keywords, value, data);
                         } else {
                             //Regular CSS selector.
@@ -5010,8 +5011,19 @@ function Ktl($, appInfo) {
                                     if ($(rvSel).length) {
                                         value = $(rvSel)[0].textContent;
 
-                                        if (rvSel.includes('.kn-table-totals'))
+                                        var fieldId;
+                                        var fldObj;
+                                        var fieldType;
+                                        var extractedField = rvSel.match(/field_\d+/);
+                                        if (extractedField) {
+                                            fieldId = extractedField[0];
+                                            fldObj = Knack.objects.getField(fieldId);
+                                        }
+
+                                        fieldType = fldObj && fldObj.attributes.type;
+                                        if (rvSel.includes('.kn-table-totals') || (fieldType && numericFieldTypes.includes(fieldType))) {
                                             value = ktl.core.extractNumericValue(value);
+                                        }
 
                                         //console.log('View :: value =', value);
                                         colorizeViewSub(viewId, keywords, value, data);
@@ -5145,13 +5157,17 @@ function Ktl($, appInfo) {
 
                                 var selFieldId = fieldId;
                                 var selViewId = viewId;
-                                if (options && options.ktlViewField) {
-                                    const ktlViewField = options.ktlViewField.split(',');
-                                    for (var vf = 0; vf < ktlViewField.length; vf++) {
-                                        if (ktlViewField[vf].startsWith('view_'))
-                                            selViewId = ktlViewField[vf];
-                                        else if (ktlViewField[vf].startsWith('field_'))
-                                            selFieldId = ktlViewField[vf];
+                                if (options && options.ktlTarget) {
+                                    const ktlTarget = options.ktlTarget.split(',');
+                                    for (var fv = 0; fv < ktlTarget.length; fv++) {
+                                        if (ktlTarget[fv].startsWith('view_'))
+                                            selViewId = ktlTarget[fv];
+                                        else if (ktlTarget[fv].startsWith('field_'))
+                                            selFieldId = ktlTarget[fv];
+                                        else {
+                                            //Try to find a column header having that text.
+                                            selFieldId = ktl.fields.getFieldIdFromLabel(viewId, ktlTarget[fv]);
+                                        }
                                     }
                                 }
 
@@ -5468,13 +5484,13 @@ function Ktl($, appInfo) {
                     columns.forEach(col => {
                         if (col.field) {
                             var align = col.align;
-                            var fieldKey = col.field.key;
+                            var fieldId = col.field.key;
 
                             //Remove anything after field_xxx, like pseudo selectors with colon.
-                            var extractedField = fieldKey.match(/field_\d+/);
+                            var extractedField = fieldId.match(/field_\d+/);
                             if (extractedField) {
-                                fieldKey = extractedField[0];
-                                var header = $('#' + view.key + ' thead th.' + fieldKey);
+                                fieldId = extractedField[0];
+                                var header = $('#' + view.key + ' thead th.' + fieldId);
                                 header.css('text-align', align);
                             }
                         }
