@@ -182,9 +182,7 @@ function Ktl($, appInfo) {
     //Prevents spurious GUI updates (flickering).
     //Also used to track summary updates since they are asychronous and often delayed.
     var observer = null;
-    var summaryTimeoutForView = {};
     var headerProcessed = false;
-    var mutationObserverCallbacks = [];
     if (!observer) {
         observer = new MutationObserver((mutations) => {
             mutations.forEach(mutRec => {
@@ -209,25 +207,6 @@ function Ktl($, appInfo) {
                                     (keywords._hc || keywords._rc) && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
                                     keywords._km && ktl.core.kioskMode(true);
                                 }
-
-                                //Wait for summaries to complete, then call their observers.
-                                if (mutRec.addedNodes.length && mutRec.addedNodes[0].classList
-                                    && mutRec.addedNodes[0].classList.contains('kn-table-totals')) {
-
-                                    var summariesPerView = viewObj.model.view.totals;
-                                    if (summariesPerView.length > 0) {
-                                        clearTimeout(summaryTimeoutForView[viewId]);
-                                        summaryTimeoutForView[viewId] = setTimeout(() => {
-                                            delete summaryTimeoutForView[viewId];
-                                            $('#' + viewId).addClass('summaryReady');
-                                            for (var m = 0; m < mutationObserverCallbacks.length; m++) {
-                                                mutationObserverCallbacks[m]();
-                                            }
-
-                                            mutationObserverCallbacks = [];
-                                        }, 1000)
-                                    }
-                                }
                             }
                         }
                     }
@@ -246,44 +225,6 @@ function Ktl($, appInfo) {
             childList: true,
             subtree: true,
         });
-    }
-
-    function addMutationsObserver(callback) {
-        if (typeof callback === 'function') {
-            mutationObserverCallbacks.push(callback);
-        } else
-            console.error('Called mutationsSetObserver with a non-function type argument.');
-    }
-
-    //Move to views
-    function waitSummaryReady(viewId) {
-        return new Promise(function (resolve, reject) {
-            if (!viewId) {
-                reject();
-            } else {
-                if (ktl.views.viewHasSummary(viewId)) {
-                    if ($('#' + viewId + '.summaryReady').length) {
-                        resolve();
-                        return;
-                    } else {
-                        var itv = setInterval(() => {
-                            if ($('#' + viewId + '.summaryReady').length) {
-                                clearInterval(itv);
-                                clearTimeout(failsafe);
-                                resolve();
-                                return;
-                            }
-                        }, 100);
-
-                        var failsafe = setTimeout(() => {
-                            clearInterval(itv);
-                            reject('waitSummaryReady failed with timeout in ' + viewId);
-                        }, SUMMARY_WAIT_TIMEOUT)
-                    }
-                } else
-                    resolve();
-            }
-        })
     }
 
     /**
@@ -1123,11 +1064,12 @@ function Ktl($, appInfo) {
 
             //Returns only the numeric characters dot and minus.
             extractNumericValue: function (inputString) {
+                if (!inputString) return;
                 var pattern = /[^0-9.-]+/g;
                 var numericValue = inputString.replace(pattern, '');
                 if (!isNaN(numericValue))
                     return numericValue;
-                return null; // or any appropriate default value or error handling
+                return null; //Invalid or undefined param.
             },
 
             splitAndTrimToArray: function (stringToSplit, separator = ',') {
@@ -4632,62 +4574,67 @@ function Ktl($, appInfo) {
             }
         })
 
-        var originalRenderTotals;
         $(document).on('knack-view-render.any', function (event, view, data) {
+            const viewId = view.key;
+            if (ktl.views.viewHasSummary(viewId)) {
+                //This code is needed for keywords that may require summary data to do their task.
+                var ktlRenderTotals = function () {
+                    if (Knack.views[viewId].ktlRenderTotals) {
+                        Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
-            if (ktl.views.viewHasSummary(view.key)) {
-
-                if (Knack.views[view.key].renderTotals) {
-                    if (typeof originalRenderTotals === 'undefined') {
-                        originalRenderTotals = Knack.views[view.key].renderTotals;
-                        Knack.views[view.key].renderTotals = function () {
-                            originalRenderTotals.call(this, ...arguments);
-                            console.log('post renderTotals', view.key);
-                        }
+                        readSummaryValues(viewId);
+                        ktlProcessKeywords(view, data);
                     }
+                };
+
+                if (!Knack.views[viewId].ktlRenderTotals || Knack.views[viewId].renderTotals !== Knack.views[viewId].ktlRenderTotals.ktlPost) {
+                    Knack.views[viewId].ktlRenderTotals = {
+                        original : Knack.views[viewId].renderTotals,
+                        ktlPost : ktlRenderTotals
+                    }
+
+                    Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
+                } else { //When data has changed, but the functions remain the same.
+                    Knack.views[viewId].ktlRenderTotals.ktlPost = ktlRenderTotals;
+                    Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
                 }
+            } else
+                ktlProcessKeywords(view, data);
+
+
+            ktl.views.addViewId(view);
+
+            //Fix problem with re-appearing filter button when filtring is disabled in views.
+            //Reported here: https://forums.knack.com/t/add-filter-buttons-keep-coming-back/13966
+            if (Knack.views[view.key] && Knack.views[view.key].model.view.filter === false)
+                $('#' + view.key + ' .kn-filters-nav').remove();
+
+            if (view.type === 'calendar') {
+                try {
+                    const fc = Knack.views[view.key].$('.knack-calendar').data('fullCalendar');
+
+                    const originalEventDropHandler = fc.options.eventDrop;
+                    fc.options.eventDrop = function (event, dayDelta, minuteDelta, allDay, revertFunc) {
+                        ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
+                        return originalEventDropHandler.call(this, ...arguments);
+                    };
+
+                    const originalEventResizeHandler = fc.options.eventResize;
+                    fc.options.eventResize = function (event, dayDelta, minuteDelta, revertFunc) {
+                        ktlHandleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc);
+                        return originalEventResizeHandler.call(this, ...arguments);
+                    };
+
+                    //Callback when the calendar view changes type or range.
+                    const viewDisplay = fc.options.viewDisplay;
+                    fc.options.viewDisplay = function (calView) {
+                        addGotoDate(view.key, calView);
+                        return viewDisplay.call(this, ...arguments);
+                    };
+
+                    addGotoDate(view.key);
+                } catch (e) { console.log(e); }
             }
-
-
-
-            ktl.bulkOps.waitSummaryColumnsAlignmentFixed(view.key) //Needed for keywords that may require summary data to do their task.
-                .then(() => {
-                    ktlProcessKeywords(view, data);
-                    ktl.views.addViewId(view);
-
-                    //Fix problem with re-appearing filter button when filtring is disabled in views.
-                    //Reported here: https://forums.knack.com/t/add-filter-buttons-keep-coming-back/13966
-                    if (Knack.views[view.key] && Knack.views[view.key].model.view.filter === false)
-                        $('#' + view.key + ' .kn-filters-nav').remove();
-
-                    if (view.type === 'calendar') {
-                        try {
-                            const fc = Knack.views[view.key].$('.knack-calendar').data('fullCalendar');
-
-                            const originalEventDropHandler = fc.options.eventDrop;
-                            fc.options.eventDrop = function (event, dayDelta, minuteDelta, allDay, revertFunc) {
-                                ktlHandleCalendarEventDrop(view, event, dayDelta, minuteDelta, allDay, revertFunc);
-                                return originalEventDropHandler.call(this, ...arguments);
-                            };
-
-                            const originalEventResizeHandler = fc.options.eventResize;
-                            fc.options.eventResize = function (event, dayDelta, minuteDelta, revertFunc) {
-                                ktlHandleCalendarEventResize(view, event, dayDelta, minuteDelta, revertFunc);
-                                return originalEventResizeHandler.call(this, ...arguments);
-                            };
-
-                            //Callback when the calendar view changes type or range.
-                            const viewDisplay = fc.options.viewDisplay;
-                            fc.options.viewDisplay = function (calView) {
-                                addGotoDate(view.key, calView);
-                                return viewDisplay.call(this, ...arguments);
-                            };
-
-                            addGotoDate(view.key);
-                        } catch (e) { console.log(e); }
-                    }
-                })
-                .catch(reason => { ktl.log.clog('purple', reason); })
         })
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
@@ -4986,22 +4933,45 @@ function Ktl($, appInfo) {
             }
         }
 
+        var summaryObserverCallbacks = [];
+        function readSummaryValues(viewId) {
+            if (!viewId) return;
+
+            const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
+            var summaryObj = {};
+            for (var t = 0; t < totals.length; t++) {
+                const row = totals[t];
+                const td = row.querySelectorAll('td');
+                var summaryType = '';
+                for (var col = 0; col < td.length; col++) {
+                    const txt = td[col].textContent.trim();
+                    const val = ktl.core.extractNumericValue(txt);
+                    if (txt && !val) {
+                        summaryType = txt;
+                        summaryObj[summaryType] = {};
+                    } else if (val) {
+                        var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
+                        summaryObj[summaryType][colHeader] = val;
+                    }
+                }
+            }
+
+            ktlKeywords[viewId].summary = summaryObj;
+
+            for (var m = 0; m < summaryObserverCallbacks.length; m++) {
+                summaryObserverCallbacks[m]();
+            }
+
+            summaryObserverCallbacks = [];
+        }
+
         function readSummaryValue(viewTitleOrId, columnHeader, summaryName) {
             if (!viewTitleOrId || !columnHeader || !summaryName) return;
 
             var viewId = viewTitleOrId.startsWith('view_') ? viewTitleOrId : ktl.core.getViewIdByTitle(viewTitleOrId);
-            var colIdx = ktl.views.getColumnIndexFromHeader(viewId, columnHeader);
-
-            const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
-            for (var t = 0; t < totals.length; t++) {
-                const row = totals[t];
-                const td = row.querySelectorAll('td');
-                for (var d = 0; d < td.length; d++) {
-                    if (td[d].textContent === summaryName) {
-                        return td[colIdx].textContent;
-                    }
-                }
-            }
+            var summaryObj = ktlKeywords[viewId].summary;
+            if (!$.isEmptyObject(summaryObj))
+                return summaryObj[summaryName][columnHeader];
         }
 
         function colorizeFieldByValue(viewId, data) {
@@ -5020,24 +4990,19 @@ function Ktl($, appInfo) {
                 if (keywords._cfv.options) {
                     const rvSel = keywords._cfv.options.ktlRefVal;
                     if (rvSel && rvSel !== '') {
-                        console.log('rvSel =', rvSel);
+                        //console.log('rvSel =', rvSel);
 
                         if (rvSel.startsWith('ktlSummary')) {
                             //If first token is summary, wait until summary is done rendering.
                             var rvSelAr = ktl.core.splitAndTrimToArray(rvSel);
                             //console.log('rvSelAr =', rvSelAr);
-                            waitSummaryReady(viewId)
-                                .then(() => {
-                                    var summaryName = rvSelAr[1] ? rvSelAr[1] : '';
-                                    var columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
-                                    var viewTitleOrId = rvSelAr[3] ? rvSelAr[3] : viewId;
-                                    value = ktl.core.extractNumericValue(readSummaryValue(viewTitleOrId, columnHeader, summaryName));
-                                    console.log('value =', value);
-                                    colorizeViewSub(viewId, keywords, value, data);
-                                })
-                                .catch(reason => {
-                                    console.log('colorizeFieldByValue / waitSummaryReady failed', reason);
-                                })
+
+                            var summaryName = rvSelAr[1] ? rvSelAr[1] : '';
+                            var columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
+                            var viewTitleOrId = rvSelAr[3] ? rvSelAr[3] : viewId;
+                            value = ktl.core.extractNumericValue(readSummaryValue(viewTitleOrId, columnHeader, summaryName));
+                            console.log('value =', value);
+                            colorizeViewSub(viewId, keywords, value, data);
                         } else {
                             //Regular CSS selector.
                             ktl.core.waitSelector(rvSel, 10000)
@@ -7172,6 +7137,14 @@ function Ktl($, appInfo) {
                 if (viewObj && viewObj.totals)
                     return viewObj.totals.length;
             },
+
+            addSummaryObserver: function (callback) {
+                if (typeof callback === 'function') {
+                    summaryObserverCallbacks.push(callback);
+                } else
+                    console.error('Called addSummaryObserver with a non-function type argument.');
+            }
+
         }
     })(); //views
 
@@ -9434,8 +9407,7 @@ function Ktl($, appInfo) {
             //Wait until summary section is done rendering.
             if (ktl.views.viewHasSummary(view.key)) {
                 //Wait until all the summaries have finished rendering.
-                addMutationsObserver(enableBulkOperationsPostSummary);
-                addMutationsObserver(ktl.views.fixTableRowsAlignment);
+                ktl.views.addSummaryObserver(enableBulkOperationsPostSummary);
 
                 function enableBulkOperationsPostSummary() {
                     addBulkdOpsGuiElements(view, data);
@@ -10033,43 +10005,6 @@ function Ktl($, appInfo) {
 
             getBulkOpsActive: function (viewId) {
                 return bulkOpsActive[viewId] === true;
-            },
-
-            //This function is necessary because some keyword options may rely on the column index.
-            //It will resolve when the summary columns are properly re-aligned with the rest of the table.
-            //This is accomplished in fixTableRowsAlignment / fixSummaryRows.
-            waitSummaryColumnsAlignmentFixed: function (viewId) {
-                return new Promise(function (resolve, reject) {
-                    const viewType = ktl.views.getViewType(viewId);
-                    if (viewType !== 'table' || !ktl.views.viewHasSummary(viewId)) {
-                        resolve(); //Ok, just skip.
-                        return;
-                    }
-
-                    waitSummaryReady(viewId)
-                        .then(() => {
-                            var itv = setInterval(() => {
-                                var headers = $('#' + viewId + ' thead tr th:visible').length;
-                                var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not(.ktlDisplayNone)').length;
-                                if (headers === totals) {
-                                    clearInterval(itv);
-                                    clearTimeout(failsafe);
-                                    resolve();
-                                    return;
-                                } else {
-                                    //console.log('headers , totals =', headers, totals);
-                                }
-                            }, 100);
-
-                            var failsafe = setTimeout(() => {
-                                clearInterval(itv);
-                                reject('waitSummaryColumnsAlignmentFixed / waitSummaryReady failed with timeout in ' + viewId);
-                            }, SUMMARY_WAIT_TIMEOUT)
-                        })
-                        .catch(reason => {
-                            console.log('waitSummaryReady failed', reason);
-                        })
-                })
             },
         }
     })(); //bulkOps
