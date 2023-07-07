@@ -1375,7 +1375,7 @@ function Ktl($, appInfo) {
             //Work in progress:  When user clicks on a cell for inline editing, provide a method to change its style, to make it wider for example.
             if (e.target.classList) {
                 if (e.target.closest('.cell-edit')) {
-                    ktl.core.waitSelector('#cell-editor .kn-input')
+                    ktl.core.waitSelector('#cell-editor .kn-input, .redactor-editor')
                         .then(() => { ktl.fields.ktlInlineEditActive(e); })
                         .catch(err => { console.log('Failed waiting for cell editor.', err); });
                 }
@@ -5005,7 +5005,7 @@ function Ktl($, appInfo) {
                             value = ktl.core.extractNumericValue(readSummaryValue(viewTitleOrId, columnHeader, summaryName));
                             colorizeViewSub(viewId, keywords, value, data);
                         } else {
-                            //Regular CSS selector.
+                            //Regular jQuery selector.
                             ktl.core.waitSelector(rvSel, 10000)
                                 .then(() => {
                                     if ($(rvSel).length) {
