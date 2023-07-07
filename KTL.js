@@ -2059,7 +2059,7 @@ function Ktl($, appInfo) {
             },
 
             //Returns the fieldId with the specified view and label.
-            //The label is the one displayed, not the field's real name.
+            //The label is the text displayed, not the field's real name.
             getFieldIdFromLabel: function (viewId, fieldLabel, exactMatch = true) {
                 if (!viewId || !fieldLabel) return;
 
@@ -2084,7 +2084,7 @@ function Ktl($, appInfo) {
 
                     if (field.length) {
                         var classes = $(field).parent()[0].classList.value;
-                        const match = classes.match(/field_\w+/);
+                        const match = classes.match(/field_\d+/);
                         if (match)
                             return match[0];
                     }
@@ -2096,7 +2096,7 @@ function Ktl($, appInfo) {
 
                     if (field.length) {
                         var classes = $(field)[0].classList.value;
-                        const match = classes.match(/field_\w+/);
+                        const match = classes.match(/field_\d+/);
                         if (match)
                             return match[0];
                     }
