@@ -51,7 +51,7 @@
 }
 
 .cell-edit.ktlNoInlineEdit {
-	pointer-events: none;
+	cursor: default!important;
 	background-color: transparent !important;
 	font-weight: initial;
 }
