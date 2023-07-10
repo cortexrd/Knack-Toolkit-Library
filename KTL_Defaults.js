@@ -56,13 +56,6 @@ window.KnackApp = function ($, appInfo = {}) {
                 //Those below must also be set up properly to have any effect.  See documentation.
                 iFrameWnd: false,
 
-                //Legacy: replaced by logEnabled.
-                logging: {
-                    logins: false,
-                    navigation: false,
-                    activity: false,
-                },
-
                 bulkOps: {
                     bulkEdit: true,
                     bulkCopy: true,
