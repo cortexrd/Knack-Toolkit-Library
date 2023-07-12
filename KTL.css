@@ -283,4 +283,21 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	position: fixed;
 }
 
+@keyframes flashing {
+	0% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0;
+	}
+
+	100% {
+		opacity: 1;
+	}
+}
+
+.ktlFlashing {
+	animation: flashing var(--flashRate) infinite;
+}
 /**** KTL_RELATED - END ****/

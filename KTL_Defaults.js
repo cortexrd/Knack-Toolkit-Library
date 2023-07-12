@@ -98,6 +98,7 @@ window.KnackApp = function ($, appInfo = {}) {
             //        bgColorPending: '#dd08',
             //    },
             headerAlignment: false,
+            flashRate: '1s',
         })
 
         ktl.fields.setCfg({
