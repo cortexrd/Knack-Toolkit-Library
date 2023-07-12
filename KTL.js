@@ -20,7 +20,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.14';
+    const KTL_VERSION = '0.13.15';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1086,22 +1086,73 @@ function Ktl($, appInfo) {
                 return pattern.test(string);
             },
 
-            getTextFromSelector: function (sel) {
+            //Parameter sel can be a jQuery selector, or a field name/ID and optionally a view name/ID.
+            //Parameter viewId is optional and is provided will be used as the default view if not found explicitly in sel.
+            getTextFromSelector: function (sel, viewId) {
                 return new Promise(function (resolve, reject) {
-                    if (!sel || !ktl.core.isJQuerySelector(sel)) {
-                        reject('get TextFromSelector called with invalid parameters');
+                    if (!sel) {
+                        reject('getTextFromSelector called with empty parameter');
                         return;
+                    }
+
+                    var fieldId;
+                    var fieldType;
+
+                    if (!ktl.core.isJQuerySelector(sel)) {
+                        //Not a valid jQuery selector - try to see if we can build something.
+
+                        //If there's a view ID use it, otherwise use the one in optional parameter.
+                        var viewStr = sel.match(/view_\d+/);
+                        if (viewStr)
+                            viewId = viewStr[0];
+
+                        var fieldStr = sel.match(/field_\d+/);
+                        if (fieldStr)
+                            fieldId = fieldStr[0];
+                        else {
+                            //No field_ found, then try to find the field ID from the text of the first parameter.
+                            var rvSelAr = ktl.core.splitAndTrimToArray(sel);
+                            if (!rvSelAr.length) return;
+
+                            if (rvSelAr[0]) {
+                                fieldId = ktl.fields.getFieldIdFromLabel(viewId, rvSelAr[0]);
+                            }
+                        }
+
+
+                        //If no view, but just a field ID, resolve with that.  It will be used for each rec ID.
+                        if (!viewStr && fieldId) {
+                            resolve(fieldId);
+                            return;
+                        }
+
+                        //If we have a view and a field IDs but it wasn't part of a valid jQuery selector, try to read the value.
+                        if (viewId && fieldId) {
+                            const fldObj = Knack.objects.getField(fieldId);
+                            fieldType = fldObj && fldObj.attributes.type;
+
+                            sel = '#' + viewId;
+                            const viewType = ktl.views.getViewType(viewId);
+                            if (viewType === 'table')
+                                sel += ' .' + fieldId;
+                            else if (viewType === 'details')
+                                sel += ' .' + fieldId + ' .kn-detail-body';
+                            //Any other view types to support?
+                        }
                     }
 
                     ktl.core.waitSelector(sel, 10000)
                         .then(() => {
                             if ($(sel).length) {
-                                value = $(sel)[0].textContent.trim();
+                                var value = $(sel)[0].textContent.trim();
+                                if (sel.includes('.kn-table-totals') || (fieldType && numericFieldTypes.includes(fieldType)))
+                                    value = ktl.core.extractNumericValue(value, fieldId);
+
                                 resolve(value);
                             }
                         })
                         .catch(e => {
-                            reject('Failed waiting for selector in get TextFromSelector: ' + sel);
+                            reject('Failed waiting for selector in getTextFromSelector: ' + sel);
                         })
                 })
             },
@@ -4633,6 +4684,7 @@ function Ktl($, appInfo) {
         //TODO: Migrate all variables here.
         var cfg = {
             headerAlignment: false,
+            flashRate: '1s',
         }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -5041,7 +5093,10 @@ function Ktl($, appInfo) {
                 }
             }
 
-            ktlKeywords[viewId].summary = summaryObj;
+            if (ktlKeywords[viewId])
+                ktlKeywords[viewId].summary = summaryObj;
+            else
+                ktlKeywords[viewId] = { summary: summaryObj };
 
             for (var m = 0; m < summaryObserverCallbacks.length; m++) {
                 summaryObserverCallbacks[m]();
@@ -5059,6 +5114,9 @@ function Ktl($, appInfo) {
                 return summaryObj[summaryName][columnHeader];
         }
 
+        ///////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
             if (!viewId) return;
             const viewType = ktl.views.getViewType(viewId);
@@ -5072,88 +5130,20 @@ function Ktl($, appInfo) {
                 var res = ktl.core.processKeywordOptions(keywords._cfv.options);
                 if (res && !res.rolesOk) return;
 
+                //If we have been supplied with options, use them.
                 if (keywords._cfv.options) {
                     var rvSel = keywords._cfv.options.ktlRefVal;
-                    if (rvSel && rvSel !== '') {
-                        var rvSelAr = ktl.core.splitAndTrimToArray(rvSel);
-                        if (!rvSelAr.length) return;
+                    getReferenceValue(rvSel, viewId)
+                        .then(refVal => {
+                            colorizeFromViewKeyword(viewId, keywords, refVal, data);
+                        })
+                        .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / waitSelector.', viewId, e); })
 
-                        if (rvSelAr[0] === 'ktlSummary') {
-                            if (rvSelAr.length >= 2) {
-                                //console.log('rvSelAr =', rvSelAr);
-                                const summaryName = rvSelAr[1] ? rvSelAr[1] : '';
-                                const columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
-                                const viewTitleOrId = (rvSelAr.length >= 3 && rvSelAr[3]) ? rvSelAr[3] : viewId;
-                                const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
+                } else //No option, then use hard-coded value found in the keyword.
+                    colorizeFromViewKeyword(viewId, keywords, '', data);
 
-                                const summaryValue = readSummaryValue(viewTitleOrId, columnHeader, summaryName); //TODO: Promisify to support other views asynchronously.
 
-                                value = ktl.core.extractNumericValue(summaryValue, fieldId);
-                                colorizeFromViewKeyword(viewId, keywords, value, data);
-                            }
-                        } else {
-                            //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
-
-                            //Check if there's a field ID.
-                            var rvFieldId;
-                            var fieldStr = rvSel.match(/field_\d+/);
-                            if (fieldStr)
-                                rvFieldId = fieldStr[0];
-                            else {
-                                //No field_ found, then try to find the field ID from the text of the first parameter.
-                                if (rvSelAr[0]) {
-                                    rvFieldId = ktl.fields.getFieldIdFromLabel(viewId, rvSelAr[0]);
-                                }
-                            }
-
-                            const fldObj = Knack.objects.getField(rvFieldId);
-                            const fieldType = fldObj && fldObj.attributes.type;
-
-                            if (ktl.core.isJQuerySelector(rvSel)) {
-                                //A user-defined jQuery selector - just wait and execute.
-                                ktl.core.getTextFromSelector(rvSel)
-                                    .then(value => {
-                                        //console.log('User-defined jQuery value:', value, rvSel);
-                                        colorizeFromViewKeyword(viewId, keywords, value, data);
-                                    })
-                                    .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / waitSelector.', viewId, e); })
-                            } else {
-                                //Not a jQuery selector, then try to find the field and optionally the view.
-
-                                //If there's a view ID use it, otherwise use this one.
-                                var rvViewId = viewId;
-                                var viewStr = rvSel.match(/view_\d+/);
-                                if (viewStr) {
-                                    rvViewId = viewStr[0];
-
-                                    rvSel = '#' + rvViewId;
-
-                                    if (rvFieldId) {
-                                        if (!viewStr)
-                                            rvSel += ' .' + rvFieldId;
-                                        else
-                                            rvSel += ' .' + rvFieldId + ' .kn-detail-body';
-                                    }
-
-                                    ktl.core.getTextFromSelector(rvSel)
-                                        .then(value => {
-                                            if (value) {
-                                                if (rvSel.includes('.kn-table-totals') || (fieldType && numericFieldTypes.includes(fieldType)))
-                                                    value = ktl.core.extractNumericValue(value, rvFieldId);
-
-                                                //console.log('View :: value =', value);
-                                                colorizeFromViewKeyword(viewId, keywords, value, data);
-                                            }
-                                        })
-                                        .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getTextFromSelector.', viewId, e); })
-                                } else
-                                    colorizeFromViewKeyword(viewId, keywords, rvFieldId, data); //Pass field ID as the referenced value in same view.
-                            }
-                        }
-                    }
-                } else
-                    colorizeFromViewKeyword(viewId, keywords, value, data);
-
+                ///////////////////////////////////////////////////////////////////////////
                 function colorizeFromViewKeyword(viewId, keywords, value, data) {
                     if (keywords._cfv.params.length) {
                         const options = keywords._cfv.options;
@@ -5172,6 +5162,8 @@ function Ktl($, appInfo) {
             } else
                 colorizeFromFieldKeyword(viewId, value, data); //No _cfv in view, skip to the fields.
 
+
+            ///////////////////////////////////////////////////////////////////////////
             function colorizeFromFieldKeyword(viewId, value, data) {
                 var paramGroups = [];
                 var fieldId = '';
@@ -5191,6 +5183,7 @@ function Ktl($, appInfo) {
                 }
             }
 
+            ///////////////////////////////////////////////////////////////////////////
             function applyColorization(viewId, fieldId, value, paramGroups, data, options) {
                 if (!viewId || !fieldId || !data.length || !paramGroups.length) return;
 
@@ -5210,16 +5203,15 @@ function Ktl($, appInfo) {
 
 
                     if (refFieldId.startsWith('field_')) {
-
                         const viewType = ktl.views.getViewType(viewId);
                         var valSel = $('#' + viewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + refFieldId);
                         if (viewType === 'list')
-                            valSel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + refFieldId;
+                            valSel = $('#' + viewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + refFieldId);
 
-                        if ($(valSel).length)
+                        if (valSel.length)
                             value = valSel[0].textContent.trim();
 
-                        console.log('table value =', value);
+                        console.log('table/list value =', value);
                     }
 
 
@@ -5230,12 +5222,12 @@ function Ktl($, appInfo) {
                         const keywords = ktlKeywords[fieldId];
                         if (keywords && keywords._cfv) {
                             var res = ktl.core.processKeywordOptions(keywords._cfv.options);
-                            if (res && !res.rolesOk) return;
+                            if (res && !res.rolesOk) continue;
                         }
 
                         var group = paramGroups[g];
                         if (group.length >= 3) {
-                            var colorize = false;
+                            var conditionMatches = false;
                             var fieldLabel = group[0];
                             var fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
                             if (fieldSrc && fieldSrc !== '' && fieldSrc !== fieldId) return;
@@ -5246,16 +5238,30 @@ function Ktl($, appInfo) {
                             if (!value && keywords && keywords._cfv && keywords._cfv.options) {
                                 const rvSel = keywords._cfv.options.ktlRefVal;
                                 if (rvSel && rvSel !== '') {
-                                    ktl.core.waitSelector(rvSel, 10000)
-                                        .then(() => {
-                                            if ($(rvSel).length) {
-                                                value = $(rvSel)[0].textContent;
-                                                console.log('Field :: value =', value);
-                                                applyColorizationOnCell(viewId, group, cellText, value, options);
-                                            }
-                                        })
-                                        .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeField.', viewId, e); })
+                                    var rvSelAr = ktl.core.splitAndTrimToArray(rvSel);
+                                    if (!rvSelAr.length) return;
 
+                                    if (rvSelAr[0] === 'ktlSummary') {
+                                        if (rvSelAr.length >= 2) {
+                                            const summaryName = rvSelAr[1] ? rvSelAr[1] : '';
+                                            const columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
+                                            const viewTitleOrId = (rvSelAr.length >= 3 && rvSelAr[3]) ? rvSelAr[3] : viewId;
+                                            const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
+
+                                            const summaryValue = readSummaryValue(viewTitleOrId, columnHeader, summaryName); //TODO: Promisify to support other views asynchronously.
+
+                                            value = ktl.core.extractNumericValue(summaryValue, fieldId);
+                                            applyColorizationOnCell(viewId, group, cellText, value, options);
+                                        }
+                                    } else {
+                                        //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
+                                        ktl.core.getTextFromSelector(rvSel, viewId)
+                                            .then(valueOfFieldId => {
+                                                console.log('valueOfFieldId =', valueOfFieldId);
+                                                applyColorizationOnCell(viewId, group, cellText, valueOfFieldId, options);
+                                            })
+                                            .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / waitSelector.', viewId, e); })
+                                    }
                                 }
                             } else
                                 applyColorizationOnCell(viewId, group, cellText, value, options);
@@ -5275,6 +5281,9 @@ function Ktl($, appInfo) {
 
                                 var span = '';
                                 var propagate = false; //Propagate style to whole row.
+                                var hide = false;
+                                var remove = false;
+                                var flash = false;
 
                                 var style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
 
@@ -5282,30 +5291,39 @@ function Ktl($, appInfo) {
                                     style += ('font-weight: ' + group[5] + '!important; ');
 
                                 if (group.length >= 7) {
-                                    if (group[6].includes('i'))
-                                        style += 'font-style: italic; ';
-
-                                    if (group[6].includes('u'))
-                                        style += 'text-decoration: underline; ';
-
-                                    if (group[6].includes('t')) //Text only, not whole cell.
-                                        span = ' span';
-
                                     if (!cellText && group[6].includes('b')) //Ignore blank cells.
                                         return;
 
                                     if (group[6].includes('p'))
                                         propagate = true;
 
-                                    //TODO:
-                                    //h for hide
-                                    //r for remove
-                                    //f for flash
+                                    if (group[6].includes('r')) {
+                                        span = ' span';
+                                        remove = true;
+                                    } else if (group[6].includes('h')) {
+                                        span = ' span';
+                                        hide = true;
+                                    } else {
+                                        if (group[6].includes('i'))
+                                            style += 'font-style: italic; ';
+
+                                        if (group[6].includes('u'))
+                                            style += 'text-decoration: underline; ';
+
+                                        if (group[6].includes('t')) //Text only, not whole cell.
+                                            span = ' span';
+
+                                        if (group[6].includes('f')) {
+                                            flash = true;
+                                        }
+                                    }
                                 }
 
                                 var selFieldId = fieldId;
                                 var selViewId = viewId;
+                                var sel;
                                 if (options && options.ktlTarget) {
+                                    var colNb;
                                     const ktlTarget = options.ktlTarget.split(',');
                                     for (var fv = 0; fv < ktlTarget.length; fv++) {
                                         if (ktlTarget[fv].startsWith('view_'))
@@ -5315,59 +5333,128 @@ function Ktl($, appInfo) {
                                         else {
                                             //Try to find a column header having that text.
                                             selFieldId = ktl.fields.getFieldIdFromLabel(viewId, ktlTarget[fv]);
+                                            if (!selFieldId) {
+                                                colNb = ktl.views.getColumnIndexFromHeader(viewId, ktlTarget[fv]);
+                                                console.log('colNb =', colNb);
+
+                                                sel = '#' + selViewId + ' tbody tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span;
+                                                console.log('sel =', sel);
+                                            }
                                         }
                                     }
                                 }
 
-                                var sel = '#' + selViewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + selFieldId + span);
+                                if (!sel)
+                                    sel = '#' + selViewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + selFieldId + span);
                                 if (options && options.ktlSel)
                                     sel = options.ktlSel;
                                 else if (viewType === 'list')
                                     sel = '#' + selViewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + selFieldId + ' .kn-detail-body' + span);
 
                                 const numCellValue = Number(cellText);
+
+
+                                if (value.startsWith('field_')) {
+
+                                    const viewType = ktl.views.getViewType(viewId);
+                                    var valSel = $('#' + viewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + value);
+                                    if (viewType === 'list')
+                                        valSel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + value;
+
+                                    if ($(valSel).length)
+                                        value = valSel[0].textContent.trim();
+
+                                    console.log('row value =', value);
+                                }
+
                                 const compareWith = Number(value);
 
                                 //console.log('cellText, value =', cellText, value);
 
                                 if (operator === 'eq' && cellText === value)
-                                    colorize = true;
+                                    conditionMatches = true;
                                 else if (operator === 'neq' && cellText !== value)
-                                    colorize = true;
+                                    conditionMatches = true;
                                 else if (operator === 'has' && cellText && cellText.includes(value))
-                                    colorize = true;
+                                    conditionMatches = true;
                                 else if (operator === 'sw' && cellText && cellText.startsWith(value))
-                                    colorize = true;
+                                    conditionMatches = true;
                                 else if (operator === 'ew' && cellText && cellText.endsWith(value))
-                                    colorize = true;
+                                    conditionMatches = true;
                                 else if (!isNaN(compareWith) && !isNaN(numCellValue)) {
                                     //All numeric comparisons here.
                                     if (operator === 'lt') {
                                         if (numCellValue < compareWith)
-                                            colorize = true;
+                                            conditionMatches = true;
                                     } else if (operator === 'lte') {
                                         if (numCellValue <= compareWith)
-                                            colorize = true;
+                                            conditionMatches = true;
                                     } else if (operator === 'gt') {
                                         if (numCellValue > compareWith)
-                                            colorize = true;
+                                            conditionMatches = true;
                                     } else if (operator === 'gte') {
                                         if (numCellValue >= compareWith)
-                                            colorize = true;
+                                            conditionMatches = true;
                                     }
                                 }
 
                                 //Add support for date and time comparisons.
 
                                 //Merge current and new styles.
-                                if (colorize) {
-                                    const currentStyle = $(sel).attr('style');
-                                    $(sel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                if (conditionMatches) {
+                                    if (remove)
+                                        $(sel).remove();
+                                    else if (hide) {
+                                        $(sel).addClass('ktlDisplayNone');
+                                    } else {
+                                        const currentStyle = $(sel).attr('style');
+                                        $(sel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                    }
+
+                                    if (flash)
+                                        $(sel).addClass('ktlFlashing');
                                 }
                             }
                         }
-                    }
+                    } //group
                 }
+            }
+
+
+
+            ////////////////////////////////////////////////////////////
+            //The reference value is the value against which we compare the value of a record's field.
+            //The rvSel parameter can be a summary, a fixed field/view value or another field from the same record.
+            function getReferenceValue(rvSel, viewId) {
+                return new Promise(function (resolve, reject) {
+                    if (rvSel && rvSel !== '') {
+                        var rvSelAr = ktl.core.splitAndTrimToArray(rvSel);
+                        if (!rvSelAr.length) return;
+
+                        if (rvSelAr[0] === 'ktlSummary') {
+                            if (rvSelAr.length >= 2) {
+                                console.log('ktlSummary, rvSelAr =', rvSelAr);
+                                const summaryName = rvSelAr[1] ? rvSelAr[1] : '';
+                                const columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
+                                const viewTitleOrId = (rvSelAr.length >= 3 && rvSelAr[3]) ? rvSelAr[3] : viewId;
+                                const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
+                                const summaryValue = readSummaryValue(viewTitleOrId, columnHeader, summaryName); //TODO: Promisify to support other views asynchronously.
+                                const refVal = ktl.core.extractNumericValue(summaryValue, fieldId);
+                                resolve(refVal);
+                            }
+                        } else {
+                            //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
+                            ktl.core.getTextFromSelector(rvSel, viewId)
+                                .then(refVal => {
+                                    console.log('User-defined jQuery value:', refVal, rvSel);
+                                    resolve(refVal);
+                                })
+                                .catch(() => {
+                                    reject('Failed waiting for selector in getReferenceValue / getTextFromSelector in ' + viewId + '\n' + rvSel);
+                                })
+                        }
+                    }
+                })
             }
         }
 
@@ -5660,6 +5747,10 @@ function Ktl($, appInfo) {
                 cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
                 cfgObj.headerAlignment && (cfg.headerAlignment = cfgObj.headerAlignment);
+                if (cfgObj.flashRate) {
+                    cfg.flashRate = cfgObj.flashRate;
+                    document.documentElement.style.setProperty('--flashRate', cfg.flashRate);
+                }
             },
 
             refreshView: function (viewId) {
@@ -8094,15 +8185,7 @@ function Ktl($, appInfo) {
                 if (!ktl.core.getCfg().enabled.iFrameWnd || category === '' || details === '' || lastDetails === details)
                     return;
 
-
-                //Old flags - to delete in a couple of months (today: Jun 13, 2023)
-                if ((category === ktl.const.LS_LOGIN && !ktl.core.getCfg().enabled.logging.logins) ||
-                    (category === ktl.const.LS_ACTIVITY && !ktl.core.getCfg().enabled.logging.activity) ||
-                    (category === ktl.const.LS_NAVIGATION && !ktl.core.getCfg().enabled.logging.navigation))
-                    return;
-
-
-                //New flags
+                //Logging flags
                 if ((category === ktl.const.LS_LOGIN && !ktl.log.getCfg().logEnabled.login) ||
                     (category === ktl.const.LS_ACTIVITY && !ktl.log.getCfg().logEnabled.activity) ||
                     (category === ktl.const.LS_NAVIGATION && !ktl.log.getCfg().logEnabled.navigation) ||
@@ -8113,8 +8196,6 @@ function Ktl($, appInfo) {
                     (category === ktl.const.LS_SERVER_ERROR && !ktl.log.getCfg().logEnabled.serverErr) ||
                     (category === ktl.const.LS_CRITICAL && !ktl.log.getCfg().logEnabled.critical))
                     return;
-
-
 
                 //Use app's callback to check if log category is allowed.
                 if (logCategoryAllowed && !logCategoryAllowed(category, details)) {
@@ -9417,8 +9498,8 @@ function Ktl($, appInfo) {
                     ktl.storage.lsSetItem('PAUSE_SERVER_ERROR_LOGS', JSON.stringify({ [msg.status]: true }));
                 }
 
-                if ([401, 500].includes(msg.status)) {
-                    if (msg.status == 401) {
+                if ([401, 403, 500].includes(msg.status)) {
+                    if (msg.status === 401 || msg.status === 403) {
                         if (typeof Android === 'object') {
                             if (confirm('A reboot is needed, do you want to do it now?'))
                                 Android.restartApplication();
@@ -9426,7 +9507,7 @@ function Ktl($, appInfo) {
                             ktl.core.timedPopup('Your log-in has expired. Please log back in to continue.', 'warning', 4000);
                             ktl.account.logout(); //Login has expired, force logout.
                         }
-                    } else if (msg.status == 500) {
+                    } else if (msg.status === 500) {
                         ktl.core.timedPopup('Error 500 has occurred - reloading page...', 'warning');
                         ktl.core.waitAndReload(2000); //Problem:  interrupts the process if happens during a Bulk Edit.
                         //TODO: 1-Add stats counter here   2-Reboot after 3+ times in 3 minutes if Android.
