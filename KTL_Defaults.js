@@ -288,14 +288,16 @@ window.KnackApp = function ($, appInfo = {}) {
         }
     }
 
-    //When there is no keypress or mouse click for a certin time, by default reload the page.
-    //But you can put any code you want there.
+    //This is called after there's been no keypress or mouse click for a certain period of time.
+    //By default it does nothing.
     function idleWatchDogTimeout() {
-        location.reload(true);
-
-        //You can also reset the idle wd and do something else.
-        //ktl.scenes.resetIdleWatchdog();
         //Your specific code here...
+
+        //You can reset the idle wd and do something else.
+        //ktl.scenes.resetIdleWatchdog();
+
+        //Or force a logout like this:
+        //ktl.account.logout();
     }
 
     //When the spinner takes too long after a Submit or any other cases, by default reload the page.
