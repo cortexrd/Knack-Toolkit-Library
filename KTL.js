@@ -167,7 +167,7 @@ function Ktl($, appInfo) {
             var grp = paramGroups[i];
             const firstParam = grp.split(',')[0].trim();
             if (['ktlSel', 'ktlRoles', 'ktlRefVal', 'ktlTarget'].includes(firstParam)) {
-                var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces
+                var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces.
                 options[firstParam] = grp.match(pattern)[1].trim();
             } else {
                 var paramsAr = grp.split(',');
@@ -1187,7 +1187,7 @@ function Ktl($, appInfo) {
                 //Remove all white spaces.
                 value = value.replace(/\s/g, '');
 
-                if (value === '') return true;
+                if (value === '') return 0; //Blanks are considered as zero, for enforceNumeric.
 
                 //Remove all currency symbols.
                 if (fieldAttributes.format) {
@@ -1223,7 +1223,7 @@ function Ktl($, appInfo) {
 
                 //Check if the value is a valid number with decimal or comma separator.
                 if (!/^[-+]?(?:\d{1,3})?(?:([.,])\d{3})*\1?\d*(?:\.\d+)?$/.test(value))
-                    return false;
+                    return;
 
                 var numericValue = parseFloat(value);
                 if (!isNaN(numericValue)) {
@@ -1800,7 +1800,7 @@ function Ktl($, appInfo) {
                         if (inputFld) {
                             var value = inputFld.value;
 
-                            var fieldValid = ktl.core.extractNumericValue(value, inputFld.id);
+                            var fieldValid = !isNaN(ktl.core.extractNumericValue(value, inputFld.id));
 
                             var fieldDesc = ktl.fields.getFieldDescription(inputFld.id);
                             if (fieldDesc && fieldDesc.includes('_int'))
@@ -5077,13 +5077,17 @@ function Ktl($, appInfo) {
         function readSummaryValues(viewId) {
             if (!viewId) return;
 
+            //Happens when submitting an inline edit box. Ignore because alignment is wrong due to checkboxes.
+            //Will be ok on next refresh right after.
+            if (document.querySelector('#' + viewId + ' .masterSelector'))
+                return;
+
             const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
             const headers = document.querySelectorAll('#' + viewId + ' thead th');
             var summaryObj = {};
             for (var t = 0; t < totals.length; t++) {
                 const row = totals[t];
                 const td = row.querySelectorAll('td');
-                const th = row.querySelectorAll('th');
                 var summaryType = '';
                 for (var col = 0; col < td.length; col++) {
                     const txt = td[col].textContent.trim();
@@ -5138,7 +5142,9 @@ function Ktl($, appInfo) {
                         .then(refVal => {
                             colorizeFromViewKeyword(viewId, keywords, refVal, data);
                         })
-                        .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e); })
+                        .catch(e => {
+                            ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
+                        })
 
                 } else //No option, then use hard-coded refVal found in the keyword, or the ktlRefVal.
                     colorizeFromViewKeyword(viewId, keywords, '', data);
@@ -5197,7 +5203,7 @@ function Ktl($, appInfo) {
                             continue;
 
                         //If no refVal passed in param, then check in group to see if refVal a summary or a jQuery.
-                        if (!refVal && options.ktlRefVal) {
+                        if (!refVal && options && options.ktlRefVal) {
                             const rvSel = options.ktlRefVal;
                             if (rvSel && rvSel !== '') {
                                 var rvSelAr = ktl.core.splitAndTrimToArray(rvSel);
@@ -5397,13 +5403,16 @@ function Ktl($, appInfo) {
             } //cfv feature
 
             ////////////////////////////////////////////////////////////
-            //The reference value is the value against which we compare the value of a record's field.
+            //The reference value is the value against which we will compare the value of a record's field.
             //The rvSel parameter can be a summary, a fixed field/view value or another field from the same record.
             function getReferenceValue(rvSel, viewId) {
                 return new Promise(function (resolve, reject) {
                     if (rvSel && rvSel !== '') {
                         var rvSelAr = ktl.core.splitAndTrimToArray(rvSel);
-                        if (!rvSelAr.length) return;
+                        if (!rvSelAr.length) {
+                            reject('Called getReferenceValue with invalid parameter: ' + rvSel);
+                            return;
+                        }
 
                         if (rvSelAr[0] === 'ktlSummary') {
                             if (rvSelAr.length >= 2) {
@@ -5423,8 +5432,8 @@ function Ktl($, appInfo) {
                                     console.log('User-defined jQuery value:', refVal, rvSel);
                                     resolve(refVal);
                                 })
-                                .catch(() => {
-                                    reject('Failed waiting for selector in getReferenceValue / getTextFromSelector in ' + viewId + '\n' + rvSel);
+                                .catch(reason => {
+                                    reject('Failed waiting for selector in getReferenceValue / getTextFromSelector in ' + viewId + '\nrvSel:' + rvSel + '\nReason: ' + reason);
                                 })
                         }
                     }
@@ -8303,7 +8312,7 @@ function Ktl($, appInfo) {
             },
 
             updateActivity: function () {
-                if (!ktl.core.getCfg().enabled.logging.activity) return;
+                if (!ktl.log.getCfg().logEnabled.activity) return;
 
                 //Important to read again every 5 seconds in case some other opened pages would add to shared counters.
                 var categoryLogs = ktl.storage.lsGetItem(ktl.const.LS_ACTIVITY);
