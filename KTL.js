@@ -1101,17 +1101,23 @@ function Ktl($, appInfo) {
                     if (!ktl.core.isJQuerySelector(sel)) {
                         //Not a valid jQuery selector - try to see if we can build something.
 
+                        var rvSelAr = ktl.core.splitAndTrimToArray(sel);
+
                         //If there's a view ID use it, otherwise use the one in optional parameter.
                         var viewStr = sel.match(/view_\d+/);
                         if (viewStr)
                             viewId = viewStr[0];
+                        else if (rvSelAr.length >= 2) {
+                            var tryViewId = ktl.scenes.findViewWithTitle(rvSelAr[1]);
+                            if (tryViewId)
+                                viewId = tryViewId;
+                        }
 
                         var fieldStr = sel.match(/field_\d+/);
                         if (fieldStr)
                             fieldId = fieldStr[0];
                         else {
                             //No field_ found, then try to find the field ID from the text of the first parameter.
-                            var rvSelAr = ktl.core.splitAndTrimToArray(sel);
                             if (!rvSelAr.length) return;
 
                             if (rvSelAr[0]) {
@@ -1121,7 +1127,7 @@ function Ktl($, appInfo) {
 
 
                         //If no view, but just a field ID, resolve with that.  It will be used for each rec ID.
-                        if (!viewStr && fieldId) {
+                        if (!viewId && fieldId) {
                             resolve(fieldId);
                             return;
                         }
@@ -5429,7 +5435,7 @@ function Ktl($, appInfo) {
                             //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
                             ktl.core.getTextFromSelector(rvSel, viewId)
                                 .then(refVal => {
-                                    console.log('User-defined jQuery value:', refVal, rvSel);
+                                    //console.log('ktlRefVal found:', refVal, rvSel);
                                     resolve(refVal);
                                 })
                                 .catch(reason => {
