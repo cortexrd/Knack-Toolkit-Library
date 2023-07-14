@@ -42,8 +42,8 @@
 }
 
 .ktlHidden {
-	position: absolute !important;
-	left: -9000px;
+	 position: absolute !important;
+	 left: -9000px;
 }
 
 .ktlDisplayNone {
@@ -283,21 +283,49 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	position: fixed;
 }
 
-@keyframes flashing {
+@keyframes ktlFlashingOnOff {
 	0% {
 		opacity: 1;
 	}
 
-	50% {
-		opacity: 0;
+	80% {
+		opacity: 1;
 	}
 
+	80.01% {
+		opacity: 0.3;
+	}
+
+	100% {
+		opacity: 0.3;
+	}
+}
+
+
+.ktlFlashingOnOff {
+	animation: ktlFlashingOnOff var(--flashRate) infinite;
+}
+
+@keyframes ktlFlashingFadeInOut {
+	0% {
+		opacity: 1;
+	}
+
+	60% {
+		opacity: 1;
+	}
+
+	70% {
+		opacity: 0.3;
+	}
 	100% {
 		opacity: 1;
 	}
 }
 
-.ktlFlashing {
-	animation: flashing var(--flashRate) infinite;
+
+.ktlFlashingFadeInOut {
+	animation: ktlFlashingFadeInOut var(--flashRate) infinite;
 }
+
 /**** KTL_RELATED - END ****/
