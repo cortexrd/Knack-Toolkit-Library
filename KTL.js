@@ -1061,14 +1061,24 @@ function Ktl($, appInfo) {
 
                 var res = { rolesOk: true };
 
-                //Selectors
-                if (options.ktlSel) {
+                //Target
+
+                if (options.ktlSel) { //LEGACY - to delete in a few weeks.  July 14, 2023
                     if (options.ktlSel === 'page')
-                        res.sel = '.kn-content';
+                        res.ktlTarget = '.kn-content';
                     else if (options.ktlSel === 'scene')
-                        res.sel = '.kn-scene';
+                        res.ktlTarget = '.kn-scene';
                     else
-                        res.sel = options.ktlSel;
+                        res.ktlTarget = options.ktlSel;
+                }
+
+                if (options.ktlTarget) {
+                    if (options.ktlTarget === 'page')
+                        res.ktlTarget = '.kn-content';
+                    else if (options.ktlTarget === 'scene')
+                        res.ktlTarget = '.kn-scene';
+                    else
+                        res.ktlTarget = options.ktlTarget;
                 }
 
                 return res;
@@ -1086,6 +1096,7 @@ function Ktl($, appInfo) {
                 return pattern.test(string);
             },
 
+            //Also known as the "Universal Selector" in documentation.
             //Parameter sel can be a jQuery selector, or a field name/ID and optionally a view name/ID.
             //Parameter viewId is optional and is provided will be used as the default view if not found explicitly in sel.
             getTextFromSelector: function (sel, viewId) {
@@ -1096,10 +1107,10 @@ function Ktl($, appInfo) {
                     }
 
                     var fieldId;
-                    var fieldType;
+                    var viewType = ktl.views.getViewType(viewId);
 
                     if (!ktl.core.isJQuerySelector(sel)) {
-                        //Not a valid jQuery selector - try to see if we can build something.
+                        //Not a valid jQuery selector - let's see if we can build one with what we have.
 
                         var rvSelAr = ktl.core.splitAndTrimToArray(sel);
 
@@ -1125,7 +1136,6 @@ function Ktl($, appInfo) {
                             }
                         }
 
-
                         //If no view, but just a field ID, resolve with that.  It will be used for each rec ID.
                         if (!viewId && fieldId) {
                             resolve(fieldId);
@@ -1134,15 +1144,15 @@ function Ktl($, appInfo) {
 
                         //If we have a view and a field IDs but it wasn't part of a valid jQuery selector, try to read the value.
                         if (viewId && fieldId) {
-                            const fldObj = Knack.objects.getField(fieldId);
-                            fieldType = fldObj && fldObj.attributes.type;
-
+                            viewType = ktl.views.getViewType(viewId); //Read once more, in case the view has changed since first call above.
                             sel = '#' + viewId;
-                            const viewType = ktl.views.getViewType(viewId);
                             if (viewType === 'table')
                                 sel += ' .' + fieldId;
                             else if (viewType === 'details')
                                 sel += ' .' + fieldId + ' .kn-detail-body';
+                            else if (viewType === 'form') {
+                                sel = '#' + viewId + ' input#' + fieldId;
+                            }
                             //Any other view types to support?
                         }
                     }
@@ -1150,7 +1160,14 @@ function Ktl($, appInfo) {
                     ktl.core.waitSelector(sel, 10000)
                         .then(() => {
                             if ($(sel).length) {
-                                var value = $(sel)[0].textContent.trim();
+                                const fieldType = ktl.fields.getFieldType(fieldId);
+
+                                var value;
+                                if (viewType === 'form')
+                                    value = $(sel)[0].value.trim();
+                                else
+                                    value = $(sel)[0].textContent.trim();
+
                                 if (sel.includes('.kn-table-totals') || (fieldType && numericFieldTypes.includes(fieldType)))
                                     value = ktl.core.extractNumericValue(value, fieldId);
 
@@ -1164,6 +1181,7 @@ function Ktl($, appInfo) {
             },
 
             //If valid, will and return the numeric value of a string.
+            //Both params are required.
             extractNumericValue: function (value, fieldId) {
                 if (value === undefined || !fieldId) return;
 
@@ -1180,7 +1198,7 @@ function Ktl($, appInfo) {
                 fieldAttributes = field.attributes;
                 if (!fieldAttributes || !numericFieldTypes.includes(fieldAttributes.type)) return;
 
-                //Is this field a calculaiton related to another field, like a Sum, Avg, or other?
+                //Is this field a calculation related to another field, like a Sum, Avg, or other?
                 if (fieldAttributes.format.field) {
                     fieldId = fieldAttributes.format.field.key;
                     var field = Knack.objects.getField(fieldId);
@@ -2302,6 +2320,13 @@ function Ktl($, appInfo) {
                             $('#' + viewId + ' .' + fieldId + ' .kn-detail-body').remove();
                     })
                     .catch(reason => { reject('generateBarcode error:', reason); })
+            },
+
+            getFieldType: function (fieldId) {
+                if (!fieldId) return;
+                const fieldObj = Knack.objects.getField(fieldId);
+                if (fieldObj && fieldObj.attributes && fieldObj.attributes.type)
+                    return fieldObj.attributes.type;
             },
         }
     })(); //fields
@@ -5229,11 +5254,12 @@ function Ktl($, appInfo) {
                                     //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
                                     ktl.core.getTextFromSelector(rvSel, viewId)
                                         .then(valueOfFieldId => {
-                                            console.log('valueOfFieldId =', valueOfFieldId);
                                             refVal = valueOfFieldId;
                                             applyColorizationToRows(viewId, group, refVal, data, options);
                                         })
-                                        .catch(e => { ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getTextFromSelector.', viewId, e); })
+                                        .catch(e => {
+                                            ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
+                                        })
                                 }
                             }
                         } else
@@ -5254,7 +5280,7 @@ function Ktl($, appInfo) {
                             cellText = cell.toString();
 
                         //When refVal is a reference field in same view.  Only true for view keyword, n/a for fields.
-                        if (refFieldId.startsWith('field_')) {
+                        if (refFieldId && refFieldId.startsWith('field_')) {
                             var valSel = $('#' + viewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + refFieldId);
                             if (viewType === 'list')
                                 valSel = $('#' + viewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + refFieldId);
@@ -5283,6 +5309,7 @@ function Ktl($, appInfo) {
                     var hide = false;
                     var remove = false;
                     var flash = false;
+                    var flashFade = false;
 
                     var style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
 
@@ -5312,9 +5339,10 @@ function Ktl($, appInfo) {
                             if (group[6].includes('t')) //Text only, not whole cell.
                                 span = ' span';
 
-                            if (group[6].includes('f')) {
+                            if (group[6].includes('ff'))
+                                flashFade = true;
+                            else if (group[6].includes('f'))
                                 flash = true;
-                            }
                         }
                     }
 
@@ -5334,7 +5362,8 @@ function Ktl($, appInfo) {
                                 selFieldId = ktl.fields.getFieldIdFromLabel(viewId, ktlTarget[fv]);
                                 if (!selFieldId) {
                                     colNb = ktl.views.getColumnIndexFromHeader(viewId, ktlTarget[fv]);
-                                    sel = '#' + selViewId + ' tbody tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span;
+                                    if (colNb)
+                                        sel = '#' + selViewId + ' tbody tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span;
                                 }
                             }
                         }
@@ -5347,8 +5376,7 @@ function Ktl($, appInfo) {
                     else if (viewType === 'list')
                         sel = '#' + selViewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + selFieldId + ' .kn-detail-body' + span);
 
-
-                    if (refVal.startsWith('field_')) {
+                    if (refVal && refVal.startsWith('field_')) {
                         const viewType = ktl.views.getViewType(viewId);
                         var valSel = $('#' + viewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + refVal);
                         if (viewType === 'list')
@@ -5403,7 +5431,9 @@ function Ktl($, appInfo) {
                         }
 
                         if (flash)
-                            $(sel).addClass('ktlFlashing');
+                            $(sel).addClass('ktlFlashingOnOff');
+                        else if (flashFade)
+                            $(sel).addClass('ktlFlashingFadeInOut');
                     }
                 }
             } //cfv feature
@@ -5422,7 +5452,7 @@ function Ktl($, appInfo) {
 
                         if (rvSelAr[0] === 'ktlSummary') {
                             if (rvSelAr.length >= 2) {
-                                console.log('ktlSummary, rvSelAr =', rvSelAr);
+                                //console.log('ktlSummary, rvSelAr =', rvSelAr);
                                 const summaryName = rvSelAr[1] ? rvSelAr[1] : '';
                                 const columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
                                 const viewTitleOrId = (rvSelAr.length >= 3 && rvSelAr[3]) ? rvSelAr[3] : viewId;
@@ -7336,7 +7366,7 @@ function Ktl($, appInfo) {
                 var res = ktl.core.processKeywordOptions(keywords._zoom.options);
                 if (res && !res.rolesOk) return;
 
-                var sel = (res && res.sel) ? res.sel : '#' + viewId;
+                var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
                 var zoomLevel = keywords._zoom.params[0];
                 if (!isNaN(zoomLevel))
                     $(sel).css({ 'zoom': zoomLevel + '%' });
@@ -7348,7 +7378,7 @@ function Ktl($, appInfo) {
                 var res = ktl.core.processKeywordOptions(keywords._cls.options);
                 if (res && !res.rolesOk) return;
 
-                var sel = (res && res.sel) ? res.sel : '#' + viewId;
+                var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
                 var classes = keywords._cls.params[0];
                 for (var i = 0; i < classes.length; i++) {
                     var params = classes[i];
@@ -7366,7 +7396,7 @@ function Ktl($, appInfo) {
                 if (res && !res.rolesOk) return;
 
                 //Merge new style with existing one.
-                var sel = (res && res.sel) ? res.sel : '#' + viewId;
+                var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
                 $(sel).each((ix, el) => {
                     const currentStyle = $(el).attr('style');
                     $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + keywords._style.params[0]);
@@ -7912,7 +7942,11 @@ function Ktl($, appInfo) {
                     const xPos = Knack.isMobile() ? vi.viPosXMobile : vi.viPosX;
                     const yPos = Knack.isMobile() ? vi.viPosYMobile : vi.viPosY;
 
+
                     $(addVersionInfoDiv).css({ 'position': 'absolute', 'z-index': '10' });
+                    /*TODO: Investigate why sometimes the Version Info bar has a squarish ratio instead of a single line.
+                    The line below solves this problem, but doesn't work in all cases, causing a worse problem: showing at bottom.*/
+                    //$(addVersionInfoDiv).css({ 'position': 'absolute', 'z-index': '10', 'display': 'contents' });
 
                     if (xPos === 'left')
                         $(addVersionInfoDiv).css({ 'margin-left': '5px', 'left': '0px' });
