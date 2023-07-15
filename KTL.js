@@ -1062,7 +1062,6 @@ function Ktl($, appInfo) {
                 var res = { rolesOk: true };
 
                 //Target
-
                 if (options.ktlSel) { //LEGACY - to delete in a few weeks.  July 14, 2023
                     if (options.ktlSel === 'page')
                         res.ktlTarget = '.kn-content';
@@ -5151,7 +5150,7 @@ function Ktl($, appInfo) {
 
             var viewId = viewTitleOrId.startsWith('view_') ? viewTitleOrId : ktl.core.getViewIdByTitle(viewTitleOrId);
             var summaryObj = ktlKeywords[viewId].summary;
-            if (!$.isEmptyObject(summaryObj))
+            if (!$.isEmptyObject(summaryObj) && summaryObj[summaryName])
                 return summaryObj[summaryName][columnHeader];
         }
 
@@ -5747,8 +5746,8 @@ function Ktl($, appInfo) {
                             var extractedField = fieldId.match(/field_\d+/);
                             if (extractedField) {
                                 fieldId = extractedField[0];
-                                var header = $('#' + view.key + ' thead th.' + fieldId);
-                                header.css('text-align', align);
+                                $('#' + view.key + ' thead th.' + fieldId).css('text-align', align);
+                                $('#' + view.key + ' thead th.' + fieldId + ' .table-fixed-label').css('display', 'inline-flex');
                             }
                         }
                     })
