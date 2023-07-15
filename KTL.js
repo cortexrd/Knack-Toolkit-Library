@@ -3153,7 +3153,7 @@ function Ktl($, appInfo) {
                 .catch(function () { })
         })
 
-        $(document).on('knack-records-render.report knack-records-render.table', function (e, view, data) {
+        $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             const viewId = view.key;
@@ -5149,7 +5149,7 @@ function Ktl($, appInfo) {
             if (!viewTitleOrId || !columnHeader || !summaryName) return;
 
             var viewId = viewTitleOrId.startsWith('view_') ? viewTitleOrId : ktl.core.getViewIdByTitle(viewTitleOrId);
-            var summaryObj = ktlKeywords[viewId].summary;
+            var summaryObj = ktlKeywords[viewId] && ktlKeywords[viewId].summary;
             if (!$.isEmptyObject(summaryObj) && summaryObj[summaryName])
                 return summaryObj[summaryName][columnHeader];
         }
@@ -5247,14 +5247,14 @@ function Ktl($, appInfo) {
                                         const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
                                         const summaryValue = readSummaryValue(viewTitleOrId, columnHeader, summaryName); //TODO: Promisify to support other views asynchronously.
                                         refVal = ktl.core.extractNumericValue(summaryValue, fieldId);
-                                        applyColorizationToRows(viewId, group, refVal, data, options);
+                                        applyColorizationToRows(viewId, fieldId, group, refVal, data, options);
                                     }
                                 } else {
                                     //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
                                     ktl.core.getTextFromSelector(rvSel, viewId)
                                         .then(valueOfFieldId => {
                                             refVal = valueOfFieldId;
-                                            applyColorizationToRows(viewId, group, refVal, data, options);
+                                            applyColorizationToRows(viewId, fieldId, group, refVal, data, options);
                                         })
                                         .catch(e => {
                                             ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
@@ -5262,21 +5262,35 @@ function Ktl($, appInfo) {
                                 }
                             }
                         } else
-                            applyColorizationToRows(viewId, group, refVal, data, options);
+                            applyColorizationToRows(viewId, fieldId, group, refVal, data, options);
                     }
                 } //Groups
 
-                function applyColorizationToRows(viewId, group, refVal, data, options) {
-                    const refFieldId = refVal;
-                    for (var d = 0; d < data.length; d++) {
-                        var rec = data[d];
+                function applyColorizationToRows(viewId, fieldId, group, refVal, data, options) {
+                    if (!fieldId) return;
 
+                    const refFieldId = refVal;
+
+                    var fieldType = ktl.fields.getFieldType(fieldId);
+                    if (fieldType === 'connection') { //Get display field type.
+                        const objId = Knack.objects.getField(fieldId).attributes.relationship.object;
+                        const displayFieldId = Knack.objects._byId[objId].attributes.identifier;
+                        fieldType = ktl.fields.getFieldType(displayFieldId);
+                    }
+
+                    for (var d = 0; d < data.length; d++) {
+
+                        var rec = data[d];
                         const cell = rec[fieldId + '_raw'];
+
                         var cellText = '';
                         if (Array.isArray(cell) && cell.length === 1)
                             cellText = cell[0].identifier;
                         else
                             cellText = cell.toString();
+
+                        if (numericFieldTypes.includes(fieldType))
+                            cellText = ktl.core.extractNumericValue(cellText, fieldId);
 
                         //When refVal is a reference field in same view.  Only true for view keyword, n/a for fields.
                         if (refFieldId && refFieldId.startsWith('field_')) {
@@ -5387,6 +5401,10 @@ function Ktl($, appInfo) {
 
                     const numCompareWith = Number(refVal);
                     const numCellValue = Number(cellText);
+
+                    //TODO: Make this configurable, but app-wide or per keyword...?
+                    cellText = cellText && cellText.toLowerCase();
+                    refVal = refVal.toLowerCase();
 
                     var conditionMatches = false;
                     if (operator === 'eq' && cellText === refVal)
