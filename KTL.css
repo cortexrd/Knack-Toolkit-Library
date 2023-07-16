@@ -315,7 +315,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 		opacity: 1;
 	}
 
-	70% {
+	80% {
 		opacity: 0.3;
 	}
 	100% {
