@@ -4,8 +4,12 @@ var fs = require('fs'),
 
 console.log('Starting server, waiting for requests...');
 
+const root = process.argv[2] || process.cwd();
+
+console.log(`Serving files from ${root}`);
+
 http.createServer(function (req, res) {
-    var url = process.cwd() + req.url;
+    var url = root + req.url;
     url = url.replace(/\\/g, '/');
     url = decodeURI(url.trim());
     fs.readFile(url, function (err, data) {

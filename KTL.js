@@ -30,7 +30,6 @@ function Ktl($, appInfo) {
     var ktl = this;
 
     //KEC stands for "KTL Event Code".  Next:  KEC_1026
-    //
 
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
