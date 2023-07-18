@@ -30,7 +30,6 @@ function Ktl($, appInfo) {
     var ktl = this;
 
     //KEC stands for "KTL Event Code".  Next:  KEC_1026
-    //
 
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
@@ -9133,6 +9132,15 @@ function Ktl($, appInfo) {
             }, ktl.account.isDeveloper() ? DEV_LOW_PRIORITY_LOGGING_DELAY : LOW_PRIORITY_LOGGING_DELAY);
         }
 
+        const updateLastActivity = debounce(function (event) {
+            if (!window.self.frameElement && cfg.iFrameReady) {
+                ktl.wndMsg.send('activityMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+            }
+        }, 1000);
+
+        $(document).on('mousedown', updateLastActivity);
+        $(document).on('keydown', updateLastActivity);
+
         return {
             setCfg: function (cfgObj = {}) {
                 if (cfgObj.iFrameReady) {
@@ -9379,6 +9387,19 @@ function Ktl($, appInfo) {
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.core.timedPopup(Knack.getUserAttributes().name + ' - Versions are different!  Please refresh and Broadcast new version.', 'warning', 4000);
                             break;
+                        case 'activityMsg':
+                            ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
+                            var viewId = ktl.iFrameWnd.getCfg().hbViewId;
+                            var fieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
+                            if (viewId && fieldId) {
+                                var utcAct = ktl.core.getCurrentDateTime(true, false, false, true);
+                                var date = utcAct.substr(0, 10);
+                                var field = document.querySelector('#' + viewId + '-' + fieldId);
+                                field && (field.value = date);
+                                var time = utcAct.substr(11, 5);
+                                field = document.querySelector('#' + viewId + '-' + fieldId + '-time');
+                                field && (field.value = time);
+                            }
                         default:
                             processAppMsg && processAppMsg(event);
                             break;
@@ -10517,6 +10538,13 @@ window.ktlpause = function () {
     ktl.views.autoRefresh(false);
 }
 
+function debounce(func, timeout = 1000){
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
+}
 
 ////////////////  End of KTL /////////////////////
 
