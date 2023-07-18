@@ -5251,7 +5251,11 @@ function Ktl($, appInfo) {
                     var group = paramGroups[g];
                     if (group.length >= 3) {
                         var fieldLabel = group[0];
-                        var fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                        var fieldSrc = fieldLabel;
+
+                        if (!fieldLabel.startsWith('field_'))
+                            fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
                         if (fieldSrc && fieldSrc !== '' && fieldSrc !== fieldId)
                             continue;
 
@@ -5294,12 +5298,13 @@ function Ktl($, appInfo) {
                 function summaryReady(summaryViewId, viewId, fieldId, group, refVal, data, options) {
                     const summaryName = rvSelAr[1] ? rvSelAr[1] : '';
                     const columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
+                    const summaryFieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
 
                     if (summaryViewId === viewId)
                         fieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
 
                     const summaryValue = readSummaryValue(summaryViewId, columnHeader, summaryName);
-                    refVal = ktl.core.extractNumericValue(summaryValue, fieldId);
+                    refVal = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
 
                     applyColorizationToRecords(viewId, fieldId, group, refVal, data, options);
                 }
@@ -5403,27 +5408,28 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    var selFieldId = fieldId;
-                    var selViewId = viewId;
-                    var sel;
+                    var targetFieldId = fieldId;
+                    var targetViewId = viewId;
+                    var targetSel;
+
                     if (options && options.ktlTarget) {
                         var colNb;
                         if (ktl.core.isJQuerySelector(options.ktlTarget))
-                            sel = options.ktlTarget;
+                            targetSel = options.ktlTarget;
                         else {
-                            const ktlTarget = options.ktlTarget.split(',');
-                            for (var fv = 0; fv < ktlTarget.length; fv++) {
-                                if (ktlTarget[fv].startsWith('view_'))
-                                    selViewId = ktlTarget[fv];
-                                else if (ktlTarget[fv].startsWith('field_'))
-                                    selFieldId = ktlTarget[fv];
+                            const ktlTarget = ktl.core.splitAndTrimToArray(options.ktlTarget);
+                            for (var i = 0; i < ktlTarget.length; i++) {
+                                if (ktlTarget[i].startsWith('view_'))
+                                    targetViewId = ktlTarget[i];
+                                else if (ktlTarget[i].startsWith('field_'))
+                                    targetFieldId = ktlTarget[i];
                                 else {
-                                    //Try to find a column header having that text.
-                                    selFieldId = ktl.fields.getFieldIdFromLabel(viewId, ktlTarget[fv]);
-                                    if (!selFieldId) {
-                                        colNb = ktl.views.getColumnIndexFromHeader(viewId, ktlTarget[fv]);
+                                    //Try to find the field from the text.
+                                    targetFieldId = ktl.fields.getFieldIdFromLabel(viewId, ktlTarget[i]);
+                                    if (!targetFieldId) {
+                                        colNb = ktl.views.getColumnIndexFromHeader(viewId, ktlTarget[i]);
                                         if (colNb)
-                                            sel = '#' + selViewId + ' tbody tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span;
+                                            targetSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span;
                                     }
                                 }
                             }
@@ -5433,18 +5439,18 @@ function Ktl($, appInfo) {
                     const viewType = ktl.views.getViewType(viewId);
 
                     //Target selector.
-                    if (!sel) {
-                        sel = '#' + selViewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + selFieldId + span);
+                    if (!targetSel) {
+                        targetSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + targetFieldId + span);
 
                         if (options && options.ktlSel)
-                            sel = options.ktlSel;
+                            targetSel = options.ktlSel;
                         else if (viewType === 'list')
-                            sel = '#' + selViewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + selFieldId + ' .kn-detail-body' + span);
+                            targetSel = '#' + targetViewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
                         else if (viewType === 'details')
-                            sel = '#' + selViewId + ' .kn-detail.' + (propagate ? selFieldId : selFieldId + ' .kn-detail-body' + span);
+                            targetSel = '#' + targetViewId + ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
                     }
 
-                    if (!$(sel).length) //Fail fast, data out of sync due to double postRender calls from Knack.
+                    if (!$(targetSel).length) //Fail fast, data out of sync due to double postRender calls from Knack.
                         return;
 
                     //Reference value.
@@ -5500,18 +5506,18 @@ function Ktl($, appInfo) {
                     //Merge current and new styles.
                     if (conditionMatches) {
                         if (remove)
-                            $(sel).remove();
+                            $(targetSel).remove();
                         else if (hide) {
-                            $(sel).addClass('ktlDisplayNone');
+                            $(targetSel).addClass('ktlDisplayNone');
                         } else {
-                            const currentStyle = $(sel).attr('style');
-                            $(sel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                            const currentStyle = $(targetSel).attr('style');
+                            $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
                         }
 
                         if (flash)
-                            $(sel).addClass('ktlFlashingOnOff');
+                            $(targetSel).addClass('ktlFlashingOnOff');
                         else if (flashFade)
-                            $(sel).addClass('ktlFlashingFadeInOut');
+                            $(targetSel).addClass('ktlFlashingFadeInOut');
                     }
                 }
             } //cfv feature
