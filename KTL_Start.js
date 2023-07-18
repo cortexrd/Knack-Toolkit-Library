@@ -26,8 +26,8 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     if (localStorage.getItem(lsShortName + 'remoteDev') === 'true')
         ktlVersion = 'dev';
 
-    var prod = (localStorage.getItem(lsShortName + 'dev') === null);
-    if (!prod) {
+    const localDevMode = (localStorage.getItem(lsShortName + 'dev') !== null);
+    if (localDevMode) {
         ktlVersion = '';
         cssVersion = '';
         prodFolder = '';
@@ -80,11 +80,12 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                 callback();
             })
         } else {
-            if (prod) {
+            if (localDevMode) {
+                alert('KTL not found');
+            } else {
                 localStorage.removeItem(lsShortName + 'dev'); //JIC
                 location.reload(true);
-            } else
-                alert('KTL not found');
+            }
         }
     })
 }
