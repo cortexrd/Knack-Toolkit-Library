@@ -1,10 +1,11 @@
 //Non-secure HTTP server, to be used on local network for development purpose only.
-var fs = require('fs'),
-    http = require('http');
+const fs = require('fs');
+const http = require('http');
+const path = require('path')
 
 console.log('Starting server, waiting for requests...');
 
-const root = process.argv[2] || process.cwd();
+const root = process.argv[2] || path.join(process.cwd(), '..', '..');
 
 console.log(`Serving files from ${root}`);
 
