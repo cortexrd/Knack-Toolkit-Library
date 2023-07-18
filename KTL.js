@@ -4747,9 +4747,6 @@ function Ktl($, appInfo) {
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
-            if (viewId === 'view_219')
-                console.log('444', viewId);
-
             if (ktl.views.viewHasSummary(viewId)) {
                 /* This code is needed for keywords that may require summary data to achieve their task.
 
@@ -4767,10 +4764,6 @@ function Ktl($, appInfo) {
                         Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
                         readSummaryValues(viewId);
-
-                        if (viewId === 'view_219')
-                            console.log('333', viewId, data[0].field_160);
-
                         ktlProcessKeywords(view, data);
                     }
                 };
@@ -5160,7 +5153,6 @@ function Ktl($, appInfo) {
                 observer.callback.apply(null, observer.params);
             }
 
-            console.log('555 trigger out', viewId);
             $(document).trigger('KTL.' + viewId + '.totalsRendered');
         }
 
@@ -5177,10 +5169,6 @@ function Ktl($, appInfo) {
             if (!viewId) return;
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list' && viewType !== 'details') return;
-
-            if (viewId === 'view_219')
-                console.log('111 CFV entry - data =', data[0].field_160);
-
 
             var keywords = ktlKeywords[viewId];
             if (keywords && keywords._cfv) {
@@ -5305,10 +5293,6 @@ function Ktl($, appInfo) {
                 } //Groups
 
                 function summaryReady(summaryViewId, viewId, fieldId, group, refVal, data, options) {
-
-                    if (viewId === 'view_219')
-                        console.log('222 summaryReady - data =', data[0].field_160);
-
                     const summaryName = rvSelAr[1] ? rvSelAr[1] : '';
                     const columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
 
