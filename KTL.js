@@ -2253,7 +2253,20 @@ function Ktl($, appInfo) {
                         if (match)
                             return match[0];
                     }
-                }
+                } else if (viewType === 'list') {
+                    if (exactMatch)
+                        field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
+                    else
+                        field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
+
+                    if (field.length) {
+                        var classes = $(field).parent()[0].classList.value;
+                        const match = classes.match(/field_\d+/);
+                        if (match)
+                            return match[0];
+                    }
+                } else
+                    ktl.log.clog('purple', 'getFieldIdFromLabel - Unsupported view type', viewId, viewType);
                 //Support more view types as we go.
             },
 
@@ -5245,8 +5258,6 @@ function Ktl($, appInfo) {
             function cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options) {
                 if (!viewId || !fieldId || !data || !paramGroups.length) return;
 
-                const viewType = ktl.views.getViewType(viewId);
-
                 for (var g = 0; g < paramGroups.length; g++) {
                     var group = paramGroups[g];
                     if (group.length >= 3) {
@@ -5313,6 +5324,7 @@ function Ktl($, appInfo) {
                     if (!fieldId) return;
 
                     const refFieldId = refVal;
+                    const viewType = ktl.views.getViewType(viewId);
 
                     var fieldType = ktl.fields.getFieldType(fieldId);
                     if (fieldType === 'connection') { //Get display field type.
@@ -5408,8 +5420,9 @@ function Ktl($, appInfo) {
                         }
                     }
 
+                    //Target selector.
                     var targetFieldId = fieldId;
-                    var targetViewId = viewId;
+                    var targetViewId;
                     var targetSel;
 
                     if (options && options.ktlTarget) {
@@ -5418,27 +5431,75 @@ function Ktl($, appInfo) {
                             targetSel = options.ktlTarget;
                         else {
                             const ktlTarget = ktl.core.splitAndTrimToArray(options.ktlTarget);
+
+                            //Search parameters to see if we can find a targetViewId.
                             for (var i = 0; i < ktlTarget.length; i++) {
-                                if (ktlTarget[i].startsWith('view_'))
+                                if (ktlTarget[i].startsWith('view_')) {
                                     targetViewId = ktlTarget[i];
-                                else if (ktlTarget[i].startsWith('field_'))
+                                    break;
+                                }
+                            }
+
+                            //No direct view_id, let's try last param and search by view title.
+                            var tryViewId;
+                            if (!targetViewId) {
+                                const lastItem = ktlTarget[ktlTarget.length - 1];
+                                tryViewId = ktl.scenes.findViewWithTitle(lastItem, true);
+                                if (tryViewId)
+                                    targetViewId = tryViewId;
+                            }
+
+                            //Still nothing?  Fall back to default: keyword's view.
+                            if (!targetViewId)
+                                targetViewId = viewId;
+
+                            targetSel = '#' + targetViewId; //Starting point - the view.
+
+                            const targetViewType = ktl.views.getViewType(targetViewId);
+                            if (targetViewType === 'table')
+                                targetSel += ' tbody tr[id="' + rec.id + '"]';
+                            else if (targetViewType === 'list')
+                                targetSel += ' [data-record-id="' + rec.id + '"]';
+
+                            //Add all fields encountered.
+                            for (i = 0; i < ktlTarget.length; i++) {
+                                if (ktlTarget[i].startsWith('field_')) {
                                     targetFieldId = ktlTarget[i];
-                                else {
+                                } else {
                                     //Try to find the field from the text.
-                                    targetFieldId = ktl.fields.getFieldIdFromLabel(viewId, ktlTarget[i]);
+                                    targetFieldId = ktl.fields.getFieldIdFromLabel(targetViewId, ktlTarget[i]);
+                                }
+
+                                if (targetViewType === 'table') {
                                     if (!targetFieldId) {
-                                        colNb = ktl.views.getColumnIndexFromHeader(viewId, ktlTarget[i]);
+                                        colNb = ktl.views.getColumnIndexFromHeader(targetViewId, ktlTarget[i]);
                                         if (colNb)
-                                            targetSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span;
+                                            targetSel += ' tbody tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span;
+                                    }
+                                } else if (targetViewType === 'list') {
+                                } else if(targetViewType === 'details') {
+                                    if (targetFieldId)
+                                        targetSel += ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
+                                    else {
+                                        //Try with an action link.
+                                        const actionLink = $('#' + targetViewId + ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '")');
+                                        if (actionLink) {
+                                            if (propagate)
+                                                targetSel += ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '"),';
+                                            else
+                                                targetSel += ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '") span,';
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
+                    if (!targetViewId)
+                        targetViewId = viewId;
+
                     const viewType = ktl.views.getViewType(viewId);
 
-                    //Target selector.
                     if (!targetSel) {
                         targetSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + targetFieldId + span);
 
@@ -5450,17 +5511,17 @@ function Ktl($, appInfo) {
                             targetSel = '#' + targetViewId + ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
                     }
 
-                    if (!$(targetSel).length) //Fail fast, data out of sync due to double postRender calls from Knack.
+                    if (!$(targetSel).length) //Fail fast, data out of sync due to double renderTotals calls from Knack.
                         return;
 
                     //Reference value.
                     if (refVal && refVal.startsWith('field_')) {
                         //When a field_id is specified, the use same view but another field.
-                        var valSel = '#' + viewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + refVal;
+                        var valSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + refVal;
                         if (viewType === 'list')
-                            valSel = '#' + viewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + refVal;
+                            valSel = '#' + targetViewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + refVal;
                         else if (viewType === 'details')
-                            valSel = '#' + viewId + ' .kn-detail.' + refVal + ' .kn-detail-body';
+                            valSel = '#' + targetViewId + ' .kn-detail.' + refVal + ' .kn-detail-body';
 
                         if ($(valSel).length)
                             refVal = valSel[0].textContent.trim();
@@ -5800,7 +5861,10 @@ function Ktl($, appInfo) {
             if (res && !res.rolesOk) return;
 
             keywords._hf.params[0].forEach(fieldLabel => {
-                var fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                var fieldId = fieldLabel;
+                if (!fieldLabel.startsWith('field_'))
+                    fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
                 if (fieldId) {
                     var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
                         || document.querySelector('#' + viewId + ' .' + fieldId);
@@ -7488,6 +7552,7 @@ function Ktl($, appInfo) {
             },
 
             //Returns a zero-based index of the first column from left that matches the header param.
+            //TODO: Rename to this to getFieldPositionFromHeader and support details view
             getColumnIndexFromHeader: function (viewId, header) {
                 if (!viewId || !header) return;
                 const viewType = ktl.views.getViewType(viewId);
