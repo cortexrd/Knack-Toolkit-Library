@@ -5435,7 +5435,7 @@ function Ktl($, appInfo) {
                             var tryViewId;
                             if (!targetViewId) {
                                 const lastItem = ktlTarget[ktlTarget.length - 1];
-                                tryViewId = ktl.scenes.findViewWithTitle(lastItem, true);
+                                tryViewId = ktl.scenes.findViewWithTitle(lastItem);
                                 if (tryViewId)
                                     targetViewId = tryViewId;
                             }
@@ -7374,7 +7374,7 @@ function Ktl($, appInfo) {
                 var foundViewIds = [];
                 for (var i = 0; i < viewTitles.length; i++) {
                     var viewTitle = viewTitles[i].trim();
-                    var foundViewId = ktl.scenes.findViewWithTitle(viewTitle, false, excludeViewId);
+                    var foundViewId = ktl.scenes.findViewWithTitle(viewTitle, true, excludeViewId);
                     if (foundViewId)
                         foundViewIds.push(foundViewId);
                 }
@@ -8014,7 +8014,7 @@ function Ktl($, appInfo) {
                 idleWatchDogTimeout && idleWatchDogTimeout();
             },
 
-            findViewWithTitle: function (viewTitle = '', exact = false, excludeViewId = '') {
+            findViewWithTitle: function (viewTitle = '', exactMatch = true, excludeViewId = '') {
                 var views = Knack.router.scene_view.model.views.models; //Search only in current scene.
                 var title = '';
                 var viewId = '';
@@ -8024,9 +8024,9 @@ function Ktl($, appInfo) {
                         viewId = views[i].attributes.key;
                         if (viewId === excludeViewId || !views[i].attributes.title) continue;
                         title = views[i].attributes.title.toLowerCase();
-                        if (exact && title === viewTitle)
+                        if (exactMatch && title === viewTitle)
                             return viewId;
-                        if (!exact && title.includes(viewTitle))
+                        if (!exactMatch && title.includes(viewTitle))
                             return viewId;
                     }
                 }
