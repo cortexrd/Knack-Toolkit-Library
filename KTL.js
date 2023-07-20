@@ -20,7 +20,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.13.15';
+    const KTL_VERSION = '0.14.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -165,7 +165,7 @@ function Ktl($, appInfo) {
         for (var i = 0; i < paramGroups.length; i++) {
             var grp = paramGroups[i];
             const firstParam = grp.split(',')[0].trim();
-            if (['ktlSel', 'ktlRoles', 'ktlRefVal', 'ktlTarget'].includes(firstParam)) {
+            if (['ktlRoles', 'ktlRefVal', 'ktlTarget'].includes(firstParam)) {
                 var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces.
                 options[firstParam] = grp.match(pattern)[1].trim();
             } else {
@@ -1061,15 +1061,6 @@ function Ktl($, appInfo) {
                 var res = { rolesOk: true };
 
                 //Target
-                if (options.ktlSel) { //LEGACY - to delete in a few weeks.  July 14, 2023
-                    if (options.ktlSel === 'page')
-                        res.ktlTarget = '.kn-content';
-                    else if (options.ktlSel === 'scene')
-                        res.ktlTarget = '.kn-scene';
-                    else
-                        res.ktlTarget = options.ktlSel;
-                }
-
                 if (options.ktlTarget) {
                     if (options.ktlTarget === 'page')
                         res.ktlTarget = '.kn-content';
@@ -5453,13 +5444,13 @@ function Ktl($, appInfo) {
                             if (!targetViewId)
                                 targetViewId = viewId;
 
-                            targetSel = '#' + targetViewId; //Starting point - the view.
+                            targetSel = '#' + targetViewId; //Starting point - the view ID.
 
                             const targetViewType = ktl.views.getViewType(targetViewId);
                             if (targetViewType === 'table')
-                                targetSel += ' tbody tr[id="' + rec.id + '"]';
+                                targetSel += ' tbody';
                             else if (targetViewType === 'list')
-                                targetSel += ' [data-record-id="' + rec.id + '"]';
+                                targetSel += ' kn-list-content, '; //Comma at end is required.
 
                             //Add all fields encountered.
                             for (i = 0; i < ktlTarget.length; i++) {
@@ -5471,12 +5462,13 @@ function Ktl($, appInfo) {
                                 }
 
                                 if (targetViewType === 'table') {
-                                    if (!targetFieldId) {
-                                        colNb = ktl.views.getColumnIndexFromHeader(targetViewId, ktlTarget[i]);
-                                        if (colNb)
-                                            targetSel += ' tbody tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span;
-                                    }
+                                    colNb = ktl.views.getFieldPositionFromHeader(targetViewId, ktlTarget[i]);
+                                    if (colNb === undefined)
+                                        colNb = ktl.views.getFieldPositionFromFieldId(targetViewId, targetFieldId);
+                                    if (colNb >= 0)
+                                        targetSel += ' tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span + ',';
                                 } else if (targetViewType === 'list') {
+                                    targetSel += ' [data-record-id="' + rec.id + '"] .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
                                 } else if(targetViewType === 'details') {
                                     if (targetFieldId)
                                         targetSel += ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
@@ -5502,10 +5494,7 @@ function Ktl($, appInfo) {
 
                     if (!targetSel) {
                         targetSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + targetFieldId + span);
-
-                        if (options && options.ktlSel)
-                            targetSel = options.ktlSel;
-                        else if (viewType === 'list')
+                        if (viewType === 'list')
                             targetSel = '#' + targetViewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
                         else if (viewType === 'details')
                             targetSel = '#' + targetViewId + ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
@@ -5535,9 +5524,9 @@ function Ktl($, appInfo) {
                     refVal = refVal.toLowerCase();
 
                     var conditionMatches = false;
-                    if (operator === 'eq' && cellText === refVal)
+                    if ((operator === 'is' || operator === 'eq') && cellText === refVal)
                         conditionMatches = true;
-                    else if (operator === 'neq' && cellText !== refVal)
+                    else if ((operator === 'not' || operator === 'neq') && cellText !== refVal)
                         conditionMatches = true;
                     else if (operator === 'has' && cellText && cellText.includes(refVal))
                         conditionMatches = true;
@@ -5547,19 +5536,16 @@ function Ktl($, appInfo) {
                         conditionMatches = true;
                     else if (!isNaN(numCompareWith) && !isNaN(numCellValue)) {
                         //All numeric comparisons here.
-                        if (operator === 'lt') {
-                            if (numCellValue < numCompareWith)
-                                conditionMatches = true;
-                        } else if (operator === 'lte') {
-                            if (numCellValue <= numCompareWith)
-                                conditionMatches = true;
-                        } else if (operator === 'gt') {
-                            if (numCellValue > numCompareWith)
-                                conditionMatches = true;
-                        } else if (operator === 'gte') {
-                            if (numCellValue >= numCompareWith)
-                                conditionMatches = true;
-                        }
+                        if (operator === 'equ' && numCellValue === numCompareWith)
+                            conditionMatches = true;
+                        else if (operator === 'lt' && numCellValue < numCompareWith)
+                            conditionMatches = true;
+                        else if (operator === 'lte' && numCellValue <= numCompareWith)
+                            conditionMatches = true;
+                        else if (operator === 'gt' && numCellValue > numCompareWith)
+                            conditionMatches = true;
+                        else if (operator === 'gte' && numCellValue >= numCompareWith)
+                            conditionMatches = true;
                     }
 
                     //Add support for date and time comparisons.
@@ -5869,6 +5855,12 @@ function Ktl($, appInfo) {
                     var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
                         || document.querySelector('#' + viewId + ' .' + fieldId);
                     obj && obj.classList.add('ktlHidden')
+                } else {
+                    //Try with an action link.
+                    const actionLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
+                    if (actionLink) {
+                        actionLink.parent().addClass('ktlHidden');
+                    }
                 }
             })
         }
@@ -7552,17 +7544,41 @@ function Ktl($, appInfo) {
             },
 
             //Returns a zero-based index of the first column from left that matches the header param.
-            //TODO: Rename to this to getFieldPositionFromHeader and support details view
-            getColumnIndexFromHeader: function (viewId, header) {
+            //TODO: support details view
+            getFieldPositionFromHeader: function (viewId, header) {
                 if (!viewId || !header) return;
                 const viewType = ktl.views.getViewType(viewId);
-                if (viewType !== 'table') return;
+                if (viewType !== 'table') {
+                    ktl.log.clog('purple', 'getFieldPositionFromHeader - unsupported view type', viewId);
+                    return;
+                }
 
                 const headers = document.querySelectorAll('#' + viewId + ' .kn-table th');
                 for (var i = 0; i < headers.length; i++) {
                     const headerTxt = headers[i].textContent.trim();
                     if (headerTxt === header)
                         return i;
+                }
+            },
+
+            //Returns a zero-based index of the first column from left that matches the fieldId param.
+            //TODO: support details view
+            getFieldPositionFromFieldId: function (viewId, fieldId) {
+                if (!viewId || !fieldId) return;
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType !== 'table') {
+                    ktl.log.clog('purple', 'getFieldPositionFromFieldId - unsupported view type', viewId);
+                    return;
+                }
+
+                const headers = document.querySelectorAll('#' + viewId + ' .kn-table th');
+                for (var i = 0; i < headers.length; i++) {
+                    colFieldId = headers[i].classList && headers[i].classList.value && headers[i].classList.value.match(/field_\d+/);
+                    if (colFieldId && colFieldId.length) {
+                        colFieldId = colFieldId[0];
+                        if (colFieldId === fieldId)
+                            return i;
+                    }
                 }
             },
 
