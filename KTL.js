@@ -7561,19 +7561,32 @@ function Ktl($, appInfo) {
             },
 
             addRemoveClass: function (viewId, keywords) {
-                if (!viewId || !keywords || !keywords._cls || !keywords._cls.params[0].length) return;
+                const kw = '_cls';
+                if (!viewId || !keywords[kw] || !keywords[kw].params[0].length) return;
 
-                var res = ktl.core.processKeywordOptions(keywords._cls.options);
-                if (res && !res.rolesOk) return;
+                var keywords = {};
+                const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                    const params = kwList[kwIdx];
+                    keywords[kw] = params;
+                    execKw(keywords);
+                }
 
-                var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
-                var classes = keywords._cls.params[0];
-                for (var i = 0; i < classes.length; i++) {
-                    var params = classes[i];
-                    if (params.startsWith('!'))
-                        $(sel).removeClass(params.replace('!', ''));
-                    else
-                        $(sel).addClass(params);
+                function execKw(keywords) {
+                    var res = ktl.core.processKeywordOptions(keywords[kw].options);
+                    if (res && !res.rolesOk) return;
+
+                    //TODO: improve support of ktlTarget with Universal Selector.
+                    var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
+
+                    var classes = keywords._cls.params[0];
+                    for (var i = 0; i < classes.length; i++) {
+                        var params = classes[i];
+                        if (params.startsWith('!'))
+                            $(sel).removeClass(params.replace('!', ''));
+                        else
+                            $(sel).addClass(params);
+                    }
                 }
             },
 
