@@ -266,7 +266,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 /* Reduced page margins, to maximize available real-estate. */
-.ktlNarrowMarginsPage.kn-scene.kn-container {
+.ktlNarrowMarginsPage .kn-scene.kn-container {
 	padding: 2px;
 	margin-left: 2px !important;
 	margin-right: 2px !important;
