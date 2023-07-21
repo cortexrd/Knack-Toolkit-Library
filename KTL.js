@@ -5398,8 +5398,57 @@ function Ktl($, appInfo) {
                 function applyColorizationToCells(viewId, group, cellText, refVal, rec, options) {
                     const operator = group[1];
 
+                    //Compare refVal first. If condition not met, fail fast.
                     if (!refVal)
                         refVal = group[2];
+
+                    if (refVal && refVal.startsWith('field_')) {
+                        //When a field_id is specified, the use same view but another field.
+                        var valSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + refVal;
+                        if (viewType === 'list')
+                            valSel = '#' + targetViewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + refVal;
+                        else if (viewType === 'details')
+                            valSel = '#' + targetViewId + ' .kn-detail.' + refVal + ' .kn-detail-body';
+
+                        if ($(valSel).length)
+                            refVal = valSel[0].textContent.trim();
+                    }
+
+                    const numCompareWith = Number(refVal);
+                    const numCellValue = Number(cellText);
+
+                    //TODO: Case-sensitivy: make it configurable, but app-wide or per keyword...?
+                    cellText = cellText && cellText.toLowerCase();
+                    refVal = refVal.toLowerCase();
+
+                    var conditionMatches = false;
+                    if ((operator === 'is' || operator === 'eq') && cellText === refVal)
+                        conditionMatches = true;
+                    else if ((operator === 'not' || operator === 'neq') && cellText !== refVal)
+                        conditionMatches = true;
+                    else if (operator === 'has' && cellText && cellText.includes(refVal))
+                        conditionMatches = true;
+                    else if (operator === 'sw' && cellText && cellText.startsWith(refVal))
+                        conditionMatches = true;
+                    else if (operator === 'ew' && cellText && cellText.endsWith(refVal))
+                        conditionMatches = true;
+                    else if (!isNaN(numCompareWith) && !isNaN(numCellValue)) {
+                        //All numeric comparisons here.
+                        if (operator === 'equ' && numCellValue === numCompareWith)
+                            conditionMatches = true;
+                        else if (operator === 'lt' && numCellValue < numCompareWith)
+                            conditionMatches = true;
+                        else if (operator === 'lte' && numCellValue <= numCompareWith)
+                            conditionMatches = true;
+                        else if (operator === 'gt' && numCellValue > numCompareWith)
+                            conditionMatches = true;
+                        else if (operator === 'gte' && numCellValue >= numCompareWith)
+                            conditionMatches = true;
+                    }
+
+                    //TODO: Add support for date and time comparisons.
+
+                    if (!conditionMatches) return;
 
                     var fgColor = group[3];
 
@@ -5540,69 +5589,20 @@ function Ktl($, appInfo) {
                     if (!$(targetSel).length) //Fail fast, data out of sync due to double renderTotals calls from Knack.
                         return;
 
-                    //Reference value.
-                    if (refVal && refVal.startsWith('field_')) {
-                        //When a field_id is specified, the use same view but another field.
-                        var valSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + refVal;
-                        if (viewType === 'list')
-                            valSel = '#' + targetViewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + refVal;
-                        else if (viewType === 'details')
-                            valSel = '#' + targetViewId + ' .kn-detail.' + refVal + ' .kn-detail-body';
-
-                        if ($(valSel).length)
-                            refVal = valSel[0].textContent.trim();
-                    }
-
-                    const numCompareWith = Number(refVal);
-                    const numCellValue = Number(cellText);
-
-                    //TODO: Case-sensitivy: make it configurable, but app-wide or per keyword...?
-                    cellText = cellText && cellText.toLowerCase();
-                    refVal = refVal.toLowerCase();
-
-                    var conditionMatches = false;
-                    if ((operator === 'is' || operator === 'eq') && cellText === refVal)
-                        conditionMatches = true;
-                    else if ((operator === 'not' || operator === 'neq') && cellText !== refVal)
-                        conditionMatches = true;
-                    else if (operator === 'has' && cellText && cellText.includes(refVal))
-                        conditionMatches = true;
-                    else if (operator === 'sw' && cellText && cellText.startsWith(refVal))
-                        conditionMatches = true;
-                    else if (operator === 'ew' && cellText && cellText.endsWith(refVal))
-                        conditionMatches = true;
-                    else if (!isNaN(numCompareWith) && !isNaN(numCellValue)) {
-                        //All numeric comparisons here.
-                        if (operator === 'equ' && numCellValue === numCompareWith)
-                            conditionMatches = true;
-                        else if (operator === 'lt' && numCellValue < numCompareWith)
-                            conditionMatches = true;
-                        else if (operator === 'lte' && numCellValue <= numCompareWith)
-                            conditionMatches = true;
-                        else if (operator === 'gt' && numCellValue > numCompareWith)
-                            conditionMatches = true;
-                        else if (operator === 'gte' && numCellValue >= numCompareWith)
-                            conditionMatches = true;
-                    }
-
-                    //Add support for date and time comparisons.
-
                     //Merge current and new styles.
-                    if (conditionMatches) {
-                        if (remove)
-                            $(targetSel).remove();
-                        else if (hide) {
-                            $(targetSel).addClass('ktlDisplayNone');
-                        } else {
-                            const currentStyle = $(targetSel).attr('style');
-                            $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
-                        }
-
-                        if (flash)
-                            $(targetSel).addClass('ktlFlashingOnOff');
-                        else if (flashFade)
-                            $(targetSel).addClass('ktlFlashingFadeInOut');
+                    if (remove)
+                        $(targetSel).remove();
+                    else if (hide) {
+                        $(targetSel).addClass('ktlDisplayNone');
+                    } else {
+                        const currentStyle = $(targetSel).attr('style');
+                        $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
                     }
+
+                    if (flash)
+                        $(targetSel).addClass('ktlFlashingOnOff');
+                    else if (flashFade)
+                        $(targetSel).addClass('ktlFlashingFadeInOut');
                 }
             } //cfv feature
 
