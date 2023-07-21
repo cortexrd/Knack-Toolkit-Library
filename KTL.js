@@ -8969,6 +8969,8 @@ function Ktl($, appInfo) {
             acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
             acctUtcLastActFld: ktl.core.getFieldIdByName('UTC Last Activity', accountsObj),
 
+            alAccountFld: ktl.core.getFieldIdByName('Account', accountLogsObj),
+            alDateTimeFld: ktl.core.getFieldIdByName('Date/Time', accountLogsObj),
             alLogTypeFld: ktl.core.getFieldIdByName('Log Type', accountLogsObj),
             alDetailsFld: ktl.core.getFieldIdByName('Details', accountLogsObj),
             alLogIdFld: ktl.core.getFieldIdByName('Log Id', accountLogsObj),
@@ -10661,11 +10663,10 @@ function Ktl($, appInfo) {
     //Account Logs feature
     this.accountsLogs = (function() {
 
-        // TODO Update to a more generic selector
-        const SYSOP_ACCOUNT_LOGS_SCN_613 = 'scene_613';
-        const SYSOP_DASHBOARD_ACCOUNT_LOGS = 'view_1654';
+        const SCENE_URL_NAME = 'view-account-logs';
+        const SYSOP_DASHBOARD_ACCOUNT_LOGS = ktl.core.getViewIdByTitle('Account Logs', SCENE_URL_NAME);
 
-        function generateTableContainer() {
+        function generateTableContainer(event, scene) {
             const dynamicTableDiv = document.createElement('div');
             dynamicTableDiv.classList.add('kn-table', 'kn-table-table', 'is-bordered', 'is-striped', 'can-overflow-x');
             dynamicTableDiv.setAttribute('id', 'accountLogsDynamicTable');
@@ -10715,32 +10716,28 @@ function Ktl($, appInfo) {
         }
 
         function generateDynamicTable(viewData) {
-            // TODO change to dynamic fields
-            // Account = field_824
-            // Log Type = field_826
-            // Details = field_838
+            const accountFieldId = ktl.iFrameWnd.getCfg().alAccountFld;
+            const logTypeFieldId = ktl.iFrameWnd.getCfg().alLogTypeFld;
+            const detailsFieldId = ktl.iFrameWnd.getCfg().alDetailsFld;
+            const dateTimeFieldId = ktl.iFrameWnd.getCfg().alDateTimeFld;
 
             if ($('#accountLogsDynamicTable').length === 0) {
                 return;
             }
 
             if (viewData === undefined || viewData.length === 0) {
-                $('#accountLogsDynamicTable').innerText = '    ** No Data **';
+                $('#accountLogsDynamicTable').empty().text('    ** No Data **');
                 return;
             }
 
-            var newLocalDT = '';
-            var date = '';
-            var time = '';
-
             const searchStr = $('#' + SYSOP_DASHBOARD_ACCOUNT_LOGS + ' > div:nth-child(2) > div:nth-child(2) > form > p > input').val()?.toLowerCase() || '';
 
-            var tableData = [];
-            var bInvalidEntryFound = false;
+            const tableData = [];
+            let bInvalidEntryFound = false;
 
             const elementsWithlogDetails = (element) => {
-                var logDetails = element[ktl.iFrameWnd.getCfg().alDetailsFld];
-                if (logDetails.length === 0 || element.field_824_raw.length === 0) {
+                var logDetails = element[detailsFieldId];
+                if (logDetails.length === 0 || element[`${accountFieldId}_raw`].length === 0) {
                     bInvalidEntryFound = true;
                     console.log('Invalid entry found: el =', element);
                     return false;
@@ -10749,37 +10746,39 @@ function Ktl($, appInfo) {
             }
 
             viewData.filter(elementsWithlogDetails).forEach(function (element) {
-                const logDetails = element[ktl.iFrameWnd.getCfg().alDetailsFld];
+                const account = element[accountFieldId].toLowerCase();
+                const logType = element[logTypeFieldId].toLowerCase();
+                const details = element[detailsFieldId];
 
-                if (logDetails[0] === '['/*Quick check for valid JSON format*/) {
-                    JSON.parse(logDetails)
-                            .filter( (logDetail) => {
-                                return (logDetail.details.toLowerCase().indexOf(searchStr) >= 0)  // Details
-                                    || (element.field_824.toLowerCase().indexOf(searchStr) >= 0)  // Account
-                                    || (element.field_826.toLowerCase().indexOf(searchStr) >= 0); // Log Type
+                if (details[0] === '['/*Quick check for valid JSON format*/) {
+                    JSON.parse(details)
+                            .filter( (detail) => {
+                                return (detail.details.toLowerCase().indexOf(searchStr) >= 0)
+                                    || (account.indexOf(searchStr) >= 0)
+                                    || (logType.indexOf(searchStr) >= 0); 
                             })
-                            .forEach( (logDetail) => {
-                                newLocalDT = new Date(logDetail.dt.substring(0, 19) + ' UTC');
-                                date = ktl.core.addZero(newLocalDT.getMonth() + 1) + '/' + ktl.core.addZero(newLocalDT.getDate()) + '/' + newLocalDT.getFullYear();
-                                time = ktl.core.addZero(newLocalDT.getHours()) + ':' + ktl.core.addZero(newLocalDT.getMinutes());
+                            .forEach( (detail) => {
+                                const newLocalDT = new Date(detail.dt.substring(0, 19) + ' UTC');
+                                const date = ktl.core.addZero(newLocalDT.getMonth() + 1) + '/' + ktl.core.addZero(newLocalDT.getDate()) + '/' + newLocalDT.getFullYear();
+                                let time = ktl.core.addZero(newLocalDT.getHours()) + ':' + ktl.core.addZero(newLocalDT.getMinutes());
                                 time += ':' + ktl.core.addZero(newLocalDT.getSeconds());
 
                                 tableData.push({
-                                    Name: element.field_824_raw[0].identifier,
+                                    Name: element[`${accountFieldId}_raw`][0].identifier,
                                     Local_DT: date + ' ' + time,
-                                    UTC_DT: logDetail.dt.substring(0, 19), //Strip milliseconds.
-                                    LogType: logDetail.type,
-                                    Details: logDetail.details
+                                    UTC_DT: detail.dt.substring(0, 19), //Strip milliseconds.
+                                    LogType: detail.type,
+                                    Details: detail.details
                                 });
                             });
                 } else { //Not JSON, just a plain string.
-                    if (logDetails.toLowerCase().indexOf(searchStr) >= 0) {
+                    if (details.toLowerCase().indexOf(searchStr) >= 0) {
                         tableData.push({
-                            Name: element.field_824_raw[0].identifier,
-                            Local_DT: element.field_825,
+                            Name: element[`${accountFieldId}_raw`][0].identifier,
+                            Local_DT: element[dateTimeFieldId],
                             UTC_DT: 'n/a',
-                            LogType: element.field_826,
-                            Details: logDetails
+                            LogType: element[logTypeFieldId],
+                            Details: details
                         });
                     }
                 }
@@ -10838,7 +10837,11 @@ function Ktl($, appInfo) {
             }
         }
 
-        $(document).on('knack-scene-render.' + SYSOP_ACCOUNT_LOGS_SCN_613, generateTableContainer);
+        $(document).on('knack-scene-render.any', () => {
+            if (Knack.router.current_scene === SCENE_URL_NAME)
+                generateTableContainer();
+        });
+
         $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACCOUNT_LOGS, function (event, view, data) {
             generateDynamicTable(data);
             addCopytoClipboardButton();
