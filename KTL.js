@@ -1048,7 +1048,8 @@ function Ktl($, appInfo) {
             },
 
             processKeywordOptions: function (options) {
-                if (!options || $.isEmptyObject(options)) return;
+                if (!options || $.isEmptyObject(options))
+                    return { rolesOk: true };
 
                 //Allowed Roles are always the top priority.
                 if (options.ktlRoles) {
@@ -1246,6 +1247,19 @@ function Ktl($, appInfo) {
                     return;
             },
 
+            extractKeywordsListByType: function (viewOrFieldId, kwType) {
+                if (!viewOrFieldId || !kwType) return [];
+
+                const kwList = [];
+                var keywords = ktlKeywords[viewOrFieldId];
+                for (const key in keywords) {
+                    if (key.startsWith(kwType) && !isNaN(key.substr(4))) {
+                        kwList.push(keywords[key]);
+                    }
+                }
+
+                return kwList;
+            },
         }
     })(); //Core
 
@@ -5168,61 +5182,74 @@ function Ktl($, appInfo) {
                 return summaryObj[summaryName][columnHeader];
         }
 
+        /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
+            const kw = '_cfv';
             if (!viewId) return;
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list' && viewType !== 'details') return;
 
-            var keywords = ktlKeywords[viewId];
-            if (keywords && keywords._cfv) {
-                //Begin with View's _cfv.
-                const res = ktl.core.processKeywordOptions(keywords._cfv.options);
+            //Begin with View's _cfv.
+            var keywords = {};
+            const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+            for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                const params = kwList[kwIdx];
+                keywords[kw] = params;
+                execKw(keywords);
+            }
+
+            //Then end with fields _cfv, for precedence.
+            colorizeFromFieldKeyword(viewId, data);
+
+            function execKw(keywords) {
+                var res = ktl.core.processKeywordOptions(keywords[kw].options);
                 if (res && !res.rolesOk) return;
 
-                //If we have been supplied with options, use them.
-                if (keywords._cfv.options && keywords._cfv.options.ktlRefVal) {
-                    var rvSel = keywords._cfv.options.ktlRefVal;
-                    getReferenceValue(rvSel, viewId)
-                        .then(refVal => {
-                            colorizeFromViewKeyword(viewId, keywords, refVal, data);
-                        })
-                        .catch(e => {
-                            ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
-                        })
+                if (keywords && keywords[kw]) {
+                    const res = ktl.core.processKeywordOptions(keywords[kw].options);
+                    if (res && !res.rolesOk) return;
 
-                } else //No option, then use hard-coded refVal found in the keyword, or the ktlRefVal.
-                    colorizeFromViewKeyword(viewId, keywords, '', data);
+                    //If we have been supplied with options, use them.
+                    if (keywords[kw].options && keywords[kw].options.ktlRefVal) {
+                        var rvSel = keywords[kw].options.ktlRefVal;
+                        getReferenceValue(rvSel, viewId)
+                            .then(refVal => {
+                                colorizeFromViewKeyword(viewId, keywords, refVal, data);
+                            })
+                            .catch(e => {
+                                ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
+                            })
 
-                function colorizeFromViewKeyword(viewId, keywords, refVal, data) {
-                    if (keywords._cfv.params.length) {
-                        const options = keywords._cfv.options;
-                        var fieldId;
-                        var paramGroups = keywords._cfv.params;
+                    } else //No option, then use hard-coded refVal found in the keyword, or the ktlRefVal.
+                        colorizeFromViewKeyword(viewId, keywords, '', data);
 
-                        var fields;
-                        if (viewType === 'details') {
-                            fields = document.querySelectorAll('#' + viewId + ' .kn-detail');
-                            for (var f = 0; f < fields.length; f++) {
-                                fieldId = fields[f].classList.value.match(/field_\d+/);
-                                if (fieldId.length)
-                                    fieldId = fieldId[0];
+                    function colorizeFromViewKeyword(viewId, keywords, refVal, data) {
+                        if (keywords[kw].params.length) {
+                            const options = keywords[kw].options;
+                            var fieldId;
+                            var paramGroups = keywords[kw].params;
 
-                                cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options);
-                            }
-                        } else { //Grids and Lists.
-                            fields = Knack.views[viewId].model.view.fields;
-                            for (var f = 0; f < fields.length; f++) {
-                                fieldId = fields[f].key;
-                                cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options);
+                            var fields;
+                            if (viewType === 'details') {
+                                fields = document.querySelectorAll('#' + viewId + ' .kn-detail');
+                                for (var f = 0; f < fields.length; f++) {
+                                    fieldId = fields[f].classList.value.match(/field_\d+/);
+                                    if (fieldId.length)
+                                        fieldId = fieldId[0];
+
+                                    cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options);
+                                }
+                            } else { //Grids and Lists.
+                                fields = Knack.views[viewId].model.view.fields;
+                                for (var f = 0; f < fields.length; f++) {
+                                    fieldId = fields[f].key;
+                                    cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options);
+                                }
                             }
                         }
-
-                        //Then end with field's _cfv, for precedence.
-                        colorizeFromFieldKeyword(viewId, data);
                     }
                 }
-            } else
-                colorizeFromFieldKeyword(viewId, data); //No _cfv in view, skip to the fields.
+            }
 
             function colorizeFromFieldKeyword(viewId, data) {
                 var paramGroups = [];
@@ -5235,12 +5262,22 @@ function Ktl($, appInfo) {
                     for (var i = 0; i < fieldsWithKwAr.length; i++) {
                         fieldId = fieldsWithKwAr[i];
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId]._cfv && foundKwObj[fieldId]._cfv.params.length) {
-                            const res = ktl.core.processKeywordOptions(foundKwObj[fieldId]._cfv.options);
-                            if (res && !res.rolesOk) continue;
+                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId][kw] && foundKwObj[fieldId][kw].params.length) {
+                            var keywords = {};
+                            const kwList = ktl.core.extractKeywordsListByType(fieldId, kw);
+                            for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                                const params = kwList[kwIdx];
+                                keywords[kw] = params;
+                                execKw(keywords);
+                            }
 
-                            paramGroups = foundKwObj[fieldId]._cfv.params;
-                            cfvScanGroups(viewId, fieldId, '', paramGroups, data, foundKwObj[fieldId]._cfv.options);
+                            function execKw(keywords) {
+                                const res = ktl.core.processKeywordOptions(keywords[kw].options);
+                                if (!res || (res && res.rolesOk)) {
+                                    paramGroups = keywords[kw].params;
+                                    cfvScanGroups(viewId, fieldId, '', paramGroups, data, keywords[kw].options);
+                                }
+                            }
                         }
                     }
                 }
@@ -5519,7 +5556,7 @@ function Ktl($, appInfo) {
                     const numCompareWith = Number(refVal);
                     const numCellValue = Number(cellText);
 
-                    //TODO: Make this configurable, but app-wide or per keyword...?
+                    //TODO: Case-sensitivy: make it configurable, but app-wide or per keyword...?
                     cellText = cellText && cellText.toLowerCase();
                     refVal = refVal.toLowerCase();
 
@@ -5841,28 +5878,39 @@ function Ktl($, appInfo) {
         }
 
         function hideFields(viewId, keywords) {
-            if (!viewId || !keywords._hf || !keywords._hf.params.length) return;
+            const kw = '_hf';
+            if (!viewId || !keywords[kw] || !keywords[kw].params.length) return;
 
-            var res = ktl.core.processKeywordOptions(keywords._hf.options);
-            if (res && !res.rolesOk) return;
+            var keywords = {};
+            const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+            for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                const params = kwList[kwIdx];
+                keywords[kw] = params;
+                execKw(keywords);
+            }
 
-            keywords._hf.params[0].forEach(fieldLabel => {
-                var fieldId = fieldLabel;
-                if (!fieldLabel.startsWith('field_'))
-                    fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+            function execKw(keywords) {
+                var res = ktl.core.processKeywordOptions(keywords[kw].options);
+                if (res && !res.rolesOk) return;
 
-                if (fieldId) {
-                    var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
-                        || document.querySelector('#' + viewId + ' .' + fieldId);
-                    obj && obj.classList.add('ktlHidden')
-                } else {
-                    //Try with an action link.
-                    const actionLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
-                    if (actionLink) {
-                        actionLink.parent().addClass('ktlHidden');
+                keywords[kw].params[0].forEach(fieldLabel => {
+                    var fieldId = fieldLabel;
+                    if (!fieldLabel.startsWith('field_'))
+                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
+                    if (fieldId) {
+                        var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
+                            || document.querySelector('#' + viewId + ' .' + fieldId);
+                        obj && obj.classList.add('ktlHidden')
+                    } else {
+                        //Try with an action link.
+                        const actionLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
+                        if (actionLink) {
+                            actionLink.parent().addClass('ktlHidden');
+                        }
                     }
-                }
-            })
+                })
+            }
         }
 
         //Adjust header alignment of Grids and Pivot Tables
