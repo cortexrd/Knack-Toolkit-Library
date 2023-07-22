@@ -2284,8 +2284,10 @@ function Ktl($, appInfo) {
                 if (!viewId || ktl.views.getViewType(viewId) !== 'details') return;
 
                 const kw = '_bcg';
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                    if (res && !res.rolesOk) return;
+                }
 
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                     var size = 200;
@@ -4845,19 +4847,9 @@ function Ktl($, appInfo) {
                 if (keywords && !$.isEmptyObject(keywords)) {
                     //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
-                    //Hide the whole view, typically used when doing background searches.
-                    if (keywords._hv) {
-                        if (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) !== 'true')
-                            $('#' + view.key).addClass('ktlHidden');
-                    }
-
-                    //Hide the view title only, typically used to save space when real estate is critical.
-                    if (keywords._ht) {
-                        $('#' + view.key + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
-                        $('#' + view.key + ' .view-header h2').addClass('ktlHidden');
-                    }
-
-                    keywords._ts && ktl.views.addTimeStampToHeader(view.key);
+                    keywords._hv && hideView(view.key, keywords);
+                    keywords._ht && hideTitle(view.key, keywords);
+                    keywords._ts && ktl.views.addTimeStampToHeader(view.key, keywords);
                     keywords._dtp && ktl.views.addDateTimePickers(view.key, keywords);
                     keywords._al && ktl.account.autoLogin(view.key);
                     keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
@@ -4906,9 +4898,16 @@ function Ktl($, appInfo) {
 
         function processRvd(view, event, revertFunc) {
             var keywords = ktlKeywords[view.key];
-            if (!keywords || !keywords._rvd || keywords._rvd.params[0].length < 1) return;
+            const kw = '_rvd';
 
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvd.params[0], view.key);
+            if (!(keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length)) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
+
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords[kw][0].params[0], view.key);
             var eventFieldId = view.events.event_field.key;
             var recId = event.id;
             var dndConfViewId = viewIds[0]; //First view must always be the DnD Confirmation view.
@@ -5077,8 +5076,10 @@ function Ktl($, appInfo) {
             if (!view) return;
 
             const kw = '_nf';
-            var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-            if (res && !res.rolesOk) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
 
             if (view.type === 'table' /*TODO: add more view types*/) {
                 var fieldsAr = keywords[kw][0].params[0];
@@ -5096,8 +5097,10 @@ function Ktl($, appInfo) {
             if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
 
             const kw = '_rvs';
-            var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-            if (res && !res.rolesOk) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs[0].params[0], viewId);
@@ -5113,8 +5116,10 @@ function Ktl($, appInfo) {
             if (!viewId) return;
 
             const kw = '_rvr';
-            var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-            if (res && !res.rolesOk) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 var viewIds = ktl.views.convertViewTitlesToViewIds(keywords[kw][0].params[0], viewId);
@@ -5127,8 +5132,10 @@ function Ktl($, appInfo) {
             if (!view) return;
 
             const kw = '_dr';
-            var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-            if (res && !res.rolesOk) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 var viewId = view.key;
@@ -5900,8 +5907,10 @@ function Ktl($, appInfo) {
             const kw = '_nsg';
             if (!viewId || !keywords || !keywords[kw]) return;
 
-            var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-            if (res && !res.rolesOk) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
 
             $('#' + viewId + ' thead [href]').addClass('sortDisabled');
         }
@@ -5942,7 +5951,13 @@ function Ktl($, appInfo) {
 
         //Adjust header alignment of Grids and Pivot Tables
         function headerAlignment(view, keywords) {
-            if (!view || !cfg.headerAlignment || (keywords && !keywords._ha)) return;
+            const kw = '_ha';
+            if (!view || !cfg.headerAlignment || !keywords || (keywords && !keywords[kw])) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
 
             const viewType = view.type;
 
@@ -5971,6 +5986,37 @@ function Ktl($, appInfo) {
                     console.log('headerAlignment error:', e);
                 }
             }
+        }
+
+
+        //Hide the whole view, typically used when doing background searches.
+        function hideView(viewId, keywords) {
+            const kw = '_hv';
+            if (!(viewId && keywords && keywords[kw] )) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
+
+            if (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) !== 'true')
+                $('#' + viewId).addClass('ktlHidden');
+        }
+
+
+
+        //Hide the view title only, typically used to save space when real estate is critical.
+        function hideTitle(viewId, keywords) {
+            const kw = '_ht';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                if (res && !res.rolesOk) return;
+            }
+
+            $('#' + viewId + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
+            $('#' + viewId + ' .view-header h2').addClass('ktlHidden');
         }
 
         //Views
@@ -6281,7 +6327,15 @@ function Ktl($, appInfo) {
                 }
             },
 
-            addTimeStampToHeader: function (viewId = '') {
+            addTimeStampToHeader: function (viewId = '', keywords) {
+                const kw = '_ts';
+                if (!(viewId && keywords && keywords[kw])) return;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                    if (res && !res.rolesOk) return;
+                }
+
                 if (!viewId) return;
                 var header = document.querySelector('#' + viewId + ' .kn-title');
                 if ($('#' + viewId + '-timestamp-id').length === 0/*Add only once*/) {
@@ -6294,10 +6348,13 @@ function Ktl($, appInfo) {
             },
 
             addDateTimePickers: function (viewId = '', keywords) {
-                if (!viewId) return;
+                const kw = '_dtp';
+                if (!(viewId && keywords && keywords[kw])) return;
 
-                var res = ktl.core.processKeywordOptions(ktlKeywords[viewId].options);
-                if (res && !res.rolesOk) return;
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                    if (res && !res.rolesOk) return;
+                }
 
                 var period = 'monthly';
                 var inputType = 'month';
@@ -6317,11 +6374,13 @@ function Ktl($, appInfo) {
                 //Find first Date/Time field type.
                 var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
                 for (var i = 0; i < cols.length; i++) {
-                    fieldId = cols[i].field.key;
-                    var field = Knack.objects.getField(fieldId);
-                    if (field && field.attributes && field.attributes.type === 'date_time') {
-                        fieldName = field.attributes.name;
-                        break;
+                    fieldId = cols[i].field && cols[i].field.key;
+                    if (fieldId) {
+                        var field = Knack.objects.getField(fieldId);
+                        if (field && field.attributes && field.attributes.type === 'date_time') {
+                            fieldName = field.attributes.name;
+                            break;
+                        }
                     }
                 }
 
@@ -7591,15 +7650,22 @@ function Ktl($, appInfo) {
             },
 
             applyZoomLevel: function (viewId, keywords) {
-                if (!viewId || !keywords || !keywords._zoom || !keywords._zoom[0].params[0].length) return;
+                if (!viewId) return;
 
-                var res = ktl.core.processKeywordOptions(keywords._zoom.options);
-                if (res && !res.rolesOk) return;
+                const kw = '_zoom';
+                if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
 
-                var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
-                var zoomLevel = keywords._zoom[0].params[0];
-                if (!isNaN(zoomLevel))
-                    $(sel).css({ 'zoom': zoomLevel + '%' });
+                    if (keywords[kw][0].options) {
+                        var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
+                        if (res && !res.rolesOk) return;
+                    }
+
+                    //TODO: improve support of ktlTarget with Universal Selector.
+                    var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
+                    var zoomLevel = keywords[kw][0].params[0][0];
+                    if (!isNaN(zoomLevel))
+                        $(sel).css({ 'zoom': zoomLevel + '%' });
+                }
             },
 
             addRemoveClass: function (viewId, keywords) {
@@ -7631,17 +7697,29 @@ function Ktl($, appInfo) {
             },
 
             setStyle: function (viewId, keywords) {
-                if (!viewId || !keywords || !keywords._style || !keywords._style.params.length) return;
+                const kw = '_style';
+                if (!viewId || !keywords[kw]) return;
 
-                var res = ktl.core.processKeywordOptions(keywords._style.options);
-                if (res && !res.rolesOk) return;
+                const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                    const kwInstance = kwList[kwIdx];
+                    execKw(kwInstance);
+                }
 
-                //Merge new style with existing one.
-                var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
-                $(sel).each((ix, el) => {
-                    const currentStyle = $(el).attr('style');
-                    $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + keywords._style.params[0]);
-                })
+                function execKw(kwInstance) {
+                    var res = ktl.core.processKeywordOptions(kwInstance.options);
+                    if (res && !res.rolesOk) return;
+
+                    //Merge new style with existing one.
+
+                    //TODO: improve support of ktlTarget with Universal Selector.
+                    var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
+
+                    $(sel).each((ix, el) => {
+                        const currentStyle = $(el).attr('style');
+                        $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + kwInstance.params[0]);
+                    })
+                }
             },
 
             //Returns a zero-based index of the first column from left that matches the header param.
