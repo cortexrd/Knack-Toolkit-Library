@@ -4398,7 +4398,7 @@ function Ktl($, appInfo) {
                 loadAllFilters();
             },
         }
-    })();
+    })(); //User Filters feature
 
     //====================================================
     //Debug Window feature
@@ -4712,7 +4712,7 @@ function Ktl($, appInfo) {
                 }
             },
         }
-    })();
+    })(); //Debug Window feature
 
     //====================================================
     //Views feature
@@ -7657,7 +7657,7 @@ function Ktl($, appInfo) {
                     console.error('Called addSummaryObserver with a non-function type argument.');
             },
         }
-    })(); //views
+    })(); //Views feature
 
     //====================================================
     //Scenes feature
@@ -8334,7 +8334,7 @@ function Ktl($, appInfo) {
                     sceneChangeObservers.push(callback);
             },
         }
-    })(); //Scenes
+    })(); //Scenes feature
 
     //====================================================
     //Logging feature
@@ -8615,7 +8615,7 @@ function Ktl($, appInfo) {
 
             //TODO: add getCategoryLogs.  Returns object with array and logId.
         }
-    })();
+    })(); //Logging feature
 
     //====================================================
     //User Preferences feature
@@ -9030,6 +9030,8 @@ function Ktl($, appInfo) {
             acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
             acctUtcLastActFld: ktl.core.getFieldIdByName('UTC Last Activity', accountsObj),
 
+            alAccountFld: ktl.core.getFieldIdByName('Account', accountLogsObj),
+            alDateTimeFld: ktl.core.getFieldIdByName('Date/Time', accountLogsObj),
             alLogTypeFld: ktl.core.getFieldIdByName('Log Type', accountLogsObj),
             alDetailsFld: ktl.core.getFieldIdByName('Details', accountLogsObj),
             alLogIdFld: ktl.core.getFieldIdByName('Log Id', accountLogsObj),
@@ -9795,7 +9797,7 @@ function Ktl($, appInfo) {
                 processServerErrors && processServerErrors(msg);
             },
         }
-    })();
+    })(); //Window message queue feature
 
     //====================================================
     //Bulk Operations feature
@@ -10552,7 +10554,7 @@ function Ktl($, appInfo) {
                 return bulkOpsActive[viewId] === true;
             },
         }
-    })(); //bulkOps
+    })(); //Bulk Operations feature
 
     //====================================================
     //System Info feature
@@ -10718,6 +10720,195 @@ function Ktl($, appInfo) {
         }
     })(); //sysInfo
 
+    //====================================================
+    //Account Logs feature
+    this.accountsLogs = (function() {
+
+        const SCENE_URL_NAME = 'view-account-logs';
+        const SYSOP_DASHBOARD_ACCOUNT_LOGS = ktl.core.getViewIdByTitle('Account Logs', SCENE_URL_NAME);
+
+        function generateTableContainer(event, scene) {
+            const dynamicTableDiv = document.createElement('div');
+            dynamicTableDiv.classList.add('kn-table', 'kn-table-table', 'is-bordered', 'is-striped', 'can-overflow-x');
+            dynamicTableDiv.setAttribute('id', 'accountLogsDynamicTable');
+            dynamicTableDiv.style.width = '100%';
+            dynamicTableDiv.style.minHeight = '70px';
+            dynamicTableDiv.style.height = '400px';
+            dynamicTableDiv.style.resize = 'vertical';
+            dynamicTableDiv.style.whiteSpace = 'pre'; //Allow multiple spaces for Prettyprint indentation of JSON.
+            dynamicTableDiv.style['border-width'] = '5px';
+            dynamicTableDiv.style.overflow = 'scroll';
+
+            $('#knack-dist_1 > div.kn-scenes.kn-section').prepend(dynamicTableDiv);
+
+            ktl.views.refreshView(SYSOP_DASHBOARD_ACCOUNT_LOGS);
+        }
+
+        function addCopytoClipboardButton() {
+            const tableKeywordSearchBar = $('.table-keyword-search');
+            if (!tableKeywordSearchBar.length)
+                return;
+
+            tableKeywordSearchBar.css({ 'display': 'inline-flex' });
+
+            const copyToClipboard = document.createElement('BUTTON');
+            copyToClipboard.setAttribute('class', 'kn-button');
+            copyToClipboard.id = 'kn-button-copy';
+            copyToClipboard.innerHTML = 'Copy Top Table to Clipboard';
+            copyToClipboard.style.marginLeft = '10%';
+            copyToClipboard.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
+            tableKeywordSearchBar.append(copyToClipboard);
+
+            copyToClipboard.addEventListener('click', function () {
+                const table = $('#accountLogsDynamicTable').get(0);
+                if (table) {
+                    ktl.core.selectElementContents(table);
+                    try {
+                        const successful = document.execCommand('copy');
+                        const msg = successful ? 'Table copied to clipboard' : 'Error copying table to clipboard';
+                        ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
+                    } catch (err) {
+                        ktl.core.timedPopup('Unable to copy', 'error', 2000);
+                    }
+
+                    ktl.core.selectElementContents();
+                }
+            });
+        }
+
+        function generateDynamicTable(viewData) {
+            const accountFieldId = ktl.iFrameWnd.getCfg().alAccountFld;
+            const logTypeFieldId = ktl.iFrameWnd.getCfg().alLogTypeFld;
+            const detailsFieldId = ktl.iFrameWnd.getCfg().alDetailsFld;
+            const dateTimeFieldId = ktl.iFrameWnd.getCfg().alDateTimeFld;
+
+            if ($('#accountLogsDynamicTable').length === 0) {
+                return;
+            }
+
+            if (viewData === undefined || viewData.length === 0) {
+                $('#accountLogsDynamicTable').empty().text('    ** No Data **');
+                return;
+            }
+
+            const searchStr = $('#' + SYSOP_DASHBOARD_ACCOUNT_LOGS + ' > div:nth-child(2) > div:nth-child(2) > form > p > input').val()?.toLowerCase() || '';
+
+            const tableData = [];
+            let bInvalidEntryFound = false;
+
+            const elementsWithlogDetails = (element) => {
+                var logDetails = element[detailsFieldId];
+                if (logDetails.length === 0 || element[`${accountFieldId}_raw`].length === 0) {
+                    bInvalidEntryFound = true;
+                    console.log('Invalid entry found: el =', element);
+                    return false;
+                }
+                return true;
+            }
+
+            viewData.filter(elementsWithlogDetails).forEach(function (element) {
+                const account = element[accountFieldId].toLowerCase();
+                const logType = element[logTypeFieldId].toLowerCase();
+                const details = element[detailsFieldId];
+
+                if (details[0] === '['/*Quick check for valid JSON format*/) {
+                    JSON.parse(details)
+                            .filter( (detail) => {
+                                return (detail.details.toLowerCase().indexOf(searchStr) >= 0)
+                                    || (account.indexOf(searchStr) >= 0)
+                                    || (logType.indexOf(searchStr) >= 0); 
+                            })
+                            .forEach( (detail) => {
+                                const newLocalDT = new Date(detail.dt.substring(0, 19) + ' UTC');
+                                const date = ktl.core.addZero(newLocalDT.getMonth() + 1) + '/' + ktl.core.addZero(newLocalDT.getDate()) + '/' + newLocalDT.getFullYear();
+                                let time = ktl.core.addZero(newLocalDT.getHours()) + ':' + ktl.core.addZero(newLocalDT.getMinutes());
+                                time += ':' + ktl.core.addZero(newLocalDT.getSeconds());
+
+                                tableData.push({
+                                    Name: element[`${accountFieldId}_raw`][0].identifier,
+                                    Local_DT: date + ' ' + time,
+                                    UTC_DT: detail.dt.substring(0, 19), //Strip milliseconds.
+                                    LogType: detail.type,
+                                    Details: detail.details
+                                });
+                            });
+                } else { //Not JSON, just a plain string.
+                    if (details.toLowerCase().indexOf(searchStr) >= 0) {
+                        tableData.push({
+                            Name: element[`${accountFieldId}_raw`][0].identifier,
+                            Local_DT: element[dateTimeFieldId],
+                            UTC_DT: 'n/a',
+                            LogType: element[logTypeFieldId],
+                            Details: details
+                        });
+                    }
+                }
+            })
+
+            if (bInvalidEntryFound)
+                ktl.core.timedPopup('Invalid entries have been been found. See console logs.', 'warning', 2000);
+
+            tableData.sort(function NewestFirstByDT(a, b) {
+                var dateA = new Date(a.UTC_DT), dateB = new Date(b.UTC_DT);
+                return dateB - dateA;
+            });
+
+            const numOfRows = tableData.length;
+            if (numOfRows > 0) {
+                const table = document.createElement("table");
+
+                //Retrieve column header.
+                var col = [];
+                for (var i = 0; i < numOfRows; i++) {
+                    for (const key in tableData[i]) {
+                        if (col.indexOf(key) === -1) {
+                            col.push(key);
+                        }
+                    }
+                }
+
+                const tHead = document.createElement("thead");
+                const hRow = document.createElement("tr");
+
+                //Add column header to row of table head.
+                for (var i = 0; i < col.length; i++) {
+                    var th = document.createElement("th");
+                    th.innerHTML = col[i];
+                    hRow.appendChild(th);
+                }
+                tHead.appendChild(hRow);
+                table.appendChild(tHead);
+
+                const tBody = document.createElement("tbody");
+
+                //Add column header to row of table head.
+                for (var i = 0; i < numOfRows; i++) {
+                    const bRow = document.createElement("tr");
+                    for (var j = 0; j < col.length; j++) {
+                        const td = document.createElement("td");
+                        td.innerHTML = tableData[i][col[j]];
+                        bRow.appendChild(td);
+                    }
+                    tBody.appendChild(bRow);
+
+                }
+                table.appendChild(tBody);
+
+                $('#accountLogsDynamicTable').empty().append(table);
+            }
+        }
+
+        $(document).on('knack-scene-render.any', () => {
+            if (Knack.router.current_scene === SCENE_URL_NAME)
+                generateTableContainer();
+        });
+
+        $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACCOUNT_LOGS, function (event, view, data) {
+            generateDynamicTable(data);
+            addCopytoClipboardButton();
+        });
+        
+    })(); //Account Logs feature
 
     window.ktl = {
         //KTL exposed objects
@@ -10731,6 +10922,7 @@ function Ktl($, appInfo) {
         userFilters: this.userFilters,
         bulkOps: this.bulkOps,
         account: this.account,
+        accountLogs: this.accountsLogs,
         userPrefs: this.userPrefs,
         iFrameWnd: this.iFrameWnd,
         debugWnd: this.debugWnd,
