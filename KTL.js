@@ -42,7 +42,7 @@ function Ktl($, appInfo) {
         for (var v = 0; v < views.models.length; v++) {
             let view = views.models[v];
             if (view) {
-                var keywordsObj = {};
+                var viewKwObj = {};
                 var attr = view.attributes;
                 var title = attr.title;
                 var cleanedUpTitle = title;
@@ -51,7 +51,7 @@ function Ktl($, appInfo) {
                     firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                     if (firstKeywordIdx >= 0) {
                         cleanedUpTitle = title.substring(0, firstKeywordIdx);
-                        parseKeywords(title.substring(firstKeywordIdx).trim(), keywordsObj);
+                        parseKeywords(title.substring(firstKeywordIdx).trim(), viewKwObj);
                     }
                 }
 
@@ -61,17 +61,17 @@ function Ktl($, appInfo) {
                     firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                     if (firstKeywordIdx >= 0) {
                         cleanedUpDescription = description.substring(0, firstKeywordIdx);
-                        parseKeywords(description.substring(firstKeywordIdx).trim(), keywordsObj);
+                        parseKeywords(description.substring(firstKeywordIdx).trim(), viewKwObj);
                     }
                 }
 
                 attr.orgTitle = attr.title; //Can probably be removed - not really used anymore.
-                if (!$.isEmptyObject(keywordsObj)) {
-                    ktlKeywords[view.id] = keywordsObj;
+                if (!$.isEmptyObject(viewKwObj)) {
+                    ktlKeywords[view.id] = viewKwObj;
 
                     //Add scene keywords.
-                    if (keywordsObj._km || keywordsObj._kbs || keywordsObj._zoom)
-                        ktlKeywords[scn.attributes.key] = keywordsObj;
+                    if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom)
+                        ktlKeywords[scn.attributes.key] = viewKwObj;
                 }
 
                 attr.title = cleanedUpTitle;
@@ -79,7 +79,6 @@ function Ktl($, appInfo) {
             }
         }
     }
-
 
     //Add field keywords.
     const objects = Knack.objects.models;
@@ -91,11 +90,11 @@ function Ktl($, appInfo) {
             const field = Knack.fields[fieldId];
             var fieldDesc = field.attributes && field.attributes.meta && field.attributes.meta.description;
             if (fieldDesc) {
-                var keywords = {};
+                var fieldKwObj = {};
                 fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
-                parseKeywords(fieldDesc, keywords);
-                if (!$.isEmptyObject(keywords))
-                    ktlKeywords[fieldId] = keywords;
+                parseKeywords(fieldDesc, fieldKwObj);
+                if (!$.isEmptyObject(fieldKwObj))
+                    ktlKeywords[fieldId] = fieldKwObj;
             }
         }
     }
@@ -111,40 +110,36 @@ function Ktl($, appInfo) {
             kwAr.splice(0, 1);
             for (var i = 0; i < kwAr.length; i++) {
                 kwAr[i] = kwAr[i].trim().replace(/\u200B/g, ''); //u200B is a "zero width space".  Caught that once during a copy/paste!
-                parseParams(kwAr[i], i);
+                if (kwAr[i].startsWith('_')) {
+                    const kw = kwAr[i].toLowerCase();
+                    if (!keywords[kw])
+                        keywords[kw] = [];
+
+                    if (i <= kwAr.length && kwAr[i + 1].startsWith('='))
+                        keywords[kw].push(parseParams(kwAr[i + 1].slice(1), keywords));
+                }
             }
         }
 
         //Parser step 3 : Extract all sets of parameters for a given keyword - those after the equal sign and separated by commas.
-        function parseParams(kwString, kwIdx) {
-            var kw = [];
-            if (kwAr[i].startsWith('_')) {
-                keywords[kwAr[i].toLowerCase()] = [];
-                return;
-            } else if (kwAr[i].startsWith('='))
-                kw = kwString.split('=');
-
+        function parseParams(kwString, keywords) {
+            var paramStr = kwString; //Keep a copy of the original parameters.  Can be useful some day to have it in one string instead of an array.
             var params = [];
-            var paramStr = '';
             var options = {};
-            if (kw.length > 1) {
-                kw.splice(0, 1);
-                paramStr = kw[0];
 
-                if (!kw[0].startsWith('['))
-                    kw[0] = '[' + kw[0] + ']';
+            if (!kwString.startsWith('['))
+                kwString = '[' + kwString + ']';
 
-                var paramGroups = extractKeywordParamGroups(kw[0]);
-                if (paramGroups.length)
-                    parseParamsGroups(paramGroups, params, options);
-            }
+            var paramGroups = extractKeywordParamGroups(kwString);
+            if (paramGroups.length)
+                parseParamsGroups(paramGroups, params, options);
 
             var kwObj = { params: params };
             paramStr && (kwObj.paramStr = paramStr);
             if (!$.isEmptyObject(options))
                 kwObj.options = options;
 
-            keywords[kwAr[kwIdx - 1].toLowerCase()] = kwObj;
+            return kwObj;
         }
     }
 
@@ -1250,15 +1245,11 @@ function Ktl($, appInfo) {
             extractKeywordsListByType: function (viewOrFieldId, kwType) {
                 if (!viewOrFieldId || !kwType) return [];
 
-                const kwList = [];
-                var keywords = ktlKeywords[viewOrFieldId];
-                for (const key in keywords) {
-                    if (key.startsWith(kwType) && !isNaN(key.substr(4))) {
-                        kwList.push(keywords[key]);
-                    }
-                }
+                var allKwInstancesOfType = ktlKeywords[viewOrFieldId];
+                if (allKwInstancesOfType && allKwInstancesOfType[kwType])
+                    return allKwInstancesOfType[kwType];
 
-                return kwList;
+                return [];
             },
         }
     })(); //Core
@@ -4855,7 +4846,7 @@ function Ktl($, appInfo) {
                     }
 
                     keywords._ts && ktl.views.addTimeStampToHeader(view.key);
-                    keywords._dtp && ktl.views.addDateTimePickers(view.key);
+                    keywords._dtp && ktl.views.addDateTimePickers(view.key, keywords);
                     keywords._al && ktl.account.autoLogin(view.key);
                     keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
                     keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
@@ -5077,7 +5068,7 @@ function Ktl($, appInfo) {
             if (res && !res.rolesOk) return;
 
             if (view.type === 'table' /*TODO: add more view types*/) {
-                var fieldsAr = keywords._nf.params[0];
+                var fieldsAr = keywords._nf[0].params[0];
                 $('.kn-add-filter,.kn-filters').on('click', function (e) {
                     var filterFields = document.querySelectorAll('.field.kn-select select option');
                     filterFields.forEach(field => {
@@ -5090,7 +5081,7 @@ function Ktl($, appInfo) {
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
             if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs.params[0], viewId);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs[0].params[0], viewId);
             if (viewIds.length) {
                 $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
                     ktl.views.refreshViewArray(viewIds)
@@ -5100,7 +5091,7 @@ function Ktl($, appInfo) {
 
         function refreshViewsAfterRefresh(viewId = '', keywords) {
             if (!viewId) return;
-            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvr.params[0], viewId);
+            var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvr[0].params[0], viewId);
             if (viewIds.length)
                 ktl.views.refreshViewArray(viewIds)
         }
@@ -5190,61 +5181,53 @@ function Ktl($, appInfo) {
             if (viewType !== 'table' && viewType !== 'list' && viewType !== 'details') return;
 
             //Begin with View's _cfv.
-            var keywords = {};
             const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
             for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                const params = kwList[kwIdx];
-                keywords[kw] = params;
-                execKw(keywords);
+                execKw(kwList[kwIdx]);
             }
 
             //Then end with fields _cfv, for precedence.
             colorizeFromFieldKeyword(viewId, data);
 
-            function execKw(keywords) {
-                var res = ktl.core.processKeywordOptions(keywords[kw].options);
+            function execKw(kwInstance) {
+                var res = ktl.core.processKeywordOptions(kwInstance.options);
                 if (res && !res.rolesOk) return;
 
-                if (keywords && keywords[kw]) {
-                    const res = ktl.core.processKeywordOptions(keywords[kw].options);
-                    if (res && !res.rolesOk) return;
+                //If we have been supplied with options, use them.
+                if (kwInstance.options && kwInstance.options.ktlRefVal) {
+                    var rvSel = kwInstance.options.ktlRefVal;
+                    getReferenceValue(rvSel, viewId)
+                        .then(refVal => {
+                            colorizeFromViewKeyword(viewId, kwInstance, refVal, data);
+                        })
+                        .catch(e => {
+                            ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
+                        })
 
-                    //If we have been supplied with options, use them.
-                    if (keywords[kw].options && keywords[kw].options.ktlRefVal) {
-                        var rvSel = keywords[kw].options.ktlRefVal;
-                        getReferenceValue(rvSel, viewId)
-                            .then(refVal => {
-                                colorizeFromViewKeyword(viewId, keywords, refVal, data);
-                            })
-                            .catch(e => {
-                                ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
-                            })
+                } else //No option, then use hard-coded refVal found in the keyword, or the ktlRefVal.
+                    colorizeFromViewKeyword(viewId, kwInstance, '', data);
 
-                    } else //No option, then use hard-coded refVal found in the keyword, or the ktlRefVal.
-                        colorizeFromViewKeyword(viewId, keywords, '', data);
+                function colorizeFromViewKeyword(viewId, kwInstance, refVal, data) {
+                    if (kwInstance.params.length) {
+                        const options = kwInstance.options;
+                        var fieldId;
+                        var paramGroups = kwInstance.params;
 
-                    function colorizeFromViewKeyword(viewId, keywords, refVal, data) {
-                        if (keywords[kw].params.length) {
-                            const options = keywords[kw].options;
-                            var fieldId;
-                            var paramGroups = keywords[kw].params;
+                        var fields;
+                        if (viewType === 'details') {
+                            fields = document.querySelectorAll('#' + viewId + ' .kn-detail');
+                            for (var f = 0; f < fields.length; f++) {
+                                fieldId = fields[f].classList.value.match(/field_\d+/);
+                                if (fieldId.length)
+                                    fieldId = fieldId[0];
 
-                            var fields;
-                            if (viewType === 'details') {
-                                fields = document.querySelectorAll('#' + viewId + ' .kn-detail');
-                                for (var f = 0; f < fields.length; f++) {
-                                    fieldId = fields[f].classList.value.match(/field_\d+/);
-                                    if (fieldId.length)
-                                        fieldId = fieldId[0];
-
-                                    cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options);
-                                }
-                            } else { //Grids and Lists.
-                                fields = Knack.views[viewId].model.view.fields;
-                                for (var f = 0; f < fields.length; f++) {
-                                    fieldId = fields[f].key;
-                                    cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options);
-                                }
+                                cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options);
+                            }
+                        } else { //Grids and Lists.
+                            fields = Knack.views[viewId].model.view.fields;
+                            for (var f = 0; f < fields.length; f++) {
+                                fieldId = fields[f].key;
+                                cfvScanGroups(viewId, fieldId, refVal, paramGroups, data, options);
                             }
                         }
                     }
@@ -5262,20 +5245,17 @@ function Ktl($, appInfo) {
                     for (var i = 0; i < fieldsWithKwAr.length; i++) {
                         fieldId = fieldsWithKwAr[i];
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId][kw] && foundKwObj[fieldId][kw].params.length) {
-                            var keywords = {};
+                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId][kw] && foundKwObj[fieldId][kw].length) {
                             const kwList = ktl.core.extractKeywordsListByType(fieldId, kw);
                             for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                                const params = kwList[kwIdx];
-                                keywords[kw] = params;
-                                execKw(keywords);
+                                execKw(kwList[kwIdx]);
                             }
 
-                            function execKw(keywords) {
-                                const res = ktl.core.processKeywordOptions(keywords[kw].options);
+                            function execKw(kwInstance) {
+                                const res = ktl.core.processKeywordOptions(kwInstance.options);
                                 if (!res || (res && res.rolesOk)) {
-                                    paramGroups = keywords[kw].params;
-                                    cfvScanGroups(viewId, fieldId, '', paramGroups, data, keywords[kw].options);
+                                    paramGroups = kwInstance.params;
+                                    cfvScanGroups(viewId, fieldId, '', paramGroups, data, kwInstance.options);
                                 }
                             }
                         }
@@ -5374,6 +5354,8 @@ function Ktl($, appInfo) {
 
                             if (Array.isArray(cell) && cell.length === 1)
                                 cellText = cell[0].identifier;
+                            else if (fieldType === 'phone')
+                                cellText = cell.formatted;
                             else
                                 cellText = cell.toString();
 
@@ -5649,172 +5631,190 @@ function Ktl($, appInfo) {
         //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
         function quickToggle(viewId = '', data = []) {
             if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
-            var qtScanItv = null;
-            var quickToggleObj = {};
-            var numToProcess = 0;
-            var refreshTimer = null;
-            var viewsToRefresh = [];
-            var viewModel = Knack.router.scene_view.model.views._byId[viewId];
-            if (!viewModel) return;
+            const kw = '_qt';
 
-            var viewAttr = viewModel.attributes;
-            const viewType = viewAttr.type;
-            if (!['table', 'search'].includes(viewType)) return;
 
-            var inlineEditing = false;
-            if (viewType === 'table')
-                inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
-            else
-                inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
-
-            if (!inlineEditing) return;
-
-            //Start with hard coded default colors.
-            var bgColorTrue = quickToggleParams.bgColorTrue;
-            var bgColorFalse = quickToggleParams.bgColorFalse;
-
-            var fieldHasQt = false;
-
-            //Override with view-specific colors, if any.
-            var keywords = ktlKeywords[viewId];
-            if (keywords && keywords._qt && keywords._qt.params.length && keywords._qt.params[0].length) {
-                fieldHasQt = true; //If view has QT, then all fields inherit also.
-
-                if (keywords._qt.params[0].length >= 1 && keywords._qt.params[0][0])
-                    bgColorTrue = keywords._qt.params[0][0];
-
-                if (keywords._qt.params[0].length >= 2 && keywords._qt.params[0][1])
-                    bgColorFalse = keywords._qt.params[0][1];
+            const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+            for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                execKw(kwList[kwIdx]);
             }
 
-            var fieldKeywords = {};
-            var fieldsColor = {};
-            const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
-            for (var i = 0; i < cols.length; i++) {
-                var col = cols[i];
-                if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
-                    var field = Knack.objects.getField(col.field.key);
-                    if (field && !col.connection) { //Field must be local to view's object, not a connected field.
-                        if (field.attributes.type === 'boolean') {
-                            const fieldId = col.field.key;
+            function execKw(kwInstance) {
+                var res = ktl.core.processKeywordOptions(kwInstance.options);
+                if (res && !res.rolesOk) return;
 
-                            //Override with field-specific colors, if any.
-                            var tmpFieldColors = {
-                                bgColorTrue: bgColorTrue,
-                                bgColorFalse: bgColorFalse
-                            }
+                //var res = ktl.core.processKeywordOptions(ktlKeywords[viewId][kw].options);
+                //if (res && !res.rolesOk) return;
 
-                            ktl.fields.getFieldKeywords(fieldId, fieldKeywords);
-                            if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._qt) {
-                                fieldHasQt = true;
-                                if (fieldKeywords[fieldId]._qt.params && fieldKeywords[fieldId]._qt.params.length > 0) {
-                                    if (fieldKeywords[fieldId]._qt.params[0].length >= 1 && fieldKeywords[fieldId]._qt.params[0][0] !== '')
-                                        tmpFieldColors.bgColorTrue = fieldKeywords[fieldId]._qt.params[0][0];
-                                    if (fieldKeywords[fieldId]._qt.params[0].length >= 2 && fieldKeywords[fieldId]._qt.params[0][1] !== '')
-                                        tmpFieldColors.bgColorFalse = fieldKeywords[fieldId]._qt.params[0][1];
+
+
+
+                var qtScanItv = null;
+                var quickToggleObj = {};
+                var numToProcess = 0;
+                var refreshTimer = null;
+                var viewsToRefresh = [];
+                var viewModel = Knack.router.scene_view.model.views._byId[viewId];
+                if (!viewModel) return;
+
+                var viewAttr = viewModel.attributes;
+                const viewType = viewAttr.type;
+                if (!['table', 'search'].includes(viewType)) return;
+
+                var inlineEditing = false;
+                if (viewType === 'table')
+                    inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
+                else
+                    inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
+
+                if (!inlineEditing) return;
+
+                //Start with hard coded default colors.
+                var bgColorTrue = quickToggleParams.bgColorTrue;
+                var bgColorFalse = quickToggleParams.bgColorFalse;
+
+                var fieldHasQt = false;
+
+                //Override with view-specific colors, if any.
+                if (kwInstance.params.length && kwInstance.params[0].length) {
+                    fieldHasQt = true; //If view has QT, then all fields inherit also.
+
+                    if (kwInstance.params[0].length >= 1 && kwInstance.params[0][0])
+                        bgColorTrue = kwInstance.params[0][0];
+
+                    if (kwInstance.params[0].length >= 2 && kwInstance.params[0][1])
+                        bgColorFalse = kwInstance.params[0][1];
+                }
+
+                var fieldKeywords = {};
+                var fieldsColor = {};
+                const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
+                for (var i = 0; i < cols.length; i++) {
+                    var col = cols[i];
+                    if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
+                        var field = Knack.objects.getField(col.field.key);
+                        if (field && !col.connection) { //Field must be local to view's object, not a connected field.
+                            if (field.attributes.type === 'boolean') {
+                                const fieldId = col.field.key;
+
+                                //Override with field-specific colors, if any.
+                                var tmpFieldColors = {
+                                    bgColorTrue: bgColorTrue,
+                                    bgColorFalse: bgColorFalse
+                                }
+
+                                ktl.fields.getFieldKeywords(fieldId, fieldKeywords);
+                                if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._qt) {
+                                    fieldHasQt = true;
+                                    if (fieldKeywords[fieldId]._qt.params && fieldKeywords[fieldId]._qt.params.length > 0) {
+                                        if (fieldKeywords[fieldId]._qt.params[0].length >= 1 && fieldKeywords[fieldId]._qt.params[0][0] !== '')
+                                            tmpFieldColors.bgColorTrue = fieldKeywords[fieldId]._qt.params[0][0];
+                                        if (fieldKeywords[fieldId]._qt.params[0].length >= 2 && fieldKeywords[fieldId]._qt.params[0][1] !== '')
+                                            tmpFieldColors.bgColorFalse = fieldKeywords[fieldId]._qt.params[0][1];
+                                    }
+                                }
+
+                                if (fieldHasQt) {
+                                    fieldsColor[fieldId] = tmpFieldColors;
+                                    $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
                                 }
                             }
+                        }
+                    }
+                }
 
-                            if (fieldHasQt) {
-                                fieldsColor[fieldId] = tmpFieldColors;
-                                $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
+                //Update table colors
+                if (!$.isEmptyObject(fieldsColor)) {
+                    data.forEach(row => {
+                        const keys = Object.keys(fieldsColor);
+                        keys.forEach(fieldId => {
+                            var style = 'background-color:' + ((row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
+                            $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).attr('style', style);
+                        })
+                    })
+                }
+
+                //Process cell clicks.
+                //$('#' + viewId + ' .qtCell').off('click').on('click', e => {
+                $('#' + viewId + ' .qtCell').on('click', e => {
+                    if (document.querySelectorAll('.bulkEditCb:checked').length) return;
+
+                    e.stopImmediatePropagation();
+
+                    var fieldId = e.target.getAttribute('data-field-key') || e.target.parentElement.getAttribute('data-field-key');
+                    var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
+                    if (viewId) {
+                        viewId = viewId.getAttribute('id');
+
+                        const dt = Date.now();
+                        var recId = e.target.closest('tr').id;
+                        var value = ktl.views.getDataFromRecId(viewId, recId)[fieldId + '_raw'];
+                        value = (value === true ? false : true);
+                        if (!viewsToRefresh.includes(viewId))
+                            viewsToRefresh.push(viewId);
+
+                        quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
+                        $(e.target.closest('td')).css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
+                        clearTimeout(refreshTimer);
+
+                        numToProcess++;
+                        startQtScanning();
+                    }
+                })
+
+                function startQtScanning() {
+                    ktl.core.infoPopup();
+                    showProgress();
+
+                    if (qtScanItv) return;
+                    ktl.views.autoRefresh(false);
+                    qtScanItv = setInterval(() => {
+                        if (!$.isEmptyObject(quickToggleObj)) {
+                            var dt = Object.keys(quickToggleObj)[0];
+                            if (!quickToggleObj[dt].processed) {
+                                quickToggleObj[dt].processed = true;
+                                doQuickToggle(dt);
                             }
                         }
-                    }
+                    }, 500);
                 }
-            }
 
-            //Update table colors
-            if (!$.isEmptyObject(fieldsColor)) {
-                data.forEach(row => {
-                    const keys = Object.keys(fieldsColor);
-                    keys.forEach(fieldId => {
-                        var style = 'background-color:' + ((row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
-                        $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).attr('style', style);
-                    })
-                })
-            }
+                function doQuickToggle(dt) {
+                    var recObj = quickToggleObj[dt];
+                    if ($.isEmptyObject(recObj) || !recObj.viewId || !recObj.fieldId) return;
 
-            //Process cell clicks.
-            //$('#' + viewId + ' .qtCell').off('click').on('click', e => {
-            $('#' + viewId + ' .qtCell').on('click', e => {
-                if (document.querySelectorAll('.bulkEditCb:checked').length) return;
-
-                e.stopImmediatePropagation();
-
-                var fieldId = e.target.getAttribute('data-field-key') || e.target.parentElement.getAttribute('data-field-key');
-                var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
-                if (viewId) {
-                    viewId = viewId.getAttribute('id');
-
-                    const dt = Date.now();
-                    var recId = e.target.closest('tr').id;
-                    var value = ktl.views.getDataFromRecId(viewId, recId)[fieldId + '_raw'];
-                    value = (value === true ? false : true);
-                    if (!viewsToRefresh.includes(viewId))
-                        viewsToRefresh.push(viewId);
-
-                    quickToggleObj[dt] = { viewId: viewId, fieldId: fieldId, value: value, recId: recId, processed: false };
-                    $(e.target.closest('td')).css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
-                    clearTimeout(refreshTimer);
-
-                    numToProcess++;
-                    startQtScanning();
+                    var apiData = {};
+                    apiData[recObj.fieldId] = recObj.value;
+                    ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
+                        .then(() => {
+                            showProgress();
+                            numToProcess--;
+                            delete quickToggleObj[dt];
+                            if ($.isEmptyObject(quickToggleObj)) {
+                                clearInterval(qtScanItv);
+                                qtScanItv = null;
+                                Knack.showSpinner();
+                                refreshTimer = setTimeout(() => {
+                                    ktl.core.removeInfoPopup();
+                                    ktl.views.refreshViewArray(viewsToRefresh)
+                                        .then(() => {
+                                            Knack.hideSpinner();
+                                            ktl.views.autoRefresh();
+                                        })
+                                }, 500);
+                            }
+                        })
+                        .catch(function (reason) {
+                            ktl.views.autoRefresh();
+                            alert('Error code KEC_1025 while processing Quick Toggle operation, reason: ' + JSON.stringify(reason));
+                        })
                 }
-            })
 
-            function startQtScanning() {
-                ktl.core.infoPopup();
-                showProgress();
+                function showProgress() {
+                    ktl.core.setInfoPopupText('Toggling... ' + numToProcess + ' items remaining.');
+                }
 
-                if (qtScanItv) return;
-                ktl.views.autoRefresh(false);
-                qtScanItv = setInterval(() => {
-                    if (!$.isEmptyObject(quickToggleObj)) {
-                        var dt = Object.keys(quickToggleObj)[0];
-                        if (!quickToggleObj[dt].processed) {
-                            quickToggleObj[dt].processed = true;
-                            doQuickToggle(dt);
-                        }
-                    }
-                }, 500);
             }
-
-            function doQuickToggle(dt) {
-                var recObj = quickToggleObj[dt];
-                if ($.isEmptyObject(recObj) || !recObj.viewId || !recObj.fieldId) return;
-
-                var apiData = {};
-                apiData[recObj.fieldId] = recObj.value;
-                ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
-                    .then(() => {
-                        showProgress();
-                        numToProcess--;
-                        delete quickToggleObj[dt];
-                        if ($.isEmptyObject(quickToggleObj)) {
-                            clearInterval(qtScanItv);
-                            qtScanItv = null;
-                            Knack.showSpinner();
-                            refreshTimer = setTimeout(() => {
-                                ktl.core.removeInfoPopup();
-                                ktl.views.refreshViewArray(viewsToRefresh)
-                                    .then(() => {
-                                        Knack.hideSpinner();
-                                        ktl.views.autoRefresh();
-                                    })
-                            }, 500);
-                        }
-                    })
-                    .catch(function (reason) {
-                        ktl.views.autoRefresh();
-                        alert('Error code KEC_1025 while processing Quick Toggle operation, reason: ' + JSON.stringify(reason));
-                    })
-            }
-
-            function showProgress() {
-                ktl.core.setInfoPopupText('Toggling... ' + numToProcess + ' items remaining.');
-            }
-
         } //quickToggle
 
 
@@ -5881,19 +5881,16 @@ function Ktl($, appInfo) {
             const kw = '_hf';
             if (!viewId || !keywords[kw] || !keywords[kw].params.length) return;
 
-            var keywords = {};
             const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
             for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                const params = kwList[kwIdx];
-                keywords[kw] = params;
-                execKw(keywords);
+                execKw(kwList[kwIdx]);
             }
 
-            function execKw(keywords) {
-                var res = ktl.core.processKeywordOptions(keywords[kw].options);
+            function execKw(kwInstance) {
+                var res = ktl.core.processKeywordOptions(kwInstance.options);
                 if (res && !res.rolesOk) return;
 
-                keywords[kw].params[0].forEach(fieldLabel => {
+                kwInstance[kw].params[0].forEach(fieldLabel => {
                     var fieldId = fieldLabel;
                     if (!fieldLabel.startsWith('field_'))
                         fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
@@ -6266,8 +6263,12 @@ function Ktl($, appInfo) {
                 }
             },
 
-            addDateTimePickers: function (viewId = '') {
+            addDateTimePickers: function (viewId = '', keywords) {
                 if (!viewId) return;
+
+                var res = ktl.core.processKeywordOptions(ktlKeywords[viewId].options);
+                if (res && !res.rolesOk) return;
+
                 var period = 'monthly';
                 var inputType = 'month';
 
@@ -7480,47 +7481,55 @@ function Ktl($, appInfo) {
             },
 
             hideColumns: function (view = '', keywords = {}) {
-                if (!view.key || (view.type !== 'table' && view.type === 'search')) return;
+                const viewId = view.key;
+                if (!viewId || (viewId !== 'table' && view.type === 'search')) return;
 
-                var res = {};
-                if (keywords._hc) {
-                    res = ktl.core.processKeywordOptions(keywords._hc.options);
-                    if (res && !res.rolesOk) return;
+                var kw = '_hc';
+                if (keywords._rc)
+                    kw = '_rc';
+
+                if (!keywords[kw]) return;
+
+                const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                    execKw(kwList[kwIdx]);
                 }
 
-                if (keywords._rc) {
-                    res = ktl.core.processKeywordOptions(keywords._rc.options);
+                function execKw(kwInstance) {
+                    var res = ktl.core.processKeywordOptions(kwInstance.options);
                     if (res && !res.rolesOk) return;
+
+                    var model = (Knack.views[view.key] && Knack.views[view.key].model);
+                    var columns = model.view.columns;
+                    var hiddenFieldsAr = [];
+                    var hiddenHeadersAr = [];
+                    var removedFieldsAr = [];
+                    var removedHeadersAr = [];
+                    var header = '';
+                    var fieldId = '';
+
+                    columns.forEach(col => {
+                        header = col.header.trim();
+                        if (kwInstance.params[0].includes(header)) {
+                            if (kw === '_hc')
+                                hiddenHeadersAr.push(header);
+                            else
+                                removedHeadersAr.push(header);
+                        }
+
+                        fieldId = (col.id || (col.field && col.field.key));
+                        if (fieldId) {
+                            if (kwInstance.params[0].includes(fieldId))
+                                hiddenFieldsAr.push(fieldId);
+                        }
+                    })
+
+                    if (hiddenFieldsAr.length || hiddenHeadersAr.length)
+                        ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr, hiddenHeadersAr);
+
+                    if (removedFieldsAr.length || removedHeadersAr.length)
+                        ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr, removedHeadersAr);
                 }
-
-                var model = (Knack.views[view.key] && Knack.views[view.key].model);
-                var columns = model.view.columns;
-                var hiddenFieldsAr = [];
-                var hiddenHeadersAr = [];
-                var removedFieldsAr = [];
-                var removedHeadersAr = [];
-                var header = '';
-                var fieldId = '';
-
-                columns.forEach(col => {
-                    header = col.header.trim();
-                    if (keywords._hc && keywords._hc.params[0].includes(header))
-                        hiddenHeadersAr.push(header);
-                    else if (keywords._rc && keywords._rc.params[0].includes(header))
-                        removedHeadersAr.push(header);
-
-                    fieldId = (col.id || (col.field && col.field.key));
-                    if (fieldId) {
-                        if (keywords._hc && keywords._hc.params[0].includes(fieldId))
-                            hiddenFieldsAr.push(fieldId);
-                    }
-                })
-
-                if (hiddenFieldsAr.length || hiddenHeadersAr.length)
-                    ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr, hiddenHeadersAr);
-
-                if (removedFieldsAr.length || removedHeadersAr.length)
-                    ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr, removedHeadersAr);
             },
 
             getViewSourceName: function (viewId) {
@@ -7549,37 +7558,35 @@ function Ktl($, appInfo) {
             },
 
             applyZoomLevel: function (viewId, keywords) {
-                if (!viewId || !keywords || !keywords._zoom || !keywords._zoom.params[0].length) return;
+                if (!viewId || !keywords || !keywords._zoom || !keywords._zoom[0].params[0].length) return;
 
                 var res = ktl.core.processKeywordOptions(keywords._zoom.options);
                 if (res && !res.rolesOk) return;
 
                 var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
-                var zoomLevel = keywords._zoom.params[0];
+                var zoomLevel = keywords._zoom[0].params[0];
                 if (!isNaN(zoomLevel))
                     $(sel).css({ 'zoom': zoomLevel + '%' });
             },
 
             addRemoveClass: function (viewId, keywords) {
                 const kw = '_cls';
-                if (!viewId || !keywords[kw] || !keywords[kw].params[0].length) return;
+                if (!viewId || !keywords[kw]) return;
 
-                var keywords = {};
                 const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
                 for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                    const params = kwList[kwIdx];
-                    keywords[kw] = params;
-                    execKw(keywords);
+                    const kwInstance = kwList[kwIdx];
+                    execKw(kwInstance);
                 }
 
-                function execKw(keywords) {
-                    var res = ktl.core.processKeywordOptions(keywords[kw].options);
+                function execKw(kwInstance) {
+                    var res = ktl.core.processKeywordOptions(kwInstance.options);
                     if (res && !res.rolesOk) return;
 
                     //TODO: improve support of ktlTarget with Universal Selector.
                     var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
 
-                    var classes = keywords._cls.params[0];
+                    var classes = kwInstance.params[0];
                     for (var i = 0; i < classes.length; i++) {
                         var params = classes[i];
                         if (params.startsWith('!'))
