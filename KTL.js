@@ -3189,7 +3189,7 @@ function Ktl($, appInfo) {
                 if (keywords) {
                     var useUrlAr = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
 
-                    var linkedViewIds = (keywords._lf && ktl.views.convertViewTitlesToViewIds(keywords._lf.params[0], masterViewId));
+                    var linkedViewIds = (keywords._lf && ktl.views.convertViewTitlesToViewIds(keywords._lf[0].params[0], masterViewId));
                     if (linkedViewIds) {
                         var masterView = Knack.models[masterViewId].view;
                         if (masterView.type === 'report')
@@ -5859,7 +5859,7 @@ function Ktl($, appInfo) {
             if (!['table', 'search'].includes(viewType)) return;
 
             const kw = '_mc';
-            var kwInstance = ktlKeywords[viewId][kw];
+            var kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
             if (kwInstance && kwInstance.length)
                 kwInstance = kwInstance[0];
             else
@@ -6172,7 +6172,7 @@ function Ktl($, appInfo) {
                         var viewId = view.id;
                         var keywords = ktlKeywords[viewId];
                         if (keywords && keywords._ar) {
-                            var intervalDelay = parseInt(keywords._ar.params[0]);
+                            var intervalDelay = parseInt(keywords._ar[0].params[0]);
                             intervalDelay = isNaN(intervalDelay) ? 60 : intervalDelay;
                             intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 
@@ -7072,14 +7072,14 @@ function Ktl($, appInfo) {
                         var outcomeObj = { msg: '' };
 
                         //Unique Value Exceptions _uvx
-                        if (keywords._uvx && keywords._uvx.params[0].length) {
+                        if (keywords._uvx && keywords._uvx[0].params[0].length) {
                             e.preventDefault();
 
                             const viewType = ktl.views.getViewType(viewId);
                             var field = Knack.objects.getField(fieldId);
                             var fieldName = field.attributes.name;
                             var fieldValue = $('#' + viewId + ' #' + fieldId).val();
-                            if (viewType === 'search' || !fieldValue || fieldValue === '' || (fieldValue !== '' && keywords._uvx.params[0].includes(fieldValue.toLowerCase()))) {
+                            if (viewType === 'search' || !fieldValue || fieldValue === '' || (fieldValue !== '' && keywords._uvx[0].params[0].includes(fieldValue.toLowerCase()))) {
                                 resolve(outcomeObj);
                                 return;
                             }
@@ -7179,12 +7179,12 @@ function Ktl($, appInfo) {
                             var outcomeObj = { msg: '' };
 
                             //Unique Value Check
-                            if (keywords._uvc && keywords._uvc.params[0].length) {
+                            if (keywords._uvc && keywords._uvc[0].params[0].length) {
                                 e.preventDefault();
 
                                 var value = '';
-                                for (var f = 0; f < keywords._uvc.params[0].length; f++) {
-                                    var uvcParam = keywords._uvc.params[0][f];
+                                for (var f = 0; f < keywords._uvc[0].params[0].length; f++) {
+                                    var uvcParam = keywords._uvc[0].params[0][f];
                                     if ((uvcParam.match(/['"]/g) || []).length === 2) {
                                         const matches = uvcParam.match(/(['"])(.*?)\1/);
                                         if (matches) {
@@ -7527,7 +7527,7 @@ function Ktl($, appInfo) {
                 const viewId = view.key;
 
                 const kw = '_ni';
-                var kwInstance = ktlKeywords[viewId][kw];
+                var kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
                 if (kwInstance && kwInstance.length) {
                     kwInstance = kwInstance[0];
                     var res = ktl.core.processKeywordOptions(kwInstance.options);
@@ -10934,7 +10934,7 @@ function Ktl($, appInfo) {
                             .filter( (detail) => {
                                 return (detail.details.toLowerCase().indexOf(searchStr) >= 0)
                                     || (account.indexOf(searchStr) >= 0)
-                                    || (logType.indexOf(searchStr) >= 0); 
+                                    || (logType.indexOf(searchStr) >= 0);
                             })
                             .forEach( (detail) => {
                                 const newLocalDT = new Date(detail.dt.substring(0, 19) + ' UTC');
@@ -11025,7 +11025,7 @@ function Ktl($, appInfo) {
             generateDynamicTable(data);
             addCopytoClipboardButton();
         });
-        
+
     })(); //Account Logs feature
 
     window.ktl = {
