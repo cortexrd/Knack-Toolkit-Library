@@ -11025,7 +11025,6 @@ function Ktl($, appInfo) {
             generateDynamicTable(data);
             addCopytoClipboardButton();
         });
-
     })(); //Account Logs feature
 
     window.ktl = {
