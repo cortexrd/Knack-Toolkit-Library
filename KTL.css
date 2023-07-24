@@ -6,7 +6,7 @@
 	* @license GPLv3
     */
 
-/* KTL CSS version: 0.2.19 */
+/* KTL CSS version: 0.2.20 */
 
 /************ General Settings **************/
 :root {
@@ -326,6 +326,12 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 
 .ktlFlashingFadeInOut {
 	animation: ktlFlashingFadeInOut var(--flashRate) infinite;
+}
+
+@media print {
+	#addVersionInfoDiv {
+		display: none;
+	}
 }
 
 /**** KTL_RELATED - END ****/
