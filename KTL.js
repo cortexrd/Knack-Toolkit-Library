@@ -3210,6 +3210,7 @@ function Ktl($, appInfo) {
                                     srchVal = srchVal ? srchVal.value : '';
                                     updateSearchTable(linkedViewId, srchVal);
                                     updatePerPage(linkedViewId, masterView.rows_per_page);
+
                                     updateSort(linkedViewId, masterView.source.sort[0].field + '|' + masterView.source.sort[0].order);
                                     updateFilters(linkedViewId, masterView.filters);
 
@@ -3712,20 +3713,25 @@ function Ktl($, appInfo) {
 
         function updateSort(viewId, sort) {
             if (!viewId || !sort) return;
-            var field = sort.split('|')[0];
-            var order = sort.split('|')[1];
-            var sortAr = [field, order]
+            const sorts = decodeURIComponent(sort).split('|');
 
+            if (sorts.length < 2)
+                return;
+
+            const field = sorts[0];
+            const order = sorts[1];
 
             Knack.views[viewId].model.view.source.sort = [{
-                field: sortAr[0],
-                order: sortAr[1]
+                field: field,
+                order: order
             }];
 
             var i = {};
-            i[viewId + "_sort"] = sortAr[0] + "|" + sortAr[1]; //{ "view_1264_sort": "field_182-field_182|asc" }
-            var r = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
-            Knack.router.navigate(r);
+            i[viewId + "_sort"] = encodeURIComponent(field + "|" + order); //{ "view_1264_sort": "field_182-field_182|asc" }
+
+            var route = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
+
+            Knack.router.navigate(route);
             Knack.setHashVars();
             Knack.views[viewId].model.setDataAPI();
         }
