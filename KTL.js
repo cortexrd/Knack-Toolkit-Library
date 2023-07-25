@@ -3721,19 +3721,8 @@ function Ktl($, appInfo) {
             const field = sorts[0];
             const order = sorts[1];
 
-            Knack.views[viewId].model.view.source.sort = [{
-                field: field,
-                order: order
-            }];
-
-            var i = {};
-            i[viewId + "_sort"] = encodeURIComponent(field + "|" + order); //{ "view_1264_sort": "field_182-field_182|asc" }
-
-            var route = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
-
-            Knack.router.navigate(route);
-            Knack.setHashVars();
-            Knack.views[viewId].model.setDataAPI();
+            Knack.views[viewId].model.view.source.sort[0].field = field;
+            Knack.views[viewId].model.view.source.sort[0].sort = order;
         }
 
         function onStopFilterBtnClicked(e, filterDivId) {
@@ -7327,7 +7316,6 @@ function Ktl($, appInfo) {
             //For KTL internal use.
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
             handleClickDateTimeSort: function (event) {
-
                 const viewId = $(event.currentTarget).parents('.kn-view').attr('id');
 
                 if (!viewId || ktl.views.getViewType(viewId) !== 'table')
