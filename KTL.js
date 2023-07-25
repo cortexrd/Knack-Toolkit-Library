@@ -7334,11 +7334,11 @@ function Ktl($, appInfo) {
                     return;
 
                 const fieldId = $(event.currentTarget).attr('class').split(/\s+/)[0];
-                const field = Knack.views[viewId].model.view.fields.find((field) => field.key === fieldId)
+                const field = Knack.views[viewId].model.view.fields.find((field) => field.key === fieldId);
 
                 if (field && field.type === 'date_time') {
                     if (event.currentTarget.classList.value.split(' ').filter((c) => c.includes('sorted')).length === 0) {
-                        $(event.currentTarget).find('a').attr('href', '#field_145|desc')
+                        $(event.currentTarget).find('a').attr('href', `#${fieldId}|desc`);
                     }
                 }
             },
