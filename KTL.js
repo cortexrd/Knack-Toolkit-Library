@@ -6155,7 +6155,9 @@ function Ktl($, appInfo) {
                         var viewId = view.id;
                         var keywords = ktlKeywords[viewId];
                         if (keywords && keywords._ar) {
-                            var intervalDelay = parseInt(keywords._ar[0].params[0]);
+                            var intervalDelay = 60;
+                            if (keywords._ar.length)
+                                intervalDelay = parseInt(keywords._ar[0].params[0]);
                             intervalDelay = isNaN(intervalDelay) ? 60 : intervalDelay;
                             intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
 

@@ -1,14 +1,94 @@
-Last updated: June 2, 2023
-
 # Contents
+
+[About Keywords](#about-keywords)
+
+[Keyword Options](#keyword-parameters)
 
 [Keywords List](#keywords-list)
 
 [Advanced Keywords Setup](#advanced-keywords-setup)
 
+[Need more keywords?](#need-more-keywords)
+
+# About Keywords
+
+For an introduction on what are KTL keywords, [see this section](https://github.com/cortexrd/Knack-Toolkit-Library#what-are-keywords) on the main of this GitHub project.
+
+Some keywords support multiple instances of that same keyword in a given view or field.
+
+# Keyword Parameters
+
+Some keywords require one or more parameters, and some may be optional. When using parameters, the equal sign “=”operator is added after the keyword, followed by the parameter(s). If multiple parameters are used, the comma is the separator and spaces are allowed.
+
+Ex: \_rvs=vTitle1, vTitle2
+
+The keywords are not case-sensitive, but the parameters are and must always be an **exact match** to take effect. There are a few exceptions, and they will be clearly documented.
+
+# Parameter Groups
+
+Some keywords can accept many groups of parameters in a chain. In those cases, the groups are enclosed in square brackets. All groups must be separated by a comma.
+
+Example of a keywords using two groups:
+
+\_cfv=[Column1,neq,,,red,,iu], [Column2,gte,100, yellow,\#00F9]
+
+# Keyword Options
+
+Some keywords can also be used with **options** that will affect their behavior. The options are always used in a separate group. This means that when used, the keyword parameters and the options must both be enclosed in square brackets, due to multiple parameter groups. The placement of the option group is not important. Only one instance of a given option kind is allowed per keyword. But there may be several different option kinds used in combination, each in their respective group.
+
+Here are the available options:
+
+-   **ktlRoles**: Defines to which roles the keyword will be applied. If you wish to **exclude** a role, add an exclamation mark before. This option has the highest precedence. It is being evaluated before anything else, and if this condition is not satisfied, the keyword will not be executed. It is possible to add several roles, separated by a comma. The roles are compared from left to right against the roles of the logged-in account. As soon as a false condition is met, the keyword execution is aborted.
+-   **ktlTarget**: A *Universal Selector* (see below) that defines to which element the keyword will be applied. See *Universal Selectors* below for accepted values.
+-   **ktlRefVal**: A *Universal Selector* (see below) from which the text or numeric value will be extracted. This value will then become the *reference* of a comparison that takes place in the processing of the keyword. Ex: with \_cfv, can be used to compare if a numeric value is higher than the reference, and apply a specified color in such case. The selector can be anywhere on the page, not necessarily in the same view. Can be a text value, a numeric value, a calculated summary like Total, Average, Maximum or Minimum. If the ktlRefVal contains only a field without a view, then the keyword’s view is used, and this field’s value becomes the reference in the comparison process for each record. See *Universal Selectors* below for accepted values.
+-   **ktlSummary**: This is actually a “sub-option” of the ktlRefVal option. It is used to specify that the reference value shall be taken from a summary section, at the intersection of a row and column, using their label. If a view is specified, it must be the last parameter. If omitted, the current view is assumed by default.
+
+For some examples, see in next section below. There’s also a discussion on this topic here, where you can also post questions if you need assistance: [Examples on using the KTL - keywords and code](https://github.com/cortexrd/Knack-Toolkit-Library/discussions/50)
+
+## Universal Selectors
+
+The Universal Selectors is a concept that provides a simplified and flexible method of specifying elements for processing. If the user prefers using the **field_id** and **view_id** syntax, it will work. Using the **View Title** and **Field Label** will also work, as well as a mixed combination.
+
+The syntax can be one of the following:
+
+-   **view_id, field_ids**: When providing both, in the ID form, the order is not important. Multiple fields are supported, but only one view.
+-   **field_ids** or **fields label** only: When providing only the field ID or label, then the view is assumed to be the same as the keyword’s container. Multiple fields are supported.
+-   **Fields label, view title**: When providing both but using their textual format, then the order is important. The field(s) must be first, followed by the view. Multiple fields are supported, but only one view.
+-   any qualified **jQuery selector** that points to an element containing text or value. This allows selecting more complex or custom text elements, including multiple elements. The KTL automatically detects a jQuery selector string.
+
+#### Universal Selectors examples
+
+**\_cfv=[Price, lt, ktlRefVal, red, yellow, ,i], [ktlRefVal, Reg Price], [ktlTarget, Price, Item Desc], [ktlRoles, !Manager, !Supervisor]**
+
+This keyword command is added to the description of a list view. It will compare each record’s Price field against a reference value: the field named Reg Price of the same view, same record. If Price is less than Reg Price, the Price and Item Desc fields will be colorized with red italics text on a yellow background. But this will not take effect if the logged-in account has either the role Manager or Supervisor.
+
+**\_cfv=[Price, gte, ktlRefVal, blue, palegreen, bold], [ktlRefVal, Average Sales, Store Details], [ktlTarget, Item Desc], [ktlRoles, Manager]**
+
+This keyword command is added to the description of a grid view. It will compare each row's Price field against a reference value found another view: a details view entitled Store Details, and its field Average Sales. If the value is greater than or equal, then the Item Desc field's value of this grid's row will be colorized blue and the cell will have a pale green background. But this will only take effect if the logged-in account has the Manager role.
+
+## Keyword examples
+
+**\_ni= [Amount, Phone], [ktlRoles, !Developer]**
+
+Will disable Inline Editing of two columns of a grid having headers Amount and Phone, for all roles except Developer.
+
+**\_hc= [Address, Name], [ktlRoles, Sales, Supervisor]**
+
+Will hide columns Address and Name in a grid, for roles Sales and Supervisor.
+
+**\_zoom=[120], [ktlTarget, \#view_123 .kn-table], [ktlRoles, Senior, Visually Impaired]**
+
+Will zoom view_123’s table by 20% for seniors and users with low vision.
+
+**\_cfv=[Sales, gt,ktlRefVal,yellow,darkgreen], [ktlRefVal,\#view_219 .kn-table-totals:last-of-type td:nth-child(2)]**
+
+Will colorize the column having the title “Sales” with yellow text on dark green background, if the value of the cells are greater than the last summary found in the grid in view_219.
+
 # Keywords List
 
-In alphabetical order.
+Here's the complete list of all keywords, in alphabetical order.
+
+You will see what is specific to each such as where to use them (ex: view, field), what are the supported options and if possible to use multiple instances.
 
 ## \_al
 
@@ -16,37 +96,71 @@ Auto-Login, with AES encrypted email/pw stored in localStorage. This must be in 
 
 ## \_ar=n
 
-Auto Refresh view. The view will be refreshed periodically every “*n*” seconds. If no or invalid parameter is given, the default is 60 seconds. It is possible to manually start/stop the process using the autoRefresh function.
+Auto Refresh view. The view will be refreshed periodically every “*n*” seconds. If omitted or invalid parameter is given, the default is 60 seconds. It is possible to programmatically start/stop the process using the autoRefresh function.
 
-## \_cfv=[params1], [params2]
+## \_bcg=size, fieldId, h
 
-Colorize Field by Value. Can be used with grids and lists. Used to change the color of the text and background of a cell, based on its value. It is also possible to set the following styles: font weight (bold, extrabold , 700), underline and italic. It is also possible to set the style to propagate across the whole row. The colors support named values (ex: red, purple) or hex values with optional transparency (ex: \#ff08, or \#ffff0080 for 50% transparent yellow).
+Barcode Generator. When used in a Details view, will generate a QR Code containing the text of the specified field.
 
-The parameters syntax is as follows:
+-   The size parameter defines the dimension in pixels. If omitted, 200 is used by default.
+-   The fieldId parameter defines which field to use, by its ID. If omitted, the first one is used.
+-   adding the "h" parameter will remove the text
+-   if the text is present, the code will be placed above it
 
-\_cfv= [operator, value, textColor, backgroundColor, fontWeight, options]
+Examples:
 
-operator (required):
+`_bcg=75, field_123, h`
 
--   eq (equals)
--   neq (not equals)
+Will create a QR code of 75x75 pixels for field_123, and no text below it.
+
+`_bcg=,,h`
+
+Will create a QR code of 200x200 pixels for the first field found, without the text.
+
+Supported options: ktlRoles
+
+## \_cfv=colHeader, operator, refValue, textColor, backgroundColor, fontWeight, options
+
+Colorize Field by Value. Can be used with grids, lists and details views. Used to compare the content of a cell to a reference value, and apply the following:
+
+-   Change the text and background colors
+-   Set the following styles: font weight (bold, extrabold , 700), underline and italic
+-   Affect the whole cell or only the text within
+-   Propagate the style across the whole row
+-   Flash the cell with On/Off or Fade In/Out modes, and an adjustable rate
+-   Hide or remove the cell's text
+
+The color formats supported are:
+
+-   named values (ex: red, purple)
+-   hex values with optional transparency (ex: \#ff08, or \#ffff0080 for 50% transparent yellow)
+
+The parameters are as follows:
+
+**colHeader** (required): The colorization will be applied to the cells of the column having this header. The field ID can also be used instead of the header text. Note: if used in a field, the colHeader must match the field name.
+
+**operator** (required):
+
+-   is (equals - textual)
+-   not (not equals)
 -   has (contains text)
 -   sw (starts with)
 -   ew (ends with)
+-   equ (equals - numeric)
 -   gt (greater than)
 -   gte (greater than or equal to)
 -   lt (less than)
 -   lte (less than or equal to)
 
-value (required): Any textual or numeric value. For “empty” string, leave two consecutive commas.
+**referenceValue** (required): Any literal text or numeric value against which the field value will be compared. For “empty” string, leave two consecutive commas. When a fixed value or text is not desirable, a special option can be used instead: **ktlRefVal**. This links to an external “referenced” value that can change dynamically. When used, this option must be added as the first token of an additional group, followed by a comma and an *Universal Selector* that fetches the reference value in real-time.
 
-textColor (required): any standard “named colors” or hex values starting with \# and has 3, 4, 6, or 8 digits is supported.
+**textColor** (required): any standard “named colors” or hex values starting with \# and has 3, 4, 6, or 8 digits is supported.
 
-backgroundColor (optional): Same as above. Will colorize the cell or only the text if the “t” option is included.
+**backgroundColor** (optional): Same as above. Will colorize the cell or only the text if the “t” option is included.
 
-fontWeight (optional): Any named value like “bold”, or “lighter”, or a numeric values like 700. Omit or leave empty for default.
+**fontWeight** (optional): Any named value like “bold”, or “lighter”, or a numeric values like 700. Omit or leave empty for default.
 
-options (optional): Possible values are
+**options** (optional): Possible values are
 
 u - underline
 
@@ -56,27 +170,41 @@ t - text only
 
 p - propagate style to whole row
 
-Example: \_cfv=[neq,,,red,,iu], [gte,100, yellow,\#00F9]
+r - remove text
 
-The first group between square brackets will set the background in red when the value is not blank and set the text style to default weight, italics and underlined. The second one will set the text color to yellow and the background in blue at 56.3 % transparency, when the value is greater than or equal to 100.
+h - hide text
 
-Additional notes:
+f - flash with On/Off mode
+
+ff - flash with fade In/Out mode
+
+Example: \_cfv=[Discount,not,,,red,bold,iu], [Reg Price,gte,50, yellow,\#00F9,,ff]
+
+The first group between square brackets will set the background in red and text in bold when the Discount value is not blank and set the text style to bold, italics and underlined. The second group will "smooth flash" the text color to yellow and the background in blue at 56.3 % transparency, when the Reg Price value is greater than or equal to 50.
+
+**Additional notes:**
 
 -   The square brackets are optional if you have only one group of parameters
--   Be careful to avoid conflicting conditions since they will give unpredictable results.
+-   Be careful to avoid conflicting conditions since they will yield unpredictable results.
 -   The group of parameters are applied from left to right, so that if you have overlapping conditions, the last one will have precedence.
 -   Transparency is useful to combine the visual effects of various colors
--   This keyword must be used in the field’s description. It will take effect in all grids and lists where used.
--   This keyword can also be used in the view title or description.
--   Using both in the view and in the field is supported but need extra care to avoid conflicting conditions. When using both, the field keyword has precedence over the view’s.
+-   This keyword can be used in a view’s title or description.
+-   This keyword can be used in a field’s description (table view). In such cases, it will take effect in all grids and lists across the app.
+-   Using \_cfv in both the view and the field simultaneously is supported but the field will supersede the view’s colorization if both are competing. Care should be taken to avoid conflicting conditions and confusion. Using transparency helps combining colors while maintaining the desired visual cue.
+
+Supported options: ktlRoles, Multiple Instances, ktlTarget, ktlRefVal, ktlSummary
 
 ## \_dr=rowsNumber
 
-Displayed Records. Sets the initial number of rows in a table, allowing to go beyond the maximum value of 100 in the Builder. This is applied when the page is first opened.
+Displayed Records. Sets the initial number of rows in a table, allowing to go beyond the maximum value of 100 in the Builder.
 
 ## \_dtp
 
 Add Date/Time Picker to a table. The table **must have a Date/Time field**, and the first one found from the left will be used. Six new fields will appear at the top of your table view: **From**, **To** and periods as **Monthly**, **Weekly**, and **Daily**. Depending on the active period, when you change From, the To field will automatically update itself accordingly, and the view will be filtered in real-time. On the other hand, if you change the To date, the From will not be affected, leaving you more flexibility. The focus is conveniently placed on the last field used so you can use the up/down arrows to scroll quickly through months and visualize data. This is also compatible with additional filter fields, provided that the AND operator is used. Once you have a filter that you like, it is also possible to save it as a [User Filter](#user-filters).
+
+## \_ha
+
+Header Alignment. When used with a grid or a pivot table, the headers will match the alignment of the columns’ data.
 
 ## \_hc=colHeader1, colHeader2
 
@@ -84,7 +212,7 @@ Hidden Columns. To hide a grid’s columns, based on the header’s exact text. 
 
 ## \_hf=fieldName1, fieldName2
 
-Hidden Fields. To hide fields in a view, based on their exact names. Typically used with utility fields that don’t need to be visible.
+Hidden Fields. To hide fields in a form or details view, based on their exact names. Typically used with utility fields that don't need to be visible.
 
 ## \_ht
 
@@ -118,7 +246,7 @@ Triggers the Kiosk mode for that page. This only applies for any role other than
 
 Kiosk add Refresh button. For Kiosk mode only, when there’s no keyboard/mouse. When this keyword is used, any menu on the page will be moved next to it to save space.
 
-## \_lf= vTitle1,vTitle2
+## \_lf=vTitle1,vTitle2
 
 Linked Filters. Add this to the main “controlling” view, and all other views will apply the same filtering pattern. The number of records per page, sort column+order and searched text will also apply, if the view allows it.
 
@@ -142,6 +270,10 @@ Notes:
 
 -   It is possible to allow inline editing for a specific field by adding an exclamation mark as the first character. Ex: **\_ni=!Phone Number, !Address** will disable inline editing for the whole grid, except for the columns with headers Phone Number and Address.
 -   About \_ni security: use this keyword with caution as it only disables the user interface. Someone with coding skills and bad intentions could still modify the data using commands in the console.
+
+## \_notes
+
+Allows entering development notes or instructions in a view's title or description. Similar to the Description text box in a field.
 
 ## \_num
 
@@ -179,11 +311,11 @@ To convert text to uppercase in real-time
 
 ## \_uvc=fldName1, fldName2
 
-Unique Value Check. Used when it is not possible to use the Builder’s **Must be unique** option due to the nature of the field. This is the case for Connected and Text Formula fields. This feature requires additional setup in the field’s description and a dedicated hidden Search view. See instructions in the Advanced Keywords Setup / [Unique Value Check \_uvc](#_Unique_Value_Check).
+Unique Value Check. Used when it is not possible to use the Builder’s **Must be unique** option due to the nature of the field. This is the case for Connected and Text Formula fields. This feature requires additional setup in the field’s description and a dedicated hidden Search view. See instructions in the Advanced Keywords Setup / [Unique Value Check \_uvc](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords#unique-value-check-_uvc).
 
 ## \_uvx=str1, str2
 
-Unique Values Exceptions. Used when we need unique values, but with a few specific exceptions. See instructions in the Advanced Keywords Setup / [Unique Values Exceptions \_uvx](#_Unique_Values_Exceptions).
+Unique Values Exceptions. Used when we need unique values, but with a few specific exceptions. See instructions in the Advanced Keywords Setup / [Unique Values Exceptions \_uvx](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords#unique-values-exceptions-_uvx).
 
 ## \_oln=url
 
@@ -197,13 +329,35 @@ When clicked on the Support top menu, a new tab will be opened to the Cortex R&D
 
 Open Link in Same page. To redirect your browser to another URL, on the same page. In the rich text, add the keyword **\_ols=** as plain text, followed by a **link** to the website and a descriptive text (or same URL).
 
+## \_style
+
+To add a style to a view, page or a jQuery selector. This will **merge** your new style to any existing style. Can be used with the ktlTarget option.
+
+Ex: `_style=[min-width:250px],[ktlTarget,.kn-button]`
+
+Will set all Knack buttons in the page (those having class kn-button) to have a minimum width of 250px.
+
 ## \_yourOwnKeywords
 
 You can also add your own app-specific keywords and process them in the callback function processViewKeywords.
 
+## \_zoom=zoomValue, options
+
+Applies a zoom value in percentage to a specified element.
+
+The options are:
+
+-   **None** (leave empty): for the view where the keyword is placed
+-   **page**: to apply to whole page
+-   **sel,selectorString**: to apply to a specific valid jQuery selector
+
+Ex: **\_zoom=120,sel,.myClass**
+
+Will zoom in at 120% all elements having the class myClass.
+
 ### Adding keywords to a rich text view to trigger features
 
-In the Builder, you can add a rich text view with these keywords to trigger special behavior. See [What are Keywords?](#what-are-keywords) For more details.
+In the Builder, you can add a rich text view with these keywords to trigger special behavior.
 
 The page must have **only one view,** have the “Include this page in the Page Menu” flag active and be in the **top** **menu** (not in a sub-menu).
 
@@ -243,43 +397,10 @@ The \_uvx feature can combine more than one field in the same Add form, as long 
 
 Furthermore, the \_uvc and \_uvx are inter-compatible, i.e. they can be used together in the same Search view. In that case both the \_uvc and \_uvx keywords must be included in its title or description.
 
-# List of all Keywords
+# Need more keywords?
 
-| **Keyword**                                          | **Description**                                       | **Where to use it**                                      | **Example**                                  |
-|------------------------------------------------------|-------------------------------------------------------|----------------------------------------------------------|----------------------------------------------|
-| \_ar=n Default is 60 seconds if parameter is omitted | Auto-Refresh a view every *n* seconds                 | View Title or Description                                | \_ar=60                                      |
-| \_hv                                                 | Hidden View                                           | ‘’                                                       |                                              |
-| \_ht                                                 | Hidden Title                                          | ‘’                                                       |                                              |
-| \_hf=fld1, fld2…                                     | Hidden Fields                                         | “                                                        | \_hf=Work Shift                              |
-| \_ni=colHeader1, colHeader2…                         | No Inline editing                                     | ‘’                                                       | \_ni=Email,!Phone (excl mark allows editing) |
-| \_ts                                                 | Adds a Time Stamp to a view                           | ‘’                                                       |                                              |
-| \_dtp                                                | Adds Date/Time Pickers                                | ‘’                                                       |                                              |
-| \_rvs=vTitle1, vTitle2…                              | Refresh Views after Submit                            | ‘’                                                       | \_rvs=Monthly Sales, Clients                 |
-| \_rvr=vTitle1, vTitle2…                              | Refresh Views after Refresh                           | ‘’                                                       | \_rvr=Monthly Sales, Clients                 |
-| \_rvd=vConfTitle,vTitle1, vTitle2…                   | Refresh Views after calendar event Drag’n Drop        | ‘’                                                       | \_rvd=Confirmation, Monthly Sales, Clients   |
-| \_lf= vTitle1,vTitle2…                               | Linked Filters                                        | ‘’                                                       | \_lf=Monthly Sales, Clients                  |
-| \_qt=colorTrue,colorFalse                            | Quick Toggle of Boolean fields                        | ‘’                                                       | \_qt=\#0F07,pink                             |
-| \_mc=colHeader                                       | Match Color for whole row to a given column           | ‘’                                                       | \_mc=Sales                                   |
-| \_hc= colHeader1, colHeader2…                        | Hide Columns, but keep in DOM                         | ‘’                                                       |                                              |
-| \_rc= colHeader1, colHeader2…                        | Removed Columns, including DOM                        | ‘’                                                       |                                              |
-| \_nf=field_1,field_2…                                | No Filtering on specified fields                      | ‘’                                                       | \_nf=field_1,field_2                         |
-|                                                      |                                                       |                                                          |                                              |
-| \_al                                                 | Auto-Login                                            | View Title or Description of a login page                |                                              |
-|                                                      |                                                       | ‘’                                                       |                                              |
-| \_oln=url                                            | Open Link in a New page (tab)                         | Rich Text view with link                                 | Support \_oln=https://ctrnd.com              |
-| \_ols=url                                            | Open Link in Same page                                | Rich Text view with link                                 | Support \_ols=https://ctrnd.com              |
-|                                                      |                                                       | ‘’                                                       |                                              |
-| \_uc                                                 | Convert to Uppercase                                  | Field Description                                        |                                              |
-| \_num                                                | Numeric                                               | ‘’                                                       |                                              |
-| \_int                                                | Integer                                               | ‘’                                                       |                                              |
-| \_ip                                                 | Validate IP format (to do)                            | ‘’                                                       |                                              |
-| \_lud                                                | Last Updated Date. For Inline edits, used with \_lub. | ‘’                                                       |                                              |
-| \_lub                                                | Last Updated By. For Inline edits, used with \_lud.   | ‘’                                                       |                                              |
-| \_uvc                                                | Unique Value Check                                    | See Advanced Keywords Setup                              |                                              |
-| \_uvx                                                | Unique Values Exceptions                              | ‘’                                                       |                                              |
-| \_cfv=[grp1],[grp2]…                                 | Colorize Field by Value                               | Field description or View Title or Description.          | \_cfv=[lte,5,red,\#ff08,bold,iu]             |
-| \_km                                                 | Kiosk Mode                                            | View Title or Description. Effective in Kiosk mode only. |                                              |
-| \_kr                                                 | Kiosk add Refresh button                              | ‘’                                                       |                                              |
-| \_kb                                                 | Kiosk add Back button                                 | ‘’                                                       |                                              |
-| \_kd                                                 | Kiosk add Done button                                 | ‘’                                                       |                                              |
-|                                                      |                                                       |                                                          |                                              |
+If you would like to propose new keywords, please use the Issues page here:
+
+<https://github.com/cortexrd/Knack-Toolkit-Library/issues>
+
+Explain how you would see the ideal implementation and tell us a bit about your use cases.
