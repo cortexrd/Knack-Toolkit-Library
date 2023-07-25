@@ -5032,22 +5032,8 @@ function Ktl($, appInfo) {
                 gotoDateField.value = gotoDateIso;
         }
 
-        //Replace Knack's default mouse click handler on headers by KTL's handleClickSort for more flexibility.
-        $(document).on('mousedown', function (e) {
-            $(".thead").not(".kn-search .thead").off('click'); //Exclude Search views until we find a fix to sorting.
-            //This is what we want:  $('thead').off('click');
-            //Search this for more details:  Attempt to support Search views but crashes with a "URL" problem
-        })
 
         $(document).on('click', function (e) {
-            var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
-            if (viewId) {
-                viewId = viewId.getAttribute('id');
-                const viewType = ktl.views.getViewType(viewId);
-                if (viewType === 'table')
-                    ktl.views.handleClickSort(e);
-            }
-
             //Pause auto-refresh when on a tables's search field.
             if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword' /*Needed to discriminate checkboxes.  We only want Search fields*/)
                 ktl.views.autoRefresh(false);
@@ -6009,8 +5995,6 @@ function Ktl($, appInfo) {
                 $('#' + viewId).addClass('ktlHidden');
         }
 
-
-
         //Hide the view title only, typically used to save space when real estate is critical.
         function hideTitle(viewId, keywords) {
             const kw = '_ht';
@@ -6024,6 +6008,10 @@ function Ktl($, appInfo) {
             $('#' + viewId + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
             $('#' + viewId + ' .view-header h2').addClass('ktlHidden');
         }
+
+        $(document).on('knack-view-render.any', function (event, scene) {
+            $('.kn-table-table th').on('click', ktl.views.handleClickDateTimeSort);
+        });
 
         //Views
         return {
@@ -7338,82 +7326,19 @@ function Ktl($, appInfo) {
 
             //For KTL internal use.
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
-            //Note: this function replaces the Knack's default handler completely.
-            handleClickSort: function (e) {
+            handleClickDateTimeSort: function (event) {
 
+                const viewId = $(event.currentTarget).parents('.kn-view').attr('id');
 
-                return;//******** Disabled feature, until we find a solution to the multiple renders.
+                if (!viewId || ktl.views.getViewType(viewId) !== 'table')
+                    return;
 
+                const fieldId = $(event.currentTarget).attr('class').split(/\s+/)[0];
+                const field = Knack.views[viewId].model.view.fields.find((field) => field.key === fieldId)
 
-                if (e.target.closest('.kn-sort')) {
-                    var viewId = e.target.closest('.kn-search.kn-view') || e.target.closest('.kn-table.kn-view');
-                    if (viewId) {
-                        viewId = viewId.getAttribute('id');
-
-                        //Attempt to support Search views but crashes with a "URL" problem after fetch() below.
-                        const viewType = ktl.views.getViewType(viewId);
-                        if (viewType === 'search') return; //Remove this line if ever we find the solution.
-
-                        e.preventDefault();
-
-                        var href = e.target.closest('[href]');
-                        if (href) {
-                            Knack.showSpinner();
-                            var fieldId = e.target.closest('th').classList[0];
-                            if (Knack.objects.getField(fieldId)) {
-                                var fieldAttr = Knack.objects.getField(fieldId).attributes;
-                                var ctrlClickInvert = false;
-                                if (e.ctrlKey)
-                                    ctrlClickInvert = true;
-
-                                href = e.target.closest('.kn-sort').href;
-                                var order = href.split('|')[1];
-                                var newField = href.split('|')[0].split('#')[1];
-                                var viewObj = Knack.views[viewId];
-                                if (fieldAttr.type === 'date_time')
-                                    ctrlClickInvert = !ctrlClickInvert;
-
-                                var alreadySorted = e.target.closest('[class*="sorted-"]');
-                                if (!alreadySorted)
-                                    order = ctrlClickInvert ? 'desc' : 'asc';
-
-                                if (viewType === 'search') {
-                                    viewObj.model.results_model.view.source.sort = [{
-                                        field: newField,
-                                        order: order
-                                    }];
-                                } else {
-                                    viewObj.model.view.source.sort = [{
-                                        field: newField,
-                                        order: order
-                                    }];
-                                }
-
-                                var i = {};
-                                i[viewId + "_sort"] = newField + "|" + order;
-                                var r = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
-                                Knack.router.navigate(r);
-                                Knack.setHashVars();
-
-                                if (viewType === 'search')
-                                    viewObj.model.results_model.setDataAPI();
-                                else
-                                    viewObj.model.setDataAPI();
-
-                                //Attempt to support Search views but crashes with a "URL" problem after fetch() below.
-                                Knack.models[viewId].fetch({
-                                    success: () => {
-                                        //If we don't add this delay, the inverted sort only works about 75% of the time.
-                                        setTimeout(() => {
-                                            ktl.views.refreshView(viewId).then(() => {
-                                                Knack.hideSpinner();
-                                                ktl.userFilters.onSaveFilterBtnClicked(e, viewId, true);
-                                            });
-                                        }, 200)
-                                    }
-                                });
-                            }
-                        }
+                if (field && field.type === 'date_time') {
+                    if (event.currentTarget.classList.value.split(' ').filter((c) => c.includes('sorted')).length === 0) {
+                        $(event.currentTarget).find('a').attr('href', '#field_145|desc')
                     }
                 }
             },
