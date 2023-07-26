@@ -7330,18 +7330,34 @@ function Ktl($, appInfo) {
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
             handleClickDateTimeSort: function (event) {
 
-                const viewId = $(event.currentTarget).parents('.kn-view').attr('id');
+                const viewId = $(event.currentTarget).closest('.kn-view[id]').attr('id');
 
-                if (!viewId || ktl.views.getViewType(viewId) !== 'table')
+                if (!viewId)
                     return;
 
+                const viewType = ktl.views.getViewType(viewId);
                 const fieldId = $(event.currentTarget).attr('class').split(/\s+/)[0];
-                const field = Knack.views[viewId].model.view.fields.find((field) => field.key === fieldId);
 
-                if (field && field.type === 'date_time') {
-                    if (event.currentTarget.classList.value.split(' ').filter((c) => c.includes('sorted')).length === 0) {
-                        $(event.currentTarget).find('a').attr('href', `#${fieldId}|desc`);
-                    }
+                let model;
+                if (viewType === 'table') {
+                    model = Knack.views[viewId].model;
+                } else if ( viewType === 'search') {
+                    model = Knack.views[viewId].model.results_model;
+                } else {
+                    // view type not supported
+                    return;
+                }
+
+                const field = model.view.fields.find((field) => field.key === fieldId);
+ 
+                if (field) {
+                    if (event.currentTarget.classList.value.split(' ').every((c) => !c.includes('sorted'))) { // Not already sorted. First click
+                        if ((field.type === 'date_time' && !event.ctrlKey && !event.metaKey) || (field.type !== 'date_time' && (event.ctrlKey || event.metaKey))) {
+                            const anchor = $(event.currentTarget).find('a');
+                            const href = anchor.attr('href').split('|')[0]; // Safeguard if order is already there.
+                            anchor.attr('href', `${href}|desc`);
+                        }
+                    }   
                 }
             },
 
