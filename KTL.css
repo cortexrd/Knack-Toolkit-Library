@@ -334,4 +334,9 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	}
 }
 
+.ktlBlurry {
+	color: transparent;
+	text-shadow: 0 0 8px #000;
+}
+
 /**** KTL_RELATED - END ****/
