@@ -1861,6 +1861,7 @@ function Ktl($, appInfo) {
                 if (button === null) {
                     button = document.createElement('BUTTON');
                     button.id = id;
+                    button.setAttribute('type', 'button');
 
                     button.appendChild(document.createTextNode(label));
                     div.append(button);
@@ -10110,11 +10111,9 @@ function Ktl($, appInfo) {
 
             var prepend = false;
             var searchFound = false;
-            var div = document.querySelector('#' + view.key + ' .table-keyword-search');
+
+            var div = document.querySelector('#' + view.key + ' .table-keyword-search .control.has-addons');
             if (div) {
-                //We can't add the div directly after the .table-keyword-search,
-                //otherwise, for some reason, the Search field doesn't respond to Enter anymore.
-                div = div.closest('.kn-records-nav .level');
                 searchFound = true;
             } else
                 div = document.querySelector('#' + view.key + ' .kn-submit.control'); //For search views.
