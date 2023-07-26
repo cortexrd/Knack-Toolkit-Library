@@ -1861,6 +1861,7 @@ function Ktl($, appInfo) {
                 if (button === null) {
                     button = document.createElement('BUTTON');
                     button.id = id;
+                    button.setAttribute('type', 'button');
 
                     button.appendChild(document.createTextNode(label));
                     div.append(button);
@@ -3721,19 +3722,8 @@ function Ktl($, appInfo) {
             const field = sorts[0];
             const order = sorts[1];
 
-            Knack.views[viewId].model.view.source.sort = [{
-                field: field,
-                order: order
-            }];
-
-            var i = {};
-            i[viewId + "_sort"] = encodeURIComponent(field + "|" + order); //{ "view_1264_sort": "field_182-field_182|asc" }
-
-            var route = Knack.getSceneHash() + "?" + Knack.getQueryString(i);
-
-            Knack.router.navigate(route);
-            Knack.setHashVars();
-            Knack.views[viewId].model.setDataAPI();
+            Knack.views[viewId].model.view.source.sort[0].field = field;
+            Knack.views[viewId].model.view.source.sort[0].sort = order;
         }
 
         function onStopFilterBtnClicked(e, filterDivId) {
@@ -7329,7 +7319,6 @@ function Ktl($, appInfo) {
             //For KTL internal use.
             //When a table header is clicked to sort, invert sort order if type is date_time, so we get most recent first.
             handleClickDateTimeSort: function (event) {
-
                 const viewId = $(event.currentTarget).closest('.kn-view[id]').attr('id');
 
                 if (!viewId)
@@ -7349,7 +7338,6 @@ function Ktl($, appInfo) {
                 }
 
                 const field = model.view.fields.find((field) => field.key === fieldId);
- 
                 if (field) {
                     if (event.currentTarget.classList.value.split(' ').every((c) => !c.includes('sorted'))) { // Not already sorted. First click
                         if ((field.type === 'date_time' && !event.ctrlKey && !event.metaKey) || (field.type !== 'date_time' && (event.ctrlKey || event.metaKey))) {
@@ -7357,7 +7345,7 @@ function Ktl($, appInfo) {
                             const href = anchor.attr('href').split('|')[0]; // Safeguard if order is already there.
                             anchor.attr('href', `${href}|desc`);
                         }
-                    }   
+                    }
                 }
             },
 
@@ -10122,11 +10110,9 @@ function Ktl($, appInfo) {
 
             var prepend = false;
             var searchFound = false;
-            var div = document.querySelector('#' + view.key + ' .table-keyword-search');
+
+            var div = document.querySelector('#' + view.key + ' .table-keyword-search .control.has-addons');
             if (div) {
-                //We can't add the div directly after the .table-keyword-search,
-                //otherwise, for some reason, the Search field doesn't respond to Enter anymore.
-                div = div.closest('.kn-records-nav .level');
                 searchFound = true;
             } else
                 div = document.querySelector('#' + view.key + ' .kn-submit.control'); //For search views.
