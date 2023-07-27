@@ -20,7 +20,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.14.1';
+    const KTL_VERSION = '0.14.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1170,6 +1170,25 @@ function Ktl($, appInfo) {
             extractNumericValue: function (value, fieldId) {
                 if (value === undefined || !fieldId) return;
 
+                var fld;
+                var numericValue;
+                var isNumeric = false;
+
+                if (fieldId === 'chznBetter') {
+                    fld = $('#chznBetter');
+                    if (fld.length)
+                        isNumeric = fld[0].attributes && fld[0].attributes.numeric;
+                    if (isNumeric) {
+                        if (value === '') return 0; //Blanks are considered as zero, for enforceNumeric.
+
+                        numericValue = parseFloat(value);
+                        if (!isNaN(value))
+                            return numericValue.toString();
+                        else
+                            return;
+                    }
+                }
+
                 var fieldAttributes;
                 fieldId = fieldId.match(/field_\d+/g);
                 if (fieldId && fieldId.length)
@@ -1181,7 +1200,12 @@ function Ktl($, appInfo) {
                 if (!field) return;
 
                 fieldAttributes = field.attributes;
-                if (!fieldAttributes || !numericFieldTypes.includes(fieldAttributes.type)) return;
+                fld = $('#kn-input-' + fieldId);
+                isNumeric = false;
+                if (fld.length)
+                    isNumeric = fld[0].attributes && fld[0].attributes.numeric;
+
+                if (!(fieldAttributes && (numericFieldTypes.includes(fieldAttributes.type) || isNumeric))) return;
 
                 //Is this field a calculation related to another field, like a Sum, Avg, or other?
                 if (fieldAttributes.format.field) {
@@ -1190,7 +1214,12 @@ function Ktl($, appInfo) {
                     if (!field) return;
 
                     fieldAttributes = field.attributes;
-                    if (!fieldAttributes || !numericFieldTypes.includes(fieldAttributes.type)) return;
+                    fld = $('#kn-input-' + fieldId);
+                    isNumeric = false;
+                    if (fld.length)
+                        isNumeric = fld[0].attributes && fld[0].attributes.numeric;
+
+                    if (!(fieldAttributes && (numericFieldTypes.includes(fieldAttributes.type) || isNumeric))) return;
                 }
 
                 //Remove all white spaces.
@@ -1234,7 +1263,7 @@ function Ktl($, appInfo) {
                 if (!/^[-+]?(?:\d{1,3})?(?:([.,])\d{3})*\1?\d*(?:\.\d+)?$/.test(value))
                     return;
 
-                var numericValue = parseFloat(value);
+                numericValue = parseFloat(value);
                 if (!isNaN(numericValue)) {
                     //console.log('numericValue.toString() =', numericValue.toString());
                     return numericValue.toString();
@@ -3192,7 +3221,7 @@ function Ktl($, appInfo) {
 
                     if (linkedViewIds) {
                         const useUrlArray = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
-    
+
                         const masterView = Knack.models[masterViewId].view;
                         if (masterView.type === 'report')
                             linkedViewIds.push(masterViewId);
@@ -5358,7 +5387,7 @@ function Ktl($, appInfo) {
                         for (var d = 0; d < data.length; d++) {
                             var rec = data[d];
                             const cell = rec[fieldId + '_raw'];
-                            if (!cell) continue;
+                            if (cell === undefined) continue;
 
                             if (Array.isArray(cell) && cell.length === 1)
                                 cellText = cell[0].identifier;
@@ -5675,14 +5704,14 @@ function Ktl($, appInfo) {
             var fieldHasQt = false;
 
             //Override with view-specific colors, if any.
-            if (kwInstance && kwInstance.params.length && kwInstance.params[0].length) {
+            if (kwInstance && kwInstance.length && kwInstance[0].params.length && kwInstance[0].params[0].length) {
                 fieldHasQt = true; //If view has QT, then all fields inherit also.
+                const fldColors = kwInstance[0].params[0];
+                if (fldColors.length >= 1 && fldColors[0])
+                    bgColorTrue = fldColors[0];
 
-                if (kwInstance.params[0].length >= 1 && kwInstance.params[0][0])
-                    bgColorTrue = kwInstance.params[0][0];
-
-                if (kwInstance.params[0].length >= 2 && kwInstance.params[0][1])
-                    bgColorFalse = kwInstance.params[0][1];
+                if (fldColors.length >= 2 && fldColors[1])
+                    bgColorFalse = fldColors[1];
             }
 
             var fieldKeywords = {};
@@ -5705,11 +5734,12 @@ function Ktl($, appInfo) {
                             ktl.fields.getFieldKeywords(fieldId, fieldKeywords);
                             if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._qt) {
                                 fieldHasQt = true;
-                                if (fieldKeywords[fieldId]._qt.params && fieldKeywords[fieldId]._qt.params.length > 0) {
-                                    if (fieldKeywords[fieldId]._qt.params[0].length >= 1 && fieldKeywords[fieldId]._qt.params[0][0] !== '')
-                                        tmpFieldColors.bgColorTrue = fieldKeywords[fieldId]._qt.params[0][0];
-                                    if (fieldKeywords[fieldId]._qt.params[0].length >= 2 && fieldKeywords[fieldId]._qt.params[0][1] !== '')
-                                        tmpFieldColors.bgColorFalse = fieldKeywords[fieldId]._qt.params[0][1];
+                                if (fieldKeywords[fieldId]._qt.length && fieldKeywords[fieldId]._qt[0].params && fieldKeywords[fieldId]._qt[0].params.length > 0) {
+                                    const fldColors = fieldKeywords[fieldId]._qt[0].params[0];
+                                    if (fldColors.length >= 1 && fldColors[0] !== '')
+                                        tmpFieldColors.bgColorTrue = fldColors[0];
+                                    if (fldColors.length >= 2 && fldColors[1] !== '')
+                                        tmpFieldColors.bgColorFalse = fldColors[1];
                                 }
                             }
 
@@ -10829,7 +10859,7 @@ function Ktl($, appInfo) {
                 $('#accountLogsDynamicTable').empty().text('    ** No Data **');
                 return;
             }
-            
+
             const searchInput = $('#' + SYSOP_DASHBOARD_ACCOUNT_LOGS + ' > div:nth-child(2) > div:nth-child(2) > form > p > input').val();
             const searchStr = (searchInput) ? searchInput.toLowerCase() : '';
 

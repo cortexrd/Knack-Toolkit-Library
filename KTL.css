@@ -58,7 +58,7 @@
 }
 
 .ktlNotValid {
-	background-color: #fdb0b0; /* Same pinkish color as Knack error */
+	background-color: #fdb0b0 !important; /* Same pinkish color as Knack error */
 }
 
 .center {
