@@ -350,3 +350,4 @@ Deploy.bat
 MergeFiles.bat
 NodeJS/NodeJS_MergeFiles.js
 *.md
+*-dev.js
