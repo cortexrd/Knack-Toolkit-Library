@@ -10829,8 +10829,9 @@ function Ktl($, appInfo) {
                 $('#accountLogsDynamicTable').empty().text('    ** No Data **');
                 return;
             }
-
-            const searchStr = $('#' + SYSOP_DASHBOARD_ACCOUNT_LOGS + ' > div:nth-child(2) > div:nth-child(2) > form > p > input').val()?.toLowerCase() || '';
+            
+            const searchInput = $('#' + SYSOP_DASHBOARD_ACCOUNT_LOGS + ' > div:nth-child(2) > div:nth-child(2) > form > p > input').val();
+            const searchStr = (searchInput) ? searchInput.toLowerCase() : '';
 
             const tableData = [];
             let bInvalidEntryFound = false;
