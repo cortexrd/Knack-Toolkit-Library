@@ -20,7 +20,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.14.3';
+    const KTL_VERSION = '0.14.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -4753,7 +4753,8 @@ function Ktl($, appInfo) {
         //TODO: Migrate all variables here.
         var cfg = {
             headerAlignment: false,
-            flashRate: '1s',
+            ktlFlashRate: '1s',
+            ktlOutlineColor: 'green',
         }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -6027,9 +6028,13 @@ function Ktl($, appInfo) {
                 cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
                 cfgObj.headerAlignment && (cfg.headerAlignment = cfgObj.headerAlignment);
-                if (cfgObj.flashRate) {
-                    cfg.flashRate = cfgObj.flashRate;
-                    document.documentElement.style.setProperty('--flashRate', cfg.flashRate);
+                if (cfgObj.ktlFlashRate) {
+                    cfg.ktlFlashRate = cfgObj.ktlFlashRate;
+                    document.documentElement.style.setProperty('--ktlFlashRate', cfg.ktlFlashRate);
+                }
+                if (cfgObj.ktlOutlineColor) {
+                    cfg.ktlOutlineColor = cfgObj.ktlOutlineColor;
+                    document.documentElement.style.setProperty('--ktlOutlineColor', cfg.ktlOutlineColor);
                 }
             },
 
@@ -7871,12 +7876,24 @@ function Ktl($, appInfo) {
                     autoFocus && autoFocus();
             },
 
-            //Improved version of Knack.router.scene_view.renderViews() that doesn't screw up all layout.
+            //Improved version of Knack.router.scene_view.renderViews(), with a promise that resolves only after all views have rendered.
             renderViews: function () {
-                //console.log('ktl.scenes.renderViews.caller =', ktl.scenes.renderViews.caller);
-                var views = Object.entries(Knack.views);
-                for (var i = 0; i < views.length; i++)
-                    ktl.views.refreshView(views[i][0]);
+                return new Promise(function (resolve, reject) {
+                    //console.log('ktl.scenes.renderViews.caller =', ktl.scenes.renderViews.caller);
+
+                    var allViews = [];
+                    var views = Object.entries(Knack.views);
+                    for (var i = 0; i < views.length; i++)
+                        allViews.push(views[i][0]);
+
+                    ktl.views.refreshViewArray(allViews)
+                        .then(() => {
+                            resolve();
+                        })
+                        .catch(reason => {
+                            ktl.log.clog('purple', 'Error encountered in renderViews', reason);
+                        })
+                })
             },
 
             //Add default extra buttons to facilitate Kiosk mode:  Refresh, Back, Done and Messaging
@@ -8193,8 +8210,7 @@ function Ktl($, appInfo) {
             },
 
             scrollToTop: function () {
-                document.body.scrollTop = 0; // For Safari
-                document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+                window.scrollTo(0, 0);
             },
 
             //Note: if you provide your own div, then the viPos... options are ignored.

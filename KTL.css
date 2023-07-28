@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.2.21 */
+/* KTL CSS version: 0.2.22 */
 
 /************ General Settings **************/
 :root {
@@ -278,6 +278,12 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	padding: 1px 2px 1px 2px;
 }
 
+@media print {
+	#addVersionInfoDiv {
+		display: none;
+	}
+}
+
 #devBtnsDivId {
 	z-index: 10;
 	position: fixed;
@@ -303,7 +309,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 
 
 .ktlFlashingOnOff {
-	animation: ktlFlashingOnOff var(--flashRate) infinite;
+	animation: ktlFlashingOnOff var(--ktlFlashRate) infinite;
 }
 
 @keyframes ktlFlashingFadeInOut {
@@ -323,20 +329,22 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	}
 }
 
-
 .ktlFlashingFadeInOut {
-	animation: ktlFlashingFadeInOut var(--flashRate) infinite;
-}
-
-@media print {
-	#addVersionInfoDiv {
-		display: none;
-	}
+	animation: ktlFlashingFadeInOut var(--ktlFlashRate) infinite;
 }
 
 .ktlBlurry {
 	color: transparent;
 	text-shadow: 0 0 8px #000;
+}
+
+.ktlOutline {
+	outline-offset: -2px;
+	outline: 2px solid var(--ktlOutlineColor);
+}
+
+.ktlNoBgColor{
+	background-color: transparent !important;
 }
 
 /**** KTL_RELATED - END ****/
