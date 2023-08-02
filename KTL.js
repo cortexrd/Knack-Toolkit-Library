@@ -1280,6 +1280,91 @@ function Ktl($, appInfo) {
 
                 return [];
             },
+
+            computeTargetSelector: function (viewId, fieldId, options) {
+                var targetFieldId = fieldId;
+                var targetViewId;
+                var targetSel;
+
+                if (options && options.ktlTarget) {
+                    var colNb;
+                    if (ktl.core.isJQuerySelector(options.ktlTarget))
+                        targetSel = options.ktlTarget;
+                    else {
+                        const ktlTarget = ktl.core.splitAndTrimToArray(options.ktlTarget);
+
+                        //Search parameters to see if we can find a targetViewId.
+                        for (var i = 0; i < ktlTarget.length; i++) {
+                            if (ktlTarget[i].startsWith('view_')) {
+                                targetViewId = ktlTarget[i];
+                                break;
+                            }
+                        }
+
+                        //No direct view_id, let's try last param and search by view title.
+                        var tryViewId;
+                        if (!targetViewId) {
+                            const lastItem = ktlTarget[ktlTarget.length - 1];
+                            tryViewId = ktl.scenes.findViewWithTitle(lastItem);
+                            if (tryViewId)
+                                targetViewId = tryViewId;
+                        }
+
+                        //Still nothing?  Fall back to default: keyword's view.
+                        if (!targetViewId)
+                            targetViewId = viewId;
+
+                        targetSel = '#' + targetViewId; //Starting point - the view ID.
+
+                        /* TODO: Convert this to use rec.id and replace code in _cfv by this function.
+                        const targetViewType = ktl.views.getViewType(targetViewId);
+                        if (targetViewType === 'table')
+                            targetSel += ' tbody';
+                        else if (targetViewType === 'list')
+                            targetSel += ' kn-list-content, '; //Comma at end is required.
+
+                        //Add all fields encountered.
+                        for (i = 0; i < ktlTarget.length; i++) {
+                            if (ktlTarget[i].startsWith('field_')) {
+                                targetFieldId = ktlTarget[i];
+                            } else {
+                                //Try to find the field from the text.
+                                targetFieldId = ktl.fields.getFieldIdFromLabel(targetViewId, ktlTarget[i]);
+                            }
+
+                            if (targetViewType === 'table') {
+                                colNb = ktl.views.getFieldPositionFromHeader(targetViewId, ktlTarget[i]);
+                                if (colNb === undefined)
+                                    colNb = ktl.views.getFieldPositionFromFieldId(targetViewId, targetFieldId);
+                                if (colNb >= 0)
+                                    targetSel += ' tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span + ',';
+                            } else if (targetViewType === 'list') {
+                                targetSel += ' [data-record-id="' + rec.id + '"] .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
+                            } else if (targetViewType === 'details') {
+                                if (targetFieldId)
+                                    targetSel += ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
+                                else {
+                                    //Try with an action link.
+                                    const actionLink = $('#' + targetViewId + ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '")');
+                                    if (actionLink) {
+                                        if (propagate)
+                                            targetSel += ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '"),';
+                                        else
+                                            targetSel += ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '") span,';
+                                    }
+                                }
+                            }
+                        }
+                        */
+                    }
+
+                }
+
+                if (!targetSel)
+                    targetSel = '#' + viewId; //Starting point - the view ID.
+
+                return targetSel;
+            },
         }
     })(); //Core
 
@@ -5527,6 +5612,7 @@ function Ktl($, appInfo) {
                     }
 
                     //Target selector.
+                    //computeTargetSelector
                     var targetFieldId = fieldId;
                     var targetViewId;
                     var targetSel;
@@ -5633,7 +5719,7 @@ function Ktl($, appInfo) {
                     else if (flashFade)
                         $(targetSel).addClass('ktlFlashingFadeInOut');
                 }
-            } //cfv feature
+            }
 
             ////////////////////////////////////////////////////////////
             //The reference value is the value against which we will compare the value of a record's field.
@@ -5672,7 +5758,7 @@ function Ktl($, appInfo) {
                     }
                 })
             }
-        }
+        } //cfv feature
 
         //For KTL internal use.
         //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
@@ -7652,7 +7738,8 @@ function Ktl($, appInfo) {
                     if (res && !res.rolesOk) return;
 
                     //TODO: improve support of ktlTarget with Universal Selector.
-                    var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
+                    var sel = ktl.core.computeTargetSelector(viewId, '', res);
+                    //var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
 
                     var classes = kwInstance.params[0];
                     for (var i = 0; i < classes.length; i++) {
