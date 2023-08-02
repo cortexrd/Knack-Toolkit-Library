@@ -72,7 +72,7 @@
 	padding-bottom: 500px;
 }
 
-.sortDisabled {
+.sortDisabled .knTable th {
 	pointer-events: none;
 }
 
