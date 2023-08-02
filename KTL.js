@@ -20,7 +20,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.14.4';
+    const KTL_VERSION = '0.14.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1208,7 +1208,7 @@ function Ktl($, appInfo) {
                 if (!(fieldAttributes && (numericFieldTypes.includes(fieldAttributes.type) || isNumeric))) return;
 
                 //Is this field a calculation related to another field, like a Sum, Avg, or other?
-                if (fieldAttributes.format.field) {
+                if (fieldAttributes.format && fieldAttributes.format.field) {
                     fieldId = fieldAttributes.format.field.key;
                     var field = Knack.objects.getField(fieldId);
                     if (!field) return;
@@ -1836,10 +1836,6 @@ function Ktl($, appInfo) {
                     if (!fields.length)
                         fields = document.querySelectorAll('#' + viewId + ' .kn-input[numeric=true]');
 
-                    var submit = document.querySelector('#' + viewId + ' .is-primary');
-                    if (!submit.validity)
-                        submit.validity = { invalidItemObj: {} };
-
                     fields.forEach(field => {
                         var inputFld = document.querySelector('#chznBetter[numeric=true]') ||
                             document.querySelector('#' + viewId + ' #' + field.getAttribute('data-input-id'));
@@ -1862,10 +1858,23 @@ function Ktl($, appInfo) {
                         }
                     })
 
-                    if (formValid)
-                        submit.validity.invalidItemObj && (delete submit.validity.invalidItemObj.numericValid);
-                    else
-                        submit.validity.invalidItemObj ? submit.validity.invalidItemObj.numericValid = false : submit.validity.invalidItemObj = { numericValid: false };
+                    var submit = document.querySelector('#' + viewId + ' .is-primary');
+                    if (submit) {
+                        if (!submit.validity)
+                            submit.validity = { ktlInvalidItemObj: {} };
+
+                        var submitInvalidItemObj = submit.validity.ktlInvalidItemObj;
+
+                        if (formValid) {
+                            if (submitInvalidItemObj && !submitInvalidItemObj.numericValid)
+                                delete submitInvalidItemObj.numericValid;
+                        } else {
+                            if (submitInvalidItemObj)
+                                submitInvalidItemObj.numericValid = false;
+                            else
+                                submit.validity.ktlInvalidItemObj = { numericValid: false };
+                        }
+                    }
 
                     ktl.views.updateSubmitButtonState(viewId);
                 })
@@ -5103,7 +5112,7 @@ function Ktl($, appInfo) {
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs[0].params[0], viewId);
                 if (viewIds.length) {
-                    $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, () => {
+                    $(document).bindFirst('knack-form-submit.' + viewId, () => {
                         ktl.views.refreshViewArray(viewIds)
                     })
                 }
@@ -6138,12 +6147,14 @@ function Ktl($, appInfo) {
                     } else {
                         var promisesArray = [];
                         viewsToRefresh.forEach(function (viewId) {
-                            promisesArray.push(
-                                ktl.views.refreshView(viewId)
-                                    .then(() => {
-                                        //ktl.log.clog('green', 'View refreshed successfully: ' + viewId);
-                                    })
-                            )
+                            if (viewId.startsWith('view_')) {
+                                promisesArray.push(
+                                    ktl.views.refreshView(viewId)
+                                        .then(() => {
+                                            //ktl.log.clog('green', 'View refreshed successfully: ' + viewId);
+                                        })
+                                )
+                            }
                         })
 
                         Promise.all(promisesArray)
@@ -7446,7 +7457,7 @@ function Ktl($, appInfo) {
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
                 var validity = submit.validity ? submit.validity : true;
-                var submitDisabled = !$.isEmptyObject(validity.invalidItemObj);
+                var submitDisabled = !$.isEmptyObject(validity.ktlInvalidItemObj);
                 if (submitDisabled)
                     submit.setAttribute('disabled', true);
                 else
@@ -7882,9 +7893,9 @@ function Ktl($, appInfo) {
                     //console.log('ktl.scenes.renderViews.caller =', ktl.scenes.renderViews.caller);
 
                     var allViews = [];
-                    var views = Object.entries(Knack.views);
+                    var views = Knack.router.scene_view.model.views.models;
                     for (var i = 0; i < views.length; i++)
-                        allViews.push(views[i][0]);
+                        allViews.push(views[i].id);
 
                     ktl.views.refreshViewArray(allViews)
                         .then(() => {
