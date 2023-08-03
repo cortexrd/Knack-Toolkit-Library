@@ -9214,6 +9214,8 @@ function Ktl($, appInfo) {
             acctOnlineFld: ktl.core.getFieldIdByName('Online', accountsObj),
             acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
             acctUtcLastActFld: ktl.core.getFieldIdByName('UTC Last Activity', accountsObj),
+            acctFirstNameFld: ktl.core.getFieldIdByName('First Name', accountsObj),
+            acctLastNameFld: ktl.core.getFieldIdByName('Last Name', accountsObj),
 
             alAccountFld: ktl.core.getFieldIdByName('Account', accountLogsObj),
             alDateTimeFld: ktl.core.getFieldIdByName('Date/Time', accountLogsObj),
@@ -11093,6 +11095,143 @@ function Ktl($, appInfo) {
         });
     })(); //Account Logs feature
 
+    //====================================================
+    //Status Monitoring feature
+    this.statusMonitoring = (function() {
+        //Highlight all accounts with more than DEVICE_OFFLINE_DELAY minutes missed heartbeat.
+        //Terminals have more emphasis and regular accounts.
+        //Custom CSS code takes care of colors.
+
+        const SCENE_URL_NAME = 'status-monitoring';
+        const SYSOP_DASHBOARD_ACC_STATUS = ktl.core.getViewIdByTitle('Status Monitoring', SCENE_URL_NAME);
+        const statusMonitoring = {
+            online: [],
+            offline: [],
+        }
+
+        function refreshRecords(data) {
+            const DEVICE_OFFLINE_DELAY = 60000 * 3;
+            const recordsToUpdate = [];
+            const nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
+            statusMonitoring.online = [];
+            statusMonitoring.offline = [];
+
+            data.forEach(record => {
+                const swVersionFieldId = ktl.iFrameWnd.getCfg().acctSwVersionFld;
+                const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
+                const rowSelector = `#${SYSOP_DASHBOARD_ACC_STATUS} tr[id="${record.id}"]`
+
+                const swVersionSelector =  $(`${rowSelector} .${swVersionFieldId}`);
+                if (record[swVersionFieldId] !== window.APP_KTL_VERSIONS)
+                    swVersionSelector.css({ 'color': 'red', 'font-weight': 'bold' });
+                else
+                    swVersionSelector.css({ 'font-weight': 'normal' });
+
+                if (record[lastActivityFieldId]) {
+                    const diff = nowUTC - Date.parse(record[lastActivityFieldId]);
+                    const lastActivitySelector = $(`${rowSelector} .${lastActivityFieldId}`);
+
+                    if (diff <= FIVE_MINUTES_DELAY)
+                        lastActivitySelector.css({ 'background-color': 'lightgreen', 'font-weight': 'bold' });
+                    else if (diff <= ONE_HOUR_DELAY)
+                        lastActivitySelector.css({ 'background-color': '#ffff72', 'font-weight': 'bold' });
+                }
+
+                const utcHeartBeatField = record[ktl.iFrameWnd.getCfg().acctUtcHbFld];
+                const onlineField = record[ktl.iFrameWnd.getCfg().acctOnlineFld];
+                const localHeartBeatFieldId = ktl.iFrameWnd.getCfg().acctLocHbFld;
+                const diff = nowUTC - Date.parse(utcHeartBeatField);
+
+                //Take note of those who need their Online status to be updated.
+                if (isNaN(diff) || diff >= DEVICE_OFFLINE_DELAY) {
+                    if (onlineField !== 'No') // Yes or blank
+                        recordsToUpdate.push({ record: record, online: 'No' });
+                    
+                    statusMonitoring.offline.push(record);
+                    $(`#${record.id} .${localHeartBeatFieldId}`).addClass('table-row-highlighted')
+                } else {
+                    if (onlineField === 'No')
+                        recordsToUpdate.push({ record: record, online: 'Yes' });
+
+                    statusMonitoring.online.push(record);   
+                    $(`#${record.id} .${localHeartBeatFieldId}`).removeClass('table-row-highlighted')
+                }
+            })
+
+            return recordsToUpdate;
+        }
+
+        function updateAccounts(recordsToUpdate, viewKey) {
+            return new Promise(async function (resolve) {
+                ktl.scenes.spinnerWatchdog(false);
+
+                let updateSuccessfulCount = 0;
+
+                const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+                const delayMS = 150;
+
+                await Promise.allSettled(recordsToUpdate.map( async (record, index) => {
+                    await sleep(index * delayMS);
+                    return sendUpdate(record);
+                })).finally(() => {
+                    ktl.core.removeInfoPopup();
+                    ktl.core.removeTimedPopup();
+                    Knack.hideSpinner();
+                    ktl.scenes.spinnerWatchdog();
+
+                    resolve(updateSuccessfulCount);
+                });
+
+                function sendUpdate(recObj) {
+                    const record = recObj.record;
+
+                    const onlineFieldId = ktl.iFrameWnd.getCfg().acctOnlineFld;
+                    const firstNameField = record[ktl.iFrameWnd.getCfg().acctFirstNameFld];
+                    const lastNameField = record[ktl.iFrameWnd.getCfg().acctLastNameFld];
+                    const accountName = firstNameField + ' ' + lastNameField;
+                    
+                    const apiData = {};
+                    apiData[onlineFieldId] = recObj.online;
+
+                    return ktl.core.knAPI(viewKey, record.id, apiData, 'PUT', [], false)
+                        .then(function () {
+                            updateSuccessfulCount++;
+                            updateInfoPopup(accountName, ` is ${recObj.online === 'Yes' ? 'ONLINE' : 'OFFLINE'}`);
+                        })
+                        .catch(function (reason) {
+                            console.debug('Offline - failed updating account:', accountName + ', reason: ' + JSON.stringify(reason));
+                            updateInfoPopup(accountName, ` is ${recObj.online === 'Yes' ? 'ONLINE' : 'OFFLINE'} (failed)`);
+                        });
+                }
+
+                function updateInfoPopup(accountName, status) {
+                    if (accountName && updateSuccessfulCount) {
+                        if (updateSuccessfulCount === 1)
+                            ktl.core.infoPopup();
+                        ktl.core.setInfoPopupText('Updated ' + accountName + status);
+                    }
+                }
+            })
+        }
+
+        function highlightOfflineAccounts(event, view, data) {
+            if (!data.length) return;
+
+            const recordsToUpdate = refreshRecords(data);
+            updateAccounts(recordsToUpdate, view.key).then(updateCount => {
+
+                if (updateCount) {
+                    console.debug('updateCount =', updateCount);
+                    ktl.views.refreshView(SYSOP_DASHBOARD_ACC_STATUS);
+                }
+
+                $(document).trigger('KTL.StatusMonitoring.Updated', [statusMonitoring])
+            });
+        }
+
+        $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, highlightOfflineAccounts);
+    })(); //Status Monitoring feature
+
     window.ktl = {
         //KTL exposed objects
         const: this.const,
@@ -11113,6 +11252,7 @@ function Ktl($, appInfo) {
         wndMsg: this.wndMsg,
         sysInfo: this.sysInfo,
         systemColors: this.systemColors,
+        statusMonitoring: this.statusMonitoring,
     };
 
     return window.ktl;
