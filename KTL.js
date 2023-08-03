@@ -4866,10 +4866,9 @@ function Ktl($, appInfo) {
             }
 
             //Reset summary callbacks upon scene change.
-            ktl.scenes.sceneChangeNotificationSubscribe(resetsummaryObserverCallbacks);
-            function resetsummaryObserverCallbacks() {
+            ktl.scenes.sceneChangeNotificationSubscribe( function resetSummaryObserverCallbacks() {
                 summaryObserverCallbacks = {};
-            }
+            });
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
