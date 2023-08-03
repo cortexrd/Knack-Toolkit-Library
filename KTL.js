@@ -11231,6 +11231,184 @@ function Ktl($, appInfo) {
         $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, highlightOfflineAccounts);
     })(); //Status Monitoring feature
 
+    //===================================================
+    //Developper Popup Tool Feature
+    this.developperPopupTool = (function () {
+
+        if( !Knack.getUserRoleNames().includes('Developer') )
+            return;
+
+
+        $(document).on('knack-view-render.any', function (event, view, data) {
+
+            const createButton = function(iconClass) {
+                const button = document.createElement('a');
+                button.classList.add('is-small');
+                button.style.display= 'inline-flex';
+                button.style.margin= '0em 0.5em';
+                button.style.margin= '0em 0.5em';
+                button.style['text-decoration'] = 'none';
+                const icon = document.createElement('i');
+                icon.classList.add('fa',iconClass);
+                button.appendChild(icon);
+                return button;
+            }
+
+            const createLine = function (text, url) {
+
+                const container = document.createElement('div');
+                container.style.padding= '2px 12px';
+
+                const textSpan = document.createElement('span');
+                textSpan.innerText = text;
+                textSpan.style.margin = '0em 0.5em';
+
+                const copyButton = createButton('fa-copy');
+                copyButton.addEventListener('click', () => {
+                    ktl.core.selectElementContents(textSpan);
+                    try {
+                        const successful = document.execCommand('copy');
+                        const msg = successful ? 'Copied to clipboard' : 'Error copying to clipboard';
+                });
+
+                container.appendChild(textSpan);
+                container.appendChild(copyButton);
+
+                if (url) {
+                    const linkButton = createButton('fa-link');
+                    linkButton.href = url;
+                    container.appendChild(linkButton);
+                }
+
+                return container;
+            }
+
+            const defaultPopOverOptions = {
+                content : function () {
+                    const container = document.createElement('div');
+
+                    const escSpan = document.createElement('span');
+                    escSpan.innerText = 'Esc to close';
+                    escSpan.style.color = 'grey';
+                    escSpan.style.margin = '0em 0.5em';
+                    container.appendChild(escSpan);
+
+                    const sceneId = $(currentTarget).parents('.kn-scene').attr('id').substring(3);
+                    
+                    container.appendChild(createLine(sceneId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}`));
+                    return container;
+                },
+                // container: 'body',
+                placement: 'auto',
+            };
+
+            const viewPopOverOptions = {
+                ...defaultPopOverOptions,
+                content: function(element) {
+                    const container = defaultPopOverOptions.content(element);
+
+                    const sceneId = $(currentTarget).parents('.kn-scene').attr('id').substring(3);
+                    const viewId = $(currentTarget).parents('.kn-view').attr('id');
+                    const viewUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/table`;
+                    container.appendChild(createLine(viewId,viewUrl));
+
+                    return container;
+                }
+            };
+
+            const theadPopOverOptions = {
+                ...defaultPopOverOptions,
+                content: function(element) {
+                    const container = viewPopOverOptions.content(element);
+
+                    const viewId = $(currentTarget).parents('.kn-view').attr('id');
+                    const objectId = Knack.views[viewId].model.view.source.object;
+                    const objectName = Knack.objects._byId[objectId].attributes.name;
+
+                    container.appendChild(createLine(objectName));
+
+                    if (objectId) {
+                        container.appendChild(createLine(objectId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields`));
+                    } else {
+                        const textSpan = document.createElement('span');
+                        textSpan.innerText = 'Object Id not found';
+                        textSpan.style.margin = '0px 18px';
+                        container.appendChild(textSpan);
+                    }
+
+                    const fieldId = $(currentTarget).attr('class').split(/\s+/)[0];
+                    const fieldURL = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
+                    container.appendChild(createLine(fieldId, fieldURL));
+                    
+                    return container;
+                }
+            };
+
+            const tdataPopOverOptions = {
+                ...defaultPopOverOptions,
+                content: function(element) {
+                    const container = theadPopOverOptions.content(element);
+
+                    const viewId = $(currentTarget).parents('.kn-view').attr('id');
+                    const objectId = Knack.views[viewId].model.view.source.object;
+                    
+                    const recordId = $(currentTarget).parents('tr').attr('id'); 
+                    const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
+                    container.appendChild(createLine(recordId, url));
+                    
+                    const copyButton = createButton();
+                    copyButton.innerText = 'Copy content';
+                    copyButton.style.margin = '0em 0.5em';
+                    copyButton.style['text-decoration'] = 'underline';
+                    copyButton.addEventListener('click', () => {
+                        ktl.core.selectElementContents(currentTarget);
+                        try {
+                            const successful = document.execCommand('copy');
+                            const msg = successful ? 'Copied to clipboard' : 'Error copying to clipboard';
+                            ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
+                        } catch (err) {
+                            ktl.core.timedPopup('Unable to copy', 'error', 2000);
+                        }
+
+                        ktl.core.selectElementContents();
+                    });
+                    container.appendChild(copyButton);
+                    
+                    return container;
+                }
+            };
+
+            let currentTarget;
+            function showPopOver(options, event, force = false) {
+                if (event.ctrlKey || force) {
+                    currentTarget = event.currentTarget;
+                    $(event.currentTarget).popover(options);
+                }
+            }
+            
+            $('.knTable th').on('mouseenter', showPopOver.bind(this,theadPopOverOptions));
+            $('.knTable td').on('mouseenter', showPopOver.bind(this,tdataPopOverOptions));
+            $('.view-header').on('mouseenter', showPopOver.bind(this,viewPopOverOptions));
+
+            $('.knTable th, .knTable td, .kn-table .view-header').on('mouseleave', function hidePopOver(event) {
+                if (event.ctrlKey) {
+                    currentTarget = null;
+                    $('#kn-popover').hide();
+                }
+            });
+
+            $(document).on('keydown', function (event) {
+                if (event.key === 'Control') {
+                    $(document.querySelectorAll(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover")).trigger('mouseenter', true);
+                } else if (event.key === 'Escape') {
+                    currentTarget = null;
+                    $('#kn-popover').hide();
+                }
+            });
+        });
+    })();//developperPopupTool
+
+
     window.ktl = {
         //KTL exposed objects
         const: this.const,
