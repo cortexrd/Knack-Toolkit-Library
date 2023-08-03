@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.2.22 */
+/* KTL CSS version: 0.3.0 */
 
 /************ General Settings **************/
 :root {
@@ -350,5 +350,18 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 .ktlNoBgColor{
 	background-color: transparent !important;
 }
+
+/* Status Monitoring */
+.ktlOfflineStatusCritical {
+	background-color: yellow !important;
+	color: red !important;
+	font-weight: bold !important;
+}
+
+.ktlOfflineStatus {
+	background-color: GoldenRod !important;
+	font-weight: bold !important;
+}
+
 
 /**** KTL_RELATED - END ****/

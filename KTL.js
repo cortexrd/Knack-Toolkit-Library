@@ -20,7 +20,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.14.5';
+    const KTL_VERSION = '0.15.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2865,7 +2865,7 @@ function Ktl($, appInfo) {
         $(document).on('knack-view-render.any', function (event, view, data) {
             //Apply System Colors
             if (initDone) {
-                $('.table-row-highlighted').css({ 'color': sysColors.text.rgb + '!important' });
+                $('.ktlOfflineStatusCritical').css({ 'color': sysColors.text.rgb + '!important' });
 
                 ktl.systemColors.getSystemColors().then(sc => {
                     if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
@@ -11146,15 +11146,15 @@ function Ktl($, appInfo) {
                 if (isNaN(diff) || diff >= DEVICE_OFFLINE_DELAY) {
                     if (onlineField !== 'No') // Yes or blank
                         recordsToUpdate.push({ record: record, online: 'No' });
-                    
+
                     statusMonitoring.offline.push(record);
-                    $(`#${record.id} .${localHeartBeatFieldId}`).addClass('table-row-highlighted')
+                    $(`#${record.id} .${localHeartBeatFieldId}`).addClass('ktlOfflineStatusCritical')
                 } else {
                     if (onlineField === 'No')
                         recordsToUpdate.push({ record: record, online: 'Yes' });
 
-                    statusMonitoring.online.push(record);   
-                    $(`#${record.id} .${localHeartBeatFieldId}`).removeClass('table-row-highlighted')
+                    statusMonitoring.online.push(record);
+                    $(`#${record.id} .${localHeartBeatFieldId}`).removeClass('ktlOfflineStatusCritical')
                 }
             })
 
@@ -11189,7 +11189,7 @@ function Ktl($, appInfo) {
                     const firstNameField = record[ktl.iFrameWnd.getCfg().acctFirstNameFld];
                     const lastNameField = record[ktl.iFrameWnd.getCfg().acctLastNameFld];
                     const accountName = firstNameField + ' ' + lastNameField;
-                    
+
                     const apiData = {};
                     apiData[onlineFieldId] = recObj.online;
 
