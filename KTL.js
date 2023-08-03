@@ -11269,6 +11269,10 @@ function Ktl($, appInfo) {
                     try {
                         const successful = document.execCommand('copy');
                         const msg = successful ? 'Copied to clipboard' : 'Error copying to clipboard';
+                        ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
+                    } catch (err) {
+                        ktl.core.timedPopup('Unable to copy', 'error', 2000);
+                    }
                 });
 
                 container.appendChild(textSpan);
@@ -11298,7 +11302,6 @@ function Ktl($, appInfo) {
                     container.appendChild(createLine(sceneId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}`));
                     return container;
                 },
-                // container: 'body',
                 placement: 'auto',
             };
 
@@ -11379,8 +11382,8 @@ function Ktl($, appInfo) {
             };
 
             let currentTarget;
-            function showPopOver(options, event, force = false) {
-                if (event.ctrlKey || force) {
+            function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
+                if ( (event.shiftKey && event.ctrlKey) || force) {
                     currentTarget = event.currentTarget;
                     $(event.currentTarget).popover(options);
                 }
@@ -11391,14 +11394,14 @@ function Ktl($, appInfo) {
             $('.view-header').on('mouseenter', showPopOver.bind(this,viewPopOverOptions));
 
             $('.knTable th, .knTable td, .kn-table .view-header').on('mouseleave', function hidePopOver(event) {
-                if (event.ctrlKey) {
+                if (event.shiftKey && event.ctrlKey ) {
                     currentTarget = null;
                     $('#kn-popover').hide();
                 }
             });
 
             $(document).on('keydown', function (event) {
-                if (event.key === 'Control') {
+                if (event.shiftKey && event.ctrlKey) {
                     $(document.querySelectorAll(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover")).trigger('mouseenter', true);
                 } else if (event.key === 'Escape') {
                     currentTarget = null;
