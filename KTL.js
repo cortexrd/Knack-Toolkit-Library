@@ -11326,6 +11326,7 @@ function Ktl($, appInfo) {
                     return container;
                 },
                 placement: 'auto',
+                animation: false
             };
 
             const viewPopOverOptions = {
