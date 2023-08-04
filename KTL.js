@@ -11249,7 +11249,11 @@ function Ktl($, appInfo) {
                 button.style.margin= '0em 0.5em';
                 button.style['text-decoration'] = 'none';
                 const icon = document.createElement('i');
-                icon.classList.add('fa',iconClass);
+                icon.classList.add('fa');
+
+                if (iconClass)
+                    icon.classList.add(iconClass);
+
                 button.appendChild(icon);
                 return button;
             }
@@ -11262,6 +11266,7 @@ function Ktl($, appInfo) {
                 const textSpan = document.createElement('span');
                 textSpan.innerText = text;
                 textSpan.style.margin = '0em 0.5em';
+                container.appendChild(textSpan);
 
                 const copyButton = createButton('fa-copy');
                 copyButton.addEventListener('click', () => {
@@ -11275,13 +11280,31 @@ function Ktl($, appInfo) {
                     }
                 });
 
-                container.appendChild(textSpan);
                 container.appendChild(copyButton);
 
                 if (url) {
-                    const linkButton = createButton('fa-link');
-                    linkButton.href = url;
-                    container.appendChild(linkButton);
+                    const copyLinkButton = createButton('fa-link');
+                    copyLinkButton.addEventListener('click', () => {
+                        navigator.clipboard.writeText(url)
+                            .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
+                            .then(() =>  ktl.core.timedPopup('Link copied to clipboard', 'success', 1000) );
+                    });
+                    container.appendChild(copyLinkButton);
+
+                    const knackButton = createButton('fa-copy');
+                    knackButton.href = url;
+                    knackButton.target = '_blank';
+                    knackButton.innerHTML = '';
+                    knackButton.style.color = 'transparent';
+                    const icon = document.createElement('i');
+                    icon.classList.add('fa','fa-copy');
+                    icon.style.background = "url(https://ctrnd.s3.amazonaws.com/Lib/KTL/Media/knack-logo.png)";
+                    icon.style['background-size'] = 'contain'; 
+                    icon.style.width = '14px';
+                    icon.style.height = '14px';
+                    icon.style['background-repeat'] = 'no-repeat';
+                    knackButton.appendChild(icon);
+                    container.appendChild(knackButton);
                 }
 
                 return container;
