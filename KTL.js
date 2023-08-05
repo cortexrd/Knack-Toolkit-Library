@@ -11169,7 +11169,7 @@ function Ktl($, appInfo) {
                 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
                 const delayMS = 150;
 
-                await Promise.allSettled(recordsToUpdate.map( async (record, index) => {
+                await safePromiseAllSettled(recordsToUpdate.map( async (record, index) => {
                     await sleep(index * delayMS);
                     return sendUpdate(record);
                 })).finally(() => {
@@ -11302,6 +11302,7 @@ function Ktl($, appInfo) {
                     container.appendChild(createLine(sceneId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}`));
                     return container;
                 },
+                animation: false,
                 placement: 'auto',
             };
 
@@ -11392,8 +11393,9 @@ function Ktl($, appInfo) {
             $('.knTable th').on('mouseenter', showPopOver.bind(this,theadPopOverOptions));
             $('.knTable td').on('mouseenter', showPopOver.bind(this,tdataPopOverOptions));
             $('.view-header').on('mouseenter', showPopOver.bind(this,viewPopOverOptions));
+            $('.kn-view').on('mouseenter', showPopOver.bind(this,viewPopOverOptions));
 
-            $('.knTable th, .knTable td, .kn-table .view-header').on('mouseleave', function hidePopOver(event) {
+            $('.knTable th, .knTable td, .kn-table .view-header, .kn-view').on('mouseleave', function hidePopOver(event) {
                 if (event.shiftKey && event.ctrlKey ) {
                     currentTarget = null;
                     $('#kn-popover').hide();
@@ -11402,7 +11404,7 @@ function Ktl($, appInfo) {
 
             $(document).on('keydown', function (event) {
                 if (event.shiftKey && event.ctrlKey) {
-                    $(document.querySelectorAll(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover")).trigger('mouseenter', true);
+                    $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover").first().trigger('mouseenter', true);
                 } else if (event.key === 'Escape') {
                     currentTarget = null;
                     $('#kn-popover').hide();
@@ -11453,6 +11455,27 @@ function debounce(func, timeout = 1000){
         clearTimeout(timer);
         timer = setTimeout(() => { func.apply(this, args); }, timeout);
     };
+}
+
+function safePromiseAllSettled(promises) {
+    // To support Chrome Android 69
+    // if (!Promise.allSettled) {
+        return Promise.all(
+            promises.map((promise, i) =>
+              promise
+                .then(value => ({
+                  status: "fulfilled",
+                  value,
+                }))
+                .catch(reason => ({
+                  status: "rejected",
+                  reason,
+                }))
+            )
+        );
+    // }
+      
+    // return Promise.allSettled(promises);
 }
 
 ////////////////  End of KTL /////////////////////
