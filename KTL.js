@@ -11403,13 +11403,15 @@ function Ktl($, appInfo) {
             }
         };
 
-        let targets = [];
+        let openedPopOverTarget;
         let popover;
         function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
             if ( (event.shiftKey && event.ctrlKey) || force) {
-                const target = $(event.currentTarget);
 
-                targets.push(target);
+                $(openedPopOverTarget).removeClass("active").removeData("popover");
+
+                const target = $(event.currentTarget);
+                openedPopOverTarget = event.currentTarget;
 
                 const bindedOptions = {
                     ...options,
@@ -11419,33 +11421,28 @@ function Ktl($, appInfo) {
                 if (!popover) {
                     target.popover(bindedOptions);
                     popover = target.data("popover");
-                    popover.bindEvents = () => {}; // Remove subsequent bindevents occurance
+
+                    popover.$win = { resize :  () => {}}; // Remove subsequent resize occurance
+
+                    const bindEvents = popover.bindEvents;
+                    popover.bindEvents = () => {}; // Remove subsequent bindEvents occurance
+                    $("body").on("click", () => bindEvents.call(popover)); // reinstate modal click after initial bindEvents
                 } else {
-                    popover.init(bindedOptions, target, undefined);
+                    popover.init(bindedOptions, target);
                 }
             }
         }
 
         function closePopOver(eventTarget) {
-            let target = $(eventTarget);
-            if(!eventTarget) {
-                if(targets.length != 1)
-                    console.error("Leaked target count " + targets.length);
-
-                target = $(targets.shift());
-            }
-
-            target.removeClass("active");
-            target.removeData("popover");
+            $(eventTarget).removeClass("active").removeData("popover");
+            openedPopOverTarget = null;
             $('#kn-popover').hide();
-            targets = targets.filter((e) => e.get(0) != target.get(0));
-            console.log('hide ' + targets.length);
         }
 
         $(document).on('knack-view-render.any', function () {
             $('.knTable th').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, theadPopOverOptions));
             $('.knTable td').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, tdataPopOverOptions));
-            $('.view-header').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, viewPopOverOptions));
+            $('.kn-table .view-header').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, viewPopOverOptions));
 
             $('.knTable th, .knTable td, .kn-table .view-header').off('mouseleave.KtlPopOver').on('mouseleave.KtlPopOver', function hidePopOver(event) {
                 if (event.shiftKey && event.ctrlKey ) {
@@ -11458,7 +11455,7 @@ function Ktl($, appInfo) {
             if (event.shiftKey && event.ctrlKey) {
                 $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover").first().trigger('mouseenter.KtlPopOver', true);
             } else if (event.key === 'Escape') {
-                closePopOver();
+                closePopOver(openedPopOverTarget);
             }
         });
     })();//developperPopupTool
