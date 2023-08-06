@@ -11430,6 +11430,8 @@ function Ktl($, appInfo) {
                 } else {
                     popover.init(bindedOptions, target);
                 }
+
+                event.stopPropagation();
             }
         }
 
@@ -11454,7 +11456,7 @@ function Ktl($, appInfo) {
 
         $(document).on('keydown', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover").first().trigger('mouseenter.KtlPopOver', true);
+                $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover").last().trigger('mouseenter.KtlPopOver', true);
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
