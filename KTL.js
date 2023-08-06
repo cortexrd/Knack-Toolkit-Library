@@ -11169,7 +11169,7 @@ function Ktl($, appInfo) {
                 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
                 const delayMS = 150;
 
-                await Promise.allSettled(recordsToUpdate.map( async (record, index) => {
+                await safePromiseAllSettled(recordsToUpdate.map( async (record, index) => {
                     await sleep(index * delayMS);
                     return sendUpdate(record);
                 })).finally(() => {
@@ -11297,7 +11297,7 @@ function Ktl($, appInfo) {
                 const icon = document.createElement('i');
                 icon.classList.add('fa','fa-copy');
                 icon.style.background = "url(https://ctrnd.s3.amazonaws.com/Lib/KTL/Media/knack-logo.png)";
-                icon.style['background-size'] = 'contain'; 
+                icon.style['background-size'] = 'contain';
                 icon.style.width = '14px';
                 icon.style.height = '14px';
                 icon.style['background-repeat'] = 'no-repeat';
@@ -11319,7 +11319,7 @@ function Ktl($, appInfo) {
                 container.appendChild(escSpan);
 
                 const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
-                
+
                 container.appendChild(createLine(sceneId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}`));
                 return container;
             },
@@ -11364,7 +11364,7 @@ function Ktl($, appInfo) {
                 const fieldId = $(element).attr('class').split(/\s+/)[0];
                 const fieldURL = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
                 container.appendChild(createLine(fieldId, fieldURL));
-                
+
                 return container;
             }
         };
@@ -11376,11 +11376,11 @@ function Ktl($, appInfo) {
 
                 const viewId = $(element).closest('.kn-view').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
-                
-                const recordId = $(element).closest('tr').attr('id'); 
+
+                const recordId = $(element).closest('tr').attr('id');
                 const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
                 container.appendChild(createLine(recordId, url));
-                
+
                 const copyButton = createButton();
                 copyButton.innerText = 'Copy content';
                 copyButton.style.margin = '0em 0.5em';
@@ -11398,7 +11398,7 @@ function Ktl($, appInfo) {
                     ktl.core.selectElementContents();
                 });
                 container.appendChild(copyButton);
-                
+
                 return container;
             }
         };
@@ -11423,13 +11423,14 @@ function Ktl($, appInfo) {
                     popover = target.data("popover");
 
                     popover.$win = { resize :  () => {}}; // Remove subsequent resize occurance
-
                     const bindEvents = popover.bindEvents;
                     popover.bindEvents = () => {}; // Remove subsequent bindEvents occurance
                     $("body").on("click", () => bindEvents.call(popover)); // reinstate modal click after initial bindEvents
                 } else {
                     popover.init(bindedOptions, target);
                 }
+
+                event.stopPropagation();
             }
         }
 
@@ -11454,7 +11455,7 @@ function Ktl($, appInfo) {
 
         $(document).on('keydown', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover").first().trigger('mouseenter.KtlPopOver', true);
+                $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover").last().trigger('mouseenter.KtlPopOver', true);
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
@@ -11503,6 +11504,27 @@ function debounce(func, timeout = 1000){
         clearTimeout(timer);
         timer = setTimeout(() => { func.apply(this, args); }, timeout);
     };
+}
+
+function safePromiseAllSettled(promises) {
+    // To support Chrome Android 69
+    // if (!Promise.allSettled) {
+        return Promise.all(
+            promises.map((promise, i) =>
+              promise
+                .then(value => ({
+                  status: "fulfilled",
+                  value,
+                }))
+                .catch(reason => ({
+                  status: "rejected",
+                  reason,
+                }))
+            )
+        );
+    // }
+
+    // return Promise.allSettled(promises);
 }
 
 ////////////////  End of KTL /////////////////////
