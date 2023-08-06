@@ -11318,7 +11318,7 @@ function Ktl($, appInfo) {
                 escSpan.style.margin = '0em 0.5em';
                 container.appendChild(escSpan);
 
-                const sceneId = $(element).parents('.kn-scene').attr('id').substring(3);
+                const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
                 
                 container.appendChild(createLine(sceneId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}`));
                 return container;
@@ -11332,8 +11332,8 @@ function Ktl($, appInfo) {
             content: function(element) {
                 const container = defaultPopOverOptions.content(element);
 
-                const sceneId = $(element).parents('.kn-scene').attr('id').substring(3);
-                const viewId = $(element).parents('.kn-view').attr('id');
+                const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
+                const viewId = $(element).closest('.kn-view').attr('id');
                 const viewUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/table`;
                 container.appendChild(createLine(viewId,viewUrl));
 
@@ -11346,7 +11346,7 @@ function Ktl($, appInfo) {
             content: function(element) {
                 const container = viewPopOverOptions.content(element);
 
-                const viewId = $(element).parents('.kn-view').attr('id');
+                const viewId = $(element).closest('.kn-view').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
                 const objectName = Knack.objects._byId[objectId].attributes.name;
 
@@ -11374,10 +11374,10 @@ function Ktl($, appInfo) {
             content: function(element) {
                 const container = theadPopOverOptions.content(element);
 
-                const viewId = $(element).parents('.kn-view').attr('id');
+                const viewId = $(element).closest('.kn-view').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
                 
-                const recordId = $(element).parents('tr').attr('id'); 
+                const recordId = $(element).closest('tr').attr('id'); 
                 const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
                 container.appendChild(createLine(recordId, url));
                 
@@ -11443,8 +11443,9 @@ function Ktl($, appInfo) {
             $('.knTable th').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, theadPopOverOptions));
             $('.knTable td').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, tdataPopOverOptions));
             $('.kn-table .view-header').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, viewPopOverOptions));
+            $('.kn-view').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this,viewPopOverOptions));
 
-            $('.knTable th, .knTable td, .kn-table .view-header').off('mouseleave.KtlPopOver').on('mouseleave.KtlPopOver', function hidePopOver(event) {
+            $('.knTable th, .knTable td, .kn-table .view-header, .kn-view').off('mouseleave.KtlPopOver').on('mouseleave.KtlPopOver', function hidePopOver(event) {
                 if (event.shiftKey && event.ctrlKey ) {
                     closePopOver(event.currentTarget);
                 }
