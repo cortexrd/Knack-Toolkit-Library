@@ -11169,7 +11169,7 @@ function Ktl($, appInfo) {
                 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
                 const delayMS = 150;
 
-                await Promise.allSettled(recordsToUpdate.map( async (record, index) => {
+                await safePromiseAllSettled(recordsToUpdate.map( async (record, index) => {
                     await sleep(index * delayMS);
                     return sendUpdate(record);
                 })).finally(() => {
@@ -11503,6 +11503,27 @@ function debounce(func, timeout = 1000){
         clearTimeout(timer);
         timer = setTimeout(() => { func.apply(this, args); }, timeout);
     };
+}
+
+function safePromiseAllSettled(promises) {
+    // To support Chrome Android 69
+    // if (!Promise.allSettled) {
+        return Promise.all(
+            promises.map((promise, i) =>
+              promise
+                .then(value => ({
+                  status: "fulfilled",
+                  value,
+                }))
+                .catch(reason => ({
+                  status: "rejected",
+                  reason,
+                }))
+            )
+        );
+    // }
+      
+    // return Promise.allSettled(promises);
 }
 
 ////////////////  End of KTL /////////////////////
