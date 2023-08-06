@@ -5406,7 +5406,7 @@ function Ktl($, appInfo) {
                         if (!fieldLabel.startsWith('field_'))
                             fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
 
-                        if (fieldSrc && fieldSrc !== '' && fieldSrc !== fieldId)
+                        if (fieldSrc === undefined || (fieldSrc && fieldSrc !== '' && fieldSrc !== fieldId))
                             continue;
 
                         //If no refVal passed in param, then check in group to see if refVal a summary or a jQuery.
@@ -11297,7 +11297,7 @@ function Ktl($, appInfo) {
                 const icon = document.createElement('i');
                 icon.classList.add('fa','fa-copy');
                 icon.style.background = "url(https://ctrnd.s3.amazonaws.com/Lib/KTL/Media/knack-logo.png)";
-                icon.style['background-size'] = 'contain'; 
+                icon.style['background-size'] = 'contain';
                 icon.style.width = '14px';
                 icon.style.height = '14px';
                 icon.style['background-repeat'] = 'no-repeat';
@@ -11319,7 +11319,7 @@ function Ktl($, appInfo) {
                 container.appendChild(escSpan);
 
                 const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
-                
+
                 container.appendChild(createLine(sceneId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}`));
                 return container;
             },
@@ -11364,7 +11364,7 @@ function Ktl($, appInfo) {
                 const fieldId = $(element).attr('class').split(/\s+/)[0];
                 const fieldURL = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
                 container.appendChild(createLine(fieldId, fieldURL));
-                
+
                 return container;
             }
         };
@@ -11376,11 +11376,11 @@ function Ktl($, appInfo) {
 
                 const viewId = $(element).closest('.kn-view').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
-                
-                const recordId = $(element).closest('tr').attr('id'); 
+
+                const recordId = $(element).closest('tr').attr('id');
                 const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
                 container.appendChild(createLine(recordId, url));
-                
+
                 const copyButton = createButton();
                 copyButton.innerText = 'Copy content';
                 copyButton.style.margin = '0em 0.5em';
@@ -11398,7 +11398,7 @@ function Ktl($, appInfo) {
                     ktl.core.selectElementContents();
                 });
                 container.appendChild(copyButton);
-                
+
                 return container;
             }
         };
@@ -11522,7 +11522,7 @@ function safePromiseAllSettled(promises) {
             )
         );
     // }
-      
+
     // return Promise.allSettled(promises);
 }
 
