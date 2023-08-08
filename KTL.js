@@ -11537,8 +11537,11 @@ function Ktl($, appInfo) {
                 }
 
                 const fieldId = $(element).attr('class').split(/\s+/)[0];
-                const fieldURL = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
-                container.appendChild(createLine(fieldId, fieldURL));
+
+                if (fieldId.includes('field')) {
+                    const fieldURL = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
+                    container.appendChild(createLine(fieldId, fieldURL));
+                }
 
                 return container;
             }
