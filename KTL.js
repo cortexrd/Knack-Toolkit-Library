@@ -2444,7 +2444,7 @@ function Ktl($, appInfo) {
                     }
 
                     //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
-                    const text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');;
+                    const text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
                     const barcodeData = { text: text, width: size, height: size };
                     ktl.core.loadLib('QRGenerator')
                         .then(() => {
@@ -7447,7 +7447,7 @@ function Ktl($, appInfo) {
                 let model;
                 if (viewType === 'table') {
                     model = Knack.views[viewId].model;
-                } else if ( viewType === 'search') {
+                } else if (viewType === 'search') {
                     model = Knack.views[viewId].model.results_model;
                 } else {
                     // view type not supported
@@ -7918,11 +7918,6 @@ function Ktl($, appInfo) {
         $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('mousemove', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
-        $(document).on('click', function (e) {
-            //For Dev Options popup, act like a modal window: close when clicking oustide.
-            if (e.target.closest('.kn-content'))
-                $('#devBtnsDivId').remove();
-        })
 
         //Early detection of scene change to prevent multi-rendering and flickering of views.
         var sceneChangeObservers = [];
@@ -8395,7 +8390,18 @@ function Ktl($, appInfo) {
                         var devBtnsDiv = document.createElement('div');
                         devBtnsDiv.setAttribute('id', 'devBtnsDivId');
                         devBtnsDiv.classList.add('devBtnsDiv', 'center');
+
+                        //Header
+                        var devBtnsDivHeader = document.createElement('div');
+                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivHeader');
+                        devBtnsDivHeader.classList.add('ktlDevToolsHeader');
+
+                        devBtnsDivHeader.innerText = ':: KTL Developer Tools ::';
+                        devBtnsDiv.appendChild(devBtnsDivHeader);
+
                         document.body.appendChild(devBtnsDiv);
+                        ktl.core.enableDragElement(devBtnsDiv);
+
 
                         //Requires NodeJS and file server to run otherwise crashes.
                         if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
@@ -8470,7 +8476,7 @@ function Ktl($, appInfo) {
                         })
 
                         var remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
-                        ktl.fields.addButton(devBtnsDiv, 'Debug this device: ' + remoteDev, '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                        ktl.fields.addButton(devBtnsDiv, 'Debug this device: ' + (remoteDev ? 'YES' : 'NO'), '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                             //This forces loading 'KTL-dev.js' debug code from CTRND's CDN, in Prod folder.
                             //See 'remoteDev' in KTL_Start.js
                             if (confirm('Use remote KTL-Dev.js code on this device?'))
@@ -8489,8 +8495,150 @@ function Ktl($, appInfo) {
                             })
                         }
 
+                        var searchBtn = ktl.fields.addButton(devBtnsDiv, 'Search...', '', ['devBtn', 'kn-button']);
+                        searchBtn.addEventListener('click', () => {
+                            if ($('#devToolSearchDivId').length) return;
+
+                            var devToolSearchDiv = document.createElement('div');
+                            devToolSearchDiv.setAttribute('id', 'devToolSearchDivId');
+                            devToolSearchDiv.classList.add('devBtnsDiv', 'devToolSearchDiv', 'center');
+
+                            var devToolSearchHdr = document.createElement('div');
+                            devToolSearchHdr.setAttribute('id', 'devToolSearchHdr');
+                            devToolSearchHdr.classList.add('ktlDevToolsHeader');
+
+                            devToolSearchHdr.innerText = ':: KTL Search Tool ::';
+                            devToolSearchDiv.appendChild(devToolSearchHdr);
+
+                            document.body.appendChild(devToolSearchDiv);
+                            ktl.core.enableDragElement(devToolSearchDiv);
+
+                            var paragraph = document.createElement('p');
+                            paragraph.appendChild(document.createTextNode('Enter view_id, field_id, scene_id,\n'));
+                            paragraph.appendChild(document.createTextNode('a specific keyword or kw for all keywords.'));
+                            paragraph.style.whiteSpace = 'pre';
+                            devToolSearchDiv.appendChild(paragraph);
+
+                            var searchInput = document.createElement("input");
+                            searchInput.type = 'text';
+                            searchInput.value = 'view_';
+                            searchInput.classList.add('ktlDevToolsSearchInput');
+                            devToolSearchDiv.appendChild(searchInput);
+                            searchInput.focus();
+
+                            var resultWndText;
+
+                            searchInput.addEventListener('keyup', function (event) {
+                                if (event.key === 'Enter') {
+                                    performSearch(searchInput.value);
+                                }
+                            });
+
+                            searchInput.addEventListener('click', function (event) {
+                                searchInput.focus();
+                            })
+
+                            function performSearch(query) {
+                                if (!query) return;
+                                searchInput.classList.remove('ktlNotValid');
+                                console.log('Searching for:', query);
+
+                                $('.ktlDevToolLink').remove();
+
+                                var builderUrl;
+                                var appUrl;
+                                var kwResults;
+
+                                if (query.startsWith('field_')) {
+                                    const field = Knack.objects.getField(query);
+                                    if (field && field.id) {
+                                        const fieldId = field.id;
+                                        const objectId = Knack.objects.getField(fieldId).attributes.object_key;
+                                        builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${fieldId}/settings`;
+                                    }
+                                } else if (query.startsWith('view_')) {
+                                    for (var s = 0; s < Knack.scenes.models.length && !builderUrl; s++) {
+                                        var views = Knack.scenes.models[s].views;
+                                        for (var v = 0; v < views.models.length; v++) {
+                                            let view = views.models[v];
+                                            if (view) {
+                                                const attr = view.attributes;
+                                                const viewId = attr.key;
+                                                if (viewId === query) {
+                                                    const sceneId = attr.scene.key;
+                                                    builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/${attr.type}`;
+                                                    const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                                    appUrl = `${Knack.url_base}#${slug}`;
+                                                    console.log('Open in App:', appUrl);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else if (query.startsWith('scene_')) {
+                                    for (var t = 0; t < Knack.scenes.models.length; t++) {
+                                        if (query === Knack.scenes.models[t].attributes.key) {
+                                            builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${query}`;
+                                            break;
+                                        }
+                                    }
+                                } else if (query === 'kw') {
+                                    kwResults = ktl.sysInfo.findAllKeywords();
+                                } else {
+                                    kwResults = ktl.sysInfo.findAllKeywords(query);
+                                }
+
+                                if (builderUrl || appUrl || kwResults) {
+                                    if (builderUrl) {
+                                        console.log('Open in Builder:', builderUrl);
+                                        const builderLink = document.createElement('a');
+                                        builderLink.classList.add('is-small', 'ktlDevToolLink');
+                                        builderLink.style.margin = '1em 0em 1em 0em';
+                                        builderLink.style['text-decoration'] = 'none';
+                                        builderLink.href = builderUrl;
+                                        builderLink.target = '_blank';
+                                        builderLink.innerHTML = `Open "${query}" in Builder`;
+                                        devToolSearchDiv.appendChild(builderLink);
+                                    }
+
+                                    if (appUrl) {
+                                        console.log('App URL:', appUrl);
+                                        const appLink = document.createElement('a');
+                                        appLink.classList.add('is-small', 'ktlDevToolLink');
+                                        appLink.style.margin = '0em 0em 0.75em 0em';
+                                        appLink.style['text-decoration'] = 'none';
+                                        appLink.href = appUrl;
+                                        appLink.target = '_self';
+                                        appLink.innerHTML = `Open "${query}" in App`;
+                                        devToolSearchDiv.appendChild(appLink);
+                                        appLink.addEventListener('click', () => {
+                                            setTimeout(() => {
+                                                searchInput.focus();
+                                            }, 1500);
+                                        })
+                                    }
+
+                                    if (kwResults) {
+                                        if (!$('#resultWndTextId').length) {
+                                            resultWndText = document.createElement('div');
+                                            resultWndText.setAttribute('id', 'resultWndTextId');
+                                            resultWndText.classList.add('ktlConsoleDiv');
+                                            document.body.appendChild(resultWndText);
+                                            ktl.core.enableDragElement(resultWndText);
+                                        }
+
+                                        resultWndText.innerHTML = kwResults;
+                                    }
+                                } else {
+                                    console.log('Not found');
+                                    searchInput.classList.add('ktlNotValid');
+                                }
+                            }
+                        })
+
                         ktl.fields.addButton(devBtnsDiv, 'Logout', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                            ktl.account.logout();
+                            if (confirm('Are you sure you want to logout?'))
+                                ktl.account.logout();
                         })
 
                         const closeBtn = ktl.fields.addButton(devBtnsDiv, 'Close', '', ['devBtn', 'kn-button']);
@@ -8503,6 +8651,19 @@ function Ktl($, appInfo) {
 
                     return false; //False to prevent firing both events on mobile devices.
                 })
+
+                //For Dev Options popup, act like a modal window: close when clicking oustide.
+                $(document).on('click', function (e) {
+                    if (e.target.closest('.kn-content')) {
+                        if ($('#resultWndTextId').length)
+                            $('#resultWndTextId').remove();
+                        else if ($('#devToolSearchDivId').length)
+                            $('#devToolSearchDivId').remove();
+                        else
+                            $('#devBtnsDivId').remove();
+                    }
+                })
+
             },
 
             isiFrameWnd: function () {
@@ -10853,14 +11014,16 @@ function Ktl($, appInfo) {
             //See list here: https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords
             //Show only what contains search string parameter, or all if empty.
             findAllKeywords: function (search = '') {
+                var result = '';
                 var st = window.performance.now();
                 search && console.log('Searching all keywords for:', search);
                 const regex = new RegExp(search, 'i');
 
+                var builderUrl;
+                var appUrl;
                 var builderBaseUrl = 'https://builder.knack.com/' +
                     Knack.mixpanel_track.account + '/' +
                     Knack.mixpanel_track.app + '/pages/';
-
 
                 for (var kwKey in ktlKeywords) {
                     const kwInfo = ktlKeywords[kwKey];
@@ -10875,10 +11038,21 @@ function Ktl($, appInfo) {
                                         const attr = view.attributes;
                                         const viewId = attr.key;
                                         if (viewId === kwKey) {
-                                            builderUrl = builderBaseUrl + attr.scene.key + '/views/' + viewId + '/' + attr.type;
+                                            const sceneId = attr.scene.key;
 
-                                            console.log('Builder URL =', builderUrl);
-                                            console.log('Title =', attr.title);
+                                            builderUrl = builderBaseUrl + sceneId + '/views/' + viewId + '/' + attr.type;
+                                            //replace by this?-> builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/${attr.type}`;
+
+                                            const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                            appUrl = `${Knack.url_base}#${slug}`;
+
+                                            console.log('Builder:', builderUrl);
+                                            console.log('App:', appUrl);
+                                            console.log('Title:', attr.title);
+
+                                            result += '<br><a href="' + builderUrl + '" target="_blank">' + builderUrl + '</a>';
+                                            result += '<br><a href="' + appUrl + '" target="_self">' + appUrl + '</a>';
+                                            result += '<br>Title: ' + attr.title;
                                             break;
                                         }
                                     }
@@ -10889,17 +11063,23 @@ function Ktl($, appInfo) {
                                 if (kwKey === Knack.scenes.models[t].attributes.key) {
                                     builderUrl = builderBaseUrl + kwKey;
                                     console.log('Builder URL =', builderUrl);
+
+                                    result += '<br><a href="' + builderUrl + '" target="_blank">' + builderUrl + '</a>';
+                                    result += '<br><a href="' + appUrl + '" target="_self">' + appUrl + '</a>';
                                     break;
                                 }
                             }
                         }
 
                         console.log(kwKey + ':\n', str, '\n\n\n\n');
+                        result += '<br>' + kwKey + ':<br>' + str + '<br><br><br><br>';
                     }
                 }
 
                 var en = window.performance.now();
                 console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
+
+                return result;
             },
         }
     })(); //sysInfo
@@ -11234,10 +11414,7 @@ function Ktl($, appInfo) {
     //===================================================
     //Developper Popup Tool Feature
     this.developperPopupTool = (function () {
-
-        if( !Knack.getUserRoleNames().includes('Developer') )
-            return;
-
+        if (!ktl.account.isDeveloper()) return;
 
         const createButton = function(iconClass) {
             const button = document.createElement('a');
@@ -11257,7 +11434,6 @@ function Ktl($, appInfo) {
         }
 
         const createLine = function (text, url) {
-
             const container = document.createElement('div');
             container.style.padding= '2px 12px';
 
@@ -11406,7 +11582,7 @@ function Ktl($, appInfo) {
         let openedPopOverTarget;
         let popover;
         function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
-            if ( (event.shiftKey && event.ctrlKey) || force) {
+            if ((event.shiftKey && event.ctrlKey) || force) {
 
                 $(openedPopOverTarget).removeClass("active").removeData("popover");
 

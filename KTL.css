@@ -245,6 +245,54 @@ a.sortDisabled {
 	width: 260px;
 }
 
+.ktlDevToolsHeader {
+	height: 35px;
+	z-index: 10;
+	font-size: 17pt;
+	font-weight: 500;
+	line-height: 35px;
+	text-align: center;
+	background-color: darkgray;
+	width: 100%;
+	color: black;
+	margin-bottom: 10px;
+}
+
+.devToolSearchDiv {
+	z-index: 20;
+	min-width: 220px;
+	position: absolute;
+	left: 60%;
+	top: 58%;
+}
+
+.ktlDevToolsSearchInput{
+	width: auto;
+	height: 26px;
+	margin-top: 5px;
+}
+
+.ktlConsoleDiv {
+	/* width: 900px; */
+	max-height: 875px;
+	overflow: scroll;
+	font-family: monospace;
+	font-weight: bold;
+	font-size: 12px;
+	position: absolute;
+	left: 257px;
+	top: 76px;
+	z-index: 15;
+	background-color: #dee1e1;
+	white-space: pre;
+	border-width: 3px;
+	border-style: solid;
+	padding: 10px;
+	resize: both;
+	/* box-sizing: border-box; */
+}
+
+
 /* Kiosk Mode */
 body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to prevent conflict with menus or other objects. */
 	padding-top: 15px;
@@ -290,7 +338,6 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 
 #devBtnsDivId {
 	z-index: 10;
-	position: fixed;
 }
 
 @keyframes ktlFlashingOnOff {
@@ -362,6 +409,5 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	background-color: GoldenRod !important;
 	font-weight: bold !important;
 }
-
 
 /**** KTL_RELATED - END ****/
