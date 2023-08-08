@@ -11559,6 +11559,13 @@ function Ktl($, appInfo) {
                 const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
                 container.appendChild(createLine(recordId, url));
 
+                const linkedRecord = $(element).find('a > span[class]').attr('class');
+                
+                if (linkedRecord && !linkedRecord.includes(' ') && linkedRecord.length === 24) {
+                    const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${linkedRecord}/edit` : undefined;
+                    container.appendChild(createLine('link to '+ linkedRecord, url));
+                }
+
                 const copyButton = createButton();
                 copyButton.innerText = 'Copy content';
                 copyButton.style.margin = '0em 0.5em';
