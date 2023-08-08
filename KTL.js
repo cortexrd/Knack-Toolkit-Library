@@ -11021,9 +11021,6 @@ function Ktl($, appInfo) {
 
                 var builderUrl;
                 var appUrl;
-                var builderBaseUrl = 'https://builder.knack.com/' +
-                    Knack.mixpanel_track.account + '/' +
-                    Knack.mixpanel_track.app + '/pages/';
 
                 for (var kwKey in ktlKeywords) {
                     const kwInfo = ktlKeywords[kwKey];
@@ -11040,8 +11037,7 @@ function Ktl($, appInfo) {
                                         if (viewId === kwKey) {
                                             const sceneId = attr.scene.key;
 
-                                            builderUrl = builderBaseUrl + sceneId + '/views/' + viewId + '/' + attr.type;
-                                            //replace by this?-> builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/${attr.type}`;
+                                            builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/${attr.type}`;
 
                                             const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
                                             appUrl = `${Knack.url_base}#${slug}`;
@@ -11049,7 +11045,6 @@ function Ktl($, appInfo) {
                                             console.log('Builder:', builderUrl);
                                             console.log('App:', appUrl);
                                             console.log('Title:', attr.title);
-
                                             result += '<br><a href="' + builderUrl + '" target="_blank">' + builderUrl + '</a>';
                                             result += '<br><a href="' + appUrl + '" target="_self">' + appUrl + '</a>';
                                             result += '<br>Title: ' + attr.title;
@@ -11061,18 +11056,22 @@ function Ktl($, appInfo) {
                         } else if (kwKey.startsWith('scene_')) {
                             for (var t = 0; t < Knack.scenes.models.length; t++) {
                                 if (kwKey === Knack.scenes.models[t].attributes.key) {
-                                    builderUrl = builderBaseUrl + kwKey;
+                                    builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${kwKey}`;
                                     console.log('Builder URL =', builderUrl);
-
                                     result += '<br><a href="' + builderUrl + '" target="_blank">' + builderUrl + '</a>';
                                     result += '<br><a href="' + appUrl + '" target="_self">' + appUrl + '</a>';
                                     break;
                                 }
                             }
+                        } else if (kwKey.startsWith('field_')) {
+                            const objectId = Knack.objects.getField(kwKey).attributes.object_key;
+                            builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${kwKey}/settings`;
+                            console.log('Builder URL =', builderUrl);
+                            result += '<br><a href="' + builderUrl + '" target="_blank">' + builderUrl + '</a>';
                         }
 
-                        console.log(kwKey + ':\n', str, '\n\n\n\n');
-                        result += '<br>' + kwKey + ':<br>' + str + '<br><br><br><br>';
+                        console.log(kwKey + ':\n', str, '\n\n\n');
+                        result += '<br>' + kwKey + ':<br>' + str + '<br><br><br>';
                     }
                 }
 
