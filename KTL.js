@@ -11507,8 +11507,8 @@ function Ktl($, appInfo) {
             content: function(element) {
                 const container = defaultPopOverOptions.content(element);
 
-                const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
-                const viewId = $(element).closest('.kn-view').attr('id');
+                const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
+                const viewId = $(element).closest('.kn-view[id]').attr('id');
                 const viewUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/table`;
                 container.appendChild(createLine(viewId,viewUrl));
 
@@ -11521,7 +11521,7 @@ function Ktl($, appInfo) {
             content: function(element) {
                 const container = viewPopOverOptions.content(element);
 
-                const viewId = $(element).closest('.kn-view').attr('id');
+                const viewId = $(element).closest('.kn-view[id]').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
                 const objectName = Knack.objects._byId[objectId].attributes.name;
 
@@ -11549,7 +11549,7 @@ function Ktl($, appInfo) {
             content: function(element) {
                 const container = theadPopOverOptions.content(element);
 
-                const viewId = $(element).closest('.kn-view').attr('id');
+                const viewId = $(element).closest('.kn-view[id]').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
 
                 const recordId = $(element).closest('tr').attr('id');
@@ -11615,17 +11615,14 @@ function Ktl($, appInfo) {
             $('#kn-popover').hide();
         }
 
-        $(document).on('knack-view-render.any', function () {
-            $('.knTable th').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, theadPopOverOptions));
-            $('.knTable td').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, tdataPopOverOptions));
-            $('.kn-table .view-header').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, viewPopOverOptions));
-            $('.kn-view').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this,viewPopOverOptions));
-
-            $('.knTable th, .knTable td, .kn-table .view-header, .kn-view').off('mouseleave.KtlPopOver').on('mouseleave.KtlPopOver', function hidePopOver(event) {
-                if (event.shiftKey && event.ctrlKey ) {
-                    closePopOver(event.currentTarget);
-                }
-            });
+        $(document).on('mouseenter.KtlPopOver', '.knTable th', showPopOver.bind(this, theadPopOverOptions));
+        $(document).on('mouseenter.KtlPopOver', '.knTable td', showPopOver.bind(this, tdataPopOverOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-table .view-header', showPopOver.bind(this, viewPopOverOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-view', showPopOver.bind(this,viewPopOverOptions));
+        $(document).on('mouseleave.KtlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view', function hidePopOver(event) {
+            if (event.shiftKey && event.ctrlKey ) {
+                closePopOver(event.currentTarget);
+            }
         });
 
         $(document).on('keydown', function (event) {
