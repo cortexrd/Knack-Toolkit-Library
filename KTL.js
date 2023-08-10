@@ -5454,20 +5454,6 @@ function Ktl($, appInfo) {
                     }
                 }); //Groups
 
-                // function summaryReady(summaryViewId, viewId, fieldId, group, refVal, data, options) {
-                //     const summaryName = rvSelAr[1] ? rvSelAr[1] : '';
-                //     const columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
-                //     const summaryFieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
-
-                //     if (summaryViewId === viewId)
-                //         fieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
-
-                //     const summaryValue = readSummaryValue(summaryViewId, columnHeader, summaryName);
-                //     refVal = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
-
-                //     applyColorizationToRecords(viewId, fieldId, group, refVal, data, options);
-                // }
-
                 function applyColorizationToRecords(fieldId, parameter, referenceFieldId, options) {
                     if (!fieldId) return;
 
