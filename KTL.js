@@ -5438,7 +5438,7 @@ function Ktl($, appInfo) {
                                         ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
                                     })
                             }
-                        } else if(options && !!options.ktlRefVal) {
+                        } else if (options && !!options.ktlRefVal) {
                             const values = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
                             if (values.length === 2) {
                                 const referenceViewId = ktl.scenes.findViewWithTitle(values[1]);
@@ -5680,7 +5680,7 @@ function Ktl($, appInfo) {
                                         targetSel += ' tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span + ',';
                                 } else if (targetViewType === 'list') {
                                     targetSel += ' [data-record-id="' + rec.id + '"] .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
-                                } else if(targetViewType === 'details') {
+                                } else if (targetViewType === 'details') {
                                     if (targetFieldId)
                                         targetSel += ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
                                     else {
