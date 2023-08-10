@@ -3319,7 +3319,6 @@ function Ktl($, appInfo) {
 
                     if (linkedViewIds) {
                         const useUrlArray = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
-
                         const masterView = Knack.models[masterViewId].view;
                         if (masterView.type === 'report')
                             linkedViewIds.push(masterViewId);
@@ -5312,11 +5311,11 @@ function Ktl($, appInfo) {
         function colorizeFieldByValue(viewId, data) {
             const CFV_KEYWORD = '_cfv';
 
-            if (!viewId) 
+            if (!viewId)
                 return;
 
             const viewType = ktl.views.getViewType(viewId);
-            if (viewType !== 'table' && viewType !== 'list' && viewType !== 'details') 
+            if (viewType !== 'table' && viewType !== 'list' && viewType !== 'details')
                 return;
 
             //Begin with View's _cfv.
@@ -5377,7 +5376,7 @@ function Ktl($, appInfo) {
                                 }
                             });
                         }
-                    }); 
+                    });
                 }
             }
 
@@ -5400,7 +5399,7 @@ function Ktl($, appInfo) {
                             const ktlRefVal = options.ktlRefVal;
                             const values = ktl.core.splitAndTrimToArray(ktlRefVal);
 
-                            if (!values.length) 
+                            if (!values.length)
                                 return;
 
                             if (values[0] === 'ktlSummary') {
@@ -5417,7 +5416,7 @@ function Ktl($, appInfo) {
                                             const summaryFieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
                                             const summaryValue = readSummaryValue(summaryViewId, columnHeader, summaryName);
                                             const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
-                        
+
                                             applyColorizationToRecords(fieldId, parameter, value, options);
                                         }
                                     } else {
@@ -5425,7 +5424,7 @@ function Ktl($, appInfo) {
                                         const summaryValue = readSummaryValue(viewId, columnHeader, summaryName);
                                         const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
                                         const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
-                    
+
                                         applyColorizationToRecords(fieldId, parameter, value, options);
                                     }
                                 }
@@ -5435,7 +5434,7 @@ function Ktl($, appInfo) {
                                     .then(valueOfFieldId => {
                                         applyColorizationToRecords(fieldId, parameter, valueOfFieldId, options);
                                     })
-                                    .catch(e => { 
+                                    .catch(e => {
                                         ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
                                     })
                             }
@@ -5484,8 +5483,8 @@ function Ktl($, appInfo) {
                             const objId = Knack.objects.getField(fieldId).attributes.relationship.object;
                             const displayFieldId = Knack.objects._byId[objId].attributes.identifier;
                             fieldType = ktl.fields.getFieldType(displayFieldId);
-                        } 
-                        
+                        }
+
                         data.filter((record) => !!record[fieldId + '_raw']).forEach((record) => {
                             const cell = record[fieldId + '_raw'];
 
@@ -11572,7 +11571,7 @@ function Ktl($, appInfo) {
                 container.appendChild(createLine(recordId, url));
 
                 const linkedRecord = $(element).find('a > span[class]').attr('class');
-                
+
                 if (linkedRecord && !linkedRecord.includes(' ') && linkedRecord.length === 24) {
                     const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${linkedRecord}/edit` : undefined;
                     container.appendChild(createLine('link to '+ linkedRecord, url));
