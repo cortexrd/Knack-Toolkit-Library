@@ -7795,7 +7795,7 @@ function Ktl($, appInfo) {
                 if (!viewId || !header) return;
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType !== 'table') {
-                    ktl.log.clog('purple', 'getFieldPositionFromHeader - unsupported view type', viewId);
+                    ktl.log.clog('purple', 'getFieldPositionFromHeader - unsupported view type', viewId, viewType);
                     return;
                 }
 
@@ -7813,7 +7813,7 @@ function Ktl($, appInfo) {
                 if (!viewId || !fieldId) return;
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType !== 'table') {
-                    ktl.log.clog('purple', 'getFieldPositionFromFieldId - unsupported view type', viewId);
+                    ktl.log.clog('purple', 'getFieldPositionFromFieldId - unsupported view type', viewId, viewType);
                     return;
                 }
 
@@ -7840,6 +7840,43 @@ function Ktl($, appInfo) {
                     summaryObserverCallbacks[viewId] = { callback, params };
                 else
                     console.error('Called addSummaryObserver with a non-function type argument.');
+            },
+
+            addCheckboxesToTable: function (viewId, withMaster = true) {
+                if (!viewId) return;
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType !== 'table' && viewType !== 'search') {
+                    ktl.log.clog('purple', 'addCheckboxesToTable - unsupported view type', viewId, viewType);
+                    return;
+                }
+
+                //Only add checkboxes if there's data and checkboxes not yet added.
+                var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
+                if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table th:nth-child(1) input[type=checkbox]')) {
+                    if (withMaster) { // Add the master checkbox to to the header to select/unselect all
+                        $('#' + viewId + ' .kn-table thead tr').prepend('<th><input type="checkbox"></th>');
+                        $('#' + viewId + ' .kn-table thead input').addClass('masterSelector');
+                        $('#' + viewId + ' .masterSelector').change(function () {
+                            $('#' + viewId + ' tr td input:checkbox').each(function () {
+                                $(this).attr('checked', $('#' + viewId + ' th input:checkbox').attr('checked') !== undefined);
+                            });
+
+                            //TODO: onMasterCheckboxChange(viewId);
+                        });
+                    } else {
+                        //Add blank cell to keep header properly aligned.
+                        $('#' + viewId + ' thead tr').prepend('<th class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></th>');
+                    }
+
+                    //Add a checkbox to each row in the table body
+                    $('#' + viewId + ' tbody tr').each(function () {
+                        if (this.id && !this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
+                            $(this).prepend('<td><input type="checkbox"></td>');
+                        }
+                    });
+
+                    $('#' + viewId + ' tbody tr td input:checkbox').addClass('bulkEditCb');
+                }
             },
         }
     })(); //Views feature
@@ -10348,7 +10385,7 @@ function Ktl($, appInfo) {
                 addBulkdOpsGuiElements(view, data);
 
             function addBulkdOpsGuiElements(view, data) {
-                addCheckboxesToTable(view.key);
+                bulkOpsAddCheckboxesToTable(view.key);
                 ktl.views.fixTableRowsAlignment(view.key);
                 addBulkOpsButtons(view, data);
 
@@ -10388,8 +10425,13 @@ function Ktl($, appInfo) {
             }
         }
 
-        function addCheckboxesToTable(viewId) {
+        function bulkOpsAddCheckboxesToTable(viewId) {
             if (!viewId) return;
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType !== 'table' && viewType !== 'search') {
+                ktl.log.clog('purple', 'bulkOpsAddCheckboxesToTable - unsupported view type', viewId, viewType);
+                return;
+            }
 
             //Only add checkboxes if there's data and checkboxes not yet added.
             var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
