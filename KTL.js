@@ -5810,9 +5810,9 @@ function Ktl($, appInfo) {
             var fieldHasQt = false;
 
             //Override with view-specific colors, if any.
-            if (kwInstance && kwInstance.length && kwInstance[0].params.length && kwInstance[0].params[0].length) {
+            if (kwInstance && kwInstance.params && kwInstance.params.length) {
                 fieldHasQt = true; //If view has QT, then all fields inherit also.
-                const fldColors = kwInstance[0].params[0];
+                const fldColors = kwInstance.params[0];
                 if (fldColors.length >= 1 && fldColors[0])
                     bgColorTrue = fldColors[0];
 
@@ -11134,9 +11134,9 @@ function Ktl($, appInfo) {
     //====================================================
     //Account Logs feature
     this.accountsLogs = (function () {
-
         const SCENE_URL_NAME = 'view-account-logs';
         const SYSOP_DASHBOARD_ACCOUNT_LOGS = ktl.core.getViewIdByTitle('Account Logs', SCENE_URL_NAME);
+        if (!SYSOP_DASHBOARD_ACCOUNT_LOGS) return;
 
         function generateTableContainer(event, scene) {
             const dynamicTableDiv = document.createElement('div');
@@ -11315,9 +11315,11 @@ function Ktl($, appInfo) {
                 generateTableContainer();
         });
 
-        $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACCOUNT_LOGS, function (event, view, data) {
-            generateDynamicTable(data);
-            addCopytoClipboardButton();
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            if (view.key === SYSOP_DASHBOARD_ACCOUNT_LOGS) {
+                generateDynamicTable(data);
+                addCopytoClipboardButton();
+            }
         });
     })(); //Account Logs feature
 
