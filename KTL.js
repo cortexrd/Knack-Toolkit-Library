@@ -6103,8 +6103,7 @@ function Ktl($, appInfo) {
                 if (res && !res.rolesOk) return;
             }
 
-            if (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) !== 'true')
-                $('#' + viewId).addClass('ktlHidden');
+            $('#' + viewId).addClass('ktlHidden');
         }
 
         //Hide the view title only, typically used to save space when real estate is critical.
@@ -7436,10 +7435,10 @@ function Ktl($, appInfo) {
                     var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                     var foundKwObj = {};
                     for (var i = 0; i < fieldsWithKwAr.length; i++) {
-                        var field = fieldsWithKwAr[i];
-                        ktl.fields.getFieldKeywords(field, foundKwObj);
-                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[field][keyword])
-                            return field;
+                        var fieldId = fieldsWithKwAr[i];
+                        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId][keyword])
+                            return fieldId;
                     }
                 }
             },
@@ -8128,23 +8127,24 @@ function Ktl($, appInfo) {
 
                                             const typeHtml = typeof ktlKioskButtons[kioskBtn].html;
                                             if (typeHtml === 'function')
-                                                ktlKioskButtons[kioskBtn].html();
+                                                ktlKioskButtons[kioskBtn].html(viewId, kioskAppBtn.id, ktlKioskButtons[kioskBtn]);
                                             else
                                                 kioskAppBtn.innerHTML = ktlKioskButtons[kioskBtn].html;
 
-                                            kioskAppBtn.addEventListener('click', function (e) {
-                                                e.preventDefault();
-
-                                                var href = $('#' + ktlKioskButtons[kioskBtn].id).attr('href');
-                                                if (href)
-                                                    window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
-                                                else {
-                                                    if (typeof ktlKioskButtons[kioskBtn].href === 'function')
-                                                        ktlKioskButtons[kioskBtn].href();
-                                                    else
-                                                        window.location.href = ktlKioskButtons[kioskBtn].href;
-                                                }
-                                            });
+                                            if (ktlKioskButtons[kioskBtn].href) {
+                                                kioskAppBtn.addEventListener('click', function (e) {
+                                                    e.preventDefault();
+                                                    var href = $('#' + ktlKioskButtons[kioskBtn].id).attr('href');
+                                                    if (href)
+                                                        window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
+                                                    else {
+                                                        if (typeof ktlKioskButtons[kioskBtn].href === 'function')
+                                                            ktlKioskButtons[kioskBtn].href(viewId, kioskAppBtn.id);
+                                                        else
+                                                            window.location.href = ktlKioskButtons[kioskBtn].href;
+                                                    }
+                                                });
+                                            }
                                         })
                                 }
                             }
@@ -8179,8 +8179,12 @@ function Ktl($, appInfo) {
                                 .catch(function () {
                                     ktl.log.clog('purple', 'menu bar not found');
                                 })
-                        } else
-                            $('.kn-submit').css('display', 'flex');
+                        } else {
+                            if (kioskButtonsParentDivSel.includes('kn-title'))
+                                $('#' + viewId + ' .kn-title').css('display', 'flex');
+                            else
+                                $('.kn-submit').css('display', 'flex');
+                        }
 
                         backBtn && kioskButtonsDiv.appendChild(backBtn);
                         refreshBtn && kioskButtonsDiv.appendChild(refreshBtn);
@@ -8467,17 +8471,10 @@ function Ktl($, appInfo) {
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
                         })
 
-                        var showHiddenViews = (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) === 'true');
-                        var showHiddenViewsBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Views: ' + (showHiddenViews ? 'SHOW' : 'HIDE'), '', ['devBtn', 'kn-button']);
+                        var showHiddenViewsBtn = ktl.fields.addButton(devBtnsDiv, 'Reveal all Hidden', '', ['devBtn', 'kn-button']);
                         showHiddenViewsBtn.addEventListener('click', () => {
-                            showHiddenViews = !showHiddenViews;
-                            showHiddenViewsBtn.textContent = 'Hidden Views: ' + (showHiddenViews ? 'SHOW' : 'HIDE');
-                            if (showHiddenViews)
-                                ktl.storage.lsSetItem('SHOW_HIDDEN_VIEWS', true, false, true);
-                            else
-                                ktl.storage.lsRemoveItem('SHOW_HIDDEN_VIEWS', false, true);
-
-                            Knack.router.scene_view.render();
+                            $('.ktlHidden').removeClass('ktlHidden');
+                            $('.ktlDisplayNone').removeClass('ktlDisplayNone');
                         })
 
                         ktl.fields.addButton(devBtnsDiv, 'Kiosk', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
