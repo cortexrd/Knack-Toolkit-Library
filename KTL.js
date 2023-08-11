@@ -7634,7 +7634,7 @@ function Ktl($, appInfo) {
 
                 //Must be left outside the "if keywords._ni exists" condition above.
                 //Must always be executed to support the _lud and _lub keywords that can also add the ktlNoInlineEdit class.
-                $('.ktlNoInlineEdit').bindFirst('click', function (e) {
+                $('#' + viewId + ' .ktlNoInlineEdit').bindFirst('click', function (e) {
                     e.stopImmediatePropagation();
                 });
             },
@@ -8021,6 +8021,20 @@ function Ktl($, appInfo) {
                         var refreshBtn;
                         var backBtn;
 
+                        //Find the first bar that exists, in this top-down order priority.
+                        var kioskButtonsParentDivSel = '#' + viewId + ' .kn-submit, .kn-submit';
+                        var kioskButtonsParentDiv = document.querySelector(kioskButtonsParentDivSel);
+                        if (!kioskButtonsParentDiv) {
+                            //Happens with pages without a Submit button.  Ex: When you only have a table.
+                            //Then, try with kn-title or kn-records-nav div.
+                            kioskButtonsParentDivSel = '#' + viewId + ' .kn-title, #' + viewId + ' .kn-records-nav';
+                            kioskButtonsParentDiv = document.querySelector(kioskButtonsParentDivSel);
+                            if (!kioskButtonsParentDiv) {
+                                ktl.log.clog('purple', 'ERROR - Could not find a div to attach Kiosk buttons.');
+                                return;
+                            }
+                        }
+
                         for (var kioskBtn in ktlKioskButtons) {
                             if (kioskBtn === 'ADD_MESSAGING' && !ktlKioskButtons.ADD_MESSAGING.scenesToExclude.includes(Knack.router.current_scene_key)) {
                                 messagingBtn = document.getElementById(ktlKioskButtons.ADD_MESSAGING.id);
@@ -8036,9 +8050,7 @@ function Ktl($, appInfo) {
                                         ktl.storage.lsRemoveItem(ktl.const.LS_SYSOP_MSG_UNREAD);
                                     });
                                 }
-                            }
-
-                            if (kioskBtn === 'ADD_REFRESH') {
+                            } else if (kioskBtn === 'ADD_REFRESH') {
                                 if (!document.getElementById(ktlKioskButtons.ADD_REFRESH.id)) {
                                     refreshBtn = document.createElement('BUTTON');
                                     refreshBtn.classList.add('kn-button', 'smallKioskButtons');
@@ -8051,9 +8063,7 @@ function Ktl($, appInfo) {
                                         ktlKioskButtons.ADD_REFRESH.href();
                                     });
                                 }
-                            }
-
-                            if (kioskBtn === 'ADD_BACK' || kioskBtn === 'ADD_DONE') {
+                            } else if (kioskBtn === 'ADD_BACK' || kioskBtn === 'ADD_DONE') {
                                 var btnKey;
                                 if (keywords._kb)
                                     btnKey = 'ADD_BACK';
@@ -8075,54 +8085,70 @@ function Ktl($, appInfo) {
                                         var href = $('#' + ktlKioskButtons[btnKey].id).attr('href');
                                         if (href)
                                             window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
-                                        else
-                                            ktlKioskButtons[btnKey].href();
+                                        else {
+                                            if (typeof ktlKioskButtons[btnKey].href === 'function')
+                                                ktlKioskButtons[btnKey].href();
+                                            else
+                                                window.location.href = ktlKioskButtons[btnKey].href;
+                                        }
                                     });
                                 }
+                            } else if (kioskBtn === 'ADD_SHIFT') {
+                                //Add Shift button right next to Submit.
+                                var shiftBtn = ktlKioskButtons.ADD_SHIFT && document.getElementById(ktlKioskButtons.ADD_SHIFT.id);
+                                if (!shiftBtn && !ktlKioskButtons.ADD_SHIFT.scenesToExclude.includes(Knack.router.current_scene_key)) {
+                                    shiftBtn = document.createElement('BUTTON');
+                                    shiftBtn.classList.add('kn-button', 'ktlKioskButtons');
+                                    shiftBtn.style.marginLeft = '30px';
+                                    shiftBtn.id = ktlKioskButtons.ADD_SHIFT.id;
+
+                                    ktl.core.waitSelector(kioskButtonsParentDivSel, 10000, 'visible')
+                                        .then(() => {
+                                            kioskButtonsParentDiv.appendChild(shiftBtn);
+                                            ktlKioskButtons.ADD_SHIFT.html(ktl.userPrefs.getUserPrefs().workShift);
+
+                                            shiftBtn.addEventListener('click', function (e) {
+                                                e.preventDefault();
+                                                window.location.href = ktlKioskButtons.ADD_SHIFT.href;
+                                            });
+                                        })
+                                }
+                            } else { //Other custom kiosk buttons from App.
+                                var kioskAppBtn = ktlKioskButtons[kioskBtn] && document.getElementById(ktlKioskButtons[kioskBtn].id);
+                                if (!kioskAppBtn && !ktlKioskButtons[kioskBtn].scenesToExclude.includes(Knack.router.current_scene_key)) {
+                                    kioskAppBtn = document.createElement('BUTTON');
+                                    kioskAppBtn.classList.add('kn-button', 'smallKioskButtons');
+                                    kioskAppBtn.style.marginLeft = '30px';
+                                    kioskAppBtn.id = ktlKioskButtons[kioskBtn].id;
+
+                                    //Add custom app button at the right of Submit.
+                                    ktl.core.waitSelector(kioskButtonsParentDivSel, 10000, 'visible')
+                                        .then(() => {
+                                            kioskButtonsParentDiv.appendChild(kioskAppBtn);
+
+                                            const typeHtml = typeof ktlKioskButtons[kioskBtn].html;
+                                            if (typeHtml === 'function')
+                                                ktlKioskButtons[kioskBtn].html();
+                                            else
+                                                kioskAppBtn.innerHTML = ktlKioskButtons[kioskBtn].html;
+
+                                            kioskAppBtn.addEventListener('click', function (e) {
+                                                e.preventDefault();
+
+                                                var href = $('#' + ktlKioskButtons[kioskBtn].id).attr('href');
+                                                if (href)
+                                                    window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
+                                                else {
+                                                    if (typeof ktlKioskButtons[kioskBtn].href === 'function')
+                                                        ktlKioskButtons[kioskBtn].href();
+                                                    else
+                                                        window.location.href = ktlKioskButtons[kioskBtn].href;
+                                                }
+                                            });
+                                        })
+                                }
                             }
-
-
                         } //for in loop
-
-
-
-
-
-
-                        //Find the first bar that exists, in this top-down order priority.
-                        //var kioskButtonsParentDiv = document.querySelector('#' + viewId + ' .kn-submit') || document.querySelector('.kn-submit');
-                        var kioskButtonsParentDivSel = '#' + viewId + ' .kn-submit, .kn-submit';
-                        var kioskButtonsParentDiv = document.querySelector(kioskButtonsParentDivSel);
-                        if (!kioskButtonsParentDiv) {
-                            //Happens with pages without a Submit button.  Ex: When you only have a table.
-                            //Then, try with kn-title or kn-records-nav div.
-                            kioskButtonsParentDivSel = '#' + viewId + ' .kn-title, #' + viewId + ' .kn-records-nav';
-                            kioskButtonsParentDiv = document.querySelector(kioskButtonsParentDivSel);
-                            if (!kioskButtonsParentDiv) {
-                                ktl.log.clog('purple', 'ERROR - Could not find a div to attach Kiosk buttons.');
-                                return;
-                            }
-                        } else {
-                            //Add Shift button right next to Submit.
-                            var shiftBtn = ktlKioskButtons.ADD_SHIFT && document.getElementById(ktlKioskButtons.ADD_SHIFT.id);
-                            if (ktlKioskButtons.ADD_SHIFT && !shiftBtn && !ktlKioskButtons.ADD_SHIFT.scenesToExclude.includes(Knack.router.current_scene_key)) {
-                                shiftBtn = document.createElement('BUTTON');
-                                shiftBtn.classList.add('kn-button', 'ktlKioskButtons');
-                                shiftBtn.style.marginLeft = '30px';
-                                shiftBtn.id = ktlKioskButtons.ADD_SHIFT.id;
-
-                                ktl.core.waitSelector(kioskButtonsParentDivSel, 10000, 'visible')
-                                    .then(() => {
-                                        kioskButtonsParentDiv.appendChild(shiftBtn);
-                                        ktlKioskButtons.ADD_SHIFT.html(ktl.userPrefs.getUserPrefs().workShift);
-
-                                        shiftBtn.addEventListener('click', function (e) {
-                                            e.preventDefault();
-                                            window.location.href = ktlKioskButtons.ADD_SHIFT.href;
-                                        });
-                                    })
-                            }
-                        }
 
                         var kioskButtonsDiv = document.querySelector('.kioskButtonsDiv');
                         if (!kioskButtonsDiv) {
@@ -8134,8 +8160,6 @@ function Ktl($, appInfo) {
                                     kioskButtonsParentDiv.appendChild(kioskButtonsDiv);
                                 })
                         }
-
-
 
                         var knMenuBar = document.querySelector('.kn-menu'); //Get first menu in page.
                         if (knMenuBar) {
