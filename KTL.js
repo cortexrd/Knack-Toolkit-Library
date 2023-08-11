@@ -20,7 +20,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.0';
+    const KTL_VERSION = '0.15.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -278,7 +278,7 @@ function Ktl($, appInfo) {
         this.bind(name, fn);
         for (i = 0, _len = this.length; i < _len; i++) {
             elem = this[i];
-            if(!!jQuery._data(elem).events) {
+            if (!!jQuery._data(elem).events) {
                 handlers = jQuery._data(elem).events[name.split('.')[0]];
                 handlers.unshift(handlers.pop());
             }
@@ -3356,8 +3356,8 @@ function Ktl($, appInfo) {
                                 const filterUrlPart = filterDivIdToUrl(masterViewId);
 
                                 const filter = parts.params[filterUrlPart + '_filters'] || '[]';
-                            if (masterView.type === 'report')
-                                filter = parts.params[filterUrlPart + '_0_filters']; //Always use first one as master.
+                                if (masterView.type === 'report')
+                                    filter = parts.params[filterUrlPart + '_0_filters']; //Always use first one as master.
 
                                 const encodedRef = encodeURIComponent(filter);
                                 let mergedParams = '';
@@ -3386,7 +3386,7 @@ function Ktl($, appInfo) {
                                                 mergedParams += '&';
                                             mergedParams += reportView + '_' + c + '_filters=' + encodedRef;
                                         }
-                                })
+                                    })
 
                                 if (otherParams)
                                     mergedParams += '&' + otherParams;
@@ -3406,7 +3406,7 @@ function Ktl($, appInfo) {
 
                 $(`#${view.key} .kn-pagination .kn-select`).on('change', function (e) {
                     ktl.userFilters.onSaveFilterBtnClicked(view.key, true);
-                    });
+                });
 
                 //When the Search button is clicked in table.
                 $(`#${view.key} .kn-button.search`).on('click', function () {
@@ -3415,20 +3415,20 @@ function Ktl($, appInfo) {
 
                     if (activeFilter.filterObj && tableSearchText !== activeFilter.filterObj.search) {
                         ktl.userFilters.onSaveFilterBtnClicked(view.key, true);
-                                updateSearchInFilter(view.key);
-                            }
-                    });
+                        updateSearchInFilter(view.key);
+                    }
+                });
 
                 //When Enter is pressed in Search table field.
                 $(`#${view.key} .table-keyword-search`).on('submit', function () {
                     ktl.userFilters.onSaveFilterBtnClicked(view.key, true);
-                        updateSearchInFilter(view.key);
+                    updateSearchInFilter(view.key);
                 });
 
                 //When the Reset button is clicked in table's search.
                 $(`#${view.key} .reset.kn-button.is-link`).on('click', function () {
                     $(`#${view.key} .table-keyword-search input`).val(''); //Force to empty otherwise we sometimes get current search string.
-                        updateSearchInFilter(view.key);
+                    updateSearchInFilter(view.key);
                 });
 
                 const onSaveFilterDebounced = debounce(function () {
@@ -4868,7 +4868,7 @@ function Ktl($, appInfo) {
             }
 
             //Reset summary callbacks upon scene change.
-            ktl.scenes.sceneChangeNotificationSubscribe( function resetSummaryObserverCallbacks() {
+            ktl.scenes.sceneChangeNotificationSubscribe(function resetSummaryObserverCallbacks() {
                 summaryObserverCallbacks = {};
             });
         })
@@ -4899,8 +4899,8 @@ function Ktl($, appInfo) {
 
                 if (!Knack.views[viewId].ktlRenderTotals || Knack.views[viewId].renderTotals !== Knack.views[viewId].ktlRenderTotals.ktlPost) {
                     Knack.views[viewId].ktlRenderTotals = {
-                        original : Knack.views[viewId].renderTotals,
-                        ktlPost : ktlRenderTotals
+                        original: Knack.views[viewId].renderTotals,
+                        ktlPost: ktlRenderTotals
                     }
 
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
@@ -5671,7 +5671,7 @@ function Ktl($, appInfo) {
                                         targetSel += ' tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span + ',';
                                 } else if (targetViewType === 'list') {
                                     targetSel += ' [data-record-id="' + rec.id + '"] .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
-                                } else if(targetViewType === 'details') {
+                                } else if (targetViewType === 'details') {
                                     if (targetFieldId)
                                         targetSel += ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
                                     else {
@@ -5768,7 +5768,7 @@ function Ktl($, appInfo) {
 
             const kw = '_qt';
             var kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
-            if (kwInstance && kwInstance.length){
+            if (kwInstance && kwInstance.length) {
                 kwInstance = kwInstance[0];
                 var res = ktl.core.processKeywordOptions(kwInstance.options);
                 if (res && !res.rolesOk) return;
@@ -6087,7 +6087,7 @@ function Ktl($, appInfo) {
         //Hide the whole view, typically used when doing background searches.
         function hideView(viewId, keywords) {
             const kw = '_hv';
-            if (!(viewId && keywords && keywords[kw] )) return;
+            if (!(viewId && keywords && keywords[kw])) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
                 var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
@@ -7449,7 +7449,7 @@ function Ktl($, appInfo) {
                 let model;
                 if (viewType === 'table') {
                     model = Knack.views[viewId].model;
-                } else if ( viewType === 'search') {
+                } else if (viewType === 'search') {
                     model = Knack.views[viewId].model.results_model;
                 } else {
                     // view type not supported
@@ -10908,7 +10908,7 @@ function Ktl($, appInfo) {
 
     //====================================================
     //Account Logs feature
-    this.accountsLogs = (function() {
+    this.accountsLogs = (function () {
 
         const SCENE_URL_NAME = 'view-account-logs';
         const SYSOP_DASHBOARD_ACCOUNT_LOGS = ktl.core.getViewIdByTitle('Account Logs', SCENE_URL_NAME);
@@ -11000,25 +11000,25 @@ function Ktl($, appInfo) {
 
                 if (details[0] === '['/*Quick check for valid JSON format*/) {
                     JSON.parse(details)
-                            .filter( (detail) => {
-                                return (detail.details.toLowerCase().indexOf(searchStr) >= 0)
-                                    || (account.indexOf(searchStr) >= 0)
-                                    || (logType.indexOf(searchStr) >= 0);
-                            })
-                            .forEach( (detail) => {
-                                const newLocalDT = new Date(detail.dt.substring(0, 19) + ' UTC');
-                                const date = ktl.core.addZero(newLocalDT.getMonth() + 1) + '/' + ktl.core.addZero(newLocalDT.getDate()) + '/' + newLocalDT.getFullYear();
-                                let time = ktl.core.addZero(newLocalDT.getHours()) + ':' + ktl.core.addZero(newLocalDT.getMinutes());
-                                time += ':' + ktl.core.addZero(newLocalDT.getSeconds());
+                        .filter((detail) => {
+                            return (detail.details.toLowerCase().indexOf(searchStr) >= 0)
+                                || (account.indexOf(searchStr) >= 0)
+                                || (logType.indexOf(searchStr) >= 0);
+                        })
+                        .forEach((detail) => {
+                            const newLocalDT = new Date(detail.dt.substring(0, 19) + ' UTC');
+                            const date = ktl.core.addZero(newLocalDT.getMonth() + 1) + '/' + ktl.core.addZero(newLocalDT.getDate()) + '/' + newLocalDT.getFullYear();
+                            let time = ktl.core.addZero(newLocalDT.getHours()) + ':' + ktl.core.addZero(newLocalDT.getMinutes());
+                            time += ':' + ktl.core.addZero(newLocalDT.getSeconds());
 
-                                tableData.push({
-                                    Name: element[`${accountFieldId}_raw`][0].identifier,
-                                    Local_DT: date + ' ' + time,
-                                    UTC_DT: detail.dt.substring(0, 19), //Strip milliseconds.
-                                    LogType: detail.type,
-                                    Details: detail.details
-                                });
+                            tableData.push({
+                                Name: element[`${accountFieldId}_raw`][0].identifier,
+                                Local_DT: date + ' ' + time,
+                                UTC_DT: detail.dt.substring(0, 19), //Strip milliseconds.
+                                LogType: detail.type,
+                                Details: detail.details
                             });
+                        });
                 } else { //Not JSON, just a plain string.
                     if (details.toLowerCase().indexOf(searchStr) >= 0) {
                         tableData.push({
@@ -11098,7 +11098,7 @@ function Ktl($, appInfo) {
 
     //====================================================
     //Status Monitoring feature
-    this.statusMonitoring = (function() {
+    this.statusMonitoring = (function () {
         //Highlight all accounts with more than DEVICE_OFFLINE_DELAY minutes missed heartbeat.
         //Terminals have more emphasis and regular accounts.
         //Custom CSS code takes care of colors.
@@ -11122,7 +11122,7 @@ function Ktl($, appInfo) {
                 const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
                 const rowSelector = `#${SYSOP_DASHBOARD_ACC_STATUS} tr[id="${record.id}"]`
 
-                const swVersionSelector =  $(`${rowSelector} .${swVersionFieldId}`);
+                const swVersionSelector = $(`${rowSelector} .${swVersionFieldId}`);
                 if (record[swVersionFieldId] !== window.APP_KTL_VERSIONS)
                     swVersionSelector.css({ 'color': 'red', 'font-weight': 'bold' });
                 else
@@ -11171,7 +11171,7 @@ function Ktl($, appInfo) {
                 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
                 const delayMS = 150;
 
-                await safePromiseAllSettled(recordsToUpdate.map( async (record, index) => {
+                await safePromiseAllSettled(recordsToUpdate.map(async (record, index) => {
                     await sleep(index * delayMS);
                     return sendUpdate(record);
                 })).finally(() => {
@@ -11237,16 +11237,15 @@ function Ktl($, appInfo) {
     //Developper Popup Tool Feature
     this.developperPopupTool = (function () {
 
-        if( !Knack.getUserRoleNames().includes('Developer') )
+        if (!Knack.getUserRoleNames().includes('Developer'))
             return;
 
-
-        const createButton = function(iconClass) {
+        const createButton = function (iconClass) {
             const button = document.createElement('a');
             button.classList.add('is-small');
-            button.style.display= 'inline-flex';
-            button.style.margin= '0em 0.5em';
-            button.style.margin= '0em 0.5em';
+            button.style.display = 'inline-flex';
+            button.style.margin = '0em 0.5em';
+            button.style.margin = '0em 0.5em';
             button.style['text-decoration'] = 'none';
             const icon = document.createElement('i');
             icon.classList.add('fa');
@@ -11261,7 +11260,7 @@ function Ktl($, appInfo) {
         const createLine = function (text, url) {
 
             const container = document.createElement('div');
-            container.style.padding= '2px 12px';
+            container.style.padding = '2px 12px';
 
             const textSpan = document.createElement('span');
             textSpan.innerText = text;
@@ -11287,7 +11286,7 @@ function Ktl($, appInfo) {
                 copyLinkButton.addEventListener('click', () => {
                     navigator.clipboard.writeText(url)
                         .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
-                        .then(() =>  ktl.core.timedPopup('Link copied to clipboard', 'success', 1000) );
+                        .then(() => ktl.core.timedPopup('Link copied to clipboard', 'success', 1000));
                 });
                 container.appendChild(copyLinkButton);
 
@@ -11297,7 +11296,7 @@ function Ktl($, appInfo) {
                 knackButton.innerHTML = '';
                 knackButton.style.color = 'transparent';
                 const icon = document.createElement('i');
-                icon.classList.add('fa','fa-copy');
+                icon.classList.add('fa', 'fa-copy');
                 icon.style.background = "url(https://ctrnd.s3.amazonaws.com/Lib/KTL/Media/knack-logo.png)";
                 icon.style['background-size'] = 'contain';
                 icon.style.width = '14px';
@@ -11311,7 +11310,7 @@ function Ktl($, appInfo) {
         }
 
         const defaultPopOverOptions = {
-            content : function (element) {
+            content: function (element) {
                 const container = document.createElement('div');
 
                 const escSpan = document.createElement('span');
@@ -11331,13 +11330,13 @@ function Ktl($, appInfo) {
 
         const viewPopOverOptions = {
             ...defaultPopOverOptions,
-            content: function(element) {
+            content: function (element) {
                 const container = defaultPopOverOptions.content(element);
 
                 const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
                 const viewId = $(element).closest('.kn-view').attr('id');
                 const viewUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/table`;
-                container.appendChild(createLine(viewId,viewUrl));
+                container.appendChild(createLine(viewId, viewUrl));
 
                 return container;
             }
@@ -11345,7 +11344,7 @@ function Ktl($, appInfo) {
 
         const theadPopOverOptions = {
             ...defaultPopOverOptions,
-            content: function(element) {
+            content: function (element) {
                 const container = viewPopOverOptions.content(element);
 
                 const viewId = $(element).closest('.kn-view').attr('id');
@@ -11373,14 +11372,14 @@ function Ktl($, appInfo) {
 
         const tdataPopOverOptions = {
             ...defaultPopOverOptions,
-            content: function(element) {
+            content: function (element) {
                 const container = theadPopOverOptions.content(element);
 
                 const viewId = $(element).closest('.kn-view').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
 
                 const recordId = $(element).closest('tr').attr('id');
-                const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
+                const url = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
                 container.appendChild(createLine(recordId, url));
 
                 const copyButton = createButton();
@@ -11408,7 +11407,7 @@ function Ktl($, appInfo) {
         let openedPopOverTarget;
         let popover;
         function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
-            if ( (event.shiftKey && event.ctrlKey) || force) {
+            if ((event.shiftKey && event.ctrlKey) || force) {
 
                 $(openedPopOverTarget).removeClass("active").removeData("popover");
 
@@ -11417,16 +11416,16 @@ function Ktl($, appInfo) {
 
                 const bindedOptions = {
                     ...options,
-                    content : options.content.bind(this, event.currentTarget)
+                    content: options.content.bind(this, event.currentTarget)
                 };
 
                 if (!popover) {
                     target.popover(bindedOptions);
                     popover = target.data("popover");
 
-                    popover.$win = { resize :  () => {}}; // Remove subsequent resize occurance
+                    popover.$win = { resize: () => { } }; // Remove subsequent resize occurance
                     const bindEvents = popover.bindEvents;
-                    popover.bindEvents = () => {}; // Remove subsequent bindEvents occurance
+                    popover.bindEvents = () => { }; // Remove subsequent bindEvents occurance
                     $("body").on("click", () => bindEvents.call(popover)); // reinstate modal click after initial bindEvents
                 } else {
                     popover.init(bindedOptions, target);
@@ -11446,10 +11445,10 @@ function Ktl($, appInfo) {
             $('.knTable th').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, theadPopOverOptions));
             $('.knTable td').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, tdataPopOverOptions));
             $('.kn-table .view-header').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, viewPopOverOptions));
-            $('.kn-view').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this,viewPopOverOptions));
+            $('.kn-view').off('mouseenter.KtlPopOver').on('mouseenter.KtlPopOver', showPopOver.bind(this, viewPopOverOptions));
 
             $('.knTable th, .knTable td, .kn-table .view-header, .kn-view').off('mouseleave.KtlPopOver').on('mouseleave.KtlPopOver', function hidePopOver(event) {
-                if (event.shiftKey && event.ctrlKey ) {
+                if (event.shiftKey && event.ctrlKey) {
                     closePopOver(event.currentTarget);
                 }
             });
@@ -11500,7 +11499,7 @@ window.ktlpause = function () {
     ktl.views.autoRefresh(false);
 }
 
-function debounce(func, timeout = 1000){
+function debounce(func, timeout = 1000) {
     let timer;
     return (...args) => {
         clearTimeout(timer);
@@ -11511,19 +11510,19 @@ function debounce(func, timeout = 1000){
 function safePromiseAllSettled(promises) {
     // To support Chrome Android 69
     // if (!Promise.allSettled) {
-        return Promise.all(
-            promises.map((promise, i) =>
-              promise
+    return Promise.all(
+        promises.map((promise, i) =>
+            promise
                 .then(value => ({
-                  status: "fulfilled",
-                  value,
+                    status: "fulfilled",
+                    value,
                 }))
                 .catch(reason => ({
-                  status: "rejected",
-                  reason,
+                    status: "rejected",
+                    reason,
                 }))
-            )
-        );
+        )
+    );
     // }
 
     // return Promise.allSettled(promises);
