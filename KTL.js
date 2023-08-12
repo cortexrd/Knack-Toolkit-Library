@@ -15,6 +15,7 @@ const ONE_MINUTE_DELAY = 60000;
 const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 const SUMMARY_WAIT_TIMEOUT = 10000;
+const KNACK_RECORD_LENGTH = 24;
 
 function Ktl($, appInfo) {
     if (window.ktl)
@@ -1058,13 +1059,13 @@ function Ktl($, appInfo) {
 
             processKeywordOptions: function (options) {
                 //Allowed Roles are always the top priority.
-                if (!hasRoleAccess())
+                if (!ktl.core.hasRoleAccess(options))
                     return { rolesOk: false };
 
                 var res = { rolesOk: true };
 
                 //Target
-                if (options.ktlTarget) {
+                if (options && options.ktlTarget) {
                     if (options.ktlTarget === 'page')
                         res.ktlTarget = '.kn-content';
                     else if (options.ktlTarget === 'scene')
@@ -11434,7 +11435,7 @@ function Ktl($, appInfo) {
             container.style.padding= '2px 12px';
 
             const textSpan = document.createElement('span');
-            textSpan.innerText = text;
+            textSpan.innerHTML = text;
             textSpan.style.margin = '0em 0.5em';
             container.appendChild(textSpan);
 
@@ -11556,11 +11557,17 @@ function Ktl($, appInfo) {
                 const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
                 container.appendChild(createLine(recordId, url));
 
-                const linkedRecord = $(element).find('a > span[class]').attr('class');
+                const spans = $(element).find('span');
+                const linkedRecords = $.map(spans, (s) => $(s).attr('class')).concat($.map(spans, (s) => $(s).attr('id')));
+                const linkedRecord = linkedRecords.find((record) => !record.includes(' ') && !record.includes('.') && record.length === KNACK_RECORD_LENGTH);
 
-                if (linkedRecord && !linkedRecord.includes(' ') && linkedRecord.length === 24) {
-                    const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${linkedRecord}/edit` : undefined;
-                    container.appendChild(createLine('link to '+ linkedRecord, url));
+                if (linkedRecord ) {
+                    const fieldId = $(element).attr('data-field-key');
+                    const field = Knack.objects.getField(fieldId);
+
+                    const linkedObject = (field.attributes.relationship) ? field.attributes.relationship.object : field.attributes.object_key;
+                    const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${linkedObject}/record/${linkedRecord}/edit` : undefined;
+                    container.appendChild(createLine('<b>Connect to</b> '+ linkedRecord, url));
                 }
 
                 const copyButton = createButton();
