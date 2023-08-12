@@ -8622,6 +8622,7 @@ function Ktl($, appInfo) {
                                             resultWnd.setAttribute('id', 'resultWndId');
                                             resultWnd.style.top = '80px';
                                             resultWnd.style.left = '100px';
+                                            resultWnd.style['z-index'] = 15;
                                             resultWnd.classList.add('devBtnsDiv', 'devToolSearchDiv');
 
                                             var resultWndHdr = document.createElement('div');
