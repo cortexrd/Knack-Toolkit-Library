@@ -8393,7 +8393,7 @@ function Ktl($, appInfo) {
 
                         //Header
                         var devBtnsDivHeader = document.createElement('div');
-                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivHeader');
+                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivIdheader');
                         devBtnsDivHeader.classList.add('ktlDevToolsHeader');
 
                         devBtnsDivHeader.innerText = ':: KTL Developer Tools ::';
@@ -8504,7 +8504,7 @@ function Ktl($, appInfo) {
                             devToolSearchDiv.classList.add('devBtnsDiv', 'devToolSearchDiv', 'center');
 
                             var devToolSearchHdr = document.createElement('div');
-                            devToolSearchHdr.setAttribute('id', 'devToolSearchHdr');
+                            devToolSearchHdr.setAttribute('id', 'devToolSearchDivIdheader');
                             devToolSearchHdr.classList.add('ktlDevToolsHeader');
 
                             devToolSearchHdr.innerText = ':: KTL Search Tool ::';
@@ -8620,11 +8620,27 @@ function Ktl($, appInfo) {
 
                                     if (kwResults) {
                                         if (!$('#resultWndTextId').length) {
+
+                                            var resultWnd = document.createElement('div');
+                                            resultWnd.setAttribute('id', 'resultWndId');
+                                            resultWnd.style.top = '80px';
+                                            resultWnd.style.left = '100px';
+                                            resultWnd.style['z-index'] = 15;
+                                            resultWnd.classList.add('devBtnsDiv', 'devToolSearchDiv');
+
+                                            var resultWndHdr = document.createElement('div');
+                                            resultWndHdr.setAttribute('id', 'resultWndIdheader');
+                                            resultWndHdr.classList.add('ktlDevToolsHeader');
+                                            resultWndHdr.innerText = ':: KTL Search Results ::';
+                                            resultWnd.appendChild(resultWndHdr);
+
                                             resultWndText = document.createElement('div');
                                             resultWndText.setAttribute('id', 'resultWndTextId');
                                             resultWndText.classList.add('ktlConsoleDiv');
-                                            document.body.appendChild(resultWndText);
-                                            ktl.core.enableDragElement(resultWndText);
+                                            resultWnd.appendChild(resultWndText);
+
+                                            document.body.appendChild(resultWnd);
+                                            ktl.core.enableDragElement(resultWnd);
                                         }
 
                                         resultWndText.innerHTML = kwResults;
@@ -8655,8 +8671,8 @@ function Ktl($, appInfo) {
                 //For Dev Options popup, act like a modal window: close when clicking oustide.
                 $(document).on('click', function (e) {
                     if (e.target.closest('.kn-content')) {
-                        if ($('#resultWndTextId').length)
-                            $('#resultWndTextId').remove();
+                        if ($('#resultWndId').length)
+                            $('#resultWndId').remove();
                         else if ($('#devToolSearchDivId').length)
                             $('#devToolSearchDivId').remove();
                         else

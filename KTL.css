@@ -273,23 +273,18 @@ a.sortDisabled {
 }
 
 .ktlConsoleDiv {
-	/* width: 900px; */
-	max-height: 875px;
+	max-height: 700px;
 	overflow: scroll;
 	font-family: monospace;
 	font-weight: bold;
 	font-size: 12px;
-	position: absolute;
-	left: 257px;
-	top: 76px;
-	z-index: 15;
 	background-color: #dee1e1;
 	white-space: pre;
 	border-width: 3px;
 	border-style: solid;
 	padding: 10px;
 	resize: both;
-	/* box-sizing: border-box; */
+	box-sizing: border-box;
 }
 
 
