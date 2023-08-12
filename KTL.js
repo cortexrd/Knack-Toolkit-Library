@@ -279,8 +279,10 @@ function Ktl($, appInfo) {
         this.bind(name, fn);
         for (i = 0, _len = this.length; i < _len; i++) {
             elem = this[i];
-            handlers = jQuery._data(elem).events[name.split('.')[0]];
-            handlers.unshift(handlers.pop());
+            if(!!jQuery._data(elem).events) {
+                handlers = jQuery._data(elem).events[name.split('.')[0]];
+                handlers.unshift(handlers.pop());
+            }
         }
     };
     //jQuery extensions - END
@@ -7619,7 +7621,7 @@ function Ktl($, appInfo) {
 
                 //Must be left outside the "if keywords._ni exists" condition above.
                 //Must always be executed to support the _lud and _lub keywords that can also add the ktlNoInlineEdit class.
-                $('.ktlNoInlineEdit').bindFirst('click', function (e) {
+                $('#' + viewId + ' .ktlNoInlineEdit').bindFirst('click', function (e) {
                     e.stopImmediatePropagation();
                 });
             },
