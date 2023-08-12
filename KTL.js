@@ -8164,21 +8164,22 @@ function Ktl($, appInfo) {
 
                                             const typeHtml = typeof ktlKioskButtons[kioskBtn].html;
                                             if (typeHtml === 'function')
-                                                ktlKioskButtons[kioskBtn].html(viewId, kioskAppBtn.id, ktlKioskButtons[kioskBtn]);
+                                                ktlKioskButtons[kioskBtn].html(viewId, kioskAppBtn);
                                             else
                                                 kioskAppBtn.innerHTML = ktlKioskButtons[kioskBtn].html;
 
-                                            if (ktlKioskButtons[kioskBtn].href) {
+                                            const hrefClick = ktlKioskButtons[kioskBtn].href;
+                                            if (hrefClick) {
                                                 kioskAppBtn.addEventListener('click', function (e) {
                                                     e.preventDefault();
                                                     var href = $('#' + ktlKioskButtons[kioskBtn].id).attr('href');
                                                     if (href)
                                                         window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + href;
                                                     else {
-                                                        if (typeof ktlKioskButtons[kioskBtn].href === 'function')
-                                                            ktlKioskButtons[kioskBtn].href(viewId, kioskAppBtn.id);
+                                                        if (typeof hrefClick === 'function')
+                                                            hrefClick(viewId, kioskAppBtn.id);
                                                         else
-                                                            window.location.href = ktlKioskButtons[kioskBtn].href;
+                                                            window.location.href = hrefClick;
                                                     }
                                                 });
                                             }
