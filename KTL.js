@@ -11354,11 +11354,9 @@ function Ktl($, appInfo) {
                 generateTableContainer();
         });
 
-        $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.key === SYSOP_DASHBOARD_ACCOUNT_LOGS) {
-                generateDynamicTable(data);
-                addCopytoClipboardButton();
-            }
+        $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACCOUNT_LOGS, function (event, view, data) {
+            generateDynamicTable(data);
+            addCopytoClipboardButton();
         });
     })(); //Account Logs feature
 
@@ -11802,3 +11800,4 @@ function safePromiseAllSettled(promises) {
 
 //window.ktlEnd = window.performance.now();
 //console.log(`KTL took ${Math.trunc(window.ktlEnd - window.ktlStart)} ms`);
+//TEST STAGE
