@@ -8393,7 +8393,7 @@ function Ktl($, appInfo) {
 
                         //Header
                         var devBtnsDivHeader = document.createElement('div');
-                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivIdheader');
+                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivHeaderId');
                         devBtnsDivHeader.classList.add('ktlDevToolsHeader');
 
                         devBtnsDivHeader.innerText = ':: KTL Developer Tools ::';
@@ -8504,7 +8504,7 @@ function Ktl($, appInfo) {
                             devToolSearchDiv.classList.add('devBtnsDiv', 'devToolSearchDiv', 'center');
 
                             var devToolSearchHdr = document.createElement('div');
-                            devToolSearchHdr.setAttribute('id', 'devToolSearchDivIdheader');
+                            devToolSearchHdr.setAttribute('id', 'devToolSearchDivHeaderId');
                             devToolSearchHdr.classList.add('ktlDevToolsHeader');
 
                             devToolSearchHdr.innerText = ':: KTL Search Tool ::';
