@@ -5328,7 +5328,7 @@ function Ktl($, appInfo) {
             colorizeFromFieldKeyword();
 
             function executeKeyword(keyword) {
-                if (!ktl.core.hasRoleAccess()) return;
+                if (!ktl.core.hasRoleAccess(keyword.options)) return;
 
                 const options = keyword.options;
 
