@@ -7899,6 +7899,7 @@ function Ktl($, appInfo) {
         var prevScene = '';
         var idleWatchDogDelay = 0;
         var versionDisplayName = '';
+        var showHiddenElem = false;
 
         //App callbacks
         var onSceneRender = null;
@@ -8514,18 +8515,14 @@ function Ktl($, appInfo) {
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
                         })
 
-                        var revealAllHidden = (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) === 'true');
-                        var revealAllHiddenBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Elements: ' + (revealAllHidden ? 'SHOW' : 'HIDE'), '', ['devBtn', 'kn-button']);
-                        revealAllHiddenBtn.addEventListener('click', () => {
-                            revealAllHidden = !revealAllHidden;
-                            revealAllHiddenBtn.textContent = 'Hidden Elements: ' + (revealAllHidden ? 'SHOW' : 'HIDE');
-                            if (revealAllHidden) {
-                                ktl.storage.lsSetItem('SHOW_HIDDEN_VIEWS', true, false, true);
+                        var showHiddenElemBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Elements: ' + (showHiddenElem ? 'Show' : 'Hide'), '', ['devBtn', 'kn-button']);
+                        showHiddenElemBtn.addEventListener('click', () => {
+                            showHiddenElem = !showHiddenElem;
+                            showHiddenElemBtn.textContent = 'Hidden Elements: ' + (showHiddenElem ? 'Show' : 'Hide');
+                            if (showHiddenElem) {
                                 $('.ktlHidden').replaceClass('ktlHidden', 'ktlHidden_dis');
                                 $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'ktlDisplayNone_dis');
-
                             } else {
-                                ktl.storage.lsRemoveItem('SHOW_HIDDEN_VIEWS', false, true);
                                 $('.ktlHidden_dis').replaceClass('ktlHidden_dis', 'ktlHidden');
                                 $('.ktlDisplayNone_dis').replaceClass('ktlDisplayNone_dis', 'ktlDisplayNone');
                             }
@@ -8575,7 +8572,7 @@ function Ktl($, appInfo) {
                         })
 
                         var remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
-                        ktl.fields.addButton(devBtnsDiv, 'Debug this device: ' + (remoteDev ? 'YES' : 'NO'), '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                        ktl.fields.addButton(devBtnsDiv, 'Debug this device: ' + (remoteDev ? 'Yes' : 'No'), '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                             //This forces loading 'KTL-dev.js' debug code from CTRND's CDN, in Prod folder.
                             //See 'remoteDev' in KTL_Start.js
                             if (confirm('Use remote KTL-Dev.js code on this device?'))
