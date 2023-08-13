@@ -8514,10 +8514,21 @@ function Ktl($, appInfo) {
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
                         })
 
-                        var showHiddenViewsBtn = ktl.fields.addButton(devBtnsDiv, 'Reveal all Hidden', '', ['devBtn', 'kn-button']);
-                        showHiddenViewsBtn.addEventListener('click', () => {
-                            $('.ktlHidden').removeClass('ktlHidden');
-                            $('.ktlDisplayNone').removeClass('ktlDisplayNone');
+                        var revealAllHidden = (ktl.storage.lsGetItem('SHOW_HIDDEN_VIEWS', false, true) === 'true');
+                        var revealAllHiddenBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Elements: ' + (revealAllHidden ? 'SHOW' : 'HIDE'), '', ['devBtn', 'kn-button']);
+                        revealAllHiddenBtn.addEventListener('click', () => {
+                            revealAllHidden = !revealAllHidden;
+                            revealAllHiddenBtn.textContent = 'Hidden Elements: ' + (revealAllHidden ? 'SHOW' : 'HIDE');
+                            if (revealAllHidden) {
+                                ktl.storage.lsSetItem('SHOW_HIDDEN_VIEWS', true, false, true);
+                                $('.ktlHidden').replaceClass('ktlHidden', 'ktlHidden_dis');
+                                $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'ktlDisplayNone_dis');
+
+                            } else {
+                                ktl.storage.lsRemoveItem('SHOW_HIDDEN_VIEWS', false, true);
+                                $('.ktlHidden_dis').replaceClass('ktlHidden_dis', 'ktlHidden');
+                                $('.ktlDisplayNone_dis').replaceClass('ktlDisplayNone_dis', 'ktlDisplayNone');
+                            }
                         })
 
                         ktl.fields.addButton(devBtnsDiv, 'Kiosk', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
