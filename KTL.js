@@ -8629,7 +8629,7 @@ function Ktl($, appInfo) {
                                             resultWnd.classList.add('devBtnsDiv', 'devToolSearchDiv');
 
                                             var resultWndHdr = document.createElement('div');
-                                            resultWndHdr.setAttribute('id', 'resultWndIdheader');
+                                            resultWndHdr.setAttribute('id', 'resultWndHeaderId');
                                             resultWndHdr.classList.add('ktlDevToolsHeader');
                                             resultWndHdr.innerText = ':: KTL Search Results ::';
                                             resultWnd.appendChild(resultWndHdr);
