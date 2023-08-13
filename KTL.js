@@ -8393,7 +8393,7 @@ function Ktl($, appInfo) {
 
                         //Header
                         var devBtnsDivHeader = document.createElement('div');
-                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivIdheader');
+                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivHeaderId');
                         devBtnsDivHeader.classList.add('ktlDevToolsHeader');
 
                         devBtnsDivHeader.innerText = ':: KTL Developer Tools ::';
@@ -8504,7 +8504,7 @@ function Ktl($, appInfo) {
                             devToolSearchDiv.classList.add('devBtnsDiv', 'devToolSearchDiv', 'center');
 
                             var devToolSearchHdr = document.createElement('div');
-                            devToolSearchHdr.setAttribute('id', 'devToolSearchDivIdheader');
+                            devToolSearchHdr.setAttribute('id', 'devToolSearchDivHeaderId');
                             devToolSearchHdr.classList.add('ktlDevToolsHeader');
 
                             devToolSearchHdr.innerText = ':: KTL Search Tool ::';
@@ -11436,7 +11436,6 @@ function Ktl($, appInfo) {
             button.classList.add('is-small');
             button.style.display= 'inline-flex';
             button.style.margin= '0em 0.5em';
-            button.style.margin= '0em 0.5em';
             button.style['text-decoration'] = 'none';
             const icon = document.createElement('i');
             icon.classList.add('fa');
@@ -11445,6 +11444,13 @@ function Ktl($, appInfo) {
                 icon.classList.add(iconClass);
 
             button.appendChild(icon);
+            return button;
+        }
+
+        const createCopyContentButton = function ()  {
+            const button = createButton();
+            button.innerText = 'Copy content';
+            button.style['text-decoration'] = 'underline';
             return button;
         }
 
@@ -11459,14 +11465,9 @@ function Ktl($, appInfo) {
 
             const copyButton = createButton('fa-copy');
             copyButton.addEventListener('click', () => {
-                ktl.core.selectElementContents(textSpan);
-                try {
-                    const successful = document.execCommand('copy');
-                    const msg = successful ? 'Copied to clipboard' : 'Error copying to clipboard';
-                    ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
-                } catch (err) {
-                    ktl.core.timedPopup('Unable to copy', 'error', 2000);
-                }
+                navigator.clipboard.writeText(text)
+                    .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
+                    .then(() =>  ktl.core.timedPopup('Copied to clipboard', 'success', 1000) );
             });
 
             container.appendChild(copyButton);
@@ -11499,7 +11500,7 @@ function Ktl($, appInfo) {
             return container;
         }
 
-        const defaultPopOverOptions = {
+        const defaultOptions = {
             content : function (element) {
                 const container = document.createElement('div');
 
@@ -11518,10 +11519,10 @@ function Ktl($, appInfo) {
             animation: false
         };
 
-        const viewPopOverOptions = {
-            ...defaultPopOverOptions,
+        const viewOptions = {
+            ...defaultOptions,
             content: function(element) {
-                const container = defaultPopOverOptions.content(element);
+                const container = defaultOptions.content(element);
 
                 const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
                 const viewId = $(element).closest('.kn-view[id]').attr('id');
@@ -11532,18 +11533,17 @@ function Ktl($, appInfo) {
             }
         };
 
-        const theadPopOverOptions = {
-            ...defaultPopOverOptions,
+        const tableHeadOptions = {
+            ...defaultOptions,
             content: function(element) {
-                const container = viewPopOverOptions.content(element);
+                const container = viewOptions.content(element);
 
                 const viewId = $(element).closest('.kn-view[id]').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
-                const objectName = Knack.objects._byId[objectId].attributes.name;
-
-                container.appendChild(createLine(objectName));
 
                 if (objectId) {
+                    const objectName = Knack.objects._byId[objectId].attributes.name;
+                    container.appendChild(createLine(objectName));
                     container.appendChild(createLine(objectId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields`));
                 } else {
                     const textSpan = document.createElement('span');
@@ -11563,10 +11563,10 @@ function Ktl($, appInfo) {
             }
         };
 
-        const tdataPopOverOptions = {
-            ...defaultPopOverOptions,
+        const tableDataOptions = {
+            ...defaultOptions,
             content: function(element) {
-                const container = theadPopOverOptions.content(element);
+                const container = tableHeadOptions.content(element);
 
                 const viewId = $(element).closest('.kn-view[id]').attr('id');
                 const objectId = Knack.views[viewId].model.view.source.object;
@@ -11588,24 +11588,65 @@ function Ktl($, appInfo) {
                     container.appendChild(createLine('<b>Connect to</b> '+ linkedRecord, url));
                 }
 
-                const copyButton = createButton();
-                copyButton.innerText = 'Copy content';
-                copyButton.style.margin = '0em 0.5em';
-                copyButton.style['text-decoration'] = 'underline';
+                const copyButton = createCopyContentButton();
                 copyButton.addEventListener('click', () => {
-                    ktl.core.selectElementContents(element);
-                    try {
-                        const successful = document.execCommand('copy');
-                        const msg = successful ? 'Copied to clipboard' : 'Error copying to clipboard';
-                        ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
-                    } catch (err) {
-                        ktl.core.timedPopup('Unable to copy', 'error', 2000);
-                    }
-
-                    ktl.core.selectElementContents();
+                    navigator.clipboard.writeText($(element).text())
+                        .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
+                        .then(() =>  ktl.core.timedPopup('Content copied to clipboard', 'success', 1000) );
                 });
                 container.appendChild(copyButton);
 
+                return container;
+            }
+        };
+
+
+        const listDetailLabelOptions = {
+            ...defaultOptions,
+            content: function(element) {
+                const container = viewOptions.content(element);
+
+                const viewId = $(element).closest('.kn-view[id]').attr('id');
+                const objectId = Knack.views[viewId].model.view.source.object;
+
+                if (objectId) {
+                    const objectName = Knack.objects._byId[objectId].attributes.name;
+                    container.appendChild(createLine(objectName));
+                    container.appendChild(createLine(objectId, `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields`));
+                } else {
+                    const textSpan = document.createElement('span');
+                    textSpan.innerText = 'Object Id not found';
+                    textSpan.style.margin = '0px 18px';
+                    container.appendChild(textSpan);
+                }
+
+                const fieldId = $(element).closest('.kn-detail').attr('class').split(/\s+/)[1];
+
+                if (fieldId.includes('field')) {
+                    const fieldURL = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
+                    container.appendChild(createLine(fieldId, fieldURL));
+                }
+
+                const recordId = $(element).closest('.kn-list-item-container').attr('data-record-id');
+                const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
+                container.appendChild(createLine(recordId, url));
+
+                return container;
+            }
+        };
+
+        const listDetailBodyOptions = {
+            ...defaultOptions,
+            content: function(element) {
+                const container = listDetailLabelOptions.content(element);
+
+                const copyButton = createCopyContentButton();
+                copyButton.addEventListener('click', () => {
+                    navigator.clipboard.writeText($(element).text())
+                        .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
+                        .then(() =>  ktl.core.timedPopup('Link copied to clipboard', 'success', 1000) );
+                });
+                container.appendChild(copyButton);
                 return container;
             }
         };
@@ -11647,11 +11688,13 @@ function Ktl($, appInfo) {
             $('#kn-popover').hide();
         }
 
-        $(document).on('mouseenter.KtlPopOver', '.knTable th', showPopOver.bind(this, theadPopOverOptions));
-        $(document).on('mouseenter.KtlPopOver', '.knTable td', showPopOver.bind(this, tdataPopOverOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-table .view-header', showPopOver.bind(this, viewPopOverOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-view', showPopOver.bind(this,viewPopOverOptions));
-        $(document).on('mouseleave.KtlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view', function hidePopOver(event) {
+        $(document).on('mouseenter.KtlPopOver', '.knTable th', showPopOver.bind(this, tableHeadOptions));
+        $(document).on('mouseenter.KtlPopOver', '.knTable td', showPopOver.bind(this, tableDataOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-table .view-header', showPopOver.bind(this, viewOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-view', showPopOver.bind(this,viewOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-detail-label', showPopOver.bind(this,listDetailLabelOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-detail-body', showPopOver.bind(this,listDetailBodyOptions));
+        $(document).on('mouseleave.KtlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body', function hidePopOver(event) {
             if (event.shiftKey && event.ctrlKey ) {
                 closePopOver(event.currentTarget);
             }
@@ -11659,7 +11702,7 @@ function Ktl($, appInfo) {
 
         $(document).on('keydown', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover").last().trigger('mouseenter.KtlPopOver', true);
+                $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover").last().trigger('mouseenter.KtlPopOver', true);
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
