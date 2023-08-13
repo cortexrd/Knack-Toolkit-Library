@@ -282,6 +282,11 @@ function Ktl($, appInfo) {
             handlers.unshift(handlers.pop());
         }
     };
+
+    $.fn.replaceClass = function(pFromClass, pToClass) {
+        return this.removeClass(pFromClass).addClass(pToClass);
+    };
+
     //jQuery extensions - END
 
     /**
