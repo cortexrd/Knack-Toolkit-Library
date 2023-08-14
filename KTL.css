@@ -118,7 +118,7 @@ a.sortDisabled {
 }
 
 .bulkEditSelectSrc {
-	cursor: url('https://ctrnd.s3.amazonaws.com/Lib/KTL/Prod/target.png') 5 5, auto !important;
+	cursor: url('https://ctrnd.s3.amazonaws.com/Lib/KTL/Media/target.png') 5 5, auto !important;
 	pointer-events: all;
 }
 
