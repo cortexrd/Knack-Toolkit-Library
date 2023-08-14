@@ -5373,9 +5373,9 @@ function Ktl($, appInfo) {
                 if (!viewFieldIds || !data || !groups.length) return;
 
                 if (options && !!options.ktlRefVal) {
-                    const values = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
-                    if (values.length === 2) {
-                        const referenceViewId = ktl.scenes.findViewWithTitle(values[1]);
+                    const ktlRefValSplit = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
+                    if (ktlRefValSplit.length === 2) {
+                        const referenceViewId = ktl.scenes.findViewWithTitle(ktlRefValSplit[1]);
                         if (referenceViewId) {
                             $(document).off(`knack-view-render.${referenceViewId}.cfv${viewId}`).on(`knack-view-render.${referenceViewId}.cfv${viewId}`, () => {
                                 ktl.views.refreshView(viewId);
@@ -5405,20 +5405,20 @@ function Ktl($, appInfo) {
                             return;
 
                         const ktlRefVal = options.ktlRefVal;
-                        const values = ktl.core.splitAndTrimToArray(ktlRefVal);
+                        const ktlRefValSplit = ktl.core.splitAndTrimToArray(ktlRefVal);
 
-                        if (!values || !values.length)
+                        if (!ktlRefValSplit || !ktlRefValSplit.length)
                             return;
 
                         getReferenceValue(ktlRefVal, viewId)
                             .then((referenceValue) => {
                                 //If no referenceValue found, then check in options to see if referenceValue a summary or a jQuery.
                                 if (!referenceValue) {
-                                    if (values[0] === 'ktlSummary') {
-                                        if (values.length >= 2) {
-                                            const summaryViewId = (values.length >= 3 && values[3]) ? values[3] : viewId;
-                                            const summaryName = values[1] || '';
-                                            const columnHeader = values[2] || '';
+                                    if (ktlRefValSplit[0] === 'ktlSummary') {
+                                        if (ktlRefValSplit.length >= 2) {
+                                            const summaryViewId = (ktlRefValSplit.length >= 3 && ktlRefValSplit[3]) ? ktlRefValSplit[3] : viewId;
+                                            const summaryName = ktlRefValSplit[1] || '';
+                                            const columnHeader = ktlRefValSplit[2] || '';
 
                                             if (summaryViewId !== viewId) {
                                                 $(document).off('KTL.' + summaryViewId + '.totalsRendered.' + viewId).on('KTL.' + summaryViewId + '.totalsRendered.' + viewId, () => {
