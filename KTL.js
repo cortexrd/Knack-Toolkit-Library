@@ -5331,38 +5331,21 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(keyword.options)) return;
 
                 const options = keyword.options;
+                const params = keyword.params;
 
-                //If we have been supplied with options, use them.
-                if (options && options.ktlRefVal) {
-                    getReferenceValue(keyword.options.ktlRefVal, viewId)
-                        .then(refVal => {
-                            colorizeFromViewKeyword(refVal);
-                        })
-                        .catch(e => {
-                            ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
-                        })
-
-                } else //No option, then use hard-coded refVal found in the keyword, or the ktlRefVal.
-                    colorizeFromViewKeyword('');
-
-                function colorizeFromViewKeyword(refVal) {
-                    const params = keyword.params;
-
-                    if (params.length) {
-                        if (viewType === 'details') {
-                            document.querySelectorAll('#' + viewId + ' .kn-detail').forEach((field) => {
-                                let fieldId = field.classList.value.match(/field_\d+/);
-                                if (fieldId.length)
-                                    fieldId = fieldId[0];
-
-                                cfvScanGroups( fieldId, refVal, params, options);
-                            });
-                        } else { //Grids and Lists.
-                            Knack.views[viewId].model.view.fields.forEach((field) => {
-                                cfvScanGroups( field.key, refVal, params,  options);
-                            });
-                        }
+                if (params.length) {
+                    let fieldIds;
+                    if (viewType === 'details') {
+                        fieldIds = document.querySelectorAll('#' + viewId + ' .kn-detail').map((field) => {
+                            let fieldId = field.classList.value.match(/field_\d+/);
+                            if (fieldId.length)
+                                fieldId = fieldId[0];
+                            return fieldId;
+                        });
+                    } else { //Grids and Lists.
+                        fieldIds = Knack.views[viewId].model.view.fields.map((f) => f.key);
                     }
+                    cfvScanGroups(fieldIds, params, options);
                 }
             }
 
@@ -5371,11 +5354,14 @@ function Ktl($, appInfo) {
 
                 if (!$.isEmptyObject(fieldsWithKeywords)) {
                     Object.keys(fieldsWithKeywords).forEach((fieldId) => {
-                        const foundKwObj = ktl.fields.getFieldKeywords(fieldId);
-                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId][CFV_KEYWORD] && foundKwObj[fieldId][CFV_KEYWORD].length) {
+                        const fieldKeywords = ktl.fields.getFieldKeywords(fieldId);
+                        if (!$.isEmptyObject(fieldKeywords) 
+                                && fieldKeywords[fieldId] 
+                                && fieldKeywords[fieldId][CFV_KEYWORD] 
+                                && fieldKeywords[fieldId][CFV_KEYWORD].length) {
                             ktl.core.extractKeywordsListByType(fieldId, CFV_KEYWORD).forEach((keyword) => {
                                 if (ktl.core.hasRoleAccess(keyword.options)) {
-                                    cfvScanGroups( fieldId, '', keyword.params,  keyword.options);
+                                    cfvScanGroups([fieldId], keyword.params,  keyword.options);
                                 }
                             });
                         }
@@ -5383,88 +5369,115 @@ function Ktl($, appInfo) {
                 }
             }
 
-            function cfvScanGroups(fieldId, referenceValue, parameters, options) {
-                if (!fieldId || !data || !parameters.length) return;
+            function cfvScanGroups(fieldIds, groups, options) {
+                if (!fieldIds || !data || !groups.length) return;
 
-                parameters.forEach((parameter) => {
-                    if (parameter.length >= 3) {
-                        const fieldLabel = parameter[0];
-                        let fieldSrc = fieldLabel;
+                if (options && !!options.ktlRefVal) {
+                    const values = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
+                    if (values.length === 2) {
+                        const referenceViewId = ktl.scenes.findViewWithTitle(values[1]);
+                        if (referenceViewId) {
+                            $(document).off(`knack-view-render.${referenceViewId}.cfv${viewId}`).on(`knack-view-render.${referenceViewId}.cfv${viewId}`, () => {
+                                ktl.views.refreshView(viewId);
+                            });
+                        }
+                    }
+                }
 
-                        if (!fieldLabel.startsWith('field_'))
-                            fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                groups.forEach((group) => {
+                    if (group.length < 3) 
+                        return;
 
-                        if (fieldSrc === undefined || (fieldSrc && fieldSrc !== '' && fieldSrc !== fieldId))
+                    const fieldLabel = group[0];
+                    const groupReferenceValue = group[2];
+
+                    let fieldSrc = fieldLabel;
+
+                    if (!fieldLabel.startsWith('field_'))
+                        fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
+                    if (!fieldSrc)
+                        return;
+
+                    const fieldIdsFiltered = fieldIds.filter((fieldId) => fieldSrc === fieldId);
+
+                    if (groupReferenceValue === 'ktlRefVal') {
+
+                        if (!options || !options.ktlRefVal) 
                             return;
 
-                        //If no referenceValue passed in param, then check in options to see if referenceValue a summary or a jQuery.
-                        if (!referenceValue && options && !!options.ktlRefVal) {
-                            const ktlRefVal = options.ktlRefVal;
-                            const values = ktl.core.splitAndTrimToArray(ktlRefVal);
+                        const ktlRefVal = options.ktlRefVal;
+                        const values = ktl.core.splitAndTrimToArray(ktlRefVal);
 
-                            if (!values.length)
-                                return;
+                        if (!values.length)
+                            return;
 
-                            if (values[0] === 'ktlSummary') {
-                                if (values.length >= 2) {
-                                    const summaryViewId = (values.length >= 3 && values[3]) ? values[3] : viewId;
-                                    const summaryName = values[1] || '';
-                                    const columnHeader = values[2] || '';
+                        getReferenceValue(options.ktlRefVal, viewId)
+                            .then((referenceValue) => {
+                                //If no referenceValue found, then check in options to see if referenceValue a summary or a jQuery.
+                                if (!referenceValue) {
+                                    if (values[0] === 'ktlSummary') {
+                                        if (values.length >= 2) {
+                                            const summaryViewId = (values.length >= 3 && values[3]) ? values[3] : viewId;
+                                            const summaryName = values[1] || '';
+                                            const columnHeader = values[2] || '';
 
-                                    if (summaryViewId !== viewId) {
-                                        $(document).off('KTL.' + summaryViewId + '.totalsRendered.' + viewId).on('KTL.' + summaryViewId + '.totalsRendered.' + viewId, () => {
-                                            ktl.views.refreshView(viewId);
-                                        })
-                                        if (ktlKeywords[summaryViewId] && ktlKeywords[summaryViewId].summary)                                                {
-                                            const summaryFieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
-                                            const summaryValue = readSummaryValue(summaryViewId, columnHeader, summaryName);
-                                            const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
+                                            if (summaryViewId !== viewId) {
+                                                $(document).off('KTL.' + summaryViewId + '.totalsRendered.' + viewId).on('KTL.' + summaryViewId + '.totalsRendered.' + viewId, () => {
+                                                    ktl.views.refreshView(viewId);
+                                                })
+                                                if (ktlKeywords[summaryViewId] && ktlKeywords[summaryViewId].summary)                                                {
+                                                    const summaryFieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
+                                                    const summaryValue = readSummaryValue(summaryViewId, columnHeader, summaryName);
+                                                    const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
 
-                                            applyColorizationToRecords(fieldId, parameter, value, options);
+                                                    applyColorizationToRecords(fieldIdsFiltered, group, value, options);
+                                                }
+                                            } else {
+                                                const summaryFieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
+                                                const summaryValue = readSummaryValue(viewId, columnHeader, summaryName);
+                                                const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
+                                                const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
+
+                                                applyColorizationToRecords(fieldId, group, value, options);
+                                            }
                                         }
                                     } else {
-                                        const summaryFieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
-                                        const summaryValue = readSummaryValue(viewId, columnHeader, summaryName);
-                                        const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
-                                        const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
-
-                                        applyColorizationToRecords(fieldId, parameter, value, options);
+                                        //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
+                                        ktl.core.getTextFromSelector(ktlRefVal, viewId)
+                                            .then(valueOfFieldId => {
+                                                applyColorizationToRecord(fieldId, group, valueOfFieldId, options);
+                                            })
+                                            .catch(e => {
+                                                ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
+                                            })
                                     }
+                                } else {
+                                    applyColorizationToRecords(fieldIdsFiltered, group, referenceValue, options);
                                 }
-                            } else {
-                                //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
-                                ktl.core.getTextFromSelector(ktlRefVal, viewId)
-                                    .then(valueOfFieldId => {
-                                        applyColorizationToRecords(fieldId, parameter, valueOfFieldId, options);
-                                    })
-                                    .catch(e => {
-                                        ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
-                                    })
-                            }
-                        } else if (options && !!options.ktlRefVal) {
-                            const values = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
-                            if (values.length === 2) {
-                                const referenceViewId = ktl.scenes.findViewWithTitle(values[1]);
-                                if (referenceViewId) {
-                                    $(document).off(`knack-view-render.${referenceViewId}.cfv${viewId}`).on(`knack-view-render.${referenceViewId}.cfv${viewId}`, () => {
-                                        ktl.views.refreshView(viewId);
-                                    });
-                                }
-                            }
-                            applyColorizationToRecords(fieldId, parameter, referenceValue, options);
-                        } else
-                            applyColorizationToRecords(fieldId, parameter, referenceValue, options);
+                            })
+                            .catch(e => {
+                                ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
+                            });
+                    } else {
+                        applyColorizationToRecords(fieldIdsFiltered, group, groupReferenceValue, options);
                     }
                 }); //Groups
 
+
                 function applyColorizationToRecords(fieldId, parameter, referenceFieldId, options) {
                     if (!fieldId) return;
+
+                    if(Array.isArray(fieldId)){
+                        fieldId.forEach((id) => applyColorizationToRecords(id, parameter, referenceFieldId, options));
+                        return;
+                    }
 
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (viewType === 'details') {
                         const cellText = $('#' + viewId + ' .kn-detail.' + fieldId + ' .kn-detail-body')[0].textContent.trim();
-                        applyColorizationToCells( parameter, cellText, referenceFieldId, '', options);
+                        applyColorizationToCells(fieldId, parameter, cellText, referenceFieldId, '', options);
                     } else { //Grids and Lists.
                         let fieldType = ktl.fields.getFieldType(fieldId);
 
@@ -5503,12 +5516,12 @@ function Ktl($, appInfo) {
                                     refVal = valSel[0].textContent.trim();
                             }
 
-                            applyColorizationToCells(parameter, cellText, refVal, record, options);
+                            applyColorizationToCells(fieldId, parameter, cellText, refVal, record, options);
                         }); //Data
                     }
                 }
 
-                function applyColorizationToCells(parameter, cellText, refVal, rec, options) {
+                function applyColorizationToCells(fieldId, parameter, cellText, refVal, rec, options) {
                     const operator = parameter[1];
 
                     //Compare refVal first. If condition not met, fail fast.
