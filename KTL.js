@@ -5342,7 +5342,7 @@ function Ktl($, appInfo) {
                 if (params.length) {
                     let fieldIds;
                     if (viewType === 'details') {
-                        fieldIds = document.querySelectorAll('#' + viewId + ' .kn-detail').map((field) => {
+                        fieldIds = Array.from(document.querySelectorAll('#' + viewId + ' .kn-detail')).map((field) => {
                             let fieldId = field.classList.value.match(/field_\d+/);
                             if (fieldId.length)
                                 fieldId = fieldId[0];
