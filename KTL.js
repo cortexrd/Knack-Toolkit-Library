@@ -5485,7 +5485,7 @@ function Ktl($, appInfo) {
                             fieldType = ktl.fields.getFieldType(displayFieldId);
                         }
 
-                        data.filter((record) => !!record[fieldId + '_raw']).forEach((record) => {
+                        data.filter((record) => record[fieldId + '_raw'] != undefined).forEach((record) => {
                             const cell = record[fieldId + '_raw'];
 
                             let cellText;
