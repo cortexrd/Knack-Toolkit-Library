@@ -279,7 +279,7 @@ function Ktl($, appInfo) {
         this.bind(name, fn);
         for (i = 0, _len = this.length; i < _len; i++) {
             elem = this[i];
-            if(!!jQuery._data(elem).events) {
+            if (!!jQuery._data(elem).events) {
                 handlers = jQuery._data(elem).events[name.split('.')[0]];
                 handlers.unshift(handlers.pop());
             }
@@ -5337,38 +5337,21 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(keyword.options)) return;
 
                 const options = keyword.options;
+                const params = keyword.params;
 
-                //If we have been supplied with options, use them.
-                if (options && options.ktlRefVal) {
-                    getReferenceValue(keyword.options.ktlRefVal, viewId)
-                        .then(refVal => {
-                            colorizeFromViewKeyword(refVal);
-                        })
-                        .catch(e => {
-                            ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
-                        })
-
-                } else //No option, then use hard-coded refVal found in the keyword, or the ktlRefVal.
-                    colorizeFromViewKeyword('');
-
-                function colorizeFromViewKeyword(refVal) {
-                    const params = keyword.params;
-
-                    if (params.length) {
-                        if (viewType === 'details') {
-                            document.querySelectorAll('#' + viewId + ' .kn-detail').forEach((field) => {
-                                let fieldId = field.classList.value.match(/field_\d+/);
-                                if (fieldId.length)
-                                    fieldId = fieldId[0];
-
-                                cfvScanGroups(fieldId, refVal, params, options);
-                            });
-                        } else { //Grids and Lists.
-                            Knack.views[viewId].model.view.fields.forEach((field) => {
-                                cfvScanGroups(field.key, refVal, params, options);
-                            });
-                        }
+                if (params.length) {
+                    let fieldIds;
+                    if (viewType === 'details') {
+                        fieldIds = document.querySelectorAll('#' + viewId + ' .kn-detail').map((field) => {
+                            let fieldId = field.classList.value.match(/field_\d+/);
+                            if (fieldId.length)
+                                fieldId = fieldId[0];
+                            return fieldId;
+                        });
+                    } else { //Grids and Lists.
+                        fieldIds = Knack.views[viewId].model.view.fields.map((f) => f.key);
                     }
+                    cfvScanGroups(fieldIds, params, options);
                 }
             }
 
@@ -5377,11 +5360,14 @@ function Ktl($, appInfo) {
 
                 if (!$.isEmptyObject(fieldsWithKeywords)) {
                     Object.keys(fieldsWithKeywords).forEach((fieldId) => {
-                        const foundKwObj = ktl.fields.getFieldKeywords(fieldId);
-                        if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId] && foundKwObj[fieldId][CFV_KEYWORD] && foundKwObj[fieldId][CFV_KEYWORD].length) {
+                        const fieldKeywords = ktl.fields.getFieldKeywords(fieldId);
+                        if (!$.isEmptyObject(fieldKeywords)
+                            && fieldKeywords[fieldId]
+                            && fieldKeywords[fieldId][CFV_KEYWORD]
+                            && fieldKeywords[fieldId][CFV_KEYWORD].length) {
                             ktl.core.extractKeywordsListByType(fieldId, CFV_KEYWORD).forEach((keyword) => {
                                 if (ktl.core.hasRoleAccess(keyword.options)) {
-                                    cfvScanGroups(fieldId, '', keyword.params, keyword.options);
+                                    cfvScanGroups([fieldId], keyword.params, keyword.options);
                                 }
                             });
                         }
@@ -5389,88 +5375,113 @@ function Ktl($, appInfo) {
                 }
             }
 
-            function cfvScanGroups(fieldId, referenceValue, parameters, options) {
-                if (!fieldId || !data || !parameters.length) return;
+            function cfvScanGroups(viewFieldIds, groups, options) {
+                if (!viewFieldIds || !data || !groups.length) return;
 
-                parameters.forEach((parameter) => {
-                    if (parameter.length >= 3) {
-                        const fieldLabel = parameter[0];
-                        let fieldSrc = fieldLabel;
+                if (options && !!options.ktlRefVal) {
+                    const ktlRefValSplit = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
+                    if (ktlRefValSplit.length === 2) {
+                        const referenceViewId = ktl.scenes.findViewWithTitle(ktlRefValSplit[1]);
+                        if (referenceViewId) {
+                            $(document).off(`knack-view-render.${referenceViewId}.cfv${viewId}`).on(`knack-view-render.${referenceViewId}.cfv${viewId}`, () => {
+                                ktl.views.refreshView(viewId);
+                            });
+                        }
+                    }
+                }
 
-                        if (!fieldLabel.startsWith('field_'))
-                            fieldSrc = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                groups.forEach((parameters) => {
+                    if (parameters.length < 3) // Minimum parameter count
+                        return;
 
-                        if (fieldSrc === undefined || (fieldSrc && fieldSrc !== '' && fieldSrc !== fieldId))
+                    const groupColumnHeader = parameters[0];
+                    const groupReferenceValue = parameters[2];
+
+                    let fieldId = groupColumnHeader;
+
+                    if (!groupColumnHeader.startsWith('field_'))
+                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, groupColumnHeader);
+
+                    if (!fieldId || !viewFieldIds.includes(fieldId))
+                        return;
+
+                    if (groupReferenceValue === 'ktlRefVal') {
+
+                        if (!options || !options.ktlRefVal)
                             return;
 
-                        //If no referenceValue passed in param, then check in options to see if referenceValue a summary or a jQuery.
-                        if (!referenceValue && options && !!options.ktlRefVal) {
-                            const ktlRefVal = options.ktlRefVal;
-                            const values = ktl.core.splitAndTrimToArray(ktlRefVal);
+                        const ktlRefVal = options.ktlRefVal;
+                        const ktlRefValSplit = ktl.core.splitAndTrimToArray(ktlRefVal);
 
-                            if (!values.length)
-                                return;
+                        if (!ktlRefValSplit || !ktlRefValSplit.length)
+                            return;
 
-                            if (values[0] === 'ktlSummary') {
-                                if (values.length >= 2) {
-                                    const summaryViewId = (values.length >= 3 && values[3]) ? values[3] : viewId;
-                                    const summaryName = values[1] || '';
-                                    const columnHeader = values[2] || '';
+                        getReferenceValue(ktlRefVal, viewId)
+                            .then((referenceValue) => {
+                                //If no referenceValue found, then check in options to see if referenceValue a summary or a jQuery.
+                                if (!referenceValue) {
+                                    if (ktlRefValSplit[0] === 'ktlSummary') {
+                                        if (ktlRefValSplit.length >= 2) {
+                                            const summaryViewId = (ktlRefValSplit.length >= 3 && ktlRefValSplit[3]) ? ktlRefValSplit[3] : viewId;
+                                            const summaryName = ktlRefValSplit[1] || '';
+                                            const columnHeader = ktlRefValSplit[2] || '';
 
-                                    if (summaryViewId !== viewId) {
-                                        $(document).off('KTL.' + summaryViewId + '.totalsRendered.' + viewId).on('KTL.' + summaryViewId + '.totalsRendered.' + viewId, () => {
-                                            ktl.views.refreshView(viewId);
-                                        })
-                                        if (ktlKeywords[summaryViewId] && ktlKeywords[summaryViewId].summary) {
-                                            const summaryFieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
-                                            const summaryValue = readSummaryValue(summaryViewId, columnHeader, summaryName);
-                                            const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
+                                            if (summaryViewId !== viewId) {
+                                                $(document).off('KTL.' + summaryViewId + '.totalsRendered.' + viewId).on('KTL.' + summaryViewId + '.totalsRendered.' + viewId, () => {
+                                                    ktl.views.refreshView(viewId);
+                                                })
+                                                if (ktlKeywords[summaryViewId] && ktlKeywords[summaryViewId].summary) {
+                                                    const summaryFieldId = ktl.fields.getFieldIdFromLabel(summaryViewId, columnHeader);
+                                                    const summaryValue = readSummaryValue(summaryViewId, columnHeader, summaryName);
+                                                    const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
 
-                                            applyColorizationToRecords(fieldId, parameter, value, options);
+                                                    applyColorizationToRecords(fieldId, parameters, value, options);
+                                                }
+                                            } else {
+                                                const summaryFieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
+                                                const summaryValue = readSummaryValue(viewId, columnHeader, summaryName);
+                                                const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
+                                                const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
+
+                                                applyColorizationToRecords(fieldId, parameters, value, options);
+                                            }
                                         }
                                     } else {
-                                        const summaryFieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
-                                        const summaryValue = readSummaryValue(viewId, columnHeader, summaryName);
-                                        const value = ktl.core.extractNumericValue(summaryValue, summaryFieldId);
-                                        const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
-
-                                        applyColorizationToRecords(fieldId, parameter, value, options);
+                                        //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
+                                        ktl.core.getTextFromSelector(ktlRefVal, viewId)
+                                            .then(valueOfFieldId => {
+                                                applyColorizationToRecord(fieldId, parameters, valueOfFieldId, options);
+                                            })
+                                            .catch(e => {
+                                                ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
+                                            })
                                     }
+                                } else {
+                                    applyColorizationToRecords(fieldId, parameters, referenceValue, options);
                                 }
-                            } else {
-                                //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
-                                ktl.core.getTextFromSelector(ktlRefVal, viewId)
-                                    .then(valueOfFieldId => {
-                                        applyColorizationToRecords(fieldId, parameter, valueOfFieldId, options);
-                                    })
-                                    .catch(e => {
-                                        ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
-                                    })
-                            }
-                        } else if (options && !!options.ktlRefVal) {
-                            const values = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
-                            if (values.length === 2) {
-                                const referenceViewId = ktl.scenes.findViewWithTitle(values[1]);
-                                if (referenceViewId) {
-                                    $(document).off(`knack-view-render.${referenceViewId}.cfv${viewId}`).on(`knack-view-render.${referenceViewId}.cfv${viewId}`, () => {
-                                        ktl.views.refreshView(viewId);
-                                    });
-                                }
-                            }
-                            applyColorizationToRecords(fieldId, parameter, referenceValue, options);
-                        } else
-                            applyColorizationToRecords(fieldId, parameter, referenceValue, options);
+                            })
+                            .catch(e => {
+                                ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
+                            });
+                    } else {
+                        applyColorizationToRecords(fieldId, parameters, groupReferenceValue, options);
                     }
                 }); //Groups
 
-                function applyColorizationToRecords(fieldId, parameter, referenceFieldId, options) {
+
+                function applyColorizationToRecords(fieldId, parameters, value, options) {
                     if (!fieldId) return;
+
+                    if (Array.isArray(fieldId)) {
+                        fieldId.forEach((id) => applyColorizationToRecords(id, parameters, value, options));
+                        return;
+                    }
 
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (viewType === 'details') {
                         const cellText = $('#' + viewId + ' .kn-detail.' + fieldId + ' .kn-detail-body')[0].textContent.trim();
-                        applyColorizationToCells(parameter, cellText, referenceFieldId, '', options);
+                        applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
                     } else { //Grids and Lists.
                         let fieldType = ktl.fields.getFieldType(fieldId);
 
@@ -5480,7 +5491,7 @@ function Ktl($, appInfo) {
                             fieldType = ktl.fields.getFieldType(displayFieldId);
                         }
 
-                        data.filter((record) => !!record[fieldId + '_raw']).forEach((record) => {
+                        data.filter((record) => record[fieldId + '_raw'] != undefined).forEach((record) => {
                             const cell = record[fieldId + '_raw'];
 
                             let cellText;
@@ -5491,65 +5502,67 @@ function Ktl($, appInfo) {
                             else
                                 cellText = cell.toString();
 
-                            if (numericFieldTypes.includes(fieldType))
+                            if (cellText !== '' && numericFieldTypes.includes(fieldType))
                                 cellText = ktl.core.extractNumericValue(cellText, fieldId);
 
-                            let refVal = referenceFieldId;
+                            let refVal = value;
 
-                            //When referenceFieldId is a reference field in same view. Only true for view keyword, n/a for fields.
-                            if (referenceFieldId && referenceFieldId.startsWith('field_')) {
+                            //When value is a reference field in same view. Only true for view keyword, n/a for fields.
+                            if (value && value.startsWith('field_')) {
                                 let valSel;
 
                                 if (viewType === 'list')
-                                    valSel = $('#' + viewId + ' [data-record-id="' + record.id + '"]' + ' .kn-detail-body .' + referenceFieldId);
+                                    valSel = $('#' + viewId + ' [data-record-id="' + record.id + '"]' + ' .kn-detail-body .' + value);
                                 else
-                                    valSel = $('#' + viewId + ' tbody tr[id="' + record.id + '"]' + ' .' + referenceFieldId);
+                                    valSel = $('#' + viewId + ' tbody tr[id="' + record.id + '"]' + ' .' + value);
 
                                 if (valSel.length)
                                     refVal = valSel[0].textContent.trim();
                             }
 
-                            applyColorizationToCells(parameter, cellText, refVal, record, options);
+                            applyColorizationToCells(fieldId, parameters, cellText, refVal, record, options);
                         }); //Data
                     }
                 }
 
-                function applyColorizationToCells(parameter, cellText, refVal, rec, options) {
+                function applyColorizationToCells(fieldId, parameter, cellTextParam, valueParam, record, options) {
                     const operator = parameter[1];
+                    let value = valueParam;
+                    let cellText = cellTextParam;
 
                     //Compare refVal first. If condition not met, fail fast.
-                    if (!refVal)
-                        refVal = parameter[2];
+                    if (!value)
+                        value = parameter[2];
 
-                    if (refVal && refVal.startsWith('field_')) {
+                    if (value && value.startsWith('field_')) {
                         //When a field_id is specified, the use same view but another field.
-                        var valSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"]' + ' .' + refVal;
+                        var valSel = '#' + targetViewId + ' tbody tr[id="' + record.id + '"]' + ' .' + value;
                         if (viewType === 'list')
-                            valSel = '#' + targetViewId + ' [data-record-id="' + rec.id + '"]' + ' .kn-detail-body .' + refVal;
+                            valSel = '#' + targetViewId + ' [data-record-id="' + record.id + '"]' + ' .kn-detail-body .' + value;
                         else if (viewType === 'details')
-                            valSel = '#' + targetViewId + ' .kn-detail.' + refVal + ' .kn-detail-body';
+                            valSel = '#' + targetViewId + ' .kn-detail.' + value + ' .kn-detail-body';
 
                         if ($(valSel).length)
-                            refVal = valSel[0].textContent.trim();
+                            value = valSel[0].textContent.trim();
                     }
 
-                    const numCompareWith = Number(refVal);
+                    const numCompareWith = Number(value);
                     const numCellValue = Number(cellText);
 
                     //TODO: Case-sensitivy: make it configurable, but app-wide or per keyword...?
                     cellText = cellText && cellText.toLowerCase();
-                    refVal = refVal.toLowerCase();
+                    value = value.toLowerCase();
 
                     var conditionMatches = false;
-                    if ((operator === 'is' || operator === 'eq') && cellText === refVal)
+                    if ((operator === 'is' || operator === 'eq') && cellText === value)
                         conditionMatches = true;
-                    else if ((operator === 'not' || operator === 'neq') && cellText !== refVal)
+                    else if ((operator === 'not' || operator === 'neq') && cellText !== value)
                         conditionMatches = true;
-                    else if (operator === 'has' && cellText && cellText.includes(refVal))
+                    else if (operator === 'has' && cellText && cellText.includes(value))
                         conditionMatches = true;
-                    else if (operator === 'sw' && cellText && cellText.startsWith(refVal))
+                    else if (operator === 'sw' && cellText && cellText.startsWith(value))
                         conditionMatches = true;
-                    else if (operator === 'ew' && cellText && cellText.endsWith(refVal))
+                    else if (operator === 'ew' && cellText && cellText.endsWith(value))
                         conditionMatches = true;
                     else if (!isNaN(numCompareWith) && !isNaN(numCellValue)) {
                         //All numeric comparisons here.
@@ -5672,9 +5685,9 @@ function Ktl($, appInfo) {
                                     if (colNb === undefined)
                                         colNb = ktl.views.getFieldPositionFromFieldId(targetViewId, targetFieldId);
                                     if (colNb >= 0)
-                                        targetSel += ' tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span + ',';
+                                        targetSel += ' tr[id="' + record.id + '"] td:nth-child(' + (colNb + 1) + ')' + span + ',';
                                 } else if (targetViewType === 'list') {
-                                    targetSel += ' [data-record-id="' + rec.id + '"] .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
+                                    targetSel += ' [data-record-id="' + record.id + '"] .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
                                 } else if (targetViewType === 'details') {
                                     if (targetFieldId)
                                         targetSel += ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
@@ -5699,9 +5712,9 @@ function Ktl($, appInfo) {
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (!targetSel) {
-                        targetSel = '#' + targetViewId + ' tbody tr[id="' + rec.id + '"]' + (propagate ? span : ' .' + targetFieldId + span);
+                        targetSel = '#' + targetViewId + ' tbody tr[id="' + record.id + '"]' + (propagate ? span : ' .' + targetFieldId + span);
                         if (viewType === 'list')
-                            targetSel = '#' + targetViewId + ' [data-record-id="' + rec.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
+                            targetSel = '#' + targetViewId + ' [data-record-id="' + record.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
                         else if (viewType === 'details')
                             targetSel = '#' + targetViewId + ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
                     }
@@ -11527,8 +11540,8 @@ function Ktl($, appInfo) {
         const createButton = function (iconClass) {
             const button = document.createElement('a');
             button.classList.add('is-small');
-            button.style.display= 'inline-flex';
-            button.style.margin= '0em 0.5em';
+            button.style.display = 'inline-flex';
+            button.style.margin = '0em 0.5em';
             button.style['text-decoration'] = 'none';
             const icon = document.createElement('i');
             icon.classList.add('fa');
@@ -11540,7 +11553,7 @@ function Ktl($, appInfo) {
             return button;
         }
 
-        const createCopyContentButton = function ()  {
+        const createCopyContentButton = function () {
             const button = createButton();
             button.innerText = 'Copy content';
             button.style['text-decoration'] = 'underline';
@@ -11560,7 +11573,7 @@ function Ktl($, appInfo) {
             copyButton.addEventListener('click', () => {
                 navigator.clipboard.writeText(text)
                     .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
-                    .then(() =>  ktl.core.timedPopup('Copied to clipboard', 'success', 1000) );
+                    .then(() => ktl.core.timedPopup('Copied to clipboard', 'success', 1000));
             });
 
             container.appendChild(copyButton);
@@ -11594,7 +11607,7 @@ function Ktl($, appInfo) {
         }
 
         const defaultOptions = {
-            content : function (element) {
+            content: function (element) {
                 const container = document.createElement('div');
 
                 const escSpan = document.createElement('span');
@@ -11614,7 +11627,7 @@ function Ktl($, appInfo) {
 
         const viewOptions = {
             ...defaultOptions,
-            content: function(element) {
+            content: function (element) {
                 const container = defaultOptions.content(element);
 
                 const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
@@ -11628,7 +11641,7 @@ function Ktl($, appInfo) {
 
         const tableHeadOptions = {
             ...defaultOptions,
-            content: function(element) {
+            content: function (element) {
                 const container = viewOptions.content(element);
 
                 const viewId = $(element).closest('.kn-view[id]').attr('id');
@@ -11658,7 +11671,7 @@ function Ktl($, appInfo) {
 
         const tableDataOptions = {
             ...defaultOptions,
-            content: function(element) {
+            content: function (element) {
                 const container = tableHeadOptions.content(element);
 
                 const viewId = $(element).closest('.kn-view[id]').attr('id');
@@ -11672,20 +11685,20 @@ function Ktl($, appInfo) {
                 const linkedRecords = $.map(spans, (s) => $(s).attr('class')).concat($.map(spans, (s) => $(s).attr('id')));
                 const linkedRecord = linkedRecords.find((record) => !record.includes(' ') && !record.includes('.') && record.length === KNACK_RECORD_LENGTH);
 
-                if (linkedRecord ) {
+                if (linkedRecord) {
                     const fieldId = $(element).attr('data-field-key');
                     const field = Knack.objects.getField(fieldId);
 
                     const linkedObject = (field.attributes.relationship) ? field.attributes.relationship.object : field.attributes.object_key;
-                    const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${linkedObject}/record/${linkedRecord}/edit` : undefined;
-                    container.appendChild(createLine('<b>Connect to</b> '+ linkedRecord, url));
+                    const url = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${linkedObject}/record/${linkedRecord}/edit` : undefined;
+                    container.appendChild(createLine('<b>Connect to</b> ' + linkedRecord, url));
                 }
 
                 const copyButton = createCopyContentButton();
                 copyButton.addEventListener('click', () => {
                     navigator.clipboard.writeText($(element).text())
                         .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
-                        .then(() =>  ktl.core.timedPopup('Content copied to clipboard', 'success', 1000) );
+                        .then(() => ktl.core.timedPopup('Content copied to clipboard', 'success', 1000));
                 });
                 container.appendChild(copyButton);
 
@@ -11696,7 +11709,7 @@ function Ktl($, appInfo) {
 
         const listDetailLabelOptions = {
             ...defaultOptions,
-            content: function(element) {
+            content: function (element) {
                 const container = viewOptions.content(element);
 
                 const viewId = $(element).closest('.kn-view[id]').attr('id');
@@ -11721,7 +11734,7 @@ function Ktl($, appInfo) {
                 }
 
                 const recordId = $(element).closest('.kn-list-item-container').attr('data-record-id');
-                const url = (objectId)? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
+                const url = (objectId) ? `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/records/objects/${objectId}/record/${recordId}/edit` : undefined;
                 container.appendChild(createLine(recordId, url));
 
                 return container;
@@ -11730,14 +11743,14 @@ function Ktl($, appInfo) {
 
         const listDetailBodyOptions = {
             ...defaultOptions,
-            content: function(element) {
+            content: function (element) {
                 const container = listDetailLabelOptions.content(element);
 
                 const copyButton = createCopyContentButton();
                 copyButton.addEventListener('click', () => {
                     navigator.clipboard.writeText($(element).text())
                         .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
-                        .then(() =>  ktl.core.timedPopup('Link copied to clipboard', 'success', 1000) );
+                        .then(() => ktl.core.timedPopup('Link copied to clipboard', 'success', 1000));
                 });
                 container.appendChild(copyButton);
                 return container;
@@ -11784,11 +11797,11 @@ function Ktl($, appInfo) {
         $(document).on('mouseenter.KtlPopOver', '.knTable th', showPopOver.bind(this, tableHeadOptions));
         $(document).on('mouseenter.KtlPopOver', '.knTable td', showPopOver.bind(this, tableDataOptions));
         $(document).on('mouseenter.KtlPopOver', '.kn-table .view-header', showPopOver.bind(this, viewOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-view', showPopOver.bind(this,viewOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-detail-label', showPopOver.bind(this,listDetailLabelOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-detail-body', showPopOver.bind(this,listDetailBodyOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-view', showPopOver.bind(this, viewOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-detail-label', showPopOver.bind(this, listDetailLabelOptions));
+        $(document).on('mouseenter.KtlPopOver', '.kn-detail-body', showPopOver.bind(this, listDetailBodyOptions));
         $(document).on('mouseleave.KtlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body', function hidePopOver(event) {
-            if (event.shiftKey && event.ctrlKey ) {
+            if (event.shiftKey && event.ctrlKey) {
                 closePopOver(event.currentTarget);
             }
         });
