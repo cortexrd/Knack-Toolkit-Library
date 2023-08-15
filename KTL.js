@@ -4963,6 +4963,7 @@ function Ktl($, appInfo) {
                 if (keywords && !$.isEmptyObject(keywords)) {
                     //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
+                    keywords._ni && ktl.views.noInlineEditing(view);
                     keywords._hv && hideView(view.key, keywords);
                     keywords._ht && hideTitle(view.key, keywords);
                     keywords._ts && ktl.views.addTimeStampToHeader(view.key, keywords);
@@ -7588,14 +7589,16 @@ function Ktl($, appInfo) {
 
                 const kw = '_ni';
                 var kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
-                if (kwInstance && kwInstance.length) {
-                    kwInstance = kwInstance[0];
+                if (kwInstance) {
+                    if (kwInstance.length)
+                        kwInstance = kwInstance[0];
+
                     var res = ktl.core.processKeywordOptions(kwInstance.options);
                     if (res && !res.rolesOk) return;
 
                     var model = (Knack.views[viewId] && Knack.views[viewId].model);
                     if (Knack.views[viewId] && model && model.view.options && model.view.options.cell_editor) {
-                        if (kwInstance.params.length) {
+                        if (kwInstance.params && kwInstance.params.length) {
                             //Process each field individually.
                             //As an exception, if a field start with an exclamation mark, allow inline editing.
                             var allowInline = {};
