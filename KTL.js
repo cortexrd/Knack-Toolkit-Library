@@ -11764,30 +11764,34 @@ function Ktl($, appInfo) {
         let popover;
         function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
             if ((event.shiftKey && event.ctrlKey) || force) {
+                //Let the Ctrl+Shift keys do their default job during inline editing.
+                //Useful to snap-select at word boundaries with arrow keys.
+                const inlineEditing = !!($('#cell-editor, .redactor-editor').length > 0);
+                if (!inlineEditing) {
+                    $(openedPopOverTarget).removeClass("active").removeData("popover");
 
-                $(openedPopOverTarget).removeClass("active").removeData("popover");
+                    const target = $(event.currentTarget);
+                    openedPopOverTarget = event.currentTarget;
 
-                const target = $(event.currentTarget);
-                openedPopOverTarget = event.currentTarget;
+                    const bindedOptions = {
+                        ...options,
+                        content: options.content.bind(this, event.currentTarget)
+                    };
 
-                const bindedOptions = {
-                    ...options,
-                    content: options.content.bind(this, event.currentTarget)
-                };
+                    if (!popover) {
+                        target.popover(bindedOptions);
+                        popover = target.data("popover");
 
-                if (!popover) {
-                    target.popover(bindedOptions);
-                    popover = target.data("popover");
+                        popover.$win = { resize: () => { } }; // Remove subsequent resize occurance
+                        const bindEvents = popover.bindEvents;
+                        popover.bindEvents = () => { }; // Remove subsequent bindEvents occurance
+                        $("body").on("click", () => bindEvents.call(popover)); // reinstate modal click after initial bindEvents
+                    } else {
+                        popover.init(bindedOptions, target);
+                    }
 
-                    popover.$win = { resize: () => { } }; // Remove subsequent resize occurance
-                    const bindEvents = popover.bindEvents;
-                    popover.bindEvents = () => { }; // Remove subsequent bindEvents occurance
-                    $("body").on("click", () => bindEvents.call(popover)); // reinstate modal click after initial bindEvents
-                } else {
-                    popover.init(bindedOptions, target);
+                    event.stopPropagation();
                 }
-
-                event.stopPropagation();
             }
         }
 
