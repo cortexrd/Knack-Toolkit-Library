@@ -8622,7 +8622,7 @@ function Ktl($, appInfo) {
 
                             var searchInput = document.createElement("input");
                             searchInput.type = 'text';
-                            searchInput.value = 'view_';
+                            searchInput.value = '';
                             searchInput.classList.add('ktlDevToolsSearchInput');
                             devToolSearchDiv.appendChild(searchInput);
                             searchInput.focus();
@@ -8680,6 +8680,9 @@ function Ktl($, appInfo) {
                                     for (var t = 0; t < Knack.scenes.models.length; t++) {
                                         if (query === Knack.scenes.models[t].attributes.key) {
                                             builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${query}`;
+                                            const slug = Knack.scenes.getByKey(query).attributes.slug;
+                                            appUrl = `${Knack.url_base}#${slug}`;
+                                            console.log('Open in App:', appUrl);
                                             break;
                                         }
                                     }

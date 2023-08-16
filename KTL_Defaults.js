@@ -491,7 +491,7 @@ window.KnackApp = function ($, appInfo = {}) {
 
 
     //====================================================
-    //  Add your code here...
+    //Your App-specific code goes here...
 
 
 };
