@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.2';
+    const KTL_VERSION = '0.15.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1900,8 +1900,25 @@ function Ktl($, appInfo) {
                                         field.setAttribute('numeric', true);
 
                                         //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
-                                        if (cfg.convertNumToTel)
-                                            $('#' + viewId + ' #' + fieldId).clone().attr('type', 'tel').insertAfter($('#' + viewId + ' #' + fieldId)).prev().remove();
+                                        if (cfg.convertNumToTel) {
+                                            var originalInput = $('#' + viewId + ' #' + fieldId);
+                                            var originalHandlers = $._data(originalInput[0], 'events');
+                                            var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
+
+                                            // Copy over any relevant attributes from the original input to the new input
+                                            newInput.attr('name', originalInput.attr('name'));
+                                            newInput.attr('class', originalInput.attr('class'));
+                                            // ... (copy any other attributes you need)
+
+                                            originalInput.replaceWith(newInput);
+
+                                            // Restore the original event handlers to the new input field
+                                            $.each(originalHandlers, function (eventType, handlers) {
+                                                $.each(handlers, function (index, handler) {
+                                                    newInput.on(eventType, handler.handler);
+                                                });
+                                            });
+                                        }
                                     }
                                 }
                             })
