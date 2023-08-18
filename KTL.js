@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.4';
+    const KTL_VERSION = '0.15.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1913,11 +1913,13 @@ function Ktl($, appInfo) {
                                             originalInput.replaceWith(newInput);
 
                                             // Restore the original event handlers to the new input field
-                                            $.each(originalHandlers, function (eventType, handlers) {
-                                                $.each(handlers, function (index, handler) {
-                                                    newInput.on(eventType, handler.handler);
+                                            if (originalHandlers) {
+                                                $.each(originalHandlers, function (eventType, handlers) {
+                                                    $.each(handlers, function (index, handler) {
+                                                        newInput.on(eventType, handler.handler);
+                                                    });
                                                 });
-                                            });
+                                            }
                                         }
                                     }
                                 }
