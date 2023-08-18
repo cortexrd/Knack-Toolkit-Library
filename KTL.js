@@ -1096,7 +1096,7 @@ function Ktl($, appInfo) {
 
             //Also known as the "Universal Selector" in documentation.
             //Parameter sel can be a jQuery selector, or a field name/ID and optionally a view name/ID.
-            //Parameter viewId is optional and is provided will be used as the default view if not found explicitly in sel.
+            //If optionalViewId parameter is provided, it will be used as the default view if not found explicitly in selector.
             getTextFromSelector: function (selector, optionalViewId) {
                 return new Promise(function (resolve, reject) {
                     if (!selector) {
@@ -4980,6 +4980,7 @@ function Ktl($, appInfo) {
                 if (keywords && !$.isEmptyObject(keywords)) {
                     //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
+                    //This section is for keywords that are only supported by views.
                     keywords._ni && ktl.views.noInlineEditing(view);
                     keywords._hv && hideView(view.key, keywords);
                     keywords._ht && hideTitle(view.key, keywords);
@@ -4999,6 +5000,7 @@ function Ktl($, appInfo) {
                     keywords._style && ktl.views.setStyle(view.key, keywords);
                 }
 
+                //This section is for keywords that are supported by views and fields.
                 quickToggle(view.key, data); //IMPORTANT: quickToggle must be processed BEFORE matchColor.
                 matchColor(view.key, data);
                 colorizeFieldByValue(view.key, data);
@@ -5345,12 +5347,12 @@ function Ktl($, appInfo) {
                 return;
 
             //Begin with View's _cfv.
-            ktl.core.extractKeywordsListByType(viewId, CFV_KEYWORD).forEach(executeKeyword);
+            ktl.core.extractKeywordsListByType(viewId, CFV_KEYWORD).forEach(execKw);
 
             //Then end with fields _cfv, for precedence.
             colorizeFromFieldKeyword();
 
-            function executeKeyword(keyword) {
+            function execKw(keyword) {
                 if (!ktl.core.hasRoleAccess(keyword.options)) return;
 
                 const options = keyword.options;
@@ -11908,4 +11910,3 @@ function safePromiseAllSettled(promises) {
 
 //window.ktlEnd = window.performance.now();
 //console.log(`KTL took ${Math.trunc(window.ktlEnd - window.ktlStart)} ms`);
-//TEST STAGE
