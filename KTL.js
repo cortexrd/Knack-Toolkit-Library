@@ -8513,7 +8513,7 @@ function Ktl($, appInfo) {
 
                         //Header
                         var devBtnsDivHeader = document.createElement('div');
-                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivHeaderId');
+                        devBtnsDivHeader.setAttribute('id', 'devBtnsDivIdheader');
                         devBtnsDivHeader.classList.add('ktlDevToolsHeader');
 
                         devBtnsDivHeader.innerText = ':: KTL Developer Tools ::';
