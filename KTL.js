@@ -1089,9 +1089,9 @@ function Ktl($, appInfo) {
                 return stringToSplit.split(separator).map((element) => element.trim());
             },
 
-            isJQuerySelector: function (string) {
-                var pattern = /^[\$\.#\[\]\*\^~=|:]+/;
-                return pattern.test(string);
+            isValidjQuery: function (string) {
+                const testjQuery = $(string);
+                return !!testjQuery.length;
             },
 
             //Also known as the "Universal Selector" in documentation.
@@ -1107,7 +1107,7 @@ function Ktl($, appInfo) {
                     let viewId = optionalViewId;
                     let fieldId;
 
-                    if (!ktl.core.isJQuerySelector(selector)) {
+                    if (!ktl.core.isValidjQuery(selector)) {
                         //Not a valid jQuery selector - let's see if we can build one with what we have.
 
                         const rvSelAr = ktl.core.splitAndTrimToArray(selector);
@@ -1299,7 +1299,7 @@ function Ktl($, appInfo) {
 
                 if (options && options.ktlTarget) {
                     var colNb;
-                    if (ktl.core.isJQuerySelector(options.ktlTarget))
+                    if (ktl.core.isValidjQuery(options.ktlTarget))
                         targetSel = options.ktlTarget;
                     else {
                         const ktlTarget = ktl.core.splitAndTrimToArray(options.ktlTarget);
@@ -5471,7 +5471,7 @@ function Ktl($, appInfo) {
                                         //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
                                         ktl.core.getTextFromSelector(ktlRefVal, viewId)
                                             .then(valueOfFieldId => {
-                                                applyColorizationToRecord(fieldId, parameters, valueOfFieldId, options);
+                                                applyColorizationToRecords(fieldId, parameters, valueOfFieldId, options);
                                             })
                                             .catch(e => {
                                                 ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
@@ -5488,7 +5488,6 @@ function Ktl($, appInfo) {
                         applyColorizationToRecords(fieldId, parameters, groupReferenceValue, options);
                     }
                 }); //Groups
-
 
                 function applyColorizationToRecords(fieldId, parameters, value, options) {
                     if (!fieldId) return;
@@ -5658,7 +5657,7 @@ function Ktl($, appInfo) {
 
                     if (options && options.ktlTarget) {
                         var colNb;
-                        if (ktl.core.isJQuerySelector(options.ktlTarget))
+                        if (ktl.core.isValidjQuery(options.ktlTarget))
                             targetSel = options.ktlTarget;
                         else {
                             const ktlTarget = ktl.core.splitAndTrimToArray(options.ktlTarget);
