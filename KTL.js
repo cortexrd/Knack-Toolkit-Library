@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.5';
+    const KTL_VERSION = '0.15.7';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1064,38 +1064,14 @@ function Ktl($, appInfo) {
                 return true;
             },
 
-            processKeywordOptions: function (options) {
-                //Allowed Roles are always the top priority.
-                if (!ktl.core.hasRoleAccess(options))
-                    return { rolesOk: false };
-
-                var res = { rolesOk: true };
-
-                //Target
-                if (options && options.ktlTarget) {
-                    if (options.ktlTarget === 'page')
-                        res.ktlTarget = '.kn-content';
-                    else if (options.ktlTarget === 'scene')
-                        res.ktlTarget = '.kn-scene';
-                    else
-                        res.ktlTarget = options.ktlTarget;
-                }
-
-                return res;
-            },
-
             splitAndTrimToArray: function (stringToSplit, separator = ',') {
                 if (!stringToSplit) return;
                 return stringToSplit.split(separator).map((element) => element.trim());
             },
 
-            isValidjQuery: function (string) {
-                const testjQuery = $(string);
-                return !!testjQuery.length;
-            },
-
             //Also known as the "Universal Selector" in documentation.
-            //Parameter sel can be a jQuery selector, or a field name/ID and optionally a view name/ID.
+            //Parameter selector can be a jQuery selector if it starts with "$("
+            //Otherwise, can be a field label/ID and optionally a view title/ID.
             //If optionalViewId parameter is provided, it will be used as the default view if not found explicitly in selector.
             getTextFromSelector: function (selector, optionalViewId) {
                 return new Promise(function (resolve, reject) {
@@ -1107,17 +1083,20 @@ function Ktl($, appInfo) {
                     let viewId = optionalViewId;
                     let fieldId;
 
-                    if (!ktl.core.isValidjQuery(selector)) {
-                        //Not a valid jQuery selector - let's see if we can build one with what we have.
+                    const isJQueryTarget = ktl.core.extractJQuerySelector(selector);
+                    if (isJQueryTarget) {
+                        selector = isJQueryTarget;
+                    } else {
+                        //Not a jQuery selector - let's see if we can build one with what we have.
 
-                        const rvSelAr = ktl.core.splitAndTrimToArray(selector);
+                        const selectorArray = ktl.core.splitAndTrimToArray(selector);
 
                         //If there's a view ID found in selector use it, otherwise use the one in optional parameter.
                         const selectorViewId = selector.match(/view_\d+/);
                         if (selectorViewId)
                             viewId = selectorViewId[0];
-                        else if (rvSelAr.length >= 2) {
-                            viewId = ktl.scenes.findViewWithTitle(rvSelAr[1]) || viewId;
+                        else if (selectorArray.length >= 2) {
+                            viewId = ktl.scenes.findViewWithTitle(selectorArray[1]) || viewId;
                         }
 
                         let fieldStr = selector.match(/field_\d+/);
@@ -1125,10 +1104,10 @@ function Ktl($, appInfo) {
                             fieldId = fieldStr[0];
                         else {
                             //No field_ found, then try to find the field ID from the text of the first parameter.
-                            if (!rvSelAr.length) return;
+                            if (!selectorArray.length) return;
 
-                            if (rvSelAr[0]) {
-                                fieldId = ktl.fields.getFieldIdFromLabel(viewId, rvSelAr[0]);
+                            if (selectorArray[0]) {
+                                fieldId = ktl.fields.getFieldIdFromLabel(viewId, selectorArray[0]);
                             }
                         }
 
@@ -1147,7 +1126,7 @@ function Ktl($, appInfo) {
                             else if (viewType === 'details')
                                 selector += ' .' + fieldId + ' .kn-detail-body';
                             else if (viewType === 'form') {
-                                selector = '#' + viewId + ' input#' + fieldId;
+                                selector += ' input#' + fieldId;
                             }
                             //Any other view types to support?
                         }
@@ -1176,8 +1155,10 @@ function Ktl($, appInfo) {
                 })
             },
 
-            //If valid, will and return the numeric value of a string.
-            //Both params are required.
+            //Will parse a text value based on its field type, both params are required.
+            //If valid, will return the numeric value as a string.
+            //Blanks are considered as zero.
+            //If an error is encountered during parsing (ex: illegal numeric chars found), returns undefined.
             extractNumericValue: function (value, fieldId) {
                 if (value === undefined || !fieldId) return;
 
@@ -1190,7 +1171,7 @@ function Ktl($, appInfo) {
                     if (fld.length)
                         isNumeric = fld[0].attributes && fld[0].attributes.numeric;
                     if (isNumeric) {
-                        if (value === '') return 0; //Blanks are considered as zero, for enforceNumeric.
+                        if (value === '') return '0'; //Blanks are considered as zero, for enforceNumeric.
 
                         numericValue = parseFloat(value);
                         if (!isNaN(value))
@@ -1236,7 +1217,7 @@ function Ktl($, appInfo) {
                 //Remove all white spaces.
                 value = value.replace(/\s/g, '');
 
-                if (value === '') return 0; //Blanks are considered as zero, for enforceNumeric.
+                if (value === '') return '0'; //Blanks are considered as zero, for enforceNumeric.
 
                 //Remove all currency symbols.
                 if (fieldAttributes.format) {
@@ -1267,7 +1248,7 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    //Handle custom format's pre and post.
+                    //TODO: Handle custom format's pre and post.
                 }
 
                 //Check if the value is a valid number with decimal or comma separator.
@@ -1276,7 +1257,6 @@ function Ktl($, appInfo) {
 
                 numericValue = parseFloat(value);
                 if (!isNaN(numericValue)) {
-                    //console.log('numericValue.toString() =', numericValue.toString());
                     return numericValue.toString();
                 } else
                     return;
@@ -1293,88 +1273,80 @@ function Ktl($, appInfo) {
             },
 
             computeTargetSelector: function (viewId, fieldId, options) {
-                var targetFieldId = fieldId;
+                var targetFieldId;
                 var targetViewId;
+                var ktlTarget;
                 var targetSel;
 
                 if (options && options.ktlTarget) {
-                    var colNb;
-                    if (ktl.core.isValidjQuery(options.ktlTarget))
-                        targetSel = options.ktlTarget;
+                    ktlTarget = options.ktlTarget;
+
+                    if (ktlTarget === 'page')
+                        ktlTarget = '$(".kn-content")';
+                    else if (ktlTarget === 'scene')
+                        ktlTarget = '$(".kn-scene")';
+
+                    const isJQueryTarget = ktl.core.extractJQuerySelector(ktlTarget);
+                    if (isJQueryTarget)
+                        targetSel = isJQueryTarget;
                     else {
-                        const ktlTarget = ktl.core.splitAndTrimToArray(options.ktlTarget);
+                        const targetArray = ktl.core.splitAndTrimToArray(ktlTarget);
+                        const arrayLength = targetArray.length;
+                        if (arrayLength) {
+                            //Search parameters to see if we can find a direct view_id.
+                            targetArray.forEach(targetEl => {
+                                if (targetEl.startsWith('view_'))
+                                    targetViewId = targetEl;
+                                else if (targetEl.startsWith('field_'))
+                                    targetFieldId = targetEl;
+                            })
 
-                        //Search parameters to see if we can find a targetViewId.
-                        for (var i = 0; i < ktlTarget.length; i++) {
-                            if (ktlTarget[i].startsWith('view_')) {
-                                targetViewId = ktlTarget[i];
-                                break;
-                            }
-                        }
-
-                        //No direct view_id, let's try last param and search by view title.
-                        var tryViewId;
-                        if (!targetViewId) {
-                            const lastItem = ktlTarget[ktlTarget.length - 1];
-                            tryViewId = ktl.scenes.findViewWithTitle(lastItem);
-                            if (tryViewId)
-                                targetViewId = tryViewId;
-                        }
-
-                        //Still nothing?  Fall back to default: keyword's view.
-                        if (!targetViewId)
-                            targetViewId = viewId;
-
-                        targetSel = '#' + targetViewId; //Starting point - the view ID.
-
-                        /* TODO: Convert this to use rec.id and replace code in _cfv by this function.
-                        const targetViewType = ktl.views.getViewType(targetViewId);
-                        if (targetViewType === 'table')
-                            targetSel += ' tbody';
-                        else if (targetViewType === 'list')
-                            targetSel += ' kn-list-content, '; //Comma at end is required.
-
-                        //Add all fields encountered.
-                        for (i = 0; i < ktlTarget.length; i++) {
-                            if (ktlTarget[i].startsWith('field_')) {
-                                targetFieldId = ktlTarget[i];
-                            } else {
-                                //Try to find the field from the text.
-                                targetFieldId = ktl.fields.getFieldIdFromLabel(targetViewId, ktlTarget[i]);
+                            //No direct view_id, let's try last param and search by view title.
+                            if (!targetViewId) {
+                                const lastItem = targetArray[arrayLength - 1];
+                                const viewFromTitle = ktl.scenes.findViewWithTitle(lastItem);
+                                if (viewFromTitle)
+                                    targetViewId = viewFromTitle;
                             }
 
-                            if (targetViewType === 'table') {
-                                colNb = ktl.views.getFieldPositionFromHeader(targetViewId, ktlTarget[i]);
-                                if (colNb === undefined)
-                                    colNb = ktl.views.getFieldPositionFromFieldId(targetViewId, targetFieldId);
-                                if (colNb >= 0)
-                                    targetSel += ' tr[id="' + rec.id + '"] td:nth-child(' + (colNb + 1) + ')' + span + ',';
-                            } else if (targetViewType === 'list') {
-                                targetSel += ' [data-record-id="' + rec.id + '"] .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
-                            } else if (targetViewType === 'details') {
-                                if (targetFieldId)
-                                    targetSel += ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
-                                else {
-                                    //Try with an action link.
-                                    const actionLink = $('#' + targetViewId + ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '")');
-                                    if (actionLink) {
-                                        if (propagate)
-                                            targetSel += ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '"),';
-                                        else
-                                            targetSel += ' .kn-details-link .kn-detail-body:textEquals("' + ktlTarget[i] + '") span,';
-                                    }
-                                }
-                            }
+                            //Still nothing?  Fall back to default: keyword's view.
+                            if (!targetViewId)
+                                targetViewId = viewId;
+
+                            targetSel = '#' + targetViewId; //Starting point - the view ID.
                         }
-                        */
                     }
-
                 }
 
                 if (!targetSel)
                     targetSel = '#' + viewId; //Starting point - the view ID.
 
+                if (!targetFieldId)
+                    targetFieldId = fieldId;
+
+                if (targetFieldId) {
+                    const viewType = ktl.views.getViewType(targetViewId); //Read once more, in case the view has changed since first call above.
+                    if (viewType === 'table')
+                        targetSel += ' .' + fieldId;
+                    else if (viewType === 'details' || viewType === 'list')
+                        targetSel += ' .' + fieldId + ' .kn-detail-body';
+                    else if (viewType === 'form') {
+                        targetSel += ' input#' + fieldId;
+                    }
+                    //TODO: Support all view types.
+                }
+
                 return targetSel;
+            },
+
+            //selector parameter is a full jQuery string including dollar sign etc.
+            //Ex1: $('#view_100 .field_200')
+            //Ex2: $("li.menu-links__list-item:contains('Prev. Stay Info')")
+            //MUST NOT include any backslashes for escaped characters like \' for quotes.
+            extractJQuerySelector: function (selector) {
+                if ((selector.startsWith("$('") || selector.startsWith('$("')) && (selector.endsWith("')") || selector.endsWith('")'))) {
+                    return selector.substring(3, selector.length - 2);
+                }
             },
         }
     })(); //Core
@@ -2368,56 +2340,61 @@ function Ktl($, appInfo) {
 
                 var field;
                 const viewType = ktl.views.getViewType(viewId);
-                if (viewType === 'form') {
-                    field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
-                    if (field.length) {
-                        if (exactMatch && field[0].textContent === fieldLabel)
-                            field = field[0].closest('.kn-input');
-                        else
-                            if (field[0].textContent.includes(fieldLabel))
+                try {
+                    if (viewType === 'form') {
+                        field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
+                        if (field.length) {
+                            if (exactMatch && field[0].textContent === fieldLabel)
                                 field = field[0].closest('.kn-input');
+                            else
+                                if (field[0].textContent.includes(fieldLabel))
+                                    field = field[0].closest('.kn-input');
 
-                        return field ? field.attributes['data-input-id'].value : undefined;
-                    }
-                } else if (viewType === 'details') {
-                    if (exactMatch)
-                        field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
-                    else
-                        field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
+                            return field ? field.attributes['data-input-id'].value : undefined;
+                        }
+                    } else if (viewType === 'details') {
+                        if (exactMatch)
+                            field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
+                        else
+                            field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
 
-                    if (field.length) {
-                        var classes = $(field).parent()[0].classList.value;
-                        const match = classes.match(/field_\d+/);
-                        if (match)
-                            return match[0];
-                    }
-                } else if (viewType === 'table') {
-                    if (exactMatch)
-                        field = $('#' + viewId + ' .kn-table th:textEquals("' + fieldLabel + '")');
-                    else
-                        field = $('#' + viewId + ' .kn-table th:contains("' + fieldLabel + '")');
+                        if (field.length) {
+                            var classes = $(field).parent()[0].classList.value;
+                            const match = classes.match(/field_\d+/);
+                            if (match)
+                                return match[0];
+                        }
+                    } else if (viewType === 'table') {
+                        if (exactMatch)
+                            field = $('#' + viewId + ' .kn-table th:textEquals("' + fieldLabel + '")');
+                        else
+                            field = $('#' + viewId + ' .kn-table th:contains("' + fieldLabel + '")');
 
-                    if (field.length) {
-                        var classes = $(field)[0].classList.value;
-                        const match = classes.match(/field_\d+/);
-                        if (match)
-                            return match[0];
-                    }
-                } else if (viewType === 'list') {
-                    if (exactMatch)
-                        field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
-                    else
-                        field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
+                        if (field.length) {
+                            var classes = $(field)[0].classList.value;
+                            const match = classes.match(/field_\d+/);
+                            if (match)
+                                return match[0];
+                        }
+                    } else if (viewType === 'list') {
+                        if (exactMatch)
+                            field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
+                        else
+                            field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
 
-                    if (field.length) {
-                        var classes = $(field).parent()[0].classList.value;
-                        const match = classes.match(/field_\d+/);
-                        if (match)
-                            return match[0];
-                    }
-                } else
-                    ktl.log.clog('purple', 'getFieldIdFromLabel - Unsupported view type', viewId, viewType);
-                //Support more view types as we go.
+                        if (field.length) {
+                            var classes = $(field).parent()[0].classList.value;
+                            const match = classes.match(/field_\d+/);
+                            if (match)
+                                return match[0];
+                        }
+                    } else
+                        ktl.log.clog('purple', 'getFieldIdFromLabel - Unsupported view type', viewId, viewType);
+                    //Support more view types as we go.
+                }
+                catch (e) {
+                    ktl.log.clog('purple', 'getFieldIdFromLabel error: Invalid field selector enountered', fieldLabel);
+                }
             },
 
             getFieldKeywords: function (fieldId, fieldKeywords = {}) {
@@ -2440,8 +2417,8 @@ function Ktl($, appInfo) {
 
                 const kw = '_bcg';
                 if (keywords[kw].length && keywords[kw][0].options) {
-                    var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                    if (res && !res.rolesOk) return;
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
@@ -5041,8 +5018,8 @@ function Ktl($, appInfo) {
             if (!(keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length)) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             var viewIds = ktl.views.convertViewTitlesToViewIds(keywords[kw][0].params[0], view.key);
@@ -5201,8 +5178,8 @@ function Ktl($, appInfo) {
 
             const kw = '_nf';
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             if (view.type === 'table' /*TODO: add more view types*/) {
@@ -5222,8 +5199,8 @@ function Ktl($, appInfo) {
 
             const kw = '_rvs';
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
@@ -5241,8 +5218,8 @@ function Ktl($, appInfo) {
 
             const kw = '_rvr';
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
@@ -5257,8 +5234,8 @@ function Ktl($, appInfo) {
 
             const kw = '_dr';
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
@@ -5305,6 +5282,7 @@ function Ktl($, appInfo) {
                     const fieldId = headers[col].className;
                     const val = ktl.core.extractNumericValue(txt, fieldId);
                     if (txt && !val) {
+                        //When found text is not empty and val is undefined, means we have found a summary type, ex: "Avg".
                         summaryType = txt;
                         summaryObj[summaryType] = {};
                     } else if (val) {
@@ -5427,7 +5405,6 @@ function Ktl($, appInfo) {
                         return;
 
                     if (groupReferenceValue === 'ktlRefVal') {
-
                         if (!options || !options.ktlRefVal)
                             return;
 
@@ -5468,7 +5445,7 @@ function Ktl($, appInfo) {
                                             }
                                         }
                                     } else {
-                                        //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
+                                        //ktlRefVal can be followed by a jQuery selector, or a field label/ID and optionally a view title/ID.
                                         ktl.core.getTextFromSelector(ktlRefVal, viewId)
                                             .then(valueOfFieldId => {
                                                 applyColorizationToRecords(fieldId, parameters, valueOfFieldId, options);
@@ -5657,8 +5634,9 @@ function Ktl($, appInfo) {
 
                     if (options && options.ktlTarget) {
                         var colNb;
-                        if (ktl.core.isValidjQuery(options.ktlTarget))
-                            targetSel = options.ktlTarget;
+                        const isJQueryTarget = ktl.core.extractJQuerySelector(options.ktlTarget);
+                        if (isJQueryTarget)
+                            targetSel = isJQueryTarget;
                         else {
                             const ktlTarget = ktl.core.splitAndTrimToArray(options.ktlTarget);
 
@@ -5761,36 +5739,36 @@ function Ktl($, appInfo) {
 
             ////////////////////////////////////////////////////////////
             //The reference value is the value against which we will compare the value of a record's field.
-            //The rvSel parameter can be a summary, a fixed field/view value or another field from the same record.
-            function getReferenceValue(rvSel, viewId) {
+            //The refValSelString parameter can be a summary, a fixed field/view value or another field from the same record.
+            function getReferenceValue(refValSelString, viewId) {
                 return new Promise(function (resolve, reject) {
-                    if (rvSel && rvSel !== '') {
-                        var rvSelAr = ktl.core.splitAndTrimToArray(rvSel);
-                        if (!rvSelAr.length) {
-                            reject('Called getReferenceValue with invalid parameter: ' + rvSel);
+                    if (refValSelString && refValSelString !== '') {
+                        var refValSelArray = ktl.core.splitAndTrimToArray(refValSelString);
+                        if (!refValSelArray.length) {
+                            reject('Called getReferenceValue with invalid parameter: ' + refValSelString);
                             return;
                         }
 
-                        if (rvSelAr[0] === 'ktlSummary') {
-                            if (rvSelAr.length >= 2) {
+                        if (refValSelArray[0] === 'ktlSummary') {
+                            if (refValSelArray.length >= 2) {
                                 //console.log('ktlSummary, rvSelAr =', rvSelAr);
-                                const summaryName = rvSelAr[1] ? rvSelAr[1] : '';
-                                const columnHeader = rvSelAr[2] ? rvSelAr[2] : '';
-                                const viewTitleOrId = (rvSelAr.length >= 3 && rvSelAr[3]) ? rvSelAr[3] : viewId;
+                                const summaryName = refValSelArray[1] ? refValSelArray[1] : '';
+                                const columnHeader = refValSelArray[2] ? refValSelArray[2] : '';
+                                const viewTitleOrId = (refValSelArray.length >= 3 && refValSelArray[3]) ? refValSelArray[3] : viewId;
                                 const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
                                 const summaryValue = readSummaryValue(viewTitleOrId, columnHeader, summaryName); //TODO: Promisify to support other views asynchronously.
                                 const refVal = ktl.core.extractNumericValue(summaryValue, fieldId);
                                 resolve(refVal);
                             }
                         } else {
-                            //ktlRefVal can be followed by a jQuery selector, or a field name/ID and optionally a view name/ID.
-                            ktl.core.getTextFromSelector(rvSel, viewId)
+                            //ktlRefVal can be followed by a jQuery selector, or a field label/ID and optionally a view title/ID.
+                            ktl.core.getTextFromSelector(refValSelString, viewId)
                                 .then(refVal => {
                                     //console.log('ktlRefVal found:', refVal, rvSel);
                                     resolve(refVal);
                                 })
                                 .catch(reason => {
-                                    reject('Failed waiting for selector in getReferenceValue / getTextFromSelector in ' + viewId + '\nrvSel:' + rvSel + '\nReason: ' + reason);
+                                    reject('Failed waiting for selector in getReferenceValue / getTextFromSelector in ' + viewId + '\nrvSel:' + refValSelString + '\nReason: ' + reason);
                                 })
                         }
                     }
@@ -5807,8 +5785,8 @@ function Ktl($, appInfo) {
             var kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
             if (kwInstance && kwInstance.length) {
                 kwInstance = kwInstance[0];
-                var res = ktl.core.processKeywordOptions(kwInstance.options);
-                if (res && !res.rolesOk) return;
+                const options = kwInstance.options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             var qtScanItv = null;
@@ -5997,8 +5975,8 @@ function Ktl($, appInfo) {
             else
                 return;
 
-            var res = ktl.core.processKeywordOptions(kwInstance.options);
-            if (res && !res.rolesOk) return;
+            const options = kwInstance.options;
+            if (!ktl.core.hasRoleAccess(options)) return;
 
             var toMatch = kwInstance.params[0];
             if (toMatch.length !== 1 || !toMatch[0]) return;
@@ -6040,8 +6018,8 @@ function Ktl($, appInfo) {
             if (!viewId || !keywords || !keywords[kw]) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             $('#' + viewId + ' thead [href]').addClass('sortDisabled');
@@ -6057,8 +6035,8 @@ function Ktl($, appInfo) {
                 }
 
                 function execKw(kwInstance) {
-                    var res = ktl.core.processKeywordOptions(kwInstance.options);
-                    if (res && !res.rolesOk) return;
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
 
                     kwInstance.params[0].forEach(fieldLabel => {
                         var fieldId = fieldLabel;
@@ -6087,8 +6065,8 @@ function Ktl($, appInfo) {
             if (!view || !cfg.headerAlignment || !keywords || (keywords && !keywords[kw])) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             const viewType = view.type;
@@ -6127,8 +6105,8 @@ function Ktl($, appInfo) {
             if (!(viewId && keywords && keywords[kw])) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             $('#' + viewId).addClass('ktlHidden');
@@ -6140,8 +6118,8 @@ function Ktl($, appInfo) {
             if (!(viewId && keywords && keywords[kw])) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
-                var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                if (res && !res.rolesOk) return;
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
             }
 
             $('#' + viewId + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
@@ -6473,8 +6451,8 @@ function Ktl($, appInfo) {
                 if (!(viewId && keywords && keywords[kw])) return;
 
                 if (keywords[kw].length && keywords[kw][0].options) {
-                    var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                    if (res && !res.rolesOk) return;
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
                 if (!viewId) return;
@@ -6493,8 +6471,8 @@ function Ktl($, appInfo) {
                 if (!(viewId && keywords && keywords[kw])) return;
 
                 if (keywords[kw].length && keywords[kw][0].options) {
-                    var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                    if (res && !res.rolesOk) return;
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
                 var period = 'monthly';
@@ -7626,8 +7604,8 @@ function Ktl($, appInfo) {
                     if (kwInstance.length)
                         kwInstance = kwInstance[0];
 
-                    var res = ktl.core.processKeywordOptions(kwInstance.options);
-                    if (res && !res.rolesOk) return;
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
 
                     var model = (Knack.views[viewId] && Knack.views[viewId].model);
                     if (Knack.views[viewId] && model && model.view.options && model.view.options.cell_editor) {
@@ -7684,8 +7662,8 @@ function Ktl($, appInfo) {
                 }
 
                 function execKw(kwInstance) {
-                    var res = ktl.core.processKeywordOptions(kwInstance.options);
-                    if (res && !res.rolesOk) return;
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
 
                     var model = (Knack.views[view.key] && Knack.views[view.key].model);
                     var columns = model.view.columns;
@@ -7750,14 +7728,10 @@ function Ktl($, appInfo) {
 
                 const kw = '_zoom';
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
 
-                    if (keywords[kw][0].options) {
-                        var res = ktl.core.processKeywordOptions(keywords[kw][0].options);
-                        if (res && !res.rolesOk) return;
-                    }
-
-                    //TODO: improve support of ktlTarget with Universal Selector.
-                    var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
+                    const sel = ktl.core.computeTargetSelector(viewId, '', options);
                     var zoomLevel = keywords[kw][0].params[0][0];
                     if (!isNaN(zoomLevel))
                         $(sel).css({ 'zoom': zoomLevel + '%' });
@@ -7769,19 +7743,13 @@ function Ktl($, appInfo) {
                 if (!viewId || !keywords[kw]) return;
 
                 const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
-                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                    const kwInstance = kwList[kwIdx];
-                    execKw(kwInstance);
-                }
+                kwList.forEach(kwInstance => { execKw(kwInstance); })
 
                 function execKw(kwInstance) {
-                    var res = ktl.core.processKeywordOptions(kwInstance.options);
-                    if (res && !res.rolesOk) return;
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
 
-                    //TODO: improve support of ktlTarget with Universal Selector.
-                    var sel = ktl.core.computeTargetSelector(viewId, '', res);
-                    //var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
-
+                    const sel = ktl.core.computeTargetSelector(viewId, '', options);
                     var classes = kwInstance.params[0];
                     for (var i = 0; i < classes.length; i++) {
                         var params = classes[i];
@@ -7798,21 +7766,15 @@ function Ktl($, appInfo) {
                 if (!viewId || !keywords[kw]) return;
 
                 const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
-                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                    const kwInstance = kwList[kwIdx];
-                    execKw(kwInstance);
-                }
+                kwList.forEach(kwInstance => { execKw(kwInstance); })
 
                 function execKw(kwInstance) {
-                    var res = ktl.core.processKeywordOptions(kwInstance.options);
-                    if (res && !res.rolesOk) return;
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
 
-                    //Merge new style with existing one.
-
-                    //TODO: improve support of ktlTarget with Universal Selector.
-                    var sel = (res && res.ktlTarget) ? res.ktlTarget : '#' + viewId;
-
+                    const sel = ktl.core.computeTargetSelector(viewId, '', options);
                     $(sel).each((ix, el) => {
+                        //Merge new style with existing one.
                         const currentStyle = $(el).attr('style');
                         $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + kwInstance.params[0]);
                     })
