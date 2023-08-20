@@ -5628,7 +5628,6 @@ function Ktl($, appInfo) {
                     }
 
                     //Target selector.
-                    //computeTargetSelector
                     var targetFieldId = fieldId;
                     var targetViewId;
                     var targetSel;
