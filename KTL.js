@@ -222,7 +222,7 @@ function Ktl($, appInfo) {
         });
     }
 
-    const numericFieldTypes = ['number', 'currency', 'sum', 'min', 'max', 'average'/*, 'equation' not sure...*/];
+    const numericFieldTypes = ['number', 'currency', 'sum', 'min', 'max', 'average', 'equation'];
 
     /**
     * Exposed constant strings
@@ -5281,13 +5281,14 @@ function Ktl($, appInfo) {
                     const txt = td[col].textContent.trim();
                     const fieldId = headers[col].className;
                     const val = ktl.core.extractNumericValue(txt, fieldId);
-                    if (txt && !val) {
-                        //When found text is not empty and val is undefined, means we have found a summary type, ex: "Avg".
+                    if (txt !== '' && val === undefined) {
+                        //Found a summary type, ex: "Avg".
                         summaryType = txt;
                         summaryObj[summaryType] = {};
-                    } else if (val) {
+                    } else if (summaryType && val) {
                         var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
-                        summaryObj[summaryType][colHeader] = val;
+                        if (colHeader)
+                            summaryObj[summaryType][colHeader] = val;
                     }
                 }
             }
