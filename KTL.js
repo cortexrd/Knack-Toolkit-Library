@@ -5717,23 +5717,27 @@ function Ktl($, appInfo) {
                             targetSel = '#' + targetViewId + ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
                     }
 
-                    if (!$(targetSel).length) //Fail fast, data out of sync due to double renderTotals calls from Knack.
-                        return;
+                    ktl.core.waitSelector(targetSel, 20000)
+                        .then(function () {
+                            //Merge current and new styles.
+                            if (remove)
+                                $(targetSel).remove();
+                            else if (hide) {
+                                $(targetSel).addClass('ktlDisplayNone');
+                            } else {
+                                const currentStyle = $(targetSel).attr('style');
+                                $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                            }
 
-                    //Merge current and new styles.
-                    if (remove)
-                        $(targetSel).remove();
-                    else if (hide) {
-                        $(targetSel).addClass('ktlDisplayNone');
-                    } else {
-                        const currentStyle = $(targetSel).attr('style');
-                        $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
-                    }
-
-                    if (flash)
-                        $(targetSel).addClass('ktlFlashingOnOff');
-                    else if (flashFade)
-                        $(targetSel).addClass('ktlFlashingFadeInOut');
+                            if (flash)
+                                $(targetSel).addClass('ktlFlashingOnOff');
+                            else if (flashFade)
+                                $(targetSel).addClass('ktlFlashingFadeInOut');
+                        })
+                        .catch(function () {
+                            //Timeout will happen once in a while when rendering a view with summary.
+                            //Data becomes out of sync due to double renderTotals calls from Knack.
+                        })
                 }
             }
 
