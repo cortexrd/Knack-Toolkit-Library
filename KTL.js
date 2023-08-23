@@ -1863,34 +1863,43 @@ function Ktl($, appInfo) {
                         var forms = document.querySelectorAll('.kn-form');
                         forms.forEach(form => {
                             var viewId = form.id;
-                            var fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text,.kn-input-number,.kn-input-currency');
+                            if ($('#cell-editor .input').length)
+                                viewId = 'cell-editor';
+
+                            const fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text, #' + viewId + ' .kn-input-number, #' + viewId + ' .kn-input-currency');
                             fields.forEach(field => {
-                                var fieldId = field.attributes['data-input-id'].value;
+                                var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
+                                var fieldId = fieldAttr.value;
                                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
-                                if (field.classList.contains('kn-input-number') || field.classList.contains('kn-input-currency') || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
+                                const fieldType = ktl.fields.getFieldType(fieldId);
+                                if ((fieldType && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
                                     if (!field.getAttribute('numeric')) {
                                         field.setAttribute('numeric', true);
 
                                         //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
                                         if (cfg.convertNumToTel) {
                                             var originalInput = $('#' + viewId + ' #' + fieldId);
-                                            var originalHandlers = $._data(originalInput[0], 'events');
-                                            var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
+                                            if (originalInput.length) {
+                                                const originalValue = $('#' + viewId + ' #' + fieldId).val();
+                                                var originalHandlers = $._data(originalInput[0], 'events');
+                                                var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
 
-                                            // Copy over any relevant attributes from the original input to the new input
-                                            newInput.attr('name', originalInput.attr('name'));
-                                            newInput.attr('class', originalInput.attr('class'));
-                                            // ... (copy any other attributes you need)
+                                                // Copy over any relevant attributes from the original input to the new input
+                                                newInput.attr('name', originalInput.attr('name'));
+                                                newInput.attr('class', originalInput.attr('class'));
+                                                // ... (copy any other attributes you need)
 
-                                            originalInput.replaceWith(newInput);
+                                                originalInput.replaceWith(newInput);
+                                                newInput.val(originalValue);
 
-                                            // Restore the original event handlers to the new input field
-                                            if (originalHandlers) {
-                                                $.each(originalHandlers, function (eventType, handlers) {
-                                                    $.each(handlers, function (index, handler) {
-                                                        newInput.on(eventType, handler.handler);
+                                                // Restore the original event handlers to the new input field
+                                                if (originalHandlers) {
+                                                    $.each(originalHandlers, function (eventType, handlers) {
+                                                        $.each(handlers, function (index, handler) {
+                                                            newInput.on(eventType, handler.handler);
+                                                        });
                                                     });
-                                                });
+                                                }
                                             }
                                         }
                                     }
@@ -3360,47 +3369,49 @@ function Ktl($, appInfo) {
                             if (!$.isEmptyObject(params)) {
                                 const filterUrlPart = filterDivIdToUrl(masterViewId);
 
-                                const filter = parts.params[filterUrlPart + '_filters'] || '[]';
+                                var filter = parts.params[filterUrlPart + '_filters'] || '[]';
                                 if (masterView.type === 'report')
                                     filter = parts.params[filterUrlPart + '_0_filters']; //Always use first one as master.
 
-                                const encodedRef = encodeURIComponent(filter);
-                                let mergedParams = '';
-                                let otherParams = '';
+                                if (filter) {
+                                    const encodedRef = encodeURIComponent(filter);
+                                    let mergedParams = '';
+                                    let otherParams = '';
 
-                                params.forEach(function (param) {
-                                    //Special case: skip for report charts, as we'll reconstruct below.
-                                    if (param[0].search(/view_\d+_filters/) >= 0 && param[0].search(/view_\d+_\d+_filters/) === -1) {
-                                        if (mergedParams)
-                                            mergedParams += '&';
-                                        mergedParams += param[0] + '=' + encodedRef;
-                                    }
-
-                                    if (!param[0].includes('_filter')) {
-                                        if (otherParams)
-                                            otherParams += '&';
-                                        otherParams += param[0] + '=' + encodeURIComponent(param[1]);
-                                    }
-                                })
-
-                                useUrlArray.filter((reportView) => Knack.views[reportView].model.view.type === 'report')
-                                    .forEach((reportView) => {
-                                        const rLen = Knack.views[reportView].model.view.rows.length;
-                                        for (let c = 0; c < rLen; c++) {
+                                    params.forEach(function (param) {
+                                        //Special case: skip for report charts, as we'll reconstruct below.
+                                        if (param[0].search(/view_\d+_filters/) >= 0 && param[0].search(/view_\d+_\d+_filters/) === -1) {
                                             if (mergedParams)
                                                 mergedParams += '&';
-                                            mergedParams += reportView + '_' + c + '_filters=' + encodedRef;
+                                            mergedParams += param[0] + '=' + encodedRef;
+                                        }
+
+                                        if (!param[0].includes('_filter')) {
+                                            if (otherParams)
+                                                otherParams += '&';
+                                            otherParams += param[0] + '=' + encodeURIComponent(param[1]);
                                         }
                                     })
 
-                                if (otherParams)
-                                    mergedParams += '&' + otherParams;
+                                    useUrlArray.filter((reportView) => Knack.views[reportView].model.view.type === 'report')
+                                        .forEach((reportView) => {
+                                            const rLen = Knack.views[reportView].model.view.rows.length;
+                                            for (let c = 0; c < rLen; c++) {
+                                                if (mergedParams)
+                                                    mergedParams += '&';
+                                                mergedParams += reportView + '_' + c + '_filters=' + encodedRef;
+                                            }
+                                        })
 
-                                var newUrl = parts.path + '?' + mergedParams;
-                                //console.log('decodeURI(window.location.href) =\n', decodeURI(window.location.href));
-                                //console.log('decodeURI(newUrl) =\n', decodeURI(newUrl));
-                                if (decodeURI(window.location.href) !== decodeURI(newUrl))
-                                    window.location.href = newUrl;
+                                    if (otherParams)
+                                        mergedParams += '&' + otherParams;
+
+                                    var newUrl = parts.path + '?' + mergedParams;
+                                    //console.log('decodeURI(window.location.href) =\n', decodeURI(window.location.href));
+                                    //console.log('decodeURI(newUrl) =\n', decodeURI(newUrl));
+                                    if (decodeURI(window.location.href) !== decodeURI(newUrl))
+                                        window.location.href = newUrl;
+                                }
                             }
                         }
                     }
