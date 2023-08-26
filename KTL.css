@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.3.0 */
+/* KTL CSS version: 0.3.1 */
 
 /************ General Settings **************/
 :root {
@@ -387,6 +387,11 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 .ktlOutline {
 	outline-offset: -2px;
 	outline: 2px solid var(--ktlOutlineColor);
+}
+
+.ktlOutlineDevPopup {
+	outline-offset: -2px;
+	outline: 2px dashed blue;
 }
 
 .ktlNoBgColor{

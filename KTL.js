@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.7';
+    const KTL_VERSION = '0.15.8';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -92,7 +92,7 @@ function Ktl($, appInfo) {
             var fieldDesc = field.attributes && field.attributes.meta && field.attributes.meta.description;
             if (fieldDesc) {
                 var fieldKwObj = {};
-                fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+                fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, ' ').replace(/ {2,}/g, ' ').trim();
                 parseKeywords(fieldDesc, fieldKwObj);
                 if (!$.isEmptyObject(fieldKwObj))
                     ktlKeywords[fieldId] = fieldKwObj;
@@ -331,7 +331,7 @@ function Ktl($, appInfo) {
 
                 //Read the config from the Javascript pane, if exists.
                 //This one is different.  We want to give the user specific control over each flag from the Builder.
-                if (cfgObj.enabled) {
+                if (cfgObj.enabled !== undefined) {
                     for (key in cfgObj.enabled) {
                         cfg.enabled[key] = cfgObj.enabled[key];
                     }
@@ -4864,9 +4864,6 @@ function Ktl($, appInfo) {
 
         //TODO: Migrate all variables here.
         var cfg = {
-            headerAlignment: false,
-            ktlFlashRate: '1s',
-            ktlOutlineColor: 'green',
         }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -6152,12 +6149,15 @@ function Ktl($, appInfo) {
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
                 cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
-                cfgObj.headerAlignment && (cfg.headerAlignment = cfgObj.headerAlignment);
-                if (cfgObj.ktlFlashRate) {
+
+                if (cfgObj.headerAlignment !== undefined)
+                    cfg.headerAlignment = cfgObj.headerAlignment;
+
+                if (cfgObj.ktlFlashRate !== undefined) {
                     cfg.ktlFlashRate = cfgObj.ktlFlashRate;
                     document.documentElement.style.setProperty('--ktlFlashRate', cfg.ktlFlashRate);
                 }
-                if (cfgObj.ktlOutlineColor) {
+                if (cfgObj.ktlOutlineColor !== undefined) {
                     cfg.ktlOutlineColor = cfgObj.ktlOutlineColor;
                     document.documentElement.style.setProperty('--ktlOutlineColor', cfg.ktlOutlineColor);
                 }
@@ -11635,6 +11635,10 @@ function Ktl($, appInfo) {
                 const viewUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/table`;
                 container.appendChild(createLine(viewId, viewUrl));
 
+                //Highlight cell or div.
+                $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
+                $(element).addClass('ktlOutlineDevPopup');
+
                 return container;
             }
         };
@@ -11777,12 +11781,15 @@ function Ktl($, appInfo) {
 
                     if (!popover) {
                         target.popover(bindedOptions);
-                        popover = target.data("popover");
+                        popover = target.data('popover');
 
                         popover.$win = { resize: () => { } }; // Remove subsequent resize occurance
                         const bindEvents = popover.bindEvents;
                         popover.bindEvents = () => { }; // Remove subsequent bindEvents occurance
-                        $("body").on("click", () => bindEvents.call(popover)); // reinstate modal click after initial bindEvents
+                        $('body').on('click', () => {
+                            $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
+                            bindEvents.call(popover);
+                        }); // reinstate modal click after initial bindEvents
                     } else {
                         popover.init(bindedOptions, target);
                     }
@@ -11793,9 +11800,10 @@ function Ktl($, appInfo) {
         }
 
         function closePopOver(eventTarget) {
-            $(eventTarget).removeClass("active").removeData("popover");
+            $(eventTarget).removeClass('active').removeData('popover');
             openedPopOverTarget = null;
             $('#kn-popover').hide();
+            $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
         }
 
         $(document).on('mouseenter.KtlPopOver', '.knTable th', showPopOver.bind(this, tableHeadOptions));
@@ -11812,7 +11820,7 @@ function Ktl($, appInfo) {
 
         $(document).on('keydown', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                $(".knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover").last().trigger('mouseenter.KtlPopOver', true);
+                $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover').last().trigger('mouseenter.KtlPopOver', true);
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
@@ -11870,11 +11878,11 @@ function safePromiseAllSettled(promises) {
         promises.map((promise, i) =>
             promise
                 .then(value => ({
-                    status: "fulfilled",
+                    status: 'fulfilled',
                     value,
                 }))
                 .catch(reason => ({
-                    status: "rejected",
+                    status: 'rejected',
                     reason,
                 }))
         )
