@@ -11796,6 +11796,8 @@ function Ktl($, appInfo) {
 
                     event.stopPropagation();
                 }
+
+                $('#kn-popover [role=presentation]').remove();
             }
         }
 
