@@ -97,7 +97,7 @@ window.KnackApp = function ($, appInfo = {}) {
             //        bgColorFalse: '#f04a3b',
             //        bgColorPending: '#dd08',
             //    },
-            headerAlignment: false,
+            headerAlignment: true,
             ktlFlashRate: '1s',
             ktlOutlineColor: 'green',
         })
