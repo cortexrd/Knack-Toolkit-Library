@@ -6179,7 +6179,7 @@ function Ktl($, appInfo) {
                             var triggerChange = (formAction === 'insert' || formAction === 'create') ? false : true;
 
                             (function tryRefresh(retryCtr) {
-                                if (view && ['search', 'form', 'rich_text', 'menu' /*more types?*/].includes(viewType)) {
+                                if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
                                     if (triggerChange) {
                                         Knack.views[viewId].model.trigger('change');
                                         Knack.views[viewId].renderForm && Knack.views[viewId].renderForm();
