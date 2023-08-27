@@ -11700,7 +11700,7 @@ function Ktl($, appInfo) {
 
                 const copyButton = createCopyContentButton();
                 copyButton.addEventListener('click', () => {
-                    navigator.clipboard.writeText($(element).text())
+                    navigator.clipboard.writeText($(element).text().trim())
                         .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
                         .then(() => ktl.core.timedPopup('Content copied to clipboard', 'success', 1000));
                 });
@@ -11752,7 +11752,7 @@ function Ktl($, appInfo) {
 
                 const copyButton = createCopyContentButton();
                 copyButton.addEventListener('click', () => {
-                    navigator.clipboard.writeText($(element).text())
+                    navigator.clipboard.writeText($(element).text().trim())
                         .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
                         .then(() => ktl.core.timedPopup('Link copied to clipboard', 'success', 1000));
                 });
