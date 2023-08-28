@@ -11764,10 +11764,10 @@ function Ktl($, appInfo) {
         let openedPopOverTarget;
         let popover;
         function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
-            if ((event.shiftKey && event.ctrlKey) || force) {
+            if (ktl.core.getCfg().enabled.devInfoPopup && ((event.shiftKey && event.ctrlKey) || force)) {
                 //Let the Ctrl+Shift keys do their default job during inline editing.
                 //Useful to snap-select at word boundaries with arrow keys.
-                const inlineEditing = !!($('#cell-editor, .redactor-editor').length > 0);
+                const inlineEditing = !!($('#cell-editor, .redactor-editor').length);
                 if (!inlineEditing) {
                     $(openedPopOverTarget).removeClass("active").removeData("popover");
 

@@ -52,6 +52,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 spinnerWatchDog: true,
                 idleWatchDog: true,
                 debugWnd: true,
+                devInfoPopup: true,
 
                 //Those below must also be set up properly to have any effect.  See documentation.
                 iFrameWnd: false,
