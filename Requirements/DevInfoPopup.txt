@@ -1,0 +1,77 @@
+Popup over View
+======================
+Popup should display over <b>table headers</b> when hovered and Ctrl+Shift pressed :
+    - View information and buttons
+    - Object's name with copy button
+    - object_id with copy button, link copy button, open button
+    - field_id with copy button, link copy button, open button
+
+Popup over Grid View
+======================
+Popup should display over <b>table items</b> when hovered and Ctrl+Shift pressed : 
+    - View information and buttons
+    - Table headers' information and buttons
+    - record_id with copy button, link copy button, open button
+    - copy content button
+    - All linked record_ids with label, record_id, copy button, link copy button, open button when content is a link [TestItems]
+
+Popup should display over <b>table summary items</b> when hovered and Ctrl+Shift pressed : 
+    - View information and buttons
+    - Table headers' information and buttons
+    - copy content button
+
+Popup should display over <b>table group headers</b> when hovered and Ctrl+Shift pressed : 
+    - View information and buttons
+    - Table headers' information and buttons
+    - copy content button
+
+<b>Copy Content</b> behavior should trim currency symbol, remove thousands' marks [commas, preriods, spaces] and prepend decimals with a dot when content format  is number [Amount, testCurrencyPound, testCurrencyEuro
+, Quantity]
+<b>Copy Content</b> behavior should trim whitespaces when content format is text [testParagraphText, testRichText]
+<b>Copy Content</b> behavior should keep htmln formating when content format is text [testRichText]
+
+Popup over List View
+=======================
+Popup should display over <b>Labels</b> when hovered and Ctrl+Shift pressed :
+    - View information and buttons
+    - Object's name with copy button
+    - object_id with copy button, link copy button, open button
+    - field_id with copy button, link copy button, open button
+    - record_id with copy button, link copy button, open button
+
+Popup should display over <b>Values</b> when hovered and Ctrl+Shift pressed : 
+    - View information and buttons
+    - Labels' information and buttons
+    - copy content button
+    - All linked record_ids with label, record_id, copy button, link copy button, open button when content is a link [TestItems]
+
+<b>Copy Content</b> behavior should trim currency symbol, remove thousands' marks [commas, spaces] and prepend decimals with a dot when content format is number [Amount, testCurrencyPound, testCurrencyEuro
+, Quantity]
+<b>Copy Content</b> behavior should trim whitespaces when content format is text [testParagraphText, testRichText]
+<b>Copy Content</b> behavior should keep htmln formating when content format is text [testRichText]
+
+Popup over Details View
+=======================
+Popup should display over <b>Labels</b> when hovered and Ctrl+Shift pressed :
+    - View information and buttons
+    - Object's name with copy button
+    - object_id with copy button, link copy button, open button
+    - field_id with copy button, link copy button, open button
+
+Popup should display over <b>Values</b> when hovered and Ctrl+Shift pressed : 
+    - View information and buttons
+    - Labels' information and buttons
+    - copy content button
+    - All linked record_ids with label, record_id, copy button, link copy button, open button when content is a link [Store Owners]
+
+<b>Copy Content</b> behavior should trim currency symbol, remove thousands' marks [commas, spaces] and prepend decimals with a dot when content format is number [Total Sales]
+<b>Copy Content</b> behavior should trim whitespaces when content format is text [Rich Text]
+<b>Copy Content</b> behavior should keep htmln formating when content format is text [Rich Text]
+
+Popup over Details View
+=======================
+Popup should display over <b>Inputs</b> when hovered and Ctrl+Shift pressed :
+    - View information and buttons
+    - Object's name with copy button
+    - object_id with copy button, link copy button, open button
+    - field_id with copy button, link copy button, open button
