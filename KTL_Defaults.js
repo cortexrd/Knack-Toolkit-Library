@@ -235,7 +235,7 @@ window.KnackApp = function ($, appInfo = {}) {
     //Called by KTL
     function onSceneRender(event, scene, appInfo) {
         if (ktl.core.isKiosk()) {
-            ktl.scenes.addVersionInfo(appInfo, 'margin-left: 10px; margin-top: 2px; font-size:small; position:absolute; top:0; right:10px');
+            ktl.scenes.addVersionInfo(appInfo, 'margin-left: 10px; margin-top: 2px; font-size:small; top:0; right:10px');
         } else {
             //If you want to add pre/post version info text, use these below.
             //info.pre = '';
