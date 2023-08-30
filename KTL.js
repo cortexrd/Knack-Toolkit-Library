@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.9';
+    const KTL_VERSION = '0.15.10';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -4627,11 +4627,11 @@ function Ktl($, appInfo) {
                                 //Clear button
                                 var debugWndClear = document.createElement('div');
                                 debugWndClear.setAttribute('id', 'debugWndClear');
-                                debugWndClear.style.height = '30px';
-                                debugWndClear.style.width = '65px';
+                                debugWndClear.style.height = '24px';
+                                debugWndClear.style.width = '80px';
                                 debugWndClear.style.position = 'absolute';
-                                debugWndClear.style.right = '8%';
-                                debugWndClear.style.top = '3px';
+                                debugWndClear.style.right = '5px';
+                                debugWndClear.style.top = '6px';
                                 debugWndClear.style['color'] = sysColors.buttonText.rgb;
                                 debugWndClear.style['background-color'] = sysColors.button.rgb;
                                 debugWndClear.style['padding-left'] = '12px';
@@ -4644,27 +4644,6 @@ function Ktl($, appInfo) {
                                 debugWndHeader.appendChild(debugWndClear);
                                 debugWndClear.addEventListener('click', function (e) { clearLsLogs(); })
                                 debugWndClear.addEventListener('touchstart', function (e) { clearLsLogs(); })
-
-                                //Close button
-                                var debugWndClose = document.createElement('div');
-                                debugWndClose.setAttribute('id', 'debugWndClose');
-                                debugWndClose.style.height = '30px';
-                                debugWndClose.style.width = '65px';
-                                debugWndClose.style.position = 'absolute';
-                                debugWndClose.style.right = '0%';
-                                debugWndClose.style.top = '3px';
-                                debugWndClose.style['color'] = sysColors.buttonText.rgb;
-                                debugWndClose.style['padding-left'] = '12px';
-                                debugWndClose.style['padding-right'] = '12px';
-                                debugWndClose.style['margin-inline'] = '5px';
-                                debugWndClose.style['box-sizing'] = 'border-box';
-                                debugWndClose.style['background-color'] = sysColors.button.rgb;
-                                debugWndClose.style['line-height'] = '200%'; //Trick to center text vertically.
-                                debugWndClose.innerText = 'Close';
-                                debugWndClose.classList.add('pointer', 'kn-button');
-                                debugWndHeader.appendChild(debugWndClose);
-                                debugWndClose.addEventListener('click', function (e) { ktl.debugWnd.showDebugWnd(false); })
-                                debugWndClose.addEventListener('touchstart', function (e) { ktl.debugWnd.showDebugWnd(false); })
 
                                 //Text area
                                 var debugWndText = document.createElement('div');
@@ -7747,9 +7726,13 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
 
                     const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                    var zoomLevel = keywords[kw][0].params[0][0];
-                    if (!isNaN(zoomLevel))
-                        $(sel).css({ 'zoom': zoomLevel + '%' });
+                    ktl.core.waitSelector(sel, 20000, 'visible')
+                        .then(() => {
+                            var zoomLevel = keywords[kw][0].params[0][0];
+                            if (!isNaN(zoomLevel))
+                                $(sel).css({ 'zoom': zoomLevel + '%' });
+                        })
+                        .catch(function () { })
                 }
             },
 
@@ -7765,14 +7748,18 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
 
                     const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                    var classes = kwInstance.params[0];
-                    for (var i = 0; i < classes.length; i++) {
-                        var params = classes[i];
-                        if (params.startsWith('!'))
-                            $(sel).removeClass(params.replace('!', ''));
-                        else
-                            $(sel).addClass(params);
-                    }
+                    ktl.core.waitSelector(sel, 20000, 'visible')
+                        .then(() => {
+                            var classes = kwInstance.params[0];
+                            for (var i = 0; i < classes.length; i++) {
+                                var params = classes[i];
+                                if (params.startsWith('!'))
+                                    $(sel).removeClass(params.replace('!', ''));
+                                else
+                                    $(sel).addClass(params);
+                            }
+                        })
+                        .catch(function () { })
                 }
             },
 
@@ -7788,11 +7775,15 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
 
                     const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                    $(sel).each((ix, el) => {
-                        //Merge new style with existing one.
-                        const currentStyle = $(el).attr('style');
-                        $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + kwInstance.params[0]);
-                    })
+                    ktl.core.waitSelector(sel, 20000, 'visible')
+                        .then(() => {
+                            $(sel).each((ix, el) => {
+                                //Merge new style with existing one.
+                                const currentStyle = $(el).attr('style');
+                                $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + kwInstance.params[0]);
+                            })
+                        })
+                        .catch(function () { })
                 }
             },
 
@@ -8156,6 +8147,7 @@ function Ktl($, appInfo) {
                                                 window.location.href = ktlKioskButtons.ADD_SHIFT.href;
                                             });
                                         })
+                                        .catch(function () { })
                                 }
                             } else { //Other custom kiosk buttons from App.
                                 var kioskAppBtn = ktlKioskButtons[kioskBtn] && document.getElementById(ktlKioskButtons[kioskBtn].id);
@@ -8192,6 +8184,7 @@ function Ktl($, appInfo) {
                                                 });
                                             }
                                         })
+                                        .catch(function () { })
                                 }
                             }
                         } //for in loop
@@ -8205,6 +8198,7 @@ function Ktl($, appInfo) {
                                 .then(() => {
                                     kioskButtonsParentDiv.appendChild(kioskButtonsDiv);
                                 })
+                                .catch(function () { })
                         }
 
                         var knMenuBar = document.querySelector('.kn-menu'); //Get first menu in page.
@@ -8478,6 +8472,15 @@ function Ktl($, appInfo) {
 
                 //Special Dev Options popup, require a PIN to access options.
                 $('#verButtonId').on('click touchstart', function (e) {
+                    var logoutBtn;
+                    var kioskModeBtn;
+                    if (kioskModeBtn) {
+                        if (kioskModeBtn && ktl.core.isKiosk())
+                            kioskModeBtn.textContent = 'Kiosk: Yes';
+                        else
+                            kioskModeBtn.textContent = 'Kiosk: No';
+                    }
+
                     const pinAlreadyEntered = ktl.storage.lsGetItem('pinAlreadyEntered', false, true);
                     if (ktl.account.isDeveloper() || (pinAlreadyEntered || (prompt('Enter PW:') === ktl.core.getCfg().devOptionsPin))) {
                         ktl.storage.lsSetItem('pinAlreadyEntered', true, false, true);
@@ -8503,7 +8506,10 @@ function Ktl($, appInfo) {
 
                         //Requires NodeJS and file server to run otherwise crashes.
                         if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
-                            ktl.fields.addButton(devBtnsDiv, 'Dev/Prod', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                            var devModeBtn = ktl.fields.addButton(devBtnsDiv, 'Dev/Prod', '', ['devBtn', 'kn-button']);
+                            const prod = (localStorage.getItem(APP_ROOT_NAME + 'dev') === null);
+                            devModeBtn.textContent = 'KTL Mode: ' + (prod ? 'Prod' : 'Local Dev');
+                            devModeBtn.addEventListener('click', () => {
                                 ktl.core.toggleMode();
                             })
                         }
@@ -8530,29 +8536,45 @@ function Ktl($, appInfo) {
                             }
                         })
 
-                        ktl.fields.addButton(devBtnsDiv, 'Kiosk', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                            if (ktl.core.isKiosk())
+                        kioskModeBtn = ktl.fields.addButton(devBtnsDiv, 'Kiosk: No', '', ['devBtn', 'kn-button']);
+                        if (ktl.core.isKiosk())
+                            kioskModeBtn.textContent = 'Kiosk: Yes';
+
+                        kioskModeBtn.addEventListener('click', () => {
+                            if (ktl.core.isKiosk()) {
+                                kioskModeBtn.textContent = 'Kiosk: No';
                                 ktl.core.timedPopup('Switching back to Normal mode...');
-                            else
+                            } else {
+                                kioskModeBtn.textContent = 'Kiosk: Yes';
                                 ktl.core.timedPopup('Switching to Kiosk mode...');
+                            }
 
                             ktl.core.kioskMode();
                             Knack.router.scene_view.render();
+                            processLogoutBtn(); //To update name, depending if visible of not.
                         })
 
-                        const iFrmWndBtn = ktl.fields.addButton(devBtnsDiv, 'iFrameWnd', '', ['devBtn', 'kn-button']);
+                        const iFrmWndBtn = ktl.fields.addButton(devBtnsDiv, 'iFrameWnd: N/A', '', ['devBtn', 'kn-button']);
                         if (ktl.core.getCfg().enabled.iFrameWnd && ktl.iFrameWnd.getiFrameWnd()) {
+                            iFrmWndBtn.textContent = 'iFrameWnd: ' + (userPrefsObj.showIframeWnd ? 'Show' : 'Hide');
                             iFrmWndBtn.addEventListener('click', () => {
                                 userPrefsObj.showIframeWnd = !userPrefsObj.showIframeWnd;
+                                ktl.iFrameWnd.showIFrame(userPrefsObj.showIframeWnd);
                                 userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                                iFrmWndBtn.textContent = 'iFrameWnd: ' + (userPrefsObj.showIframeWnd ? 'Show' : 'Hide');
                             })
                         } else
                             iFrmWndBtn.setAttribute('disabled', 'true');
 
                         const dbgWnd = ktl.fields.addButton(devBtnsDiv, 'DebugWnd', '', ['devBtn', 'kn-button']);
                         if (ktl.core.getCfg().enabled.debugWnd)
-                            dbgWnd.addEventListener('click', () => { ktl.debugWnd.showDebugWnd(true); })
+                            dbgWnd.addEventListener('click', () => {
+                                if ($('#debugWnd').length)
+                                    ktl.debugWnd.showDebugWnd(false);
+                                else
+                                    ktl.debugWnd.showDebugWnd(true);
+                            })
                         else
                             dbgWnd.setAttribute('disabled', 'true');
 
@@ -8569,7 +8591,10 @@ function Ktl($, appInfo) {
                             ktl.storage.lsRemoveItem('AES_EK', true, false, false);
 
                             setTimeout(() => {
-                                ktl.account.logout();
+                                if (confirm('Do you want to logout?')) {
+                                    ktl.account.logout();
+                                    processLogoutBtn();
+                                }
                             }, 500)
                         })
 
@@ -8612,7 +8637,7 @@ function Ktl($, appInfo) {
                             ktl.core.enableDragElement(devToolSearchDiv);
 
                             var paragraph = document.createElement('p');
-                            paragraph.appendChild(document.createTextNode('Enter view_id, field_id, scene_id,\n'));
+                            paragraph.appendChild(document.createTextNode('Enter field_id, view_id, scene_id,\n'));
                             paragraph.appendChild(document.createTextNode('a specific keyword or kw for all keywords.'));
                             paragraph.style.whiteSpace = 'pre';
                             devToolSearchDiv.appendChild(paragraph);
@@ -8753,10 +8778,28 @@ function Ktl($, appInfo) {
                             }
                         })
 
-                        ktl.fields.addButton(devBtnsDiv, 'Logout', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                            if (confirm('Are you sure you want to logout?'))
+                        logoutBtn = ktl.fields.addButton(devBtnsDiv, '', '', ['devBtn', 'kn-button']);
+                        processLogoutBtn();
+                        logoutBtn.addEventListener('click', () => {
+                            if (confirm('Are you sure you want to logout?')) {
                                 ktl.account.logout();
+                                processLogoutBtn();
+                            }
                         })
+
+                        function processLogoutBtn() {
+                            const isLoggedIn = ktl.account.isLoggedIn();
+                            var userName = isLoggedIn ? Knack.getUserAttributes().values.name.first : 'N/A';
+                            if (logoutBtn) {
+                                const userId = Knack.getUserAttributes().id;
+                                const userIsVisible = $('#' + userId).is(':visible');
+                                logoutBtn.textContent = 'Logout' + (userIsVisible ? '' : ': ' + userName);
+                                if (isLoggedIn)
+                                    logoutBtn.removeAttribute('disabled');
+                                else
+                                    logoutBtn.setAttribute('disabled', 'true');
+                            }
+                        }
 
                         const closeBtn = ktl.fields.addButton(devBtnsDiv, 'Close', '', ['devBtn', 'kn-button']);
                         closeBtn.addEventListener('click', () => {
@@ -8772,7 +8815,9 @@ function Ktl($, appInfo) {
                 //For Dev Options popup, act like a modal window: close when clicking oustide.
                 $(document).on('click', function (e) {
                     if (e.target.closest('.kn-content')) {
-                        if ($('#resultWndId').length)
+                        if ($('#debugWnd').length)
+                            ktl.debugWnd.showDebugWnd(false);
+                        else if ($('#resultWndId').length)
                             $('#resultWndId').remove();
                         else if ($('#devToolSearchDivId').length)
                             $('#devToolSearchDivId').remove();
