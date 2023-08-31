@@ -273,7 +273,6 @@ a.sortDisabled {
 }
 
 .ktlConsoleDiv {
-	max-height: 700px;
 	overflow: scroll;
 	font-family: monospace;
 	font-weight: bold;

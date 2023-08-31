@@ -1,0 +1,8 @@
+DevTools Windows
+======================
+DevTools Windows should be draggable on mousedown over the window's header.
+DevTools Windows' position should be persistent per user.
+DevTools Search Result Window should be resizable.
+DevTools Search Result Window's size should be persistent per user.
+DevTools Search Result Window's size should scale to content when there's no saved size.
+DevTools Search Result Window's size should stay within browser's size when there's no saved size.

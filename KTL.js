@@ -513,24 +513,25 @@ function Ktl($, appInfo) {
                 }, delay);
             },
 
-            enableDragElement: function (el) {
-                var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-                if (document.getElementById(el.id + "header")) {
+            enableDragElement: function (element, callback = ()=>{}) {
+                let lastX = 0, lastY = 0;
+
+                if (document.getElementById(element.id + "header")) {
                     // if present, the header is where you move the DIV from:
-                    document.getElementById(el.id + "header").onmousedown = dragMouseDown;
-                    document.getElementById(el.id + "header").ontouchstart = dragMouseDown;
+                    document.getElementById(element.id + "header").onmousedown = dragMouseDown;
+                    document.getElementById(element.id + "header").ontouchstart = dragMouseDown;
                 } else {
                     // otherwise, move the DIV from anywhere inside the DIV:
-                    el.onmousedown = dragMouseDown;
-                    el.ontouchstart = dragMouseDown;
+                    element.onmousedown = dragMouseDown;
+                    element.ontouchstart = dragMouseDown;
                 }
 
-                function dragMouseDown(e) {
-                    e = e || window.event;
-                    e.preventDefault();
+                function dragMouseDown(event) {
+                    event = event || window.event;
+                    event.preventDefault();
                     // get the mouse cursor position at startup:
-                    pos3 = e.clientX;
-                    pos4 = e.clientY;
+                    lastX = event.clientX;
+                    lastY = event.clientY;
                     document.onmouseup = closeDragElement;
                     document.ontouchend = closeDragElement;
                     // call a function whenever the cursor moves:
@@ -538,22 +539,28 @@ function Ktl($, appInfo) {
                     document.ontouchmove = elementDrag;
                 }
 
-                function elementDrag(e) {
-                    e = e || window.event;
-                    e.preventDefault();
+                function elementDrag(event) {
+                    event = event || window.event;
+                    event.preventDefault();
 
-                    var clientX = e.clientX || e.touches[0].clientX;
-                    var clientY = e.clientY || e.touches[0].clientY;
+                    const clientX = event.clientX || event.touches[0].clientX;
+                    const clientY = event.clientY || event.touches[0].clientY;
 
                     // calculate the new cursor position:
-                    pos1 = pos3 - clientX;
-                    pos2 = pos4 - clientY;
-                    pos3 = clientX;
-                    pos4 = clientY;
+                    const x = lastX - clientX;
+                    const y = lastY - clientY;
+                    lastX = clientX;
+                    lastY = clientY;
 
                     // set the element's new position:
-                    el.style.left = (el.offsetLeft - pos1) + "px";
-                    el.style.top = (el.offsetTop - pos2) + "px";
+                    const position = { 
+                        left: (element.offsetLeft - x), 
+                        top:(element.offsetTop - y)
+                    };
+                    element.style.left = position.left + "px";
+                    element.style.top =  position.top + "px";
+
+                    callback(position)
                 }
 
                 function closeDragElement() {
@@ -1384,17 +1391,26 @@ function Ktl($, appInfo) {
     var secureLs = null;
     this.storage = (function () {
         const COOKIE_DEFAULT_EXP_DAYS = 1;
-        var hasLocalStorage = typeof (Storage) !== 'undefined';
+        const hasLocalStorage = typeof (Storage) !== 'undefined';
 
         return {
             hasLocalStorage: function () {
                 return hasLocalStorage;
             },
 
+            appendItemJSON: function (key, value, ...args) {
+                const item = ktl.storage.getItemJSON(key, ...args);
+                ktl.storage.setItemJSON(key, { ...(item || []), ...value }, ...args);
+            },
+
+            setItemJSON: function (key, value, ...args) {
+                ktl.storage.lsSetItem(key, JSON.stringify(value), ...args);
+            },
+
             // Just specify key and func will prepend APP_ROOT_NAME.
             // Typically used for generic utility storage, like logging, custom filters, user preferences, etc.
-            lsSetItem: function (lsKey, data, noUserId = false, session = false, secure = false) {
-                if (!lsKey)
+            lsSetItem: function (key, data, noUserId = false, session = false, secure = false) {
+                if (!key)
                     return;
 
                 var userId = Knack.getUserAttributes().id;
@@ -1404,12 +1420,12 @@ function Ktl($, appInfo) {
                 if (hasLocalStorage) {
                     try {
                         if (secure) {
-                            secureLs.set(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId), data);
+                            secureLs.set(APP_ROOT_NAME + key + (noUserId ? '' : '_' + userId), data);
                         } else {
                             if (session)
-                                sessionStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId), data);
+                                sessionStorage.setItem(APP_ROOT_NAME + key + (noUserId ? '' : '_' + userId), data);
                             else
-                                localStorage.setItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId), data);
+                                localStorage.setItem(APP_ROOT_NAME + key + (noUserId ? '' : '_' + userId), data);
                         }
                     }
                     catch (e) {
@@ -1419,9 +1435,15 @@ function Ktl($, appInfo) {
                     alert('KEC_1005 - lsSetItem called without storage');
             },
 
+            getItemJSON: function(...args) {
+                const item = ktl.storage.lsGetItem(...args);
+                if (item)
+                    return JSON.parse(item);
+            },
+
             //Returns empty string if key doesn't exist.
-            lsGetItem: function (lsKey, noUserId = false, session = false, secure = false) {
-                if (!lsKey)
+            lsGetItem: function (key, noUserId = false, session = false, secure = false) {
+                if (!key)
                     return;
 
                 var userId = Knack.getUserAttributes().id;
@@ -1431,12 +1453,12 @@ function Ktl($, appInfo) {
                 var val = '';
                 if (hasLocalStorage) {
                     if (secure) {
-                        val = secureLs.get(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
+                        val = secureLs.get(APP_ROOT_NAME + key + (noUserId ? '' : '_' + userId));
                     } else {
                         if (session)
-                            val = sessionStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
+                            val = sessionStorage.getItem(APP_ROOT_NAME + key + (noUserId ? '' : '_' + userId));
                         else
-                            val = localStorage.getItem(APP_ROOT_NAME + lsKey + (noUserId ? '' : '_' + userId));
+                            val = localStorage.getItem(APP_ROOT_NAME + key + (noUserId ? '' : '_' + userId));
                     }
                 }
                 return val ? val : '';
@@ -8528,8 +8550,17 @@ function Ktl($, appInfo) {
                         devBtnsDiv.appendChild(devBtnsDivHeader);
 
                         document.body.appendChild(devBtnsDiv);
-                        ktl.core.enableDragElement(devBtnsDiv);
 
+                        const devToolStorageName = 'devToolBtns';
+                        ktl.core.enableDragElement(devBtnsDiv, debounce((position) => {
+                            ktl.storage.setItemJSON(devToolStorageName, position);
+                        }));
+                        
+                        const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
+                        if (savedPosition) {
+                            devBtnsDiv.style.left = savedPosition.left + 'px';
+                            devBtnsDiv.style.top = savedPosition.top + 'px';
+                        }
 
                         //Requires NodeJS and file server to run otherwise crashes.
                         if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
@@ -8661,7 +8692,15 @@ function Ktl($, appInfo) {
                             devToolSearchDiv.appendChild(devToolSearchHdr);
 
                             document.body.appendChild(devToolSearchDiv);
-                            ktl.core.enableDragElement(devToolSearchDiv);
+
+                            const devToolStorageName = 'devToolSearch';
+                            ktl.core.enableDragElement(devToolSearchDiv, debounce((position) => {ktl.storage.setItemJSON(devToolStorageName, position)}));
+
+                            const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
+                            if (savedPosition) {
+                                devToolSearchDiv.style.left = savedPosition.left+'px';
+                                devToolSearchDiv.style.top = savedPosition.top+'px';
+                            }
 
                             var paragraph = document.createElement('p');
                             paragraph.appendChild(document.createTextNode('Enter field_id, view_id, scene_id,\n'));
@@ -8773,11 +8812,15 @@ function Ktl($, appInfo) {
 
                                     if (kwResults) {
                                         if (!$('#resultWndTextId').length) {
+                                            const DEFAULT_TOP = 80;
+                                            const DEFAULT_LEFT = 80;
+                                            const DEFAULT_HEIGHT = window.innerHeight - 160;
+                                            const DEFAULT_WIDTH = window.innerWidth - 80;
 
                                             var resultWnd = document.createElement('div');
                                             resultWnd.setAttribute('id', 'resultWndId');
-                                            resultWnd.style.top = '80px';
-                                            resultWnd.style.left = '100px';
+                                            resultWnd.style.top = DEFAULT_TOP + 'px';
+                                            resultWnd.style.left = DEFAULT_LEFT + 'px';
                                             resultWnd.style['z-index'] = 15;
                                             resultWnd.classList.add('devBtnsDiv', 'devToolSearchDiv');
 
@@ -8793,10 +8836,41 @@ function Ktl($, appInfo) {
                                             resultWnd.appendChild(resultWndText);
 
                                             document.body.appendChild(resultWnd);
-                                            ktl.core.enableDragElement(resultWnd);
-                                        }
 
-                                        resultWndText.innerHTML = kwResults;
+                                            resultWndText.innerHTML = kwResults;
+                                            resultWndText.style.height = Math.min(resultWndText.clientHeight, DEFAULT_HEIGHT)+'px';
+                                            resultWndText.style.width = Math.min(resultWndText.clientWidth, DEFAULT_WIDTH)+'px';
+
+                                            const devToolStorageName = 'devToolSearchResult';
+                                            ktl.core.enableDragElement(resultWnd, debounce((position) => {
+                                                ktl.storage.appendItemJSON(devToolStorageName, {...position});
+                                            }));
+
+                                            const resizeObserver = new ResizeObserver(debounce((entries) => {
+                                                const entry = entries[0];
+                                                if (entry && entry.target.offsetWidth && entry.target.offsetWidth) {
+                                                    ktl.storage.appendItemJSON(devToolStorageName, {
+                                                        width: entry.target.offsetWidth, 
+                                                        height: entry.target.offsetHeight
+                                                    });
+                                                }
+                                            }));
+                                            resizeObserver.observe(resultWndText);
+                                            
+                                            const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
+                                            if (savedPosition) {
+                                                resultWnd.style.left = (savedPosition.left || DEFAULT_LEFT) + 'px';
+                                                resultWnd.style.top = (savedPosition.top || DEFAULT_TOP) + 'px';
+
+                                                if (savedPosition.height && savedPosition.width) {
+                                                    resultWndText.style.height = savedPosition.height + 'px';
+                                                    resultWndText.style.width = savedPosition.width + 'px';
+                                                }
+                                            }
+
+                                        } else {
+                                            resultWndText.innerHTML = kwResults;
+                                        }
                                     }
                                 } else {
                                     console.log('Not found');
