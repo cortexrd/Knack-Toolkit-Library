@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.10';
+    const KTL_VERSION = '0.15.11';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -286,7 +286,7 @@ function Ktl($, appInfo) {
         }
     };
 
-    $.fn.replaceClass = function(pFromClass, pToClass) {
+    $.fn.replaceClass = function (pFromClass, pToClass) {
         return this.removeClass(pFromClass).addClass(pToClass);
     };
 
@@ -513,7 +513,7 @@ function Ktl($, appInfo) {
                 }, delay);
             },
 
-            enableDragElement: function (element, callback = ()=>{}) {
+            enableDragElement: function (element, callback = () => { }) {
                 let lastX = 0, lastY = 0;
 
                 if (document.getElementById(element.id + "header")) {
@@ -553,12 +553,12 @@ function Ktl($, appInfo) {
                     lastY = clientY;
 
                     // set the element's new position:
-                    const position = { 
-                        left: (element.offsetLeft - x), 
-                        top:(element.offsetTop - y)
+                    const position = {
+                        left: (element.offsetLeft - x),
+                        top: (element.offsetTop - y)
                     };
                     element.style.left = position.left + "px";
-                    element.style.top =  position.top + "px";
+                    element.style.top = position.top + "px";
 
                     callback(position)
                 }
@@ -1168,9 +1168,9 @@ function Ktl($, appInfo) {
                 if (value.match(/[^$,.£€\ \d]/))
                     return NaN;
 
-                if (value && ['$' ,'£', '€'].includes(value[0]))
+                if (value && ['$', '£', '€'].includes(value[0]))
                     value = value.slice(1); // remove currency symbol
-                
+
                 value = value.replace(new RegExp("\\ ", 'g'), ''); //remove spaces
 
                 const commasCount = [...value.matchAll(new RegExp('\\,', 'g'))].length;
@@ -1185,7 +1185,7 @@ function Ktl($, appInfo) {
                 } else { // expecting thousand separated by comma without decimals
                     value = value.replace(new RegExp("\\,", 'g'), '');
                 }
-                
+
                 return parseFloat(value);
             },
 
@@ -1435,7 +1435,7 @@ function Ktl($, appInfo) {
                     alert('KEC_1005 - lsSetItem called without storage');
             },
 
-            getItemJSON: function(...args) {
+            getItemJSON: function (...args) {
                 const item = ktl.storage.lsGetItem(...args);
                 if (item)
                     return JSON.parse(item);
@@ -8555,7 +8555,7 @@ function Ktl($, appInfo) {
                         ktl.core.enableDragElement(devBtnsDiv, debounce((position) => {
                             ktl.storage.setItemJSON(devToolStorageName, position);
                         }));
-                        
+
                         const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
                         if (savedPosition) {
                             devBtnsDiv.style.left = savedPosition.left + 'px';
@@ -8694,12 +8694,12 @@ function Ktl($, appInfo) {
                             document.body.appendChild(devToolSearchDiv);
 
                             const devToolStorageName = 'devToolSearch';
-                            ktl.core.enableDragElement(devToolSearchDiv, debounce((position) => {ktl.storage.setItemJSON(devToolStorageName, position)}));
+                            ktl.core.enableDragElement(devToolSearchDiv, debounce((position) => { ktl.storage.setItemJSON(devToolStorageName, position) }));
 
                             const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
                             if (savedPosition) {
-                                devToolSearchDiv.style.left = savedPosition.left+'px';
-                                devToolSearchDiv.style.top = savedPosition.top+'px';
+                                devToolSearchDiv.style.left = savedPosition.left + 'px';
+                                devToolSearchDiv.style.top = savedPosition.top + 'px';
                             }
 
                             var paragraph = document.createElement('p');
@@ -8838,25 +8838,25 @@ function Ktl($, appInfo) {
                                             document.body.appendChild(resultWnd);
 
                                             resultWndText.innerHTML = kwResults;
-                                            resultWndText.style.height = Math.min(resultWndText.clientHeight, DEFAULT_HEIGHT)+'px';
-                                            resultWndText.style.width = Math.min(resultWndText.clientWidth, DEFAULT_WIDTH)+'px';
+                                            resultWndText.style.height = Math.min(resultWndText.clientHeight, DEFAULT_HEIGHT) + 'px';
+                                            resultWndText.style.width = Math.min(resultWndText.clientWidth, DEFAULT_WIDTH) + 'px';
 
                                             const devToolStorageName = 'devToolSearchResult';
                                             ktl.core.enableDragElement(resultWnd, debounce((position) => {
-                                                ktl.storage.appendItemJSON(devToolStorageName, {...position});
+                                                ktl.storage.appendItemJSON(devToolStorageName, { ...position });
                                             }));
 
                                             const resizeObserver = new ResizeObserver(debounce((entries) => {
                                                 const entry = entries[0];
                                                 if (entry && entry.target.offsetWidth && entry.target.offsetWidth) {
                                                     ktl.storage.appendItemJSON(devToolStorageName, {
-                                                        width: entry.target.offsetWidth, 
+                                                        width: entry.target.offsetWidth,
                                                         height: entry.target.offsetHeight
                                                     });
                                                 }
                                             }));
                                             resizeObserver.observe(resultWndText);
-                                            
+
                                             const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
                                             if (savedPosition) {
                                                 resultWnd.style.left = (savedPosition.left || DEFAULT_LEFT) + 'px';
@@ -11713,7 +11713,7 @@ function Ktl($, appInfo) {
 
                 if (field && field.attributes.type === 'rich_text') {
                     let content = $(element);
-                    while(content.children().length === 1 && content.children().first().is('span')) {
+                    while (content.children().length === 1 && content.children().first().is('span')) {
                         content = content.children();
                     }
                     text = content.html().trim();
@@ -11721,7 +11721,7 @@ function Ktl($, appInfo) {
 
                 const numeric = ktl.core.parseNumericValue(text);
                 text = numeric || text;
-            
+
                 navigator.clipboard.writeText(text.toString().trim())
                     .catch(() => ktl.core.timedPopup('Unable to copy', 'error', 2000))
                     .then(() => ktl.core.timedPopup('Copied to clipboard', 'success', 1000));
@@ -11917,13 +11917,13 @@ function Ktl($, appInfo) {
 
                 const spans = $(element).find('span');
                 const linkedRecords = $.map(spans, (s) => {
-                        return { id: $(s).attr('class'), label:$(s).text()}
-                    })
+                    return { id: $(s).attr('class'), label: $(s).text() }
+                })
                     .concat($.map(spans, (s) => {
-                        return { id: $(s).attr('id'), label:$(s).text()}
+                        return { id: $(s).attr('id'), label: $(s).text() }
                     }));
 
-                linkedRecords.filter((record) => record.id && !record.id.includes(' ') && !record.id.includes('.') && record.id.length === KNACK_RECORD_LENGTH).forEach(function(record) {
+                linkedRecords.filter((record) => record.id && !record.id.includes(' ') && !record.id.includes('.') && record.id.length === KNACK_RECORD_LENGTH).forEach(function (record) {
                     const field = Knack.objects.getField(fieldId);
 
                     const linkedObject = (field.attributes.relationship) ? field.attributes.relationship.object : field.attributes.object_key;
@@ -11977,7 +11977,7 @@ function Ktl($, appInfo) {
                 //Let the Ctrl+Shift keys do their default job during inline editing.
                 //Useful to snap-select at word boundaries with arrow keys.
                 const inlineEditing = !!($('#cell-editor, .redactor-editor').length);
-                if (inlineEditing) 
+                if (inlineEditing)
                     return;
 
                 $(openedPopOverTarget).removeClass("active").removeData("popover");
