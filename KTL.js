@@ -1253,47 +1253,12 @@ function Ktl($, appInfo) {
 
                 if (value === '') return '0'; //Blanks are considered as zero, for enforceNumeric.
 
-                //Remove all currency symbols.
-                if (fieldAttributes.format) {
-                    const formatSymbol = fieldAttributes.format.format[0];
-                    if (formatSymbol)
-                        value = value.replace(new RegExp("\\" + formatSymbol, 'g'), '');
+                numericValue = ktl.core.parseNumericValue(value);
 
-                    if (fieldAttributes.format) {
-                        //We can safely remove the 1000s separators.
-                        var thMk = fieldAttributes.format.mark_thousands;
-                        if (thMk) {
-                            if (thMk === 'comma')
-                                thMk = ',';
-                            else if (thMk === 'period')
-                                thMk = '.';
-                            else
-                                thMk = '';
-
-                            if (thMk)
-                                value = value.replace(new RegExp("\\" + thMk, 'g'), '');
-                        }
-
-                        //For decimal, we must replace any comma by a dot.
-                        var decMk = fieldAttributes.format.mark_decimal;
-                        if (decMk) {
-                            if (decMk === 'comma')
-                                value = value.replace(/,/g, '.');
-                        }
-                    }
-
-                    //TODO: Handle custom format's pre and post.
-                }
-
-                //Check if the value is a valid number with decimal or comma separator.
-                if (!/^[-+]?(?:\d{1,3})?(?:([.,])\d{3})*\1?\d*(?:\.\d+)?$/.test(value))
+                if (isNaN(numericValue)) 
                     return;
 
-                numericValue = parseFloat(value);
-                if (!isNaN(numericValue)) {
-                    return numericValue.toString();
-                } else
-                    return;
+                return numericValue.toString();
             },
 
             extractKeywordsListByType: function (viewOrFieldId, kwType) {
