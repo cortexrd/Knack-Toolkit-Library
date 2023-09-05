@@ -7860,25 +7860,27 @@ function Ktl($, appInfo) {
 
                     const operator = conditions[0] || '';
                     const value = conditions[1] || '';
-                    const view = conditions[2] || '';
-                    const field = conditions[3] || '';
+                    const field = conditions[2] || '';
+                    const view = conditions[3] || '';
 
                     const viewId = (view.startsWith('view_'))? view : ktl.scenes.findViewWithTitle(view);
 
-                    if (view.startsWith('$(')) {
-                        const selector = ktl.core.extractJQuerySelector(view);
+                    if (field.startsWith('$(')) {
+                        const selector = ktl.core.extractJQuerySelector(field);
                         ktl.core.waitSelector(selector, 10000).then(() => {
                             const fieldValue = $(selector)[0].textContent.trim();
                             if (!fieldValue || !ktlCompare(fieldValue, operator, value))
                                 unhide();
 
                             if ($(selector).is(':input')) {
-                                $(selector).off('keyup.ktlHc').on('keyup.ktlHc', (event) => {
+                                const update = (event) => {
                                     if (ktlCompare(event.target.value, operator, value))
                                         hide();
                                     else
                                         unhide();
-                                });
+                                }
+                                $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
+                                $(selector).one('change', update);
                             }
                         }).catch(() => {
                             unhide();
@@ -7911,7 +7913,7 @@ function Ktl($, appInfo) {
                         if (!selector) {
                             unhide();
                         } else {
-                                                        ktl.core.waitSelector(selector, 10000).then(() => {
+                            ktl.core.waitSelector(selector, 10000).then(() => {
                                 let fieldValue;
                                 if (ktl.views.getViewType(viewId) === 'form') {
                                     fieldValue = $(selector).val();
