@@ -52,7 +52,7 @@ function Ktl($, appInfo) {
                     firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                     if (firstKeywordIdx >= 0) {
                         cleanedUpTitle = title.substring(0, firstKeywordIdx);
-                        parseKeywords(title.substring(firstKeywordIdx).trim(), viewKwObj);
+                        extractKeywords(title.substring(firstKeywordIdx).trim(), viewKwObj);
                     }
                 }
 
@@ -62,7 +62,7 @@ function Ktl($, appInfo) {
                     firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                     if (firstKeywordIdx >= 0) {
                         cleanedUpDescription = description.substring(0, firstKeywordIdx);
-                        parseKeywords(description.substring(firstKeywordIdx).trim(), viewKwObj);
+                        extractKeywords(description.substring(firstKeywordIdx).trim(), viewKwObj);
                     }
                 }
 
@@ -91,9 +91,8 @@ function Ktl($, appInfo) {
             const field = Knack.fields[fieldId];
             var fieldDesc = field.attributes && field.attributes.meta && field.attributes.meta.description;
             if (fieldDesc) {
-                var fieldKwObj = {};
                 fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, ' ').replace(/ {2,}/g, ' ').trim();
-                parseKeywords(fieldDesc, fieldKwObj);
+                var fieldKwObj = extractKeywords(fieldDesc);
                 if (!$.isEmptyObject(fieldKwObj))
                     ktlKeywords[fieldId] = fieldKwObj;
             }
@@ -104,72 +103,65 @@ function Ktl($, appInfo) {
     //console.log(`KTL parser took ${Math.trunc(window.ktlParserEnd - window.ktlParserStart)} ms`);
 
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
-    function parseKeywords(strToParse, keywords) {
-        var kwAr = [];
-        if (strToParse && strToParse !== '') {
-            var kwAr = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
-            kwAr.splice(0, 1);
-            for (var i = 0; i < kwAr.length; i++) {
-                kwAr[i] = kwAr[i].trim().replace(/\u200B/g, ''); //u200B is a "zero width space".  Caught that once during a copy/paste!
-                if (kwAr[i].startsWith('_')) {
-                    const kw = kwAr[i].toLowerCase();
-                    if (!keywords[kw])
-                        keywords[kw] = [];
+    function extractKeywords(strToParse = '', keywords = {}) {
 
-                    if (i <= kwAr.length && kwAr[i + 1].startsWith('='))
-                        keywords[kw].push(parseParams(kwAr[i + 1].slice(1), keywords));
-                }
+        const strSplit = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
+        strSplit.splice(0, 1);
+        for (let i = 0; i < strSplit.length; i++) {
+            strSplit[i] = strSplit[i].trim().replace(/\u200B/g, ''); //u200B is a "zero width space".  Caught that once during a copy/paste!
+            if (strSplit[i].startsWith('_')) {
+                const key = strSplit[i].toLowerCase();
+                if (!keywords[key])
+                    keywords[key] = [];
+
+                if (i <= strSplit.length && strSplit[i + 1].startsWith('='))
+                    keywords[key].push(parseParameters(strSplit[i + 1].slice(1)));
             }
         }
 
-        //Parser step 3 : Extract all sets of parameters for a given keyword - those after the equal sign and separated by commas.
-        function parseParams(kwString, keywords) {
-            var paramStr = kwString; //Keep a copy of the original parameters.  Can be useful some day to have it in one string instead of an array.
-            var params = [];
-            var options = {};
-
-            if (!kwString.startsWith('['))
-                kwString = '[' + kwString + ']';
-
-            var paramGroups = extractKeywordParamGroups(kwString);
-            if (paramGroups.length)
-                parseParamsGroups(paramGroups, params, options);
-
-            var kwObj = { params: params };
-            paramStr && (kwObj.paramStr = paramStr);
-            if (!$.isEmptyObject(options))
-                kwObj.options = options;
-
-            return kwObj;
-        }
+        return keywords;
     }
 
-    function extractKeywordParamGroups(kwGroups) {
-        var paramGroups = [];
-        var cleanedStr = kwGroups.trim();
-        cleanedStr = cleanedStr.replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); //Remove spaces around square brackets.
-        var elements = cleanedStr.split('],[');
-        elements.forEach(function (element) {
-            var cleanedElement = element.replace('[', '').replace(']', '');
-            paramGroups.push(cleanedElement);
-        });
+    //Parser step 3 : Parse all sets of parameters for a given keyword - those after the equal sign and separated by commas.
+    function parseParameters(keywordString = '') {
+        let paramStr = keywordString;
+        let params = [];
+        let options = {};
 
-        return paramGroups;
+        if (!paramStr.startsWith('['))
+            paramStr = '[' + paramStr + ']';
+
+        const paramGroups = parseKeywordParamGroups(paramStr) || [];
+        extractParamsAndOptions(paramGroups, params, options);
+
+        const parameters = { params: params };
+
+        if (paramStr)
+            parameters.paramStr = paramStr;
+
+        if (!$.isEmptyObject(options))
+            parameters.options = options;
+
+        return parameters;
     }
 
-    function parseParamsGroups(paramGroups, params, options) {
-        for (var i = 0; i < paramGroups.length; i++) {
-            var grp = paramGroups[i];
-            const firstParam = grp.split(',')[0].trim();
-            if (['ktlRoles', 'ktlRefVal', 'ktlTarget'].includes(firstParam)) {
-                var pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces.
-                options[firstParam] = grp.match(pattern)[1].trim();
+    function parseKeywordParamGroups(kwGroups = '') {
+        const cleanedStr = kwGroups.trim().replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); //Remove spaces around square brackets.
+        const elements = cleanedStr.split('],[');
+
+        return elements.map(element => element.replace('[', '').replace(']', ''));
+    }
+
+    function extractParamsAndOptions(paramGroups = [], params = {}, options = {}) {
+        paramGroups.forEach(group => {
+            const firstParam = group.split(',')[0].trim();
+            if (['ktlRoles', 'ktlRefVal', 'ktlTarget', 'ktlCond'].includes(firstParam)) {
+                const pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces.
+                options[firstParam] = group.match(pattern)[1].trim();
             } else {
-                var paramsAr = grp.split(',');
-                paramsAr.forEach((el, idx) => { paramsAr[idx] = el.trim(); });
-                params.push(paramsAr);
+                params.push(group.split(',').map(param => param.trim()));
             }
-        }
+        });
     }
 
 
@@ -199,7 +191,8 @@ function Ktl($, appInfo) {
                             if (viewId && mutRec.target.localName === 'tbody') {
                                 var keywords = ktlKeywords[viewId];
                                 if (keywords) {
-                                    (keywords._hc || keywords._rc) && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
+                                    keywords._hc && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
+                                    keywords._rc && ktl.views.removeColumns(Knack.views[viewId].model.view, keywords);
                                     keywords._km && ktl.core.kioskMode(true);
                                 }
                             }
@@ -1103,7 +1096,7 @@ function Ktl($, appInfo) {
                         if (selectorViewId)
                             viewId = selectorViewId[0];
                         else if (selectorArray.length >= 2) {
-                            viewId = ktl.scenes.findViewWithTitle(selectorArray[1]) || viewId;
+                            viewId = ktl.scenes.findViewWithTitle(selectorArray[1]);
                         }
 
                         let fieldStr = selector.match(/field_\d+/);
@@ -1261,12 +1254,12 @@ function Ktl($, appInfo) {
                 return numericValue.toString();
             },
 
-            extractKeywordsListByType: function (viewOrFieldId, kwType) {
-                if (!viewOrFieldId || !kwType) return [];
+            getKeywordsByType: function (viewOrFieldId, type) {
+                if (!viewOrFieldId || !type) return [];
 
                 var allKwInstancesOfType = ktlKeywords[viewOrFieldId];
-                if (allKwInstancesOfType && allKwInstancesOfType[kwType])
-                    return allKwInstancesOfType[kwType];
+                if (allKwInstancesOfType && allKwInstancesOfType[type])
+                    return allKwInstancesOfType[type];
 
                 return [];
             },
@@ -2424,9 +2417,8 @@ function Ktl($, appInfo) {
                 if (!fieldId) return;
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 if (fieldDesc) {
-                    var keywords = {};
                     fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, ' ').replace(/ {2,}/g, ' ').trim();
-                    parseKeywords(fieldDesc, keywords);
+                    var keywords = extractKeywords(fieldDesc);
                     if (!$.isEmptyObject(keywords))
                         fieldKeywords[fieldId] = keywords;
                 }
@@ -4970,7 +4962,8 @@ function Ktl($, appInfo) {
                     keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
                     keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
                     keywords._nf && disableFilterOnFields(view, keywords);
-                    (keywords._hc || keywords._rc) && ktl.views.hideColumns(view, keywords);
+                    keywords._hc && ktl.views.hideColumns(view, keywords);
+                    keywords._rc && ktl.views.removeColumns(view, keywords);
                     keywords._dr && numDisplayedRecords(view, keywords);
                     keywords._nsg && noSortingOnGrid(view.key, keywords);
                     keywords._hf && hideFields(view.key, keywords);
@@ -5329,7 +5322,7 @@ function Ktl($, appInfo) {
                 return;
 
             //Begin with View's _cfv.
-            ktl.core.extractKeywordsListByType(viewId, CFV_KEYWORD).forEach(execKw);
+            ktl.core.getKeywordsByType(viewId, CFV_KEYWORD).forEach(execKw);
 
             //Then end with fields _cfv, for precedence.
             colorizeFromFieldKeyword();
@@ -5366,7 +5359,7 @@ function Ktl($, appInfo) {
                             && fieldKeywords[fieldId]
                             && fieldKeywords[fieldId][CFV_KEYWORD]
                             && fieldKeywords[fieldId][CFV_KEYWORD].length) {
-                            ktl.core.extractKeywordsListByType(fieldId, CFV_KEYWORD).forEach((keyword) => {
+                            ktl.core.getKeywordsByType(fieldId, CFV_KEYWORD).forEach((keyword) => {
                                 if (ktl.core.hasRoleAccess(keyword.options)) {
                                     cfvScanGroups([fieldId], keyword.params, keyword.options);
                                 }
@@ -5545,41 +5538,11 @@ function Ktl($, appInfo) {
                             value = valSel[0].textContent.trim();
                     }
 
-                    const numCompareWith = Number(value);
-                    const numCellValue = Number(cellText);
-
                     //TODO: Case-sensitivy: make it configurable, but app-wide or per keyword...?
                     cellText = cellText && cellText.toLowerCase();
                     value = value.toLowerCase();
 
-                    var conditionMatches = false;
-                    if ((operator === 'is' || operator === 'eq') && cellText === value)
-                        conditionMatches = true;
-                    else if ((operator === 'not' || operator === 'neq') && cellText !== value)
-                        conditionMatches = true;
-                    else if (operator === 'has' && cellText && cellText.includes(value))
-                        conditionMatches = true;
-                    else if (operator === 'sw' && cellText && cellText.startsWith(value))
-                        conditionMatches = true;
-                    else if (operator === 'ew' && cellText && cellText.endsWith(value))
-                        conditionMatches = true;
-                    else if (!isNaN(numCompareWith) && !isNaN(numCellValue)) {
-                        //All numeric comparisons here.
-                        if (operator === 'equ' && numCellValue === numCompareWith)
-                            conditionMatches = true;
-                        else if (operator === 'lt' && numCellValue < numCompareWith)
-                            conditionMatches = true;
-                        else if (operator === 'lte' && numCellValue <= numCompareWith)
-                            conditionMatches = true;
-                        else if (operator === 'gt' && numCellValue > numCompareWith)
-                            conditionMatches = true;
-                        else if (operator === 'gte' && numCellValue >= numCompareWith)
-                            conditionMatches = true;
-                    }
-
-                    //TODO: Add support for date and time comparisons.
-
-                    if (!conditionMatches) return;
+                    if (!ktlCompare(cellText, operator, value)) return;
 
                     var fgColor = parameter[3];
 
@@ -6034,7 +5997,7 @@ function Ktl($, appInfo) {
             const kw = '_hf';
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+                const kwList = ktl.core.getKeywordsByType(viewId, kw);
                 for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
                     execKw(kwList[kwIdx]);
                 }
@@ -7065,6 +7028,151 @@ function Ktl($, appInfo) {
             },
 
             /*//////////////////////////////////////////////////////////////////
+            Hides any table's columns.
+
+            Input parameters:
+                - viewId: must be a view.key string, ex: 'view_123'
+                - fields: must be an array of strings of field ids.
+                - headers: must be an array of strings of column headers.
+            */
+            //////////////////////////////////////////////////////////////////
+            hideTableColumns: function (viewId = '', fields = [], headers = []) {
+                if (!viewId) {
+                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
+                    return;
+                }
+
+                if (!fields.length && !headers.length)
+                    return;
+
+                const view = Knack.views[viewId];
+                view.model.view.columns.forEach(col => {
+                    const header = col.header.trim();
+                    if (headers.includes(header) || fields.includes(col.id)) {
+                        const thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
+                        if (thead.length) {
+                            var cellIndex = thead[0].cellIndex;
+                            thead[0].classList.add('ktlDisplayNone');
+                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').addClass('ktlDisplayNone');
+                        }
+                    }
+                });
+
+                ktl.views.fixTableRowsAlignment(viewId);
+            },
+
+            /*//////////////////////////////////////////////////////////////////
+            Unhides any table's columns.
+
+            Input parameters:
+                - viewId: must be a view.key string, ex: 'view_123'
+                - fields: must be an array of strings of field ids.
+                - headers: must be an array of strings of column headers.
+            */
+            //////////////////////////////////////////////////////////////////
+            unhideTableColumns: function (viewId = '', fields = [], headers = []) {
+                if (!viewId) {
+                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
+                    return;
+                }
+
+                if (!fields.length && !headers.length)
+                    return;
+
+                const view = Knack.views[viewId];
+                view.model.view.columns.forEach(col => {
+                    const header = col.header.trim();
+                    if (headers.includes(header) || fields.includes(col.id)) {
+                        const thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
+                        if (thead.length) {
+                            var cellIndex = thead[0].cellIndex;
+                            thead[0].classList.remove('ktlDisplayNone');
+                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').removeClass('ktlDisplayNone');
+                        }
+                    }
+                });
+
+                ktl.views.fixTableRowsAlignment(viewId);
+            },
+
+            /*//////////////////////////////////////////////////////////////////
+            Removes any table's columns, including those with Action, Edit and Delete.
+
+            Input parameters:
+                - viewId: must be a view.key string, ex: 'view_123'
+                - fields: must be an array of strings of field ids.
+                - headers: must be an array of strings of column headers.
+            */
+            //////////////////////////////////////////////////////////////////
+            removeTableColumns: function (viewId = '', fields = [], headers = []) {
+                if (typeof fields === "boolean")
+                    return ktl.views.removeTableColumnsDeprecated(...arguments);
+
+                if (!viewId) {
+                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
+                    return;
+                }
+
+                if (!fields.length && !headers.length)
+                    return;
+
+                const view = Knack.views[viewId];
+                const columns = view.model.view.columns;
+                for (var i = columns.length - 1; i >= 0; i--) {
+                    var column = columns[i];
+                    var header = column.header.trim();
+                    if (headers.includes(header) || fields.includes(column.id)) {
+                        var thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
+                        if (thead.length) {
+                            var cellIndex = thead[0].cellIndex;
+                            thead.remove();
+                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').remove();
+                            columns.splice(i, 1);
+                        }
+                    }
+                }
+
+                ktl.views.fixTableRowsAlignment(viewId);
+            },
+
+            /*//////////////////////////////////////////////////////////////////
+            Removes any table's columns by index, including those with Action, Edit and Delete.
+
+            Input parameters:
+                - viewId: must be a view.key string, ex: 'view_123'
+                - columnsArray: must be an array of 1-based integers, ex: [5, 2, 1] to remove 1st, 2nd and 5th columns.  Order MUST be decreasing.
+            */
+            //////////////////////////////////////////////////////////////////
+            removeTableColumnsByIndex: function (viewId = '', columnIndexes = []) {
+                if (!viewId) {
+                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
+                    return;
+                }
+
+                if (!columnIndexes.length)
+                    return;
+
+                const view = Knack.views[viewId];
+                const columns = view.model.view.columns;
+                for (var i = columns.length - 1; i >= 0; i--) {
+                    var col = columns[i];
+                    var header = col.header.trim();
+                    if (columnIndexes.includes(i + 1)) {
+                        var thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
+                        if (thead.length) {
+                            var cellIndex = thead[0].cellIndex;
+                            thead.remove();
+                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').remove();
+                            columns.splice(i, 1);
+                        }
+                    }
+                }
+
+                ktl.views.fixTableRowsAlignment(viewId);
+            },
+
+            /*//////////////////////////////////////////////////////////////////
+            !!! Deprecated
             Removes or hides any table's columns, including those
             with Action, Edit and Delete.
 
@@ -7078,7 +7186,8 @@ function Ktl($, appInfo) {
                 You may use both arrays at same time, but columnsArray has precedence.
             */
             //////////////////////////////////////////////////////////////////
-            removeTableColumns: function (viewId = '', remove = true, columnsAr = [], fieldsAr = [], headersAr = []) {
+            removeTableColumnsDeprecated: function (viewId = '', remove = true, columnsAr = [], fieldsAr = [], headersAr = []) {
+                console.warn('Deprecated function call. Update to use removeTableColumns(viewId, fields, headers or hideTableColumns(viewId, fields, headers) or removeTableColumnsByIndex(viewId, columnIndexes)')
                 if (!viewId ||
                     ((fieldsAr && fieldsAr.length === 0) && (columnsAr && columnsAr.length === 0)) && (headersAr && headersAr.length === 0)) {
                     ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
@@ -7654,55 +7763,143 @@ function Ktl($, appInfo) {
                 });
             },
 
-            hideColumns: function (view = '', keywords = {}) {
-                const viewId = view.key;
-                if (!viewId || (viewId !== 'table' && view.type === 'search')) return;
+            removeColumns: function (view = {}, keywords = {}) {
+                const KEYWORD_NAME = '_rc';
 
-                var kw = '_hc';
-                if (keywords._rc)
-                    kw = '_rc';
+                if (!view.key 
+                    || (view.key !== 'table' && view.type === 'search')
+                    || !keywords[KEYWORD_NAME]) return;
 
-                if (!keywords[kw]) return;
+                const model = (Knack.views[view.key] && Knack.views[view.key].model);
+                const columns = model.view.columns;
 
-                const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
-                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                    execKw(kwList[kwIdx]);
-                }
+                ktl.core.getKeywordsByType(view.key, KEYWORD_NAME).forEach(keyword => {
+                    
+                    if (!ktl.core.hasRoleAccess(keyword.options)) return;
 
-                function execKw(kwInstance) {
-                    const options = kwInstance.options;
-                    if (!ktl.core.hasRoleAccess(options)) return;
+                    const headers = columns.map(col => col.header.trim()).filter(header => {
+                        return keyword.params[0].includes(header);
+                    });
+                    
+                    ktl.views.removeTableColumns(view.key, [], headers);
+                });
+            },
 
-                    var model = (Knack.views[view.key] && Knack.views[view.key].model);
-                    var columns = model.view.columns;
-                    var hiddenFieldsAr = [];
-                    var hiddenHeadersAr = [];
-                    var removedFieldsAr = [];
-                    var removedHeadersAr = [];
-                    var header = '';
-                    var fieldId = '';
+            hideColumns: function (view = {}, keywords = {}) {
+                const KEYWORD_NAME = '_hc';
 
-                    columns.forEach(col => {
-                        header = col.header.trim();
-                        if (kwInstance.params[0].includes(header)) {
-                            if (kw === '_hc')
-                                hiddenHeadersAr.push(header);
-                            else
-                                removedHeadersAr.push(header);
+                if (!view.key 
+                    || (view.key !== 'table' && view.type === 'search')
+                    || !keywords[KEYWORD_NAME]) return;
+
+                const model = (Knack.views[view.key] && Knack.views[view.key].model);
+                const columns = model.view.columns;
+
+                ktl.core.getKeywordsByType(view.key, KEYWORD_NAME).forEach(keyword => {
+                    if (!ktl.core.hasRoleAccess(keyword.options)) 
+                        return;
+
+                    const headers = columns.map(col => col.header.trim()).filter(header => {
+                        return keyword.params[0].includes(header);
+                    });
+
+                    const fields = columns.map(col => (col.id || (col.field && col.field.key))).filter(fieldId => {
+                        return fieldId && keyword.params[0].includes(fieldId);
+                    });
+
+                    const hide = () => ktl.views.hideTableColumns(view.key, fields, headers);
+
+                    const unhide = () => ktl.views.unhideTableColumns(view.key, fields, headers);
+
+                    if (fields.length || headers.length)
+                        validateKtlCond(keyword.options, hide, unhide);
+                });
+
+                function validateKtlCond (options = {}, hide, unhide) {
+                    hide();
+
+                    if (!options.ktlCond)
+                        return;
+
+                    const conditions = options.ktlCond.replace(']','').split(',').map(e => e.trim());
+
+                    const operator = conditions[0] || '';
+                    const value = conditions[1] || '';
+                    const field = conditions[2] || '';
+                    const view = conditions[3] || '';
+
+                    const viewId = (view.startsWith('view_'))? view : ktl.scenes.findViewWithTitle(view);
+
+                    if (field.startsWith('$(')) {
+                        const selector = ktl.core.extractJQuerySelector(field);
+                        ktl.core.waitSelector(selector, 10000).then(() => {
+                            const fieldValue = $(selector)[0].textContent.trim();
+                            if (!fieldValue || !ktlCompare(fieldValue, operator, value))
+                                unhide();
+
+                            if ($(selector).is(':input')) {
+                                const update = (event) => {
+                                    if (ktlCompare(event.target.value, operator, value))
+                                        hide();
+                                    else
+                                        unhide();
+                                }
+                                $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
+                                $(selector).one('change', update);
+                            }
+                        }).catch(() => {
+                            unhide();
+                        });
+                        return;
+                    }
+
+                    let fieldId = (field.startsWith('field_'))? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+
+                    if (!fieldId) {
+                        $(document).one(`knack-view-render.${viewId}`, () => {
+                            fieldId = (field.startsWith('field_'))? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                            apply();
+                        })
+                    } else 
+                        apply();
+
+                    function apply() {
+                        let selector = '';
+                        if (viewId && fieldId) {
+                            const viewType = ktl.views.getViewType(viewId);
+                            selector = '#' + viewId;
+                            if (viewType === 'details')
+                                selector += ' .' + fieldId + ' .kn-detail-body';
+                            else if (viewType === 'form') {
+                                selector += ' input#' + fieldId;
+                            }
                         }
 
-                        fieldId = (col.id || (col.field && col.field.key));
-                        if (fieldId) {
-                            if (kwInstance.params[0].includes(fieldId))
-                                hiddenFieldsAr.push(fieldId);
+                        if (!selector) {
+                            unhide();
+                        } else {
+                            ktl.core.waitSelector(selector, 10000).then(() => {
+                                let fieldValue;
+                                if (ktl.views.getViewType(viewId) === 'form') {
+                                    fieldValue = $(selector).val();
+                                    $(selector).off('keyup.ktlHc').on('keyup.ktlHc', (event) => {
+                                        if (ktlCompare(event.target.value, operator, value))
+                                            hide();
+                                        else
+                                            unhide();
+                                    })
+                                }  else {
+                                    fieldValue = $(selector)[0].textContent.trim();
+                                }
+                                
+                                if (!fieldValue || !ktlCompare(fieldValue, operator, value))
+                                    unhide();
+                            }).catch(() => {
+                                unhide();
+                            });
                         }
-                    })
+                    }
 
-                    if (hiddenFieldsAr.length || hiddenHeadersAr.length)
-                        ktl.views.removeTableColumns(view.key, false, [], hiddenFieldsAr, hiddenHeadersAr);
-
-                    if (removedFieldsAr.length || removedHeadersAr.length)
-                        ktl.views.removeTableColumns(view.key, true, [], removedFieldsAr, removedHeadersAr);
                 }
             },
 
@@ -7754,7 +7951,7 @@ function Ktl($, appInfo) {
                 const kw = '_cls';
                 if (!viewId || !keywords[kw]) return;
 
-                const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+                const kwList = ktl.core.getKeywordsByType(viewId, kw);
                 kwList.forEach(kwInstance => { execKw(kwInstance); })
 
                 function execKw(kwInstance) {
@@ -7781,7 +7978,7 @@ function Ktl($, appInfo) {
                 const kw = '_style';
                 if (!viewId || !keywords[kw]) return;
 
-                const kwList = ktl.core.extractKeywordsListByType(viewId, kw);
+                const kwList = ktl.core.getKeywordsByType(viewId, kw);
                 kwList.forEach(kwInstance => { execKw(kwInstance); })
 
                 function execKw(kwInstance) {
@@ -11988,14 +12185,14 @@ function Ktl($, appInfo) {
             $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
         }
 
-        $(document).on('mouseenter.KtlPopOver', '.knTable th', showPopOver.bind(this, tableHeadOptions));
-        $(document).on('mouseenter.KtlPopOver', '.knTable td', showPopOver.bind(this, tableDataOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-table .view-header', showPopOver.bind(this, viewOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-view', showPopOver.bind(this, viewOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-detail-label', showPopOver.bind(this, listDetailLabelOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-detail-body', showPopOver.bind(this, listDetailBodyOptions));
-        $(document).on('mouseenter.KtlPopOver', '.kn-form .kn-input', showPopOver.bind(this, formInputOptions));
-        $(document).on('mouseleave.KtlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body, .kn-form .kn-input', function hidePopOver(event) {
+        $(document).on('mouseenter.ktlPopOver', '.knTable th', showPopOver.bind(this, tableHeadOptions));
+        $(document).on('mouseenter.ktlPopOver', '.knTable td', showPopOver.bind(this, tableDataOptions));
+        $(document).on('mouseenter.ktlPopOver', '.kn-table .view-header', showPopOver.bind(this, viewOptions));
+        $(document).on('mouseenter.ktlPopOver', '.kn-view', showPopOver.bind(this, viewOptions));
+        $(document).on('mouseenter.ktlPopOver', '.kn-detail-label', showPopOver.bind(this, listDetailLabelOptions));
+        $(document).on('mouseenter.ktlPopOver', '.kn-detail-body', showPopOver.bind(this, listDetailBodyOptions));
+        $(document).on('mouseenter.ktlPopOver', '.kn-form .kn-input', showPopOver.bind(this, formInputOptions));
+        $(document).on('mouseleave.ktlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body, .kn-form .kn-input', function hidePopOver(event) {
             if (event.shiftKey && event.ctrlKey) {
                 closePopOver(event.currentTarget);
             }
@@ -12003,7 +12200,7 @@ function Ktl($, appInfo) {
 
         $(document).on('keydown', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover, .kn-form .kn-input:hover').last().trigger('mouseenter.KtlPopOver', true);
+                $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover, .kn-form .kn-input:hover').last().trigger('mouseenter.ktlPopOver', true);
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
@@ -12043,6 +12240,38 @@ window.ktlkw = function (param) {
 
 window.ktlpause = function () {
     ktl.views.autoRefresh(false);
+}
+
+function ktlCompare(a, operator, b) {
+    //TODO: Add support for date and time comparisons.
+    const numA = Number(a);
+    const numB = Number(b);
+
+    let conditionMatches = false;
+    if ((operator === 'is' || operator === 'eq') && a === b)
+        conditionMatches = true;
+    else if ((operator === 'not' || operator === 'neq') && a !== b)
+        conditionMatches = true;
+    else if (operator === 'has' && a && a.includes(b))
+        conditionMatches = true;
+    else if (operator === 'sw' && a && a.startsWith(b))
+        conditionMatches = true;
+    else if (operator === 'ew' && a && a.endsWith(b))
+        conditionMatches = true;
+    else if (!isNaN(numA) && !isNaN(numB)) { //All numeric comparisons here.
+        if (operator === 'equ' && numB === numA)
+            conditionMatches = true;
+        else if (operator === 'lt' && numA < numB)
+            conditionMatches = true;
+        else if (operator === 'lte' && numA <= numB)
+            conditionMatches = true;
+        else if (operator === 'gt' && numA > numB)
+            conditionMatches = true;
+        else if (operator === 'gte' && numA >= numB)
+            conditionMatches = true;
+    }
+
+    return conditionMatches;
 }
 
 function debounce(func, timeout = 1000) {

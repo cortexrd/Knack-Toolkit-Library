@@ -1,0 +1,5 @@
+ktlCond
+======================
+_hc=[Column],[ktlCond, operator, value, view/JQuery selector, field]
+Column should hide when view type is Form and field's value matches value via operator.
+Column should be hidden when view type is Details and field's value matches value via operator.
