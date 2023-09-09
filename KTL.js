@@ -655,6 +655,27 @@ function Ktl($, appInfo) {
                 return i;
             },
 
+            getFormattedCurrentDateTime(dateFormat = 'mm/dd/yyyy') {
+                const currentDate = new Date();
+                const day = String(currentDate.getDate()).padStart(2, '0');
+                const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Month is zero-based
+                const year = String(currentDate.getFullYear());  
+                const hours = String(currentDate.getHours()).padStart(2, '0');
+                const minutes = String(currentDate.getMinutes()).padStart(2, '0');
+                const seconds = String(currentDate.getSeconds()).padStart(2, '0');
+
+                let result = '';
+
+                if (dateFormat === 'dd/mm/yyyy') {
+                    result += `${day}/${month}/${year}`;
+                } else // Default Knack format
+                    result += `${month}/${day}/${year}`;
+               
+                result += ` ${hours}:${minutes}:${seconds}`;
+                
+                return result;
+            },
+
             //Currently supports 2 and 3 digits only.  Needs better error handling.
             //Returns string in format:  mm/dd/yyyy HH:MM:SS.mmm
             getCurrentDateTime: function (withDate = true, withSeconds = true, withMilliseconds = true, useUTC = false) {
@@ -9146,7 +9167,7 @@ function Ktl($, appInfo) {
                 $(document).off('knack-cell-update.' + view.key).on('knack-cell-update.' + view.key, function (event, view, record) {
                     Knack.showSpinner();
                     var apiData = {};
-                    apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false);
+                    apiData[bulkOpsLudFieldId] = ktl.core.getFormattedCurrentDateTime(Knack.fields[bulkOpsLudFieldId].attributes.format.date_format);
                     apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
                     ktl.core.knAPI(view.key, record.id, apiData, 'PUT', [view.key])
                         .then((updated) => { Knack.hideSpinner(); })
@@ -11098,7 +11119,7 @@ function Ktl($, appInfo) {
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
                     if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
-                        apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false);
+                        apiData[bulkOpsLudFieldId] = ktl.core.getFormattedCurrentDateTime(Knack.fields[bulkOpsLudFieldId].attributes.format.date_format)
                         apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
                     }
 
@@ -11157,7 +11178,7 @@ function Ktl($, appInfo) {
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
                     if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
-                        apiData[bulkOpsLudFieldId] = ktl.core.getCurrentDateTime(true, false);
+                        apiData[bulkOpsLudFieldId] = ktl.core.getFormattedCurrentDateTime(Knack.fields[bulkOpsLudFieldId].attributes.format.date_format);
                         apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
                     }
 
