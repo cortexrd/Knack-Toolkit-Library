@@ -3344,105 +3344,66 @@ function Ktl($, appInfo) {
         })
 
         $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
+            //Linked Filters _lf Feature
+
+            if (ktl.scenes.isiFrameWnd()) return;
+
+            const masterViewId = view.key;
+            const keywords = ktlKeywords[masterViewId];
+
+            if (window.self.frameElement || $(`#${masterViewId} .kn-add-filter`).length === 0)
+                return;
+            
+            if (!keywords || !keywords._lf)
+                return;
+
+            const linkedViewIds = ktl.views.convertViewTitlesToViewIds(keywords._lf[0].params[0], masterViewId);
+            const masterView = Knack.models[masterViewId].view;
+
+            if (linkedViewIds && !!masterView.filters && (masterView.filters.length === undefined || masterView.filters.length > 0) ) {
+
+                // Report view contains multiple subviews. Adding itself allows to apply the filter to all the subviews.
+                if (masterView.type === 'report') 
+                    linkedViewIds.push(masterViewId);
+
+                linkedViewIds.forEach((linkedViewId) => {
+                    if (Knack.models[linkedViewId].view.type === 'report') {
+                        Knack.models[linkedViewId].view.rows.forEach( row => {
+                            row.reports.forEach( report => {
+                                report.this = Knack.views[linkedViewId];
+                                if (report.index === undefined) { // View not rendered yet
+                                    $(document).one('knack-view-render.'+linkedViewId, () => {
+                                        Knack.views[linkedViewId].handleChangeFilters.call(report, masterView.filters)
+                                    });
+                                } else {
+                                    Knack.views[linkedViewId].handleChangeFilters.call(report, masterView.filters);
+                                }
+                            });
+                        });
+                    } else if (masterView.type === 'table') {
+                        Knack.showSpinner();
+                        const srchVal = $(`#${masterViewId} .table-keyword-search input`).val() || '';
+
+                        updateSearchTable(linkedViewId, srchVal);
+                        updatePerPage(linkedViewId, masterView.rows_per_page);
+                        updateSort(linkedViewId, masterView.source.sort[0].field + '|' + masterView.source.sort[0].order);
+                        updateFilters(linkedViewId, masterView.filters);
+
+                        Knack.models[linkedViewId].fetch({
+                            success: () => { Knack.hideSpinner(); }
+                        });
+                    }
+                });
+            }
+        })
+
+        $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             const viewId = view.key;
 
             if (!window.self.frameElement && allowUserFilters() && $(`#${viewId} .kn-add-filter`).length) {
                 ktl.userFilters.addFilterButtons(viewId);
-
-                //Linked Filters feature
-                const keywords = ktlKeywords[viewId];
-                if (keywords) {
-                    const masterViewId = viewId;
-                    const linkedViewIds = (keywords._lf && ktl.views.convertViewTitlesToViewIds(keywords._lf[0].params[0], masterViewId));
-
-                    if (linkedViewIds) {
-                        const useUrlArray = []; //Special cases for reports. Must be rendered by the URL until I find a solution per view.
-                        const masterView = Knack.models[masterViewId].view;
-                        if (masterView.type === 'report')
-                            linkedViewIds.push(masterViewId);
-
-                        //Add checkbox to toggle visiblity of Filters and Search.
-                        //$('.kn-view:not(#view_x) .kn-records-nav').css('display', 'block')
-
-                        linkedViewIds.forEach((linkedViewId) => {
-                            if (Knack.models[linkedViewId].view.type === 'report') {
-                                useUrlArray.push(linkedViewId);
-                            } else {
-                                if (masterView.type === 'table') {
-                                    Knack.showSpinner();
-                                    const srchVal = $(`#${masterViewId} .table-keyword-search input`).val() || '';
-
-                                    updateSearchTable(linkedViewId, srchVal);
-                                    updatePerPage(linkedViewId, masterView.rows_per_page);
-                                    updateSort(linkedViewId, masterView.source.sort[0].field + '|' + masterView.source.sort[0].order);
-                                    updateFilters(linkedViewId, masterView.filters);
-
-                                    Knack.models[linkedViewId].fetch({
-                                        success: () => { Knack.hideSpinner(); }
-                                    });
-                                } else {
-                                    //If the master is not a table, then treat all view types as if they were reports.
-                                    useUrlArray.push(linkedViewId);
-                                }
-                            }
-                        });
-
-                        if (useUrlArray.length) {
-                            const parts = ktl.core.splitUrl(window.location.href);
-                            const params = Object.entries(parts.params);
-
-                            if (!$.isEmptyObject(params)) {
-                                const filterUrlPart = filterDivIdToUrl(masterViewId);
-
-                                var filter = parts.params[filterUrlPart + '_filters'] || '[]';
-                                if (masterView.type === 'report')
-                                    filter = parts.params[filterUrlPart + '_0_filters']; //Always use first one as master.
-
-                                if (filter) {
-                                    const encodedRef = encodeURIComponent(filter);
-                                    let mergedParams = '';
-                                    let otherParams = '';
-
-                                    params.forEach(function (param) {
-                                        //Special case: skip for report charts, as we'll reconstruct below.
-                                        if (param[0].search(/view_\d+_filters/) >= 0 && param[0].search(/view_\d+_\d+_filters/) === -1) {
-                                            if (mergedParams)
-                                                mergedParams += '&';
-                                            mergedParams += param[0] + '=' + encodedRef;
-                                        }
-
-                                        if (!param[0].includes('_filter')) {
-                                            if (otherParams)
-                                                otherParams += '&';
-                                            otherParams += param[0] + '=' + encodeURIComponent(param[1]);
-                                        }
-                                    })
-
-                                    useUrlArray.filter((reportView) => Knack.views[reportView].model.view.type === 'report')
-                                        .forEach((reportView) => {
-                                            const rLen = Knack.views[reportView].model.view.rows.length;
-                                            for (let c = 0; c < rLen; c++) {
-                                                if (mergedParams)
-                                                    mergedParams += '&';
-                                                mergedParams += reportView + '_' + c + '_filters=' + encodedRef;
-                                            }
-                                        })
-
-                                    if (otherParams)
-                                        mergedParams += '&' + otherParams;
-
-                                    var newUrl = parts.path + '?' + mergedParams;
-                                    //console.log('decodeURI(window.location.href) =\n', decodeURI(window.location.href));
-                                    //console.log('decodeURI(newUrl) =\n', decodeURI(newUrl));
-                                    if (decodeURI(window.location.href) !== decodeURI(newUrl))
-                                        window.location.href = newUrl;
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             if (view.type == 'table') {
@@ -7718,15 +7679,12 @@ function Ktl($, appInfo) {
 
             //For KTL internal use.
             convertViewTitlesToViewIds: function (viewTitles = [], excludeViewId = '') {
-                if (!viewTitles.length) return;
-                var foundViewIds = [];
-                for (var i = 0; i < viewTitles.length; i++) {
-                    var viewTitle = viewTitles[i].trim();
-                    var foundViewId = ktl.scenes.findViewWithTitle(viewTitle, true, excludeViewId);
+                return viewTitles.reduce((viewIds, viewTitle) => {
+                    var foundViewId = ktl.scenes.findViewWithTitle(viewTitle.trim(), true, excludeViewId);
                     if (foundViewId)
-                        foundViewIds.push(foundViewId);
-                }
-                return foundViewIds;
+                        viewIds.push(foundViewId);
+                    return viewIds;
+                }, []);
             },
 
             //For KTL internal use.
