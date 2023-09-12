@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.11';
+    const KTL_VERSION = '0.15.12';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -659,7 +659,7 @@ function Ktl($, appInfo) {
                 const currentDate = new Date();
                 const day = String(currentDate.getDate()).padStart(2, '0');
                 const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Month is zero-based
-                const year = String(currentDate.getFullYear());  
+                const year = String(currentDate.getFullYear());
                 const hours = String(currentDate.getHours()).padStart(2, '0');
                 const minutes = String(currentDate.getMinutes()).padStart(2, '0');
                 const seconds = String(currentDate.getSeconds()).padStart(2, '0');
@@ -670,9 +670,9 @@ function Ktl($, appInfo) {
                     result += `${day}/${month}/${year}`;
                 } else // Default Knack format
                     result += `${month}/${day}/${year}`;
-               
+
                 result += ` ${hours}:${minutes}:${seconds}`;
-                
+
                 return result;
             },
 
@@ -1269,7 +1269,7 @@ function Ktl($, appInfo) {
 
                 numericValue = ktl.core.parseNumericValue(value);
 
-                if (isNaN(numericValue)) 
+                if (isNaN(numericValue))
                     return;
 
                 return numericValue.toString();
@@ -3353,7 +3353,7 @@ function Ktl($, appInfo) {
 
             if (window.self.frameElement || $(`#${masterViewId} .kn-add-filter`).length === 0)
                 return;
-            
+
             if (!keywords || !keywords._lf)
                 return;
 
@@ -3363,7 +3363,7 @@ function Ktl($, appInfo) {
             if (linkedViewIds && !!masterView.filters && (masterView.filters.length === undefined || masterView.filters.length > 0) ) {
 
                 // Report view contains multiple subviews. Adding itself allows to apply the filter to all the subviews.
-                if (masterView.type === 'report') 
+                if (masterView.type === 'report')
                     linkedViewIds.push(masterViewId);
 
                 linkedViewIds.forEach((linkedViewId) => {
@@ -7745,7 +7745,7 @@ function Ktl($, appInfo) {
             removeColumns: function (view = {}, keywords = {}) {
                 const KEYWORD_NAME = '_rc';
 
-                if (!view.key 
+                if (!view.key
                     || (view.key !== 'table' && view.type === 'search')
                     || !keywords[KEYWORD_NAME]) return;
 
@@ -7753,13 +7753,13 @@ function Ktl($, appInfo) {
                 const columns = model.view.columns;
 
                 ktl.core.getKeywordsByType(view.key, KEYWORD_NAME).forEach(keyword => {
-                    
+
                     if (!ktl.core.hasRoleAccess(keyword.options)) return;
 
                     const headers = columns.map(col => col.header.trim()).filter(header => {
                         return keyword.params[0].includes(header);
                     });
-                    
+
                     ktl.views.removeTableColumns(view.key, [], headers);
                 });
             },
@@ -7767,7 +7767,7 @@ function Ktl($, appInfo) {
             hideColumns: function (view = {}, keywords = {}) {
                 const KEYWORD_NAME = '_hc';
 
-                if (!view.key 
+                if (!view.key
                     || (view.key !== 'table' && view.type === 'search')
                     || !keywords[KEYWORD_NAME]) return;
 
@@ -7775,7 +7775,7 @@ function Ktl($, appInfo) {
                 const columns = model.view.columns;
 
                 ktl.core.getKeywordsByType(view.key, KEYWORD_NAME).forEach(keyword => {
-                    if (!ktl.core.hasRoleAccess(keyword.options)) 
+                    if (!ktl.core.hasRoleAccess(keyword.options))
                         return;
 
                     const headers = columns.map(col => col.header.trim()).filter(header => {
@@ -7839,7 +7839,7 @@ function Ktl($, appInfo) {
                             fieldId = (field.startsWith('field_'))? field : ktl.fields.getFieldIdFromLabel(viewId, field);
                             apply();
                         })
-                    } else 
+                    } else
                         apply();
 
                     function apply() {
@@ -7870,7 +7870,7 @@ function Ktl($, appInfo) {
                                 }  else {
                                     fieldValue = $(selector)[0].textContent.trim();
                                 }
-                                
+
                                 if (!fieldValue || !ktlCompare(fieldValue, operator, value))
                                     unhide();
                             }).catch(() => {
