@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.12';
+    const KTL_VERSION = '0.15.13';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3360,7 +3360,7 @@ function Ktl($, appInfo) {
             const linkedViewIds = ktl.views.convertViewTitlesToViewIds(keywords._lf[0].params[0], masterViewId);
             const masterView = Knack.models[masterViewId].view;
 
-            if (linkedViewIds && !!masterView.filters && (masterView.filters.length === undefined || masterView.filters.length > 0) ) {
+            if (linkedViewIds && !!masterView.filters && (masterView.filters.length === undefined || masterView.filters.length > 0)) {
 
                 // Report view contains multiple subviews. Adding itself allows to apply the filter to all the subviews.
                 if (masterView.type === 'report')
@@ -3368,11 +3368,11 @@ function Ktl($, appInfo) {
 
                 linkedViewIds.forEach((linkedViewId) => {
                     if (Knack.models[linkedViewId].view.type === 'report') {
-                        Knack.models[linkedViewId].view.rows.forEach( row => {
-                            row.reports.forEach( report => {
+                        Knack.models[linkedViewId].view.rows.forEach(row => {
+                            row.reports.forEach(report => {
                                 report.this = Knack.views[linkedViewId];
                                 if (report.index === undefined) { // View not rendered yet
-                                    $(document).one('knack-view-render.'+linkedViewId, () => {
+                                    $(document).one('knack-view-render.' + linkedViewId, () => {
                                         Knack.views[linkedViewId].handleChangeFilters.call(report, masterView.filters)
                                     });
                                 } else {
@@ -7475,7 +7475,8 @@ function Ktl($, appInfo) {
                                 } else
                                     resolve();
                             }
-                        }
+                        } else
+                            resolve();
                     })
                 }
             },
@@ -7794,20 +7795,20 @@ function Ktl($, appInfo) {
                         validateKtlCond(keyword.options, hide, unhide);
                 });
 
-                function validateKtlCond (options = {}, hide, unhide) {
+                function validateKtlCond(options = {}, hide, unhide) {
                     hide();
 
                     if (!options.ktlCond)
                         return;
 
-                    const conditions = options.ktlCond.replace(']','').split(',').map(e => e.trim());
+                    const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
 
                     const operator = conditions[0] || '';
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
 
-                    const viewId = (view.startsWith('view_'))? view : ktl.scenes.findViewWithTitle(view);
+                    const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
                     if (field.startsWith('$(')) {
                         const selector = ktl.core.extractJQuerySelector(field);
@@ -7832,11 +7833,11 @@ function Ktl($, appInfo) {
                         return;
                     }
 
-                    let fieldId = (field.startsWith('field_'))? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                    let fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
 
                     if (!fieldId) {
                         $(document).one(`knack-view-render.${viewId}`, () => {
-                            fieldId = (field.startsWith('field_'))? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                            fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
                             apply();
                         })
                     } else
@@ -7867,7 +7868,7 @@ function Ktl($, appInfo) {
                                         else
                                             unhide();
                                     })
-                                }  else {
+                                } else {
                                     fieldValue = $(selector)[0].textContent.trim();
                                 }
 
@@ -8129,8 +8130,7 @@ function Ktl($, appInfo) {
 
             //Handle Scene change.
             if (prevScene !== scene.key) {
-                var page = ktl.core.getMenuInfo().page;
-                (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
+                addMenuTitleToTab();
 
                 if (prevScene) //Do not log navigation on first page - useless and excessive.  We only want transitions.
                     ktl.log.addLog(ktl.const.LS_NAVIGATION, scene.key + ', ' + JSON.stringify(ktl.core.getMenuInfo()), false);
@@ -8147,10 +8147,22 @@ function Ktl($, appInfo) {
             onSceneRender && onSceneRender(event, scene, appInfo);
         })
 
-
+        var modalScanItv;
         $(document).on('knack-view-render.any', function (event, view, data) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
             ktl.scenes.addKioskButtons(view.key, {});
+
+            if (view.scene.modal === true) {
+                addMenuTitleToTab(); //Need this because scene is not always rendered if we open a modal several times in a row.
+                //Check for modal close
+                modalScanItv = setInterval(() => {
+                    if (!$('.kn-modal-bg').length) {
+                        clearInterval(modalScanItv);
+                        addMenuTitleToTab();
+                    }
+                }, 500)
+            }
+
         })
 
         $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
@@ -8174,6 +8186,11 @@ function Ktl($, appInfo) {
                 }
             }
         }, 100);
+
+        function addMenuTitleToTab() {
+            var page = ktl.core.getMenuInfo().page;
+            (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
+        }
 
         return {
             setCfg: function (cfgObj = {}) {

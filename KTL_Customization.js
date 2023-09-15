@@ -50,7 +50,7 @@ window.ktlReady = function (appInfo = {}) {
             idleWatchDog: true,
             debugWnd: true,
         },
-    })
+    });
     //KTL Setup - END
 
 
