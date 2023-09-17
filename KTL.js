@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.13';
+    const KTL_VERSION = '0.15.14';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1360,6 +1360,37 @@ function Ktl($, appInfo) {
                 if ((selector.startsWith("$('") || selector.startsWith('$("')) && (selector.endsWith("')") || selector.endsWith('")'))) {
                     return selector.substring(3, selector.length - 2);
                 }
+            },
+
+            createPopup: function (callback) {
+                if (typeof callback !== 'function') return;
+
+                var popupDiv = document.createElement('div');
+                popupDiv.setAttribute('id', 'popupDivId');
+                popupDiv.classList.add('devBtnsDiv', 'center');
+                var popupHdr = document.createElement('div');
+                popupHdr.setAttribute('id', 'popupHdrIdheader');
+                popupHdr.classList.add('ktlDevToolsHeader');
+                popupHdr.innerText = ':: Enter Password ::';
+                popupDiv.appendChild(popupHdr);
+                document.body.appendChild(popupDiv);
+
+                var inputField = document.createElement("input");
+                inputField.type = 'password';
+                inputField.setAttribute('autocomplete', 'off');
+                inputField.classList.add('ktlDevToolsSearchInput');
+                popupDiv.appendChild(inputField);
+                inputField.focus();
+                setTimeout(() => {
+                    inputField.value = ''; //Needed because autocomplete off doesn't work sometimes.
+                }, 1000);
+
+                inputField.addEventListener('keyup', function (event) {
+                    if (event.key === 'Enter') {
+                        $('#popupDivId').remove();
+                        callback(inputField.value);
+                    }
+                });
             },
         }
     })(); //Core
@@ -8152,7 +8183,7 @@ function Ktl($, appInfo) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
             ktl.scenes.addKioskButtons(view.key, {});
 
-            if (view.scene.modal === true) {
+            if (view.scene && view.scene.modal === true) {
                 addMenuTitleToTab(); //Need this because scene is not always rendered if we open a modal several times in a row.
                 //Check for modal close
                 modalScanItv = setInterval(() => {
@@ -8689,7 +8720,16 @@ function Ktl($, appInfo) {
                     }
 
                     const pinAlreadyEntered = ktl.storage.lsGetItem('pinAlreadyEntered', false, true);
-                    if (ktl.account.isDeveloper() || (pinAlreadyEntered || (prompt('Enter PW:') === ktl.core.getCfg().devOptionsPin))) {
+                    if (ktl.account.isDeveloper() || pinAlreadyEntered)
+                        showDevPopup();
+                    else {
+                        ktl.core.createPopup(pw => {
+                            if (pw === ktl.core.getCfg().devOptionsPin)
+                                showDevPopup();
+                        })
+                    }
+
+                    function showDevPopup() {
                         ktl.storage.lsSetItem('pinAlreadyEntered', true, false, true);
                         var userPrefsObj = ktl.userPrefs.getUserPrefs();
 
@@ -9074,6 +9114,7 @@ function Ktl($, appInfo) {
                 //For Dev Options popup, act like a modal window: close when clicking oustide.
                 $(document).on('click', function (e) {
                     if (e.target.closest('.kn-content')) {
+                        $('#popupDivId').remove();
                         if ($('#debugWnd').length)
                             ktl.debugWnd.showDebugWnd(false);
                         else if ($('#resultWndId').length)
@@ -9084,7 +9125,6 @@ function Ktl($, appInfo) {
                             $('#devBtnsDivId').remove();
                     }
                 })
-
             },
 
             isiFrameWnd: function () {
