@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.14';
+    const KTL_VERSION = '0.15.15';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -72,6 +72,8 @@ function Ktl($, appInfo) {
 
                     //Add scene keywords.
                     if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom)
+                        ktlKeywords[scn.attributes.key] = viewKwObj;
+                    else if (viewKwObj._nswd)
                         ktlKeywords[scn.attributes.key] = viewKwObj;
                 }
 
@@ -1362,6 +1364,8 @@ function Ktl($, appInfo) {
                 }
             },
 
+            //Currently used to enter a password for Dev Tools Popup
+            //But can be upgraded for general purpose interactions.
             createPopup: function (callback) {
                 if (typeof callback !== 'function') return;
 
@@ -4866,7 +4870,7 @@ function Ktl($, appInfo) {
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
-            if (ktl.account.isDeveloper() && !ktl.scenes.isiFrameWnd()) {
+            if (ktl.core.getCfg().enabled.devPauseAutoRefresh && ktl.account.isDeveloper() && !ktl.scenes.isiFrameWnd()) {
                 var div = $('.kn-info-bar > div');
                 if (div.length > 0) {
                     var cbStyle = 'position: absolute; left: 40vw; top: 0.7vh; width: 20px; height: 20px';
@@ -8508,7 +8512,7 @@ function Ktl($, appInfo) {
             spinnerWatchdog: function (run = true) {
                 if (!ktl.core.getCfg().enabled.spinnerWatchDog) return;
 
-                if (spinnerWdExcludeScn.includes(Knack.router.current_scene_key))
+                if (spinnerWdExcludeScn.includes(Knack.router.current_scene_key) || (ktlKeywords[Knack.router.current_scene_key] && ktlKeywords[Knack.router.current_scene_key]._nswd))
                     run = false;
 
                 if (run) {

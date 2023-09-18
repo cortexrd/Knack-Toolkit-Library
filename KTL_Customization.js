@@ -49,6 +49,8 @@ window.ktlReady = function (appInfo = {}) {
             spinnerWatchDog: true,
             idleWatchDog: true,
             debugWnd: true,
+            devInfoPopup: true,
+            devPauseAutoRefresh: true,
         },
     });
     //KTL Setup - END

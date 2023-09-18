@@ -53,6 +53,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 idleWatchDog: true,
                 debugWnd: true,
                 devInfoPopup: true,
+                devPauseAutoRefresh: true,
 
                 //Those below must also be set up properly to have any effect.  See documentation.
                 iFrameWnd: false,
