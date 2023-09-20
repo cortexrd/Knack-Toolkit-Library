@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.3.1 */
+/* KTL CSS version: 0.3.2 */
 
 /************ General Settings **************/
 :root {
@@ -228,21 +228,23 @@ a.sortDisabled {
 
 /* Dev Options popup */
 .devBtnsDiv {
+	position: fixed;
 	background-color: #ffffff;
 	border: dimgrey;
 	border-width: 3px;
 	border-style: solid;
-	display: grid;
-	padding-block: 5px;
-	padding-inline: 10px;
+	display: inline-grid;
+	justify-items: center;
+	padding: 8px;
 }
 
 .devBtn {
 	font-size: 20px;
-	margin-block: 5px;
-	padding: 10px;
 	white-space: nowrap;
-	width: 260px;
+	width: 97%;
+	height: 30px;
+	margin-bottom: 5px;
+	align-items: center !important;
 }
 
 .ktlDevToolsHeader {
@@ -252,18 +254,18 @@ a.sortDisabled {
 	font-weight: 500;
 	line-height: 35px;
 	text-align: center;
-	background-color: darkgray;
 	width: 100%;
 	color: black;
 	margin-bottom: 10px;
+	align-items: center;
+	display: flex;
+	justify-content: center;
 }
 
 .devToolSearchDiv {
 	z-index: 20;
 	min-width: 220px;
-	position: absolute;
-	left: 60%;
-	top: 58%;
+	position: fixed;
 }
 
 .ktlDevToolsSearchInput{
@@ -407,6 +409,11 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 .ktlOfflineStatus {
 	background-color: GoldenRod !important;
 	font-weight: bold !important;
+}
+
+.ktlDraggable {
+	position: absolute;
+	cursor: grab;
 }
 
 /**** KTL_RELATED - END ****/
