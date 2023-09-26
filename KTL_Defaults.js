@@ -65,6 +65,12 @@ window.KnackApp = function ($, appInfo = {}) {
                 },
             },
 
+            popupStyle: {
+                success: ';background-color:#81b378;border:5px solid #294125',
+                warning: ';background-color:#fffa5e;border:2px solid #7e8060',
+                error: ';background-color:#FFB0B0;border:5px solid #660000',
+            },
+
             //Functions in this app.
             isKiosk: isKiosk,
         })

@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.17';
+    const KTL_VERSION = '0.15.18';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -301,7 +301,6 @@ function Ktl($, appInfo) {
 
         var cfg = {
             //Let the App do the settings.  See function ktl.core.setCfg in KTL_Defaults.js file.
-            enabled: {},
         };
 
         var isKiosk = null;
@@ -326,16 +325,26 @@ function Ktl($, appInfo) {
                 cfgObj.devDebugCode && (cfg.devDebugCode = cfgObj.devDebugCode);
                 cfgObj.isKiosk && (isKiosk = cfgObj.isKiosk);
 
+                if (cfgObj.popupStyle !== undefined) {
+                    if (!cfg.popupStyle)
+                        cfg.popupStyle = {};
+                    for (let key in cfgObj.popupStyle) {
+                        cfg.popupStyle[key] = cfgObj.popupStyle[key];
+                    }
+                }
+
                 //Read the config from the Javascript pane, if exists.
                 //This one is different.  We want to give the user specific control over each flag from the Builder.
                 if (cfgObj.enabled !== undefined) {
-                    for (key in cfgObj.enabled) {
+                    if (!cfg.enabled)
+                        cfg.enabled = {};
+                    for (let key in cfgObj.enabled) {
                         cfg.enabled[key] = cfgObj.enabled[key];
                     }
                 }
 
                 if (typeof ktlFeatures === 'object' && !$.isEmptyObject(ktlFeatures)) {
-                    for (key in ktlFeatures) {
+                    for (let key in ktlFeatures) {
                         cfg.enabled[key] = ktlFeatures[key];
                     }
                 }
@@ -796,12 +805,7 @@ function Ktl($, appInfo) {
                     if (style)
                         popupStyle = style;
 
-                    if (status === 'success')
-                        popupStyle += ';background-color:#81b378;border:5px solid #294125';
-                    else if (status === 'warning')
-                        popupStyle += ';background-color:#fffa5e;border:2px solid #7e8060;top:15%';
-                    else if (status === 'error')
-                        popupStyle += ';background-color:#FFB0B0;border:5px solid #660000';
+                    popupStyle += ktl.core.getCfg().popupStyle[status];
 
                     timedPopupEl.setAttribute('style', popupStyle);
 
