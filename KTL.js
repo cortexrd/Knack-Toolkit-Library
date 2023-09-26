@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.16';
+    const KTL_VERSION = '0.15.17';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1412,33 +1412,38 @@ function Ktl($, appInfo) {
             createPopup: function (callback) {
                 if (typeof callback !== 'function') return;
 
-                var popupDiv = document.createElement('div');
-                popupDiv.setAttribute('id', 'popupDivId');
-                popupDiv.classList.add('devBtnsDiv', 'center');
-                var popupHdr = document.createElement('div');
-                popupHdr.setAttribute('id', 'popupHdrIdheader');
-                popupHdr.classList.add('ktlDevToolsHeader');
-                popupHdr.style['background-color'] = sysColors.paleLowSatClr;
-                popupHdr.innerText = ':: Enter Password ::';
-                popupDiv.appendChild(popupHdr);
-                document.body.appendChild(popupDiv);
+                ktl.systemColors.getSystemColors()
+                    .then((sc) => {
+                        var sysColors = sc;
 
-                var inputField = document.createElement("input");
-                inputField.type = 'password';
-                inputField.setAttribute('autocomplete', 'off');
-                inputField.classList.add('ktlDevToolsSearchInput');
-                popupDiv.appendChild(inputField);
-                inputField.focus();
-                setTimeout(() => {
-                    inputField.value = ''; //Needed because autocomplete off doesn't work sometimes.
-                }, 1000);
+                        var popupDiv = document.createElement('div');
+                        popupDiv.setAttribute('id', 'popupDivId');
+                        popupDiv.classList.add('devBtnsDiv', 'center');
+                        var popupHdr = document.createElement('div');
+                        popupHdr.setAttribute('id', 'popupHdrIdheader');
+                        popupHdr.classList.add('ktlDevToolsHeader');
+                        popupHdr.style['background-color'] = sysColors.paleLowSatClr;
+                        popupHdr.innerText = ':: Enter Password ::';
+                        popupDiv.appendChild(popupHdr);
+                        document.body.appendChild(popupDiv);
 
-                inputField.addEventListener('keyup', function (event) {
-                    if (event.key === 'Enter') {
-                        $('#popupDivId').remove();
-                        callback(inputField.value);
-                    }
-                });
+                        var inputField = document.createElement("input");
+                        inputField.type = 'password';
+                        inputField.setAttribute('autocomplete', 'off');
+                        inputField.classList.add('ktlDevToolsSearchInput');
+                        popupDiv.appendChild(inputField);
+                        inputField.focus();
+                        setTimeout(() => {
+                            inputField.value = ''; //Needed because autocomplete off doesn't work sometimes.
+                        }, 1000);
+
+                        inputField.addEventListener('keyup', function (event) {
+                            if (event.key === 'Enter') {
+                                $('#popupDivId').remove();
+                                callback(inputField.value);
+                            }
+                        });
+                    });
             },
 
             //Used to center an element on screen dynamically, without using classes or forcing styles.
