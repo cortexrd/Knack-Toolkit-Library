@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.15.18';
+    const KTL_VERSION = '0.15.19';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5059,6 +5059,7 @@ function Ktl($, appInfo) {
                     keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
                     keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
                     keywords._style && ktl.views.setStyle(view.key, keywords);
+                    keywords._trk && ktl.views.truncateText(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6135,25 +6136,29 @@ function Ktl($, appInfo) {
 
                 try {
                     columns.forEach(col => {
-                        if (col.field) {
-                            var align = col.align;
-                            var fieldId = col.field.key;
+                        var align = col.align;
+                        if (col.type === 'field') {
+                            if (col.field) {
+                                var fieldId = col.field.key;
 
-                            //Remove anything after field_xxx, like pseudo selectors with colon.
-                            var extractedField = fieldId.match(/field_\d+/);
-                            if (extractedField) {
-                                fieldId = extractedField[0];
-                                $('#' + view.key + ' thead th.' + fieldId).css('text-align', align);
-                                $('#' + view.key + ' thead th.' + fieldId + ' .table-fixed-label').css('display', 'inline-flex');
+                                //Remove anything after field_xxx, like pseudo selectors with colon.
+                                var extractedField = fieldId.match(/field_\d+/);
+                                if (extractedField) {
+                                    fieldId = extractedField[0];
+                                    $('#' + view.key + ' thead th.' + fieldId).css('text-align', align);
+                                    $('#' + view.key + ' thead th.' + fieldId + ' .table-fixed-label').css('display', 'inline-flex');
+                                }
                             }
-                        }
+                        } else if (col.type === 'link') {
+                            $('#' + view.key + ' thead th.kn-table-link').css('text-align', align);
+                            $('#' + view.key + ' thead th.kn-table-link.table-fixed-label').css('display', 'inline-flex');
+                        } //Any other field type?
                     })
                 } catch (e) {
                     console.log('headerAlignment error:', e);
                 }
             }
         }
-
 
         //Hide the whole view, typically used when doing background searches.
         function hideView(viewId, keywords) {
@@ -8081,6 +8086,49 @@ function Ktl($, appInfo) {
                             })
                         })
                         .catch(function () { })
+                }
+            },
+
+            truncateText: function (view, keywords) {
+                const kw = '_trk';
+                if (!view || !keywords || (keywords && !keywords[kw])) return;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                const viewType = view.type;
+                if (viewType === 'table') {
+                    var columns = view.columns;
+                    if (!columns) return;
+
+                    try {
+                        columns.forEach(col => {
+                            var widthType = col.width.type;
+                            var widthUnits = col.width.units;
+                            if (widthType === 'custom' && widthUnits === 'px') {
+                                var widthAmount = col.width.amount;
+                                console.log('widthAmount =', widthAmount);
+
+                                if (col.type === 'field') {
+                                    if (col.field) {
+                                        var fieldId = col.field.key;
+
+                                        //Remove anything after field_xxx, like pseudo selectors with colon.
+                                        var extractedField = fieldId.match(/field_\d+/);
+                                        if (extractedField) {
+                                            fieldId = extractedField[0];
+                                            $('#' + view.key + ' td.' + fieldId + ' span').addClass('ktlTruncateCellText');
+                                            $('#' + view.key + ' td.' + fieldId + ' span').css('max-width', widthAmount + 'px');
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    } catch (e) {
+                        console.log('truncateText error:', e);
+                    }
                 }
             },
 
@@ -11499,7 +11547,7 @@ function Ktl($, appInfo) {
                 sInfo.os = 'Android';
             else if (navigator.userAgent.indexOf('Windows') >= 0)
                 sInfo.os = 'Windows';
-            else if (navigator.userAgent.indexOf('Linux') >= 0)
+            else if (navigator.userAgent.indexOf('Linux') >= 0 || navigator.platform.indexOf('Linux') >= 0)
                 sInfo.os = 'Linux';
             else if (navigator.userAgent.indexOf('Mac OS') >= 0)
                 sInfo.os = 'Mac OS';
@@ -11513,6 +11561,8 @@ function Ktl($, appInfo) {
                 sInfo.processor = 'x64';
             else if (navigator.userAgent.indexOf('armv7') >= 0)
                 sInfo.processor = 'armv7';
+            else if (navigator.userAgent.indexOf('arch64') >= 0)
+                sInfo.processor = 'armv8';
             else if (navigator.userAgent.indexOf('x86') >= 0)
                 sInfo.processor = 'x86';
 

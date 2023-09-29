@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.3.2 */
+/* KTL CSS version: 0.3.3 */
 
 /************ General Settings **************/
 :root {
@@ -414,6 +414,13 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 .ktlDraggable {
 	position: absolute;
 	cursor: grab;
+}
+
+/* max-width will be set by KTL at run time, based on column width's setting. */
+.ktlTruncateCellText {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /**** KTL_RELATED - END ****/
