@@ -2772,12 +2772,14 @@ function Ktl($, appInfo) {
             if (fieldId === 'chznBetter')
                 fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
 
+            var fieldObj = Knack.objects.getField(fieldId);
+            if (fieldObj.attributes.type === 'password') return; //Ignore passwords.
+
             //console.log('saveFormData: formDataObj =', formDataObj);
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
 
             if (!subField) {
                 if (typeof data === 'string') {
-                    var fieldObj = Knack.objects.getField(fieldId);
                     if (fieldObj) {
                         if (data === 'Select' && (fieldObj.attributes.type === 'connection' || fieldObj.attributes.type === 'user_roles'))
                             data = ''; //Do not save the placeholder 'Select';
@@ -2938,6 +2940,8 @@ function Ktl($, appInfo) {
                                     }
                                 } else if (fieldType === 'boolean') {
                                     document.querySelector('#' + view.key + ' [data-input-id="' + fieldId + '"] input').checked = fieldText;
+                                } else if (fieldType === 'password') {
+                                    //Ignore.
                                 } else {
                                     ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
                                 }
