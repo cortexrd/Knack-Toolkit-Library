@@ -424,7 +424,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	text-overflow: ellipsis;
 }
 
-.visualKeyboardFocus {
+.virtualKeyboardFocus {
 	border-color: #1E3978;
 }
 

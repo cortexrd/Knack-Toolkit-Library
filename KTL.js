@@ -12509,7 +12509,7 @@ function Ktl($, appInfo) {
 
                     $(document).on('focusin', 'input, textarea', event => {
                         target = event.target;
-                        target.classList.add('visualKeyboardFocus');
+                        target.classList.add('virtualKeyboardFocus');
                         keyboard.setInput(event.target.value);
 
                         if ($(target).attr('type') === 'tel')
@@ -12527,11 +12527,10 @@ function Ktl($, appInfo) {
 
                             $('.simple-keyboard').hide();
                             keyboard.clearInput();
-                            target && target.classList.remove('visualKeyboardFocus');
+                            target && target.classList.remove('virtualKeyboardFocus');
                             target = null;
                         }
                     });
-
                 })
             })
         }
