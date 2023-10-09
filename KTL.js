@@ -5071,6 +5071,8 @@ function Ktl($, appInfo) {
                     keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
                     keywords._style && ktl.views.setStyle(view.key, keywords);
                     keywords._trk && ktl.views.truncateText(view, keywords);
+                    keywords._oln && ktl.views.openLinkInNewWindow(view, keywords);
+
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -8141,6 +8143,22 @@ function Ktl($, appInfo) {
                         console.log('truncateText error:', e);
                     }
                 }
+            },
+
+            openLinkInNewWindow: function (view, keywords) {
+                const kw = '_oln';
+                if (!view || !keywords || (keywords && !keywords[kw])) return;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                $('a').on('click', e => {
+                    e.preventDefault();
+                    if (e.target.href)
+                        window.open(e.target.href, '_blank');
+                })
             },
 
             //Returns a zero-based index of the first column from left that matches the header param.
@@ -12453,9 +12471,8 @@ function Ktl($, appInfo) {
                         console.debug("Button pressed", button);
 
                         if (button === "{shift}" || button === "{lock}")
-                            handleShift();
-
-                        if (button === "{enter}") {
+                            handleShift(); //TODO: shift shouldn't keep this caps mode after next printable char pressed.
+                        else if (button === "{enter}") {
                             if (target) {
                                 target.dispatchEvent(new KeyboardEvent('keydown', {
                                     bubbles: true,
@@ -12481,16 +12498,13 @@ function Ktl($, appInfo) {
                                 $(target).closest('form').submit();
                             }
                         }
-
                     }
 
                     function handleShift() {
                         let currentLayout = keyboard.options.layoutName;
                         let shiftToggle = currentLayout === "default" ? "shift" : "default";
 
-                        keyboard.setOptions({
-                            layoutName: shiftToggle
-                        });
+                        keyboard.setOptions({ layoutName: shiftToggle });
                     }
 
                     $(document).on('focusin', 'input, textarea', event => {
@@ -12498,15 +12512,11 @@ function Ktl($, appInfo) {
                         target.classList.add('visualKeyboardFocus');
                         keyboard.setInput(event.target.value);
 
-                        if ($(target).attr('type') === 'tel') {
-                            keyboard.setOptions({
-                                layoutName: 'numeric'
-                            });
-                        } else {
-                            keyboard.setOptions({
-                                layoutName: 'default'
-                            });
-                        }
+                        if ($(target).attr('type') === 'tel')
+                            keyboard.setOptions({ layoutName: 'numeric' });
+                        else
+                            keyboard.setOptions({ layoutName: 'default' });
+
                         $('.simple-keyboard').show();
                     });
 
@@ -12539,7 +12549,7 @@ function Ktl($, appInfo) {
 
                 //Only for Linux systems without a built-in VK, like Raspberry PI 4.
                 const sys = ktl.sysInfo.getSysInfo();
-                if (sys.os === 'Linux' && sys.processor.includes('arm')) {
+                if (true ||sys.os === 'Linux' && sys.processor.includes('arm')) {
                     ktl.core.setCfg({ enabled: { virtualKeyboard: true } });
                     load();
                 }
