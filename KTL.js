@@ -12402,6 +12402,7 @@ function Ktl($, appInfo) {
         function load() {
             LazyLoad.css(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css'], function () {
                 LazyLoad.js(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js'], function () {
+
                     const Keyboard = window.SimpleKeyboard.default;
                     let target;
 
@@ -12493,7 +12494,7 @@ function Ktl($, appInfo) {
 
                     $(document).on('focusin', 'input, textarea', event => {
                         target = event.target;
-                        target.classList.add('virtualKeyboardFocus');
+                        target.classList.add('visualKeyboardFocus');
                         keyboard.setInput(event.target.value);
 
                         if ($(target).attr('type') === 'tel') {
@@ -12515,7 +12516,7 @@ function Ktl($, appInfo) {
 
                             $('.simple-keyboard').hide();
                             keyboard.clearInput();
-                            target && target.classList.remove('virtualKeyboardFocus');
+                            target && target.classList.remove('visualKeyboardFocus');
                             target = null;
                         }
                     });
@@ -12544,8 +12545,7 @@ function Ktl($, appInfo) {
                 load();
             },
         }
-    })();
-    //virtualKeyboard
+    })(); //virtualKeyboard
 
     window.ktl = {
         //KTL exposed objects

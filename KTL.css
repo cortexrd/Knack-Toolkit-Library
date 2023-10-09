@@ -423,4 +423,38 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	text-overflow: ellipsis;
 }
 
+.visualKeyboardFocus {
+	border-color: #1E3978;
+}
+
+div.simple-keyboard {
+	position: fixed;
+    bottom: 0px;
+    left: 0px;
+    z-index: 9000;
+	display: flex !important;
+	background-color: transparent;
+	display: flex;
+	justify-content: center;
+}
+
+.hg-layout-numeric .hg-rows {
+	width: 300px;
+    background-color: #ececec;
+    padding: 10px;
+	border-radius: 5px;
+	box-shadow: 0 0 3px -1px rgba(0,0,0,3);
+}
+
+.hg-layout-default .hg-rows , .hg-layout-shift .hg-rows{
+	width: 80%;
+    background-color: #ececec;
+    padding: 10px;
+	border-radius: 5px;
+	box-shadow: 0 0 3px -1px rgba(0,0,0,3);
+}
+
+.hg-theme-default div.hg-button {
+	height: 50px;
+}
 /**** KTL_RELATED - END ****/
