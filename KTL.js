@@ -323,6 +323,7 @@ function Ktl($, appInfo) {
                 cfgObj.devOptionsPin && (cfg.devOptionsPin = cfgObj.devOptionsPin);
                 cfgObj.devDebugCode && (cfg.devDebugCode = cfgObj.devDebugCode);
                 cfgObj.isKiosk && (isKiosk = cfgObj.isKiosk);
+                cfgObj.virtualKeyboard && (virtualKeyboard = cfgObj.virtualKeyboard);
 
                 if (cfgObj.popupStyle !== undefined) {
                     if (!cfg.popupStyle)
@@ -12536,13 +12537,12 @@ function Ktl($, appInfo) {
             load: function () {
                 if (ktl.scenes.isiFrameWnd() || !ktl.core.getCfg().enabled.virtualKeyboard) return;
 
-                const sys = ktl.sysInfo.getSysInfo();
-
                 //Only for Linux systems without a built-in VK, like Raspberry PI 4.
-                //Uncomment line beloe when done developing on Workstations
-                //if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
-
-                load();
+                const sys = ktl.sysInfo.getSysInfo();
+                if (sys.os === 'Linux' && sys.processor.includes('arm')) {
+                    ktl.core.setCfg({ enabled: { virtualKeyboard: true } });
+                    load();
+                }
             },
         }
     })(); //virtualKeyboard
