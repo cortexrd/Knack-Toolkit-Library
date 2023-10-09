@@ -54,6 +54,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 debugWnd: true,
                 devInfoPopup: true,
                 devPauseAutoRefresh: true,
+                virtualKeyboard: true,
 
                 //Those below must also be set up properly to have any effect.  See documentation.
                 iFrameWnd: false,
@@ -227,6 +228,8 @@ window.KnackApp = function ($, appInfo = {}) {
 
         if (typeof window.ktlReady === 'function')
             window.ktlReady(appInfo);
+        else
+            $(document).trigger('KTL.DefaultConfigReady');
     })();
     //KTL Setup - END
     //====================================================

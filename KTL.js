@@ -1467,7 +1467,7 @@ function Ktl($, appInfo) {
     })(); //Core
 
     //====================================================
-    //Storage Feature
+    //Storage feature
     //Utilities related to cookies and localStorage.
     var secureLs = null;
     this.storage = (function () {
@@ -3457,7 +3457,7 @@ function Ktl($, appInfo) {
         })
 
         $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
-            //Linked Filters _lf Feature
+            //Linked Filters _lf feature
 
             if (ktl.scenes.isiFrameWnd()) return;
 
@@ -12018,7 +12018,7 @@ function Ktl($, appInfo) {
                     ktl.views.refreshView(SYSOP_DASHBOARD_ACC_STATUS);
                 }
 
-                $(document).trigger('KTL.StatusMonitoring.Updated', [statusMonitoring])
+                $(document).trigger('KTL.StatusMonitoring.Updated', [statusMonitoring]);
             });
         }
 
@@ -12026,7 +12026,7 @@ function Ktl($, appInfo) {
     })(); //Status Monitoring feature
 
     //===================================================
-    //Developper Popup Tool Feature
+    //Developper Popup Tool feature
     this.developperPopupTool = (function () {
         if (!ktl.account.isDeveloper()) return;
 
@@ -12393,135 +12393,159 @@ function Ktl($, appInfo) {
     })();//developperPopupTool
 
     //===================================================
-    //Visual Keyboard Feature
-    this.visualKeyBoard = (function () {
-        LazyLoad.css(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css'], function () {
-            LazyLoad.js(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js'], function () {
+    //Virtual Keyboard feature
+    this.virtualKeyboard = (function () {
+        $(document).on('KTL.DefaultConfigReady', function () {
+            ktl.virtualKeyboard.load();
+        })
 
-                const Keyboard = window.SimpleKeyboard.default;
-                let target;
+        function load() {
+            LazyLoad.css(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css'], function () {
+                LazyLoad.js(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js'], function () {
+                    const Keyboard = window.SimpleKeyboard.default;
+                    let target;
 
-                $('body').append('<div class="simple-keyboard"></div>');
-                $('.simple-keyboard').hide();
+                    $('body').append('<div class="simple-keyboard"></div>');
+                    $('.simple-keyboard').hide();
 
-                $('.simple-keyboard').on('click', event => {
-                    event.stopPropagation();
-                })
+                    $('.simple-keyboard').on('click', event => {
+                        event.stopPropagation();
+                    })
 
-                let keyboard = new Keyboard({
-                    onChange: input => onChange(input),
-                    onKeyPress: button => onKeyPress(button),
-                    layout: {
-                        'default': [
-                          '` 1 2 3 4 5 6 7 8 9 0 - = {bksp}',
-                          '{tab} q w e r t y u i o p [ ] \\',
-                          '{lock} a s d f g h j k l ; \' {enter}',
-                          '{shift} z x c v b n m , . / {shift}',
-                          '.com @ {space}'
-                        ],
-                        'shift': [
-                          '~ ! @ # $ % ^ &amp; * ( ) _ + {bksp}',
-                          '{tab} Q W E R T Y U I O P { } |',
-                          '{lock} A S D F G H J K L : " {enter}',
-                          '{shift} Z X C V B N M &lt; &gt; ? {shift}',
-                          '.com @ {space}'
-                        ],
-                        'numeric': [
-                            '7 8 9',
-                            '4 5 6',
-                            '1 2 3',
-                            '. 0 -',
-                            '{bksp} {enter}'
-                        ],
-                      }
-                });
+                    let keyboard = new Keyboard({
+                        onChange: input => onChange(input),
+                        onKeyPress: button => onKeyPress(button),
+                        layout: {
+                            'default': [
+                                '` 1 2 3 4 5 6 7 8 9 0 - = {bksp}',
+                                '{tab} q w e r t y u i o p [ ] \\',
+                                '{lock} a s d f g h j k l ; \' {enter}',
+                                '{shift} z x c v b n m , . / {shift}',
+                                '.com @ {space}'
+                            ],
+                            'shift': [
+                                '~ ! @ # $ % ^ &amp; * ( ) _ + {bksp}',
+                                '{tab} Q W E R T Y U I O P { } |',
+                                '{lock} A S D F G H J K L : " {enter}',
+                                '{shift} Z X C V B N M &lt; &gt; ? {shift}',
+                                '.com @ {space}'
+                            ],
+                            'numeric': [
+                                '7 8 9',
+                                '4 5 6',
+                                '1 2 3',
+                                '. 0 -',
+                                '{bksp} {enter}'
+                            ],
+                        }
+                    });
 
-                function onChange(input) {
-                    if (target) {
-                        target.value = input;
-                        console.debug("Input changed", input);
-                    }
-                }
-
-                function onKeyPress(button) {
-                    console.debug("Button pressed", button);
-
-                    if (button === "{shift}" || button === "{lock}")
-                        handleShift();
-
-                    if (button === "{enter}")
-                    {
-                        if(target) {
-                            target.dispatchEvent(new KeyboardEvent('keydown', {
-                                bubbles: true,
-                                cancelable: true,
-                                key: 'Enter',
-                                code: 'Enter'
-                            }));
-
-                            target.dispatchEvent(new KeyboardEvent('keyup', {
-                                bubbles: true,
-                                cancelable: true,
-                                key: 'Enter',
-                                code: 'Enter'
-                            }));
-
-                            target.dispatchEvent(new KeyboardEvent('keypress', {
-                                bubbles: true,
-                                cancelable: true,
-                                key: 'Enter',
-                                code: 'Enter'
-                            }));
-
-                            $(target).closest('form').submit();
+                    function onChange(input) {
+                        if (target) {
+                            target.value = input;
+                            console.debug("Input changed", input);
                         }
                     }
 
-                }
+                    function onKeyPress(button) {
+                        console.debug("Button pressed", button);
 
-                function handleShift() {
-                    let currentLayout = keyboard.options.layoutName;
-                    let shiftToggle = currentLayout === "default" ? "shift" : "default";
+                        if (button === "{shift}" || button === "{lock}")
+                            handleShift();
 
-                    keyboard.setOptions({
-                        layoutName: shiftToggle
+                        if (button === "{enter}") {
+                            if (target) {
+                                target.dispatchEvent(new KeyboardEvent('keydown', {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    key: 'Enter',
+                                    code: 'Enter'
+                                }));
+
+                                target.dispatchEvent(new KeyboardEvent('keyup', {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    key: 'Enter',
+                                    code: 'Enter'
+                                }));
+
+                                target.dispatchEvent(new KeyboardEvent('keypress', {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    key: 'Enter',
+                                    code: 'Enter'
+                                }));
+
+                                $(target).closest('form').submit();
+                            }
+                        }
+
+                    }
+
+                    function handleShift() {
+                        let currentLayout = keyboard.options.layoutName;
+                        let shiftToggle = currentLayout === "default" ? "shift" : "default";
+
+                        keyboard.setOptions({
+                            layoutName: shiftToggle
+                        });
+                    }
+
+                    $(document).on('focusin', 'input, textarea', event => {
+                        target = event.target;
+                        target.classList.add('virtualKeyboardFocus');
+                        keyboard.setInput(event.target.value);
+
+                        if ($(target).attr('type') === 'tel') {
+                            keyboard.setOptions({
+                                layoutName: 'numeric'
+                            });
+                        } else {
+                            keyboard.setOptions({
+                                layoutName: 'default'
+                            });
+                        }
+                        $('.simple-keyboard').show();
                     });
-                }
 
-                $(document).on('focusin', 'input, textarea', event => {
-                    target = event.target;
-                    target.classList.add('visualKeyboardFocus');
-                    keyboard.setInput(event.target.value);
+                    $(document).on('mousedown', event => {
+                        if ($(event.target).closest('.simple-keyboard').length == 0
+                            && $('.simple-keyboard:visible').length == 1
+                            && event.target != target) {
 
-                    if ( $(target).attr('type') === 'tel') {
-                        keyboard.setOptions({
-                            layoutName: 'numeric'
-                        });
-                    } else {
-                        keyboard.setOptions({
-                            layoutName: 'default'
-                        });
-                    }
-                    $('.simple-keyboard').show();
-                });
+                            $('.simple-keyboard').hide();
+                            keyboard.clearInput();
+                            target && target.classList.remove('virtualKeyboardFocus');
+                            target = null;
+                        }
+                    });
 
-                $(document).on('mousedown', event => {
-                    if ( $(event.target).closest('.simple-keyboard').length == 0
-                        && $('.simple-keyboard:visible').length == 1
-                        && event.target != target) {
-
-                        $('.simple-keyboard').hide();
-                        keyboard.clearInput();
-                        target && target.classList.remove('visualKeyboardFocus');
-                        target = null;
-                    }
-                });
-
+                })
             })
-        })
+        }
 
+        return {
+            show(visible = false) {
+                if (visible)
+                    $('.simple-keyboard').show();
+                else
+                    $('.simple-keyboard').hide();
+            },
+
+            load: function () {
+                if (ktl.scenes.isiFrameWnd() || !ktl.core.getCfg().enabled.virtualKeyboard) return;
+
+                const sys = ktl.sysInfo.getSysInfo();
+
+                //Only for Linux systems without a built-in VK, like Raspberry PI 4.
+                //Uncomment line beloe when done developing on Workstations
+                //if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+
+                load();
+            },
+        }
     })();
-    //visualKeyBoard
+    //virtualKeyboard
 
     window.ktl = {
         //KTL exposed objects
@@ -12544,6 +12568,7 @@ function Ktl($, appInfo) {
         sysInfo: this.sysInfo,
         systemColors: this.systemColors,
         statusMonitoring: this.statusMonitoring,
+        virtualKeyboard: this.virtualKeyboard,
     };
 
     return window.ktl;
