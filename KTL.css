@@ -440,27 +440,40 @@ div.simple-keyboard {
 	font-size: 2rem;
 }
 
+.hg-rows {
+	background-color: #888 !important;
+	border-width: 4px;
+	border-color: #999;
+	border-style: ridge;
+}
+
 .hg-layout-numeric .hg-rows {
 	width: 300px;
-	background-color: #ececec;
 	padding: 10px;
 	border-radius: 5px;
-	box-shadow: 0 0 3px -1px rgba(0,0,0,3);
+	box-shadow: 0 0 10px -1px rgba(0,0,0,3);
 }
 
 .hg-layout-default .hg-rows, .hg-layout-shift .hg-rows {
-	background-color: #ececec;
 	padding: 10px;
-	border-radius: 5px;
-	box-shadow: 0 0 3px -1px rgba(0,0,0,3);
+	border-radius: 10px!important;
+	box-shadow: 0px 0px 11px -2px rgba(0,0,0,3);
 }
 
 .hg-theme-default div.hg-button {
-	height: 3rem;
+	height: 4rem !important;
 }
 
 .hg-theme-default .hg-button.hg-standardBtn {
-	width: 4rem !important;
+	width: 5rem !important;
 }
 
+.hg-button {
+	background-color: #eee !important;
+	border-top: 2px solid #fff; /* Lighter top border */
+	border-left: 2px solid #fff; /* Lighter left border */
+	border-bottom: 2px solid #000000!important; /* Darker bottom border */
+	border-right: 2px solid #000000; /* Darker right border */
+	border-radius: 5px!important;
+}
 /**** KTL_RELATED - END ****/
