@@ -429,13 +429,14 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 
 div.simple-keyboard {
 	position: fixed;
-    bottom: 0px;
-    left: 0px;
-    z-index: 9000;
+	bottom: 0px;
+	left: 0px;
+	z-index: 9000;
 	display: flex !important;
 	background-color: transparent;
 	display: flex;
 	justify-content: center;
+	font-size: 2rem;
 }
 
 .hg-layout-numeric .hg-rows {
@@ -447,14 +448,13 @@ div.simple-keyboard {
 }
 
 .hg-layout-default .hg-rows , .hg-layout-shift .hg-rows{
-	width: 80%;
-    background-color: #ececec;
-    padding: 10px;
+	background-color: #ececec;
+	padding: 10px;
 	border-radius: 5px;
 	box-shadow: 0 0 3px -1px rgba(0,0,0,3);
 }
 
 .hg-theme-default div.hg-button {
-	height: 50px;
+	height: 3rem;
 }
 /**** KTL_RELATED - END ****/
