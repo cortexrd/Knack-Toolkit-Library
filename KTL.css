@@ -43,8 +43,8 @@
 }
 
 .ktlHidden {
-	 position: absolute !important;
-	 left: -9000px;
+	position: absolute !important;
+	left: -9000px;
 }
 
 .ktlDisplayNone {
@@ -52,7 +52,7 @@
 }
 
 .cell-edit.ktlNoInlineEdit {
-	cursor: default!important;
+	cursor: default !important;
 	background-color: transparent !important;
 	font-weight: initial;
 }
@@ -103,8 +103,8 @@ a.sortDisabled {
 }
 
 .bulkEditHeaderCbox {
-	margin-left: 10px!important;
-	margin-top: 2px!important;
+	margin-left: 10px !important;
+	margin-top: 2px !important;
 }
 
 .bulkEditTh {
@@ -268,7 +268,7 @@ a.sortDisabled {
 	position: fixed;
 }
 
-.ktlDevToolsSearchInput{
+.ktlDevToolsSearchInput {
 	width: auto;
 	height: 26px;
 	margin-top: 5px;
@@ -371,6 +371,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	80% {
 		opacity: 0.3;
 	}
+
 	100% {
 		opacity: 1;
 	}
@@ -395,7 +396,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	outline: 2px dashed blue;
 }
 
-.ktlNoBgColor{
+.ktlNoBgColor {
 	background-color: transparent !important;
 }
 
@@ -441,13 +442,13 @@ div.simple-keyboard {
 
 .hg-layout-numeric .hg-rows {
 	width: 300px;
-    background-color: #ececec;
-    padding: 10px;
+	background-color: #ececec;
+	padding: 10px;
 	border-radius: 5px;
 	box-shadow: 0 0 3px -1px rgba(0,0,0,3);
 }
 
-.hg-layout-default .hg-rows , .hg-layout-shift .hg-rows{
+.hg-layout-default .hg-rows, .hg-layout-shift .hg-rows {
 	background-color: #ececec;
 	padding: 10px;
 	border-radius: 5px;
@@ -457,4 +458,9 @@ div.simple-keyboard {
 .hg-theme-default div.hg-button {
 	height: 3rem;
 }
+
+.hg-theme-default .hg-button.hg-standardBtn {
+	width: 4rem !important;
+}
+
 /**** KTL_RELATED - END ****/
