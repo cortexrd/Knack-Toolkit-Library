@@ -12413,6 +12413,7 @@ function Ktl($, appInfo) {
 
     //===================================================
     //Virtual Keyboard feature
+    //Comes from here: https://github.com/hodgef/simple-keyboard
     this.virtualKeyboard = (function () {
         $(document).on('KTL.DefaultConfigReady', function () {
             ktl.virtualKeyboard.load();
@@ -12421,7 +12422,6 @@ function Ktl($, appInfo) {
         function load() {
             LazyLoad.css(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css'], function () {
                 LazyLoad.js(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js'], function () {
-
                     const Keyboard = window.SimpleKeyboard.default;
                     let target;
 
