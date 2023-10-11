@@ -771,16 +771,21 @@ function Ktl($, appInfo) {
                 return false;
             },
 
-            //Selects all text from an element.
-            //Omit el param to de-select.
+            // Selects all text from an element.
+            // Omit el param to de-select.
             selectElementContents: function (el = null) {
                 var body = document.body, range, sel;
+
                 if (document.createRange && window.getSelection) {
-                    range = document.createRange();
                     sel = window.getSelection();
                     sel.removeAllRanges();
-                    if (el === null)
-                        return;
+
+                    if (el === null) return;  // If el is null, remove selection and exit the function
+
+                    // Call helper function to replace <a> tags with their text content
+                    replaceLinksWithText(el);
+
+                    range = document.createRange();
                     try {
                         range.selectNodeContents(el);
                         sel.addRange(range);
@@ -789,9 +794,27 @@ function Ktl($, appInfo) {
                         sel.addRange(range);
                     }
                 } else if (body.createTextRange) {
+                    if (el === null) {
+                        document.selection.empty(); // For IE, remove selection and exit function if el is null
+                        return;
+                    }
+
+                    // Call helper function to replace <a> tags with their text content
+                    replaceLinksWithText(el);
+
                     range = body.createTextRange();
                     range.moveToElementText(el);
                     range.select();
+                }
+
+                // Helper function to replace <a> tags with their text content
+                function replaceLinksWithText(el) {
+                    var links = el.getElementsByTagName('a');
+                    for (var i = links.length - 1; i >= 0; i--) {
+                        var link = links[i];
+                        var text = document.createTextNode(link.textContent);
+                        link.parentNode.replaceChild(text, link);
+                    }
                 }
             },
 
@@ -1228,7 +1251,7 @@ function Ktl($, appInfo) {
             parseNumericValue: function (textValue) {
                 let value = textValue;
 
-                if (value.match(/[^$,.£€\ \d]/))
+                if (value.match(/[^$,.£€\ \d-]/))
                     return NaN;
 
                 if (value && ['$', '£', '€'].includes(value[0]))
@@ -5072,7 +5095,7 @@ function Ktl($, appInfo) {
                     keywords._style && ktl.views.setStyle(view.key, keywords);
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     keywords._oln && ktl.views.openLinkInNewWindow(view, keywords);
-
+                    keywords._copy && ktl.views.copyToClipboard(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -8161,6 +8184,57 @@ function Ktl($, appInfo) {
                 })
             },
 
+            copyToClipboard: function (view, keywords) {
+                const kw = '_copy';
+                if (!view || !keywords || (keywords && !keywords[kw])) return;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                var viewKtlButtonsDiv;
+
+                const viewType = view.type;
+                if (viewType === 'table')
+                    viewKtlButtonsDiv = $('#' + view.key + ' .table-keyword-search');
+
+                if (!viewKtlButtonsDiv || !viewKtlButtonsDiv.length)
+                    viewKtlButtonsDiv = $('#' + view.key + ' .kn-title');
+
+                viewKtlButtonsDiv.css({ 'display': 'inline-flex' });
+
+                const copyToClipboard = document.createElement('BUTTON');
+                copyToClipboard.setAttribute('class', 'kn-button');
+                copyToClipboard.id = 'kn-button-copy';
+                copyToClipboard.innerHTML = 'Copy';
+                copyToClipboard.style.marginLeft = '10%';
+                copyToClipboard.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
+                viewKtlButtonsDiv.append(copyToClipboard);
+
+                copyToClipboard.addEventListener('click', function () {
+                    if (viewType === 'table')
+                        ktl.core.selectElementContents(document.querySelector('#' + view.key + ' .kn-table-wrapper'));
+                    else if (viewType === 'details')
+                        ktl.core.selectElementContents(document.querySelector('#' + view.key + '.kn-details section'));
+                    else {
+                        console.log('copyToClipboard error.  Unsupported view type:', view.key);
+                        return;
+                    }
+
+                    try {
+                        var successful = document.execCommand('copy');
+                        var msg = successful ? 'Table copied to clipboard' : 'Error copying table to clipboard';
+                        ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
+                    } catch (err) {
+                        ktl.core.timedPopup('Unable to copy', 'error', 2000);
+                    } finally {
+                        ktl.core.selectElementContents();
+                    }
+
+                });
+            },
+
             //Returns a zero-based index of the first column from left that matches the header param.
             //TODO: support details view
             getFieldPositionFromHeader: function (viewId, header) {
@@ -9251,11 +9325,27 @@ function Ktl($, appInfo) {
                                     }
                                 }
 
+                                //Linux-specific devices - BEGIN
+                                const sys = ktl.sysInfo.getSysInfo();
+                                if (sys.os === 'Linux' && sys.processor.includes('arm')) {
+                                    shutDownBtn = ktl.fields.addButton(devBtnsDiv, 'Shut Down', '', ['devBtn', 'kn-button']);
+                                    shutDownBtn.addEventListener('click', () => {
+                                        if (confirm('Are you sure you want to shut down device?'))
+                                            ktl.sysInfo.shutdownDevice();
+                                    })
+
+                                    rebootBtn = ktl.fields.addButton(devBtnsDiv, 'Reboot', '', ['devBtn', 'kn-button']);
+                                    rebootBtn.addEventListener('click', () => {
+                                        if (confirm('Are you sure you want to reboot device?'))
+                                            ktl.sysInfo.rebootDevice();
+                                    })
+                                }
+                                //Linux-specific devices - END
+
                                 const closeBtn = ktl.fields.addButton(devBtnsDiv, 'Close', '', ['devBtn', 'kn-button']);
                                 closeBtn.addEventListener('click', () => {
                                     $('#devBtnsDivId').remove();
                                 })
-
                                 $(closeBtn).css('margin-top', '20px');
 
                                 //Now that all buttons are added, load position or calculate default at center.
@@ -9272,7 +9362,6 @@ function Ktl($, appInfo) {
                                     ktl.core.centerElementOnScreen(devBtnsDiv);
                             })
                     }
-
 
                     return false; //False to prevent firing both events on mobile devices.
                 })
@@ -11714,6 +11803,44 @@ function Ktl($, appInfo) {
 
                 return result;
             },
+
+            rebootDevice: function () {
+                const sys = ktl.sysInfo.getSysInfo();
+                if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', 'http://localhost:3001/msg?rebootDevice', true);
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        const responseData = JSON.parse(xhr.responseText);
+                        resolve(responseData);
+                    } else if (xhr.status === 0) {
+                        console.error('rebootDevice error', xhr);
+                        reject(xhr);
+                    }
+                };
+
+                xhr.send();
+            },
+
+            shutdownDevice: function () {
+                const sys = ktl.sysInfo.getSysInfo();
+                if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', 'http://localhost:3001/msg?shutdownDevice', true);
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        const responseData = JSON.parse(xhr.responseText);
+                        resolve(responseData);
+                    } else if (xhr.status === 0) {
+                        console.error('shutdownDevice error', xhr);
+                        reject(xhr);
+                    }
+                };
+
+                xhr.send();
+            },
         }
     })(); //sysInfo
 
@@ -11741,7 +11868,7 @@ function Ktl($, appInfo) {
             ktl.views.refreshView(SYSOP_DASHBOARD_ACCOUNT_LOGS);
         }
 
-        function addCopytoClipboardButton() {
+        function addCopyToClipboardButton() {
             const tableKeywordSearchBar = $('.table-keyword-search');
             if (!tableKeywordSearchBar.length)
                 return;
@@ -11903,7 +12030,7 @@ function Ktl($, appInfo) {
 
         $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACCOUNT_LOGS, function (event, view, data) {
             generateDynamicTable(data);
-            addCopytoClipboardButton();
+            addCopyToClipboardButton();
         });
     })(); //Account Logs feature
 
@@ -12548,7 +12675,7 @@ function Ktl($, appInfo) {
 
                 //Only for Linux systems without a built-in VK, like Raspberry PI 4.
                 const sys = ktl.sysInfo.getSysInfo();
-                if (true ||sys.os === 'Linux' && sys.processor.includes('arm')) {
+                if (true || sys.os === 'Linux' && sys.processor.includes('arm')) {
                     ktl.core.setCfg({ enabled: { virtualKeyboard: true } });
                     load();
                 }
