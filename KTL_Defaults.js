@@ -54,7 +54,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 debugWnd: true,
                 devInfoPopup: true,
                 devPauseAutoRefresh: true,
-                virtualKeyboard: true,
+                virtualKeyboard: false,
 
                 //Those below must also be set up properly to have any effect.  See documentation.
                 iFrameWnd: false,
