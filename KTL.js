@@ -28,6 +28,8 @@ function Ktl($, appInfo) {
     const APP_ROOT_NAME = appInfo.lsShortName;
     window.APP_ROOT_NAME = APP_ROOT_NAME;
 
+    const LOCAL_SERVER_PORT = '3000';
+
     var ktl = this;
 
     //KEC stands for "KTL Event Code".  Next:  KEC_1026
@@ -9331,7 +9333,7 @@ function Ktl($, appInfo) {
                                     shutDownBtn = ktl.fields.addButton(devBtnsDiv, 'Shut Down', '', ['devBtn', 'kn-button']);
                                     shutDownBtn.addEventListener('click', () => {
                                         if (confirm('Are you sure you want to shut down device?'))
-                                            ktl.sysInfo.shutdownDevice();
+                                            ktl.sysInfo.shutDownDevice();
                                     })
 
                                     rebootBtn = ktl.fields.addButton(devBtnsDiv, 'Reboot', '', ['devBtn', 'kn-button']);
@@ -11625,6 +11627,8 @@ function Ktl($, appInfo) {
     //====================================================
     //System Info feature
     this.sysInfo = (function () {
+        const STARTUP_WD_TIMEOUT_DELAY = 60;
+
         var sInfo = {
             os: 'Unknown',
             browser: 'Unknown',
@@ -11661,27 +11665,27 @@ function Ktl($, appInfo) {
             var engineType = ((isChrome || isOpera) && !!window.CSS) ? 'Blink' : 'Unknown';
             sInfo.engine = engineType;
 
-            if (navigator.userAgent.indexOf('Android') >= 0)
+            if (navigator.userAgent.includes('Android'))
                 sInfo.os = 'Android';
-            else if (navigator.userAgent.indexOf('Windows') >= 0)
+            else if (navigator.userAgent.includes('Windows'))
                 sInfo.os = 'Windows';
-            else if (navigator.userAgent.indexOf('Linux') >= 0 || navigator.platform.indexOf('Linux') >= 0)
+            else if (navigator.userAgent.includes('Linux') || navigator.platform.includes('Linux'))
                 sInfo.os = 'Linux';
-            else if (navigator.userAgent.indexOf('Mac OS') >= 0)
+            else if (navigator.userAgent.includes('Mac OS'))
                 sInfo.os = 'Mac OS';
 
-            if (navigator.userAgent.indexOf('T2lite') >= 0)
+            if (navigator.userAgent.includes('T2lite'))
                 sInfo.model = 'T2Lite';
-            else if (navigator.userAgent.indexOf('D1-G') >= 0)
+            else if (navigator.userAgent.includes('D1-G'))
                 sInfo.model = 'D1-G';
 
-            if (navigator.userAgent.indexOf('x64') >= 0)
+            if (navigator.userAgent.includes('x64'))
                 sInfo.processor = 'x64';
-            else if (navigator.userAgent.indexOf('armv7') >= 0)
+            else if (navigator.userAgent.includes('armv7'))
                 sInfo.processor = 'armv7';
-            else if (navigator.userAgent.indexOf('arch64') >= 0)
+            else if (navigator.userAgent.includes('arch64'))
                 sInfo.processor = 'armv8';
-            else if (navigator.userAgent.indexOf('x86') >= 0)
+            else if (navigator.userAgent.includes('x86'))
                 sInfo.processor = 'x86';
 
             sInfo.mobile = Knack.isMobile().toString();
@@ -11804,12 +11808,33 @@ function Ktl($, appInfo) {
                 return result;
             },
 
+            getLinuxDeviceInfo: function () {
+                return new Promise(function (resolve, reject) {
+                    const sys = ktl.sysInfo.getSysInfo();
+                    if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return reject('Device not running a Linux OS');
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?getDeviceInfo', true);
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState === 4 && xhr.status === 200) {
+                            const responseData = JSON.parse(xhr.responseText);
+                            resolve(responseData);
+                        } else if (xhr.status === 0) {
+                            console.error('getDeviceInfo Server error', xhr);
+                            reject(xhr);
+                        }
+                    };
+
+                    xhr.send();
+                })
+            },
+
             rebootDevice: function () {
                 const sys = ktl.sysInfo.getSysInfo();
                 if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
 
                 const xhr = new XMLHttpRequest();
-                xhr.open('GET', 'http://localhost:3001/msg?rebootDevice', true);
+                xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?rebootDevice', true);
                 xhr.onreadystatechange = function () {
                     if (xhr.readyState === 4 && xhr.status === 200) {
                         const responseData = JSON.parse(xhr.responseText);
@@ -11823,23 +11848,56 @@ function Ktl($, appInfo) {
                 xhr.send();
             },
 
-            shutdownDevice: function () {
+            shutDownDevice: function () {
                 const sys = ktl.sysInfo.getSysInfo();
                 if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
 
                 const xhr = new XMLHttpRequest();
-                xhr.open('GET', 'http://localhost:3001/msg?shutdownDevice', true);
+                xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?shutDownDevice', true);
                 xhr.onreadystatechange = function () {
                     if (xhr.readyState === 4 && xhr.status === 200) {
                         const responseData = JSON.parse(xhr.responseText);
                         resolve(responseData);
                     } else if (xhr.status === 0) {
-                        console.error('shutdownDevice error', xhr);
+                        console.error('shutDownDevice error', xhr);
                         reject(xhr);
                     }
                 };
 
                 xhr.send();
+            },
+
+            /* Crash-proof recovery watchdog: Internet, Chromium, Kiosk App or other failures.
+            Whenever one of these stops responding, will trigger a refresh or a reboot.
+            Delay is in seconds.
+            Supported on the following environments:
+            - Linux/arm64 (Raspberry PI 4, 5 and on)
+            - Android "Kiosk Browser" app
+            */
+            recoveryWdHeartbeat: function (wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
+                return new Promise(function (resolve, reject) {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/watchdog?wdTimeoutDelay=' + wdTimeoutDelay, true);
+                    xhr.onreadystatechange = function () {
+                        //console.log('Server response:', xhr.readyState, xhr.status, xhr.statusText, xhr.responseText);
+                        if (xhr.readyState === 4 && xhr.status === 200) {
+                            clearTimeout(timeoutNoSvr);
+                            const responseData = JSON.parse(xhr.responseText);
+                            resolve(responseData);
+                        } else if (xhr.status === 0) {
+                            clearTimeout(timeoutNoSvr);
+                            console.error('Server error', xhr);
+                            reject(xhr);
+                        }
+                    };
+
+                    xhr.send();
+
+                    const timeoutNoSvr = setTimeout(() => {
+                        console.error('Server timeout', xhr);
+                        reject(xhr);
+                    }, STARTUP_WD_TIMEOUT_DELAY);
+                })
             },
         }
     })(); //sysInfo
@@ -12675,7 +12733,7 @@ function Ktl($, appInfo) {
 
                 //Only for Linux systems without a built-in VK, like Raspberry PI 4.
                 const sys = ktl.sysInfo.getSysInfo();
-                if (true || sys.os === 'Linux' && sys.processor.includes('arm')) {
+                if (sys.os === 'Linux' && sys.processor.includes('arm')) {
                     ktl.core.setCfg({ enabled: { virtualKeyboard: true } });
                     load();
                 }
