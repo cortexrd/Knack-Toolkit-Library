@@ -424,6 +424,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	text-overflow: ellipsis;
 }
 
+/* Virtual Keyboard */
 .virtualKeyboardFocus {
 	border-color: #1E3978;
 }
@@ -455,7 +456,7 @@ div.simple-keyboard {
 }
 
 .hg-theme-default.hg-layout-numeric .hg-button {
-	width: auto!important;
+	width: auto !important;
 }
 
 .hg-theme-default .hg-button.hg-standardBtn[data-skbtn=".com"] {
@@ -480,8 +481,9 @@ div.simple-keyboard {
 	background-color: #eee !important;
 	border-top: 2px solid #fff; /* Lighter top border */
 	border-left: 2px solid #fff; /* Lighter left border */
-	border-bottom: 2px solid #000000!important; /* Darker bottom border */
+	border-bottom: 2px solid #000000 !important; /* Darker bottom border */
 	border-right: 2px solid #000000; /* Darker right border */
-	border-radius: 5px!important;
+	border-radius: 5px !important;
 }
+
 /**** KTL_RELATED - END ****/
