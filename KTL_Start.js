@@ -71,7 +71,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     LazyLoad.css([cssFile], () => { });
     LazyLoad.js([ktlFile], () => {
         if (typeof Ktl === 'function') {
-            LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults.js'], () => {
+            LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + (ktlVersion === 'dev' ? '-dev' : '') + '.js'], () => {
                 if (typeof KnackApp === 'function') {
                     KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
                 } else
