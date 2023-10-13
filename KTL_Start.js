@@ -68,24 +68,25 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     var cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css';
     var ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js';
 
-    LazyLoad.css([cssFile], () => { });
-    LazyLoad.js([ktlFile], () => {
-        if (typeof Ktl === 'function') {
-            LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + (ktlVersion === 'dev' ? '-dev' : '') + '.js'], () => {
-                if (typeof KnackApp === 'function') {
-                    KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
-                } else
-                    alert('Error - KnackApp not found.');
+    LazyLoad.css([cssFile], () => {
+        LazyLoad.js([ktlFile], () => {
+            if (typeof Ktl === 'function') {
+                LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + (ktlVersion === 'dev' ? '-dev' : '') + '.js'], () => {
+                    if (typeof KnackApp === 'function') {
+                        KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
+                    } else
+                        alert('Error - KnackApp not found.');
 
-                callback();
-            })
-        } else {
-            if (localDevMode) {
-                alert('KTL not found');
+                    callback();
+                })
             } else {
-                localStorage.removeItem(lsShortName + 'dev'); //JIC
-                location.reload(true);
+                if (localDevMode) {
+                    alert('KTL not found');
+                } else {
+                    localStorage.removeItem(lsShortName + 'dev'); //JIC
+                    location.reload(true);
+                }
             }
-        }
-    })
+        })
+    });
 }
