@@ -218,6 +218,13 @@ window.KnackApp = function ($, appInfo = {}) {
                     navigation: false,
                 }
             });
+
+            ktl.sysInfo.setCfg({
+                recoveryWatchdogEnabled: {
+                    kioskBrowser: false,
+                    linux: false,
+                },
+            })
         }
 
         ktl.iFrameWnd.setCfg({
@@ -228,8 +235,8 @@ window.KnackApp = function ($, appInfo = {}) {
 
         if (typeof window.ktlReady === 'function')
             window.ktlReady(appInfo);
-        else
-            $(document).trigger('KTL.DefaultConfigReady');
+
+        $(document).trigger('KTL.DefaultConfigReady');
     })();
     //KTL Setup - END
     //====================================================
