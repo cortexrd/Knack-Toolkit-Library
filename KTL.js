@@ -3579,7 +3579,6 @@ function Ktl($, appInfo) {
                 }, 3000);
 
                 $(`#${view.key} .kn-table-table th`).on('click', onSaveFilterDebounced);
-
             }
         })
 
@@ -8179,10 +8178,27 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                $('a').on('click', e => {
-                    e.preventDefault();
-                    if (e.target.href)
+                $('.kn-view a:not([class*=drop]):not(.kn-sort)').on('click', e => {
+                    const target = e.target;
+                    let openInNewTab = false;
+
+                    let fieldId;
+                    let fld = target.closest('[class^="field_"]');
+                    if (fld)
+                        fieldId = fld.getAttribute('data-field-key');
+                    else
+                        fieldId = $(target).closest('.kn-detail').attr('class').split(/\s+/)[1];
+
+                    if (!fieldId || !fieldId.startsWith('field_')) return;
+
+                    const fieldType = ktl.fields.getFieldType(fieldId);
+                    if (target.classList.contains('kn-link') || fieldType === 'link')
+                        openInNewTab = true;
+
+                    if (openInNewTab && e.target.href) {
+                        e.preventDefault();
                         window.open(e.target.href, '_blank');
+                    }
                 })
             },
 
@@ -11628,8 +11644,10 @@ function Ktl($, appInfo) {
     //System Info feature
     this.sysInfo = (function () {
         const STARTUP_WD_TIMEOUT_DELAY = 60;
+        const NORMAL_WD_TIMEOUT_DELAY = 20;
+        const WD_SAFETY_MARGIN = 1.5;
 
-        var sInfo = {
+        var sysInfo = {
             os: 'Unknown',
             browser: 'Unknown',
             ip: 'Unknown',
@@ -11659,39 +11677,39 @@ function Ktl($, appInfo) {
             // Edge (based on chromium) detection
             var isEdgeChromium = (isChrome && (navigator.userAgent.indexOf("Edg") != -1)) ? 'Edge Chromium' : '';
 
-            sInfo.browser = (isEdgeChromium || isChrome) + isOpera + isFirefox + isEdge + isIE + isSafari;
+            sysInfo.browser = (isEdgeChromium || isChrome) + isOpera + isFirefox + isEdge + isIE + isSafari;
 
             // Engine type detection - Blink or Unknown
             var engineType = ((isChrome || isOpera) && !!window.CSS) ? 'Blink' : 'Unknown';
-            sInfo.engine = engineType;
+            sysInfo.engine = engineType;
 
             if (navigator.userAgent.includes('Android'))
-                sInfo.os = 'Android';
+                sysInfo.os = 'Android';
             else if (navigator.userAgent.includes('Windows'))
-                sInfo.os = 'Windows';
+                sysInfo.os = 'Windows';
             else if (navigator.userAgent.includes('Linux') || navigator.platform.includes('Linux'))
-                sInfo.os = 'Linux';
+                sysInfo.os = 'Linux';
             else if (navigator.userAgent.includes('Mac OS'))
-                sInfo.os = 'Mac OS';
+                sysInfo.os = 'Mac OS';
 
             if (navigator.userAgent.includes('T2lite'))
-                sInfo.model = 'T2Lite';
+                sysInfo.model = 'T2Lite';
             else if (navigator.userAgent.includes('D1-G'))
-                sInfo.model = 'D1-G';
+                sysInfo.model = 'D1-G';
 
             if (navigator.userAgent.includes('x64'))
-                sInfo.processor = 'x64';
+                sysInfo.processor = 'x64';
             else if (navigator.userAgent.includes('armv7'))
-                sInfo.processor = 'armv7';
+                sysInfo.processor = 'armv7';
             else if (navigator.userAgent.includes('arch64'))
-                sInfo.processor = 'armv8';
+                sysInfo.processor = 'armv8';
             else if (navigator.userAgent.includes('x86'))
-                sInfo.processor = 'x86';
+                sysInfo.processor = 'x86';
 
-            sInfo.mobile = Knack.isMobile().toString();
+            sysInfo.mobile = Knack.isMobile().toString();
 
             getPublicIP()
-                .then((ip) => { sInfo.ip = ip; })
+                .then((ip) => { sysInfo.ip = ip; })
                 .catch(() => { console.log('KTL\'s getPublicIP failed.  Make sure uBlock not active.'); })
         })();
 
@@ -11733,9 +11751,124 @@ function Ktl($, appInfo) {
             }
         })
 
+        $(document).on('KTL.DefaultConfigReady', () => {
+            if (ktl.scenes.isiFrameWnd()) return;
+
+            this.recoveryWatchdog = (function () {
+                //Check if we're running Android with Kiosk Browser app,
+                //or Linux - based(ex: Raspberry PI 4) and enable the Recovery Watchdog.
+                let deviceIsCompatibleWithRecoveryWd = false;
+                if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
+                    deviceIsCompatibleWithRecoveryWd = true; //cfg.recoveryWatchdogEnabled = true;
+                } else if ((sysInfo.os === 'Linux' && sysInfo.processor.includes('arm')))
+                    deviceIsCompatibleWithRecoveryWd = true; //cfg.recoveryWatchdogEnabled = true;
+                else
+                    deviceIsCompatibleWithRecoveryWd = false;
+
+                if (deviceIsCompatibleWithRecoveryWd) {
+                    if (!cfg.recoveryWatchdogEnabled) {
+                        ktl.sysInfo.sendRecoveryWdHeartbeat(0); //Zero means "Disable Recovery WD".
+                        return;
+                    }
+                } else
+                    return;
+
+                var wdLoopTimeout;
+                var maxMemUsage = 0;
+
+                var simulateCrash = false; //Just for temporary testing during development.
+
+                if (cfg.recoveryWatchdogEnabled) {
+                    $(document).one('click', resetWdOntouch);
+
+                    function resetWdOntouch(e) {
+                        //console.log('resetWdOntouch:', e.type);
+                        resetRecoveryWatchdog(NORMAL_WD_TIMEOUT_DELAY);
+                        setTimeout(() => {
+                            $(document).one('click', resetWdOntouch);
+                        }, 5000);
+                    }
+
+                    $(document).on('knack-scene-render.any', (event, scene) => {
+                        resetRecoveryWatchdog(NORMAL_WD_TIMEOUT_DELAY);
+
+                        simulateCrash = false;
+                        $(document).on('keydown touchstart', function (event) {
+                            if (/*event.type === 'touchstart' || */event.key === '!') {
+                                ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
+                                simulateCrash = true;
+                            }
+                        })
+                    });
+
+                    function resetRecoveryWatchdog(wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
+                        function recoveryWdLoop() {
+                            if (!simulateCrash) {
+                                clearTimeout(wdLoopTimeout);
+                                ktl.sysInfo.sendRecoveryWdHeartbeat(wdTimeoutDelay)
+                                    .then(svrResponse => {
+                                        wdTimeoutDelay = NORMAL_WD_TIMEOUT_DELAY;
+                                        if (svrResponse.memory)
+                                            updateMemoryUsage(svrResponse);
+
+                                        if (true || ktl.account.isDeveloper()) {
+                                            var svrMsg = svrResponse.message;
+                                            if (svrResponse.memory) {
+                                                svrMsg += ' - ' + svrResponse.memory.usedMemory;
+                                            }
+
+                                            console.log('svrMsg =', svrMsg);
+                                            ktl.core.timedPopup(svrMsg, 'success', 3000);
+                                        }
+                                    })
+                                    .catch(reason => {
+                                        console.error(reason);
+                                        if (ktl.account.isDeveloper())
+                                            ktl.core.timedPopup(reason, 'error');
+                                        wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY;
+                                    })
+                                    .finally(() => {
+                                        wdLoopTimeout = setTimeout(recoveryWdLoop, wdTimeoutDelay / WD_SAFETY_MARGIN * 1000);
+                                    });
+                            }
+                        }
+
+                        function updateMemoryUsage(svrResponse) {
+                            if (!$('#verButtonId').length) return;
+
+                            if (!$('#additionalInfoDiv').length) {
+                                const vbDiv = document.querySelector('#addVersionInfoDiv');
+                                var additionalInfoDiv = document.createElement('div');
+                                additionalInfoDiv.setAttribute('id', 'additionalInfoDiv');
+                                vbDiv.appendChild(additionalInfoDiv);
+
+                                var sourceDiv = document.getElementById('verButtonId');
+                                var targetDiv = document.getElementById('additionalInfoDiv');
+
+                                targetDiv.style.cssText = sourceDiv.style.cssText;
+                                $('#addVersionInfoDiv').css('display', 'flex');
+                            }
+
+                            maxMemUsage = Math.max(maxMemUsage, svrResponse.memory.usedMemory);
+                            const percentageMem = Math.round(maxMemUsage / svrResponse.memory.totalMemory * 100);
+                            document.querySelector('#additionalInfoDiv').textContent = '  Mem: ' + svrResponse.memory.usedMemory + ' Max: ' + maxMemUsage + ' ' + percentageMem + '%';
+                        }
+
+                        recoveryWdLoop();
+                    }
+
+                    resetRecoveryWatchdog(STARTUP_WD_TIMEOUT_DELAY); //Entry point.
+                }
+            })(); //recoveryWatchdog
+        });
+
         return {
             getSysInfo: function () {
-                return sInfo;
+                return sysInfo;
+            },
+
+            setCfg: function (cfgObj = {}) {
+                cfgObj.recoveryWatchdogEnabled && (cfg.recoveryWatchdogEnabled = cfgObj.recoveryWatchdogEnabled);
             },
 
             //See list here: https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords
@@ -11867,36 +12000,45 @@ function Ktl($, appInfo) {
                 xhr.send();
             },
 
-            /* Crash-proof recovery watchdog: Internet, Chromium, Kiosk App or other failures.
+            /* High rebustness recovery watchdog against Internet, Chromium, Kiosk App or other failures.
             Whenever one of these stops responding, will trigger a refresh or a reboot.
             Delay is in seconds.
             Supported on the following environments:
             - Linux/arm64 (Raspberry PI 4, 5 and on)
             - Android "Kiosk Browser" app
             */
-            recoveryWdHeartbeat: function (wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
+            sendRecoveryWdHeartbeat: function (wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
                 return new Promise(function (resolve, reject) {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/watchdog?wdTimeoutDelay=' + wdTimeoutDelay, true);
-                    xhr.onreadystatechange = function () {
-                        //console.log('Server response:', xhr.readyState, xhr.status, xhr.statusText, xhr.responseText);
-                        if (xhr.readyState === 4 && xhr.status === 200) {
-                            clearTimeout(timeoutNoSvr);
-                            const responseData = JSON.parse(xhr.responseText);
-                            resolve(responseData);
-                        } else if (xhr.status === 0) {
-                            clearTimeout(timeoutNoSvr);
-                            console.error('Server error', xhr);
+                    const safeWdDelay = wdTimeoutDelay / WD_SAFETY_MARGIN;
+                    if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
+                        ktl.core.timedPopup('WD safeWdDelay: ' + safeWdDelay + ' wdTimeoutDelay: ' + wdTimeoutDelay, 'success');
+                        Android.resetWatchdog(wdTimeoutDelay);
+                        //Android.resetWatchdog(60);
+                        resolve({ message: 'Android.resetWatchdog: ' + wdTimeoutDelay });
+                    } else if (sysInfo.os === 'Linux' && sysInfo.processor.includes('arm')) {
+                        const timeoutNoSvr = setTimeout(() => {
+                            //console.error('Server timeout', xhr);
                             reject(xhr);
-                        }
-                    };
+                        }, STARTUP_WD_TIMEOUT_DELAY * 1000);
 
-                    xhr.send();
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/watchdog?wdTimeoutDelay=' + safeWdDelay, true);
+                        xhr.onreadystatechange = function () {
+                            //console.log('Server response:', xhr.readyState, xhr.status, xhr.statusText, xhr.responseText);
+                            if (xhr.readyState === 4 && xhr.status === 200) {
+                                clearTimeout(timeoutNoSvr);
+                                const responseData = JSON.parse(xhr.responseText);
+                                resolve(responseData);
+                            } else if (xhr.status === 0) {
+                                clearTimeout(timeoutNoSvr);
+                                //console.error('Server error', xhr);
+                                reject(xhr);
+                            }
+                        };
 
-                    const timeoutNoSvr = setTimeout(() => {
-                        console.error('Server timeout', xhr);
-                        reject(xhr);
-                    }, STARTUP_WD_TIMEOUT_DELAY);
+                        xhr.send();
+                    } else
+                        reject('Recovery Watchdog is not supported on ' + sysInfo.os);
                 })
             },
         }
