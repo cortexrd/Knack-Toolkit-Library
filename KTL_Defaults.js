@@ -220,10 +220,7 @@ window.KnackApp = function ($, appInfo = {}) {
             });
 
             ktl.sysInfo.setCfg({
-                recoveryWatchdogEnabled: {
-                    kioskBrowser: false,
-                    linux: false,
-                },
+                recoveryWatchdogEnabled: false,
             })
         }
 
