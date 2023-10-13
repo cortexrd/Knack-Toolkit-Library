@@ -2307,6 +2307,9 @@ function Ktl($, appInfo) {
             addChznBetter: function (dropdownId) {
                 const input = $(`#${dropdownId} .ui-autocomplete-input`);
                 const options = input.autocomplete('option');
+
+                const fieldId = $('#' + dropdownId).closest('[data-input-id]').attr('data-input-id') || '';
+
                 input.autocomplete('option', {
                     ...options,
                     minLength: chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : 3,
@@ -2712,8 +2715,8 @@ function Ktl($, appInfo) {
                 loadFormData()
                     .then(() => {
                         pfInitDone = true;
-                        setTimeout(function () { 
-                            ktl.fields.enforceNumeric(); 
+                        setTimeout(function () {
+                            ktl.fields.enforceNumeric();
                             $(document).trigger('KTL.persistentForm.completed');
                         }, 1000);
                     })
@@ -12034,9 +12037,8 @@ function Ktl($, appInfo) {
             */
             sendRecoveryWdHeartbeat: function (wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
                 return new Promise(function (resolve, reject) {
-                    const safeWdDelay = wdTimeoutDelay / WD_SAFETY_MARGIN;
                     if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
-                        ktl.core.timedPopup('WD safeWdDelay: ' + safeWdDelay + ' wdTimeoutDelay: ' + wdTimeoutDelay, 'success');
+                        ktl.core.timedPopup('WD: ' + wdTimeoutDelay, 'success');
                         Android.resetWatchdog(wdTimeoutDelay);
                         //Android.resetWatchdog(60);
                         resolve({ message: 'Android.resetWatchdog: ' + wdTimeoutDelay });
@@ -12047,7 +12049,7 @@ function Ktl($, appInfo) {
                         }, STARTUP_WD_TIMEOUT_DELAY * 1000);
 
                         const xhr = new XMLHttpRequest();
-                        xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/watchdog?wdTimeoutDelay=' + safeWdDelay, true);
+                        xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/watchdog?wdTimeoutDelay=' + wdTimeoutDelay, true);
                         xhr.onreadystatechange = function () {
                             //console.log('Server response:', xhr.readyState, xhr.status, xhr.statusText, xhr.responseText);
                             if (xhr.readyState === 4 && xhr.status === 200) {
@@ -12832,7 +12834,7 @@ function Ktl($, appInfo) {
                     function onChange(input, event) {
                         if (target) {
                             let caretStart;
-                            
+
                             if (event.target.attributes['data-skbtn'].value === '{bksp}') {
                                 if (input.length === target.value.length - 1)
                                     caretStart = target.selectionStart - 1;
@@ -12861,18 +12863,18 @@ function Ktl($, appInfo) {
                     function onKeyPress(button) {
 
                         if (shiftKeyPressed && button != "{shift}") {
-                            handleShift("shift"); 
+                            handleShift("shift");
                             shiftKeyPressed = false;
                         }
 
                         if (button === "{shift}") {
-                            handleShift("default"); 
+                            handleShift("default");
                             shiftKeyPressed = true;
                         } else if (button === "{capslock}") {
-                            handleShift(); 
+                            handleShift();
                         } else if (target) {
 
-                            if (button === "{enter}") 
+                            if (button === "{enter}")
                                 $(target).closest('form').submit();
 
                             if (button === "{escape}") {
@@ -12909,19 +12911,19 @@ function Ktl($, appInfo) {
                             }
 
                             if (!button.startsWith("{") && !button.startsWith("}")) {
-                                target.dispatchEvent( new KeyboardEvent( "keydown", { 
+                                target.dispatchEvent( new KeyboardEvent( "keydown", {
                                     key: button.charAt(0),
                                     keyCode: button.charCodeAt(0),
                                     bubbles: true,
                                     cancelable: true
                                 }));
-                                sendButtonEvents.push( new KeyboardEvent( "keypress", { 
+                                sendButtonEvents.push( new KeyboardEvent( "keypress", {
                                     key: button.charAt(0),
                                     keyCode: button.charCodeAt(0),
                                     bubbles: true,
                                     cancelable: true
                                 }));
-                                sendButtonEvents.push( new KeyboardEvent( "keyup", { 
+                                sendButtonEvents.push( new KeyboardEvent( "keyup", {
                                     key: button.charAt(0),
                                     keyCode: button.charCodeAt(0),
                                     bubbles: true,
@@ -12930,19 +12932,19 @@ function Ktl($, appInfo) {
                             }
 
                             if (button === "{bksp}") {
-                                target.dispatchEvent( new KeyboardEvent( "keydown", { 
+                                target.dispatchEvent( new KeyboardEvent( "keydown", {
                                     key: 'Backspace',
                                     keyCode: 8,
                                     bubbles: true,
                                     cancelable: true
                                 }));
-                                sendButtonEvents.push( new KeyboardEvent( "keypress", { 
+                                sendButtonEvents.push( new KeyboardEvent( "keypress", {
                                     key: 'Backspace',
                                     keyCode: 8,
                                     bubbles: true,
                                     cancelable: true
                                 }));
-                                sendButtonEvents.push( new KeyboardEvent( "keyup", { 
+                                sendButtonEvents.push( new KeyboardEvent( "keyup", {
                                     key: 'Backspace',
                                     keyCode: 8,
                                     bubbles: true,
@@ -12978,7 +12980,7 @@ function Ktl($, appInfo) {
                         if ($(target).offset().top - $(document).scrollTop() > 700) {
                             $([document.documentElement, document.body]).animate({
                                 scrollTop: $(target).offset().top - 200
-                            }, 200, 'linear', () => target && target.dispatchEvent( new KeyboardEvent( "focus", { 
+                            }, 200, 'linear', () => target && target.dispatchEvent( new KeyboardEvent( "focus", {
                                 bubbles: true,
                                 cancelable: true
                             })));
