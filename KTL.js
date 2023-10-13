@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.16.0';
+    const KTL_VERSION = '0.16.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -11820,13 +11820,13 @@ function Ktl($, appInfo) {
                     $(document).on('knack-scene-render.any', (event, scene) => {
                         resetRecoveryWatchdog(NORMAL_WD_TIMEOUT_DELAY);
 
-                        simulateCrash = false;
-                        $(document).on('keydown touchstart', function (event) {
-                            if (/*event.type === 'touchstart' || */event.key === '!') {
-                                ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
-                                simulateCrash = true;
-                            }
-                        })
+                    //    simulateCrash = false;
+                    //    $(document).on('keydown touchstart', function (event) {
+                    //        if (/*event.type === 'touchstart' || */event.key === '!') {
+                    //            ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
+                    //            simulateCrash = true;
+                    //        }
+                    //    })
                     });
 
                     function resetRecoveryWatchdog(wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
@@ -11839,14 +11839,14 @@ function Ktl($, appInfo) {
                                         if (svrResponse.memory)
                                             updateMemoryUsage(svrResponse);
 
-                                        if (true || ktl.account.isDeveloper()) {
+                                        if (ktl.account.isDeveloper()) {
                                             var svrMsg = svrResponse.message;
                                             if (svrResponse.memory) {
                                                 svrMsg += ' - ' + svrResponse.memory.usedMemory;
                                             }
 
-                                            console.log('svrMsg =', svrMsg);
-                                            ktl.core.timedPopup(svrMsg, 'success', 3000);
+                                            //console.log('svrMsg =', svrMsg);
+                                            //ktl.core.timedPopup(svrMsg, 'success', 3000);
                                         }
                                     })
                                     .catch(reason => {
@@ -12038,7 +12038,7 @@ function Ktl($, appInfo) {
             sendRecoveryWdHeartbeat: function (wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
                 return new Promise(function (resolve, reject) {
                     if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
-                        ktl.core.timedPopup('WD: ' + wdTimeoutDelay, 'success');
+                        //ktl.core.timedPopup('WD: ' + wdTimeoutDelay, 'success');
                         Android.resetWatchdog(wdTimeoutDelay);
                         //Android.resetWatchdog(60);
                         resolve({ message: 'Android.resetWatchdog: ' + wdTimeoutDelay });
