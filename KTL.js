@@ -1839,8 +1839,7 @@ function Ktl($, appInfo) {
                         //console.log('Clicked dropdown already has chznBetter');
                     } else {
                         clearInterval(chznChoicesIntervalId);
-                        if ($('#chznBetter').length > 0)
-                            $('#chznBetter').remove();
+                        $('#chznBetter').remove();
 
                         if (dropdownNeedsFix && dropdownId.length > 0 && !isMultiSelect) {
                             if ($('#chznBetter').length === 0)
@@ -2299,72 +2298,95 @@ function Ktl($, appInfo) {
             //    }
             //});
 
+            shouldBeNumeric: function(fieldId) {
+                return textAsNumeric.includes(fieldId);
+            },
+
             //chznBetter functions
             // Ex. param:  dropdownId = 'view_XXX_field_YYY_chzn';
             addChznBetter: function (dropdownId) {
-                var fieldId = document.querySelector('#' + dropdownId).closest('.kn-input').getAttribute('data-input-id');
-                if (chznBetterToExclude.includes(fieldId))
-                    return;
-
-                //console.log('Entering addChznBetter');
-                var srchField = null;
-                if ($('#chznBetter').length === 0) {
-                    chznBetterTxt = '';
-                    var chznBetter = document.createElement('input');
-
-                    //Numeric fields only, set to Tel type.
-                    if (textAsNumeric.includes(fieldId) && !textAsNumericExcludeScenes.includes(Knack.router.current_scene_key)) {
-                        chznBetter.setAttribute('type', 'tel');
-                        chznBetter.setAttribute('numeric', 'true');
-                        chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '4'); //Minimum number of characters to be typed before search is triggered.
-                    } else {
-                        chznBetter.setAttribute('type', 'text');
-                        chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '3');
+                const input = $(`#${dropdownId} .ui-autocomplete-input`);
+                const options = input.autocomplete('option');
+                input.autocomplete('option', {
+                    ...options,
+                    minLength: chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : 3,
+                    delay: chznBetterSrchDelay || 2000,
+                    change: function( event, ui ) {
+                        console.debug('Chzn changed');
+                        options.change && options.change(event, ui);
+                    },
+                    response: function( event, ui ) {
+                        console.debug('Chzn response');
+                        options.response && options.response(event, ui);
                     }
+                });
 
-                    chznBetter.setAttribute('id', 'chznBetter');
-                    chznBetter.classList.add('input');
+                return;
 
-                    var chzn = $('#' + dropdownId);
+                // TODO Search & Destroy ChznBetter code
+                // var fieldId = document.querySelector('#' + dropdownId).closest('.kn-input').getAttribute('data-input-id');
+                // if (chznBetterToExclude.includes(fieldId))
+                //     return;
 
-                    srchField = chzn.find('.chzn-search');
-                    if (srchField.length === 0)
-                        srchField = chzn.find('.search-field');
+                // //console.log('Entering addChznBetter');
+                // var srchField = null;
+                // if ($('#chznBetter').length === 0) {
+                //     chznBetterTxt = '';
+                //     var chznBetter = document.createElement('input');
 
-                    if (srchField && srchField.length > 0) {
-                        srchField.append(chznBetter);
-                    }
-                }
+                //     //Numeric fields only, set to Tel type.
+                //     if (textAsNumeric.includes(fieldId) && !textAsNumericExcludeScenes.includes(Knack.router.current_scene_key)) {
+                //         chznBetter.setAttribute('type', 'tel');
+                //         chznBetter.setAttribute('numeric', 'true');
+                //         chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '4'); //Minimum number of characters to be typed before search is triggered.
+                //     } else {
+                //         chznBetter.setAttribute('type', 'text');
+                //         chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '3');
+                //     }
 
-                if (srchField && srchField.length > 0) {
-                    if (chznBetter) {
-                        chznBetter.value = chznBetterTxt;
-                        chznBetter.style.position = 'absolute';
+                //     chznBetter.setAttribute('id', 'chznBetter');
+                //     chznBetter.classList.add('input');
 
-                        setTimeout(function () {
-                            chznBetter.focus();
-                        }, 200);
+                //     var chzn = $('#' + dropdownId);
 
-                        //Start monitoring selection changes.
-                        //Purpose:
-                        //  It's the only way we can detect a delete because it's impossible to get notifications from a click on an X.
-                        //  When the number of items change for whatever reason (add or delete), we want the focus back on the input field.
-                        var numSel = 0;
-                        var prevNumSel = 0;
-                        chznChoicesIntervalId = setInterval(function () {
-                            var chznChoices = chzn.find('.chzn-choices li');
-                            if (chznChoices && chznChoices.length > 1) { //Omit first one (actually last in list), since always search-field.
-                                numSel = chznChoices.length - 1;
+                //     srchField = chzn.find('.chzn-search');
+                //     if (srchField.length === 0)
+                //         srchField = chzn.find('.search-field');
 
-                                if (prevNumSel !== numSel) {
-                                    //console.log('Updating num selected =', numSel);
-                                    prevNumSel = numSel;
-                                    chznBetter.focus();
-                                }
-                            }
-                        }, 1000);
-                    }
-                }
+                //     if (srchField && srchField.length > 0) {
+                //         srchField.append(chznBetter);
+                //     }
+                // }
+
+                // if (srchField && srchField.length > 0) {
+                //     if (chznBetter) {
+                //         chznBetter.value = chznBetterTxt;
+                //         chznBetter.style.position = 'absolute';
+
+                //         setTimeout(function () {
+                //             chznBetter.focus();
+                //         }, 200);
+
+                //         //Start monitoring selection changes.
+                //         //Purpose:
+                //         //  It's the only way we can detect a delete because it's impossible to get notifications from a click on an X.
+                //         //  When the number of items change for whatever reason (add or delete), we want the focus back on the input field.
+                //         var numSel = 0;
+                //         var prevNumSel = 0;
+                //         chznChoicesIntervalId = setInterval(function () {
+                //             var chznChoices = chzn.find('.chzn-choices li');
+                //             if (chznChoices && chznChoices.length > 1) { //Omit first one (actually last in list), since always search-field.
+                //                 numSel = chznChoices.length - 1;
+
+                //                 if (prevNumSel !== numSel) {
+                //                     //console.log('Updating num selected =', numSel);
+                //                     prevNumSel = numSel;
+                //                     chznBetter.focus();
+                //                 }
+                //             }
+                //         }, 1000);
+                //     }
+                // }
             },
 
             //For KTL internal use.
@@ -2690,7 +2712,10 @@ function Ktl($, appInfo) {
                 loadFormData()
                     .then(() => {
                         pfInitDone = true;
-                        setTimeout(function () { ktl.fields.enforceNumeric(); }, 1000);
+                        setTimeout(function () { 
+                            ktl.fields.enforceNumeric(); 
+                            $(document).trigger('KTL.persistentForm.completed');
+                        }, 1000);
                     })
             });
         })
@@ -6905,8 +6930,8 @@ function Ktl($, appInfo) {
 
                         //If the dropdown has a search field, trigger a search on the requested text now.
                         if ($(viewSel + '[id$="' + fieldId + '_chzn"] .ui-autocomplete-input').length > 0) {
-                            chznSearchInput.focus();
-                            chznSearchInput.autocomplete('search', srchTxt); //GO!
+                            // chznSearchInput.focus();
+                            // chznSearchInput.autocomplete('search', srchTxt); //GO!
                             //Wait for response...
                         } else {
                             //The dropdown does not have a search field (less than 500 entries), just select among the options that are already populated.
@@ -7066,9 +7091,9 @@ function Ktl($, appInfo) {
 
                                                     if (!foundAtLeastOne) {
                                                         ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
-                                                        $('.ui-autocomplete-input').val('');
-                                                        $('#chznBetter').val('');
-                                                        document.activeElement.blur();
+                                                        // $('.ui-autocomplete-input').val('');
+                                                        // $('#chznBetter').val('');
+                                                        // document.activeElement.blur();
                                                         //ktl.fields.ktlChznBetterSetFocus();
                                                     }
                                                 } else {
@@ -12610,7 +12635,7 @@ function Ktl($, appInfo) {
                     const Keyboard = window.SimpleKeyboard.default;
                     let target;
 
-                    $('body').append('<div class="simple-keyboard"></div>');
+                    $('body').append('<div id="simple-keyboard" class="simple-keyboard"></div>');
                     $('.simple-keyboard').hide();
 
                     $('.simple-keyboard').on('click', event => {
@@ -12618,91 +12643,210 @@ function Ktl($, appInfo) {
                     })
 
                     let keyboard = new Keyboard({
-                        onChange: input => onChange(input),
-                        onKeyPress: button => onKeyPress(button),
+                        onChange: (input, event) => onChange(input, event),
+                        onKeyPress: (button, event) => onKeyPress(button, event),
                         layout: {
                             'default': [
-                                '` 1 2 3 4 5 6 7 8 9 0 - = {bksp}',
+                                '{escape} 1 2 3 4 5 6 7 8 9 0 - = {bksp}',
                                 '{tab} q w e r t y u i o p [ ] \\',
-                                '{lock} a s d f g h j k l ; \' {enter}',
+                                '{capslock} a s d f g h j k l ; \' {enter}',
                                 '{shift} z x c v b n m , . / {shift}',
-                                '.com @ {space}'
+                                '.com @ {space} {arrowleft} {arrowright}'
                             ],
                             'shift': [
-                                '~ ! @ # $ % ^ &amp; * ( ) _ + {bksp}',
+                                '{escape} ! @ # $ % ^ & * ( ) _ + {bksp}',
                                 '{tab} Q W E R T Y U I O P { } |',
-                                '{lock} A S D F G H J K L : " {enter}',
-                                '{shift} Z X C V B N M &lt; &gt; ? {shift}',
-                                '.com @ {space}'
+                                '{capslock} A S D F G H J K L : " {enter}',
+                                '{shift} Z X C V B N M < > ? {shift}',
+                                '.ca @ {space} {arrowleft} {arrowright}'
                             ],
                             'numeric': [
                                 '7 8 9',
                                 '4 5 6',
                                 '1 2 3',
                                 '. 0 -',
-                                '{bksp} {enter}'
+                                '{bksp} {enter}',
+                                '{arrowleft} {arrowright}'
                             ],
+                        },
+                        preventMouseDownDefault: true,
+                        preventMouseUpDefault: true,
+                        stopMouseDownPropagation: true,
+                        stopMouseUpPropagation: true,
+                        tabCharOnTab: false,
+                        disableButtonHold: true,
+                        mergeDisplay: true,
+                        display: {
+                            "{escape}": "⎋",
+                            "{tab}": " ",
+                            "{bksp}": "⌫",
+                            "{enter}": "↵",
+                            "{capslock}": "⇪",
+                            "{shift}": "⇧",
                         }
                     });
 
-                    function onChange(input) {
+                    let sendButtonEvents = [];
+                    function onChange(input, event) {
                         if (target) {
+                            let caretStart;
+                            
+                            if (event.target.attributes['data-skbtn'].value === '{bksp}') {
+                                if (input.length === target.value.length - 1)
+                                    caretStart = target.selectionStart - 1;
+                                else
+                                    caretStart = target.selectionStart
+                            } else
+                                caretStart = target.selectionStart + 1;
+
+                            keyboard.setCaretPosition(caretStart);
                             target.value = input;
-                            console.debug("Input changed", input);
-                        }
-                    }
+                            target.selectionStart = caretStart;
+                            target.selectionEnd = caretStart;
+                            target.dispatchEvent(new InputEvent ('input', {
+                                bubbles: true,
+                                cancelable: true
+                            }));
 
-                    function onKeyPress(button) {
-                        console.debug("Button pressed", button);
-
-                        if (button === "{shift}" || button === "{lock}")
-                            handleShift(); //TODO: shift shouldn't keep this caps mode after next printable char pressed.
-                        else if (button === "{enter}") {
-                            if (target) {
-                                target.dispatchEvent(new KeyboardEvent('keydown', {
-                                    bubbles: true,
-                                    cancelable: true,
-                                    key: 'Enter',
-                                    code: 'Enter'
-                                }));
-
-                                target.dispatchEvent(new KeyboardEvent('keyup', {
-                                    bubbles: true,
-                                    cancelable: true,
-                                    key: 'Enter',
-                                    code: 'Enter'
-                                }));
-
-                                target.dispatchEvent(new KeyboardEvent('keypress', {
-                                    bubbles: true,
-                                    cancelable: true,
-                                    key: 'Enter',
-                                    code: 'Enter'
-                                }));
-
-                                $(target).closest('form').submit();
+                            if (sendButtonEvents) { // Sending events after the value was changed
+                                sendButtonEvents.forEach(event => target.dispatchEvent(event));
+                                sendButtonEvents = [];
                             }
                         }
                     }
 
-                    function handleShift() {
-                        let currentLayout = keyboard.options.layoutName;
-                        let shiftToggle = currentLayout === "default" ? "shift" : "default";
+                    let shiftKeyPressed = false;
+                    function onKeyPress(button) {
+
+                        if (shiftKeyPressed && button != "{shift}") {
+                            handleShift("shift"); 
+                            shiftKeyPressed = false;
+                        }
+
+                        if (button === "{shift}") {
+                            handleShift("default"); 
+                            shiftKeyPressed = true;
+                        } else if (button === "{capslock}") {
+                            handleShift(); 
+                        } else if (target) {
+
+                            if (button === "{enter}") 
+                                $(target).closest('form').submit();
+
+                            if (button === "{escape}") {
+                                $(target).blur();
+                                $('.simple-keyboard').hide();
+                                keyboard.clearInput();
+                                target = null;
+                            }
+
+                            if (button === "{arrowleft}") {
+                                if (target.selectionEnd != target.selectionStart) {
+                                    target.selectionEnd = target.selectionStart;
+                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                } else {
+                                    target.selectionStart = Math.max(target.selectionStart - 1, 0);
+                                    target.selectionEnd = target.selectionStart;
+                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                }
+                            }
+
+                            if (button === "{arrowright}") {
+                                if (target.selectionEnd != target.selectionStart) {
+                                    target.selectionStart = target.selectionEnd;
+                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                } else {
+                                    target.selectionStart = target.selectionStart + 1;
+                                    target.selectionEnd = target.selectionStart;
+                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                }
+                            }
+
+                            if (button === "{tab}") {
+                                // Add tab keypress
+                            }
+
+                            if (!button.startsWith("{") && !button.startsWith("}")) {
+                                target.dispatchEvent( new KeyboardEvent( "keydown", { 
+                                    key: button.charAt(0),
+                                    keyCode: button.charCodeAt(0),
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                                sendButtonEvents.push( new KeyboardEvent( "keypress", { 
+                                    key: button.charAt(0),
+                                    keyCode: button.charCodeAt(0),
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                                sendButtonEvents.push( new KeyboardEvent( "keyup", { 
+                                    key: button.charAt(0),
+                                    keyCode: button.charCodeAt(0),
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                            }
+
+                            if (button === "{bksp}") {
+                                target.dispatchEvent( new KeyboardEvent( "keydown", { 
+                                    key: 'Backspace',
+                                    keyCode: 8,
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                                sendButtonEvents.push( new KeyboardEvent( "keypress", { 
+                                    key: 'Backspace',
+                                    keyCode: 8,
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                                sendButtonEvents.push( new KeyboardEvent( "keyup", { 
+                                    key: 'Backspace',
+                                    keyCode: 8,
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                            }
+                        }
+                    }
+
+                    function handleShift(currentLayout = keyboard.options.layoutName) {
+                        const shiftToggle = currentLayout === "default" ? "shift" : "default";
 
                         keyboard.setOptions({ layoutName: shiftToggle });
                     }
 
-                    $(document).on('focusin', 'input, textarea', event => {
-                        target = event.target;
-                        target.classList.add('virtualKeyboardFocus');
-                        keyboard.setInput(event.target.value);
+                    $(document).on('focus', 'input, textarea', event => {
+                        if (target == event.target || !$(event.target).is(':visible') || (!['number', 'tel', 'text', 'email', 'password', 'search'].includes(event.target.attributes['type'].value)))
+                            return;
 
-                        if ($(target).attr('type') === 'tel')
+                        target = event.target;
+                        keyboard.setInput(event.target.value);
+                        keyboard.setCaretPosition(target.selectionStart, target.selectionEnd);
+
+                        const fieldId = $(target).closest('[data-input-id]').attr('data-input-id') || 0;
+
+                        if ($(target).attr('type') === 'tel' || $(target).attr('type') === 'number' || ktl.fields.shouldBeNumeric(fieldId))
                             keyboard.setOptions({ layoutName: 'numeric' });
                         else
                             keyboard.setOptions({ layoutName: 'default' });
 
                         $('.simple-keyboard').show();
+
+                        if ($(target).offset().top - $(document).scrollTop() > 700) {
+                            $([document.documentElement, document.body]).animate({
+                                scrollTop: $(target).offset().top - 200
+                            }, 200, 'linear', () => target && target.dispatchEvent( new KeyboardEvent( "focus", { 
+                                bubbles: true,
+                                cancelable: true
+                            })));
+                        }
+
+                        $(target).on("remove", function () {
+                            $('.simple-keyboard').hide();
+                            keyboard.clearInput();
+                            target = null;
+                        })
                     });
 
                     $(document).on('mousedown', event => {
@@ -12712,12 +12856,24 @@ function Ktl($, appInfo) {
 
                             $('.simple-keyboard').hide();
                             keyboard.clearInput();
-                            target && target.classList.remove('virtualKeyboardFocus');
                             target = null;
                         }
                     });
-                })
-            })
+
+                    $(document).on('click', '.chzn-container', (event) => {
+                        if ($(event.currentTarget).hasClass('chzn-container-active'))
+                            $(event.currentTarget).find('.chzn-search input').trigger('mousedown');
+                    });
+
+                    $(document).on('click', '.cell-edit', (event) => {
+                        ktl.core.waitSelector("#cell-editor").then(() => {
+                            setTimeout( () => { // Wait for cell-editor's content to change
+                                $("#cell-editor").find('div:not(.chzn-search) > input:visible').trigger('focus');
+                            }, 500);
+                        });
+                    });
+                });
+            });
         }
 
         return {
