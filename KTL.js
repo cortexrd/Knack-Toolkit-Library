@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.16.2';
+    const KTL_VERSION = '0.16.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6932,8 +6932,8 @@ function Ktl($, appInfo) {
 
                         //If the dropdown has a search field, trigger a search on the requested text now.
                         if ($(viewSel + '[id$="' + fieldId + '_chzn"] .ui-autocomplete-input').length > 0) {
-                            // chznSearchInput.focus();
-                            // chznSearchInput.autocomplete('search', srchTxt); //GO!
+                            chznSearchInput.focus();
+                            chznSearchInput.autocomplete('search', srchTxt); //GO!
                             //Wait for response...
                         } else {
                             //The dropdown does not have a search field (less than 500 entries), just select among the options that are already populated.
