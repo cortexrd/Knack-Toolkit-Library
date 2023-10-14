@@ -13,6 +13,12 @@ http.createServer(function (req, res) {
     var url = root + req.url;
     url = url.replace(/\\/g, '/');
     url = decodeURI(url.trim());
+
+    // Add CORS headers to allow requests from any origin
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
     fs.readFile(url, function (err, data) {
         console.log('url =', url);
         if (err) {
