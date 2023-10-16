@@ -2314,14 +2314,6 @@ function Ktl($, appInfo) {
                     ...options,
                     minLength: chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : 3,
                     delay: chznBetterSrchDelay || 2000,
-                    change: function( event, ui ) {
-                        console.debug('Chzn changed');
-                        options.change && options.change(event, ui);
-                    },
-                    response: function( event, ui ) {
-                        console.debug('Chzn response');
-                        options.response && options.response(event, ui);
-                    }
                 });
 
                 return;
@@ -12769,6 +12761,7 @@ function Ktl($, appInfo) {
     //Virtual Keyboard feature
     //Comes from here: https://github.com/hodgef/simple-keyboard
     this.virtualKeyboard = (function () {
+        let keyboardLoaded = false;
         $(document).on('KTL.DefaultConfigReady', function () {
             ktl.virtualKeyboard.load();
         })
@@ -12776,13 +12769,18 @@ function Ktl($, appInfo) {
         function load() {
             LazyLoad.css(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css'], function () {
                 LazyLoad.js(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js'], function () {
+                    if (keyboardLoaded)
+                        return;
+
+                    keyboardLoaded = true;
+                
                     const Keyboard = window.SimpleKeyboard.default;
                     let target;
 
                     $('body').append('<div id="simple-keyboard" class="simple-keyboard"></div>');
-                    $('.simple-keyboard').hide();
+                    $('#simple-keyboard').hide();
 
-                    $('.simple-keyboard').on('click', event => {
+                    $('#simple-keyboard').on('click', event => {
                         event.stopPropagation();
                     })
 
@@ -12860,96 +12858,112 @@ function Ktl($, appInfo) {
                     }
 
                     let shiftKeyPressed = false;
+                    let capslockKeyPressed = false;
                     function onKeyPress(button) {
 
-                        if (shiftKeyPressed && button != "{shift}") {
-                            handleShift("shift");
-                            shiftKeyPressed = false;
-                        }
-
                         if (button === "{shift}") {
-                            handleShift("default");
-                            shiftKeyPressed = true;
+                            if (!capslockKeyPressed) {
+                                handleShift();
+                                shiftKeyPressed = !shiftKeyPressed;
+                            }
                         } else if (button === "{capslock}") {
-                            handleShift();
-                        } else if (target) {
+                            if (shiftKeyPressed)
+                                shiftKeyPressed = false
+                            else
+                                handleShift();
+                            
+                            capslockKeyPressed = !capslockKeyPressed;
 
-                            if (button === "{enter}")
-                                $(target).closest('form').submit();
+                            if (capslockKeyPressed)
+                                $('#simple-keyboard').addClass('capslock');
+                            else
+                                $('#simple-keyboard').removeClass('capslock');
 
-                            if (button === "{escape}") {
-                                $(target).blur();
-                                $('.simple-keyboard').hide();
-                                keyboard.clearInput();
-                                target = null;
+                        } else  if (button === "{tab}") {
+                            // Add tab keypress
+                        }
+                        else {
+                            
+                            if (!capslockKeyPressed) {
+                                handleShift("shift");
+                                shiftKeyPressed = false;
                             }
 
-                            if (button === "{arrowleft}") {
-                                if (target.selectionEnd != target.selectionStart) {
-                                    target.selectionEnd = target.selectionStart;
-                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
-                                } else {
-                                    target.selectionStart = Math.max(target.selectionStart - 1, 0);
-                                    target.selectionEnd = target.selectionStart;
-                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                            if (target) {
+
+                                if (button === "{enter}")
+                                    $(target).closest('form').submit();
+
+                                if (button === "{escape}") {
+                                    $(target).blur();
+                                    $('.simple-keyboard').hide();
+                                    keyboard.clearInput();
+                                    target = null;
                                 }
-                            }
 
-                            if (button === "{arrowright}") {
-                                if (target.selectionEnd != target.selectionStart) {
-                                    target.selectionStart = target.selectionEnd;
-                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
-                                } else {
-                                    target.selectionStart = target.selectionStart + 1;
-                                    target.selectionEnd = target.selectionStart;
-                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                if (button === "{arrowleft}") {
+                                    if (target.selectionEnd != target.selectionStart) {
+                                        target.selectionEnd = target.selectionStart;
+                                        keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                    } else {
+                                        target.selectionStart = Math.max(target.selectionStart - 1, 0);
+                                        target.selectionEnd = target.selectionStart;
+                                        keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                    }
                                 }
-                            }
 
-                            if (button === "{tab}") {
-                                // Add tab keypress
-                            }
+                                if (button === "{arrowright}") {
+                                    if (target.selectionEnd != target.selectionStart) {
+                                        target.selectionStart = target.selectionEnd;
+                                        keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                    } else {
+                                        target.selectionStart = target.selectionStart + 1;
+                                        target.selectionEnd = target.selectionStart;
+                                        keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                    }
+                                }
 
-                            if (!button.startsWith("{") && !button.startsWith("}")) {
-                                target.dispatchEvent( new KeyboardEvent( "keydown", {
-                                    key: button.charAt(0),
-                                    keyCode: button.charCodeAt(0),
-                                    bubbles: true,
-                                    cancelable: true
-                                }));
-                                sendButtonEvents.push( new KeyboardEvent( "keypress", {
-                                    key: button.charAt(0),
-                                    keyCode: button.charCodeAt(0),
-                                    bubbles: true,
-                                    cancelable: true
-                                }));
-                                sendButtonEvents.push( new KeyboardEvent( "keyup", {
-                                    key: button.charAt(0),
-                                    keyCode: button.charCodeAt(0),
-                                    bubbles: true,
-                                    cancelable: true
-                                }));
-                            }
+                                if (!button.startsWith("{") && !button.startsWith("}")) {
+                                    target.dispatchEvent( new KeyboardEvent( "keydown", {
+                                        key: button.charAt(0),
+                                        keyCode: button.charCodeAt(0),
+                                        bubbles: true,
+                                        cancelable: true
+                                    }));
+                                    sendButtonEvents.push( new KeyboardEvent( "keypress", {
+                                        key: button.charAt(0),
+                                        keyCode: button.charCodeAt(0),
+                                        bubbles: true,
+                                        cancelable: true
+                                    }));
+                                    sendButtonEvents.push( new KeyboardEvent( "keyup", {
+                                        key: button.charAt(0),
+                                        keyCode: button.charCodeAt(0),
+                                        bubbles: true,
+                                        cancelable: true
+                                    }));
+                                }
 
-                            if (button === "{bksp}") {
-                                target.dispatchEvent( new KeyboardEvent( "keydown", {
-                                    key: 'Backspace',
-                                    keyCode: 8,
-                                    bubbles: true,
-                                    cancelable: true
-                                }));
-                                sendButtonEvents.push( new KeyboardEvent( "keypress", {
-                                    key: 'Backspace',
-                                    keyCode: 8,
-                                    bubbles: true,
-                                    cancelable: true
-                                }));
-                                sendButtonEvents.push( new KeyboardEvent( "keyup", {
-                                    key: 'Backspace',
-                                    keyCode: 8,
-                                    bubbles: true,
-                                    cancelable: true
-                                }));
+                                if (button === "{bksp}") {
+                                    target.dispatchEvent( new KeyboardEvent( "keydown", {
+                                        key: 'Backspace',
+                                        keyCode: 8,
+                                        bubbles: true,
+                                        cancelable: true
+                                    }));
+                                    sendButtonEvents.push( new KeyboardEvent( "keypress", {
+                                        key: 'Backspace',
+                                        keyCode: 8,
+                                        bubbles: true,
+                                        cancelable: true
+                                    }));
+                                    sendButtonEvents.push( new KeyboardEvent( "keyup", {
+                                        key: 'Backspace',
+                                        keyCode: 8,
+                                        bubbles: true,
+                                        cancelable: true
+                                    }));
+                                }
                             }
                         }
                     }
