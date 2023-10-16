@@ -12989,9 +12989,9 @@ function Ktl($, appInfo) {
                         else
                             keyboard.setOptions({ layoutName: 'default' });
 
-                        $('.simple-keyboard').show();
+                        $('#simple-keyboard').show();
 
-                        if ($(target).offset().top - $(document).scrollTop() > 700) {
+                        if (($(target).offset().top - $(document).scrollTop()) > ($(window).height() - $('#simple-keyboard').height() - 100)) {
                             $([document.documentElement, document.body]).animate({
                                 scrollTop: $(target).offset().top - 200
                             }, 200, 'linear', () => target && target.dispatchEvent( new KeyboardEvent( "focus", {
