@@ -11787,9 +11787,9 @@ function Ktl($, appInfo) {
                 //or Linux - based(ex: Raspberry PI 4) and enable the Recovery Watchdog.
                 let deviceIsCompatibleWithRecoveryWd = false;
                 if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
-                    deviceIsCompatibleWithRecoveryWd = true; //cfg.recoveryWatchdogEnabled = true;
+                    deviceIsCompatibleWithRecoveryWd = true;
                 } else if ((sysInfo.os === 'Linux' && sysInfo.processor.includes('arm')))
-                    deviceIsCompatibleWithRecoveryWd = true; //cfg.recoveryWatchdogEnabled = true;
+                    deviceIsCompatibleWithRecoveryWd = true;
                 else
                     deviceIsCompatibleWithRecoveryWd = false;
 
@@ -11852,7 +11852,7 @@ function Ktl($, appInfo) {
                                     .catch(reason => {
                                         console.error(reason);
                                         if (ktl.account.isDeveloper())
-                                            ktl.core.timedPopup(reason, 'error');
+                                            ktl.core.timedPopup('Reset WD error: ' + reason, 'error');
                                         wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY;
                                     })
                                     .finally(() => {
@@ -11879,7 +11879,7 @@ function Ktl($, appInfo) {
 
                             maxMemUsage = Math.max(maxMemUsage, svrResponse.memory.usedMemory);
                             const percentageMem = Math.round(maxMemUsage / svrResponse.memory.totalMemory * 100);
-                            document.querySelector('#additionalInfoDiv').textContent = '  Mem: ' + svrResponse.memory.usedMemory + ' Max: ' + maxMemUsage + ' ' + percentageMem + '%';
+                            document.querySelector('#additionalInfoDiv').textContent = '  Mem: ' + svrResponse.memory.usedMemory + ' Max: ' + maxMemUsage + ' ' + percentageMem + '% / ' + svrResponse.memory.totalGB;
                         }
 
                         recoveryWdLoop();
@@ -12045,7 +12045,7 @@ function Ktl($, appInfo) {
                     } else if (sysInfo.os === 'Linux' && sysInfo.processor.includes('arm')) {
                         const timeoutNoSvr = setTimeout(() => {
                             //console.error('Server timeout', xhr);
-                            reject(xhr);
+                            reject('Recovery WD startup error: ' + xhr.responseText);
                         }, STARTUP_WD_TIMEOUT_DELAY * 1000);
 
                         const xhr = new XMLHttpRequest();
@@ -12059,7 +12059,7 @@ function Ktl($, appInfo) {
                             } else if (xhr.status === 0) {
                                 clearTimeout(timeoutNoSvr);
                                 //console.error('Server error', xhr);
-                                reject(xhr);
+                                reject('Recovery WD svr response error: ' + xhr.responseText);
                             }
                         };
 
@@ -12961,8 +12961,10 @@ function Ktl($, appInfo) {
                     }
 
                     $(document).on('focus', 'input, textarea', event => {
-                        if (target == event.target || !$(event.target).is(':visible') || (!['number', 'tel', 'text', 'email', 'password', 'search'].includes(event.target.attributes['type'].value)))
-                            return;
+                        if (event.target.attributes['type']) {
+                            if (target == event.target || !$(event.target).is(':visible') || (!['number', 'tel', 'text', 'email', 'password', 'search'].includes(event.target.attributes['type'].value)))
+                                return;
+                        }
 
                         target = event.target;
                         keyboard.setInput(event.target.value);
@@ -13033,10 +13035,10 @@ function Ktl($, appInfo) {
 
                 //Only for Linux systems without a built-in VK, like Raspberry PI 4.
                 const sys = ktl.sysInfo.getSysInfo();
-                if (sys.os === 'Linux' && sys.processor.includes('arm')) {
-                    ktl.core.setCfg({ enabled: { virtualKeyboard: true } });
+                if (sys.os === 'Linux' && sys.processor.includes('arm'))
                     load();
-                }
+                else
+                    ktl.core.setCfg({ enabled: { virtualKeyboard: false } });
             },
         }
     })(); //virtualKeyboard
