@@ -330,6 +330,9 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	#addVersionInfoDiv {
 		display: none;
 	}
+	.cell-editable td.cell-edit {
+		background-color: unset !important;
+	}
 }
 
 #devBtnsDivId {
