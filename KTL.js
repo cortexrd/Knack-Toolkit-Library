@@ -12830,140 +12830,142 @@ function Ktl($, appInfo) {
 
                     let sendButtonEvents = [];
                     function onChange(input, event) {
-                        if (target) {
-                            let caretStart;
+                        if (!target)
+                            return;
 
-                            if (event.target.attributes['data-skbtn'].value === '{bksp}') {
-                                if (input.length === target.value.length - 1)
-                                    caretStart = target.selectionStart - 1;
-                                else
-                                    caretStart = target.selectionStart
-                            } else
-                                caretStart = target.selectionStart + 1;
+                        if (['{shift}', '{capslock}'].includes(event.target.attributes['data-skbtn'].value)) 
+                            return; // No change
 
-                            keyboard.setCaretPosition(caretStart);
-                            target.value = input;
-                            target.selectionStart = caretStart;
-                            target.selectionEnd = caretStart;
-                            target.dispatchEvent(new InputEvent ('input', {
-                                bubbles: true,
-                                cancelable: true
-                            }));
+                        let caretStart;
 
-                            if (sendButtonEvents) { // Sending events after the value was changed
-                                sendButtonEvents.forEach(event => target.dispatchEvent(event));
-                                sendButtonEvents = [];
-                            }
+                        if (event.target.attributes['data-skbtn'].value === '{bksp}') {
+                            if (input.length === target.value.length - 1)
+                                caretStart = target.selectionStart - 1;
+                            else
+                                caretStart = target.selectionStart
+                        } else
+                            caretStart = target.selectionStart + 1;
+
+                        keyboard.setCaretPosition(caretStart);
+                        target.value = input;
+                        target.selectionStart = caretStart;
+                        target.selectionEnd = caretStart;
+                        target.dispatchEvent(new InputEvent ('input', {
+                            bubbles: true,
+                            cancelable: true
+                        }));
+
+                        if (sendButtonEvents) { // Sending events after the value was changed
+                            sendButtonEvents.forEach(event => target.dispatchEvent(event));
+                            sendButtonEvents = [];
                         }
                     }
 
                     let shiftKeyPressed = false;
                     let capslockKeyPressed = false;
                     function onKeyPress(button) {
-
-                        if (button === "{shift}") {
+                        if (button === '{shift}') {
                             if (!capslockKeyPressed) {
-                                handleShift();
                                 shiftKeyPressed = !shiftKeyPressed;
+                                keyboard.setOptions({ layoutName: shiftKeyPressed ? 'shift' : 'default' });
                             }
-                        } else if (button === "{capslock}") {
-                            if (shiftKeyPressed)
-                                shiftKeyPressed = false
-                            else
-                                handleShift();
-                            
+                        } else if (button === '{capslock}') {
+                            shiftKeyPressed = false
                             capslockKeyPressed = !capslockKeyPressed;
 
-                            if (capslockKeyPressed)
+                            if (capslockKeyPressed) {
+                                keyboard.setOptions({ layoutName: 'shift' });
                                 $('#simple-keyboard').addClass('capslock');
-                            else
+                            } else {
+                                keyboard.setOptions({ layoutName: 'default' });
                                 $('#simple-keyboard').removeClass('capslock');
+                            }
 
                         } else  if (button === "{tab}") {
                             // Add tab keypress
-                        }
-                        else {
-                            
-                            if (!capslockKeyPressed) {
-                                handleShift("shift");
+                        } else {
+                            if (keyboard.getOptions().layoutName != 'numeric' 
+                                && !capslockKeyPressed
+                                && shiftKeyPressed) {
+                                keyboard.setOptions({ layoutName: 'default' });
                                 shiftKeyPressed = false;
                             }
 
-                            if (target) {
+                            if (!target)
+                                return;
 
-                                if (button === "{enter}")
-                                    $(target).closest('form').submit();
+                            if (button === "{enter}")
+                                $(target).closest('form').submit();
 
-                                if (button === "{escape}") {
-                                    $(target).blur();
-                                    $('.simple-keyboard').hide();
-                                    keyboard.clearInput();
-                                    target = null;
+                            if (button === "{escape}") {
+                                $(target).blur();
+                                $('.simple-keyboard').hide();
+                                keyboard.clearInput();
+                                target = null;
+                            }
+
+                            if (button === "{arrowleft}") {
+                                if (target.selectionEnd != target.selectionStart) {
+                                    target.selectionEnd = target.selectionStart;
+                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                } else {
+                                    target.selectionStart = Math.max(target.selectionStart - 1, 0);
+                                    target.selectionEnd = target.selectionStart;
+                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
                                 }
+                            }
 
-                                if (button === "{arrowleft}") {
-                                    if (target.selectionEnd != target.selectionStart) {
-                                        target.selectionEnd = target.selectionStart;
-                                        keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
-                                    } else {
-                                        target.selectionStart = Math.max(target.selectionStart - 1, 0);
-                                        target.selectionEnd = target.selectionStart;
-                                        keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
-                                    }
+                            if (button === "{arrowright}") {
+                                if (target.selectionEnd != target.selectionStart) {
+                                    target.selectionStart = target.selectionEnd;
+                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
+                                } else {
+                                    target.selectionStart = target.selectionStart + 1;
+                                    target.selectionEnd = target.selectionStart;
+                                    keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
                                 }
+                            }
 
-                                if (button === "{arrowright}") {
-                                    if (target.selectionEnd != target.selectionStart) {
-                                        target.selectionStart = target.selectionEnd;
-                                        keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
-                                    } else {
-                                        target.selectionStart = target.selectionStart + 1;
-                                        target.selectionEnd = target.selectionStart;
-                                        keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
-                                    }
-                                }
+                            if (!button.startsWith("{") && !button.startsWith("}")) {
+                                target.dispatchEvent( new KeyboardEvent( "keydown", {
+                                    key: button.charAt(0),
+                                    keyCode: button.charCodeAt(0),
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                                sendButtonEvents.push( new KeyboardEvent( "keypress", {
+                                    key: button.charAt(0),
+                                    keyCode: button.charCodeAt(0),
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                                sendButtonEvents.push( new KeyboardEvent( "keyup", {
+                                    key: button.charAt(0),
+                                    keyCode: button.charCodeAt(0),
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                            }
 
-                                if (!button.startsWith("{") && !button.startsWith("}")) {
-                                    target.dispatchEvent( new KeyboardEvent( "keydown", {
-                                        key: button.charAt(0),
-                                        keyCode: button.charCodeAt(0),
-                                        bubbles: true,
-                                        cancelable: true
-                                    }));
-                                    sendButtonEvents.push( new KeyboardEvent( "keypress", {
-                                        key: button.charAt(0),
-                                        keyCode: button.charCodeAt(0),
-                                        bubbles: true,
-                                        cancelable: true
-                                    }));
-                                    sendButtonEvents.push( new KeyboardEvent( "keyup", {
-                                        key: button.charAt(0),
-                                        keyCode: button.charCodeAt(0),
-                                        bubbles: true,
-                                        cancelable: true
-                                    }));
-                                }
-
-                                if (button === "{bksp}") {
-                                    target.dispatchEvent( new KeyboardEvent( "keydown", {
-                                        key: 'Backspace',
-                                        keyCode: 8,
-                                        bubbles: true,
-                                        cancelable: true
-                                    }));
-                                    sendButtonEvents.push( new KeyboardEvent( "keypress", {
-                                        key: 'Backspace',
-                                        keyCode: 8,
-                                        bubbles: true,
-                                        cancelable: true
-                                    }));
-                                    sendButtonEvents.push( new KeyboardEvent( "keyup", {
-                                        key: 'Backspace',
-                                        keyCode: 8,
-                                        bubbles: true,
-                                        cancelable: true
-                                    }));
-                                }
+                            if (button === "{bksp}") {
+                                target.dispatchEvent( new KeyboardEvent( "keydown", {
+                                    key: 'Backspace',
+                                    keyCode: 8,
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                                sendButtonEvents.push( new KeyboardEvent( "keypress", {
+                                    key: 'Backspace',
+                                    keyCode: 8,
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
+                                sendButtonEvents.push( new KeyboardEvent( "keyup", {
+                                    key: 'Backspace',
+                                    keyCode: 8,
+                                    bubbles: true,
+                                    cancelable: true
+                                }));
                             }
                         }
                     }
@@ -12988,6 +12990,9 @@ function Ktl($, appInfo) {
                             keyboard.setOptions({ layoutName: 'numeric' });
                         else
                             keyboard.setOptions({ layoutName: 'default' });
+
+                        capslockKeyPressed = false;
+                        shiftKeyPressed = false;
 
                         $('#simple-keyboard').show();
 
