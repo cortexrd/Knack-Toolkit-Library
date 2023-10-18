@@ -7838,14 +7838,16 @@ function Ktl($, appInfo) {
                 if (!viewId || !ktl.core.getCfg().enabled.formPreValidation) return;
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
-                var validity = submit.validity ? submit.validity : true;
-                var submitDisabled = !$.isEmptyObject(validity.ktlInvalidItemObj);
-                if (submitDisabled)
-                    submit.setAttribute('disabled', true);
-                else
-                    submit.removeAttribute('disabled');
+                if (submit) {
+                    var validity = submit.validity ? submit.validity : true;
+                    var submitDisabled = !$.isEmptyObject(validity.ktlInvalidItemObj);
+                    if (submitDisabled)
+                        submit.setAttribute('disabled', true);
+                    else
+                        submit.removeAttribute('disabled');
 
-                submitDisabled && ktl.scenes.spinnerWatchdog(!submitDisabled); //Don't let the disabled Submit cause a page reload.
+                    submitDisabled && ktl.scenes.spinnerWatchdog(!submitDisabled); //Don't let the disabled Submit cause a page reload.
+                }
             },
 
             getDataFromRecId: function (viewId = '', recId = '') {
@@ -11993,6 +11995,25 @@ function Ktl($, appInfo) {
 
                     xhr.send();
                 })
+            },
+
+            restartService: function () {
+                const sys = ktl.sysInfo.getSysInfo();
+                if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?restartService', true);
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        const responseData = JSON.parse(xhr.responseText);
+                        resolve(responseData);
+                    } else if (xhr.status === 0) {
+                        console.error('restartService error', xhr);
+                        reject(xhr);
+                    }
+                };
+
+                xhr.send();
             },
 
             rebootDevice: function () {
