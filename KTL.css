@@ -492,6 +492,11 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	padding-bottom: 10px !important;
 }
 
+.capslock .hg-button-capslock {
+    border: 2px solid #cccccc !important;
+    background: #cccccc !important;
+}
+
 .hg-layout-shift .hg-button.hg-functionBtn[data-skbtn="{arrowleft}"],
 .hg-layout-shift .hg-button.hg-functionBtn[data-skbtn="{arrowright}"],
 .hg-layout-default .hg-button.hg-functionBtn[data-skbtn="{arrowleft}"],
