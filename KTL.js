@@ -2578,7 +2578,9 @@ function Ktl($, appInfo) {
                             if (match)
                                 return match[0];
                         }
-                    } else
+                    } else if (viewType === 'rich_text')
+                        return;
+                    else
                         ktl.log.clog('purple', 'getFieldIdFromLabel - Unsupported view type', viewId, viewType);
                     //Support more view types as we go.
                 }
@@ -5843,6 +5845,7 @@ function Ktl($, appInfo) {
                             else if (hide) {
                                 $(targetSel).addClass('ktlDisplayNone');
                             } else {
+                                $(targetSel).removeClass('ktlDisplayNone');
                                 const currentStyle = $(targetSel).attr('style');
                                 $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
                             }
@@ -8115,7 +8118,7 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
 
                     const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                    ktl.core.waitSelector(sel, 20000, 'visible')
+                    ktl.core.waitSelector(sel, 20000)
                         .then(() => {
                             var classes = kwInstance.params[0];
                             for (var i = 0; i < classes.length; i++) {
@@ -8862,6 +8865,8 @@ function Ktl($, appInfo) {
                 var title = '';
                 var viewId = '';
                 viewTitle = viewTitle.toLowerCase();
+                if (viewTitle.startsWith('view_'))
+                    return viewTitle;
                 try {
                     for (var i = 0; i < views.length; i++) {
                         viewId = views[i].attributes.key;
@@ -12776,6 +12781,11 @@ function Ktl($, appInfo) {
         function load() {
             LazyLoad.css(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css'], function () {
                 LazyLoad.js(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js'], function () {
+                    if (keyboardLoaded)
+                        return;
+
+                    keyboardLoaded = true;
+
                     const Keyboard = window.SimpleKeyboard.default;
                     let target;
 
@@ -12843,6 +12853,9 @@ function Ktl($, appInfo) {
                             } else
                                 caretStart = target.selectionStart + 1;
 
+                            if (['{shift}', '{capslock}'].includes(event.target.attributes['data-skbtn'].value))
+                                return; // No change
+
                             keyboard.setCaretPosition(caretStart);
                             target.value = input;
                             target.selectionStart = caretStart;
@@ -12873,7 +12886,6 @@ function Ktl($, appInfo) {
                         } else if (button === "{capslock}") {
                             handleShift();
                         } else if (target) {
-
                             if (button === "{enter}")
                                 $(target).closest('form').submit();
 
