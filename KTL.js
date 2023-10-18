@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.16.3';
+    const KTL_VERSION = '0.16.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5386,19 +5386,32 @@ function Ktl($, appInfo) {
                 var href = window.location.href;
                 if (!href.includes(viewId + '_per_page=')) {
                     Knack.showSpinner();
-                    Knack.views[viewId].model.view.pagination_meta.page = 1;
-                    Knack.views[viewId].model.view.source.page = 1;
-                    Knack.views[viewId].model.view.pagination_meta.rows_per_page = perPage;
-                    Knack.views[viewId].model.view.rows_per_page = perPage;
+
+                    const view = Knack.views[viewId].model.view;
+
+                    if (view.pagination_meta)
+                        view.pagination_meta.page = 1;
+
+                    if (view.source)
+                        view.source.page = 1;
+
+                    if (view.pagination_meta)
+                        view.pagination_meta.rows_per_page = perPage;
+
+                    if (view.rows_per_page)
+                        view.rows_per_page = perPage;
+
                     var i = {};
                     i[viewId + '_per_page'] = perPage;
                     i[viewId + '_page'] = 1;
                     Knack.router.navigate(Knack.getSceneHash() + "?" + Knack.getQueryString(i), false);
                     Knack.setHashVars();
 
-                    Knack.models[viewId].fetch({
-                        success: () => { Knack.hideSpinner(); }
-                    });
+                    if (document.querySelector('.kn-view.kn-table.' + viewId + ' .kn-table-wrapper')) { //This is to support Search views, otherwise you get an error on first render.
+                        Knack.models[viewId].fetch({
+                            success: () => { Knack.hideSpinner(); }
+                        });
+                    }
                 }
             }
         }
@@ -5837,7 +5850,6 @@ function Ktl($, appInfo) {
                             else if (hide) {
                                 $(targetSel).addClass('ktlDisplayNone');
                             } else {
-                                $(targetSel).removeClass('ktlDisplayNone');
                                 const currentStyle = $(targetSel).attr('style');
                                 $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
                             }
@@ -11990,60 +12002,66 @@ function Ktl($, appInfo) {
             },
 
             restartService: function () {
-                const sys = ktl.sysInfo.getSysInfo();
-                if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+                return new Promise(function (resolve, reject) {
+                    const sys = ktl.sysInfo.getSysInfo();
+                    if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
 
-                const xhr = new XMLHttpRequest();
-                xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?restartService', true);
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        const responseData = JSON.parse(xhr.responseText);
-                        resolve(responseData);
-                    } else if (xhr.status === 0) {
-                        console.error('restartService error', xhr);
-                        reject(xhr);
-                    }
-                };
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?restartService', true);
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState === 4 && xhr.status === 200) {
+                            const responseData = JSON.parse(xhr.responseText);
+                            resolve(responseData);
+                        } else if (xhr.status === 0) {
+                            console.error('restartService error', xhr);
+                            reject(xhr);
+                        }
+                    };
 
-                xhr.send();
+                    xhr.send();
+                });
             },
 
             rebootDevice: function () {
-                const sys = ktl.sysInfo.getSysInfo();
-                if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+                return new Promise(function (resolve, reject) {
+                    const sys = ktl.sysInfo.getSysInfo();
+                    if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
 
-                const xhr = new XMLHttpRequest();
-                xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?rebootDevice', true);
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        const responseData = JSON.parse(xhr.responseText);
-                        resolve(responseData);
-                    } else if (xhr.status === 0) {
-                        console.error('rebootDevice error', xhr);
-                        reject(xhr);
-                    }
-                };
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?rebootDevice', true);
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState === 4 && xhr.status === 200) {
+                            const responseData = JSON.parse(xhr.responseText);
+                            resolve(responseData);
+                        } else if (xhr.status === 0) {
+                            console.error('rebootDevice error', xhr);
+                            reject(xhr);
+                        }
+                    };
 
-                xhr.send();
+                    xhr.send();
+                });
             },
 
             shutDownDevice: function () {
-                const sys = ktl.sysInfo.getSysInfo();
-                if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+                return new Promise(function (resolve, reject) {
+                    const sys = ktl.sysInfo.getSysInfo();
+                    if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
 
-                const xhr = new XMLHttpRequest();
-                xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?shutDownDevice', true);
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        const responseData = JSON.parse(xhr.responseText);
-                        resolve(responseData);
-                    } else if (xhr.status === 0) {
-                        console.error('shutDownDevice error', xhr);
-                        reject(xhr);
-                    }
-                };
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?shutDownDevice', true);
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState === 4 && xhr.status === 200) {
+                            const responseData = JSON.parse(xhr.responseText);
+                            resolve(responseData);
+                        } else if (xhr.status === 0) {
+                            console.error('shutDownDevice error', xhr);
+                            reject(xhr);
+                        }
+                    };
 
-                xhr.send();
+                    xhr.send();
+                });
             },
 
             /* High rebustness recovery watchdog against Internet, Chromium, Kiosk App or other failures.
@@ -12858,7 +12876,7 @@ function Ktl($, appInfo) {
                         if (!target)
                             return;
 
-                        if (['{shift}', '{capslock}'].includes(event.target.attributes['data-skbtn'].value)) 
+                        if (['{shift}', '{capslock}'].includes(event.target.attributes['data-skbtn'].value))
                             return; // No change
 
                         let caretStart;
@@ -12909,7 +12927,7 @@ function Ktl($, appInfo) {
                         } else  if (button === "{tab}") {
                             // Add tab keypress
                         } else {
-                            if (keyboard.getOptions().layoutName != 'numeric' 
+                            if (keyboard.getOptions().layoutName != 'numeric'
                                 && !capslockKeyPressed
                                 && shiftKeyPressed) {
                                 keyboard.setOptions({ layoutName: 'default' });
