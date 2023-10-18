@@ -17,223 +17,228 @@ window.KnackApp = function ($, appInfo = {}) {
     //====================================================
     //KTL Setup - BEGIN
     (function () {
-        ktl.core.setCfg({
-            developerNames: ['Firstname Lastname'], //Add your name here to get super powers!
-            developerEmail: '', //yourmail@provider.com
-            devOptionsPin: '0000',
-            devDebugCode: '',
+        try {
+            ktl.core.setCfg({
+                developerNames: ['Firstname Lastname'], //Add your name here to get super powers!
+                developerEmail: '', //yourmail@provider.com
+                devOptionsPin: '0000',
+                devDebugCode: '',
 
-            //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
-            enabled: {
-                versionInfo: {
-                    viShowAppInfo: true,
-                    viShowKtlInfo: true,
-                    viShowToRoles: ['Developer'], //Array of Account Roles strings who can see the version info bar. Leave empty for all.
-                    viPosX: 'right', //right, center, left
-                    viPosY: 'top', //top, bottom
-                    viPosXMobile: 'center', //right, center, left
-                    viPosYMobile: 'bottom', //top, bottom
-                    viOpacity: 50, //0 to 100
-                    viOpacityHover: 100, //0 to 100
+                //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
+                enabled: {
+                    versionInfo: {
+                        viShowAppInfo: true,
+                        viShowKtlInfo: true,
+                        viShowToRoles: ['Developer'], //Array of Account Roles strings who can see the version info bar. Leave empty for all.
+                        viPosX: 'right', //right, center, left
+                        viPosY: 'top', //top, bottom
+                        viPosXMobile: 'center', //right, center, left
+                        viPosYMobile: 'bottom', //top, bottom
+                        viOpacity: 50, //0 to 100
+                        viOpacityHover: 100, //0 to 100
+                    },
+
+                    showMenuInTitle: true,
+                    selTextOnFocus: true,
+                    inlineEditColor: true,
+                    rowHoverHighlight: true,
+                    chznBetter: true,
+                    autoFocus: true,
+                    sortedMenus: true,
+                    userFilters: true,
+                    persistentForm: true,
+                    calendarGotoDate: true,
+                    rememberMe: true,
+                    formPreValidation: true,
+                    spinnerWatchDog: true,
+                    idleWatchDog: true,
+                    debugWnd: true,
+                    devInfoPopup: true,
+                    devPauseAutoRefresh: true,
+                    virtualKeyboard: false,
+
+                    //Those below must also be set up properly to have any effect.  See documentation.
+                    iFrameWnd: false,
+
+                    bulkOps: {
+                        bulkEdit: true,
+                        bulkCopy: true,
+                        bulkDelete: true,
+                    },
                 },
 
-                showMenuInTitle: true,
-                selTextOnFocus: true,
-                inlineEditColor: true,
-                rowHoverHighlight: true,
-                chznBetter: true,
-                autoFocus: true,
-                sortedMenus: true,
-                userFilters: true,
-                persistentForm: true,
-                calendarGotoDate: true,
-                rememberMe: true,
-                formPreValidation: true,
-                spinnerWatchDog: true,
-                idleWatchDog: true,
-                debugWnd: true,
-                devInfoPopup: true,
-                devPauseAutoRefresh: true,
-                virtualKeyboard: false,
-
-                //Those below must also be set up properly to have any effect.  See documentation.
-                iFrameWnd: false,
-
-                bulkOps: {
-                    bulkEdit: true,
-                    bulkCopy: true,
-                    bulkDelete: true,
+                popupStyle: {
+                    success: ';background-color:#81b378;border:5px solid #294125',
+                    warning: ';background-color:#fffa5e;border:2px solid #7e8060',
+                    error: ';background-color:#FFB0B0;border:5px solid #660000',
                 },
-            },
 
-            popupStyle: {
-                success: ';background-color:#81b378;border:5px solid #294125',
-                warning: ';background-color:#fffa5e;border:2px solid #7e8060',
-                error: ';background-color:#FFB0B0;border:5px solid #660000',
-            },
-
-            //Functions in this app.
-            isKiosk: isKiosk,
-        })
-
-        //For Idle timeout delay in milliseconds, you can use a fixed value, or change it depending on the use case.
-        //As an example, below I change it if it's a kiosk device.
-        //Zero means disabled, so idleWatchDogTimeout() will never be called.
-        var idleWatchDogDelay = 120 * 60000; //120 minutes (2 hours) by default.
-        var spinnerCtrDelay = 60; //60 seconds of waiting is a good starting point.
-        if (isKiosk()) {
-            idleWatchDogDelay = 0; //Inactivity timeout is disabled by default for kiosks.
-            spinnerCtrDelay = 45; //If ever Kiosks users are a bit less patient.
-        }
-
-        ktl.scenes.setCfg({
-            onSceneRender: onSceneRender,
-            autoFocus: autoFocus,
-            idleWatchDogDelay: idleWatchDogDelay,
-            idleWatchDogTimeout: idleWatchDogTimeout,
-            spinnerWatchDogTimeout: spinnerWatchDogTimeout,
-            spinnerCtrDelay: spinnerCtrDelay,
-            spinnerWdExcludeScn: [],
-        })
-
-        ktl.views.setCfg({
-            processViewKeywords: processViewKeywords,
-            handleCalendarEventDrop: handleCalendarEventDrop,
-            handlePreprocessSubmitError: handlePreprocessSubmitError,
-            //Uncomment below to override default Quick Toggle colors.
-            //    quickToggleParams: {
-            //        bgColorTrue: '#39d91f',
-            //        bgColorFalse: '#f04a3b',
-            //        bgColorPending: '#dd08',
-            //    },
-            headerAlignment: true,
-            ktlFlashRate: '1s',
-            ktlOutlineColor: 'green',
-        })
-
-        ktl.fields.setCfg({
-            onKeyPressed: onKeyPressed,
-            onFieldValueChanged: onFieldValueChanged,
-            textAsNumeric: [],
-            textAsNumericExcludeScenes: [],
-            //chznBetterSrchDelay: 2000, //Uncomment if you prefer longer delay.
-            chznBetterThresholds: {
-                'field_x': '4',
-            },
-            chznBetterToExclude: [],
-            chznBetterSetFocus: chznBetterSetFocus,
-            onInlineEditPopup: onInlineEditPopup,
-            //Uncomment the two lines below to get horizontal layout for RBs and CBs.
-            //horizontalRadioButtons: true,
-            //horizontalCheckboxes: true,
-
-            //barcoreTimeout: 20,
-            //barcodeMinLength: 3,
-            //convertNumToTel: true,
-        })
-
-        ktl.persistentForm.setCfg({
-            scenesToExclude: [],
-            fieldsToExclude: ['field_xx', 'field_yy'], //Fields you never want to save.
-        })
-
-        ktl.systemColors.getSystemColors()
-            .then(sc => {
-                ktl.systemColors.setCfg({
-                    inlineEditBkgColor: '', //Could also be some other presets in sysColors like: sc.paleLowSatClrTransparent
-                    inlineEditFontWeight: '', //Can be 'bold' or a numeric value like 600.
-                    tableRowHoverBkgColor: '', //Or a named color like 'mistyrose' or a hex RGBA value '#a0454b75'
-                })
+                //Functions in this app.
+                isKiosk: isKiosk,
             })
-            .catch((err) => { ktl.log.clog('red', 'App getSystemColors error: ' + err); })
 
-        ktl.userPrefs.setCfg({
-            allowShowPrefs: allowShowPrefs,
-            applyUserPrefs: applyUserPrefs,
-        })
+            //For Idle timeout delay in milliseconds, you can use a fixed value, or change it depending on the use case.
+            //As an example, below I change it if it's a kiosk device.
+            //Zero means disabled, so idleWatchDogTimeout() will never be called.
+            var idleWatchDogDelay = 120 * 60000; //120 minutes (2 hours) by default.
+            var spinnerCtrDelay = 60; //60 seconds of waiting is a good starting point.
+            if (isKiosk()) {
+                idleWatchDogDelay = 0; //Inactivity timeout is disabled by default for kiosks.
+                spinnerCtrDelay = 45; //If ever Kiosks users are a bit less patient.
+            }
 
-        ktl.wndMsg.setCfg({
-            processFailedMessages: processFailedMessages,
-            processAppMsg: processAppMsg,
-            sendAppMsg: sendAppMsg,
-            processServerErrors: processServerErrors,
-        })
-
-        //Features that do not apply to the iFrameWnd.
-        if (!window.self.frameElement) {
             ktl.scenes.setCfg({
-                ktlKioskButtons: {
-                    ADD_REFRESH: {
-                        html: '<i class="fa fa-refresh"></i>',
-                        id: 'kn-button-refresh',
-                        href: function () { location.reload(true) },
-                        scenesToExclude: [],
-                    },
-                    ADD_BACK: {
-                        html: '<i class="fa fa-arrow-left"></i>',
-                        id: 'kn-button-back',
-                        href: function () { window.history.back(); },
-                        scenesToExclude: [],
-                    },
-                    ADD_DONE: {
-                        html: '<i class="fa fa-check-square-o"></i>',
-                        id: 'kn-button-back',
-                        href: function () { window.history.back(); },
-                        scenesToExclude: [],
-                    },
-                //    ADD_MESSAGING: {
-                //        html: '<i class="fa fa-envelope-o"></i>',
-                //        id: 'kn-button-messaging',
-                //        href: window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'messaging',
-                //        scenesToExclude: [/*MESSAGING_SCN*/],
+                onSceneRender: onSceneRender,
+                autoFocus: autoFocus,
+                idleWatchDogDelay: idleWatchDogDelay,
+                idleWatchDogTimeout: idleWatchDogTimeout,
+                spinnerWatchDogTimeout: spinnerWatchDogTimeout,
+                spinnerCtrDelay: spinnerCtrDelay,
+                spinnerWdExcludeScn: [],
+            })
+
+            ktl.views.setCfg({
+                processViewKeywords: processViewKeywords,
+                handleCalendarEventDrop: handleCalendarEventDrop,
+                handlePreprocessSubmitError: handlePreprocessSubmitError,
+                //Uncomment below to override default Quick Toggle colors.
+                //    quickToggleParams: {
+                //        bgColorTrue: '#39d91f',
+                //        bgColorFalse: '#f04a3b',
+                //        bgColorPending: '#dd08',
                 //    },
-                //    ADD_SHIFT: {
-                //        html: updateWorkShiftItems,
-                //        id: 'kn-button-shift',
-                //        href: window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'change-shift',
-                //        scenesToExclude: [/*CHANGE_SHIFT_SCN, MESSAGING_SCN*/],
-                //    },
+                headerAlignment: true,
+                ktlFlashRate: '1s',
+                ktlOutlineColor: 'green',
+            })
+
+            ktl.fields.setCfg({
+                onKeyPressed: onKeyPressed,
+                onFieldValueChanged: onFieldValueChanged,
+                textAsNumeric: [],
+                textAsNumericExcludeScenes: [],
+                //chznBetterSrchDelay: 2000, //Uncomment if you prefer longer delay.
+                chznBetterThresholds: {
+                    'field_x': '4',
                 },
+                chznBetterToExclude: [],
+                chznBetterSetFocus: chznBetterSetFocus,
+                onInlineEditPopup: onInlineEditPopup,
+                //Uncomment the two lines below to get horizontal layout for RBs and CBs.
+                //horizontalRadioButtons: true,
+                //horizontalCheckboxes: true,
 
-                //versionDisplayName: 'CTRND', //As an example, when you prefer to use a shorter name.
-                versionDisplayName: Knack.app.attributes.name,
-                processMutation: processMutation,
+                //barcoreTimeout: 20,
+                //barcodeMinLength: 3,
+                //convertNumToTel: true,
             })
 
-            ktl.userFilters.setCfg({
-                allowUserFilters: allowUserFilters,
+            ktl.persistentForm.setCfg({
+                scenesToExclude: [],
+                fieldsToExclude: ['field_xx', 'field_yy'], //Fields you never want to save.
             })
 
-            ktl.log.setCfg({
-                logCategoryAllowed: logCategoryAllowed,
-                logEnabled: {
-                    critical: false,
-                    error: false,
-                    serverErr: false,
-                    warning: false,
-                    info: false,
-                    debug: false,
-                    login: false,
-                    activity: false,
-                    navigation: false,
-                }
+            ktl.systemColors.getSystemColors()
+                .then(sc => {
+                    ktl.systemColors.setCfg({
+                        inlineEditBkgColor: '', //Could also be some other presets in sysColors like: sc.paleLowSatClrTransparent
+                        inlineEditFontWeight: '', //Can be 'bold' or a numeric value like 600.
+                        tableRowHoverBkgColor: '', //Or a named color like 'mistyrose' or a hex RGBA value '#a0454b75'
+                    })
+                })
+                .catch((err) => { ktl.log.clog('red', 'App getSystemColors error: ' + err); })
+
+            ktl.userPrefs.setCfg({
+                allowShowPrefs: allowShowPrefs,
+                applyUserPrefs: applyUserPrefs,
+            })
+
+            ktl.wndMsg.setCfg({
+                processFailedMessages: processFailedMessages,
+                processAppMsg: processAppMsg,
+                sendAppMsg: sendAppMsg,
+                processServerErrors: processServerErrors,
+            })
+
+            //Features that do not apply to the iFrameWnd.
+            if (!window.self.frameElement) {
+                ktl.scenes.setCfg({
+                    ktlKioskButtons: {
+                        ADD_REFRESH: {
+                            html: '<i class="fa fa-refresh"></i>',
+                            id: 'kn-button-refresh',
+                            href: function () { location.reload(true) },
+                            scenesToExclude: [],
+                        },
+                        ADD_BACK: {
+                            html: '<i class="fa fa-arrow-left"></i>',
+                            id: 'kn-button-back',
+                            href: function () { window.history.back(); },
+                            scenesToExclude: [],
+                        },
+                        ADD_DONE: {
+                            html: '<i class="fa fa-check-square-o"></i>',
+                            id: 'kn-button-back',
+                            href: function () { window.history.back(); },
+                            scenesToExclude: [],
+                        },
+                        //    ADD_MESSAGING: {
+                        //        html: '<i class="fa fa-envelope-o"></i>',
+                        //        id: 'kn-button-messaging',
+                        //        href: window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'messaging',
+                        //        scenesToExclude: [/*MESSAGING_SCN*/],
+                        //    },
+                        //    ADD_SHIFT: {
+                        //        html: updateWorkShiftItems,
+                        //        id: 'kn-button-shift',
+                        //        href: window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'change-shift',
+                        //        scenesToExclude: [/*CHANGE_SHIFT_SCN, MESSAGING_SCN*/],
+                        //    },
+                    },
+
+                    //versionDisplayName: 'CTRND', //As an example, when you prefer to use a shorter name.
+                    versionDisplayName: Knack.app.attributes.name,
+                    processMutation: processMutation,
+                })
+
+                ktl.userFilters.setCfg({
+                    allowUserFilters: allowUserFilters,
+                })
+
+                ktl.log.setCfg({
+                    logCategoryAllowed: logCategoryAllowed,
+                    logEnabled: {
+                        critical: false,
+                        error: false,
+                        serverErr: false,
+                        warning: false,
+                        info: false,
+                        debug: false,
+                        login: false,
+                        activity: false,
+                        navigation: false,
+                    }
+                });
+
+                ktl.sysInfo.setCfg({
+                    recoveryWatchdogEnabled: false,
+                })
+            }
+
+            ktl.iFrameWnd.setCfg({
+                accountsObjName: 'Accounts', //If your main accounts table is not "Accounts".
+                sendHeartbeat: true,
             });
 
-            ktl.sysInfo.setCfg({
-                recoveryWatchdogEnabled: false,
-            })
+
+            if (typeof window.ktlReady === 'function')
+                window.ktlReady(appInfo);
+
+            $(document).trigger('KTL.DefaultConfigReady');
         }
-
-        ktl.iFrameWnd.setCfg({
-            accountsObjName: 'Accounts', //If your main accounts table is not "Accounts".
-            sendHeartbeat: true,
-        });
-
-
-        if (typeof window.ktlReady === 'function')
-            window.ktlReady(appInfo);
-
-        $(document).trigger('KTL.DefaultConfigReady');
+        catch (error) {
+            console.error('KTL Setup error encountered:\n', error);
+        }
     })();
     //KTL Setup - END
     //====================================================
