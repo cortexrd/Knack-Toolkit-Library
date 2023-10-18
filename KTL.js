@@ -2314,14 +2314,6 @@ function Ktl($, appInfo) {
                     ...options,
                     minLength: chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : 3,
                     delay: chznBetterSrchDelay || 2000,
-                    change: function( event, ui ) {
-                        console.debug('Chzn changed');
-                        options.change && options.change(event, ui);
-                    },
-                    response: function( event, ui ) {
-                        console.debug('Chzn response');
-                        options.response && options.response(event, ui);
-                    }
                 });
 
                 return;
@@ -12774,6 +12766,7 @@ function Ktl($, appInfo) {
     //Virtual Keyboard feature
     //Comes from here: https://github.com/hodgef/simple-keyboard
     this.virtualKeyboard = (function () {
+        let keyboardLoaded = false;
         $(document).on('KTL.DefaultConfigReady', function () {
             ktl.virtualKeyboard.load();
         })
@@ -12785,14 +12778,13 @@ function Ktl($, appInfo) {
                         return;
 
                     keyboardLoaded = true;
-
                     const Keyboard = window.SimpleKeyboard.default;
                     let target;
 
                     $('body').append('<div id="simple-keyboard" class="simple-keyboard"></div>');
-                    $('.simple-keyboard').hide();
+                    $('#simple-keyboard').hide();
 
-                    $('.simple-keyboard').on('click', event => {
+                    $('#simple-keyboard').on('click', event => {
                         event.stopPropagation();
                     })
 
@@ -12842,50 +12834,70 @@ function Ktl($, appInfo) {
 
                     let sendButtonEvents = [];
                     function onChange(input, event) {
-                        if (target) {
-                            let caretStart;
+                        if (!target)
+                            return;
 
-                            if (event.target.attributes['data-skbtn'].value === '{bksp}') {
-                                if (input.length === target.value.length - 1)
-                                    caretStart = target.selectionStart - 1;
-                                else
-                                    caretStart = target.selectionStart
-                            } else
-                                caretStart = target.selectionStart + 1;
+                        if (['{shift}', '{capslock}'].includes(event.target.attributes['data-skbtn'].value)) 
+                            return; // No change
 
-                            if (['{shift}', '{capslock}'].includes(event.target.attributes['data-skbtn'].value))
-                                return; // No change
+                        let caretStart;
 
-                            keyboard.setCaretPosition(caretStart);
-                            target.value = input;
-                            target.selectionStart = caretStart;
-                            target.selectionEnd = caretStart;
-                            target.dispatchEvent(new InputEvent ('input', {
-                                bubbles: true,
-                                cancelable: true
-                            }));
+                        if (event.target.attributes['data-skbtn'].value === '{bksp}') {
+                            if (input.length === target.value.length - 1)
+                                caretStart = target.selectionStart - 1;
+                            else
+                                caretStart = target.selectionStart
+                        } else
+                            caretStart = target.selectionStart + 1;
 
-                            if (sendButtonEvents) { // Sending events after the value was changed
-                                sendButtonEvents.forEach(event => target.dispatchEvent(event));
-                                sendButtonEvents = [];
-                            }
+                        keyboard.setCaretPosition(caretStart);
+                        target.value = input;
+                        target.selectionStart = caretStart;
+                        target.selectionEnd = caretStart;
+                        target.dispatchEvent(new InputEvent ('input', {
+                            bubbles: true,
+                            cancelable: true
+                        }));
+
+                        if (sendButtonEvents) { // Sending events after the value was changed
+                            sendButtonEvents.forEach(event => target.dispatchEvent(event));
+                            sendButtonEvents = [];
                         }
                     }
 
                     let shiftKeyPressed = false;
+                    let capslockKeyPressed = false;
                     function onKeyPress(button) {
+                        if (button === '{shift}') {
+                            if (!capslockKeyPressed) {
+                                shiftKeyPressed = !shiftKeyPressed;
+                                keyboard.setOptions({ layoutName: shiftKeyPressed ? 'shift' : 'default' });
+                            }
+                        } else if (button === '{capslock}') {
+                            shiftKeyPressed = false
+                            capslockKeyPressed = !capslockKeyPressed;
 
-                        if (shiftKeyPressed && button != "{shift}") {
-                            handleShift("shift");
-                            shiftKeyPressed = false;
-                        }
+                            if (capslockKeyPressed) {
+                                keyboard.setOptions({ layoutName: 'shift' });
+                                $('#simple-keyboard').addClass('capslock');
+                            } else {
+                                keyboard.setOptions({ layoutName: 'default' });
+                                $('#simple-keyboard').removeClass('capslock');
+                            }
 
-                        if (button === "{shift}") {
-                            handleShift("default");
-                            shiftKeyPressed = true;
-                        } else if (button === "{capslock}") {
-                            handleShift();
-                        } else if (target) {
+                        } else  if (button === "{tab}") {
+                            // Add tab keypress
+                        } else {
+                            if (keyboard.getOptions().layoutName != 'numeric' 
+                                && !capslockKeyPressed
+                                && shiftKeyPressed) {
+                                keyboard.setOptions({ layoutName: 'default' });
+                                shiftKeyPressed = false;
+                            }
+
+                            if (!target)
+                                return;
+
                             if (button === "{enter}")
                                 $(target).closest('form').submit();
 
@@ -12916,10 +12928,6 @@ function Ktl($, appInfo) {
                                     target.selectionEnd = target.selectionStart;
                                     keyboard.setCaretPosition(target.selectionStart, target.selectionStart);
                                 }
-                            }
-
-                            if (button === "{tab}") {
-                                // Add tab keypress
                             }
 
                             if (!button.startsWith("{") && !button.startsWith("}")) {
@@ -12989,9 +12997,12 @@ function Ktl($, appInfo) {
                         else
                             keyboard.setOptions({ layoutName: 'default' });
 
-                        $('.simple-keyboard').show();
+                        capslockKeyPressed = false;
+                        shiftKeyPressed = false;
 
-                        if ($(target).offset().top - $(document).scrollTop() > 700) {
+                        $('#simple-keyboard').show();
+
+                        if (($(target).offset().top - $(document).scrollTop()) > ($(window).height() - $('#simple-keyboard').height() - 100)) {
                             $([document.documentElement, document.body]).animate({
                                 scrollTop: $(target).offset().top - 200
                             }, 200, 'linear', () => target && target.dispatchEvent( new KeyboardEvent( "focus", {
