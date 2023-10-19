@@ -5104,6 +5104,7 @@ function Ktl($, appInfo) {
                     //This section is for keywords that are only supported by views.
                     keywords._ni && ktl.views.noInlineEditing(view);
                     keywords._hv && hideView(view.key, keywords);
+                    keywords._sv && showView(view.key, keywords);
                     keywords._ht && hideTitle(view.key, keywords);
                     keywords._ts && ktl.views.addTimeStampToHeader(view.key, keywords);
                     keywords._dtp && ktl.views.addDateTimePickers(view.key, keywords);
@@ -6247,6 +6248,18 @@ function Ktl($, appInfo) {
             }
 
             $('#' + viewId).addClass('ktlHidden');
+        }
+
+        function showView(viewId, keywords) {
+            const kw = '_sv';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            $('#' + viewId).removeClass('ktlHidden');
         }
 
         //Hide the view title only, typically used to save space when real estate is critical.
@@ -8219,7 +8232,7 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                $('.kn-view a:not([class*=drop]):not(.kn-sort)').on('click', e => {
+                $('.kn-view a:not([class*=drop]):not(.kn-sort):not([class*=chzn])').on('click', e => {
                     const target = e.target;
                     let openInNewTab = false;
 
