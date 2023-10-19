@@ -51,6 +51,10 @@
 	display: none !important;
 }
 
+.ktlCollapse {
+	visibility: collapse;
+}
+
 .cell-edit.ktlNoInlineEdit {
 	cursor: default !important;
 	background-color: transparent !important;
