@@ -12632,12 +12632,12 @@ function Ktl($, appInfo) {
         const listDetailFindFieldId = (element) => {
             let fieldId = '';
             if ($(element).closest('.kn-detail').length)
-                fieldId = $(element).closest('.kn-detail').attr('class').split(/\s+/)[1];
+                fieldId = $(element).closest('.kn-detail').attr('class').split(/\s+/).find(c => c.includes('field_'));
             else {
                 if ($(element).attr('class').includes('kn-detail-body'))
-                    fieldId = $(element).parent().attr('class').split(/\s+/)[0];
+                    fieldId = $(element).parent().attr('class').split(/\s+/).find(c => c.includes('field_'));
                 else if ($(element).attr('class').includes('kn-detail-label'))
-                    fieldId = $(element).parent().attr('class').split(/\s+/)[1];
+                    fieldId = $(element).parent().attr('class').split(/\s+/).find(c => c.includes('field_'));
             }
             return fieldId;
         }
