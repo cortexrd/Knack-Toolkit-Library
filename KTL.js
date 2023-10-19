@@ -160,7 +160,11 @@ function Ktl($, appInfo) {
             const firstParam = group.split(',')[0].trim();
             if (['ktlRoles', 'ktlRefVal', 'ktlTarget', 'ktlCond'].includes(firstParam)) {
                 const pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces.
-                options[firstParam] = group.match(pattern)[1].trim();
+                const groupParams = group.match(pattern);
+                if (groupParams && groupParams.length >= 2) 
+                    options[firstParam] = groupParams[1].trim();
+                else
+                    console.error(`Error parsing keywords : Empty Parameter Configuration [${group}]`);
             } else {
                 params.push(group.split(',').map(param => param.trim()));
             }
