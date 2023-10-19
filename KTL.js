@@ -12633,6 +12633,18 @@ function Ktl($, appInfo) {
             }
         };
 
+        const listDetailFindFieldId = (element) => {
+            let fieldId = '';
+            if ($(element).closest('.kn-detail').length)
+                fieldId = $(element).closest('.kn-detail').attr('class').split(/\s+/).find(c => c.includes('field_'));
+            else {
+                if ($(element).attr('class').includes('kn-detail-body'))
+                    fieldId = $(element).parent().attr('class').split(/\s+/).find(c => c.includes('field_'));
+                else if ($(element).attr('class').includes('kn-detail-label'))
+                    fieldId = $(element).parent().attr('class').split(/\s+/).find(c => c.includes('field_'));
+            }
+            return fieldId;
+        }
 
         const listDetailLabelOptions = {
             ...defaultOptions,
@@ -12653,7 +12665,7 @@ function Ktl($, appInfo) {
                     container.appendChild(textSpan);
                 }
 
-                const fieldId = $(element).closest('.kn-detail').attr('class').split(/\s+/)[1];
+                const fieldId = listDetailFindFieldId(element);
 
                 if (fieldId.includes('field')) {
                     const fieldURL = (objectId) ? `${baseURL}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
@@ -12673,7 +12685,7 @@ function Ktl($, appInfo) {
             ...defaultOptions,
             content: function (element) {
                 const container = listDetailLabelOptions.content(element);
-                const fieldId = $(element).closest('.kn-detail').attr('class').split(/\s+/)[1];
+                const fieldId = listDetailFindFieldId(element);
 
                 const spans = $(element).find('span');
                 const linkedRecords = $.map(spans, (s) => {
