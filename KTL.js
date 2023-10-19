@@ -8228,7 +8228,7 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                $('.kn-view a:not([class*=drop]):not(.kn-sort)').on('click', e => {
+                $('.kn-view a:not([class*=drop]):not(.kn-sort):not([class*=chzn])').on('click', e => {
                     const target = e.target;
                     let openInNewTab = false;
 
