@@ -2675,6 +2675,65 @@ function Ktl($, appInfo) {
                 if (fieldObj && fieldObj.attributes && fieldObj.attributes.type)
                     return fieldObj.attributes.type;
             },
+
+            hideFields: function (viewId, keywords) {
+                const kw = '_hf';
+
+                if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                    const kwList = ktl.core.getKeywordsByType(viewId, kw);
+                    for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                        execKw(kwList[kwIdx]);
+                    }
+
+                    function execKw(kwInstance) {
+                        const options = kwInstance.options;
+                        if (!ktl.core.hasRoleAccess(options)) return;
+
+                        var objArray = [];
+                        kwInstance.params[0].forEach(fieldLabel => {
+                            var fieldId = fieldLabel;
+                            if (!fieldLabel.startsWith('field_'))
+                                fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
+                            if (fieldId) {
+                                var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
+                                    || document.querySelector('#' + viewId + ' .' + fieldId);
+
+                                if (obj)
+                                    objArray.push(obj);
+
+                                if (objArray.length) {
+                                    const hide = () => {
+                                        objArray.forEach(el => {
+                                            el.classList.add('ktlHidden');
+                                        })
+                                    }
+                                    const unhide = () => {
+                                        objArray.forEach(el => {
+                                            el.classList.remove('ktlHidden');
+                                        })
+                                    }
+
+                                    ktl.views.hideUnhideValidateKtlCond(options, hide, unhide);
+                                }
+                            } else {
+                                //Try with an action link.
+                                const actionLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
+                                if (actionLink) {
+                                    const hide = () => {
+                                        actionLink.parent().addClass('ktlHidden');
+                                    }
+                                    const unhide = () => {
+                                        actionLink.parent().removeClass('ktlHidden');
+                                    }
+
+                                    ktl.views.hideUnhideValidateKtlCond(options, hide, unhide);
+                                }
+                            }
+                        })
+                    }
+                }
+            },
         }
     })(); //fields
 
@@ -5116,7 +5175,7 @@ function Ktl($, appInfo) {
                     keywords._rc && ktl.views.removeColumns(view, keywords);
                     keywords._dr && numDisplayedRecords(view, keywords);
                     keywords._nsg && noSortingOnGrid(view.key, keywords);
-                    keywords._hf && hideFields(view.key, keywords);
+                    keywords._hf && ktl.fields.hideFields(view.key, keywords);
                     keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
                     keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
                     keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
@@ -6157,65 +6216,6 @@ function Ktl($, appInfo) {
             }
 
             $('#' + viewId + ' thead [href]').addClass('sortDisabled');
-        }
-
-        function hideFields(viewId, keywords) {
-            const kw = '_hf';
-
-            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                const kwList = ktl.core.getKeywordsByType(viewId, kw);
-                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                    execKw(kwList[kwIdx]);
-                }
-
-                function execKw(kwInstance) {
-                    const options = kwInstance.options;
-                    if (!ktl.core.hasRoleAccess(options)) return;
-
-                    var objArray = [];
-                    kwInstance.params[0].forEach(fieldLabel => {
-                        var fieldId = fieldLabel;
-                        if (!fieldLabel.startsWith('field_'))
-                            fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
-
-                        if (fieldId) {
-                            var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
-                                || document.querySelector('#' + viewId + ' .' + fieldId);
-
-                            if (obj)
-                                objArray.push(obj);
-
-                            if (objArray.length) {
-                                const hide = () => {
-                                    objArray.forEach(el => {
-                                        el.classList.add('ktlHidden');
-                                    })
-                                }
-                                const unhide = () => {
-                                    objArray.forEach(el => {
-                                        el.classList.remove('ktlHidden');
-                                    })
-                                }
-
-                                ktl.views.hideUnhideValidateKtlCond(options, hide, unhide);
-                            }
-                        } else {
-                            //Try with an action link.
-                            const actionLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
-                            if (actionLink) {
-                                const hide = () => {
-                                    actionLink.parent().addClass('ktlHidden');
-                                }
-                                const unhide = () => {
-                                    actionLink.parent().removeClass('ktlHidden');
-                                }
-
-                                ktl.views.hideUnhideValidateKtlCond(options, hide, unhide);
-                            }
-                        }
-                    })
-                }
-            }
         }
 
         //Adjust header alignment of Grids and Pivot Tables
@@ -8081,6 +8081,16 @@ function Ktl($, appInfo) {
                         }).catch(() => {
                             unhide();
                         });
+
+                        resolve();
+                        return;
+                    }
+
+                    if (field === 'ktlNow' || field === 'ktlNowUTC') {
+                        if (ktlCompare(field, operator, value))
+                            hide();
+                        else
+                            unhide();
 
                         resolve();
                         return;
@@ -13223,11 +13233,11 @@ window.ktlpause = function () {
 }
 
 function ktlCompare(a, operator, b) {
-    //TODO: Add support for date and time comparisons.
+    let conditionMatches = false;
+
     const numA = Number(a);
     const numB = Number(b);
 
-    let conditionMatches = false;
     if ((operator === 'is' || operator === 'eq') && a === b)
         conditionMatches = true;
     else if ((operator === 'not' || operator === 'neq') && a !== b)
@@ -13249,9 +13259,57 @@ function ktlCompare(a, operator, b) {
             conditionMatches = true;
         else if (operator === 'gte' && numA >= numB)
             conditionMatches = true;
+    } else if (operator === 'in') {
+        if (a === 'ktlNow' || a === 'ktlNowUTC')
+            conditionMatches = isCurrentTimeInRange(b, (a === 'ktlNowUTC'));
     }
 
     return conditionMatches;
+}
+
+function getCurrentUTCDate() {
+    const now = new Date();
+    return {
+        hours: now.getUTCHours(),
+        minutes: now.getUTCMinutes()
+    };
+}
+
+function isCurrentTimeInRange(timeRange, useUTC = false) {
+    const [startStr, endStr] = timeRange.split('-');
+
+    const getTimeObj = (timeStr) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return { hours, minutes };
+    };
+
+    const start = getTimeObj(startStr);
+    const end = getTimeObj(endStr);
+
+    const current = useUTC ? getCurrentUTCDate() : {
+        hours: new Date().getHours(),
+        minutes: new Date().getMinutes()
+    };
+
+    const isAfterStart = (current.hours > start.hours) ||
+        (current.hours === start.hours && current.minutes >= start.minutes);
+    const isBeforeEnd = (current.hours < end.hours) ||
+        (current.hours === end.hours && current.minutes <= end.minutes);
+
+    let result;
+    if (start.hours <= end.hours)
+        result = isAfterStart && isBeforeEnd;
+    else
+        result = isAfterStart || isBeforeEnd;
+
+    //console.log('Start Time:', start);
+    //console.log('End Time:', end);
+    //console.log('Current Time:', current);
+    //console.log('Is after start:', isAfterStart);
+    //console.log('Is before end:', isBeforeEnd);
+    //console.log('Result:', result);
+
+    return result;
 }
 
 function debounce(func, timeout = 1000) {
