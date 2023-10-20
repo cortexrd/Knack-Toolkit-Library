@@ -161,7 +161,7 @@ function Ktl($, appInfo) {
             if (['ktlRoles', 'ktlRefVal', 'ktlTarget', 'ktlCond'].includes(firstParam)) {
                 const pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces.
                 const groupParams = group.match(pattern);
-                if (groupParams && groupParams.length >= 2) 
+                if (groupParams && groupParams.length >= 2)
                     options[firstParam] = groupParams[1].trim();
                 else
                     console.error(`Error parsing keywords : Empty Parameter Configuration [${group}]`);
@@ -5103,8 +5103,8 @@ function Ktl($, appInfo) {
 
                     //This section is for keywords that are only supported by views.
                     keywords._ni && ktl.views.noInlineEditing(view);
-                    keywords._hv && hideView(view.key, keywords);
-                    keywords._sv && showView(view.key, keywords);
+                    keywords._hv && ktl.views.hideView(view.key, keywords);
+                    keywords._rv && ktl.views.removeView(view.key, keywords);
                     keywords._ht && hideTitle(view.key, keywords);
                     keywords._ts && ktl.views.addTimeStampToHeader(view.key, keywords);
                     keywords._dtp && ktl.views.addDateTimePickers(view.key, keywords);
@@ -6172,6 +6172,7 @@ function Ktl($, appInfo) {
                     const options = kwInstance.options;
                     if (!ktl.core.hasRoleAccess(options)) return;
 
+                    var objArray = [];
                     kwInstance.params[0].forEach(fieldLabel => {
                         var fieldId = fieldLabel;
                         if (!fieldLabel.startsWith('field_'))
@@ -6180,12 +6181,36 @@ function Ktl($, appInfo) {
                         if (fieldId) {
                             var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
                                 || document.querySelector('#' + viewId + ' .' + fieldId);
-                            obj && obj.classList.add('ktlHidden')
+
+                            if (obj)
+                                objArray.push(obj);
+
+                            if (objArray.length) {
+                                const hide = () => {
+                                    objArray.forEach(el => {
+                                        el.classList.add('ktlHidden');
+                                    })
+                                }
+                                const unhide = () => {
+                                    objArray.forEach(el => {
+                                        el.classList.remove('ktlHidden');
+                                    })
+                                }
+
+                                ktl.views.hideUnhideValidateKtlCond(options, hide, unhide);
+                            }
                         } else {
                             //Try with an action link.
                             const actionLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
                             if (actionLink) {
-                                actionLink.parent().addClass('ktlHidden');
+                                const hide = () => {
+                                    actionLink.parent().addClass('ktlHidden');
+                                }
+                                const unhide = () => {
+                                    actionLink.parent().removeClass('ktlHidden');
+                                }
+
+                                ktl.views.hideUnhideValidateKtlCond(options, hide, unhide);
                             }
                         }
                     })
@@ -6235,31 +6260,6 @@ function Ktl($, appInfo) {
                     console.log('headerAlignment error:', e);
                 }
             }
-        }
-
-        //Hide the whole view, typically used when doing background searches.
-        function hideView(viewId, keywords) {
-            const kw = '_hv';
-            if (!(viewId && keywords && keywords[kw])) return;
-
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
-                if (!ktl.core.hasRoleAccess(options)) return;
-            }
-
-            $('#' + viewId).addClass('ktlHidden');
-        }
-
-        function showView(viewId, keywords) {
-            const kw = '_sv';
-            if (!(viewId && keywords && keywords[kw])) return;
-
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
-                if (!ktl.core.hasRoleAccess(options)) return;
-            }
-
-            $('#' + viewId).removeClass('ktlHidden');
         }
 
         //Hide the view title only, typically used to save space when real estate is critical.
@@ -6485,6 +6485,52 @@ function Ktl($, appInfo) {
                             }, unpauseDelay)
                         }
                     }
+                }
+            },
+
+            //Hide the whole view, typically used when doing background searches, or GET API calls.
+            hideView: function (viewId, keywords) {
+                const kw = '_hv';
+                if (!(viewId && keywords && keywords[kw])) return;
+
+                const keywordsArray = ktl.core.getKeywordsByType(viewId, kw);
+                if (!keywordsArray.length)
+                    $('#' + viewId).addClass('ktlHidden');
+                else {
+                    keywordsArray.forEach(keyword => {
+                        if (!ktl.core.hasRoleAccess(keyword.options))
+                            return;
+
+                        const hide = () => { $('#' + viewId).addClass('ktlHidden'); }
+                        const unhide = () => { $('#' + viewId).removeClass('ktlHidden'); }
+
+                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                    });
+                }
+            },
+
+            removeView: function (viewId, keywords) {
+                const kw = '_rv';
+                if (!(viewId && keywords && keywords[kw])) return;
+
+                const keywordsArray = ktl.core.getKeywordsByType(viewId, kw);
+                if (!keywordsArray.length)
+                    $('#' + viewId).remove();
+                else {
+                    keywordsArray.forEach(keyword => {
+                        if (!ktl.core.hasRoleAccess(keyword.options))
+                            return;
+
+                        const hide = () => { $('#' + viewId).addClass('ktlHidden'); }
+                        const unhide = () => {
+                            $('#' + viewId).removeClass('ktlHidden');
+                        }
+
+                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
+                            .then(() => {
+                                $('#' + viewId + '.ktlHidden').remove();
+                            })
+                    });
                 }
             },
 
@@ -7990,18 +8036,21 @@ function Ktl($, appInfo) {
                     });
 
                     const hide = () => ktl.views.hideTableColumns(view.key, fields, headers);
-
                     const unhide = () => ktl.views.unhideTableColumns(view.key, fields, headers);
 
                     if (fields.length || headers.length)
-                        validateKtlCond(keyword.options, hide, unhide);
+                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
                 });
+            },
 
-                function validateKtlCond(options = {}, hide, unhide) {
+            hideUnhideValidateKtlCond: function (options = {}, hide, unhide) {
+                return new Promise(function (resolve) {
                     hide();
 
-                    if (!options.ktlCond)
+                    if (!options.ktlCond) {
+                        resolve();
                         return;
+                    }
 
                     const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
 
@@ -8032,6 +8081,8 @@ function Ktl($, appInfo) {
                         }).catch(() => {
                             unhide();
                         });
+
+                        resolve();
                         return;
                     }
 
@@ -8080,9 +8131,10 @@ function Ktl($, appInfo) {
                                 unhide();
                             });
                         }
-                    }
 
-                }
+                        resolve();
+                    }
+                });
             },
 
             getViewSourceName: function (viewId) {
