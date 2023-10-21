@@ -59,7 +59,12 @@ function Ktl($, appInfo) {
                     firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
                     if (firstKeywordIdx >= 0) {
                         cleanedUpTitle = title.substring(0, firstKeywordIdx);
-                        extractKeywords(title.substring(firstKeywordIdx).trim(), viewKwObj);
+                        var keywordsToParse = title.substring(firstKeywordIdx).trim();
+
+                        if (attr.type === 'rich_text') //Remove line breaks and paragraphs after first kw found.
+                            keywordsToParse = keywordsToParse.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
+
+                        extractKeywords(keywordsToParse, viewKwObj);
                     }
                 }
 
@@ -84,7 +89,9 @@ function Ktl($, appInfo) {
                         ktlKeywords[scn.attributes.key] = viewKwObj;
                 }
 
-                if (attr.type !== 'rich_text')
+                if (attr.type === 'rich_text' && !title.includes('_ol'))
+                    attr.content = cleanedUpTitle;
+                else
                     attr.title = cleanedUpTitle;
 
                 attr.description = cleanedUpDescription;
@@ -124,8 +131,10 @@ function Ktl($, appInfo) {
                 if (!keywords[key])
                     keywords[key] = [];
 
-                if (i <= strSplit.length && strSplit[i + 1].trim().startsWith('='))
-                    keywords[key].push(parseParameters(strSplit[i + 1].trim().slice(1).trim()));
+                if (i <= strSplit.length && strSplit[i + 1].trim().startsWith('=')) {
+                    const paramsStr = parseParameters(strSplit[i + 1].trim().slice(1).trim());
+                    keywords[key].push(paramsStr);
+                }
             }
         }
 
