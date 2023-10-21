@@ -55,6 +55,10 @@
 	visibility: collapse;
 }
 
+.ktlVisibilityHidden {
+	visibility: hidden;
+}
+
 .cell-edit.ktlNoInlineEdit {
 	cursor: default !important;
 	background-color: transparent !important;

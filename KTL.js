@@ -47,7 +47,12 @@ function Ktl($, appInfo) {
             if (view) {
                 var viewKwObj = {};
                 var attr = view.attributes;
+
                 var title = attr.title;
+
+                if (attr.type === 'rich_text')
+                    title = attr.content.replace('<p>_', ' _');
+
                 var cleanedUpTitle = title;
                 var firstKeywordIdx;
                 if (title) {
@@ -79,7 +84,9 @@ function Ktl($, appInfo) {
                         ktlKeywords[scn.attributes.key] = viewKwObj;
                 }
 
-                attr.title = cleanedUpTitle;
+                if (attr.type !== 'rich_text')
+                    attr.title = cleanedUpTitle;
+
                 attr.description = cleanedUpDescription;
             }
         }
@@ -127,7 +134,7 @@ function Ktl($, appInfo) {
 
     //Parser step 3 : Parse all sets of parameters for a given keyword - those after the equal sign and separated by commas.
     function parseParameters(keywordString = '') {
-        let paramStr = keywordString;
+        let paramStr = keywordString.replace(/(\/a>)[\s\S]*/, '$1');
         let params = [];
         let options = {};
 
@@ -171,7 +178,6 @@ function Ktl($, appInfo) {
         });
     }
 
-
     //This is for early notifications of DOM changes.
     //Prevents spurious GUI updates (flickering).
     //Also used to track summary updates since they are asychronous and often delayed.
@@ -195,12 +201,20 @@ function Ktl($, appInfo) {
                     if (viewId) {
                         var viewObj = Knack.views[viewId];
                         if (viewObj && typeof viewObj.model === 'object') {
-                            if (viewId && mutRec.target.localName === 'tbody') {
+                            if (viewId && (mutRec.target.localName === 'tbody' || mutRec.target.localName === 'div')) {
                                 var keywords = ktlKeywords[viewId];
                                 if (keywords) {
-                                    keywords._hc && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
-                                    keywords._rc && ktl.views.removeColumns(Knack.views[viewId].model.view, keywords);
-                                    keywords._km && ktl.core.kioskMode(true);
+                                    //Pre-render keyword processing.
+                                    keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
+                                    keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
+
+                                    if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
+                                        keywords._km && ktl.core.kioskMode(true);
+                                        keywords._hc && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
+                                        keywords._rc && ktl.views.removeColumns(Knack.views[viewId].model.view, keywords);
+                                        keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
+                                        keywords._style && ktl.views.setStyle(viewId, keywords);
+                                    }
                                 }
                             }
                         }
@@ -2302,7 +2316,7 @@ function Ktl($, appInfo) {
             //    }
             //});
 
-            shouldBeNumeric: function(fieldId) {
+            shouldBeNumeric: function (fieldId) {
                 return textAsNumeric.includes(fieldId);
             },
 
@@ -2679,6 +2693,7 @@ function Ktl($, appInfo) {
             hideFields: function (viewId, keywords) {
                 const kw = '_hf';
 
+
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                     const kwList = ktl.core.getKeywordsByType(viewId, kw);
                     for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
@@ -2689,48 +2704,43 @@ function Ktl($, appInfo) {
                         const options = kwInstance.options;
                         if (!ktl.core.hasRoleAccess(options)) return;
 
-                        var objArray = [];
-                        kwInstance.params[0].forEach(fieldLabel => {
+                        $('#' + viewId).addClass('ktlVisibilityHidden');
+
+                        var elementsArray = [];
+                        const kwFields = kwInstance.params[0];
+                        for (var i = 0; i < kwFields.length; i++) {
+                            var fieldLabel = kwFields[i];
+
                             var fieldId = fieldLabel;
                             if (!fieldLabel.startsWith('field_'))
                                 fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
 
                             if (fieldId) {
-                                var obj = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
+                                const el = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
                                     || document.querySelector('#' + viewId + ' .' + fieldId);
 
-                                if (obj)
-                                    objArray.push(obj);
-
-                                if (objArray.length) {
-                                    const hide = () => {
-                                        objArray.forEach(el => {
-                                            el.classList.add('ktlHidden');
-                                        })
-                                    }
-                                    const unhide = () => {
-                                        objArray.forEach(el => {
-                                            el.classList.remove('ktlHidden');
-                                        })
-                                    }
-
-                                    ktl.views.hideUnhideValidateKtlCond(options, hide, unhide);
-                                }
+                                if (el)
+                                    elementsArray.push(el);
                             } else {
                                 //Try with an action link.
-                                const actionLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
-                                if (actionLink) {
-                                    const hide = () => {
-                                        actionLink.parent().addClass('ktlHidden');
-                                    }
-                                    const unhide = () => {
-                                        actionLink.parent().removeClass('ktlHidden');
-                                    }
-
-                                    ktl.views.hideUnhideValidateKtlCond(options, hide, unhide);
-                                }
+                                const actLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
+                                if (actLink.length)
+                                    elementsArray.push(actLink.parent());
                             }
-                        })
+                        }
+
+                        if (elementsArray.length) {
+                            const hide = () => {
+                                elementsArray.forEach(el => { el.classList.add('ktlHidden'); })
+                            }
+                            const unhide = () => {
+                                elementsArray.forEach(el => { el.classList.remove('ktlHidden'); })
+                            }
+
+                            ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
+                                .then(() => { $('#' + viewId).removeClass('ktlVisibilityHidden'); })
+                        } else
+                            $('#' + viewId).removeClass('ktlVisibilityHidden');
                     }
                 }
             },
@@ -5150,55 +5160,66 @@ function Ktl($, appInfo) {
                     addGotoDate(view.key);
                 } catch (e) { console.log(e); }
             }
+
+            addLongClickListener('#' + viewId + ' .kn-title', function (e) {
+                if (e.target.classList && e.target.classList.contains('kn-title')) {
+                    document.querySelector('#' + viewId).classList.add('ktlOutline');
+                    Knack.showSpinner();
+                    setTimeout(() => {
+                        ktl.views.refreshView(viewId)
+                            .then(() => {
+                                Knack.hideSpinner();
+                                document.querySelector('#' + viewId).classList.remove('ktlOutline');
+                            })
+                            .catch(() => { })
+                    }, 500);
+                }
+            }, 500);
         })
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
             try {
-                var keywords = ktlKeywords[view.key];
+                const viewId = view.key;
+                var keywords = ktlKeywords[viewId];
                 if (keywords && !$.isEmptyObject(keywords)) {
+                    //This section is for keywords that are only supported by views.
                     //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
-                    //This section is for keywords that are only supported by views.
                     keywords._ni && ktl.views.noInlineEditing(view);
-                    keywords._hv && ktl.views.hideView(view.key, keywords);
-                    keywords._rv && ktl.views.removeView(view.key, keywords);
-                    keywords._ht && hideTitle(view.key, keywords);
-                    keywords._ts && ktl.views.addTimeStampToHeader(view.key, keywords);
-                    keywords._dtp && ktl.views.addDateTimePickers(view.key, keywords);
-                    keywords._al && ktl.account.autoLogin(view.key);
-                    keywords._rvs && refreshViewsAfterSubmit(view.key, keywords);
-                    keywords._rvr && refreshViewsAfterRefresh(view.key, keywords);
-                    keywords._nf && disableFilterOnFields(view, keywords);
+
+                    //These also need to be processed in the mutation observer.
                     keywords._hc && ktl.views.hideColumns(view, keywords);
                     keywords._rc && ktl.views.removeColumns(view, keywords);
-                    keywords._dr && numDisplayedRecords(view, keywords);
-                    keywords._nsg && noSortingOnGrid(view.key, keywords);
-                    keywords._hf && ktl.fields.hideFields(view.key, keywords);
-                    keywords._bcg && ktl.fields.generateBarcode(view.key, keywords);
-                    keywords._zoom && ktl.views.applyZoomLevel(view.key, keywords);
-                    keywords._cls && ktl.views.addRemoveClass(view.key, keywords);
-                    keywords._style && ktl.views.setStyle(view.key, keywords);
+                    keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
+                    keywords._style && ktl.views.setStyle(viewId, keywords);
+
+                    //These don't need to be processed in the mutation observer.
+                    keywords._hv && ktl.views.hideView(viewId, keywords);
+                    keywords._hf && ktl.fields.hideFields(viewId, keywords);
+                    keywords._rv && ktl.views.removeView(viewId, keywords);
+                    keywords._ht && hideTitle(viewId, keywords);
+                    keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
+                    keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
+                    keywords._ts && ktl.views.addTimeStampToHeader(viewId, keywords);
+                    keywords._dtp && ktl.views.addDateTimePickers(viewId, keywords);
+                    keywords._al && ktl.account.autoLogin(viewId);
+                    keywords._rvs && refreshViewsAfterSubmit(viewId, keywords);
+                    keywords._rvr && refreshViewsAfterRefresh(viewId, keywords);
+                    keywords._nf && disableFilterOnFields(view, keywords);
+                    keywords._nsg && noSortingOnGrid(viewId, keywords);
+                    keywords._bcg && ktl.fields.generateBarcode(viewId, keywords);
                     keywords._trk && ktl.views.truncateText(view, keywords);
-                    keywords._oln && ktl.views.openLinkInNewWindow(view, keywords);
+                    (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
-                quickToggle(view.key, data); //IMPORTANT: quickToggle must be processed BEFORE matchColor.
-                matchColor(view.key, data);
-                colorizeFieldByValue(view.key, data);
+                quickToggle(viewId, data); //IMPORTANT: quickToggle must be processed BEFORE matchColor.
+                matchColor(viewId, data);
+                colorizeFieldByValue(viewId, data);
                 headerAlignment(view, keywords);
-
-                if (view.type === 'rich_text' && typeof view.content !== 'undefined') {
-                    var txt = view.content.toLowerCase();
-
-                    if (txt.includes('_ol')) {
-                        var innerHTML = document.querySelector('#' + view.key).innerHTML;
-                        document.querySelector('#' + view.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
-                    }
-                }
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -5353,7 +5374,6 @@ function Ktl($, appInfo) {
             if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword' /*Needed to discriminate checkboxes.  We only want Search fields*/)
                 ktl.views.autoRefresh(false);
 
-
             var viewId = e.target.closest('.kn-view');
             viewId = viewId ? viewId.id : null;
 
@@ -5432,51 +5452,6 @@ function Ktl($, appInfo) {
                 var viewIds = ktl.views.convertViewTitlesToViewIds(keywords[kw][0].params[0], viewId);
                 if (viewIds.length)
                     ktl.views.refreshViewArray(viewIds)
-            }
-        }
-
-        function numDisplayedRecords(view, keywords) {
-            if (!view) return;
-
-            const kw = '_dr';
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
-                if (!ktl.core.hasRoleAccess(options)) return;
-            }
-
-            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                var viewId = view.key;
-                var perPage = keywords[kw][0].params[0][0];
-                var href = window.location.href;
-                if (!href.includes(viewId + '_per_page=')) {
-                    Knack.showSpinner();
-
-                    const view = Knack.views[viewId].model.view;
-
-                    if (view.pagination_meta)
-                        view.pagination_meta.page = 1;
-
-                    if (view.source)
-                        view.source.page = 1;
-
-                    if (view.pagination_meta)
-                        view.pagination_meta.rows_per_page = perPage;
-
-                    if (view.rows_per_page)
-                        view.rows_per_page = perPage;
-
-                    var i = {};
-                    i[viewId + '_per_page'] = perPage;
-                    i[viewId + '_page'] = 1;
-                    Knack.router.navigate(Knack.getSceneHash() + "?" + Knack.getQueryString(i), false);
-                    Knack.setHashVars();
-
-                    if (document.querySelector('.kn-view.kn-table.' + viewId + ' .kn-table-wrapper')) { //This is to support Search views, otherwise you get an error on first render.
-                        Knack.models[viewId].fetch({
-                            success: () => { Knack.hideSpinner(); }
-                        });
-                    }
-                }
             }
         }
 
@@ -6527,9 +6502,7 @@ function Ktl($, appInfo) {
                         }
 
                         ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
-                            .then(() => {
-                                $('#' + viewId + '.ktlHidden').remove();
-                            })
+                            .then(() => { $('#' + viewId + '.ktlHidden').remove(); })
                     });
                 }
             },
@@ -8180,14 +8153,20 @@ function Ktl($, appInfo) {
                     const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
 
+                    $('#' + viewId).addClass('ktlVisibilityHidden');
+
                     const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                    ktl.core.waitSelector(sel, 20000, 'visible')
+                    ktl.core.waitSelector(sel, 20000)
                         .then(() => {
                             var zoomLevel = keywords[kw][0].params[0][0];
                             if (!isNaN(zoomLevel))
                                 $(sel).css({ 'zoom': zoomLevel + '%' });
                         })
                         .catch(function () { })
+                        .finally(() => {
+                            $('#' + viewId).removeClass('ktlVisibilityHidden');
+                        })
+
                 }
             },
 
@@ -8262,12 +8241,10 @@ function Ktl($, appInfo) {
                             var widthUnits = col.width.units;
                             if (widthType === 'custom' && widthUnits === 'px') {
                                 var widthAmount = col.width.amount;
-                                console.log('widthAmount =', widthAmount);
 
                                 if (col.type === 'field') {
                                     if (col.field) {
                                         var fieldId = col.field.key;
-
                                         //Remove anything after field_xxx, like pseudo selectors with colon.
                                         var extractedField = fieldId.match(/field_\d+/);
                                         if (extractedField) {
@@ -8285,37 +8262,107 @@ function Ktl($, appInfo) {
                 }
             },
 
-            openLinkInNewWindow: function (view, keywords) {
-                const kw = '_oln';
-                if (!view || !keywords || (keywords && !keywords[kw])) return;
+            openLink: function (viewId, keywords) {
+                var innerHTML = document.querySelector('#' + viewId).innerHTML;
+                document.querySelector('#' + viewId).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
+
+                const kw = keywords._oln ? '_oln' : '_ols';
+                if (!viewId || !keywords || (keywords && !keywords[kw])) return;
 
                 if (keywords[kw].length && keywords[kw][0].options) {
                     const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                $('.kn-view a:not([class*=drop]):not(.kn-sort):not([class*=chzn])').on('click', e => {
-                    const target = e.target;
-                    let openInNewTab = false;
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType === 'rich_text') {
+                    //In rich text views, jump directly to the URL, without requiring a click.
+                    const href = keywords[kw][0].params[0][0];
+                    let parser = new DOMParser();
+                    let url = parser.parseFromString(href, 'text/html').querySelector('a').getAttribute('href');
+                    window.open(url, kw === '_ols' ? '_self' : '_blank');
+                } else {
+                    if (kw === '_ols') return;
 
-                    let fieldId;
-                    let fld = target.closest('[class^="field_"]');
-                    if (fld)
-                        fieldId = fld.getAttribute('data-field-key');
-                    else
-                        fieldId = $(target).closest('.kn-detail').attr('class').split(/\s+/)[1];
+                    $('.kn-view a:not([class*=drop]):not(.kn-sort):not([class*=chzn])').on('click', e => {
+                        const target = e.target;
+                        let openInNewTab = false;
 
-                    if (!fieldId || !fieldId.startsWith('field_')) return;
+                        if (target.classList.contains('kn-link'))
+                            openInNewTab = true;
+                        else {
+                            let fieldId;
+                            let fld = target.closest('[class^="field_"]');
+                            if (fld)
+                                fieldId = fld.getAttribute('data-field-key');
+                            else {
+                                const detailsView = $(target).closest('.kn-detail');
+                                if (detailsView.length)
+                                    fieldId = detailsView.attr('class').split(/\s+/)[1];
+                            }
 
-                    const fieldType = ktl.fields.getFieldType(fieldId);
-                    if (target.classList.contains('kn-link') || fieldType === 'link')
-                        openInNewTab = true;
+                            if (!fieldId || !fieldId.startsWith('field_')) return;
 
-                    if (openInNewTab && e.target.href) {
-                        e.preventDefault();
-                        window.open(e.target.href, '_blank');
+                            const fieldType = ktl.fields.getFieldType(fieldId);
+                            if (fieldType === 'link')
+                                openInNewTab = true;
+                        }
+
+                        if (openInNewTab && e.target.href) {
+                            e.preventDefault();
+                            window.open(e.target.href, '_blank');
+                        }
+                    })
+                }
+            },
+
+            numDisplayedRecords: function (viewId, keywords) {
+                if (!viewId) return;
+
+                const kw = '_dr';
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                    var perPage = keywords[kw][0].params[0][0];
+                    var href = window.location.href;
+                    if (!href.includes(viewId + '_per_page=')) {
+                        $('#' + viewId).addClass('ktlVisibilityHidden');
+                        Knack.showSpinner();
+
+                        const view = Knack.views[viewId].model.view;
+
+                        if (view.pagination_meta)
+                            view.pagination_meta.page = 1;
+
+                        if (view.source)
+                            view.source.page = 1;
+
+                        if (view.pagination_meta)
+                            view.pagination_meta.rows_per_page = perPage;
+
+                        if (view.rows_per_page)
+                            view.rows_per_page = perPage;
+
+                        var i = {};
+                        i[viewId + '_per_page'] = perPage;
+                        i[viewId + '_page'] = 1;
+                        Knack.router.navigate(Knack.getSceneHash() + "?" + Knack.getQueryString(i), false);
+                        Knack.setHashVars();
+
+                        if (document.querySelector('.kn-view.kn-table.' + viewId + ' .kn-table-wrapper')) { //This is to support Search views, otherwise you get an error on first render.
+                            Knack.models[viewId].fetch({
+                                success: () => {
+                                    Knack.hideSpinner();
+                                    $('#' + viewId).removeClass('ktlVisibilityHidden');
+                                }
+                            });
+                        } else
+                            $('#' + viewId).removeClass('ktlVisibilityHidden');
                     }
-                })
+                }
             },
 
             copyToClipboard: function (view, keywords) {
@@ -8488,24 +8535,6 @@ function Ktl($, appInfo) {
                 alert('ERROR - Scene keys do not match!');
                 return;
             }
-
-            //Link Menu feature
-            $('.kn-navigation-bar ul li,.knHeader__menu-list-item').on('click', e => {
-                setTimeout(() => {
-                    if (Knack.router.scene_view.model.views.models.length) {
-                        var view = Knack.router.scene_view.model.views.models[0];
-                        if (view.attributes.type === 'rich_text') {
-                            var txt = view.attributes.content.toLowerCase();
-                            if (txt.includes('_ol')) {
-                                var innerHTML = document.querySelector('#' + view.attributes.key).innerHTML;
-                                document.querySelector('#' + view.attributes.key).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
-                                var href = innerHTML.split('href="')[1].split('\"')[0];
-                                window.open(href, txt.includes('_ols') ? '_self' : '_blank');
-                            }
-                        }
-                    }
-                }, 100);
-            });
 
             //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
             //Anyways... no one is getting impatient at an invisible window!
@@ -11910,13 +11939,13 @@ function Ktl($, appInfo) {
                     $(document).on('knack-scene-render.any', (event, scene) => {
                         resetRecoveryWatchdog(NORMAL_WD_TIMEOUT_DELAY);
 
-                    //    simulateCrash = false;
-                    //    $(document).on('keydown touchstart', function (event) {
-                    //        if (/*event.type === 'touchstart' || */event.key === '!') {
-                    //            ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
-                    //            simulateCrash = true;
-                    //        }
-                    //    })
+                        //    simulateCrash = false;
+                        //    $(document).on('keydown touchstart', function (event) {
+                        //        if (/*event.type === 'touchstart' || */event.key === '!') {
+                        //            ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
+                        //            simulateCrash = true;
+                        //        }
+                        //    })
                     });
 
                     function resetRecoveryWatchdog(wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
@@ -12984,7 +13013,7 @@ function Ktl($, appInfo) {
                         target.value = input;
                         target.selectionStart = caretStart;
                         target.selectionEnd = caretStart;
-                        target.dispatchEvent(new InputEvent ('input', {
+                        target.dispatchEvent(new InputEvent('input', {
                             bubbles: true,
                             cancelable: true
                         }));
@@ -13015,7 +13044,7 @@ function Ktl($, appInfo) {
                                 $('#simple-keyboard').removeClass('capslock');
                             }
 
-                        } else  if (button === "{tab}") {
+                        } else if (button === "{tab}") {
                             // Add tab keypress
                         } else {
                             if (keyboard.getOptions().layoutName != 'numeric'
@@ -13061,19 +13090,19 @@ function Ktl($, appInfo) {
                             }
 
                             if (!button.startsWith("{") && !button.startsWith("}")) {
-                                target.dispatchEvent( new KeyboardEvent( "keydown", {
+                                target.dispatchEvent(new KeyboardEvent("keydown", {
                                     key: button.charAt(0),
                                     keyCode: button.charCodeAt(0),
                                     bubbles: true,
                                     cancelable: true
                                 }));
-                                sendButtonEvents.push( new KeyboardEvent( "keypress", {
+                                sendButtonEvents.push(new KeyboardEvent("keypress", {
                                     key: button.charAt(0),
                                     keyCode: button.charCodeAt(0),
                                     bubbles: true,
                                     cancelable: true
                                 }));
-                                sendButtonEvents.push( new KeyboardEvent( "keyup", {
+                                sendButtonEvents.push(new KeyboardEvent("keyup", {
                                     key: button.charAt(0),
                                     keyCode: button.charCodeAt(0),
                                     bubbles: true,
@@ -13082,19 +13111,19 @@ function Ktl($, appInfo) {
                             }
 
                             if (button === "{bksp}") {
-                                target.dispatchEvent( new KeyboardEvent( "keydown", {
+                                target.dispatchEvent(new KeyboardEvent("keydown", {
                                     key: 'Backspace',
                                     keyCode: 8,
                                     bubbles: true,
                                     cancelable: true
                                 }));
-                                sendButtonEvents.push( new KeyboardEvent( "keypress", {
+                                sendButtonEvents.push(new KeyboardEvent("keypress", {
                                     key: 'Backspace',
                                     keyCode: 8,
                                     bubbles: true,
                                     cancelable: true
                                 }));
-                                sendButtonEvents.push( new KeyboardEvent( "keyup", {
+                                sendButtonEvents.push(new KeyboardEvent("keyup", {
                                     key: 'Backspace',
                                     keyCode: 8,
                                     bubbles: true,
@@ -13135,7 +13164,7 @@ function Ktl($, appInfo) {
                         if (($(target).offset().top - $(document).scrollTop()) > ($(window).height() - $('#simple-keyboard').height() - 100)) {
                             $([document.documentElement, document.body]).animate({
                                 scrollTop: $(target).offset().top - 200
-                            }, 200, 'linear', () => target && target.dispatchEvent( new KeyboardEvent( "focus", {
+                            }, 200, 'linear', () => target && target.dispatchEvent(new KeyboardEvent("focus", {
                                 bubbles: true,
                                 cancelable: true
                             })));
@@ -13166,7 +13195,7 @@ function Ktl($, appInfo) {
 
                     $(document).on('click', '.cell-edit', (event) => {
                         ktl.core.waitSelector("#cell-editor").then(() => {
-                            setTimeout( () => { // Wait for cell-editor's content to change
+                            setTimeout(() => { // Wait for cell-editor's content to change
                                 $("#cell-editor").find('div:not(.chzn-search) > input:visible').trigger('focus');
                             }, 500);
                         });
@@ -13339,6 +13368,32 @@ function safePromiseAllSettled(promises) {
     // }
 
     // return Promise.allSettled(promises);
+}
+
+function addLongClickListener(selector, callback, duration = 500, isClass = false) {
+    let elements = document.querySelectorAll(selector);
+
+    elements.forEach(element => {
+        let longPressTimeout;
+
+        element.addEventListener('mousedown', function (event) {
+            longPressTimeout = setTimeout(() => {
+                callback(event);  // Passing the event to the callback
+            }, duration);
+        });
+
+        element.addEventListener('mouseup', function (event) {
+            if (longPressTimeout) {
+                clearTimeout(longPressTimeout);
+            }
+        });
+
+        element.addEventListener('mouseleave', function (event) {
+            if (longPressTimeout) {
+                clearTimeout(longPressTimeout);
+            }
+        });
+    });
 }
 
 ////////////////  End of KTL /////////////////////
