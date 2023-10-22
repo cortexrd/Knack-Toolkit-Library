@@ -5229,6 +5229,7 @@ function Ktl($, appInfo) {
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(view, keywords);
+                    //keywords._obf && ktl.views.obfuscateData(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5236,6 +5237,7 @@ function Ktl($, appInfo) {
                 matchColor(viewId, data);
                 colorizeFieldByValue(viewId, data);
                 headerAlignment(view, keywords);
+                ktl.views.obfuscateData(view, keywords);
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -8429,6 +8431,25 @@ function Ktl($, appInfo) {
                         ktl.core.selectElementContents();
                     }
 
+                });
+            },
+
+            obfuscateData: function (view, keywords) {
+                const kw = '_obf';
+                if (!view || !keywords || (keywords && !keywords[kw])) return;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+
+                $('#' + view.key + ' td > span').each(function () {
+                    $(this).text(ktl.core.generateRandomChars(getRandomInt(5, 15)));
+                });
+
+                $('#' + view.key + ' .kn-detail-body').each(function () {
+                    $(this).text(ktl.core.generateRandomChars(getRandomInt(5, 15)));
                 });
             },
 
@@ -13387,40 +13408,44 @@ function safePromiseAllSettled(promises) {
 }
 
 function addLongClickListener(selector, callback, duration = 500) {
-    let elements = document.querySelectorAll(selector);
+    $(selector).each(function () {
+        let $element = $(this);
 
-    elements.forEach(element => {
+        if ($element.data('hasLongClickListener'))
+            return;
+
         let longPressTimeout;
         let startPosition = { x: 0, y: 0 };
 
-        element.addEventListener('mousedown', function (event) {
+        function handleMouseDown(event) {
             startPosition.x = event.pageX;
             startPosition.y = event.pageY;
 
             longPressTimeout = setTimeout(() => {
-                callback(event);  // Passing the event to the callback
+                callback(event);
             }, duration);
-        });
+        }
 
-        element.addEventListener('mousemove', function (event) {
-            // If mouse movement exceeds a certain threshold, abort by clearing the timeout
-            if (Math.abs(event.pageX - startPosition.x) > 10 || Math.abs(event.pageY - startPosition.y) > 10) {
+        function handleMouseMove(event) {
+            if (Math.abs(event.pageX - startPosition.x) > 10 || Math.abs(event.pageY - startPosition.y) > 10)
                 clearTimeout(longPressTimeout);
-            }
-        });
+        }
 
-        element.addEventListener('mouseup', function (event) {
-            if (longPressTimeout) {
+        function handleMouseUpOrLeave(event) {
+            if (longPressTimeout)
                 clearTimeout(longPressTimeout);
-            }
-        });
+        }
 
-        element.addEventListener('mouseleave', function (event) {
-            if (longPressTimeout) {
-                clearTimeout(longPressTimeout);
-            }
-        });
+        $element.on('mousedown', handleMouseDown);
+        $element.on('mousemove', handleMouseMove);
+        $element.on('mouseup mouseleave', handleMouseUpOrLeave);
+
+        $element.data('hasLongClickListener', true);
     });
+}
+
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 ////////////////  End of KTL /////////////////////
