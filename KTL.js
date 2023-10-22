@@ -7248,7 +7248,7 @@ function Ktl($, appInfo) {
             //////////////////////////////////////////////////////////////////
             hideTableColumns: function (viewId = '', fields = [], headers = []) {
                 if (!viewId) {
-                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
+                    ktl.log.clog('purple', 'Called hideTableColumns with invalid parameters.');
                     return;
                 }
 
@@ -7282,7 +7282,7 @@ function Ktl($, appInfo) {
             //////////////////////////////////////////////////////////////////
             unhideTableColumns: function (viewId = '', fields = [], headers = []) {
                 if (!viewId) {
-                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
+                    ktl.log.clog('purple', 'Called unhideTableColumns with invalid parameters.');
                     return;
                 }
 
@@ -7355,7 +7355,7 @@ function Ktl($, appInfo) {
             //////////////////////////////////////////////////////////////////
             removeTableColumnsByIndex: function (viewId = '', columnIndexes = []) {
                 if (!viewId) {
-                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
+                    ktl.log.clog('purple', 'Called removeTableColumnsByIndex with invalid parameters.');
                     return;
                 }
 
@@ -7400,7 +7400,7 @@ function Ktl($, appInfo) {
                 console.warn('Deprecated function call. Update to use removeTableColumns(viewId, fields, headers or hideTableColumns(viewId, fields, headers) or removeTableColumnsByIndex(viewId, columnIndexes)')
                 if (!viewId ||
                     ((fieldsAr && fieldsAr.length === 0) && (columnsAr && columnsAr.length === 0)) && (headersAr && headersAr.length === 0)) {
-                    ktl.log.clog('purple', 'Called removeTableColumns with invalid parameters.');
+                    ktl.log.clog('purple', 'Called removeTableColumnsDeprecated with invalid parameters.');
                     return;
                 }
 
