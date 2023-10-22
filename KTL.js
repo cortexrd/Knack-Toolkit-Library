@@ -7999,7 +7999,7 @@ function Ktl($, appInfo) {
                 const KEYWORD_NAME = '_hc';
 
                 if (!view.key
-                    || (view.key !== 'table' && view.type === 'search')
+                    || (view.type !== 'table' && view.type === 'search')
                     || !keywords[KEYWORD_NAME]) return;
 
                 const model = (Knack.views[view.key] && Knack.views[view.key].model);
