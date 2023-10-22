@@ -5179,19 +5179,17 @@ function Ktl($, appInfo) {
                 } catch (e) { console.log(e); }
             }
 
-            addLongClickListener('#' + viewId + ' .kn-title', function (e) {
-                if (e.target.classList && e.target.classList.contains('kn-title')) {
-                    document.querySelector('#' + viewId).classList.add('ktlOutline');
-                    Knack.showSpinner();
-                    setTimeout(() => {
-                        ktl.views.refreshView(viewId)
-                            .then(() => {
-                                Knack.hideSpinner();
-                                document.querySelector('#' + viewId).classList.remove('ktlOutline');
-                            })
-                            .catch(() => { })
-                    }, 500);
-                }
+            addLongClickListener('#' + viewId, function (e) {
+                document.querySelector('#' + viewId).classList.add('ktlOutline');
+                Knack.showSpinner();
+                setTimeout(() => {
+                    ktl.views.refreshView(viewId)
+                        .then(() => {
+                            Knack.hideSpinner();
+                            document.querySelector('#' + viewId).classList.remove('ktlOutline');
+                        })
+                        .catch(() => { })
+                }, 500);
             }, 500);
         })
 
@@ -13388,16 +13386,27 @@ function safePromiseAllSettled(promises) {
     // return Promise.allSettled(promises);
 }
 
-function addLongClickListener(selector, callback, duration = 500, isClass = false) {
+function addLongClickListener(selector, callback, duration = 500) {
     let elements = document.querySelectorAll(selector);
 
     elements.forEach(element => {
         let longPressTimeout;
+        let startPosition = { x: 0, y: 0 };
 
         element.addEventListener('mousedown', function (event) {
+            startPosition.x = event.pageX;
+            startPosition.y = event.pageY;
+
             longPressTimeout = setTimeout(() => {
                 callback(event);  // Passing the event to the callback
             }, duration);
+        });
+
+        element.addEventListener('mousemove', function (event) {
+            // If mouse movement exceeds a certain threshold, abort by clearing the timeout
+            if (Math.abs(event.pageX - startPosition.x) > 10 || Math.abs(event.pageY - startPosition.y) > 10) {
+                clearTimeout(longPressTimeout);
+            }
         });
 
         element.addEventListener('mouseup', function (event) {
