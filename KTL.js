@@ -2702,7 +2702,6 @@ function Ktl($, appInfo) {
             hideFields: function (viewId, keywords) {
                 const kw = '_hf';
 
-
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                     const kwList = ktl.core.getKeywordsByType(viewId, kw);
                     for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
@@ -2740,10 +2739,20 @@ function Ktl($, appInfo) {
 
                         if (elementsArray.length) {
                             const hide = () => {
-                                elementsArray.forEach(el => { el.classList.add('ktlHidden'); })
+                                elementsArray.forEach(el => {
+                                    if (el.classList)
+                                        el.classList.add('ktlHidden');
+                                    else
+                                        el[0].classList.add('ktlHidden');
+                                })
                             }
                             const unhide = () => {
-                                elementsArray.forEach(el => { el.classList.remove('ktlHidden'); })
+                                elementsArray.forEach(el => {
+                                    if (el.classList)
+                                        el.classList.remove('ktlHidden');
+                                    else
+                                        el[0].classList.remove('ktlHidden');
+                                })
                             }
 
                             ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
