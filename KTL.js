@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.17.0';
+    const KTL_VERSION = '0.17.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2727,8 +2727,7 @@ function Ktl($, appInfo) {
                                 const el = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
                                     || document.querySelector('#' + viewId + ' .' + fieldId);
 
-                                if (el)
-                                    elementsArray.push(el);
+                                el && elementsArray.push(el);
                             } else {
                                 //Try with an action link.
                                 const actLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
@@ -5229,7 +5228,6 @@ function Ktl($, appInfo) {
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(view, keywords);
-                    //keywords._obf && ktl.views.obfuscateData(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -7684,7 +7682,7 @@ function Ktl($, appInfo) {
                                 if (value && value !== '' && value !== 'Type to search') {
                                     var uvcSearchViewId = ktl.scenes.findViewWithKeyword('_uvc', viewId);
                                     if (uvcSearchViewId) {
-                                        var fieldToCheck = ktl.views.getFieldWithKeyword(uvcSearchViewId, '_uvc');
+                                        var fieldToCheck = ktl.views.findFirstFieldWithKeyword(uvcSearchViewId, '_uvc');
                                         if (fieldToCheck) {
                                             var field = Knack.objects.getField(fieldToCheck);
                                             var fieldName = field.attributes.name;
@@ -7725,34 +7723,55 @@ function Ktl($, appInfo) {
                 if (!viewId) return {};
 
                 //Scan all fields in form to find any keywords.
+                const view = Knack.views[viewId].model.view;
                 var foundFields = [];
                 var fields = [];
 
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'search') {
-                    //For Search views, you can't get the fieldId from jQuery. You need to scan the Knack object.
-                    const view = Knack.views[viewId].model.view;
-                    var groups = view.groups;
-                    if (groups && groups.length) {
-                        groups.forEach(grp => {
-                            grp.columns.forEach(col => {
-                                col.fields.forEach(fld => {
-                                    if (fld.connection)
-                                        foundFields.push(fld.connection.key);
-                                    else
-                                        foundFields.push(fld.field);
-                                })
+                    //Search portion at top
+                    view.groups.forEach(grp => {
+                        grp.columns.forEach(cols => {
+                            cols.fields.forEach(fld => {
+                                if (fld.connection)
+                                    foundFields.push(fld.connection.key);
+                                else
+                                    foundFields.push(fld.id);
                             })
+                        })
+                    })
+
+                    //Results portion at bottom
+                    if (view.results && view.results.columns) {
+                        view.results.columns.forEach(fld => {
+                            if (fld.connection && !foundFields.includes(fld.connection.key))
+                                foundFields.push(fld.connection.key);
+                            else if (!foundFields.includes(fld.id))
+                                foundFields.push(fld.id);
                         })
                     }
                 } else if (viewType === 'form') {
-                    fields = document.querySelectorAll('#' + viewId + ' .kn-input');
-                    for (var i = 0; i < fields.length; i++)
-                        foundFields.push(fields[i].getAttribute('data-input-id'));
+                    view.groups.forEach(grp => {
+                        grp.columns.forEach(cols => {
+                            cols.inputs.forEach(fld => {
+                                foundFields.push(fld.id);
+                            })
+                        })
+                    })
                 } else if (viewType === 'table' || viewType === 'list') {
-                    var fields = Knack.views[viewId].model.view.fields;
+                    var fields = view.fields;
                     for (var f = 0; f < fields.length; f++)
                         foundFields.push(fields[f].key);
+                } else if (viewType === 'details') {
+                    view.columns.forEach(col => {
+                        col.groups.forEach(grp => {
+                            grp.columns.forEach(cols => {
+                                cols.forEach(fld => {
+                                    foundFields.push(fld.key);
+                                })
+                            })
+                        })
+                    })
                 }
 
                 if (!foundFields.length) return {};
@@ -7770,7 +7789,7 @@ function Ktl($, appInfo) {
 
             //For KTL internal use.
             //Finds the first field in view with the specified keyword in its field description.
-            getFieldWithKeyword: function (viewId, keyword) {
+            findFirstFieldWithKeyword: function (viewId, keyword) {
                 if (!viewId || !keyword) return;
 
                 var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
@@ -8287,8 +8306,8 @@ function Ktl($, appInfo) {
                 const kw = keywords._oln ? '_oln' : '_ols';
                 if (!viewId || !keywords || (keywords && !keywords[kw])) return;
 
+                const options = keywords[kw][0].options;
                 if (keywords[kw].length && keywords[kw][0].options) {
-                    const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
@@ -8302,7 +8321,14 @@ function Ktl($, appInfo) {
                 } else {
                     if (kw === '_ols') return;
 
-                    $('.kn-view a:not([class*=drop]):not(.kn-sort):not([class*=chzn])').on('click', e => {
+                    var olnSelector = '.kn-view a:not([class*=drop]):not(.kn-sort):not([class*=chzn])';
+
+                    //Apply to all views if ktlTarget is page.
+                    if (!options.ktlTarget || options.ktlTarget !== 'page')
+                        olnSelector = '#' + viewId + olnSelector;
+
+                    const linkElement = $(olnSelector);
+                    linkElement.off('click').on('click', e => {
                         const target = e.target;
                         let openInNewTab = false;
 
@@ -8435,22 +8461,103 @@ function Ktl($, appInfo) {
             },
 
             obfuscateData: function (view, keywords) {
-                const kw = '_obf';
-                if (!view || !keywords || (keywords && !keywords[kw])) return;
+                if (!view || !keywords) return;
 
-                if (keywords[kw].length && keywords[kw][0].options) {
-                    const options = keywords[kw][0].options;
-                    if (!ktl.core.hasRoleAccess(options)) return;
+                const kw = '_obf';
+                const viewId = view.key;
+                const PRIVATE_DATA = '*************';
+
+                //Process fields keyword
+                var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+                if (!$.isEmptyObject(fieldsWithKwObj)) {
+                    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                    var foundKwObj = {};
+                    for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                        var fieldId = fieldsWithKwAr[i];
+                        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                        if (!$.isEmptyObject(foundKwObj)) {
+                            if (foundKwObj[fieldId][kw]) {
+                                if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
+                                    const options = foundKwObj[fieldId][kw][0].options;
+                                    if (ktl.core.hasRoleAccess(options)) {
+                                        obfField(fieldId);
+                                    }
+                                } else
+                                    obfField(fieldId);
+                            }
+                        }
+                    }
+
+                    function obfField(fieldId) {
+                        //Grids
+                        $('#' + viewId + ' td.' + fieldId + ' > span').each(function () {
+                            $(this).text(PRIVATE_DATA);
+                        });
+
+                        //Details
+                        $('#' + viewId + ' .' + fieldId + ' .kn-detail-body').each(function () {
+                            $(this).text(PRIVATE_DATA);
+                        });
+                    }
                 }
 
+                //Process views keyword
+                if (!view || !keywords || (keywords && !keywords[kw])) return;
 
-                $('#' + view.key + ' td > span').each(function () {
-                    $(this).text(ktl.core.generateRandomChars(getRandomInt(5, 15)));
-                });
+                const kwList = ktl.core.getKeywordsByType(viewId, kw);
+                if (kwList.length)
+                    kwList.forEach(kwInstance => { execKw(kwInstance); })
+                else
+                    obfuscateAllFields();
 
-                $('#' + view.key + ' .kn-detail-body').each(function () {
-                    $(this).text(ktl.core.generateRandomChars(getRandomInt(5, 15)));
-                });
+                function execKw(kwInstance) {
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+
+                    var fieldsArray = [];
+                    const kwFields = kwInstance.params[0];
+                    for (var i = 0; i < kwFields.length; i++) {
+                        var fieldLabel = kwFields[i];
+
+                        var fieldId = fieldLabel;
+                        if (!fieldLabel.startsWith('field_'))
+                            fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
+                        if (fieldId) {
+                            fieldsArray.push(fieldId);
+                        } else {
+                            //Try with an action link.
+                            const actLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
+                            if (actLink.length) {
+                                actLink.text(PRIVATE_DATA);
+                                fieldsArray.push('_ktl_nothing_'); //Dummy entry to trigger non-empty arraybelow.
+                            }
+                        }
+                    }
+
+                    if (fieldsArray.length) {
+                        fieldsArray.forEach(el => {
+                            $('#' + viewId + ' td.' + el + ' > span').each(function () { //Grids
+                                $(this).text(PRIVATE_DATA);
+                            });
+
+                            $('#' + viewId + ' .' + el + ' .kn-detail-body').each(function () { //Details
+                                $(this).text(PRIVATE_DATA);
+                            });
+                        });
+                    } else
+                        obfuscateAllFields();
+                }
+
+                function obfuscateAllFields() {
+                    $('#' + viewId + ' td > span').each(function () {
+                        $(this).text(PRIVATE_DATA);
+                    });
+
+                    $('#' + viewId + ' .kn-detail-body').each(function () {
+                        $(this).text(PRIVATE_DATA);
+                    });
+                }
             },
 
             //Returns a zero-based index of the first column from left that matches the header param.
