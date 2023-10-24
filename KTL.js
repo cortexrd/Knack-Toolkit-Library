@@ -3494,30 +3494,43 @@ function Ktl($, appInfo) {
 
         var filterBtnStyle = 'font-weight: bold; margin-left: 2px; margin-right: 2px'; //Default base style. Add your own at end of this string.
 
-        Object.defineProperty(userFiltersObj, "isEmpty", {
-            get: function () { $.isEmptyObject(this); }
-        });
+        waitUserId()
+            .then(() => { loadAllFilters(); })
+            .catch(() => { })
 
-        Object.defineProperty(publicFiltersObj, "isEmpty", {
-            get: function () { $.isEmptyObject(this); }
-        });
-
-        loadAllFilters();
-
-        //Early detection of scene change to prevent multi-rendering and flickering of views.
+        //Load all filters from local storage.
         var scn = '';
-        setInterval(function () {
-            if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
-                if (Knack.router.current_scene_key !== scn) {
-                    scn = Knack.router.current_scene_key;
-                    assembleFilterURL();
-                }
-            }
-        }, 500);
+        var sceneChangeItv;
+        function loadAllFilters() {
+            return new Promise(function (resolve, reject) {
+                waitUserId()
+                    .then(() => {
+                        loadFilters(LS_UF);
+                        loadFilters(LS_UFP);
+                        loadActiveFilters();
+
+                        scn = '';
+                        clearInterval(sceneChangeItv);
+                        sceneChangeItv = setInterval(function () {
+                            if (!window.self.frameElement || (window.self.frameElement && window.self.frameElement.id !== IFRAME_WND_ID)) {
+                                if (Knack.router.current_scene_key !== scn) {
+                                    scn = Knack.router.current_scene_key;
+                                    assembleFilterURL();
+                                }
+                            }
+                        }, 500);
+
+                        resolve();
+                    })
+                    .catch(() => {
+                        console.error('Failed waiting for user ID.');
+                        reject();
+                    })
+            })
+        }
 
         function assembleFilterURL() {
-            if (!Knack.router.scene_view) return;
-
+            if (ktl.scenes.isiFrameWnd() || !Knack.router.scene_view) return;
             var views = Knack.router.scene_view.model.views.models;
             if (!views.length || ($.isEmptyObject(userFiltersObj) && $.isEmptyObject(publicFiltersObj))) return;
 
@@ -3752,13 +3765,6 @@ function Ktl($, appInfo) {
             }
         });
 
-        //Load all filters from local storage.
-        function loadAllFilters() {
-            loadFilters(LS_UF);
-            loadFilters(LS_UFP);
-            loadActiveFilters();
-        }
-
         //Loads user filters from the localStorage and returns a temporary object.
         //updateObj: true will modify the actual placeholder of the object.  Used to merge filters from multiple opened browsers.
         function loadFilters(type = '', updateObj = true) {
@@ -3769,10 +3775,9 @@ function Ktl($, appInfo) {
                 try {
                     fltObjTemp = JSON.parse(lsStr);
                     if (updateObj && !$.isEmptyObject(fltObjTemp)) {
-                        if (type === LS_UF) {
+                        if (type === LS_UF)
                             userFiltersObj = fltObjTemp;
-                            checkForPublicInUser();
-                        } else
+                        else
                             publicFiltersObj = fltObjTemp;
                     }
                 } catch (e) {
@@ -3781,29 +3786,6 @@ function Ktl($, appInfo) {
             }
 
             return fltObjTemp;
-        }
-
-        //Jan 01, 2023:  Temporary function just to be sure all works fine with new code.  Delete this eventually.
-        function checkForPublicInUser() {
-            try {
-                const views = Object.keys(userFiltersObj);
-                var viewError = '';
-                views.forEach(function (viewId) {
-                    if (viewId.startsWith('view_')) {
-                        for (var i = 0; i < userFiltersObj[viewId].filters.length; i++) {
-                            if (userFiltersObj[viewId].filters[i].public) {
-                                viewError = viewId;
-                                break;
-                            }
-                        }
-                    }
-                })
-
-                if (viewError)
-                    console.log('KTL Error - Found a Public Filter in User Filter object, viewId =', viewError);
-            } catch (e) {
-                console.log('error', e);
-            }
         }
 
         function loadActiveFilters() {
@@ -7720,7 +7702,7 @@ function Ktl($, appInfo) {
             //For KTL internal use.
             //Scans all fields in view and returns an object with those having keywords in their description.
             getAllFieldsWithKeywordsInView: function (viewId) {
-                if (!viewId) return {};
+                if (!viewId || !Knack.views[viewId]) return {};
 
                 //Scan all fields in form to find any keywords.
                 const view = Knack.views[viewId].model.view;
@@ -8300,19 +8282,20 @@ function Ktl($, appInfo) {
             },
 
             openLink: function (viewId, keywords) {
-                var innerHTML = document.querySelector('#' + viewId).innerHTML;
-                document.querySelector('#' + viewId).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
-
                 const kw = keywords._oln ? '_oln' : '_ols';
                 if (!viewId || !keywords || (keywords && !keywords[kw])) return;
 
-                const options = keywords[kw][0].options;
+                var options;
                 if (keywords[kw].length && keywords[kw][0].options) {
+                    options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'rich_text') {
+                    var innerHTML = document.querySelector('#' + viewId).innerHTML;
+                    document.querySelector('#' + viewId).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
+
                     //In rich text views, jump directly to the URL, without requiring a click.
                     const href = keywords[kw][0].params[0][0];
                     let parser = new DOMParser();
@@ -8321,10 +8304,11 @@ function Ktl($, appInfo) {
                 } else {
                     if (kw === '_ols') return;
 
-                    var olnSelector = '.kn-view a:not([class*=drop]):not(.kn-sort):not([class*=chzn])';
+                    //var olnSelector = '.knTable a:not([class*=drop]):not(.kn-sort):not([class*=chzn]), .kn-detail a';
+                    var olnSelector = '.knTable td a, .kn-detail-body a';
 
                     //Apply to all views if ktlTarget is page.
-                    if (!options.ktlTarget || options.ktlTarget !== 'page')
+                    if (options && (!options.ktlTarget || options.ktlTarget !== 'page'))
                         olnSelector = '#' + viewId + olnSelector;
 
                     const linkElement = $(olnSelector);
@@ -10203,20 +10187,26 @@ function Ktl($, appInfo) {
             if (e.target.value === 'Sign In' && e.target.type === 'submit') {
                 var sel = $('.kn-login-form > form > input');
                 if (sel && sel.length > 0) {
-                    postLoginEvent()
+                    waitLoginOutcome()
                         .then(function (result) {
                             var menuInfo = ktl.core.getMenuInfo();
                             if (result === LOGIN_SUCCESSFUL) {
-                                result = JSON.stringify({ result: result, APP_KTL_VERSIONS: APP_KTL_VERSIONS, page: menuInfo, agent: navigator.userAgent });
+                                waitUserId()
+                                    .then(() => {
+                                        result = JSON.stringify({ result: result, APP_KTL_VERSIONS: APP_KTL_VERSIONS, page: menuInfo, agent: navigator.userAgent });
 
-                                ktl.userFilters.loadAllFilters(); //Move to a better place?  Let iframewnd drive this?
-                                ktl.storage.lsRemoveItem('PAUSE_SERVER_ERROR_LOGS');
-                                ktl.log.addLog(ktl.const.LS_LOGIN, result);
+                                        ktl.userFilters.loadAllFilters();
+                                        ktl.storage.lsRemoveItem('PAUSE_SERVER_ERROR_LOGS');
+                                        ktl.log.addLog(ktl.const.LS_LOGIN, result);
 
-                                if (localStorage.length > 500)
-                                    ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
+                                        if (localStorage.length > 500)
+                                            ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 
-                                ktl.iFrameWnd.create();
+                                        ktl.iFrameWnd.create();
+                                    })
+                                    .catch(() => {
+                                        console.error('waitLoginOutcome: Failed waiting for user ID.');
+                                    })
                             } else {
                                 //If an error occurred, redirect to the error page as a last resort, so we can post a log (we need user id).
                                 var lastError = JSON.stringify({ result: result, link: menuInfo.link });
@@ -10245,7 +10235,7 @@ function Ktl($, appInfo) {
             }
         })
 
-        function postLoginEvent() {
+        function waitLoginOutcome() {
             return new Promise(function (resolve, reject) {
                 var i = 0;
                 var sel = null;
@@ -10313,7 +10303,10 @@ function Ktl($, appInfo) {
                                     $('#email').val(loginInfo.email);
                                     $('#password').val(loginInfo.pw);
                                     $('.remember input')[0].checked = true;
-                                    $('#' + viewId + ' form').submit();
+
+                                    //Do not use form submit. Must be click below, otherwise waitLoginOutcome is never called.
+                                    //$('#' + viewId + ' form').submit();
+                                    $('.kn-login-form .kn-button.is-primary').click();
                                 }
                             })
                             .catch(reason => { ktl.log.clog('purple', reason); });
@@ -13553,6 +13546,26 @@ function addLongClickListener(selector, callback, duration = 500) {
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function waitUserId() {
+    return new Promise(function (resolve, reject) {
+        if (Knack.getUserAttributes() === 'No user found') {
+            var intervalId = setInterval(function () {
+                if (Knack.getUserAttributes() !== 'No user found') {
+                    clearInterval(intervalId);
+                    clearTimeout(failsafe);
+                    resolve();
+                }
+            }, 200);
+        } else
+            resolve();
+
+        var failsafe = setTimeout(() => {
+            clearInterval(intervalId);
+            reject();
+        }, 5000);
+    })
 }
 
 ////////////////  End of KTL /////////////////////
