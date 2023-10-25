@@ -11675,6 +11675,11 @@ function Ktl($, appInfo) {
                             if (fieldId.startsWith('field_')) {
                                 if (cbox.checked) {
                                     apiData[fieldId] = src[fieldId + '_raw'];
+
+                                    //Support date formats with day month year.  Issue #132
+                                    const fieldType = ktl.fields.getFieldType(fieldId);
+                                    if (fieldType === 'date_time')
+                                        apiData[fieldId].date = apiData[fieldId].date_formatted;
                                 }
                             }
                         })
@@ -11684,6 +11689,11 @@ function Ktl($, appInfo) {
                         if (clickedFieldId.length && clickedFieldId.attr('data-field-key').startsWith('field_')) {
                             clickedFieldId = clickedFieldId.attr('data-field-key');
                             apiData[clickedFieldId] = src[clickedFieldId + '_raw'];
+                            const fieldType = ktl.fields.getFieldType(clickedFieldId);
+
+                            //Support date formats with day month year.  Issue #132
+                            if (fieldType === 'date_time')
+                                apiData[clickedFieldId].date = apiData[clickedFieldId].date_formatted;
                         }
                     }
 
