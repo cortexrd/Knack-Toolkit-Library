@@ -9621,16 +9621,22 @@ function Ktl($, appInfo) {
                                 //Linux-specific devices - BEGIN
                                 const sys = ktl.sysInfo.getSysInfo();
                                 if (sys.os === 'Linux' && sys.processor.includes('arm')) {
-                                    shutDownBtn = ktl.fields.addButton(devBtnsDiv, 'Shut Down', '', ['devBtn', 'kn-button']);
-                                    shutDownBtn.addEventListener('click', () => {
-                                        if (confirm('Are you sure you want to shut down device?'))
-                                            ktl.sysInfo.shutDownDevice();
+                                    addEditKioskPageBtn = ktl.fields.addButton(devBtnsDiv, 'Kiosk Setup Page', '', ['devBtn', 'kn-button']);
+                                    addEditKioskPageBtn.addEventListener('click', () => {
+                                        if (confirm('Go to kiosk setup page?'))
+                                            window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'add-kiosk-device';
                                     })
 
                                     rebootBtn = ktl.fields.addButton(devBtnsDiv, 'Reboot', '', ['devBtn', 'kn-button']);
                                     rebootBtn.addEventListener('click', () => {
                                         if (confirm('Are you sure you want to reboot device?'))
                                             ktl.sysInfo.rebootDevice();
+                                    })
+
+                                    shutDownBtn = ktl.fields.addButton(devBtnsDiv, 'Shut Down', '', ['devBtn', 'kn-button']);
+                                    shutDownBtn.addEventListener('click', () => {
+                                        if (confirm('Are you sure you want to shut down device?'))
+                                            ktl.sysInfo.shutDownDevice();
                                     })
                                 }
                                 //Linux-specific devices - END
