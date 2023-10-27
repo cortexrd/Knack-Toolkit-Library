@@ -1855,7 +1855,6 @@ function Ktl($, appInfo) {
             if (ktl.core.getCfg().enabled.chznBetter && !ktl.fields.getUsingBarcode()) {
                 //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
                 var dropdownId = $(e.target).closest('.chzn-container').attr('id');
-                var isMultiSelect = $(e.target).closest('.chzn-container-multi').length > 0;
 
                 var dropdownNeedsFix = false;
                 if (dropdownId !== undefined && !dropdownId.includes('kn_conn_'))
@@ -1868,7 +1867,7 @@ function Ktl($, appInfo) {
                         clearInterval(chznChoicesIntervalId);
                         $('#chznBetter').remove();
 
-                        if (dropdownNeedsFix && dropdownId.length > 0 && !isMultiSelect) {
+                        if (dropdownNeedsFix && dropdownId.length > 0) {
                             if ($('#chznBetter').length === 0)
                                 ktl.fields.addChznBetter(dropdownId);
                         }
@@ -1888,7 +1887,7 @@ function Ktl($, appInfo) {
                         e.target.value = e.target.value.toUpperCase();
 
                     if (fieldDesc.includes('_num'))
-                        e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+                        e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
 
                     if (fieldDesc.includes('_int'))
                         e.target.value = e.target.value.replace(/[^0-9]/g, '');
@@ -2126,6 +2125,9 @@ function Ktl($, appInfo) {
                             var fieldDesc = ktl.fields.getFieldDescription(inputFld.id);
                             if (fieldDesc && fieldDesc.includes('_int'))
                                 fieldValid = fieldValid && (value.search(/[^0-9]/) === -1);
+
+                            if (fieldDesc && fieldDesc.includes('_num'))
+                                fieldValid = fieldValid && (value.search(/[^0-9.-]/) === -1);
 
                             formValid = formValid && fieldValid;
                             inputFld.setAttribute('valid', fieldValid);

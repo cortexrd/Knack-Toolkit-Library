@@ -338,6 +338,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	#addVersionInfoDiv {
 		display: none;
 	}
+
 	.cell-editable td.cell-edit {
 		background-color: unset !important;
 	}
@@ -496,33 +497,33 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	border-left: 2px solid #fff; /* Lighter left border */
 	border-bottom: 2px solid #000000 !important; /* Darker bottom border */
 	border-right: 2px solid #000000; /* Darker right border */
-	border-radius: 5px!important;
+	border-radius: 5px !important;
 	padding-bottom: 10px !important;
 }
 
 .capslock .hg-button-capslock {
-    border: 2px solid #cccccc !important;
-    background: #cccccc !important;
+	border: 2px solid #cccccc !important;
+	background: #cccccc !important;
 }
 
 .hg-layout-shift .hg-button.hg-functionBtn[data-skbtn="{arrowleft}"],
 .hg-layout-shift .hg-button.hg-functionBtn[data-skbtn="{arrowright}"],
 .hg-layout-default .hg-button.hg-functionBtn[data-skbtn="{arrowleft}"],
 .hg-layout-default .hg-button.hg-functionBtn[data-skbtn="{arrowright}"] {
-    max-width: 140px;
+	max-width: 140px;
 }
 
 .hg-theme-default .hg-button.hg-standardBtn[data-skbtn="@"] {
-    max-width: unset !important;
+	max-width: unset !important;
 }
 
 .hg-theme-default .hg-button.hg-functionBtn[data-skbtn="{tab}"] {
-    width: 90px !important;
+	width: 90px !important;
 }
 
 .hg-theme-default .hg-button.hg-standardBtn[data-skbtnuid="default-r4b1"],
 .hg-theme-default .hg-button.hg-standardBtn[data-skbtnuid="shift-r4b1"] {
-    max-width: 80px !important;
+	max-width: 80px !important;
 }
 
 /**** KTL_RELATED - END ****/
