@@ -72,7 +72,18 @@ window.KnackApp = function ($, appInfo = {}) {
                     warning: ';background-color:#fffa5e;border:2px solid #7e8060',
                     error: ';background-color:#FFB0B0;border:5px solid #660000',
                 },
-
+                tooltipStyles: {
+                    ktlTtipFormViewBgColor: '#222222',
+                    ktlTtipFormViewTxtColor: '#ffffff',
+                    ktlTtipIconFormViewColor: '#222222',
+                    ktlTtipDetailsViewBgColor: '#222222', //Lists use details colours
+                    ktlTtipDetailsViewTxtColor: '#ffffff', //Lists use details colours
+                    ktlTtipIconDetailsViewColor: '#222222', //Lists use details colours
+                    ktlTtipTableViewBgColor: '#222222',
+                    ktlTtipTableViewTxtColor: '#ffffff',
+                    ktlTtipIconTableViewColor: '#222222',
+    
+                },
                 //Functions in this app.
                 isKiosk: isKiosk,
             })
