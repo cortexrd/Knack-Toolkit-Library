@@ -5559,7 +5559,7 @@ function Ktl($, appInfo) {
                                     if (options.includes('d') && viewType === 'details') {
                                         ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a details tooltip
                                     }
-                                    // if options includes 'd' then details
+                                    // if options includes 'l' then list
                                     if (options.includes('l') && viewType === 'list') {
                                         ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a details tooltip
                                     }
@@ -8696,7 +8696,7 @@ function Ktl($, appInfo) {
             },
               
              
-            // To Do: Add support for top detail labels
+            //Add a tooltip to a field label/header
             addTooltipsToFields: function (viewId, fieldId,  tooltipText, viewType) { 
                 if (!viewId || !viewType || !fieldId)  return;
                 // Define the tooltip position based on the view type
