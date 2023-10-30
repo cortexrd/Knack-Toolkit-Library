@@ -2814,12 +2814,34 @@ function Ktl($, appInfo) {
             eraseFormData(view.key);
         });
 
-        document.addEventListener('input', function (e) {
-            if (!pfInitDone || !ktl.core.getCfg().enabled.persistentForm ||
-                scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd()) return;
+        document.addEventListener('input', function (event) {
+            if (!pfInitDone 
+                || !ktl.core.getCfg().enabled.persistentForm 
+                || scenesToExclude.includes(Knack.router.current_scene_key) 
+                || ktl.scenes.isiFrameWnd()) 
+                return;
 
-            inputHasChanged(e);
-        })
+            if (!event 
+                || !event.target.type 
+                || event.target.id === 'chznBetter'
+                || event.target.className.includes('knack-date')
+                || event.target.className.includes('ui-autocomplete-input'))
+                return;
+
+
+            if ((event.type === 'focusout' && event.relatedTarget) || event.type === 'input')
+                formContentHasChanged(event.target);
+        });
+
+        $(document).on('DOMSubtreeModified', '.redactor-editor', (event) => {
+            if (!pfInitDone 
+                || !ktl.core.getCfg().enabled.persistentForm 
+                || scenesToExclude.includes(Knack.router.current_scene_key) 
+                || ktl.scenes.isiFrameWnd()) 
+                return;
+                
+            formContentHasChanged(event.currentTarget);
+        });
 
         $(document).on('click', function (e) {
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
@@ -2843,51 +2865,38 @@ function Ktl($, appInfo) {
 
         //When input field text has changed or has lost focus, save it.
         //Note that this function applies to text input fields only.  Other field types are saved through ktlOnFieldValueChanged.
-        function inputHasChanged(e = null) {
-            if (!e || !e.target.type || e.target.id === 'chznBetter'
-                || e.target.className.includes('knack-date') || e.target.className.includes('ui-autocomplete-input'))
-                return;
+        function formContentHasChanged(element) {
 
-            //Useful logs to implement future object types.
-            //console.log('inputHasChanged, e =', e);
-            //console.log('e.type =', e.type);
-            //console.log('e.target.type =', e.target.type);
-            //console.log('e.target.value =', e.target.value);
-            //console.log('e.target.id =', e.target.id);
-            //console.log('e.target.name =', e.target.name);
-            //console.log('e.target.className =', e.target.className);
-            //console.log('e.relatedTarget =', e.relatedTarget);
+            const view = element.closest('.kn-form.kn-view');
+            if (!view) return;
 
-            if ((e.type === 'focusout' && e.relatedTarget) || e.type === 'input') {
-                var viewId = e.target.closest('.kn-form.kn-view');
-                if (!viewId) return;
+            const viewId = view.id;
 
-                viewId = viewId.id;
-                var subField = '';
-                var knInput = e.target.closest('.kn-input');
-                if (knInput) {
-                    var fieldId = knInput.getAttribute('data-input-id');
-                    if (!fieldId) return;
+            const knInput = element.closest('.kn-input');
+            if (!knInput) return;
 
-                    var data = e.target.value;
-                    var field = Knack.objects.getField(fieldId);
-                    if (field && field.attributes && field.attributes.format) {
-                        if (field.attributes.format.type === 'checkboxes') {
-                            var options = document.querySelectorAll('#' + viewId + ' [data-input-id=' + fieldId + '] input.checkbox');
-                            var optObj = {};
-                            options.forEach(opt => {
-                                optObj[opt.value] = opt.checked;
-                            })
-                            data = optObj;
-                        }
-                    }
+            const fieldId = knInput.getAttribute('data-input-id');
+            if (!fieldId) return;
 
-                    if (fieldId !== e.target.id)
-                        subField = e.target.id;
+            let inputValue = element.value;
+            const field = Knack.objects.getField(fieldId);
 
-                    saveFormData(data, viewId, fieldId, subField);
+            if (field && field.attributes) {
+                if (field.attributes.format && field.attributes.format.type === 'checkboxes') {
+                    var options = document.querySelectorAll('#' + viewId + ' [data-input-id=' + fieldId + '] input.checkbox');
+                    var optObj = {};
+                    options.forEach(opt => {
+                        optObj[opt.value] = opt.checked;
+                    })
+                    inputValue = optObj;
+                } else if (field.attributes.type === 'rich_text') {
+                    inputValue = element.innerHTML;
                 }
             }
+
+            const subFieldId = (fieldId !== element.id) ? element.id : '';
+
+            saveFormData(inputValue, viewId, fieldId, subFieldId);
         }
 
         //Save data for a given view and field.
@@ -2970,7 +2979,7 @@ function Ktl($, appInfo) {
                 }
 
                 //To see all data types:  console.log(Knack.config);
-                const textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'rich_text', 'short_text', 'currency'];
+                const textDataTypes = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency'];
 
                 formDataObj = {};
                 currentViews = {};
@@ -2989,21 +2998,35 @@ function Ktl($, appInfo) {
 
                         var fieldsArray = Object.keys(formDataObj[view.key]);
                         for (var f = 0; f < fieldsArray.length; f++) {
-                            var fieldId = fieldsArray[f];
+                            const fieldId = fieldsArray[f];
                             if (fieldsToExclude.includes(fieldId)) {
                                 ktl.log.clog('purple', 'Skipped field for PF: ' + fieldId);
                                 continue; //JIC - should never happen since fieldsToExclude are never saved in the first place.
                             }
 
-                            var fieldText = formDataObj[view.key][fieldId];
+                            const fieldText = formDataObj[view.key][fieldId];
 
                             //If we have an object instead of plain text, we need to recurse into it for each sub-field.
-                            var field = Knack.objects.getField(fieldId);
+                            const field = Knack.objects.getField(fieldId);
                             if (field) { //TODO: Move this IF with continue at top.
                                 var subField = '';
                                 var fieldType = field.attributes.type;
 
-                                if (textDataTypes.includes(fieldType)) {
+                                if (fieldType === 'rich_text') {
+                                    $(`#${view.key} #${fieldId}`).data('redactor').code.set(fieldText);
+                                } else if (textDataTypes.includes(fieldType)) {
+                                    const setFieldText = (subField) => {
+                                        const el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] #' + subField + '.input') || //Must be first.
+                                            document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input') ||
+                                            document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
+
+                                        if (el) {
+                                            //The condition !el.value means 'Write value only if currently empty'
+                                            //and prevents overwriting fields just populated by code elsewhere.
+                                            !el.value && (el.value = fieldText);
+                                        }
+                                    }
+
                                     if (typeof fieldText === 'object') { //Ex: name and address field types.
                                         var allSubFields = Object.keys(formDataObj[view.key][fieldId]);
                                         allSubFields.forEach(function (eachSubField) {
@@ -3014,18 +3037,6 @@ function Ktl($, appInfo) {
                                     } else {
                                         setFieldText();
                                         delete formDataObj[view.key][fieldId];
-                                    }
-
-                                    function setFieldText(subField) {
-                                        var el = document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] #' + subField + '.input') || //Must be first.
-                                            document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] input') ||
-                                            document.querySelector('#' + view.key + ' [data-input-id=' + fieldId + '] .kn-textarea');
-
-                                        if (el) {
-                                            //The condition !el.value means 'Write value only if currently empty'
-                                            //and prevents overwriting fields just populated by code elsewhere.
-                                            !el.value && (el.value = fieldText);
-                                        }
                                     }
                                 } else if (fieldType === 'connection') {
                                     if (typeof fieldText === 'object') {
