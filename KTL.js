@@ -2824,14 +2824,14 @@ function Ktl($, appInfo) {
         });
 
         document.addEventListener('input', function (event) {
-            if (!pfInitDone 
-                || !ktl.core.getCfg().enabled.persistentForm 
-                || scenesToExclude.includes(Knack.router.current_scene_key) 
-                || ktl.scenes.isiFrameWnd()) 
+            if (!pfInitDone
+                || !ktl.core.getCfg().enabled.persistentForm
+                || scenesToExclude.includes(Knack.router.current_scene_key)
+                || ktl.scenes.isiFrameWnd())
                 return;
 
-            if (!event 
-                || !event.target.type 
+            if (!event
+                || !event.target.type
                 || event.target.id === 'chznBetter'
                 || event.target.className.includes('knack-date')
                 || event.target.className.includes('ui-autocomplete-input'))
@@ -2843,12 +2843,12 @@ function Ktl($, appInfo) {
         });
 
         $(document).on('DOMSubtreeModified', '.redactor-editor', (event) => {
-            if (!pfInitDone 
-                || !ktl.core.getCfg().enabled.persistentForm 
-                || scenesToExclude.includes(Knack.router.current_scene_key) 
-                || ktl.scenes.isiFrameWnd()) 
+            if (!pfInitDone
+                || !ktl.core.getCfg().enabled.persistentForm
+                || scenesToExclude.includes(Knack.router.current_scene_key)
+                || ktl.scenes.isiFrameWnd())
                 return;
-                
+
             formContentHasChanged(event.currentTarget);
         });
 
@@ -5529,12 +5529,13 @@ function Ktl($, appInfo) {
             if (!$.isEmptyObject(summaryObj) && summaryObj[summaryName])
                 return summaryObj[summaryName][columnHeader];
         }
-        function addTooltips (view) { 
+
+        function addTooltips(view) {
             const kw = '_ttip'; // @params = [tooltip text], [options] - Must be in 2s so that commas can be used in the tooltip text, options are tdf (table, details, form)
             const viewId = view.key;
             const viewType = ktl.views.getViewType(viewId);
-            if (!viewId)
-            return;
+            if (!viewId) return;
+
             var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             if (!$.isEmptyObject(fieldsWithKwObj)) {
                 var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
@@ -5542,44 +5543,50 @@ function Ktl($, appInfo) {
                 for (var i = 0; i < fieldsWithKwAr.length; i++) {
                     fieldId = fieldsWithKwAr[i];
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {  
+                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {
                         ktl.core.getKeywordsByType(fieldId, kw).forEach(execKw);
                     }
-                    
-                        // Get all instances of the tooltip keyword for the current field
-                        function execKw (keyword){ // Loop through each instance of the tooltip keyword
-                            console.log('_ttip keyword', keyword);
-                            if (!ktl.core.hasRoleAccess(keyword.options)) return; // Check if the current user has access to the tooltip keyword
-                            const paramGroups = keyword.params; // Get the parameter groups for the current tooltip keyword
-                            if (paramGroups.length < 2 && paramGroups.length % 2 != 0) return; // Check if the number of parameter groups is even
-                            
-                            paramGroups.forEach((param, i) => { // Loop through each parameter group for the current tooltip keyword
-                                if (i % 2 === 0) { // Check if the index of the current parameter group is even
-                                    const params = paramGroups.slice(i, i + 2); // Get the current and next parameter groups as an array
-                                    const ttipText = params[0].map(item => item.trim()).join(', '); // Get the tooltip text from the current parameter group and trim each item
-                                    const options = params[1][0]; // Get the options from the next parameter group
-                                    // if options includes 't' then table
-                                    if (options.includes('t') && viewType === 'table') {
-                                        ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a table tooltip
-                                    }
-                                    // if options includes 'f' then form
-                                    if (options.includes('f') && viewType === 'form') {
-                                        ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a form tooltip
-                                    }
-                                    // if options includes 'd' then details
-                                    if (options.includes('d') && viewType === 'details') {
-                                        ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a details tooltip
-                                    }
-                                    // if options includes 'l' then list
-                                    if (options.includes('l') && viewType === 'list') {
-                                        ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a details tooltip
-                                    }
+
+                    // Get all instances of the tooltip keyword for the current field
+                    function execKw(keyword) { // Loop through each instance of the tooltip keyword
+                        //console.log('_ttip keyword', keyword);
+                        if (!ktl.core.hasRoleAccess(keyword.options)) return; // Check if the current user has access to the tooltip keyword
+
+                        const paramGroups = keyword.params; // Get the parameter groups for the current tooltip keyword
+                        if (paramGroups.length < 2 && paramGroups.length % 2 != 0) return; // Check if the number of parameter groups is even
+
+                        paramGroups.forEach((param, i) => { // Loop through each parameter group for the current tooltip keyword
+                            if (i % 2 === 0) { // Check if the index of the current parameter group is even
+                                const params = paramGroups.slice(i, i + 2); // Get the current and next parameter groups as an array
+                                const ttipText = params[0].map(item => item.trim()).join(', '); // Get the tooltip text from the current parameter group and trim each item
+                                const options = params[1][0]; // Get the options from the next parameter group
+
+                                // if options includes 't' then table
+                                if (options.includes('t') && viewType === 'table') {
+                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a table tooltip
                                 }
-                            }); 
-                        }
-                    }    
-           }     
-        }   
+
+                                // if options includes 'f' then form
+                                if (options.includes('f') && viewType === 'form') {
+                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a form tooltip
+                                }
+
+                                // if options includes 'd' then details
+                                if (options.includes('d') && viewType === 'details') {
+                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a details tooltip
+                                }
+
+                                // if options includes 'l' then list
+                                if (options.includes('l') && viewType === 'list') {
+                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a details tooltip
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
         /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
             const CFV_KEYWORD = '_cfv';
@@ -8705,11 +8712,10 @@ function Ktl($, appInfo) {
                     $('#' + viewId + ' tbody tr td input:checkbox').addClass('bulkEditCb');
                 }
             },
-              
-             
+
             //Add a tooltip to a field label/header
-            addTooltipsToFields: function (viewId, fieldId,  tooltipText, viewType) { 
-                if (!viewId || !viewType || !fieldId)  return;
+            addTooltipsToFields: function (viewId, fieldId, tooltipText, viewType) {
+                if (!viewId || !viewType || !fieldId) return;
                 // Define the tooltip position based on the view type
                 if (viewType === 'list') viewType = 'details';
                 const tooltipPosition = {
@@ -8717,9 +8723,11 @@ function Ktl($, appInfo) {
                     details: `#${viewId} .${fieldId} .kn-detail-label`,
                     table: `#${viewId} th.${fieldId}`,
                     list: `#${viewId} .${fieldId} .kn-detail-label`,
-                  }[viewType];
+                }[viewType];
+
                 // Define the tooltip icon HTML
                 const icon = '<i class="fa fa-question-circle ktlTooltipIcon ktlTtipIcon-' + viewType + '-view"> </i>';
+
                 // Add the tooltip icon to the DOM
                 $(tooltipPosition)
                     .not('.has-tooltip')
@@ -8727,17 +8735,19 @@ function Ktl($, appInfo) {
                     .append(icon)
                     .find('.table-fixed-label')
                     .css('display', 'inline-block');
+
                 // Add event listeners to show and hide the tooltip
-                $(document).on('mouseenter', tooltipPosition + ' i', function(e) {
+                $(document).on('mouseenter', tooltipPosition + ' i', function (e) {
                     if (!$(".ktlTooltip").length) {
-                        const tooltipElement = $('<div class="ktlTooltip ktlTtip-' + viewType +'-view">' + tooltipText + '</div>')
+                        const tooltipElement = $('<div class="ktlTooltip ktlTtip-' + viewType + '-view">' + tooltipText + '</div>')
                         const icon = $(this);
                         const iconWidth = icon.width();
                         const iconHeight = icon.height();
                         const iconOffset = icon.offset();
-                        
+
                         // Add the tooltip to the DOM
                         $('body').append(tooltipElement);
+
                         // Position the tooltip
                         const tooltipWidth = tooltipElement.width();
                         const tooltipHeight = tooltipElement.height();
@@ -8745,31 +8755,30 @@ function Ktl($, appInfo) {
                         let tooltipLeft = iconOffset.left + (iconWidth / 2) - (tooltipWidth / 5);
                         const viewportWidth = $(window).width();
                         const viewportHeight = $(window).height();
-                        //
+
                         if (tooltipTop < 0) {
                             tooltipTop = 0;
                         }
+
                         if (tooltipLeft < 0) {
                             tooltipLeft = 0;
                         }
+
                         if (tooltipTop + tooltipHeight > viewportHeight) {
                             tooltipTop = viewportHeight - tooltipHeight;
                         }
+
                         if (tooltipLeft + tooltipWidth > viewportWidth) {
                             tooltipLeft = viewportWidth - tooltipWidth;
                         }
-                        
-                        tooltipElement.css({
-                            top: tooltipTop,
-                            left: tooltipLeft,
-                        });
+
+                        tooltipElement.css({ top: tooltipTop, left: tooltipLeft, });
                     }
                 });
-            
-                $(document).on('mouseleave', tooltipPosition + ' i', function() {
+
+                $(document).on('mouseleave', tooltipPosition + ' i', function () {
                     $('.ktlTooltip').remove();
                 });
-                    
             },
         }
     })(); //Views feature
@@ -8891,7 +8900,7 @@ function Ktl($, appInfo) {
                 if (typeof cfgObj.versionDisplayName === 'string')
                     (versionDisplayName = cfgObj.versionDisplayName);
                 cfgObj.processMutation && (processMutation = cfgObj.processMutation);
-                
+
             },
 
             getCfg: function () {
