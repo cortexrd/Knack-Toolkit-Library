@@ -12999,7 +12999,7 @@ function Ktl($, appInfo) {
 
                 const fieldId = $(element).attr('class').split(/\s+/)[0];
 
-                if (fieldId.includes('field')) {
+                if (fieldId && fieldId.includes('field')) {
                     const fieldURL = (objectId) ? `${baseURL}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
                     container.appendChild(createLine(fieldId, fieldURL));
                 }
@@ -13076,7 +13076,7 @@ function Ktl($, appInfo) {
 
                 const fieldId = listDetailFindFieldId(element);
 
-                if (fieldId.includes('field')) {
+                if (fieldId && fieldId.includes('field')) {
                     const fieldURL = (objectId) ? `${baseURL}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
                     container.appendChild(createLine(fieldId, fieldURL));
                 }
