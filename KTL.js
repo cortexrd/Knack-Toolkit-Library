@@ -8688,7 +8688,7 @@ function Ktl($, appInfo) {
                 var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
                 if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table th:nth-child(1) input[type=checkbox]')) {
                     if (withMaster) { // Add the master checkbox to to the header to select/unselect all
-                        $('#' + viewId + ' .kn-table thead tr').prepend('<th><input type="checkbox"></th>');
+                        $('#' + viewId + ' .kn-table thead tr').prepend('<th style="width: 24px;"><input type="checkbox"></th>');
                         $('#' + viewId + ' .kn-table thead input').addClass('masterSelector');
                         $('#' + viewId + ' .masterSelector').change(function () {
                             $('#' + viewId + ' tr td input:checkbox').each(function () {
