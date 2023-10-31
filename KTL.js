@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.17.2';
+    const KTL_VERSION = '0.17.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5193,7 +5193,7 @@ function Ktl($, appInfo) {
                         })
                         .catch(() => { })
                 }, 500);
-            }, 500);
+            }, 500, true);
         })
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
@@ -13684,35 +13684,54 @@ function safePromiseAllSettled(promises) {
     // return Promise.allSettled(promises);
 }
 
-function addLongClickListener(selector, callback, duration = 500) {
+//needFirstClick to true will required a click + long press to be triggered.
+function addLongClickListener(selector, callback, duration = 500, needFirstClick = false) {
     $(selector).each(function () {
         let $element = $(this);
 
-        if ($element.data('hasLongClickListener'))
-            return;
+        if ($element.data('hasLongClickListener')) return;
 
         let longPressTimeout;
+        let clickOccurred = false;
         let startPosition = { x: 0, y: 0 };
 
+        function handleClick() {
+            if (needFirstClick) {
+                clickOccurred = true;
+                // Reset click state after a short duration
+                setTimeout(() => { clickOccurred = false; }, duration);
+            }
+        }
+
         function handleMouseDown(event) {
+            if (needFirstClick && !clickOccurred) return;
+
             startPosition.x = event.pageX;
             startPosition.y = event.pageY;
 
             longPressTimeout = setTimeout(() => {
                 callback(event);
+                if (needFirstClick) {
+                    clickOccurred = false; // Reset click state after long press callback
+                }
             }, duration);
         }
 
         function handleMouseMove(event) {
-            if (Math.abs(event.pageX - startPosition.x) > 10 || Math.abs(event.pageY - startPosition.y) > 10)
+            if (Math.abs(event.pageX - startPosition.x) > 10 || Math.abs(event.pageY - startPosition.y) > 10) {
                 clearTimeout(longPressTimeout);
+                if (needFirstClick) clickOccurred = false; // Reset click state on move
+            }
         }
 
         function handleMouseUpOrLeave(event) {
-            if (longPressTimeout)
-                clearTimeout(longPressTimeout);
+            if (longPressTimeout) clearTimeout(longPressTimeout);
+            if (needFirstClick) clickOccurred = false; // Reset click state on mouse up or leave
         }
 
+        if (needFirstClick) {
+            $element.on('click', handleClick);
+        }
         $element.on('mousedown', handleMouseDown);
         $element.on('mousemove', handleMouseMove);
         $element.on('mouseup mouseleave', handleMouseUpOrLeave);
