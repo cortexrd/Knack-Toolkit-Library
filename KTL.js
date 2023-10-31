@@ -12951,9 +12951,11 @@ function Ktl($, appInfo) {
                 escSpan.style.margin = '0em 0.5em';
                 container.appendChild(escSpan);
 
-                const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
+                if (!document.querySelector('#kn-add-option, .kn-modal')) {
+                    const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
+                    container.appendChild(createLine(sceneId, `${baseURL}/pages/${sceneId}`));
+                }
 
-                container.appendChild(createLine(sceneId, `${baseURL}/pages/${sceneId}`));
                 return container;
             },
             placement: 'auto',
@@ -12965,10 +12967,12 @@ function Ktl($, appInfo) {
             content: function (element) {
                 const container = defaultOptions.content(element);
 
-                const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
-                const viewId = $(element).closest('.kn-view[id]').attr('id');
-                const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/table`;
-                container.appendChild(createLine(viewId, viewUrl));
+                if (!document.querySelector('#kn-add-option, .kn-modal')) {
+                    const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
+                    const viewId = $(element).closest('.kn-view[id]').attr('id');
+                    const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/table`;
+                    container.appendChild(createLine(viewId, viewUrl));
+                }
 
                 return container;
             }
@@ -13119,26 +13123,25 @@ function Ktl($, appInfo) {
             content: function (element) {
                 const container = viewOptions.content(element);
 
-                const viewId = $(element).closest('.kn-view[id]').attr('id');
-                const objectId = Knack.views[viewId].form_object.id;
-
-                if (objectId) {
-                    const objectName = Knack.objects._byId[objectId].attributes.name;
-                    container.appendChild(createLine(objectName));
-                    container.appendChild(createLine(objectId, `${baseURL}/schema/list/objects/${objectId}/fields`));
-                } else {
-                    const textSpan = document.createElement('span');
-                    textSpan.innerText = 'Object Id not found';
-                    textSpan.style.margin = '0px 18px';
-                    container.appendChild(textSpan);
-                }
-
                 const fieldId = $(element).attr('data-input-id');
-
                 if (fieldId) {
+                    const objectId = Knack.objects.getField(fieldId).attributes.object_key;
+
+                    if (objectId) {
+                        const objectName = Knack.objects._byId[objectId].attributes.name;
+                        container.appendChild(createLine(objectName));
+                        container.appendChild(createLine(objectId, `${baseURL}/schema/list/objects/${objectId}/fields`));
+                    } else {
+                        const textSpan = document.createElement('span');
+                        textSpan.innerText = 'Object Id not found';
+                        textSpan.style.margin = '0px 18px';
+                        container.appendChild(textSpan);
+                    }
+
                     const fieldURL = (objectId) ? `${baseURL}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
                     container.appendChild(createLine(fieldId, fieldURL));
                 }
+
                 return container;
             }
         };
@@ -13153,11 +13156,14 @@ function Ktl($, appInfo) {
 
                 //Let the Ctrl+Shift keys do their default job during inline editing.
                 //Useful to snap-select at word boundaries with arrow keys.
-                const inlineEditing = !!($('#cell-editor, .redactor-editor').length);
+                const inlineEditing = !!($('#cell-editor, #cell-editor-form').length);
                 if (inlineEditing)
                     return;
 
-                $(openedPopOverTarget).removeClass("active").removeData("popover");
+                if (document.querySelector('#kn-add-option'))
+                    return;
+
+                $(openedPopOverTarget).removeClass('active').removeData('popover');
 
                 const target = $(event.currentTarget);
                 openedPopOverTarget = event.currentTarget;
@@ -13171,9 +13177,9 @@ function Ktl($, appInfo) {
                     target.popover(bindedOptions);
                     popover = target.data('popover');
 
-                    popover.$win = { resize: () => { } }; // Remove subsequent resize occurance
+                    popover.$win = { resize: () => { } }; // Remove subsequent resize occurence
                     const bindEvents = popover.bindEvents;
-                    popover.bindEvents = () => { }; // Remove subsequent bindEvents occurance
+                    popover.bindEvents = () => { }; // Remove subsequent bindEvents occurence
                     $('body').on('click', (event) => {
                         if (!$(event.target).closest('#kn-popover').length) {
                             bindEvents.call(popover);
@@ -13212,6 +13218,12 @@ function Ktl($, appInfo) {
                 closePopOver(event.currentTarget);
             }
         });
+
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            $('#' + view.key + ' a.kn-add-option').bindFirst('click', function (event) {
+                closePopOver(openedPopOverTarget);
+            })
+        })
 
         $(document).on('keydown', function (event) {
             if (event.shiftKey && event.ctrlKey) {
