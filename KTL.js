@@ -5531,7 +5531,7 @@ function Ktl($, appInfo) {
         }
 
         function addTooltips(view) {
-            const kw = '_ttip'; // @params = [tooltip text], [options] - Must be in 2s so that commas can be used in the tooltip text, options are tdf (table, details, form)
+            const kw = '_ttip'; // @params = [tooltip text], [options] - Must be in two groups so that commas can be used in the tooltip text, options are tdfl (table, details, forms and lists)
             const viewId = view.key;
             const viewType = ktl.views.getViewType(viewId);
             if (!viewId) return;
@@ -11527,7 +11527,7 @@ function Ktl($, appInfo) {
             var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
             if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table th:nth-child(1) input[type=checkbox]')) {
                 // Add the master checkbox to to the header to select/unselect all
-                $('#' + viewId + ' .kn-table thead tr').prepend('<th><input type="checkbox"></th>');
+                $('#' + viewId + ' .kn-table thead tr').prepend('<th style="width: 24px;"><input type="checkbox"></th>');
                 $('#' + viewId + ' .kn-table thead input').addClass('masterSelector');
                 $('#' + viewId + ' .masterSelector').change(function () {
                     $('#' + viewId + ' tr td input:checkbox').each(function () {
@@ -12970,7 +12970,8 @@ function Ktl($, appInfo) {
                 if (!document.querySelector('#kn-add-option, .kn-modal')) {
                     const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
                     const viewId = $(element).closest('.kn-view[id]').attr('id');
-                    const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/table`;
+                    const viewType = Knack.views[viewId].model.view.type;
+                    const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
                     container.appendChild(createLine(viewId, viewUrl));
                 }
 
