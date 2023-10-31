@@ -5194,6 +5194,10 @@ function Ktl($, appInfo) {
                         .catch(() => { })
                 }, 500);
             }, 500, true);
+
+            $('.kn-table-table th').on('click', ktl.views.handleClickDateTimeSort);
+
+            ktl.views.addEyeIconsToTableHeaders(viewId);
         })
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
@@ -6327,10 +6331,6 @@ function Ktl($, appInfo) {
             $('#' + viewId + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
             $('#' + viewId + ' .view-header h2').addClass('ktlHidden');
         }
-
-        $(document).on('knack-view-render.any', function (event, scene) {
-            $('.kn-table-table th').on('click', ktl.views.handleClickDateTimeSort);
-        });
 
         //Views
         return {
@@ -8778,6 +8778,46 @@ function Ktl($, appInfo) {
 
                 $(document).on('mouseleave', tooltipPosition + ' i', function () {
                     $('.ktlTooltip').remove();
+                });
+            },
+
+            addEyeIconsToTableHeaders: function (viewId) {
+                if (!viewId) return;
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType !== 'table' && viewType !== 'search') {
+                    ktl.log.clog('purple', 'addEyeIconsToTableHeaders - unsupported view type', viewId, viewType);
+                    return;
+                }
+
+                // Check if the first header column contains a checkbox
+                const firstColumnHasCheckbox = $('#' + viewId + ' .kn-table thead tr th:first-child').find('input[type="checkbox"]').length > 0;
+
+                // Add eye icon to each header column, skipping the first if it has a checkbox
+                $('#' + viewId + ' .kn-table thead tr th').each(function (index) {
+                    if ((index > 0 || !firstColumnHasCheckbox) && !$(this).find('.eye-icon').length) {
+                        // Ensure the icon is the first element inside the th
+                        $(this).prepend('<i class="eye-icon fa fa-eye" style="cursor:pointer; margin-right: 6px; margin-top: 4px;"></i>');
+                    }
+                });
+
+                $('#' + viewId + ' .kn-table thead').on('click', '.eye-icon', function () {
+                    const columnIndex = $(this).parent().index() + 1;
+                    const $headerCell = $(this).parent();
+                    const $icon = $(this);
+                    const isColumnHidden = $icon.hasClass('fa-eye-slash');
+
+                    // Toggle icon class
+                    if (isColumnHidden) {
+                        $icon.removeClass('fa-eye-slash');
+                        $icon.addClass('fa-eye');
+                        $headerCell.css({ 'max-width': '', 'overflow': '', 'white-space': '', 'text-overflow': '' }); // Reset styles
+                        $('#' + viewId + ' .kn-table tbody tr').find('td:nth-child(' + columnIndex + ')').removeClass('narrowColumn');
+                    } else {
+                        $icon.removeClass('fa-eye');
+                        $icon.addClass('fa-eye-slash');
+                        $headerCell.css({ 'max-width': '50px', 'overflow': 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis' }); // Shrink header
+                        $('#' + viewId + ' .kn-table tbody tr').find('td:nth-child(' + columnIndex + ')').addClass('narrowColumn');
+                    }
                 });
             },
         }

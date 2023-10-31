@@ -59,6 +59,25 @@
 	visibility: hidden;
 }
 
+/* Dynamic Hide/Show Columns feature */
+.narrowColumn {
+	width: 50px; /* Or as narrow as you want to only show the eye icon */
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/* Ensure this only applies to table body cells, not headers */
+.kn-table tbody .narrowColumn > * {
+	max-width: 0px; /* Driven by header's width */
+	white-space: nowrap;
+}
+
+/* Style for the header */
+.kn-table thead .eye-icon {
+	float: left; /* Keep the icon to the left */
+	margin-right: 5px; /* Space between icon and text */
+}
+
 .cell-edit.ktlNoInlineEdit {
 	cursor: default !important;
 	background-color: transparent !important;
@@ -177,9 +196,9 @@ a.sortDisabled {
 	/* Set the tooltip text styles */
 	.ktlTooltip {
 		position: absolute;
-		text-align: left; 
-		border: 1px solid #000000; 
-		border-radius: 5px; 
+		text-align: left;
+		border: 1px solid #000000;
+		border-radius: 5px;
 		padding: 5px 8px;
 		max-width: 300px;
 		z-index: 2000;
