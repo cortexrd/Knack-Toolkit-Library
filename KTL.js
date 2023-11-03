@@ -8754,20 +8754,22 @@ function Ktl($, appInfo) {
                         let tooltipTop = iconOffset.top - tooltipHeight - iconHeight;
                         let tooltipLeft = iconOffset.left + (iconWidth / 2) - (tooltipWidth / 5);
                         const viewportWidth = $(window).width();
+                        console.log(' View Width ', viewportWidth)
                         const viewportHeight = $(window).height();
+                        console.log(' View Height ', viewportHeight)
 
-                        if (tooltipTop < 0) {
-                            tooltipTop = 0;
+                        if (tooltipTop < $(window).scrollTop()) { // Compare with the window's scroll position
+                            tooltipTop = $(window).scrollTop();
                         }
-
+                        
                         if (tooltipLeft < 0) {
                             tooltipLeft = 0;
                         }
-
-                        if (tooltipTop + tooltipHeight > viewportHeight) {
-                            tooltipTop = viewportHeight - tooltipHeight;
+                        
+                        if (tooltipTop + tooltipHeight > viewportHeight + $(window).scrollTop()) { // Add the window's scroll position
+                            tooltipTop = viewportHeight + $(window).scrollTop() - tooltipHeight;
                         }
-
+                        
                         if (tooltipLeft + tooltipWidth > viewportWidth) {
                             tooltipLeft = viewportWidth - tooltipWidth;
                         }
