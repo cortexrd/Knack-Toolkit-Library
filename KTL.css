@@ -175,18 +175,26 @@ a.sortDisabled {
 		opacity: 1;
 	}
 	/* Set the tooltip text styles */
-	.ktlTooltip {
+	i .ktlTooltip {
+		font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,Cantarell,Fira Sans,Droid Sans,Helvetica Neue,Helvetica,Arial,sans-serif;
+		font-weight: 400;
+		font-size: 14px;
 		position: absolute;
-		text-align: left; 
-		border: 1px solid #000000; 
-		border-radius: 5px; 
-		padding: 5px 8px;
-		max-width: 300px;
+		text-align: left;
+		border: 1px solid #000000;
+		border-radius: 5px;
+		padding: 10px 15px;
+		max-width: 315px;
+		width: max-content;
 		z-index: 2000;
+		word-wrap: break-word;
+		white-space: normal;
 	}
 	/* Set the Icon Styles */
 	.ktlTooltipIcon {
-		padding-left: 0.2em
+		position: relative;
+		padding-left: 0.2em;
+		z-index: 2000;
 	}
 	/* set the user tooltip styles */
 	.ktlTtip-form-view {

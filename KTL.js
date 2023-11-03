@@ -8743,38 +8743,25 @@ function Ktl($, appInfo) {
                         const icon = $(this);
                         const iconWidth = icon.width();
                         const iconHeight = icon.height();
-                        const iconOffset = icon.offset();
+                        const iconPosition = icon.position(); // Get position relative to offset parent
 
                         // Add the tooltip to the DOM
-                        $('body').append(tooltipElement);
+                        $(icon).append(tooltipElement);
 
                         // Position the tooltip
                         const tooltipWidth = tooltipElement.width();
                         const tooltipHeight = tooltipElement.height();
-                        let tooltipTop = iconOffset.top - tooltipHeight - iconHeight;
-                        let tooltipLeft = iconOffset.left + (iconWidth / 2) - (tooltipWidth / 5);
-                        const viewportWidth = $(window).width();
-                        console.log(' View Width ', viewportWidth)
-                        const viewportHeight = $(window).height();
-                        console.log(' View Height ', viewportHeight)
-
-                        if (tooltipTop < $(window).scrollTop()) { // Compare with the window's scroll position
-                            tooltipTop = $(window).scrollTop();
-                        }
-                        
+                        let tooltipTop = iconPosition.top - (2 * iconHeight) - tooltipHeight; // Calculate relative to the icon
+                        let tooltipLeft = iconPosition.left - (tooltipWidth * 1.5); // Calculate relative to the icon
+                        // Adjust tooltipLeft if it's off the left or right side of the page
+                        const pageWidth = $(window).width();
                         if (tooltipLeft < 0) {
                             tooltipLeft = 0;
                         }
-                        
-                        if (tooltipTop + tooltipHeight > viewportHeight + $(window).scrollTop()) { // Add the window's scroll position
-                            tooltipTop = viewportHeight + $(window).scrollTop() - tooltipHeight;
+                        else if (tooltipLeft + tooltipWidth > pageWidth) {
+                            tooltipLeft = pageWidth - tooltipWidth;
                         }
-                        
-                        if (tooltipLeft + tooltipWidth > viewportWidth) {
-                            tooltipLeft = viewportWidth - tooltipWidth;
-                        }
-
-                        tooltipElement.css({ top: tooltipTop, left: tooltipLeft, });
+                        tooltipElement.css({ top: tooltipTop, left: tooltipLeft}); // Set position to 'absolute'
                     }
                 });
 
