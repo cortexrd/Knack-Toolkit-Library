@@ -59,25 +59,34 @@
 	visibility: hidden;
 }
 
-
-
-/* Dynamic Hide/Show Columns feature */
-.collapsedColumn {
+/* Dynamic Hide/Show Columns feature  - BEGIN */
+.ktlCollapsedColumn {
 	max-width: 4px;
 	padding: 0;
 	border: none; /* Adjust as per your design */
 	overflow: hidden;
 }
 
-	.collapsedColumn .eye-icon {
-		display: none; /* Hide the eye icon */
+	.ktlCollapsedColumn .ktlHideShowColumnIcon {
+		display: none; /* Hide the hide-show icon */
 	}
 
+	.ktlCollapsedColumn > span:hover {
+		cursor: ew-resize !important;
+	}
 
+td.ktlCollapsedColumn:hover {
+	cursor: ew-resize !important;
+}
 
+th.ktlCollapsedColumn span a:hover {
+	cursor: ew-resize !important;
+}
 
-
-
+th .fa-caret-left {
+	color: #0003
+}
+/* Dynamic Hide/Show Columns feature  - END */
 
 .cell-edit.ktlNoInlineEdit {
 	cursor: default !important;
@@ -194,42 +203,47 @@ a.sortDisabled {
 		visibility: visible;
 		opacity: 1;
 	}
-	/* Set the tooltip text styles */
-	.ktlTooltip {
-		position: absolute;
-		text-align: left;
-		border: 1px solid #000000;
-		border-radius: 5px;
-		padding: 5px 8px;
-		max-width: 300px;
-		z-index: 2000;
-	}
-	/* Set the Icon Styles */
-	.ktlTooltipIcon {
-		padding-left: 0.2em
-	}
-	/* set the user tooltip styles */
-	.ktlTtip-form-view {
-		background-color: var(--ktlTtipFormViewBgColor);
-		color: var(--ktlTtipFormViewTxtColor);
-	}
-	.ktlTtipIcon-form-view {
-		color: var(--ktlTtipIconFormViewColor);
-	}
-	.ktlTtip-details-view {
-		background-color: var(--ktlTtipDetailsViewBgColor);
-		color: var(--ktlTtipDetailsViewTxtColor);
-	}
-	.ktlTtipIcon-details-view {
-		color: var(--ktlTtipIconDetailsViewColor);
-	}
-	.ktlTtip-table-view {
-		background-color: var(--ktlTtipTableViewBgColor);
-		color: var(--ktlTtipTableViewTxtColor);
-	}
-	.ktlTtipIcon-table-view {
-		color: var(--ktlTtipIconTableViewColor);
-	}
+/* Set the tooltip text styles */
+.ktlTooltip {
+	position: absolute;
+	text-align: left;
+	border: 1px solid #000000;
+	border-radius: 5px;
+	padding: 5px 8px;
+	max-width: 300px;
+	z-index: 2000;
+}
+/* Set the Icon Styles */
+.ktlTooltipIcon {
+	padding-left: 0.2em
+}
+/* set the user tooltip styles */
+.ktlTtip-form-view {
+	background-color: var(--ktlTtipFormViewBgColor);
+	color: var(--ktlTtipFormViewTxtColor);
+}
+
+.ktlTtipIcon-form-view {
+	color: var(--ktlTtipIconFormViewColor);
+}
+
+.ktlTtip-details-view {
+	background-color: var(--ktlTtipDetailsViewBgColor);
+	color: var(--ktlTtipDetailsViewTxtColor);
+}
+
+.ktlTtipIcon-details-view {
+	color: var(--ktlTtipIconDetailsViewColor);
+}
+
+.ktlTtip-table-view {
+	background-color: var(--ktlTtipTableViewBgColor);
+	color: var(--ktlTtipTableViewTxtColor);
+}
+
+.ktlTtipIcon-table-view {
+	color: var(--ktlTtipIconTableViewColor);
+}
 /************ User Filters **************/
 .activeFilter {
 	outline: double;
