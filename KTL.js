@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.17.2';
+    const KTL_VERSION = '0.17.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -216,6 +216,7 @@ function Ktl($, appInfo) {
                                     //Pre-render keyword processing.
                                     keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                                     keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
+                                    ktl.fields.hideFields(viewId, keywords);
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
                                         keywords._km && ktl.core.kioskMode(true);
@@ -1525,6 +1526,9 @@ function Ktl($, appInfo) {
                 element.style.top = centeredTop + 'px';
             },
 
+            showKnackStyleMessage: function (viewId, message, style = 'error' /*or success*/) {
+                Knack.$['utility_forms'].renderMessage($('#' + viewId), '<b>' + message + '</b>', style);
+            },
         }
     })(); //Core
 
@@ -2711,8 +2715,33 @@ function Ktl($, appInfo) {
             },
 
             hideFields: function (viewId, keywords) {
+                if (!viewId || !keywords) return;
+
                 const kw = '_hf';
 
+                //Process fields keyword
+                var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+                if (!$.isEmptyObject(fieldsWithKwObj)) {
+                    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                    var foundKwObj = {};
+                    for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                        var fieldId = fieldsWithKwAr[i];
+                        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                        if (!$.isEmptyObject(foundKwObj)) {
+                            if (foundKwObj[fieldId][kw]) {
+                                if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
+                                    const options = foundKwObj[fieldId][kw][0].options;
+                                    if (ktl.core.hasRoleAccess(options)) {
+                                        ktl.views.hideField(fieldId);
+                                    }
+                                } else
+                                    ktl.views.hideField(fieldId);
+                            }
+                        }
+                    }
+                }
+
+                //Process views keyword
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                     const kwList = ktl.core.getKeywordsByType(viewId, kw);
                     for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
@@ -5193,7 +5222,9 @@ function Ktl($, appInfo) {
                         })
                         .catch(() => { })
                 }, 500);
-            }, 500);
+            }, 500, true);
+
+            $('.kn-table-table th').on('click', ktl.views.handleClickDateTimeSort);
         })
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
@@ -5216,7 +5247,6 @@ function Ktl($, appInfo) {
 
                     //These don't need to be processed in the mutation observer.
                     keywords._hv && ktl.views.hideView(viewId, keywords);
-                    keywords._hf && ktl.fields.hideFields(viewId, keywords);
                     keywords._rv && ktl.views.removeView(viewId, keywords);
                     keywords._ht && hideTitle(viewId, keywords);
                     keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
@@ -5232,15 +5262,18 @@ function Ktl($, appInfo) {
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(view, keywords);
+                    keywords._ha && headerAlignment(view, keywords);
+                    keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
+                ktl.fields.hideFields(viewId, keywords);
                 quickToggle(viewId, data); //IMPORTANT: quickToggle must be processed BEFORE matchColor.
                 matchColor(viewId, data);
                 colorizeFieldByValue(viewId, data);
-                headerAlignment(view, keywords);
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
+
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
             catch (err) { console.log('err', err); };
@@ -5531,7 +5564,7 @@ function Ktl($, appInfo) {
         }
 
         function addTooltips(view) {
-            const kw = '_ttip'; // @params = [tooltip text], [options] - Must be in 2s so that commas can be used in the tooltip text, options are tdf (table, details, form)
+            const kw = '_ttip'; // @params = [tooltip text], [options] - Must be in two groups so that commas can be used in the tooltip text, options are tdfl (table, details, forms and lists)
             const viewId = view.key;
             const viewType = ktl.views.getViewType(viewId);
             if (!viewId) return;
@@ -6327,10 +6360,6 @@ function Ktl($, appInfo) {
             $('#' + viewId + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
             $('#' + viewId + ' .view-header h2').addClass('ktlHidden');
         }
-
-        $(document).on('knack-view-render.any', function (event, scene) {
-            $('.kn-table-table th').on('click', ktl.views.handleClickDateTimeSort);
-        });
 
         //Views
         return {
@@ -7645,7 +7674,7 @@ function Ktl($, appInfo) {
                     })
 
                 function ktlHandlePreprocessSubmitError(outcomeObj) {
-                    outcomeObj.msg && Knack.$['utility_forms'].renderMessage($('#' + viewId + ' form'), '<b>KTL Error: ' + outcomeObj.msg + '</b>', 'error');
+                    outcomeObj.msg && ktl.core.showKnackStyleMessage(viewId, 'KTL Error: ' + outcomeObj.msg, 'error');
                     setTimeout(() => {
                         handlePreprocessSubmitError && handlePreprocessSubmitError(viewId, outcomeObj);
                     }, 100)
@@ -8565,7 +8594,7 @@ function Ktl($, appInfo) {
                 }
 
                 //Process views keyword
-                if (!view || !keywords || (keywords && !keywords[kw])) return;
+                if (keywords && !keywords[kw]) return;
 
                 const kwList = ktl.core.getKeywordsByType(viewId, kw);
                 if (kwList.length)
@@ -8621,6 +8650,18 @@ function Ktl($, appInfo) {
                         $(this).text(PRIVATE_DATA);
                     });
                 }
+            },
+
+            hideShowColumns: function (viewId, keywords) {
+                if (!viewId) return;
+
+                const kw = '_hsc';
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                ktl.views.addHideShowIconsToTableHeaders(viewId);
             },
 
             //Returns a zero-based index of the first column from left that matches the header param.
@@ -8688,7 +8729,7 @@ function Ktl($, appInfo) {
                 var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
                 if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table th:nth-child(1) input[type=checkbox]')) {
                     if (withMaster) { // Add the master checkbox to to the header to select/unselect all
-                        $('#' + viewId + ' .kn-table thead tr').prepend('<th><input type="checkbox"></th>');
+                        $('#' + viewId + ' .kn-table thead tr').prepend('<th style="width: 24px;"><input type="checkbox"></th>');
                         $('#' + viewId + ' .kn-table thead input').addClass('masterSelector');
                         $('#' + viewId + ' .masterSelector').change(function () {
                             $('#' + viewId + ' tr td input:checkbox').each(function () {
@@ -8774,6 +8815,63 @@ function Ktl($, appInfo) {
                 $(document).on('mouseleave', tooltipPosition + ' i', function () {
                     $('.ktlTooltip').remove();
                 });
+            },
+
+            addHideShowIconsToTableHeaders: function (viewId) {
+                if (!viewId || ktl.core.isKiosk()) return;
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType !== 'table' && viewType !== 'search') return;
+
+                //Check if the first header column contains a checkbox
+                const firstColumnHasCheckbox = $('#' + viewId + ' .kn-table thead tr th:first-child').find('input[type="checkbox"]').length > 0;
+
+                //Add hide-show icon to each header column, skipping the first if it has a checkbox
+                $('#' + viewId + ' .kn-table thead tr th').each(function (index) {
+                    if ((index > 0 || !firstColumnHasCheckbox) && !$(this).find('.ktlHideShowColumnIcon').length) {
+                        //$(this).prepend('<i class="ktlHideShowColumnIcon fa fa-caret-left" style="cursor:pointer; margin-left: -7px; margin-right: 5px; margin-top: 2px;"></i>');
+                        $(this).prepend('<i class="ktlHideShowColumnIcon fa fa-caret-left"></i>');
+                    }
+                });
+
+                $('#' + viewId + ' thead th .table-fixed-label').css('display', 'inline-flex');
+
+                $('#' + viewId + ' .kn-table thead i.ktlHideShowColumnIcon').on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const columnIndex = $(this).parent().index() + 1;
+                    const $icon = $(this);
+
+                    $icon.hide();
+                    $('#' + viewId + ' .kn-table tr').find('th:nth-child(' + columnIndex + '), td:nth-child(' + columnIndex + ')')
+                        .css('width', '4px')  //Collapse width
+                        .addClass('ktlCollapsedColumn');
+
+                    $('#' + viewId + ' .ktlCollapsedColumn').off('click').bindFirst('click', function (e) {
+                        e.stopImmediatePropagation();
+                        const columnIndex = e.currentTarget.cellIndex + 1;
+                        showColumn(columnIndex);
+                    });
+
+                    //Prevent propagation on hidden column header click
+                    $('#' + viewId + ' .kn-table thead th.ktlCollapsedColumn').off('click').bindFirst('click', function (e) {
+                        if (e.currentTarget.classList.contains('ktlCollapsedColumn')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const columnIndex = e.currentTarget.cellIndex + 1;
+                            showColumn(columnIndex);
+                        }
+                    });
+                });
+
+                function showColumn(columnIndex) {
+                    console.log('show columnIndex =', columnIndex);
+                    if (columnIndex < 0) return;
+                    $('#' + viewId + ' .kn-table th:nth-child(' + columnIndex + ') i').show();
+                    $('#' + viewId + ' .kn-table tr').find('th:nth-child(' + columnIndex + '), td:nth-child(' + columnIndex + ')')
+                        .css('width', '') // Reset width
+                        .removeClass('ktlCollapsedColumn');
+                }
             },
         }
     })(); //Views feature
@@ -9810,7 +9908,7 @@ function Ktl($, appInfo) {
 
                 //For Dev Options popup, act like a modal window: close when clicking oustide.
                 $(document).on('click', function (e) {
-                    if (e.target.closest('.kn-content')) {
+                    if (e.target.closest('.kn-content') || (e.target && e.target.id && e.target.id === 'knack-body')) {
                         $('#popupDivId').remove();
                         if ($('#dbgWndId').length)
                             ktl.debugWnd.showDebugWnd(false);
@@ -11522,7 +11620,7 @@ function Ktl($, appInfo) {
             var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
             if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table th:nth-child(1) input[type=checkbox]')) {
                 // Add the master checkbox to to the header to select/unselect all
-                $('#' + viewId + ' .kn-table thead tr').prepend('<th><input type="checkbox"></th>');
+                $('#' + viewId + ' .kn-table thead tr').prepend('<th style="width: 24px;"><input type="checkbox"></th>');
                 $('#' + viewId + ' .kn-table thead input').addClass('masterSelector');
                 $('#' + viewId + ' .masterSelector').change(function () {
                     $('#' + viewId + ' tr td input:checkbox').each(function () {
@@ -12965,7 +13063,8 @@ function Ktl($, appInfo) {
                 if (!document.querySelector('#kn-add-option, .kn-modal')) {
                     const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
                     const viewId = $(element).closest('.kn-view[id]').attr('id');
-                    const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/table`;
+                    const viewType = Knack.views[viewId].model.view.type;
+                    const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
                     container.appendChild(createLine(viewId, viewUrl));
                 }
 
@@ -13678,35 +13777,54 @@ function safePromiseAllSettled(promises) {
     // return Promise.allSettled(promises);
 }
 
-function addLongClickListener(selector, callback, duration = 500) {
+//needFirstClick to true will required a click + long press to be triggered.
+function addLongClickListener(selector, callback, duration = 500, needFirstClick = false) {
     $(selector).each(function () {
         let $element = $(this);
 
-        if ($element.data('hasLongClickListener'))
-            return;
+        if ($element.data('hasLongClickListener')) return;
 
         let longPressTimeout;
+        let clickOccurred = false;
         let startPosition = { x: 0, y: 0 };
 
+        function handleClick() {
+            if (needFirstClick) {
+                clickOccurred = true;
+                // Reset click state after a short duration
+                setTimeout(() => { clickOccurred = false; }, duration);
+            }
+        }
+
         function handleMouseDown(event) {
+            if (needFirstClick && !clickOccurred) return;
+
             startPosition.x = event.pageX;
             startPosition.y = event.pageY;
 
             longPressTimeout = setTimeout(() => {
                 callback(event);
+                if (needFirstClick) {
+                    clickOccurred = false; // Reset click state after long press callback
+                }
             }, duration);
         }
 
         function handleMouseMove(event) {
-            if (Math.abs(event.pageX - startPosition.x) > 10 || Math.abs(event.pageY - startPosition.y) > 10)
+            if (Math.abs(event.pageX - startPosition.x) > 10 || Math.abs(event.pageY - startPosition.y) > 10) {
                 clearTimeout(longPressTimeout);
+                if (needFirstClick) clickOccurred = false; // Reset click state on move
+            }
         }
 
         function handleMouseUpOrLeave(event) {
-            if (longPressTimeout)
-                clearTimeout(longPressTimeout);
+            if (longPressTimeout) clearTimeout(longPressTimeout);
+            if (needFirstClick) clickOccurred = false; // Reset click state on mouse up or leave
         }
 
+        if (needFirstClick) {
+            $element.on('click', handleClick);
+        }
         $element.on('mousedown', handleMouseDown);
         $element.on('mousemove', handleMouseMove);
         $element.on('mouseup mouseleave', handleMouseUpOrLeave);

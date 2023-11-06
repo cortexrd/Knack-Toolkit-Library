@@ -59,6 +59,56 @@
 	visibility: hidden;
 }
 
+/* Dynamic Hide/Show Columns feature  - BEGIN */
+.ktlCollapsedColumn {
+	max-width: 4px;
+	padding: 0;
+	border: none;
+	overflow: hidden;
+}
+
+td.ktlCollapsedColumn {
+	background-image: repeating-linear-gradient( 45deg, currentColor, currentColor 1px, transparent 1px, transparent 3px );
+	background-size: 4px 4px;
+	color: #80808080;
+}
+
+.ktlCollapsedColumn .ktlHideShowColumnIcon {
+	display: none; /* Hide the hide-show icon */
+}
+
+.ktlCollapsedColumn > span:hover {
+	cursor: ew-resize !important;
+}
+
+td.ktlCollapsedColumn:hover {
+	cursor: ew-resize !important;
+	background-color: transparent !important;
+}
+
+th.ktlCollapsedColumn span a:hover {
+	cursor: ew-resize !important;
+}
+
+th .fa-caret-left {
+	color: #0003
+}
+
+.ktlHideShowColumnIcon.fa-caret-left {
+	font-size: large;
+	cursor: pointer;
+	margin-left: -7px;
+	margin-right: 5px;
+	margin-top: 2px;
+}
+
+.hatched {
+	background-image: linear-gradient(45deg, #808080 25%, transparent 25%, transparent 75%, #808080 75%, #808080), linear-gradient(45deg, #808080 25%, transparent 25%, transparent 75%, #808080 75%, #808080);
+	background-size: 10px 10px; /* The size of the hatching */
+	background-position: 0 0, 5px 5px; /* Positioning of each layer */
+}
+/* Dynamic Hide/Show Columns feature  - END */
+
 .cell-edit.ktlNoInlineEdit {
 	cursor: default !important;
 	background-color: transparent !important;
@@ -174,6 +224,7 @@ a.sortDisabled {
 		visibility: visible;
 		opacity: 1;
 	}
+
 	/* Set the tooltip text styles */
 	.ktlTooltip {
 		font-weight: 400;
@@ -213,6 +264,7 @@ a.sortDisabled {
 	.ktlTtipIcon-table-view {
 		color: var(--ktlTtipIconTableViewColor);
 	}
+
 /************ User Filters **************/
 .activeFilter {
 	outline: double;
