@@ -8743,16 +8743,13 @@ function Ktl($, appInfo) {
                         const icon = $(this);
                         const iconWidth = icon.width();
                         const iconHeight = icon.height();
-                        const iconPosition = icon.position(); // Get position relative to offset parent
-
-                        // Add the tooltip to the DOM
-                        $(icon).append(tooltipElement);
+                        let iconPosition = viewType === 'table' ? icon.offset() : icon.position();
 
                         // Position the tooltip
                         const tooltipWidth = tooltipElement.width();
                         const tooltipHeight = tooltipElement.height();
-                        let tooltipTop = iconPosition.top - (2 * iconHeight) - tooltipHeight; // Calculate relative to the icon
-                        let tooltipLeft = iconPosition.left - (tooltipWidth * 1.5); // Calculate relative to the icon
+                        let tooltipTop = iconPosition.top - tooltipHeight - (2 * iconHeight); // Calculate relative to the icon
+                        let tooltipLeft = iconPosition.left + (iconWidth / 2) - (tooltipWidth / 2); // Calculate relative to the icon
                         // Adjust tooltipLeft if it's off the left or right side of the page
                         const pageWidth = $(window).width();
                         if (tooltipLeft < 0) {

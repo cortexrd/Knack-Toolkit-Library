@@ -175,10 +175,8 @@ a.sortDisabled {
 		opacity: 1;
 	}
 	/* Set the tooltip text styles */
-	i .ktlTooltip {
-		font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,Cantarell,Fira Sans,Droid Sans,Helvetica Neue,Helvetica,Arial,sans-serif;
+	.ktlTooltip {
 		font-weight: 400;
-		font-size: 14px;
 		position: absolute;
 		text-align: left;
 		border: 1px solid #000000;
@@ -187,12 +185,9 @@ a.sortDisabled {
 		max-width: 315px;
 		width: max-content;
 		z-index: 2000;
-		word-wrap: break-word;
-		white-space: normal;
 	}
 	/* Set the Icon Styles */
 	.ktlTooltipIcon {
-		position: relative;
 		padding-left: 0.2em;
 		z-index: 2000;
 	}
