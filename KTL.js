@@ -8812,12 +8812,9 @@ function Ktl($, appInfo) {
             },
 
             addEyeIconsToTableHeaders: function (viewId) {
-                if (!viewId) return;
+                if (!viewId || ktl.core.isKiosk()) return;
                 const viewType = ktl.views.getViewType(viewId);
-                if (viewType !== 'table' && viewType !== 'search') {
-                    ktl.log.clog('purple', 'addEyeIconsToTableHeaders - unsupported view type', viewId, viewType);
-                    return;
-                }
+                if (viewType !== 'table' && viewType !== 'search') return;
 
                 // Check if the first header column contains a checkbox
                 const firstColumnHasCheckbox = $('#' + viewId + ' .kn-table thead tr th:first-child').find('input[type="checkbox"]').length > 0;
@@ -8826,28 +8823,37 @@ function Ktl($, appInfo) {
                 $('#' + viewId + ' .kn-table thead tr th').each(function (index) {
                     if ((index > 0 || !firstColumnHasCheckbox) && !$(this).find('.eye-icon').length) {
                         // Ensure the icon is the first element inside the th
-                        $(this).prepend('<i class="eye-icon fa fa-eye" style="cursor:pointer; margin-right: 6px; margin-top: 4px;"></i>');
+                        $(this).prepend('<i class="eye-icon fa fa-eye" style="cursor:pointer; margin-right: 6px; margin-top: 3px;"></i>');
                     }
                 });
 
+                $('#' + viewId + ' thead th .table-fixed-label').css('display', 'inline-flex');
+
                 $('#' + viewId + ' .kn-table thead').on('click', '.eye-icon', function () {
                     const columnIndex = $(this).parent().index() + 1;
-                    const $headerCell = $(this).parent();
                     const $icon = $(this);
-                    const isColumnHidden = $icon.hasClass('fa-eye-slash');
 
-                    // Toggle icon class
-                    if (isColumnHidden) {
-                        $icon.removeClass('fa-eye-slash');
-                        $icon.addClass('fa-eye');
-                        $headerCell.css({ 'max-width': '', 'overflow': '', 'white-space': '', 'text-overflow': '' }); // Reset styles
-                        $('#' + viewId + ' .kn-table tbody tr').find('td:nth-child(' + columnIndex + ')').removeClass('narrowColumn');
+                    // Toggle the visibility of the column
+                    if ($icon.hasClass('fa-eye')) {
+                        // Hide column
+                        $icon.removeClass('fa-eye').addClass('fa-eye-slash').hide();
+                        $('#' + viewId + ' .kn-table tr').find('th:nth-child(' + columnIndex + '), td:nth-child(' + columnIndex + ')')
+                            .css('width', '4px')  // Collapse width
+                            .addClass('collapsedColumn');
+                        $('#' + viewId + ' .kn-table tbody tr td:nth-child(' + columnIndex + ')').addClass('ktlNoInlineEdit');
                     } else {
-                        $icon.removeClass('fa-eye');
-                        $icon.addClass('fa-eye-slash');
-                        $headerCell.css({ 'max-width': '50px', 'overflow': 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis' }); // Shrink header
-                        $('#' + viewId + ' .kn-table tbody tr').find('td:nth-child(' + columnIndex + ')').addClass('narrowColumn');
+                        // Show column
+                        $icon.removeClass('fa-eye-slash').addClass('fa-eye').show();
+                        $('#' + viewId + ' .kn-table tr').find('th:nth-child(' + columnIndex + '), td:nth-child(' + columnIndex + ')')
+                            .css('width', '') // Reset width
+                            .removeClass('collapsedColumn');
+                        $('#' + viewId + ' .kn-table tbody tr td:nth-child(' + columnIndex + ')').removeClass('ktlNoInlineEdit');
                     }
+                });
+
+                // Prevent propagation on hidden column header click
+                $('#' + viewId + ' .kn-table thead').on('click', 'th.collapsedColumn', function (e) {
+                    e.stopPropagation();
                 });
             },
         }
