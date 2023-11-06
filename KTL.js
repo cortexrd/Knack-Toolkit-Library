@@ -8743,7 +8743,16 @@ function Ktl($, appInfo) {
                         const icon = $(this);
                         const iconWidth = icon.width();
                         const iconHeight = icon.height();
-                        let iconPosition = viewType === 'table' ? icon.offset() : icon.position();
+                        let iconPosition 
+
+                        // Add the tooltip to the DOM
+                        if (viewType === 'table' ) {
+                            $(tooltipElement).appendTo('body');
+                            iconPosition = icon.offset();
+                        }else {
+                            $(tooltipElement).appendTo(icon.parent()); // Append to parent
+                            iconPosition = icon.position();
+                        }
 
                         // Position the tooltip
                         const tooltipWidth = tooltipElement.width();
