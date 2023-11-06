@@ -8784,36 +8784,31 @@ function Ktl($, appInfo) {
                         const icon = $(this);
                         const iconWidth = icon.width();
                         const iconHeight = icon.height();
-                        const iconOffset = icon.offset();
+                        let iconPosition 
 
                         // Add the tooltip to the DOM
-                        $('body').append(tooltipElement);
+                        if (viewType === 'table' ) {
+                            $(tooltipElement).appendTo('body');
+                            iconPosition = icon.offset();
+                        }else {
+                            $(tooltipElement).appendTo(icon.parent()); // Append to parent
+                            iconPosition = icon.position();
+                        }
 
                         // Position the tooltip
                         const tooltipWidth = tooltipElement.width();
                         const tooltipHeight = tooltipElement.height();
-                        let tooltipTop = iconOffset.top - tooltipHeight - iconHeight;
-                        let tooltipLeft = iconOffset.left + (iconWidth / 2) - (tooltipWidth / 5);
-                        const viewportWidth = $(window).width();
-                        const viewportHeight = $(window).height();
-
-                        if (tooltipTop < 0) {
-                            tooltipTop = 0;
-                        }
-
+                        let tooltipTop = iconPosition.top - tooltipHeight - (2 * iconHeight); // Calculate relative to the icon
+                        let tooltipLeft = iconPosition.left + (iconWidth / 2) - (tooltipWidth / 2); // Calculate relative to the icon
+                        // Adjust tooltipLeft if it's off the left or right side of the page
+                        const pageWidth = $(window).width();
                         if (tooltipLeft < 0) {
                             tooltipLeft = 0;
                         }
-
-                        if (tooltipTop + tooltipHeight > viewportHeight) {
-                            tooltipTop = viewportHeight - tooltipHeight;
+                        else if (tooltipLeft + tooltipWidth > pageWidth) {
+                            tooltipLeft = pageWidth - tooltipWidth;
                         }
-
-                        if (tooltipLeft + tooltipWidth > viewportWidth) {
-                            tooltipLeft = viewportWidth - tooltipWidth;
-                        }
-
-                        tooltipElement.css({ top: tooltipTop, left: tooltipLeft, });
+                        tooltipElement.css({ top: tooltipTop, left: tooltipLeft}); // Set position to 'absolute'
                     }
                 });
 
