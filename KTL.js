@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.17.3';
+    const KTL_VERSION = '0.18.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -8784,13 +8784,13 @@ function Ktl($, appInfo) {
                         const icon = $(this);
                         const iconWidth = icon.width();
                         const iconHeight = icon.height();
-                        let iconPosition 
+                        let iconPosition;
 
                         // Add the tooltip to the DOM
-                        if (viewType === 'table' ) {
+                        if (viewType === 'table') {
                             $(tooltipElement).appendTo('body');
                             iconPosition = icon.offset();
-                        }else {
+                        } else {
                             $(tooltipElement).appendTo(icon.parent()); // Append to parent
                             iconPosition = icon.position();
                         }
@@ -8808,7 +8808,7 @@ function Ktl($, appInfo) {
                         else if (tooltipLeft + tooltipWidth > pageWidth) {
                             tooltipLeft = pageWidth - tooltipWidth;
                         }
-                        tooltipElement.css({ top: tooltipTop, left: tooltipLeft}); // Set position to 'absolute'
+                        tooltipElement.css({ top: tooltipTop, left: tooltipLeft }); // Set position to 'absolute'
                     }
                 });
 
