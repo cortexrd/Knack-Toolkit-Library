@@ -216,6 +216,7 @@ function Ktl($, appInfo) {
                                     //Pre-render keyword processing.
                                     keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                                     keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
+                                    ktl.fields.hideFields(viewId, keywords);
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
                                         keywords._km && ktl.core.kioskMode(true);
@@ -1525,6 +1526,9 @@ function Ktl($, appInfo) {
                 element.style.top = centeredTop + 'px';
             },
 
+            showKnackStyleMessage: function (viewId, message, style = 'error' /*or success*/) {
+                Knack.$['utility_forms'].renderMessage($('#' + viewId), '<b>' + message + '</b>', style);
+            },
         }
     })(); //Core
 
@@ -2711,8 +2715,33 @@ function Ktl($, appInfo) {
             },
 
             hideFields: function (viewId, keywords) {
+                if (!viewId || !keywords) return;
+
                 const kw = '_hf';
 
+                //Process fields keyword
+                var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+                if (!$.isEmptyObject(fieldsWithKwObj)) {
+                    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                    var foundKwObj = {};
+                    for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                        var fieldId = fieldsWithKwAr[i];
+                        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                        if (!$.isEmptyObject(foundKwObj)) {
+                            if (foundKwObj[fieldId][kw]) {
+                                if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
+                                    const options = foundKwObj[fieldId][kw][0].options;
+                                    if (ktl.core.hasRoleAccess(options)) {
+                                        ktl.views.hideField(fieldId);
+                                    }
+                                } else
+                                    ktl.views.hideField(fieldId);
+                            }
+                        }
+                    }
+                }
+
+                //Process views keyword
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                     const kwList = ktl.core.getKeywordsByType(viewId, kw);
                     for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
@@ -5220,7 +5249,6 @@ function Ktl($, appInfo) {
 
                     //These don't need to be processed in the mutation observer.
                     keywords._hv && ktl.views.hideView(viewId, keywords);
-                    keywords._hf && ktl.fields.hideFields(viewId, keywords);
                     keywords._rv && ktl.views.removeView(viewId, keywords);
                     keywords._ht && hideTitle(viewId, keywords);
                     keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
@@ -5236,15 +5264,17 @@ function Ktl($, appInfo) {
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(view, keywords);
+                    keywords._ha && headerAlignment(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
+                ktl.fields.hideFields(viewId, keywords);
                 quickToggle(viewId, data); //IMPORTANT: quickToggle must be processed BEFORE matchColor.
                 matchColor(viewId, data);
                 colorizeFieldByValue(viewId, data);
-                headerAlignment(view, keywords);
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
+
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
             catch (err) { console.log('err', err); };
@@ -7645,7 +7675,7 @@ function Ktl($, appInfo) {
                     })
 
                 function ktlHandlePreprocessSubmitError(outcomeObj) {
-                    outcomeObj.msg && Knack.$['utility_forms'].renderMessage($('#' + viewId + ' form'), '<b>KTL Error: ' + outcomeObj.msg + '</b>', 'error');
+                    outcomeObj.msg && ktl.core.showKnackStyleMessage(viewId, 'KTL Error: ' + outcomeObj.msg, 'error');
                     setTimeout(() => {
                         handlePreprocessSubmitError && handlePreprocessSubmitError(viewId, outcomeObj);
                     }, 100)
@@ -8565,7 +8595,7 @@ function Ktl($, appInfo) {
                 }
 
                 //Process views keyword
-                if (!view || !keywords || (keywords && !keywords[kw])) return;
+                if (keywords && !keywords[kw]) return;
 
                 const kwList = ktl.core.getKeywordsByType(viewId, kw);
                 if (kwList.length)
@@ -9855,7 +9885,7 @@ function Ktl($, appInfo) {
 
                 //For Dev Options popup, act like a modal window: close when clicking oustide.
                 $(document).on('click', function (e) {
-                    if (e.target.closest('.kn-content')) {
+                    if (e.target.closest('.kn-content') || (e.target && e.target.id && e.target.id === 'knack-body')) {
                         $('#popupDivId').remove();
                         if ($('#dbgWndId').length)
                             ktl.debugWnd.showDebugWnd(false);
