@@ -5225,8 +5225,6 @@ function Ktl($, appInfo) {
             }, 500, true);
 
             $('.kn-table-table th').on('click', ktl.views.handleClickDateTimeSort);
-
-            ktl.views.addHideShowIconsToTableHeaders(viewId);
         })
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
@@ -5265,6 +5263,7 @@ function Ktl($, appInfo) {
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(view, keywords);
                     keywords._ha && headerAlignment(view, keywords);
+                    keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -8651,6 +8650,18 @@ function Ktl($, appInfo) {
                         $(this).text(PRIVATE_DATA);
                     });
                 }
+            },
+
+            hideShowColumns: function (viewId, keywords) {
+                if (!viewId) return;
+
+                const kw = '_hsc';
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                ktl.views.addHideShowIconsToTableHeaders(viewId);
             },
 
             //Returns a zero-based index of the first column from left that matches the header param.
