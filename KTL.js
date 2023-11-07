@@ -8865,7 +8865,6 @@ function Ktl($, appInfo) {
                 });
 
                 function showColumn(columnIndex) {
-                    console.log('show columnIndex =', columnIndex);
                     if (columnIndex < 0) return;
                     $('#' + viewId + ' .kn-table th:nth-child(' + columnIndex + ') i').show();
                     $('#' + viewId + ' .kn-table tr').find('th:nth-child(' + columnIndex + '), td:nth-child(' + columnIndex + ')')
