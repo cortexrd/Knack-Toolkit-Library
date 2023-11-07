@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.18.1';
+    const KTL_VERSION = '0.18.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5237,8 +5237,6 @@ function Ktl($, appInfo) {
                     //This section is for keywords that are only supported by views.
                     //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
-                    keywords._ni && ktl.views.noInlineEditing(view);
-
                     //These also need to be processed in the mutation observer.
                     keywords._hc && ktl.views.hideColumns(view, keywords);
                     keywords._rc && ktl.views.removeColumns(view, keywords);
@@ -5246,6 +5244,7 @@ function Ktl($, appInfo) {
                     keywords._style && ktl.views.setStyle(viewId, keywords);
 
                     //These don't need to be processed in the mutation observer.
+                    keywords._ni && ktl.views.noInlineEditing(view);
                     keywords._hv && ktl.views.hideView(viewId, keywords);
                     keywords._rv && ktl.views.removeView(viewId, keywords);
                     keywords._ht && hideTitle(viewId, keywords);
@@ -5264,6 +5263,7 @@ function Ktl($, appInfo) {
                     keywords._copy && ktl.views.copyToClipboard(view, keywords);
                     keywords._ha && headerAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
+                    keywords._dl && ktl.views.disableLinks(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -8056,7 +8056,7 @@ function Ktl($, appInfo) {
                     if (Knack.views[viewId] && model && model.view.options && model.view.options.cell_editor) {
                         if (kwInstance.params && kwInstance.params.length) {
                             //Process each field individually.
-                            //As an exception, if a field start with an exclamation mark, allow inline editing.
+                            //As an exception, if a field starts with an exclamation mark, allow inline editing.
                             var allowInline = {};
                             if (kwInstance.params[0][0].charAt(0) === '!') {
                                 //Found first param as an exception.
@@ -8412,12 +8412,11 @@ function Ktl($, appInfo) {
                 } else {
                     if (kw === '_ols') return;
 
-                    //var olnSelector = '.knTable a:not([class*=drop]):not(.kn-sort):not([class*=chzn]), .kn-detail a';
                     var olnSelector = '.knTable td a, .kn-detail-body a';
 
                     //Apply to all views if ktlTarget is page.
                     if (options && (!options.ktlTarget || options.ktlTarget !== 'page'))
-                        olnSelector = '#' + viewId + olnSelector;
+                        olnSelector = '#' + viewId + ' ' + olnSelector;
 
                     const linkElement = $(olnSelector);
                     linkElement.off('click').on('click', e => {
@@ -8871,6 +8870,54 @@ function Ktl($, appInfo) {
                         .css('width', '') // Reset width
                         .removeClass('ktlCollapsedColumn');
                 }
+            },
+
+            disableLinks: function (viewId, keywords) {
+                if (!viewId) return;
+
+                const kw = '_dl';
+                let options;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                var linkSelector = '.knTable td a, .kn-detail-body a';
+
+                //Apply to all views if ktlTarget is page.
+                if (options && (!options.ktlTarget || options.ktlTarget !== 'page'))
+                    linkSelector = '#' + viewId + ' ' + linkSelector;
+
+                const linkElement = $(linkSelector);
+                linkElement.off('click').on('click', e => {
+                    const target = e.target;
+                    let preventClick = false;
+
+                    if (target.classList.contains('kn-link'))
+                        preventClick = true;
+                    else {
+                        let fieldId;
+                        let fld = target.closest('[class^="field_"]');
+                        if (fld)
+                            fieldId = fld.getAttribute('data-field-key');
+                        else {
+                            const detailsView = $(target).closest('.kn-detail');
+                            if (detailsView.length)
+                                fieldId = detailsView.attr('class').split(/\s+/)[1];
+                        }
+
+                        if (!fieldId || !fieldId.startsWith('field_')) return;
+
+                        const fieldType = ktl.fields.getFieldType(fieldId);
+                        if (fieldType === 'link')
+                            preventClick = true;
+                    }
+
+                    if (preventClick && e.target.href)
+                        e.preventDefault();
+                })
+
             },
         }
     })(); //Views feature
