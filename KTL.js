@@ -8778,7 +8778,7 @@ function Ktl($, appInfo) {
                     .css('display', 'inline-block');
 
                 // Add event listeners to show and hide the tooltip
-                $(document).on('mouseenter', tooltipPosition + ' i', function (e) {
+                $(document).on('mouseenter', tooltipPosition + ' i.fa-question-circle', function (e) {
                     if (!$(".ktlTooltip").length) {
                         const tooltipElement = $('<div class="ktlTooltip ktlTtip-' + viewType + '-view">' + tooltipText + '</div>')
                         const icon = $(this);
@@ -8812,7 +8812,7 @@ function Ktl($, appInfo) {
                     }
                 });
 
-                $(document).on('mouseleave', tooltipPosition + ' i', function () {
+                $(document).on('mouseleave', tooltipPosition + ' i.fa-question-circle', function () {
                     $('.ktlTooltip').remove();
                 });
             },
