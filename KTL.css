@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.5.0 */
+/* KTL CSS version: 0.5.1 */
 
 /************ General Settings **************/
 :root {
@@ -127,7 +127,7 @@ th .fa-caret-left {
 }
 
 .ktlBottomExtraSpaces {
-	padding-bottom: 500px;
+	margin-bottom: 500px;
 }
 
 .sortDisabled .knTable th {

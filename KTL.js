@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.18.2';
+    const KTL_VERSION = '0.18.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -219,7 +219,8 @@ function Ktl($, appInfo) {
                                     ktl.fields.hideFields(viewId, keywords);
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
-                                        keywords._km && ktl.core.kioskMode(true);
+                                        if (!ktl.core.isKiosk())
+                                            keywords._km && ktl.core.kioskMode(true);
                                         keywords._hc && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
                                         keywords._rc && ktl.views.removeColumns(Knack.views[viewId].model.view, keywords);
                                         keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
@@ -9295,7 +9296,7 @@ function Ktl($, appInfo) {
                                     //The style is a string that has the same format as in the Elements view.
                                     //Ex: 'height:50px;font-weight:700;min-width:150px;'
                                     if (kbs && kbs.length)
-                                        $('.kn-button:not(.search,.devBtn)').css('cssText', kbs[0]);
+                                        $('.kn-button:not(.search,.devBtn)').css('cssText', kbs[0].params[0]);
                                 }
 
                                 $('.kioskButtonsDiv').css({ 'position': 'absolute', 'right': '2%' });
