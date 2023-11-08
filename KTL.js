@@ -5264,6 +5264,7 @@ function Ktl($, appInfo) {
                     keywords._ha && headerAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
+                    keywords._sth && makeTableHeaderSticky(viewId, keywords, data);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5619,7 +5620,17 @@ function Ktl($, appInfo) {
                 }
             }
         }
-
+        function makeTableHeaderSticky(viewId, keywords, data) {
+            const kw = '_sth';
+            let numOfRecords = 10;
+            let viewHeight = 800;
+            if (keywords[kw] && keywords[kw][0]?.params && keywords[kw][0]?.params[0].length) {
+                numOfRecords = keywords[kw][0].params[0][0] ? keywords[kw][0].params[0][0] : numOfRecords;
+                if (keywords[kw][0].params[0][1]) viewHeight = keywords[kw][0].params[0][1];
+                
+            }
+            ktl.views.stickTableHeaders(viewId, data, numOfRecords, viewHeight);
+        }
         /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
             const CFV_KEYWORD = '_cfv';
@@ -8919,6 +8930,14 @@ function Ktl($, appInfo) {
                 })
 
             },
+            stickTableHeaders: function (viewId, data, numOfRecords, viewHeight) {
+                if (data.length < numOfRecords) return;
+                $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
+                    .addClass('ktlStickyHeader')
+                    .css('height', viewHeight + 'px')
+                    .find('th')
+                    .css({'position': 'sticky', 'top': '-2px', 'z-index': '10'});
+            }
         }
     })(); //Views feature
 
