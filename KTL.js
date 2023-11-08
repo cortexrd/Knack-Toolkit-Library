@@ -2846,7 +2846,33 @@ function Ktl($, appInfo) {
                         }, 1000);
                     })
             });
-        })
+        });
+        
+        $(document).on('knack-view-render.any', function (event, view) {
+            if (ktl.scenes.isiFrameWnd()
+                || !ktl.core.getCfg().enabled.persistentForm 
+                || scenesToExclude.includes(view.scene.key)
+                || view.type != 'form') 
+                return;
+
+            const elementsToObserve = document.querySelectorAll(`#${view.key} .redactor-box`);
+
+            const observer = new MutationObserver((records, observer) => {
+                if (!pfInitDone)
+                    return;
+
+                const editor = $(records.find(record => $(record.target).closest('.redactor-editor').length).target).closest('.redactor-editor');
+
+                if (editor) {
+                    console.log('editor changed');
+                    formContentHasChanged(editor[0]);
+                }
+            });
+
+            elementsToObserve.forEach((element) => 
+                observer.observe(element, { subtree: true, childList: true, attributes: false, characterData: true })
+            );
+        });
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
             if (ktl.scenes.isiFrameWnd()) return;
@@ -2872,15 +2898,6 @@ function Ktl($, appInfo) {
                 formContentHasChanged(event.target);
         });
 
-        $(document).on('DOMSubtreeModified', '.redactor-editor', (event) => {
-            if (!pfInitDone
-                || !ktl.core.getCfg().enabled.persistentForm
-                || scenesToExclude.includes(Knack.router.current_scene_key)
-                || ktl.scenes.isiFrameWnd())
-                return;
-
-            formContentHasChanged(event.currentTarget);
-        });
 
         $(document).on('click', function (e) {
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
