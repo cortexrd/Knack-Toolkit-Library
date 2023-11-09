@@ -5625,12 +5625,13 @@ function Ktl($, appInfo) {
             const kw = '_sth';
             let numOfRecords = 10;
             let viewHeight = 800;
-            if (keywords[kw] && keywords[kw][0]?.params && keywords[kw][0]?.params[0].length) {
-                numOfRecords = keywords[kw][0].params[0][0] ? keywords[kw][0].params[0][0] : numOfRecords;
-                if (keywords[kw][0].params[0][1]) viewHeight = keywords[kw][0].params[0][1];
-                
+            if (keywords[kw]) {
+                if (keywords[kw].length) {
+                    numOfRecords = keywords[kw][0].params[0][0]
+                    viewHeight = keywords[kw][0].params[0][1]
+                }
+                ktl.views.stickTableHeaders(viewId, data, numOfRecords, viewHeight);
             }
-            ktl.views.stickTableHeaders(viewId, data, numOfRecords, viewHeight);
         }
         /* _stc = Make First col in table sticky
         * @param {string} viewId - The view.key
@@ -5638,10 +5639,12 @@ function Ktl($, appInfo) {
         function makeTableColumnSticky(viewId, keywords) {
             const kw = '_stc';
             let stickyBkgdColor = 'rgb(243 246 249)';
-            if (keywords[kw] && keywords[kw][0]?.params && keywords[kw][0]?.params[0].length) {
-                stickyBkgdColor = keywords[kw][0].params[0][0];
+            if (keywords[kw]) {
+                if (keywords[kw].length) {
+                    stickyBkgdColor = keywords[kw][0].params[0][0];
+                }
+                ktl.views.stickFirstColumn(viewId, stickyBkgdColor);
             }
-            ktl.views.stickFirstColumn(viewId, stickyBkgdColor);
         }
         /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
@@ -8945,14 +8948,13 @@ function Ktl($, appInfo) {
             stickTableHeaders: function (viewId, data, numOfRecords, viewHeight) {
                 if (data.length < numOfRecords) return;
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
-                    .addClass('ktlStickyHeader')
                     .css('height', viewHeight + 'px')
                     .find('th')
                     .css({'position': 'sticky', 'top': '-2px', 'z-index': '10'});
             },
             stickFirstColumn: function (viewId, stickyBkgdColor) {
-                $(`#${viewId} thead tr th:first-child`).addClass('ktlStickyColumn').css({'z-index': '50', 'position': 'sticky', 'left': '-1px'}); //make first col sticky
-                $(`#${viewId} tbody tr td:first-child`).addClass('ktlStickyColumn').css({'z-index': '20', 'position': 'sticky', 'left': '-1px','background-color': stickyBkgdColor}); //make first col sticky;
+                $(`#${viewId} thead tr th:first-child`).css({'z-index': '50', 'position': 'sticky', 'left': '-1px'}); //make first col sticky
+                $(`#${viewId} tbody tr td:first-child`).css({'z-index': '20', 'position': 'sticky', 'left': '-1px','background-color': stickyBkgdColor}); //make first col sticky;
             },
         }
     })(); //Views feature
