@@ -2847,29 +2847,25 @@ function Ktl($, appInfo) {
                     })
             });
         });
-        
+
         $(document).on('knack-view-render.any', function (event, view) {
             if (ktl.scenes.isiFrameWnd()
-                || !ktl.core.getCfg().enabled.persistentForm 
+                || !ktl.core.getCfg().enabled.persistentForm
                 || scenesToExclude.includes(view.scene.key)
-                || view.type != 'form') 
+                || view.type != 'form')
                 return;
 
             const elementsToObserve = document.querySelectorAll(`#${view.key} .redactor-box`);
 
             const observer = new MutationObserver((records, observer) => {
-                if (!pfInitDone)
-                    return;
+                if (!pfInitDone) return;
 
                 const editor = $(records.find(record => $(record.target).closest('.redactor-editor').length).target).closest('.redactor-editor');
-
-                if (editor) {
-                    console.log('editor changed');
+                if (editor)
                     formContentHasChanged(editor[0]);
-                }
             });
 
-            elementsToObserve.forEach((element) => 
+            elementsToObserve.forEach((element) =>
                 observer.observe(element, { subtree: true, childList: true, attributes: false, characterData: true })
             );
         });
@@ -2893,11 +2889,9 @@ function Ktl($, appInfo) {
                 || event.target.className.includes('ui-autocomplete-input'))
                 return;
 
-
             if ((event.type === 'focusout' && event.relatedTarget) || event.type === 'input')
                 formContentHasChanged(event.target);
         });
-
 
         $(document).on('click', function (e) {
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(Knack.router.current_scene_key) || ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found')
@@ -2922,7 +2916,6 @@ function Ktl($, appInfo) {
         //When input field text has changed or has lost focus, save it.
         //Note that this function applies to text input fields only.  Other field types are saved through ktlOnFieldValueChanged.
         function formContentHasChanged(element) {
-
             const view = element.closest('.kn-form.kn-view');
             if (!view) return;
 
