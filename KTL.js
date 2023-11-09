@@ -5265,6 +5265,7 @@ function Ktl($, appInfo) {
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
                     keywords._sth && makeTableHeaderSticky(viewId, keywords, data);
+                    keywords._stc && makeTableColumnSticky(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5630,6 +5631,17 @@ function Ktl($, appInfo) {
                 
             }
             ktl.views.stickTableHeaders(viewId, data, numOfRecords, viewHeight);
+        }
+        /* _stc = Make First col in table sticky
+        * @param {string} viewId - The view.key
+        * @param {object} keywords - The keywords object*/
+        function makeTableColumnSticky(viewId, keywords) {
+            const kw = '_stc';
+            let stickyBkgdColor = 'rgb(243 246 249)';
+            if (keywords[kw] && keywords[kw][0]?.params && keywords[kw][0]?.params[0].length) {
+                stickyBkgdColor = keywords[kw][0].params[0][0];
+            }
+            ktl.views.stickFirstColumn(viewId, stickyBkgdColor);
         }
         /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
@@ -8937,7 +8949,11 @@ function Ktl($, appInfo) {
                     .css('height', viewHeight + 'px')
                     .find('th')
                     .css({'position': 'sticky', 'top': '-2px', 'z-index': '10'});
-            }
+            },
+            stickFirstColumn: function (viewId, stickyBkgdColor) {
+                $(`#${viewId} thead tr th:first-child`).addClass('ktlStickyColumn').css({'z-index': '50', 'position': 'sticky', 'left': '-1px'}); //make first col sticky
+                $(`#${viewId} tbody tr td:first-child`).addClass('ktlStickyColumn').css({'z-index': '20', 'position': 'sticky', 'left': '-1px','background-color': stickyBkgdColor}); //make first col sticky;
+            },
         }
     })(); //Views feature
 
