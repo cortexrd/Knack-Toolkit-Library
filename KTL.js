@@ -5627,8 +5627,8 @@ function Ktl($, appInfo) {
             let viewHeight = 800;
             if (keywords[kw]) {
                 if (keywords[kw].length) {
-                    numOfRecords = keywords[kw][0].params[0][0]
-                    viewHeight = keywords[kw][0].params[0][1]
+                    numOfRecords = keywords[kw][0].params[0][0];
+                    viewHeight = keywords[kw][0].params[0][1];
                 }
                 ktl.views.stickTableHeaders(viewId, data, numOfRecords, viewHeight);
             }
