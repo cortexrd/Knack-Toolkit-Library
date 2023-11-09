@@ -5621,19 +5621,25 @@ function Ktl($, appInfo) {
                 }
             }
         }
+        /* _sth = Make First col in table sticky 
+        * keyword @params numOfRecords, viewHeight - minimum records in table and height of view
+        * @param {string} viewId - The view.key
+        * @param {object} keywords - The keywords object
+        * @param {object} data - records in table*/
         function makeTableHeaderSticky(viewId, keywords, data) {
             const kw = '_sth';
             let numOfRecords = 10;
             let viewHeight = 800;
             if (keywords[kw]) {
                 if (keywords[kw].length) {
-                    numOfRecords = keywords[kw][0].params[0][0];
-                    viewHeight = keywords[kw][0].params[0][1];
+                    numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
+                    viewHeight = keywords[kw][0].params[0][1] || viewHeight;
                 }
                 ktl.views.stickTableHeaders(viewId, data, numOfRecords, viewHeight);
             }
         }
-        /* _stc = Make First col in table sticky
+        /* _stc = Make First col in table sticky 
+        * keyword @param stickyBkgdColor - The background color of the sticky column
         * @param {string} viewId - The view.key
         * @param {object} keywords - The keywords object*/
         function makeTableColumnSticky(viewId, keywords) {
@@ -5641,7 +5647,7 @@ function Ktl($, appInfo) {
             let stickyBkgdColor = 'rgb(243 246 249)';
             if (keywords[kw]) {
                 if (keywords[kw].length) {
-                    stickyBkgdColor = keywords[kw][0].params[0][0];
+                    stickyBkgdColor = keywords[kw][0].params[0][0] || stickyBkgdColor;
                 }
                 ktl.views.stickFirstColumn(viewId, stickyBkgdColor);
             }
@@ -8946,7 +8952,7 @@ function Ktl($, appInfo) {
 
             },
             stickTableHeaders: function (viewId, data, numOfRecords, viewHeight) {
-                if (data.length < numOfRecords) return;
+                if (data.length <= numOfRecords) return;
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
