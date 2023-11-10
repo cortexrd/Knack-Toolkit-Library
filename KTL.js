@@ -8962,7 +8962,7 @@ function Ktl($, appInfo) {
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
-                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '15' });
+                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
             },
 
             stickTableColumns: function (viewId, numOfColumns, stickyColBkgdColor) {
@@ -8972,8 +8972,8 @@ function Ktl($, appInfo) {
                     let tableBodySelector = $(`#${viewId} tbody tr td:nth-child(${i})`);
                     let columnWidth = tableHeadSelector.outerWidth();
                     stickyColWidth += columnWidth;
-                    tableHeadSelector.css({ 'z-index': 20 - i, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px'});
-                    tableBodySelector.css({ 'z-index': 9 - i, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': stickyColBkgdColor });
+                    tableHeadSelector.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px'});
+                    tableBodySelector.css({ 'z-index': 1, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': stickyColBkgdColor });
                 }
             },
         }
