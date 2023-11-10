@@ -8972,7 +8972,7 @@ function Ktl($, appInfo) {
                     let tableBodySelector = $(`#${viewId} tbody tr td:nth-child(${i})`);
                     let columnWidth = tableHeadSelector.outerWidth();
                     stickyColWidth += columnWidth;
-                    tableHeadSelector.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px'});
+                    tableHeadSelector.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px' });
                     tableBodySelector.css({ 'z-index': 1, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': stickyColBkgdColor });
                 }
             },
