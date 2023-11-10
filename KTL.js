@@ -13605,7 +13605,7 @@ function Ktl($, appInfo) {
 
                     $(document).on('focus', 'input, textarea', event => {
                         if (event.target.attributes['type']) {
-                            if (target == event.target || !$(event.target).is(':visible') || (!['number', 'tel', 'text', 'email', 'password', 'search'].includes(event.target.attributes['type'].value)))
+                            if (target == event.target || !$(event.target).is(':visible') || (!['number', 'tel', 'text', 'email', 'password', 'search', 'url'].includes(event.target.attributes['type'].value)))
                                 return;
                         }
 
@@ -13860,9 +13860,12 @@ function addLongClickListener(selector, callback, duration = 500, needFirstClick
             startPosition.y = event.pageY;
 
             longPressTimeout = setTimeout(() => {
-                callback(event);
-                if (needFirstClick) {
-                    clickOccurred = false; // Reset click state after long press callback
+                const targetIsChzn = event.target.closest('.chzn-container'); //Exclude because dropdowns are conflicting with virtual keyboard.
+                if (!targetIsChzn) {
+                    callback(event);
+                    if (needFirstClick) {
+                        clickOccurred = false; // Reset click state after long press callback
+                    }
                 }
             }, duration);
         }
@@ -13879,9 +13882,9 @@ function addLongClickListener(selector, callback, duration = 500, needFirstClick
             if (needFirstClick) clickOccurred = false; // Reset click state on mouse up or leave
         }
 
-        if (needFirstClick) {
+        if (needFirstClick)
             $element.on('click', handleClick);
-        }
+
         $element.on('mousedown', handleMouseDown);
         $element.on('mousemove', handleMouseMove);
         $element.on('mouseup mouseleave', handleMouseUpOrLeave);
