@@ -5264,8 +5264,8 @@ function Ktl($, appInfo) {
                     keywords._ha && headerAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
-                    keywords._sth && makeTableHeaderSticky(viewId, keywords, data);
-                    keywords._stc && makeTableColumnSticky(viewId, keywords);
+                    keywords._sth && stickyTableHeader(viewId, keywords, data);
+                    keywords._stc && stickyTableColumns(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5621,12 +5621,13 @@ function Ktl($, appInfo) {
                 }
             }
         }
-        /* _sth = Make First col in table sticky 
+
+        /** _sth = Sticky Table Header
         * keyword @params numOfRecords, viewHeight - minimum records in table and height of view
         * @param {string} viewId - The view.key
         * @param {object} keywords - The keywords object
         * @param {object} data - records in table*/
-        function makeTableHeaderSticky(viewId, keywords, data) {
+        function stickyTableHeader(viewId, keywords, data) {
             const kw = '_sth';
             let numOfRecords = 10;
             let viewHeight = 800;
@@ -5635,23 +5636,25 @@ function Ktl($, appInfo) {
                     numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
                     viewHeight = keywords[kw][0].params[0][1] || viewHeight;
                 }
-                ktl.views.stickTableHeaders(viewId, data, numOfRecords, viewHeight);
+                ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
             }
         }
-        /* _stc = Make First col in table sticky 
-        * keyword @param stickyBkgdColor - The background color of the sticky column
+
+        /** _stc = Sticky Table Columns
+        * keyword @param stickyColBkgdColor - The background color of the sticky column
         * @param {string} viewId - The view.key
         * @param {object} keywords - The keywords object*/
-        function makeTableColumnSticky(viewId, keywords) {
+        function stickyTableColumns(viewId, keywords) {
             const kw = '_stc';
-            let stickyBkgdColor = 'rgb(243 246 249)';
+            let stickyColBkgdColor = 'rgb(243 246 249)';
             if (keywords[kw]) {
                 if (keywords[kw].length) {
-                    stickyBkgdColor = keywords[kw][0].params[0][0] || stickyBkgdColor;
+                    stickyColBkgdColor = keywords[kw][0].params[0][0] || stickyColBkgdColor;
                 }
-                ktl.views.stickFirstColumn(viewId, stickyBkgdColor);
+                ktl.views.stickFirstColumn(viewId, stickyColBkgdColor);
             }
         }
+
         /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
             const CFV_KEYWORD = '_cfv';
@@ -8951,16 +8954,18 @@ function Ktl($, appInfo) {
                 })
 
             },
-            stickTableHeaders: function (viewId, data, numOfRecords, viewHeight) {
+            
+            stickTableHeader: function (viewId, data, numOfRecords, viewHeight) {
                 if (data.length <= numOfRecords) return;
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
-                    .css({'position': 'sticky', 'top': '-2px', 'z-index': '10'});
+                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '10' });
             },
-            stickFirstColumn: function (viewId, stickyBkgdColor) {
-                $(`#${viewId} thead tr th:first-child`).css({'z-index': '50', 'position': 'sticky', 'left': '-1px'}); //make first col sticky
-                $(`#${viewId} tbody tr td:first-child`).css({'z-index': '20', 'position': 'sticky', 'left': '-1px','background-color': stickyBkgdColor}); //make first col sticky;
+
+            stickFirstColumn: function (viewId, stickyColBkgdColor) {
+                $(`#${viewId} thead tr th:first-child`).css({ 'z-index': '50', 'position': 'sticky', 'left': '-1px' }); //make first col sticky
+                $(`#${viewId} tbody tr td:first-child`).css({ 'z-index': '20', 'position': 'sticky', 'left': '-1px', 'background-color': stickyColBkgdColor }); //make first col sticky;
             },
         }
     })(); //Views feature
