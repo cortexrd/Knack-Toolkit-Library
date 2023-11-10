@@ -2851,7 +2851,7 @@ function Ktl($, appInfo) {
         $(document).on('knack-view-render.any', function (event, view) {
             if (ktl.scenes.isiFrameWnd()
                 || !ktl.core.getCfg().enabled.persistentForm
-                || scenesToExclude.includes(view.scene.key)
+                || (view.scene && scenesToExclude.includes(view.scene.key))
                 || view.type != 'form')
                 return;
 
