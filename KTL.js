@@ -5647,11 +5647,13 @@ function Ktl($, appInfo) {
         function stickyTableColumns(viewId, keywords) {
             const kw = '_stc';
             let stickyColBkgdColor = 'rgb(243 246 249)';
+            let numOfColumns = 1;
             if (keywords[kw]) {
                 if (keywords[kw].length) {
-                    stickyColBkgdColor = keywords[kw][0].params[0][0] || stickyColBkgdColor;
+                    numOfColumns = keywords[kw][0].params[0][0] || numOfColumns;
+                    stickyColBkgdColor = keywords[kw][0].params[0][1] || stickyColBkgdColor;
                 }
-                ktl.views.stickFirstColumn(viewId, stickyColBkgdColor);
+                ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
             }
         }
 
@@ -8960,12 +8962,19 @@ function Ktl($, appInfo) {
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
-                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '10' });
+                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '15' });
             },
 
-            stickFirstColumn: function (viewId, stickyColBkgdColor) {
-                $(`#${viewId} thead tr th:first-child`).css({ 'z-index': '50', 'position': 'sticky', 'left': '-1px' }); //make first col sticky
-                $(`#${viewId} tbody tr td:first-child`).css({ 'z-index': '20', 'position': 'sticky', 'left': '-1px', 'background-color': stickyColBkgdColor }); //make first col sticky;
+            stickTableColumns: function (viewId, numOfColumns, stickyColBkgdColor) {
+                let stickyColWidth = 0;
+                for (let i = 1; i <= numOfColumns; i++) {
+                    let tableHeadSelector = $(`#${viewId} thead tr th:nth-child(${i})`);
+                    let tableBodySelector = $(`#${viewId} tbody tr td:nth-child(${i})`);
+                    let columnWidth = tableHeadSelector.outerWidth();
+                    stickyColWidth += columnWidth;
+                    tableHeadSelector.css({ 'z-index': 20 - i, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px'});
+                    tableBodySelector.css({ 'z-index': 9 - i, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': stickyColBkgdColor });
+                }
             },
         }
     })(); //Views feature
