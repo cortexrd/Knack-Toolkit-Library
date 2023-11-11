@@ -5631,12 +5631,40 @@ function Ktl($, appInfo) {
             const kw = '_sth';
             let numOfRecords = 10;
             let viewHeight = 800;
-            if (keywords[kw]) {
-                if (keywords[kw].length) {
-                    numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
-                    viewHeight = keywords[kw][0].params[0][1] || viewHeight;
+            let isCalledInsideObserver = false;
+
+            if (!keywords[kw]) return;
+
+            if (keywords[kw].length) {
+                numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
+                viewHeight = keywords[kw][0].params[0][1] || viewHeight;
+            }
+
+            const callStickTableHeaders = () => {
+                if (!isCalledInsideObserver) {
+                    ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
                 }
-                ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
+            }
+
+            if (isBulkOpsEnabled(keywords, viewId)) {
+                let observerPromise = new Promise((resolve) => {
+                    observeAndExecute(`#${viewId} th .bulkEditCb`, () => {
+                        ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
+                        isCalledInsideObserver = true;
+                        resolve();
+                    });
+                });
+                // If observerPromise does not resolve within 1000ms, call callStickTableHeaders
+                setTimeout(() => {
+                    observerPromise.then(() => {
+                        // Do nothing if observerPromise has resolved
+                    }).catch(() => {
+                        // If observerPromise has not resolved, call callStickTableHeaders
+                        callStickTableHeaders();
+                    });
+                }, 1000);
+            } else {
+                callStickTableHeaders();
             }
         }
 
@@ -5648,13 +5676,86 @@ function Ktl($, appInfo) {
             const kw = '_stc';
             let stickyColBkgdColor = 'rgb(243 246 249)';
             let numOfColumns = 1;
-            if (keywords[kw]) {
-                if (keywords[kw].length) {
-                    numOfColumns = keywords[kw][0].params[0][0] || numOfColumns;
-                    stickyColBkgdColor = keywords[kw][0].params[0][1] || stickyColBkgdColor;
-                }
-                ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+            let isCalledInsideObserver = false;
+
+            if (!keywords[kw]) return;
+
+            if (keywords[kw].length) {
+                numOfColumns = keywords[kw][0].params[0][0] || numOfColumns;
+                stickyColBkgdColor = keywords[kw][0].params[0][1] || stickyColBkgdColor;
             }
+
+            const callStickTableColumns = () => {
+                if (!isCalledInsideObserver) {
+                    ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                }
+            }
+
+            if (isBulkOpsEnabled(keywords, viewId)) {
+                numOfColumns = numOfColumns < 2 ? 2 : numOfColumns;
+                let observerPromise = new Promise((resolve) => {
+                    observeAndExecute(`#${viewId} td .bulkEditCb`, () => {
+                        ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                        isCalledInsideObserver = true;
+                        resolve();
+                    });
+                });
+                // If observerPromise does not resolve within 1000ms, call callStickTableColumns
+                setTimeout(() => {
+                    observerPromise.then(() => {
+                        // Do nothing if observerPromise has resolved
+                    }).catch(() => {
+                        // If observerPromise has not resolved, call callStickTableColumns
+                        callStickTableColumns();
+                    });
+                }, 1000);
+            } else {
+                callStickTableColumns();
+            }
+        }
+
+        function isBulkOpsEnabled(keywords, viewId) {
+            if (keywords._nbo) return false;
+
+            const bulkOps = [
+                { operation: 'bulkEdit', role: 'Bulk Edit', class: 'cell-editable' },
+                { operation: 'bulkCopy', role: 'Bulk Copy', class: 'cell-editable' },
+                { operation: 'bulkDelete', role: 'Bulk Delete', selector: 'kn-delete-link' },
+            ];
+
+            return bulkOps.some(op => {
+                const isEnabled = ktl.core.getCfg().enabled.bulkOps[op.operation] && Knack.getUserRoleNames().includes(op.role);
+                if (!isEnabled) return false;
+                if (op.class) {
+                    ktl.core.waitSelector(`#${viewId} table.${op.class}`)
+                        .then(() => {
+                            return $(`#${viewId} table`).hasClass(op.class);
+                        });
+                }
+                if (op.selector) {
+                    return $(`#${viewId} .${op.selector}`).length > 0;
+                }
+                return true;
+            });
+        }
+
+        /**  Observe the Dom for a selector and execute a callback when the selector is found
+         * @param {string} selector - The selector to observe
+         * @param {function} callback - The callback to execute when the selector is found*/
+        function observeAndExecute(selector, callback) {
+            const observer = new MutationObserver((mutationsList, observer) => {
+                for (let mutation of mutationsList) {
+                    if (mutation.addedNodes.length) {
+                        const elementExists = $(mutation.target).find(selector).length > 0;
+                        if (elementExists) {
+                            callback();
+                            observer.disconnect();
+                            break;
+                        }
+                    }
+                }
+            });
+            observer.observe(document, { childList: true, subtree: true });
         }
 
         /////////////////////////////////////////////////////////////////////////////////
@@ -8956,7 +9057,12 @@ function Ktl($, appInfo) {
                 })
 
             },
-            
+
+            /** Stick table Headers
+             * @param {string} viewId - The view id
+             * @param {array} data - The data array
+             * @param {number} numOfRecords - The number of records to display
+             * @param {number} viewHeight - The view height */
             stickTableHeader: function (viewId, data, numOfRecords, viewHeight) {
                 if (data.length <= numOfRecords) return;
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
@@ -8965,6 +9071,10 @@ function Ktl($, appInfo) {
                     .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
             },
 
+            /** Stick table Columns
+             * @param {string} viewId - The view id
+             * @param {number} numOfColumns - The number of columns to display
+             * @param {string} stickyColBkgdColor - The sticky column background color*/
             stickTableColumns: function (viewId, numOfColumns, stickyColBkgdColor) {
                 let stickyColWidth = 0;
                 for (let i = 1; i <= numOfColumns; i++) {
