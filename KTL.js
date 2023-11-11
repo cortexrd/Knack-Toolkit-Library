@@ -5648,7 +5648,7 @@ function Ktl($, appInfo) {
 
             if (isBulkOpsEnabled(keywords, viewId)) {
                 let observerPromise = new Promise((resolve) => {
-                    observeAndExecute(`#${viewId} th .bulkEditCb`, () => {
+                    observeAndExecute(`#bulkOpsControlsDiv-${viewId}`, () => {
                         ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
                         isCalledInsideObserver = true;
                         resolve();
@@ -5694,8 +5694,10 @@ function Ktl($, appInfo) {
             if (isBulkOpsEnabled(keywords, viewId)) {
                 numOfColumns = numOfColumns < 2 ? 2 : numOfColumns;
                 let observerPromise = new Promise((resolve) => {
-                    observeAndExecute(`#${viewId} td .bulkEditCb`, () => {
+                    console.log('Resolve Observer promise', resolve)
+                    observeAndExecute(`#bulkOpsControlsDiv-${viewId}`, () => {
                         ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                        console.log('observeAndExecute:  stickTableColumns');
                         isCalledInsideObserver = true;
                         resolve();
                     });
@@ -5704,12 +5706,15 @@ function Ktl($, appInfo) {
                 setTimeout(() => {
                     observerPromise.then(() => {
                         // Do nothing if observerPromise has resolved
+                        console.log('observerPromise.then')
                     }).catch(() => {
                         // If observerPromise has not resolved, call callStickTableColumns
+                        console.log('observerPromise.catch')
                         callStickTableColumns();
                     });
                 }, 1000);
             } else {
+                console.log('callStickTableColumns:  else');
                 callStickTableColumns();
             }
         }
@@ -5743,9 +5748,11 @@ function Ktl($, appInfo) {
          * @param {string} selector - The selector to observe
          * @param {function} callback - The callback to execute when the selector is found*/
         function observeAndExecute(selector, callback) {
+            console.log('observeAndExecute:  ', selector);
             const observer = new MutationObserver((mutationsList, observer) => {
                 for (let mutation of mutationsList) {
                     if (mutation.addedNodes.length) {
+                        console.log('observeAndExecute:  ', mutation.addedNodes);
                         const elementExists = $(mutation.target).find(selector).length > 0;
                         if (elementExists) {
                             callback();
