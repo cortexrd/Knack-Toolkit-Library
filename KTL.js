@@ -10497,7 +10497,7 @@ function Ktl($, appInfo) {
                             if (result === LOGIN_SUCCESSFUL) {
                                 waitUserId()
                                     .then(() => {
-                                        result = JSON.stringify({ result: result, APP_KTL_VERSIONS: APP_KTL_VERSIONS, page: menuInfo, agent: navigator.userAgent });
+                                        result = JSON.stringify({ result: result, APP_KTL_VERSIONS: APP_KTL_VERSIONS, publicIP: ktl.sysInfo.getSysInfo().ip, page: menuInfo, agent: navigator.userAgent });
 
                                         ktl.userFilters.loadAllFilters();
                                         ktl.storage.lsRemoveItem('PAUSE_SERVER_ERROR_LOGS');
