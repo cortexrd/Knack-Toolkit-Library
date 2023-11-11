@@ -5271,7 +5271,7 @@ function Ktl($, appInfo) {
                     keywords._bcg && ktl.fields.generateBarcode(viewId, keywords);
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
-                    keywords._copy && ktl.views.copyToClipboard(view, keywords);
+                    keywords._copy && ktl.views.copyToClipboard(viewId, keywords);
                     keywords._ha && headerAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
@@ -8511,55 +8511,65 @@ function Ktl($, appInfo) {
                 }
             },
 
-            copyToClipboard: function (view, keywords) {
+            copyToClipboard: function (viewId, keywords) {
                 const kw = '_copy';
-                if (!view || !keywords || (keywords && !keywords[kw])) return;
+                if (!viewId || !keywords || (keywords && !keywords[kw])) return;
 
-                if (keywords[kw].length && keywords[kw][0].options) {
-                    const options = keywords[kw][0].options;
-                    if (!ktl.core.hasRoleAccess(options)) return;
+                const viewType = ktl.views.getViewType(viewId);
+
+                if (!document.querySelector('#' + viewId + ' .ktlCopyButton')) {
+                    if (keywords[kw].length && keywords[kw][0].options) {
+                        const options = keywords[kw][0].options;
+                        if (!ktl.core.hasRoleAccess(options)) return;
+                    }
+
+                    var viewKtlButtonsDiv;
+
+                    if (viewType === 'table' || viewType === 'search')
+                        viewKtlButtonsDiv = $('#' + viewId + ' .table-keyword-search');
+
+                    if (!viewKtlButtonsDiv || !viewKtlButtonsDiv.length)
+                        viewKtlButtonsDiv = $('#' + viewId + ' .kn-title');
+
+                    viewKtlButtonsDiv.css({ 'display': 'inline-flex' });
+
+                    const copyToClipboard = document.createElement('BUTTON');
+                    copyToClipboard.setAttribute('class', 'kn-button ktlCopyButton');
+                    copyToClipboard.innerHTML = 'Copy';
+                    copyToClipboard.style.marginLeft = '10%';
+                    copyToClipboard.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
+                    viewKtlButtonsDiv.append(copyToClipboard);
+
+                    copyToClipboard.addEventListener('click', function () {
+                        if (viewType === 'table' || viewType === 'search')
+                            ktl.core.selectElementContents(document.querySelector('#' + viewId + ' .kn-table-wrapper'));
+                        else if (viewType === 'details')
+                            ktl.core.selectElementContents(document.querySelector('#' + viewId + '.kn-details section'));
+                        else {
+                            console.log('copyToClipboard error.  Unsupported view type:', viewId);
+                            return;
+                        }
+
+                        try {
+                            var successful = document.execCommand('copy');
+                            var msg = successful ? 'Table copied to clipboard' : 'Error copying table to clipboard';
+                            ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
+                        } catch (err) {
+                            ktl.core.timedPopup('Unable to copy', 'error', 2000);
+                        } finally {
+                            ktl.core.selectElementContents();
+                        }
+
+                    });
                 }
 
-                var viewKtlButtonsDiv;
+                var copyIsDisabled = false;
+                if (document.querySelector('#' + viewId + ' tr.kn-tr-nodata'))
+                    copyIsDisabled = true;
+                else if (viewType === 'search' && !document.querySelector('#' + viewId + ' .kn-table-wrapper'))
+                    copyIsDisabled = true;
 
-                const viewType = view.type;
-                if (viewType === 'table')
-                    viewKtlButtonsDiv = $('#' + view.key + ' .table-keyword-search');
-
-                if (!viewKtlButtonsDiv || !viewKtlButtonsDiv.length)
-                    viewKtlButtonsDiv = $('#' + view.key + ' .kn-title');
-
-                viewKtlButtonsDiv.css({ 'display': 'inline-flex' });
-
-                const copyToClipboard = document.createElement('BUTTON');
-                copyToClipboard.setAttribute('class', 'kn-button');
-                copyToClipboard.id = 'kn-button-copy';
-                copyToClipboard.innerHTML = 'Copy';
-                copyToClipboard.style.marginLeft = '10%';
-                copyToClipboard.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
-                viewKtlButtonsDiv.append(copyToClipboard);
-
-                copyToClipboard.addEventListener('click', function () {
-                    if (viewType === 'table')
-                        ktl.core.selectElementContents(document.querySelector('#' + view.key + ' .kn-table-wrapper'));
-                    else if (viewType === 'details')
-                        ktl.core.selectElementContents(document.querySelector('#' + view.key + '.kn-details section'));
-                    else {
-                        console.log('copyToClipboard error.  Unsupported view type:', view.key);
-                        return;
-                    }
-
-                    try {
-                        var successful = document.execCommand('copy');
-                        var msg = successful ? 'Table copied to clipboard' : 'Error copying table to clipboard';
-                        ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
-                    } catch (err) {
-                        ktl.core.timedPopup('Unable to copy', 'error', 2000);
-                    } finally {
-                        ktl.core.selectElementContents();
-                    }
-
-                });
+                document.querySelector('#' + viewId + ' .ktlCopyButton').disabled = copyIsDisabled;
             },
 
             obfuscateData: function (view, keywords) {
@@ -12698,8 +12708,7 @@ function Ktl($, appInfo) {
             tableKeywordSearchBar.css({ 'display': 'inline-flex' });
 
             const copyToClipboard = document.createElement('BUTTON');
-            copyToClipboard.setAttribute('class', 'kn-button');
-            copyToClipboard.id = 'kn-button-copy';
+            copyToClipboard.setAttribute('class', 'kn-button ktlCopyButton');
             copyToClipboard.innerHTML = 'Copy Top Table to Clipboard';
             copyToClipboard.style.marginLeft = '10%';
             copyToClipboard.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
