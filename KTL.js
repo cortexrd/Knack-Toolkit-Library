@@ -5647,6 +5647,7 @@ function Ktl($, appInfo) {
             }
 
             if (isBulkOpsEnabled(keywords, viewId)) {
+                let isCalledInsideObserver = false;
                 let observerPromise = new Promise((resolve) => {
                     observeAndExecute(`#bulkOpsControlsDiv-${viewId}`, () => {
                         ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
@@ -5654,15 +5655,15 @@ function Ktl($, appInfo) {
                         resolve();
                     });
                 });
-                // If observerPromise does not resolve within 1000ms, call callStickTableHeaders
-                setTimeout(() => {
-                    observerPromise.then(() => {
-                        // Do nothing if observerPromise has resolved
-                    }).catch(() => {
-                        // If observerPromise has not resolved, call callStickTableHeaders
+
+                const callStickTableHeadersIfNotResolved = () => {
+                    if (!isCalledInsideObserver) {
                         callStickTableHeaders();
-                    });
-                }, 1000);
+                    }
+                };
+
+                // If observerPromise does not resolve within 1000ms, call callStickTableHeadersIfNotResolved
+                setTimeout(callStickTableHeadersIfNotResolved, 1000);
             } else {
                 callStickTableHeaders();
             }
@@ -5692,29 +5693,24 @@ function Ktl($, appInfo) {
             }
 
             if (isBulkOpsEnabled(keywords, viewId)) {
-                numOfColumns = numOfColumns < 2 ? 2 : numOfColumns;
+                numOfColumns = Math.max(numOfColumns, 2);
                 let observerPromise = new Promise((resolve) => {
-                    console.log('Resolve Observer promise', resolve)
                     observeAndExecute(`#bulkOpsControlsDiv-${viewId}`, () => {
                         ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
-                        console.log('observeAndExecute:  stickTableColumns');
                         isCalledInsideObserver = true;
                         resolve();
                     });
                 });
-                // If observerPromise does not resolve within 1000ms, call callStickTableColumns
-                setTimeout(() => {
-                    observerPromise.then(() => {
-                        // Do nothing if observerPromise has resolved
-                        console.log('observerPromise.then')
-                    }).catch(() => {
-                        // If observerPromise has not resolved, call callStickTableColumns
-                        console.log('observerPromise.catch')
+
+                const callStickTableColumnsIfNotResolved = () => {
+                    if (!isCalledInsideObserver) {
                         callStickTableColumns();
-                    });
-                }, 1000);
+                    }
+                };
+
+                // If observerPromise does not resolve within 1000ms, call callStickTableColumns
+                setTimeout(callStickTableColumnsIfNotResolved, 1000);
             } else {
-                console.log('callStickTableColumns:  else');
                 callStickTableColumns();
             }
         }
