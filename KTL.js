@@ -5629,43 +5629,28 @@ function Ktl($, appInfo) {
         * @param {object} data - records in table*/
         function stickyTableHeader(viewId, keywords, data) {
             const kw = '_sth';
+            //set default values so no parameters need passing in
             let numOfRecords = 10;
             let viewHeight = 800;
-            let isCalledInsideObserver = false;
 
             if (!keywords[kw]) return;
 
+            // If keyword has params, update number of records and view height
             if (keywords[kw].length) {
                 numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
                 viewHeight = keywords[kw][0].params[0][1] || viewHeight;
             }
-
-            const callStickTableHeaders = () => {
-                if (!isCalledInsideObserver) {
-                    ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
-                }
-            }
-
-            if (isBulkOpsEnabled(keywords, viewId)) {
-                let isCalledInsideObserver = false;
-                let observerPromise = new Promise((resolve) => {
-                    observeAndExecute(`#bulkOpsControlsDiv-${viewId}`, () => {
+            // Check if any bulk operation is enabled
+            const bulkOp = getFirstEnabledBulkOp(keywords);
+            // if bulkOps are enabled wait to see if the bulkOps div is rendered before sticking the header
+            if (bulkOp) {
+                ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`)
+                    .then(() => {
                         ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
-                        isCalledInsideObserver = true;
-                        resolve();
                     });
-                });
-
-                const callStickTableHeadersIfNotResolved = () => {
-                    if (!isCalledInsideObserver) {
-                        callStickTableHeaders();
-                    }
-                };
-
-                // If observerPromise does not resolve within 1000ms, call callStickTableHeadersIfNotResolved
-                setTimeout(callStickTableHeadersIfNotResolved, 1000);
             } else {
-                callStickTableHeaders();
+                // If no bulk operations are enabled, stick the headers immediately
+                ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
             }
         }
 
@@ -5675,90 +5660,50 @@ function Ktl($, appInfo) {
         * @param {object} keywords - The keywords object*/
         function stickyTableColumns(viewId, keywords) {
             const kw = '_stc';
-            let stickyColBkgdColor = 'rgb(243 246 249)';
+            //set default values so no parameters need passing in
             let numOfColumns = 1;
-            let isCalledInsideObserver = false;
+            let stickyColBkgdColor = 'rgb(243 246 249)';
 
             if (!keywords[kw]) return;
 
+            // If keyword has params, update number of columns and background color
             if (keywords[kw].length) {
                 numOfColumns = keywords[kw][0].params[0][0] || numOfColumns;
                 stickyColBkgdColor = keywords[kw][0].params[0][1] || stickyColBkgdColor;
             }
 
-            const callStickTableColumns = () => {
-                if (!isCalledInsideObserver) {
-                    ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
-                }
-            }
+            // Check if any bulk operation is enabled
+            const bulkOp = getFirstEnabledBulkOp(keywords);
 
-            if (isBulkOpsEnabled(keywords, viewId)) {
-                numOfColumns = Math.max(numOfColumns, 2);
-                let observerPromise = new Promise((resolve) => {
-                    observeAndExecute(`#bulkOpsControlsDiv-${viewId}`, () => {
+            // if bulkOps are enabled wait to see if the bulkOps div is rendered before sticking the columns
+            if (bulkOp) {
+                numOfColumns = numOfColumns < 2 ? 2 : numOfColumns;
+                ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`)
+                    .then(() => {
                         ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
-                        isCalledInsideObserver = true;
-                        resolve();
-                    });
-                });
-
-                const callStickTableColumnsIfNotResolved = () => {
-                    if (!isCalledInsideObserver) {
-                        callStickTableColumns();
-                    }
-                };
-
-                // If observerPromise does not resolve within 1000ms, call callStickTableColumns
-                setTimeout(callStickTableColumnsIfNotResolved, 1000);
+                    }); 
             } else {
-                callStickTableColumns();
+                // If no bulk operations are enabled, stick the columns immediately
+                ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
             }
         }
 
-        function isBulkOpsEnabled(keywords, viewId) {
-            if (keywords._nbo) return false;
+        function getFirstEnabledBulkOp(keywords) {
+            if (keywords._nbo) return null;
 
             const bulkOps = [
-                { operation: 'bulkEdit', role: 'Bulk Edit', class: 'cell-editable' },
-                { operation: 'bulkCopy', role: 'Bulk Copy', class: 'cell-editable' },
-                { operation: 'bulkDelete', role: 'Bulk Delete', selector: 'kn-delete-link' },
+                { operation: 'bulkEdit', role: 'Bulk Edit' },
+                { operation: 'bulkCopy', role: 'Bulk Copy' },
+                { operation: 'bulkDelete', role: 'Bulk Delete' },
             ];
 
-            return bulkOps.some(op => {
-                const isEnabled = ktl.core.getCfg().enabled.bulkOps[op.operation] && Knack.getUserRoleNames().includes(op.role);
-                if (!isEnabled) return false;
-                if (op.class) {
-                    ktl.core.waitSelector(`#${viewId} table.${op.class}`)
-                        .then(() => {
-                            return $(`#${viewId} table`).hasClass(op.class);
-                        });
+            const userRoles = Knack.getUserRoleNames();
+            for (let op of bulkOps) {
+                if (ktl.core.getCfg().enabled.bulkOps[op.operation] && userRoles.includes(op.role)) {
+                    return true;
                 }
-                if (op.selector) {
-                    return $(`#${viewId} .${op.selector}`).length > 0;
-                }
-                return true;
-            });
-        }
-
-        /**  Observe the Dom for a selector and execute a callback when the selector is found
-         * @param {string} selector - The selector to observe
-         * @param {function} callback - The callback to execute when the selector is found*/
-        function observeAndExecute(selector, callback) {
-            console.log('observeAndExecute:  ', selector);
-            const observer = new MutationObserver((mutationsList, observer) => {
-                for (let mutation of mutationsList) {
-                    if (mutation.addedNodes.length) {
-                        console.log('observeAndExecute:  ', mutation.addedNodes);
-                        const elementExists = $(mutation.target).find(selector).length > 0;
-                        if (elementExists) {
-                            callback();
-                            observer.disconnect();
-                            break;
-                        }
-                    }
-                }
-            });
-            observer.observe(document, { childList: true, subtree: true });
+            }
+            return false;
         }
 
         /////////////////////////////////////////////////////////////////////////////////
@@ -9075,8 +9020,8 @@ function Ktl($, appInfo) {
             },
 
             /** Stick table Columns
-             * @param {string} viewId - The view id
-             * @param {number} numOfColumns - The number of columns to display
+             * @param {string} viewId - The view key
+             * @param {number} numOfColumns - The number of columns to stick
              * @param {string} stickyColBkgdColor - The sticky column background color*/
             stickTableColumns: function (viewId, numOfColumns, stickyColBkgdColor) {
                 let stickyColWidth = 0;
