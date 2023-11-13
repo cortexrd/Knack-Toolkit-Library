@@ -5647,6 +5647,9 @@ function Ktl($, appInfo) {
                 ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`)
                     .then(() => {
                         ktl.views.stickTableHeader(viewId, data, numOfRecords, viewHeight);
+                    })
+                    .catch((error) => {
+                        console.log('Bulk Ops selector Not Found', error);
                     });
             } else {
                 // If no bulk operations are enabled, stick the headers immediately
@@ -5681,6 +5684,9 @@ function Ktl($, appInfo) {
                 ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`)
                     .then(() => {
                         ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                    })
+                    .catch((error) => {
+                        console.log('Bulk Ops selector Not Found', error);
                     }); 
             } else {
                 // If no bulk operations are enabled, stick the columns immediately
