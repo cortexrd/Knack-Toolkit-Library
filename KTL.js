@@ -5687,10 +5687,12 @@ function Ktl($, appInfo) {
                 ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
             }
         }
-
+        /** Check if user and bulkOps operation is enabled
+         * @param {object} keywords - The keywords object
+         * @returns {boolean} - true if user has access and bulkOps are enabled, false otherwise*/
         function getFirstEnabledBulkOp(keywords) {
-            if (keywords._nbo) return null;
-
+            if (keywords._nbo) return false;
+            
             const bulkOps = [
                 { operation: 'bulkEdit', role: 'Bulk Edit' },
                 { operation: 'bulkCopy', role: 'Bulk Copy' },
