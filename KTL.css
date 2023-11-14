@@ -622,8 +622,4 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	max-width: 80px !important;
 }
 
-.cond1.cond2{
-	background-color: #f008;
-}
-
 /**** KTL_RELATED - END ****/
