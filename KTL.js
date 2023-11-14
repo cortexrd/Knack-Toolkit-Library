@@ -1419,19 +1419,21 @@ function Ktl($, appInfo) {
                         const arrayLength = targetArray.length;
                         if (arrayLength) {
                             //Search parameters to see if we can find a direct view_id.
-                            targetArray.forEach(targetEl => {
+
+                            for (let i = targetArray.length - 1; i >= 0; i--) {
+                                let targetEl = targetArray[i];
+
                                 if (targetEl.startsWith('view_'))
                                     targetViewId = targetEl;
                                 else if (targetEl.startsWith('field_'))
                                     targetFieldId = targetEl;
-                            })
-
-                            //No direct view_id, let's try last param and search by view title.
-                            if (!targetViewId) {
-                                const lastItem = targetArray[arrayLength - 1];
-                                const viewFromTitle = ktl.scenes.findViewWithTitle(lastItem);
-                                if (viewFromTitle)
-                                    targetViewId = viewFromTitle;
+                                else {
+                                    const viewFromTitle = ktl.scenes.findViewWithTitle(targetEl);
+                                    if (viewFromTitle)
+                                        targetViewId = viewFromTitle;
+                                    else
+                                        fieldId = ktl.fields.getFieldIdFromLabel(targetViewId || viewId, targetEl);
+                                }
                             }
 
                             //Still nothing?  Fall back to default: keyword's view.
@@ -8158,10 +8160,7 @@ function Ktl($, appInfo) {
                 return new Promise(function (resolve) {
                     hide();
 
-                    if (!options.ktlCond) {
-                        resolve();
-                        return;
-                    }
+                    if (!options.ktlCond) return resolve();
 
                     const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
 
@@ -8242,9 +8241,8 @@ function Ktl($, appInfo) {
                                         else
                                             unhide();
                                     })
-                                } else {
+                                } else
                                     fieldValue = $(selector)[0].textContent.trim();
-                                }
 
                                 if (!fieldValue || !ktlCompare(fieldValue, operator, value))
                                     unhide();
@@ -8254,6 +8252,103 @@ function Ktl($, appInfo) {
                         }
 
                         resolve();
+                    }
+                });
+            },
+
+            validateKtlCond: function (options = {}) {
+                return new Promise(function (resolve) {
+                    if (!options.ktlCond) return resolve(true);
+
+                    const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
+
+                    const operator = conditions[0] || '';
+                    const value = conditions[1] || '';
+                    const field = conditions[2] || '';
+                    const view = conditions[3] || '';
+
+                    const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
+
+                    if (field.startsWith('$(')) {
+                        const selector = ktl.core.extractJQuerySelector(field);
+                        ktl.core.waitSelector(selector, 10000).then(() => {
+                            const fieldValue = $(selector)[0].textContent.trim();
+                            if (!fieldValue || !ktlCompare(fieldValue, operator, value))
+                                return resolve(false);
+
+                            if ($(selector).is(':input')) {
+                                const update = (event) => {
+                                    if (ktlCompare(event.target.value, operator, value))
+                                        return resolve(true);
+                                    else
+                                        return resolve(false);
+                                }
+                                $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
+                                $(selector).one('change', update);
+                            }
+                        }).catch(() => {
+                            return resolve(false);
+                        });
+                    }
+
+                    if (field === 'ktlNow' || field === 'ktlNowUTC') {
+                        if (ktlCompare(field, operator, value))
+                            return resolve(true);
+                        else
+                            return resolve(false);
+                    }
+
+                    let fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+
+                    if (!fieldId) {
+                        $(document).one(`knack-view-render.${viewId}`, () => {
+                            fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                            apply();
+                        })
+                    } else
+                        apply();
+
+                    function apply() {
+                        let selector = '';
+                        if (viewId && fieldId) {
+                            const viewType = ktl.views.getViewType(viewId);
+                            selector = '#' + viewId;
+                            if (viewType === 'details')
+                                selector += ' .' + fieldId + ' .kn-detail-body';
+                            else if (viewType === 'form') {
+                                selector += ' input#' + fieldId;
+                            }
+                        }
+
+                        if (!selector) {
+                            return resolve(false);
+                        } else {
+                            ktl.core.waitSelector(selector, 10000).then(() => {
+                                let fieldValue;
+                                if (ktl.views.getViewType(viewId) === 'form') {
+                                    fieldValue = $(selector).val();
+                                    $(selector).off('keyup.ktlHc').on('keyup.ktlHc', (event) => {
+                                        if (ktlCompare(event.target.value, operator, value))
+                                            return resolve(true);
+                                        else
+                                            return resolve(false);
+                                    })
+                                } else
+                                    fieldValue = $(selector)[0].textContent.trim();
+
+                                const fieldType = ktl.fields.getFieldType(fieldId);
+                                if (fieldType && numericFieldTypes.includes(fieldType))
+                                    fieldValue = ktl.core.extractNumericValue(fieldValue, fieldId);
+
+                                if (!fieldValue)
+                                    return resolve(false);
+
+                                const res = ktlCompare(fieldValue, operator, value);
+                                return resolve(res);
+                            }).catch(() => {
+                                return resolve(false);
+                            });
+                        }
                     }
                 });
             },
@@ -8319,19 +8414,24 @@ function Ktl($, appInfo) {
                     const options = kwInstance.options;
                     if (!ktl.core.hasRoleAccess(options)) return;
 
-                    const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                    ktl.core.waitSelector(sel, 20000)
-                        .then(() => {
-                            var classes = kwInstance.params[0];
-                            for (var i = 0; i < classes.length; i++) {
-                                var params = classes[i];
-                                if (params.startsWith('!'))
-                                    $(sel).removeClass(params.replace('!', ''));
-                                else
-                                    $(sel).addClass(params);
+                    ktl.views.validateKtlCond(options)
+                        .then(valid => {
+                            if (valid) {
+                                const sel = ktl.core.computeTargetSelector(viewId, '', options);
+                                ktl.core.waitSelector(sel, 20000)
+                                    .then(() => {
+                                        var classes = kwInstance.params[0];
+                                        for (var i = 0; i < classes.length; i++) {
+                                            var params = classes[i];
+                                            if (params.startsWith('!'))
+                                                $(sel).removeClass(params.replace('!', ''));
+                                            else
+                                                $(sel).addClass(params);
+                                        }
+                                    })
+                                    .catch(function () { })
                             }
                         })
-                        .catch(function () { })
                 }
             },
 
