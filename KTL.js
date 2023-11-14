@@ -5702,7 +5702,7 @@ function Ktl($, appInfo) {
             ];
 
             const userRoles = Knack.getUserRoleNames();
-            for (let op of bulkOps) {
+            for (const op of bulkOps) {
                 if (ktl.core.getCfg().enabled.bulkOps[op.operation] && userRoles.includes(op.role)) {
                     return true;
                 }
