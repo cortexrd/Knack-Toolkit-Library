@@ -5579,6 +5579,8 @@ function Ktl($, appInfo) {
         }
 
         function addTooltips(view) {
+            if (!view) return;
+
             const kw = '_ttip'; // @params = [tooltip text], [options] - Must be in two groups so that commas can be used in the tooltip text, options are tdfl (table, details, forms and lists)
             const viewId = view.key;
             const viewType = ktl.views.getViewType(viewId);
@@ -6717,50 +6719,53 @@ function Ktl($, appInfo) {
             },
 
             addViewId: function (view, fontStyle = 'color: red; font-weight: bold; font-size:small') {
-                if (ktl.userPrefs.getUserPrefs().showViewId && $('#' + view.key + '-label-id').length === 0/*Add once only*/) {
+                if (!view) return;
+                const viewId = view.key;
+
+                if (ktl.userPrefs.getUserPrefs().showViewId && $('#' + viewId + '-label-id').length === 0/*Add once only*/) {
                     var label = document.createElement('label');
-                    label.setAttribute('id', view.key + '-label-id');
-                    label.appendChild(document.createTextNode('    ' + view.key));
+                    label.setAttribute('id', viewId + '-label-id');
+                    label.appendChild(document.createTextNode('    ' + viewId));
                     label.setAttribute('style', 'margin-left: 10px; margin-top: 8px;' + fontStyle);
 
-                    var submitBtn = $('#' + view.key + ' .kn-submit');
-                    var divHdr = document.querySelector('#' + view.key + ' h1:not(#knack-logo), #' + view.key + ' h2, #' + view.key + ' h3, #' + view.key + ' h4');
+                    var submitBtn = $('#' + viewId + ' .kn-submit');
+                    var divHdr = document.querySelector('#' + viewId + ' h1:not(#knack-logo), #' + viewId + ' h2, #' + viewId + ' h3, #' + viewId + ' h4');
                     if (divHdr) {
-                        //console.log(view.key, 'divHdr =', divHdr, divHdr.innerText);
+                        //console.log(viewId, 'divHdr =', divHdr, divHdr.innerText);
 
                         //If there's no title or no title text, let's try our best to get an elegant layout.
-                        var divTitle = document.querySelector('#' + view.key + ' .kn-title')
+                        var divTitle = document.querySelector('#' + viewId + ' .kn-title')
                         if (divTitle) {
                             var display = window.getComputedStyle(divTitle).display;
-                            //console.log(view.key, 'display =', display);
+                            //console.log(viewId, 'display =', display);
                             if (display && (display === 'none' || !divHdr.innerText)) {
                                 if (submitBtn.length)
                                     submitBtn.append(label);
                                 else
-                                    $('#' + view.key + ' .view-header').append(label);
+                                    $('#' + viewId + ' .view-header').append(label);
                             } else
-                                $('#' + view.key + ' .kn-title').append(label);
+                                $('#' + viewId + ' .kn-title').append(label);
                         } else {
                             //Why Search views don't show it the first render?
-                            $('#' + view.key).append(label);
+                            $('#' + viewId).append(label);
                         }
                     } else {
                         if (submitBtn.length) {
                             submitBtn.append(label);
-                        } else if ($('.kn-form.kn-view' + '.' + view.key).length) {
-                            $('.kn-form.kn-view' + '.' + view.key).append(label);
-                        } else if ($('#' + view.key + ' .control').length) {
-                            $('#' + view.key + ' .control').append(label);
-                        } else if ($('.kn-details.kn-view' + '.' + view.key).length) {
-                            $('.kn-details.kn-view' + '.' + view.key).append(label);
+                        } else if ($('.kn-form.kn-view' + '.' + viewId).length) {
+                            $('.kn-form.kn-view' + '.' + viewId).append(label);
+                        } else if ($('#' + viewId + ' .control').length) {
+                            $('#' + viewId + ' .control').append(label);
+                        } else if ($('.kn-details.kn-view' + '.' + viewId).length) {
+                            $('.kn-details.kn-view' + '.' + viewId).append(label);
                         } else {
                             label.setAttribute('style', 'margin-top: 8px;' + fontStyle);
-                            $('#' + view.key).prepend(label);
+                            $('#' + viewId).prepend(label);
                         }
                     }
                 } else {
                     if (!ktl.userPrefs.getUserPrefs().showViewId) {
-                        $('#' + view.key + '-label-id').remove();
+                        $('#' + viewId + '-label-id').remove();
                     }
                 }
             },
@@ -6827,23 +6832,58 @@ function Ktl($, appInfo) {
                 }
             },
 
-            addTimeStampToHeader: function (viewId = '', keywords) {
+            addTimeStampToHeader: function (viewId, keywords) {
+                if (!viewId) return;
+
                 const kw = '_ts';
-                if (!(viewId && keywords && keywords[kw])) return;
+                if (!(keywords && keywords[kw])) return;
 
                 if (keywords[kw].length && keywords[kw][0].options) {
                     const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                if (!viewId) return;
-                var header = document.querySelector('#' + viewId + ' .kn-title');
                 if ($('#' + viewId + '-timestamp-id').length === 0/*Add only once*/) {
                     var timestamp = document.createElement('label');
                     timestamp.setAttribute('id', viewId + '-timestamp-id');
                     timestamp.appendChild(document.createTextNode(ktl.core.getCurrentDateTime(false, true, false, false)));
                     timestamp.setAttribute('style', 'margin-left: 60px; color: blue; font-weight: bold;');
-                    header && header.append(timestamp);
+
+                    var submitBtn = $('#' + viewId + ' .kn-submit');
+                    var divHdr = document.querySelector('#' + viewId + ' h1:not(#knack-logo), #' + viewId + ' h2, #' + viewId + ' h3, #' + viewId + ' h4');
+                    if (divHdr) {
+                        //console.log(viewId, 'divHdr =', divHdr, divHdr.innerText);
+
+                        //If there's no title or no title text, let's try our best to get an elegant layout.
+                        var divTitle = document.querySelector('#' + viewId + ' .kn-title')
+                        if (divTitle) {
+                            var display = window.getComputedStyle(divTitle).display;
+                            //console.log(viewId, 'display =', display);
+                            if (display && (display === 'none' || !divHdr.innerText)) {
+                                if (submitBtn.length)
+                                    submitBtn.append(timestamp);
+                                else
+                                    $('#' + viewId + ' .view-header').append(timestamp);
+                            } else
+                                $('#' + viewId + ' .kn-title').append(timestamp);
+                        } else {
+                            //Why Search views don't show it the first render?
+                            $('#' + viewId).append(timestamp);
+                        }
+                    } else {
+                        if (submitBtn.length) {
+                            submitBtn.append(timestamp);
+                        } else if ($('.kn-form.kn-view' + '.' + viewId).length) {
+                            $('.kn-form.kn-view' + '.' + viewId).append(timestamp);
+                        } else if ($('#' + viewId + ' .control').length) {
+                            $('#' + viewId + ' .control').append(timestamp);
+                        } else if ($('.kn-details.kn-view' + '.' + viewId).length) {
+                            $('.kn-details.kn-view' + '.' + viewId).append(timestamp);
+                        } else {
+                            timestamp.setAttribute('style', 'margin-top: 8px;' + fontStyle);
+                            $('#' + viewId).prepend(timestamp);
+                        }
+                    }
                 }
             },
 
