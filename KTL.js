@@ -8315,9 +8315,10 @@ function Ktl($, appInfo) {
                             selector = '#' + viewId;
                             if (viewType === 'details')
                                 selector += ' .' + fieldId + ' .kn-detail-body';
-                            else if (viewType === 'form') {
+                            else if (viewType === 'form')
                                 selector += ' input#' + fieldId;
-                            }
+                            else
+                                ktl.log.clog('purple', 'validateKtlCond - unsupported view type', viewId, viewType);
                         }
 
                         if (!selector) {
