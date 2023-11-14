@@ -5277,6 +5277,8 @@ function Ktl($, appInfo) {
                     keywords._ha && headerAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
+                    keywords._sth && stickyTableHeader(viewId, keywords, data);
+                    keywords._stc && stickyTableColumns(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5631,6 +5633,94 @@ function Ktl($, appInfo) {
                     }
                 }
             }
+        }
+
+        /** _sth = Sticky Table Header
+        * keyword @params numOfRecords, viewHeight - minimum records in table and height of view
+        * @param {string} viewId
+        * @param {object} keywords
+        * @param {object} data */
+        function stickyTableHeader(viewId, keywords, data) {
+            const kw = '_sth';
+            let numOfRecords = 10;
+            let viewHeight = 800;
+
+            if (!keywords[kw]) return;
+
+            if (keywords[kw].length) {
+                numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
+                viewHeight = keywords[kw][0].params[0][1] || viewHeight;
+            }
+
+            if (data.length < numOfRecords) return;
+
+            const bulkOp = getFirstEnabledBulkOp(keywords);
+            if (bulkOp) {
+                ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`, 500)
+                    .then(() => {
+                        ktl.views.stickTableHeader(viewId, viewHeight);
+                    })
+                    .catch(() => {
+                        //give enough time for the bulkOps div to show if not apply sticky header
+                        ktl.views.stickTableHeader(viewId, viewHeight);
+                    });
+            } else {
+                ktl.views.stickTableHeader(viewId, viewHeight);
+            }
+        }
+
+        /** _stc = Sticky Table Columns
+        * keyword @param stickyColBkgdColor - The background color of the sticky column
+        * @param {string} viewId
+        * @param {object} keywords */
+        function stickyTableColumns(viewId, keywords) {
+            const kw = '_stc';
+            let numOfColumns = 1;
+            let stickyColBkgdColor = 'rgb(243 246 249)';
+
+            if (!keywords[kw]) return;
+
+            if (keywords[kw].length) {
+                numOfColumns = keywords[kw][0].params[0][0] || numOfColumns;
+                stickyColBkgdColor = keywords[kw][0].params[0][1] || stickyColBkgdColor;
+            }
+
+            const bulkOp = getFirstEnabledBulkOp(keywords);
+
+            if (bulkOp) {
+                ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`, 500)
+                    .then(() => {
+                        numOfColumns = numOfColumns < 2 ? 2 : numOfColumns;
+                        ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                    })
+                    .catch(() => {
+                        //give enough time for the bulkOps div to show if not apply sticky columns with original params
+                        ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                    });
+            } else {
+                ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+            }
+        }
+
+        /** Check if user and bulkOps operation is enabled
+         * @param {object} keywords
+         * @returns {boolean} - true if user has access and bulkOps are enabled*/
+        function getFirstEnabledBulkOp(keywords) {
+            if (keywords._nbo) return false;
+
+            const bulkOps = [
+                { operation: 'bulkEdit', role: 'Bulk Edit' },
+                { operation: 'bulkCopy', role: 'Bulk Copy' },
+                { operation: 'bulkDelete', role: 'Bulk Delete' },
+            ];
+
+            const userRoles = Knack.getUserRoleNames();
+            for (const op of bulkOps) {
+                if (ktl.core.getCfg().enabled.bulkOps[op.operation] && userRoles.includes(op.role)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /////////////////////////////////////////////////////////////////////////////////
@@ -9040,6 +9130,32 @@ function Ktl($, appInfo) {
                         e.preventDefault();
                 })
 
+            },
+
+            /** Stick table Headers
+             * @param {string} viewId
+             * @param {number} viewHeight */
+            stickTableHeader: function (viewId, viewHeight) {
+                $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
+                    .css('height', viewHeight + 'px')
+                    .find('th')
+                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
+            },
+
+            /** Stick table Columns
+             * @param {string} viewId
+             * @param {number} numOfColumns
+             * @param {string} stickyColBkgdColor */
+            stickTableColumns: function (viewId, numOfColumns, stickyColBkgdColor) {
+                let stickyColWidth = 0;
+                for (let i = 1; i <= numOfColumns; i++) {
+                    const tableHeadSelector = $(`#${viewId} thead tr th:nth-child(${i})`);
+                    const tableBodySelector = $(`#${viewId} tbody tr td:nth-child(${i})`);
+                    const columnWidth = tableHeadSelector.outerWidth();
+                    stickyColWidth += columnWidth;
+                    tableHeadSelector.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px' });
+                    tableBodySelector.css({ 'z-index': 1, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': stickyColBkgdColor });
+                }
             },
         }
     })(); //Views feature
