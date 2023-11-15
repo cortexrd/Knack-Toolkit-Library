@@ -5279,6 +5279,7 @@ function Ktl($, appInfo) {
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
                     keywords._sth && stickyTableHeader(viewId, keywords, data);
                     keywords._stc && stickyTableColumns(viewId, keywords);
+                    keywords._recid && setRecordId(viewId, keywords, data);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6464,6 +6465,114 @@ function Ktl($, appInfo) {
 
             $('#' + viewId + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
             $('#' + viewId + ' .view-header h2').addClass('ktlHidden');
+        }
+
+        //Sets the record ID of a newly created (or empty) record.
+        //Ex: _recid = Record ID, Tracts
+        function setRecordId(viewId, keywords, data) {
+            const kw = '_recid';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            const viewType = ktl.views.getViewType(viewId);
+
+            if (viewType === 'form') {
+                //Do we have all params ok?  There must be a PUT view.
+
+                //Process Add only, not Edit.
+                const action = ktl.views.getViewObj(viewId).action;
+                if (action === 'insert' || action === 'create') {
+                    $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
+                        const viewId = REC_ID_RETRIEVE_VIEW;
+                        const recId = record.id;
+                        var apiData = {};
+                        apiData[RECID_FIELD_ID] = recId;
+                        ktl.core.knAPI(viewId, recId, apiData, 'PUT', [])
+                            .then(function () {
+                                console.log('RecId set successfully');
+                            })
+                            .catch(function (reason) {
+                                alert('Record IDs update error: ' + JSON.parse(reason.responseText).errors[0].message);
+                            })
+                    });
+                }
+            } else if (viewType === 'table') {
+                //Check if Inline edit is enabled
+            }
+
+
+            const REC_ID_RETRIEVE_VIEW = 'view_1459';
+            var RECID_FIELD_ID;
+            var updateRecIdArray = [];
+            $(document).on('knack-view-render.' + REC_ID_RETRIEVE_VIEW, function (event, view, data) {
+                if (updateRecIdArray.length) return;
+
+                RECID_FIELD_ID = ktl.fields.getFieldIdFromLabel(REC_ID_RETRIEVE_VIEW, 'Record ID');
+                data.forEach(el => {
+                    if (!el[RECID_FIELD_ID])
+                        updateRecIdArray.push(el.id);
+                })
+
+                const viewId = view.key;
+                const objName = ktl.views.getViewSourceName(viewId);
+
+                var arrayLen = updateRecIdArray.length;
+                if (!arrayLen) {
+                    ktl.views.autoRefresh();
+                    Knack.hideSpinner();
+                    return;
+                }
+
+                ktl.core.infoPopup();
+                ktl.views.autoRefresh(false);
+                ktl.scenes.spinnerWatchdog(false);
+
+                var idx = 0;
+                var countDone = 0;
+                var itv = setInterval(() => {
+                    if (idx < arrayLen)
+                        updateRecord(updateRecIdArray[idx++]);
+                    else
+                        clearInterval(itv);
+                }, 150);
+
+                function updateRecord(recId) {
+                    showProgress();
+                    var apiData = {};
+                    apiData[RECID_FIELD_ID] = recId;
+                    ktl.core.knAPI(viewId, recId, apiData, 'PUT', [])
+                        .then(function () {
+                            if (++countDone === updateRecIdArray.length) {
+                                updateRecIdArray = [];
+                                Knack.showSpinner();
+                                ktl.core.removeInfoPopup();
+                                ktl.views.refreshView(viewId).then(function () {
+                                    ktl.scenes.spinnerWatchdog();
+                                    setTimeout(function () {
+                                        ktl.views.autoRefresh();
+                                        Knack.hideSpinner();
+                                    }, 1000);
+                                })
+                            } else
+                                showProgress();
+                        })
+                        .catch(function (reason) {
+                            ktl.core.removeInfoPopup();
+                            Knack.hideSpinner();
+                            ktl.scenes.spinnerWatchdog();
+                            ktl.views.autoRefresh();
+                            alert('Record IDs update error: ' + JSON.parse(reason.responseText).errors[0].message);
+                        })
+
+                    function showProgress() {
+                        //ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                    }
+                }
+            })
         }
 
         //Views
