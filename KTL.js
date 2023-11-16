@@ -50,7 +50,7 @@ function Ktl($, appInfo) {
 
                 var title = attr.title;
 
-                if (attr.type === 'rich_text')
+                if (attr.type === 'rich_text' && attr.content)
                     title = attr.content.replace('<p>_', ' _');
 
                 var cleanedUpTitle = title;
