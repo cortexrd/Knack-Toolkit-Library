@@ -89,7 +89,7 @@ function Ktl($, appInfo) {
                         ktlKeywords[scn.attributes.key] = viewKwObj;
                 }
 
-                if (attr.type === 'rich_text' && !title.includes('_ol'))
+                if (attr.type === 'rich_text' && (title && !title.includes('_ol')))
                     attr.content = cleanedUpTitle;
                 else
                     attr.title = cleanedUpTitle;
@@ -12627,8 +12627,6 @@ function Ktl($, appInfo) {
                     deviceIsCompatibleWithRecoveryWd = true;
                 } else if ((sysInfo.os === 'Linux' && sysInfo.processor.includes('arm')))
                     deviceIsCompatibleWithRecoveryWd = true;
-                else
-                    deviceIsCompatibleWithRecoveryWd = false;
 
                 if (deviceIsCompatibleWithRecoveryWd) {
                     if (!cfg.recoveryWatchdogEnabled) {
