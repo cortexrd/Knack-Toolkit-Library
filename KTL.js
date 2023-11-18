@@ -5279,6 +5279,7 @@ function Ktl($, appInfo) {
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
                     keywords._sth && stickyTableHeader(viewId, keywords, data);
                     keywords._stc && stickyTableColumns(viewId, keywords);
+                    keywords._recid && setRecordId(viewId, keywords, data);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6464,6 +6465,81 @@ function Ktl($, appInfo) {
 
             $('#' + viewId + ' .view-header h1').addClass('ktlHidden'); //Search Views use H1 instead of H2.
             $('#' + viewId + ' .view-header h2').addClass('ktlHidden');
+        }
+
+        //Sets the record ID of a newly created (or empty) record.
+        //Ex: _recid = Record ID, Tracts
+        function setRecordId(viewId, keywords, data) {
+            const kw = '_recid';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType !== 'table') return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            var recIdLabel = 'Record ID';
+            const params = keywords[kw][0] && keywords[kw][0].params;
+            if (keywords[kw][0] && params.length && params[0].length)
+                recIdLabel = params[0][0];
+
+            const recIdFieldId = ktl.fields.getFieldIdFromLabel(viewId, recIdLabel);
+            if (!recIdFieldId) return;
+
+            var updateRecIdArray = [];
+
+            data.forEach(el => {
+                if (!el[recIdFieldId])
+                    updateRecIdArray.push(el.id);
+            })
+
+            const objName = ktl.views.getViewSourceName(viewId);
+
+            var arrayLen = updateRecIdArray.length;
+            if (!arrayLen) return;
+
+            ktl.views.autoRefresh(false);
+            ktl.scenes.spinnerWatchdog(false);
+
+            var idx = 0;
+            var countDone = 0;
+            var itv = setInterval(() => {
+                if (idx < arrayLen)
+                    updateRecord(updateRecIdArray[idx++]);
+                else
+                    clearInterval(itv);
+            }, 150);
+
+            function updateRecord(recId) {
+                showProgress();
+                var apiData = {};
+                apiData[recIdFieldId] = recId;
+                ktl.core.knAPI(viewId, recId, apiData, 'PUT')
+                    .then(function () {
+                        if (++countDone === updateRecIdArray.length) {
+                            updateRecIdArray = [];
+                            Knack.showSpinner();
+                            ktl.views.refreshView(viewId).then(function () {
+                                Knack.hideSpinner();
+                                ktl.scenes.spinnerWatchdog();
+                                ktl.views.autoRefresh();
+                            })
+                        }
+                    })
+                    .catch(function (reason) {
+                        Knack.hideSpinner();
+                        ktl.scenes.spinnerWatchdog();
+                        ktl.views.autoRefresh();
+                        alert('Record IDs update error: ' + JSON.parse(reason.responseText).errors[0].message);
+                    })
+
+                function showProgress() {
+                    console.log('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                }
+            }
         }
 
         //Views
@@ -8486,7 +8562,10 @@ function Ktl($, appInfo) {
 
             getViewSourceName: function (viewId) {
                 if (!viewId) return;
-                var object = Knack.router.scene_view.model.views._byId[viewId].attributes.source.object;
+                const viewObj = Knack.views[viewId];
+                if (!viewObj) return;
+
+                var object = viewObj.model.view.source.object;
                 return Knack.objects._byId[object].attributes.name;
             },
 
