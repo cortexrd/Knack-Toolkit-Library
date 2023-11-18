@@ -284,8 +284,8 @@ function Ktl($, appInfo) {
     //jQuery extensions - BEGIN
     //Searches a selector for text like : contains, but with an exact match, and after a spaces trim.
     $.expr[':'].textEquals = function (el, i, m) {
-        var searchText = m[3];
-        var match = $(el).text().trim().match("^" + searchText + "$");
+        let searchText = m[3];
+        let match = $(el).text().replace('*', '').trim().match('^' + searchText + '$'); //Remove * for Required fields.
         return match && match.length > 0;
     }
 
@@ -2569,14 +2569,13 @@ function Ktl($, appInfo) {
                 const viewType = ktl.views.getViewType(viewId);
                 try {
                     if (viewType === 'form') {
-                        field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
-                        if (field.length) {
-                            if (exactMatch && field[0].textContent === fieldLabel)
-                                field = field[0].closest('.kn-input');
-                            else
-                                if (field[0].textContent.includes(fieldLabel))
-                                    field = field[0].closest('.kn-input');
+                        if (exactMatch)
+                            field = $('#' + viewId + ' .kn-label:textEquals("' + fieldLabel + '")');
+                        else
+                            field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
 
+                        if (field.length) {
+                            field = field[0].closest('.kn-input');
                             return field ? field.attributes['data-input-id'].value : undefined;
                         }
                     } else if (viewType === 'details') {
