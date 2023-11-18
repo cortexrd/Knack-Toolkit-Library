@@ -6467,8 +6467,6 @@ function Ktl($, appInfo) {
             $('#' + viewId + ' .view-header h2').addClass('ktlHidden');
         }
 
-        //Sets the record ID of a newly created (or empty) record.
-        //Ex: _recid = Record ID, Tracts
         function setRecordId(viewId, keywords, data) {
             const kw = '_recid';
             if (!(viewId && keywords && keywords[kw])) return;
@@ -6496,10 +6494,10 @@ function Ktl($, appInfo) {
                     updateRecIdArray.push(el.id);
             })
 
-            const objName = ktl.views.getViewSourceName(viewId);
-
             var arrayLen = updateRecIdArray.length;
             if (!arrayLen) return;
+
+            const objName = ktl.views.getViewSourceName(viewId);
 
             ktl.views.autoRefresh(false);
             ktl.scenes.spinnerWatchdog(false);
