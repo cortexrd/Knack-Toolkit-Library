@@ -97,6 +97,7 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 -   Bulk Operations: Edit, Copy and Delete
 -   Form data persistence that saves as you type, and will load back your data if a page is reloaded after a submit failure or power outage
 -   Dropdown selector improvements
+-   Click followed by long press anywhere in a view to refresh that view
 -   Numeric pre-validation
 -   Auto-focus on first field of a form or search field in a table
 -   Sorted menus
@@ -130,7 +131,7 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 ## 
 
-## All code and documentation written by:
+## This project was started by:
 
 Normand Defayette
 
