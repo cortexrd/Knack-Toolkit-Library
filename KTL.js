@@ -5540,17 +5540,19 @@ function Ktl($, appInfo) {
                 const td = row.querySelectorAll('td');
                 var summaryType = '';
                 for (var col = 0; col < td.length; col++) {
-                    const txt = td[col].textContent.trim();
-                    const fieldId = headers[col].className;
-                    const val = ktl.core.extractNumericValue(txt, fieldId);
-                    if (txt !== '' && val === undefined) {
-                        //Found a summary type, ex: "Avg".
-                        summaryType = txt;
-                        summaryObj[summaryType] = {};
-                    } else if (summaryType && val) {
-                        var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
-                        if (colHeader)
-                            summaryObj[summaryType][colHeader] = val;
+                    if (headers[col]) {
+                        const txt = td[col].textContent.trim();
+                        const fieldId = headers[col].className;
+                        const val = ktl.core.extractNumericValue(txt, fieldId);
+                        if (txt !== '' && val === undefined) {
+                            //Found a summary type, ex: "Avg".
+                            summaryType = txt;
+                            summaryObj[summaryType] = {};
+                        } else if (summaryType && val) {
+                            var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
+                            if (colHeader)
+                                summaryObj[summaryType][colHeader] = val;
+                        }
                     }
                 }
             }
