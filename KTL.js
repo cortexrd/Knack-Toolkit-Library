@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.18.8';
+    const KTL_VERSION = '0.18.9';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3054,7 +3054,7 @@ function Ktl($, appInfo) {
                                 continue; //JIC - should never happen since fieldsToExclude are never saved in the first place.
                             }
 
-                            const fieldText = formDataObj[view.key][fieldId];
+                            var fieldText = formDataObj[view.key][fieldId];
 
                             //If we have an object instead of plain text, we need to recurse into it for each sub-field.
                             const field = Knack.objects.getField(fieldId);
