@@ -72,6 +72,7 @@ window.KnackApp = function ($, appInfo = {}) {
                     warning: ';background-color:#fffa5e;border:2px solid #7e8060',
                     error: ';background-color:#FFB0B0;border:5px solid #660000',
                 },
+
                 tooltipStyles: {
                     ktlTtipFormViewBgColor: '#222222',
                     ktlTtipFormViewTxtColor: '#ffffff',
@@ -82,8 +83,8 @@ window.KnackApp = function ($, appInfo = {}) {
                     ktlTtipTableViewBgColor: '#222222',
                     ktlTtipTableViewTxtColor: '#ffffff',
                     ktlTtipIconTableViewColor: '#222222',
-    
                 },
+
                 //Functions in this app.
                 isKiosk: isKiosk,
             })

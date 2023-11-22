@@ -22,6 +22,13 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
     const lsShortName = Knack.app.attributes.name.substr(0, 6).replace(/ /g, '') + '_' + app_id.substr(-4, 4) + '_';
 
+    //Used to bypass KTL completely, typically to troubleshoot and isolate an issue.  Used with the Knack Dev Tools popup.
+    const bypassKtl = (sessionStorage.getItem(lsShortName + 'bypassKtl') !== null);
+    if (bypassKtl) {
+        callback();
+        return;
+    }
+
     //Debug this specific device, if it has the remoteDev entry in localStorage.
     if (localStorage.getItem(lsShortName + 'remoteDev') === 'true')
         ktlVersion = 'dev';

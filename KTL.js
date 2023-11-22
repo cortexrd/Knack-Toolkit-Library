@@ -9089,7 +9089,7 @@ function Ktl($, appInfo) {
                 // Define the tooltip position based on the view type
                 if (viewType === 'list') viewType = 'details';
                 const tooltipPosition = {
-                    form: `#${viewId} #kn-input-${fieldId} label`,
+                    form: `#${viewId} #kn-input-${fieldId} label :first-child`,
                     details: `#${viewId} .${fieldId} .kn-detail-label`,
                     table: `#${viewId} th.${fieldId}`,
                     list: `#${viewId} .${fieldId} .kn-detail-label`,
@@ -10019,6 +10019,14 @@ function Ktl($, appInfo) {
                                     else
                                         ktl.storage.lsRemoveItem('remoteDev', true);
                                     location.reload(true);
+                                })
+
+                                //Bypass the KTL, but only for this session.
+                                ktl.fields.addButton(devBtnsDiv, 'Bypass KTL', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                    if (confirm('Bypass KTL on this device?')) {
+                                        ktl.storage.lsSetItem('bypassKtl', true, true, true);
+                                        location.reload(true);
+                                    }
                                 })
 
                                 //Execute custom code that is fetched from core's config.
