@@ -1532,6 +1532,43 @@ function Ktl($, appInfo) {
             showKnackStyleMessage: function (viewId, message, style = 'error' /*or success*/) {
                 Knack.$['utility_forms'].renderMessage($('#' + viewId), '<b>' + message + '</b>', style);
             },
+
+            findParentURL: function (URLNow, numParents) {
+                if (numParents < 0 || numParents > 10) {
+                    console.error("Number of parents should be between 0 and 10.");
+                    return null;
+                }
+
+                // Split the URL after the protocol to avoid altering the 'http://' or 'https://'
+                let protocolSplit = URLNow.split("://");
+                if (protocolSplit.length < 2) {
+                    console.error("Invalid URL format.");
+                    return null;
+                }
+
+                let protocol = protocolSplit[0];
+                let urlWithoutProtocol = protocolSplit[1];
+
+                let urlParts = urlWithoutProtocol.split('/').filter(part => part !== '');
+
+                // Remove two segments for each parent level
+                let segmentsToRemove = numParents * 2;
+                let sliceIndex = urlParts.length - segmentsToRemove;
+
+                if (sliceIndex < 0) {
+                    console.error("Number of parents specified is too high for the given URLNow.");
+                    return null;
+                }
+
+                let parentURL = protocol + "://" + urlParts.slice(0, sliceIndex).join('/');
+                // Add back the trailing slash if the original URL had one
+                if (URLNow.endsWith('/')) {
+                    parentURL += '/';
+                }
+
+                return parentURL;
+            },
+
         }
     })(); //Core
 
@@ -5279,6 +5316,7 @@ function Ktl($, appInfo) {
                     keywords._sth && stickyTableHeader(viewId, keywords, data);
                     keywords._stc && stickyTableColumns(viewId, keywords);
                     keywords._recid && setRecordId(viewId, keywords, data);
+                    keywords._parent && gotoParentAfterSubmit(viewId, keywords, data);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5489,9 +5527,12 @@ function Ktl($, appInfo) {
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
-            if (!viewId || Knack.views[viewId].model.view.type !== 'form') return;
-
             const kw = '_rvs';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType !== 'form') return;
+
             if (keywords[kw].length && keywords[kw][0].options) {
                 const options = keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
@@ -6538,6 +6579,23 @@ function Ktl($, appInfo) {
                 function showProgress() {
                     console.log('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
                 }
+            }
+        }
+
+        function gotoParentAfterSubmit(viewId, keywords) {
+            const kw = '_parent';
+            if (!(viewId && keywords && keywords[kw] && ktl.views.getViewType(viewId) !== 'form')) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                $(document).bindFirst('knack-form-submit.' + viewId, () => {
+                    const url = ktl.core.findParentURL(window.location.href, 3);
+                    url && (window.location.href = url);
+                })
             }
         }
 
