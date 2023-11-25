@@ -5753,7 +5753,7 @@ function Ktl($, appInfo) {
                 if (params.length) {
                     let fieldIds;
                     if (viewType === 'details') {
-                        fieldIds = Array.from(document.querySelectorAll('#' + viewId + ' .kn-detail')).map((field) => {
+                        fieldIds = Array.from(document.querySelectorAll('#' + viewId + ' [class^=field]')).map((field) => {
                             let fieldId = field.classList.value.match(/field_\d+/);
                             if (fieldId.length)
                                 fieldId = fieldId[0];
@@ -5889,7 +5889,7 @@ function Ktl($, appInfo) {
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (viewType === 'details') {
-                        const cellText = $('#' + viewId + ' .kn-detail.' + fieldId + ' .kn-detail-body')[0].textContent.trim();
+                        const cellText = $('#' + viewId + ' [class^="' + fieldId + '"] .kn-detail-body')[0].textContent.trim();
                         applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
                     } else { //Grids and Lists.
                         let fieldType = ktl.fields.getFieldType(fieldId);
@@ -6094,8 +6094,13 @@ function Ktl($, appInfo) {
                         targetSel = '#' + targetViewId + ' tbody tr[id="' + record.id + '"]' + (propagate ? span : ' .' + targetFieldId + span);
                         if (viewType === 'list')
                             targetSel = '#' + targetViewId + ' [data-record-id="' + record.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
-                        else if (viewType === 'details')
+                        else if (viewType === 'details') {
                             targetSel = '#' + targetViewId + ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
+                        //    if (propagate)
+                        //        targetSel = '#' + targetViewId + ' [class^="' + targetFieldId + '"]' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
+                        //    else
+                        //        targetSel = '#' + targetViewId + ' [class^="' + targetFieldId + '"]' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
+                        }
                     }
 
                     ktl.core.waitSelector(targetSel, 20000)
@@ -7882,6 +7887,7 @@ function Ktl($, appInfo) {
                         preprocessViews(viewId, e)
                             .then(() => {
                                 $('#' + viewId + ' form').submit();
+                                //$(e.target).click();
                             })
                             .catch(outcomeObj => {
                                 ktlHandlePreprocessSubmitError(outcomeObj);
