@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.5.1 */
+/* KTL CSS version: 0.5.2 */
 
 /************ General Settings **************/
 :root {
@@ -530,6 +530,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	display: inline-block;
 }
 
 /* Virtual Keyboard */
