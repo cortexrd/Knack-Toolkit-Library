@@ -1933,18 +1933,20 @@ function Ktl($, appInfo) {
             if (!ktl.fields.getUsingBarcode()) {
 
                 //Process special field keywords
-                var fieldDesc = ktl.fields.getFieldDescription(e.target.id);
-                if (fieldDesc) {
-                    fieldDesc = fieldDesc.toLowerCase();
-                    if (fieldDesc.includes('_uc'))
-                        e.target.value = e.target.value.toUpperCase();
+                var fieldId = e.target.id;
+                if (!fieldId.startsWith('field_'))
+                    fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
 
-                    if (fieldDesc.includes('_num'))
-                        e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
+                if (!fieldId || !fieldId.startsWith('field_')) return;
 
-                    if (fieldDesc.includes('_int'))
-                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
-                }
+                if (ktlKeywords[fieldId]._uc)
+                    e.target.value = e.target.value.toUpperCase();
+
+                if (ktlKeywords[fieldId]._num)
+                    e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
+
+                if (ktlKeywords[fieldId]._int)
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
 
                 ktl.fields.enforceNumeric();
 
@@ -2589,12 +2591,12 @@ function Ktl($, appInfo) {
             },
 
             getFieldDescription: function (fieldId = '') {
-                {
-                    var descr = '';
-                    try { descr = Knack.fields[fieldId].attributes.meta.description; }
-                    catch { /*ignore*/ }
-                    return descr;
-                }
+                if (!fieldId || !fieldId.startsWith('field_')) return;
+
+                var descr = '';
+                try { descr = Knack.fields[fieldId].attributes.meta.description; }
+                catch { /*ignore*/ }
+                return descr;
             },
 
             //Returns the fieldId with the specified view and label.
@@ -2616,10 +2618,29 @@ function Ktl($, appInfo) {
                             return field ? field.attributes['data-input-id'].value : undefined;
                         }
                     } else if (viewType === 'details') {
-                        if (exactMatch)
-                            field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
-                        else
-                            field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
+                        if (Knack.views[viewId].model.view.label_format === 'none') {
+                            const view = Knack.views[viewId].model.view;
+                            var foundField;
+                            view.columns.forEach(col => {
+                                col.groups.forEach(grp => {
+                                    grp.columns.forEach(cols => {
+                                        cols.forEach(fld => {
+                                            if (exactMatch && fld.name === fieldLabel)
+                                                foundField = fld.key;
+                                            else if (fld.name.includes(fieldLabel))
+                                                foundField = fld.key;
+                                        })
+                                    })
+                                })
+                            })
+
+                            return foundField;
+                        } else {
+                            if (exactMatch)
+                                field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
+                            else
+                                field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
+                        }
 
                         if (field.length) {
                             var classes = $(field).parent()[0].classList.value;
@@ -2658,7 +2679,7 @@ function Ktl($, appInfo) {
                     //Support more view types as we go.
                 }
                 catch (e) {
-                    ktl.log.clog('purple', 'getFieldIdFromLabel error: Invalid field selector enountered', fieldLabel);
+                    ktl.log.clog('purple', 'getFieldIdFromLabel error: Invalid field selector encountered', fieldLabel);
                 }
             },
 
@@ -5794,7 +5815,7 @@ function Ktl($, appInfo) {
                 if (params.length) {
                     let fieldIds;
                     if (viewType === 'details') {
-                        fieldIds = Array.from(document.querySelectorAll('#' + viewId + ' .kn-detail')).map((field) => {
+                        fieldIds = Array.from(document.querySelectorAll('#' + viewId + ' [class*=field]')).map((field) => {
                             let fieldId = field.classList.value.match(/field_\d+/);
                             if (fieldId.length)
                                 fieldId = fieldId[0];
@@ -5930,7 +5951,9 @@ function Ktl($, appInfo) {
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (viewType === 'details') {
-                        const cellText = $('#' + viewId + ' .kn-detail.' + fieldId + ' .kn-detail-body')[0].textContent.trim();
+                        var cellText;
+                        const cellSelector = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body');
+                        cellText = cellSelector[0].textContent.trim();
                         applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
                     } else { //Grids and Lists.
                         let fieldType = ktl.fields.getFieldType(fieldId);
@@ -6136,7 +6159,7 @@ function Ktl($, appInfo) {
                         if (viewType === 'list')
                             targetSel = '#' + targetViewId + ' [data-record-id="' + record.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
                         else if (viewType === 'details')
-                            targetSel = '#' + targetViewId + ' .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
+                            targetSel = '#' + targetViewId + ' .' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
                     }
 
                     ktl.core.waitSelector(targetSel, 20000)
@@ -7940,6 +7963,7 @@ function Ktl($, appInfo) {
                         preprocessViews(viewId, e)
                             .then(() => {
                                 $('#' + viewId + ' form').submit();
+                                //$(e.target).click();
                             })
                             .catch(outcomeObj => {
                                 ktlHandlePreprocessSubmitError(outcomeObj);
