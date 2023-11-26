@@ -1896,18 +1896,20 @@ function Ktl($, appInfo) {
             if (!ktl.fields.getUsingBarcode()) {
 
                 //Process special field keywords
-                var fieldDesc = ktl.fields.getFieldDescription(e.target.id);
-                if (fieldDesc) {
-                    fieldDesc = fieldDesc.toLowerCase();
-                    if (fieldDesc.includes('_uc'))
-                        e.target.value = e.target.value.toUpperCase();
+                var fieldId = e.target.id;
+                if (!fieldId.startsWith('field_'))
+                    fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
 
-                    if (fieldDesc.includes('_num'))
-                        e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
+                if (!fieldId || !fieldId.startsWith('field_')) return;
 
-                    if (fieldDesc.includes('_int'))
-                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
-                }
+                if (ktlKeywords[fieldId]._uc)
+                    e.target.value = e.target.value.toUpperCase();
+
+                if (ktlKeywords[fieldId]._num)
+                    e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
+
+                if (ktlKeywords[fieldId]._int)
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
 
                 ktl.fields.enforceNumeric();
 
@@ -2552,12 +2554,12 @@ function Ktl($, appInfo) {
             },
 
             getFieldDescription: function (fieldId = '') {
-                {
-                    var descr = '';
-                    try { descr = Knack.fields[fieldId].attributes.meta.description; }
-                    catch { /*ignore*/ }
-                    return descr;
-                }
+                if (!fieldId || !fieldId.startsWith('field_')) return;
+
+                var descr = '';
+                try { descr = Knack.fields[fieldId].attributes.meta.description; }
+                catch { /*ignore*/ }
+                return descr;
             },
 
             //Returns the fieldId with the specified view and label.
