@@ -1534,8 +1534,8 @@ function Ktl($, appInfo) {
             },
 
             findParentURL: function (URLNow, numParents) {
-                if (numParents < 0 || numParents > 10) {
-                    console.error("Number of parents should be between 0 and 10.");
+                if (numParents < 1 || numParents > 10) {
+                    console.error("Number of parents should be between 1 and 10.");
                     return null;
                 }
 
@@ -2243,7 +2243,7 @@ function Ktl($, appInfo) {
                 if (style !== '')
                     button.setAttribute('style', style);
 
-                if (!style.includes(' color:'))
+                if (!style.includes('color:'))
                     ktl.systemColors.getSystemColors().then(sc => { button.style.color = sc.text.rgb });
 
                 if (classes.length > 0)
@@ -3341,6 +3341,7 @@ function Ktl($, appInfo) {
                         sysColors.button = extractSysElClr(/\.is-primary \{\s+background-color: #/gm); //Buttons background color
                         sysColors.buttonText = extractSysElClr(/\.kn-navigation-bar a \{\s+color: #/gm); //Buttons text color
                         sysColors.text = extractSysElClr(/\.kn-content a \{\s+color: #/gm); //Text color
+                        sysColors.links = extractSysElClr(/\.knMenuLink.knMenuLink--button \{\s+color: #/gm); //Button Link text color
 
                         //Additional colors, usually derived from basic colors, or hard-coded.
                         var newS = 1.0;
@@ -5337,7 +5338,7 @@ function Ktl($, appInfo) {
                     keywords._sth && stickyTableHeader(viewId, keywords, data);
                     keywords._stc && stickyTableColumns(viewId, keywords);
                     keywords._recid && setRecordId(viewId, keywords, data);
-                    keywords._parent && gotoParentAfterSubmit(viewId, keywords, data);
+                    keywords._parent && goUpParentLevels(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6605,9 +6606,10 @@ function Ktl($, appInfo) {
             }
         }
 
-        function gotoParentAfterSubmit(viewId, keywords) {
+        function goUpParentLevels(viewId, keywords) {
             const kw = '_parent';
-            if (!(viewId && keywords && keywords[kw] && ktl.views.getViewType(viewId) !== 'form')) return;
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(viewId && keywords && keywords[kw] && (viewType === 'form' || viewType === 'menu'))) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
                 const options = keywords[kw][0].options;
@@ -6615,10 +6617,25 @@ function Ktl($, appInfo) {
             }
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                $(document).bindFirst('knack-form-submit.' + viewId, () => {
-                    const url = ktl.core.findParentURL(window.location.href, 3);
-                    url && (window.location.href = url);
-                })
+                const level = keywords[kw][0].params[0][0] || 1;
+                if (viewType === 'form') {
+                    $(document).bindFirst('knack-form-submit.' + viewId, () => {
+                        const url = ktl.core.findParentURL(window.location.href, level);
+                        url && (window.location.href = url);
+                    })
+                } else if (viewType === 'menu') {
+                    const buttonLabel = keywords[kw][0].params[0][1] || 'Go Back';
+
+                    ktl.systemColors.getSystemColors()
+                        .then((sc) => {
+                            const sysColors = sc;
+                            var gotoParentBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .menu-links__list'), buttonLabel, `color:${sysColors.links.rgb}`, ['menu-links__list-item', 'knMenuLink', 'knMenuLink--button', 'knMenuLink--filled', 'knMenuLink--size-medium'], 'ktlGotoParent-' + viewId);
+                            gotoParentBtn.addEventListener('click', function (e) {
+                                const url = ktl.core.findParentURL(window.location.href, level);
+                                url && (window.location.href = url);
+                            })
+                        })
+                }
             }
         }
 
