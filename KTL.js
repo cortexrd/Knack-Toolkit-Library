@@ -8977,7 +8977,9 @@ function Ktl($, appInfo) {
                 else if (viewType === 'search' && !document.querySelector('#' + viewId + ' .kn-table-wrapper'))
                     copyIsDisabled = true;
 
-                document.querySelector('#' + viewId + ' .ktlCopyButton').disabled = copyIsDisabled;
+                const btn = document.querySelector('#' + viewId + ' .ktlCopyButton');
+                if (btn)
+                    btn.disabled = copyIsDisabled;
             },
 
             obfuscateData: function (view, keywords) {
