@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.19.2';
+    const KTL_VERSION = '0.19.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1937,16 +1937,18 @@ function Ktl($, appInfo) {
                 if (!fieldId.startsWith('field_'))
                     fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
 
-                if (!fieldId || !fieldId.startsWith('field_') || !ktlKeywords[fieldId]) return;
+                if (!fieldId || !fieldId.startsWith('field_')) return;
 
-                if (ktlKeywords[fieldId]._uc)
-                    e.target.value = e.target.value.toUpperCase();
+                if (ktlKeywords[fieldId]) {
+                    if (ktlKeywords[fieldId]._uc)
+                        e.target.value = e.target.value.toUpperCase();
 
-                if (ktlKeywords[fieldId]._num)
-                    e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
+                    if (ktlKeywords[fieldId]._num)
+                        e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
 
-                if (ktlKeywords[fieldId]._int)
-                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    if (ktlKeywords[fieldId]._int)
+                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                }
 
                 ktl.fields.enforceNumeric();
 
@@ -2243,7 +2245,7 @@ function Ktl($, appInfo) {
                 if (style !== '')
                     button.setAttribute('style', style);
 
-                if (!style.includes('color:'))
+                if (!style.includes('color:')) //TODO: improve this to ignore background-color, but still trigger on (font) color.  Need better parsing.
                     ktl.systemColors.getSystemColors().then(sc => { button.style.color = sc.text.rgb });
 
                 if (classes.length > 0)
@@ -7974,6 +7976,7 @@ function Ktl($, appInfo) {
 
                 $('#' + viewId + ' .kn-form-confirmation').css('display', 'none');
                 $('#' + viewId + ' input').removeClass('input-error');
+                $('.kn-message.is-error').remove();
 
                 preprocessFields(viewId, e)
                     .then(() => {
