@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.19.4';
+    const KTL_VERSION = '0.19.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6551,6 +6551,18 @@ function Ktl($, appInfo) {
 
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table') return;
+
+            var tableHasInlineEditing = false;
+            var viewModel = Knack.router.scene_view.model.views._byId[viewId];
+            if (viewModel) {
+                var viewAttr = viewModel.attributes;
+                tableHasInlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
+            }
+
+            if (!tableHasInlineEditing) {
+                ktl.log.clog('purple', `_recid keyword used in a table without inline edit: ${viewId}`);
+                return;
+            }
 
             if (keywords[kw].length && keywords[kw][0].options) {
                 const options = keywords[kw][0].options;
