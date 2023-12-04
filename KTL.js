@@ -2708,41 +2708,51 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                if (keywords && keywords[kw]) {
                     var size = 200;
                     var hideText = false;
-                    var fieldId = $('#' + viewId + ' [class^="field_"]:first');
-                    if (fieldId.length)
-                        fieldId = fieldId[0].className;
-                    else {
-                        ktl.log.clog('purple', 'generateBarcode called in a view without fields:', viewId);
-                        return;
-                    }
 
-                    const params = keywords[kw][0].params;
+                    var fieldId;
 
-                    if (params.length && params[0].length) {
-                        const sizeParam = Number(params[0][0]);
-                        if (isNaN(sizeParam)) {
-                            ktl.log.clog('purple', 'generateBarcode called with invalid size:', viewId, sizeParam);
-                            return;
-                        }
+                    if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                        const params = keywords[kw][0].params;
 
-                        size = Math.max(30, sizeParam);
-
-                        if (params[0].length >= 2) {
-                            fieldId = params[0][1];
-                            if (!fieldId.startsWith('field_'))
-                                fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
-
-                            if (!$('#' + viewId + ' .' + fieldId).length) {
-                                ktl.log.clog('purple', 'generateBarcode called with invalid field ID:', viewId, fieldId);
+                        if (params.length && params[0].length) {
+                            const sizeParam = Number(params[0][0]);
+                            if (isNaN(sizeParam)) {
+                                ktl.log.clog('purple', 'generateBarcode called with invalid size:', viewId, sizeParam);
                                 return;
                             }
-                        }
 
-                        if (params[0].length >= 3 && params[0][2] === 'h')
-                            hideText = true;
+                            size = Math.max(30, sizeParam);
+
+                            if (params[0].length >= 2) {
+                                fieldId = params[0][1];
+                                if (!fieldId.startsWith('field_'))
+                                    fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
+
+                                if (!$('#' + viewId + ' .' + fieldId).length) {
+                                    ktl.log.clog('purple', 'generateBarcode called with invalid field ID:', viewId, fieldId);
+                                    return;
+                                }
+                            }
+
+                            if (params[0].length >= 3 && params[0][2] === 'h')
+                                hideText = true;
+                        }
+                    } else {
+                        const fieldSel = $('#' + viewId + ' [class*="field_"]:first');
+                        if (fieldSel.length) {
+                            var classes = fieldSel[0].classList.value;
+                            const match = classes.match(/field_\d+/);
+                            if (match)
+                                fieldId = match[0];
+                        }
+                    }
+
+                    if (!fieldId) {
+                        ktl.log.clog('purple', 'generateBarcode called with an invalid field ID:', viewId);
+                        return;
                     }
 
                     //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
