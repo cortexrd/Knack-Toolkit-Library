@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.19.5';
+    const KTL_VERSION = '0.19.6';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5351,6 +5351,7 @@ function Ktl($, appInfo) {
                     keywords._stc && stickyTableColumns(viewId, keywords);
                     keywords._recid && setRecordId(viewId, keywords, data);
                     keywords._parent && goUpParentLevels(viewId, keywords);
+                    keywords._vrd && viewRecordDetails(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6660,6 +6661,56 @@ function Ktl($, appInfo) {
                             })
                         })
                 }
+            }
+        }
+
+        function viewRecordDetails(viewId, keywords) {
+            const kw = '_vrd';
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(viewId && keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length === 1 && keywords[kw][0].params[0].length === 2) {
+                const fieldToSearch = keywords[kw][0].params[0][0];
+                const fieldIdToSearch = (fieldToSearch.startsWith('field_')) ? fieldToSearch : ktl.fields.getFieldIdFromLabel(viewId, fieldToSearch);
+                const viewToSearch = keywords[kw][0].params[0][1];
+                const viewIdToSearch = (viewToSearch.startsWith('view_')) ? viewToSearch : ktl.core.getViewIdByTitle(viewToSearch, Knack.getCurrentScene().slug, true);
+
+                ktl.core.waitSelector(`#${viewIdToSearch}`)
+                    .then(() => {
+                        $(`#${viewIdToSearch} .kn-search_form`).addClass('ktlHidden'); //Hide search fields.
+
+                        $(document).off('click').on('click', function (e) {
+                            const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
+                            if (!clickedViewId || clickedViewId !== viewId) return;
+
+                            const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
+                            const recId = (clickedObj && clickedObj.id);
+                            if (recId) {
+                                const textToSearch = document.querySelector(`#${clickedViewId} tr[id="${recId}"] .${fieldIdToSearch}`).innerText;
+                                $(`#${viewIdToSearch}-search input`).val(textToSearch);
+                                $(`#${viewIdToSearch} .is-primary`).click();
+
+                                $(document).on(`knack-view-render.${viewIdToSearch}`, function (event, view, data) {
+                                    $(`#${viewIdToSearch}`).removeClass('ktlHidden');
+
+                                    //Remove any similar rows, ex: two persons with same name. Keep only the row with same recId.
+                                    $(`#${viewIdToSearch} tbody tr:not([id="${recId}"])`).remove();
+                                    $(document).off(`knack-view-render.${viewIdToSearch}`);
+
+                                    $(`#${clickedViewId} .ktlOutline`).removeClass('ktlOutline');
+                                    $(clickedObj).addClass('ktlOutline');
+                                });
+                            }
+                        })
+                    })
+                    .catch(() => {
+                        ktl.log.clog('purple', `viewRecordDetails failed finding search view: ${viewToSearch}`)
+                    })
             }
         }
 
