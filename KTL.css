@@ -61,10 +61,29 @@
 
 /* Dynamic Hide/Show Columns feature  - BEGIN */
 .ktlCollapsedColumn {
-	max-width: 4px;
+	max-width: 0px;
 	padding: 0;
 	border: none;
 	overflow: hidden;
+}
+
+th.ktlCollapsedColumn {
+	overflow: visible;
+	z-index: 1;
+}
+
+.ktlCollapsedColumn span{
+	display: none !important;
+}
+
+.ktlCollapsedColumn i.ktlHideShowColumnIcon {
+    position: absolute;
+    top: -10px;
+    color: grey;
+    left: 3px;
+    transform: rotate(-90deg);
+    font-size: 1.5em;
+    display: block;
 }
 
 td.ktlCollapsedColumn {
@@ -77,7 +96,7 @@ td.ktlCollapsedColumn {
 	display: none; /* Hide the hide-show icon */
 }
 
-.ktlCollapsedColumn > span:hover {
+.ktlCollapsedColumn {
 	cursor: ew-resize !important;
 }
 
