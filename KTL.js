@@ -2651,33 +2651,16 @@ function Ktl($, appInfo) {
                                 return match[0];
                         }
                     } else if (viewType === 'table' || viewType === 'search') {
-                        if (viewType === 'search') {
-                            ktl.core.waitSelector(`#${viewId} .kn-table th`)
-                                .then(() => {
-                                    return processFoundHeader();
-                                })
-                                .catch(err => {
-                                    console.log('getFieldIdFromLabel - timeout waiting for header in ', viewId, err);
-                                });
+                        if (exactMatch)
+                            field = $('#' + viewId + ' .kn-table th:textEquals("' + fieldLabel + '")');
+                        else
+                            field = $('#' + viewId + ' .kn-table th:contains("' + fieldLabel + '")');
 
-                        } else
-                            return processFoundHeader();
-
-                        function processFoundHeader() {
-                            console.log('processFoundHeader fieldLabel', fieldLabel, viewId);
-                            if (exactMatch)
-                                field = $('#' + viewId + ' .kn-table th:textEquals("' + fieldLabel + '")');
-                            else
-                                field = $('#' + viewId + ' .kn-table th:contains("' + fieldLabel + '")');
-
-                            if (field.length) {
-                                var classes = $(field)[0].classList.value;
-                                const match = classes.match(/field_\d+/);
-                                if (match) {
-                                    console.log('match[0] =', viewId, match[0]);
-                                    return match[0];
-                                }
-                            }
+                        if (field.length) {
+                            var classes = $(field)[0].classList.value;
+                            const match = classes.match(/field_\d+/);
+                            if (match)
+                                return match[0];
                         }
                     } else if (viewType === 'list') {
                         if (exactMatch)
@@ -6696,28 +6679,22 @@ function Ktl($, appInfo) {
 
                 ktl.core.waitSelector(`#${viewIdToSearch}`)
                     .then(() => {
-                        //$(`#${viewIdToSearch} .kn-search_form`).addClass('ktlHidden'); //Hide search fields.
+                        $(`#${viewIdToSearch} .kn-search_form`).addClass('ktlHidden'); //Hide search fields.
 
                         const fieldToSearch = keywords[kw][0].params[0][0];
                         var fieldIdToSearch;
 
                         if (fieldToSearch.startsWith('field_'))
                             fieldIdToSearch = fieldToSearch;
-                        else
-                            promisifiedGetFieldId(viewId, fieldToSearch)
-                                .then((result) => {
-                                    fieldIdToSearch = result;
-                                    console.log('fieldIdToSearch =', fieldIdToSearch, viewId);
-                                    if (!fieldIdToSearch)
-                                        return;
-
-                                    $(document).off('click').on('click', function (e) {
-                                        const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
-                                        if (!clickedViewId || clickedViewId !== viewId) return;
-
-                                        const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
-                                        const recId = (clickedObj && clickedObj.id);
-                                        if (recId) {
+                        else {
+                            $(`#${viewId} td`).off('click').on('click', function (e) {
+                                const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
+                                if (clickedViewId && clickedViewId === viewId) {
+                                    const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
+                                    const recId = (clickedObj && clickedObj.id);
+                                    if (recId) {
+                                        fieldIdToSearch = ktl.fields.getFieldIdFromLabel(viewId, fieldToSearch);
+                                        if (fieldIdToSearch) {
                                             const textToSearch = document.querySelector(`#${clickedViewId} tr[id="${recId}"] .${fieldIdToSearch}`).innerText;
                                             $(`#${viewIdToSearch}-search input`).val(textToSearch);
                                             $(`#${viewIdToSearch} .is-primary`).click();
@@ -6733,18 +6710,9 @@ function Ktl($, appInfo) {
                                                 $(clickedObj).addClass('ktlOutline');
                                             });
                                         }
-                                    })
-                                })
-                                .catch(() => {
-                                })
-
-
-                        function promisifiedGetFieldId(arg) {
-                            return new Promise(resolve => {
-                                const result = ktl.fields.getFieldIdFromLabel(viewId, fieldToSearch);
-                                console.log('promisified result', result);
-                                resolve(result);
-                            });
+                                    }
+                                }
+                            })
                         }
                     })
                     .catch(() => {
