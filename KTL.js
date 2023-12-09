@@ -2650,17 +2650,34 @@ function Ktl($, appInfo) {
                             if (match)
                                 return match[0];
                         }
-                    } else if (viewType === 'table') {
-                        if (exactMatch)
-                            field = $('#' + viewId + ' .kn-table th:textEquals("' + fieldLabel + '")');
-                        else
-                            field = $('#' + viewId + ' .kn-table th:contains("' + fieldLabel + '")');
+                    } else if (viewType === 'table' || viewType === 'search') {
+                        if (viewType === 'search') {
+                            ktl.core.waitSelector(`#${viewId} .kn-table th`)
+                                .then(() => {
+                                    return processFoundHeader();
+                                })
+                                .catch(err => {
+                                    console.log('getFieldIdFromLabel - timeout waiting for header in ', viewId, err);
+                                });
 
-                        if (field.length) {
-                            var classes = $(field)[0].classList.value;
-                            const match = classes.match(/field_\d+/);
-                            if (match)
-                                return match[0];
+                        } else
+                            return processFoundHeader();
+
+                        function processFoundHeader() {
+                            console.log('processFoundHeader fieldLabel', fieldLabel, viewId);
+                            if (exactMatch)
+                                field = $('#' + viewId + ' .kn-table th:textEquals("' + fieldLabel + '")');
+                            else
+                                field = $('#' + viewId + ' .kn-table th:contains("' + fieldLabel + '")');
+
+                            if (field.length) {
+                                var classes = $(field)[0].classList.value;
+                                const match = classes.match(/field_\d+/);
+                                if (match) {
+                                    console.log('match[0] =', viewId, match[0]);
+                                    return match[0];
+                                }
+                            }
                         }
                     } else if (viewType === 'list') {
                         if (exactMatch)
@@ -2763,7 +2780,7 @@ function Ktl($, appInfo) {
                             var qrCodeDiv = document.getElementById('qrCodeDiv');
                             if (!qrCodeDiv) {
                                 qrCodeDiv = document.createElement('div');
-                                $('#' + viewId + ' .' + fieldId).prepend(qrCodeDiv);
+                                $('#' + viewId + ' .' + fieldId).append(qrCodeDiv);
                                 qrCodeDiv.setAttribute('id', 'qrCodeDiv');
                             }
 
@@ -6509,10 +6526,9 @@ function Ktl($, appInfo) {
                 try {
                     columns.forEach(col => {
                         var align = col.align;
-                        if (col.type === 'field') {
+                        if (col.type == 'field' || (col.type == 'link' && col.field)) {
+                            var fieldId = col.field.key;
                             if (col.field) {
-                                var fieldId = col.field.key;
-
                                 //Remove anything after field_xxx, like pseudo selectors with colon.
                                 var extractedField = fieldId.match(/field_\d+/);
                                 if (extractedField) {
@@ -6521,9 +6537,9 @@ function Ktl($, appInfo) {
                                     $('#' + view.key + ' thead th.' + fieldId + ' .table-fixed-label').css('display', 'inline-flex');
                                 }
                             }
-                        } else if (col.type === 'link') {
+                        } else if (col.type == 'link') {
                             $('#' + view.key + ' thead th.kn-table-link').css('text-align', align);
-                            $('#' + view.key + ' thead th.kn-table-link.table-fixed-label').css('display', 'inline-flex');
+                            $('#' + view.key + ' thead th.kn-table-link .table-fixed-label').css('display', 'inline-flex');
                         } //Any other field type?
                     })
                 } catch (e) {
@@ -6675,38 +6691,61 @@ function Ktl($, appInfo) {
             }
 
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length === 1 && keywords[kw][0].params[0].length === 2) {
-                const fieldToSearch = keywords[kw][0].params[0][0];
-                const fieldIdToSearch = (fieldToSearch.startsWith('field_')) ? fieldToSearch : ktl.fields.getFieldIdFromLabel(viewId, fieldToSearch);
                 const viewToSearch = keywords[kw][0].params[0][1];
                 const viewIdToSearch = (viewToSearch.startsWith('view_')) ? viewToSearch : ktl.core.getViewIdByTitle(viewToSearch, Knack.getCurrentScene().slug, true);
 
                 ktl.core.waitSelector(`#${viewIdToSearch}`)
                     .then(() => {
-                        $(`#${viewIdToSearch} .kn-search_form`).addClass('ktlHidden'); //Hide search fields.
+                        //$(`#${viewIdToSearch} .kn-search_form`).addClass('ktlHidden'); //Hide search fields.
 
-                        $(document).off('click').on('click', function (e) {
-                            const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
-                            if (!clickedViewId || clickedViewId !== viewId) return;
+                        const fieldToSearch = keywords[kw][0].params[0][0];
+                        var fieldIdToSearch;
 
-                            const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
-                            const recId = (clickedObj && clickedObj.id);
-                            if (recId) {
-                                const textToSearch = document.querySelector(`#${clickedViewId} tr[id="${recId}"] .${fieldIdToSearch}`).innerText;
-                                $(`#${viewIdToSearch}-search input`).val(textToSearch);
-                                $(`#${viewIdToSearch} .is-primary`).click();
+                        if (fieldToSearch.startsWith('field_'))
+                            fieldIdToSearch = fieldToSearch;
+                        else
+                            promisifiedGetFieldId(viewId, fieldToSearch)
+                                .then((result) => {
+                                    fieldIdToSearch = result;
+                                    console.log('fieldIdToSearch =', fieldIdToSearch, viewId);
+                                    if (!fieldIdToSearch)
+                                        return;
 
-                                $(document).on(`knack-view-render.${viewIdToSearch}`, function (event, view, data) {
-                                    $(`#${viewIdToSearch}`).removeClass('ktlHidden');
+                                    $(document).off('click').on('click', function (e) {
+                                        const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
+                                        if (!clickedViewId || clickedViewId !== viewId) return;
 
-                                    //Remove any similar rows, ex: two persons with same name. Keep only the row with same recId.
-                                    $(`#${viewIdToSearch} tbody tr:not([id="${recId}"])`).remove();
-                                    $(document).off(`knack-view-render.${viewIdToSearch}`);
+                                        const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
+                                        const recId = (clickedObj && clickedObj.id);
+                                        if (recId) {
+                                            const textToSearch = document.querySelector(`#${clickedViewId} tr[id="${recId}"] .${fieldIdToSearch}`).innerText;
+                                            $(`#${viewIdToSearch}-search input`).val(textToSearch);
+                                            $(`#${viewIdToSearch} .is-primary`).click();
 
-                                    $(`#${clickedViewId} .ktlOutline`).removeClass('ktlOutline');
-                                    $(clickedObj).addClass('ktlOutline');
-                                });
-                            }
-                        })
+                                            $(document).on(`knack-view-render.${viewIdToSearch}`, function (event, view, data) {
+                                                $(`#${viewIdToSearch}`).removeClass('ktlHidden');
+
+                                                //Remove any similar rows, ex: two persons with same name. Keep only the row with same recId.
+                                                $(`#${viewIdToSearch} tbody tr:not([id="${recId}"])`).remove();
+                                                $(document).off(`knack-view-render.${viewIdToSearch}`);
+
+                                                $(`#${clickedViewId} .ktlOutline`).removeClass('ktlOutline');
+                                                $(clickedObj).addClass('ktlOutline');
+                                            });
+                                        }
+                                    })
+                                })
+                                .catch(() => {
+                                })
+
+
+                        function promisifiedGetFieldId(arg) {
+                            return new Promise(resolve => {
+                                const result = ktl.fields.getFieldIdFromLabel(viewId, fieldToSearch);
+                                console.log('promisified result', result);
+                                resolve(result);
+                            });
+                        }
                     })
                     .catch(() => {
                         ktl.log.clog('purple', `viewRecordDetails failed finding search view: ${viewToSearch}`)
