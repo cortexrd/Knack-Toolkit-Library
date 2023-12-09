@@ -6687,7 +6687,9 @@ function Ktl($, appInfo) {
                         if (fieldToSearch.startsWith('field_'))
                             fieldIdToSearch = fieldToSearch;
                         else {
-                            $(`#${viewId} td`).off('click').on('click', function (e) {
+                            $(`#${viewId} td`).on('click.ktlVrd', processVrd);
+
+                            function processVrd(e) {
                                 const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
                                 if (clickedViewId && clickedViewId === viewId) {
                                     const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
@@ -6698,6 +6700,9 @@ function Ktl($, appInfo) {
                                             const textToSearch = document.querySelector(`#${clickedViewId} tr[id="${recId}"] .${fieldIdToSearch}`).innerText;
                                             $(`#${viewIdToSearch}-search input`).val(textToSearch);
                                             $(`#${viewIdToSearch} .is-primary`).click();
+
+                                            $(`#${viewId} td`).off('click.ktlVrd');
+                                            $(`#${viewId} td`).on('click.ktlVrd', processVrd);
 
                                             $(document).on(`knack-view-render.${viewIdToSearch}`, function (event, view, data) {
                                                 $(`#${viewIdToSearch}`).removeClass('ktlHidden');
@@ -6712,7 +6717,7 @@ function Ktl($, appInfo) {
                                         }
                                     }
                                 }
-                            })
+                            }
                         }
                     })
                     .catch(() => {
@@ -14271,6 +14276,8 @@ function ktlCompare(a, operator, b) {
         conditionMatches = true;
     else if (operator === 'has' && a && a.includes(b))
         conditionMatches = true;
+    else if (operator === 'hasnt' && a && !a.includes(b))
+        conditionMatches = true;
     else if (operator === 'sw' && a && a.startsWith(b))
         conditionMatches = true;
     else if (operator === 'ew' && a && a.endsWith(b))
@@ -14289,6 +14296,9 @@ function ktlCompare(a, operator, b) {
     } else if (operator === 'in') {
         if (a === 'ktlNow' || a === 'ktlNowUTC')
             conditionMatches = isCurrentTimeInRange(b, (a === 'ktlNowUTC'));
+    } else if (operator === 'out') {
+        if (a === 'ktlNow' || a === 'ktlNowUTC')
+            conditionMatches = !isCurrentTimeInRange(b, (a === 'ktlNowUTC'));
     }
 
     return conditionMatches;
