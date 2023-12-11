@@ -2867,7 +2867,9 @@ function Ktl($, appInfo) {
                             }
 
                             ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
-                                .then(() => { $('#' + viewId).removeClass('ktlVisibilityHidden'); })
+                                .then(() => {
+                                    $('#' + viewId).removeClass('ktlVisibilityHidden');
+                                })
                         } else
                             $('#' + viewId).removeClass('ktlVisibilityHidden');
                     }
@@ -11237,7 +11239,7 @@ function Ktl($, appInfo) {
             acctLocHbFld: ktl.core.getFieldIdByName('LOC HB', accountsObj),
             acctOnlineFld: ktl.core.getFieldIdByName('Online', accountsObj),
             acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
-            acctUtcLastActFld: ktl.core.getFieldIdByName('UTC Last Activity', accountsObj),
+            acctUtcLastActFld: (ktl.core.getFieldIdByName('UTC ACT', accountsObj) || ktl.core.getFieldIdByName('UTC Last Activity', accountsObj)),
             acctFirstNameFld: ktl.core.getFieldIdByName('First Name', accountsObj),
             acctLastNameFld: ktl.core.getFieldIdByName('Last Name', accountsObj),
 
@@ -11585,7 +11587,7 @@ function Ktl($, appInfo) {
                     cfg.acctLocHbFld = ktl.core.getFieldIdByName('LOC HB', accountsObj);
                     cfg.acctOnlineFld = ktl.core.getFieldIdByName('Online', accountsObj);
                     cfg.acctUserPrefsFld = ktl.core.getFieldIdByName('User Prefs', accountsObj);
-                    cfg.acctUtcLastActFld = ktl.core.getFieldIdByName('UTC Last Activity', accountsObj);
+                    cfg.acctUtcLastActFld = (ktl.core.getFieldIdByName('UTC ACT', accountsObj) || ktl.core.getFieldIdByName('UTC Last Activity', accountsObj));
                 }
             },
 
