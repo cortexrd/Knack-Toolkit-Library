@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.19.7';
+    const KTL_VERSION = '0.19.8';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -10462,7 +10462,7 @@ function Ktl($, appInfo) {
 
                                 //Linux-specific devices - BEGIN
                                 const sys = ktl.sysInfo.getSysInfo();
-                                if (sys.os === 'Linux' && sys.processor.includes('arm')) {
+                                if (sys.os === 'Linux' /*&& sys.processor.includes('arm')*/) {
                                     addEditKioskPageBtn = ktl.fields.addButton(devBtnsDiv, 'Kiosk Setup Page', '', ['devBtn', 'kn-button']);
                                     addEditKioskPageBtn.addEventListener('click', () => {
                                         if (confirm('Go to kiosk setup page?'))
@@ -12795,7 +12795,8 @@ function Ktl($, appInfo) {
             ip: 'Unknown',
             model: 'Unknown',
             processor: 'Unknown',
-            mobile: ''
+            mobile: '',
+            hasLocalServer: false,
         };
 
         var cfg = {
@@ -12902,7 +12903,7 @@ function Ktl($, appInfo) {
                 let deviceIsCompatibleWithRecoveryWd = false;
                 if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
                     deviceIsCompatibleWithRecoveryWd = true;
-                } else if ((sysInfo.os === 'Linux' && sysInfo.processor.includes('arm')))
+                } else if ((sysInfo.os === 'Linux' /*&& sysInfo.processor.includes('arm')*/))
                     deviceIsCompatibleWithRecoveryWd = true;
 
                 if (deviceIsCompatibleWithRecoveryWd) {
@@ -13084,7 +13085,7 @@ function Ktl($, appInfo) {
             getLinuxDeviceInfo: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
-                    if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return reject('Device not running a Linux OS');
+                    if (sys.os !== 'Linux' /*|| !sys.processor.includes('arm')*/) return reject('Device not running a Linux OS');
 
                     const xhr = new XMLHttpRequest();
                     xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?getDeviceInfo', true);
@@ -13105,7 +13106,7 @@ function Ktl($, appInfo) {
             restartService: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
-                    if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+                    if (sys.os !== 'Linux' /*|| !sys.processor.includes('arm')*/) return;
 
                     const xhr = new XMLHttpRequest();
                     xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?restartService', true);
@@ -13126,7 +13127,7 @@ function Ktl($, appInfo) {
             rebootDevice: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
-                    if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+                    if (sys.os !== 'Linux' /*|| !sys.processor.includes('arm')*/) return;
 
                     const xhr = new XMLHttpRequest();
                     xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?rebootDevice', true);
@@ -13147,7 +13148,7 @@ function Ktl($, appInfo) {
             shutDownDevice: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
-                    if (sys.os !== 'Linux' || !sys.processor.includes('arm')) return;
+                    if (sys.os !== 'Linux' /*|| !sys.processor.includes('arm')*/) return;
 
                     const xhr = new XMLHttpRequest();
                     xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/msg?shutDownDevice', true);
@@ -13179,7 +13180,7 @@ function Ktl($, appInfo) {
                         Android.resetWatchdog(wdTimeoutDelay);
                         //Android.resetWatchdog(60);
                         resolve({ message: 'Android.resetWatchdog: ' + wdTimeoutDelay });
-                    } else if (sysInfo.os === 'Linux' && sysInfo.processor.includes('arm')) {
+                    } else if (sysInfo.os === 'Linux' /*&& sysInfo.processor.includes('arm')*/) {
                         const timeoutNoSvr = setTimeout(() => {
                             //console.error('Server timeout', xhr);
                             reject('Recovery WD startup error: ' + xhr.responseText);
@@ -14222,7 +14223,7 @@ function Ktl($, appInfo) {
 
                 //Only for Linux systems without a built-in VK, like Raspberry PI 4.
                 const sys = ktl.sysInfo.getSysInfo();
-                if (sys.os === 'Linux' && sys.processor.includes('arm'))
+                if (sys.os === 'Linux' /*&& sys.processor.includes('arm')*/)
                     load();
                 else
                     ktl.core.setCfg({ enabled: { virtualKeyboard: false } });
