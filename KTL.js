@@ -11129,9 +11129,14 @@ function Ktl($, appInfo) {
             },
 
             logout: function () {
-                if (ktl.scenes.isiFrameWnd()) return;
-                ktl.iFrameWnd.delete();
-                Knack.handleLogout();
+                if (ktl.scenes.isiFrameWnd()) {
+                    //Do not process here.  Let the parent App do it properly since it needs to delete the iFrameWnd first.
+                    //Also, the parent may never see the expiry (when no API calls nor submits), so we end up in a loop.
+                    ktl.wndMsg.send('logoutMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                } else {
+                    ktl.iFrameWnd.delete();
+                    Knack.handleLogout();
+                }
             },
 
             autoLogin: function (viewId = '') {
@@ -11829,6 +11834,10 @@ function Ktl($, appInfo) {
                                 field = document.querySelector('#' + viewId + '-' + fieldId + '-time');
                                 field && (field.value = time);
                             }
+                        case 'logoutMsg':
+                            ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
+                            ktl.account.logout();
+                            break;
                         default:
                             processAppMsg && processAppMsg(event);
                             break;
