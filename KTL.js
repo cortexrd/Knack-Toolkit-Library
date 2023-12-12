@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.19.8';
+    const KTL_VERSION = '0.19.9';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -11834,6 +11834,7 @@ function Ktl($, appInfo) {
                                 field = document.querySelector('#' + viewId + '-' + fieldId + '-time');
                                 field && (field.value = time);
                             }
+                            break;
                         case 'logoutMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.account.logout();
@@ -12973,7 +12974,7 @@ function Ktl($, appInfo) {
                                     })
                                     .catch(reason => {
                                         console.error(reason);
-                                        if (ktl.account.isDeveloper())
+                                        if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name))
                                             ktl.core.timedPopup('Reset WD error: ' + reason, 'error');
                                         wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY;
                                     })
