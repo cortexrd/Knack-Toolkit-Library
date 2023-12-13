@@ -9159,7 +9159,7 @@ function Ktl($, appInfo) {
             },
 
             hideShowColumns: function (viewId, keywords) {
-                if (!viewId) return;
+                if (!viewId || cfg.hscGlobal) return;
 
                 const kw = '_hsc';
                 if (keywords[kw].length && keywords[kw][0].options) {
