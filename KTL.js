@@ -3701,17 +3701,91 @@ function Ktl($, appInfo) {
                     })
                 } else {
                     const filter = getActiveFilter(viewId);
-                    const activeFilterIndex = filter.index;
+                    var activeFilterIndex = filter.index;
 
                     if (activeFilterIndex >= 0) {
                         const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
-
                         if (activeFilter) {
                             applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort.split('-')[1], JSON.parse(activeFilter.filterString));
                         }
+                    } else {
+                        applyDefaultPublicFilter(viewId);
                     }
                 }
             });
+        }
+
+        //Apply default Public Filter if no active filter.
+        function applyDefaultPublicFilter(viewId) {
+            if (!viewId) return;
+
+            const kw = '_dpf';
+            const keywords = ktlKeywords[viewId];
+
+            if (!(keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length)) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            const publicFilterName = keywords[kw][0].params[0][0];
+            if (publicFilterName) {
+                console.log('keywords[kw] =', keywords[kw]);
+                console.log('publicFilterName =', publicFilterName);
+
+                if (keywords[kw][0].params[0][0].length > 1) {
+                    const hidden = (keywords[kw][0].params[0][1] === 'h');
+                    ktl.userFilters.setActiveFilter(publicFilterName, viewId);
+
+                    const filter = getActiveFilter(viewId);
+                    var activeFilterIndex = filter.index;
+
+                    activeFilterIndex = getFilter(viewId, publicFilterName).index;
+                    const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
+                    if (activeFilter)
+                        applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort.split('-')[1], JSON.parse(activeFilter.filterString));
+                }
+            }
+        }
+
+        function hideDefaultPublicFilter(viewId) {
+            if (!viewId) return;
+
+            const kw = '_dpf';
+            const keywords = ktlKeywords[viewId];
+
+            if (!(keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length)) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            const publicFilterName = keywords[kw][0].params[0][0];
+            if (publicFilterName) {
+                console.log('keywords[kw] =', keywords[kw]);
+                console.log('publicFilterName =', publicFilterName);
+
+                if (keywords[kw][0].params[0][0].length > 1) {
+                    const hidden = (keywords[kw][0].params[0][1] === 'h');
+                    console.log('hidden =', hidden);
+                    if (hidden) {
+                        var btnSelector = '#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(publicFilterName);
+                        ktl.core.waitSelector(btnSelector, 20000)
+                            .then(function () {
+                                var filterBtn = document.querySelector(btnSelector);
+                                if (filterBtn) {
+                                    filterBtn.classList.add('ktlHidden');
+                                    console.log('ktlHidden =', publicFilterName);
+                                }
+                            })
+                            .catch(function () {
+                                ktl.log.clog('purple', 'setActiveFilter, Failed waiting for ' + btnSelector);
+                            })
+                    }
+                }
+            }
         }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -3773,7 +3847,6 @@ function Ktl($, appInfo) {
             const masterView = Knack.models[masterViewId].view;
 
             if (linkedViewIds && !!masterView.filters && (masterView.filters.length === undefined || masterView.filters.length > 0)) {
-
                 // Report view contains multiple subviews. Adding itself allows to apply the filter to all the subviews.
                 if (masterView.type === 'report')
                     linkedViewIds.push(masterViewId);
@@ -3803,7 +3876,6 @@ function Ktl($, appInfo) {
             }
 
             if (view.type === 'table') {
-
                 $(`#${view.key} .kn-pagination .kn-select`).on('change', function (e) {
                     ktl.userFilters.saveFilter(view.key, true);
                 });
@@ -3927,6 +3999,7 @@ function Ktl($, appInfo) {
 
             //Public Filters first
             createFltBtns(filterDivId, getPublicFilters()[filterDivId], getFilter(filterDivId, '', LS_UFP).index);
+            hideDefaultPublicFilter(filterDivId);
 
             //User Filters second
             createFltBtns(filterDivId, getUserFilters()[filterDivId], getFilter(filterDivId, '', LS_UF).index);
@@ -3935,8 +4008,6 @@ function Ktl($, appInfo) {
 
                 if ($.isEmptyObject(viewfilters))
                     return;
-
-                var errorFound = false;
 
                 for (var btnIndex = 0; btnIndex < viewfilters.filters.length; btnIndex++) {
                     var filter = viewfilters.filters[btnIndex];
@@ -3987,9 +4058,6 @@ function Ktl($, appInfo) {
                         contextMenuFilterEnabled && contextMenuFilter(e, filterDivId, e.target.filter);
                     });
                 }
-
-                if (errorFound)
-                    createFilterButtons(filterDivId, fltBtnsDivId);
 
                 applyButtonColors();
                 setupFiltersDragAndDrop(filterDivId);
