@@ -5182,6 +5182,7 @@ function Ktl($, appInfo) {
         var cfg = {
             hscCollapsedColumnsWidth: '5px',
             hscGlobal: false,
+            hscAllowed: null,
         }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -6733,6 +6734,7 @@ function Ktl($, appInfo) {
 
                 cfgObj.hscCollapsedColumnsWidth && (cfg.hscCollapsedColumnsWidth = cfgObj.hscCollapsedColumnsWidth);
                 cfgObj.hscGlobal && (cfg.hscGlobal = cfgObj.hscGlobal);
+                cfgObj.hscAllowed && (cfg.hscAllowed = cfgObj.hscAllowed);
             },
 
             refreshView: function (viewId) {
@@ -9324,7 +9326,7 @@ function Ktl($, appInfo) {
             },
 
             addHideShowIconsToTableHeaders: function (viewId) {
-                if (!viewId || ktl.core.isKiosk())
+                if (!viewId || (cfg.hscAllowed && !cfg.hscAllowed(viewId)))
                     return;
 
                 if (!['table', 'search'].includes(ktl.views.getViewType(viewId)))
