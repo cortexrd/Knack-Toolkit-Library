@@ -3775,7 +3775,8 @@ function Ktl($, appInfo) {
                         if (!column.childElementCount)
                             column.remove();
                     })
-                });
+                })
+                .catch(() => { })
         });
 
         function applyUserFilterToTableView(viewId, search, perPage, sort, filters) {
@@ -4663,6 +4664,8 @@ function Ktl($, appInfo) {
 
                 if (updateActive) {
                     filter = getActiveFilter(filterDivId);
+                    if (!filter.filterSrc[filterDivId]) return;
+
                     const filterObject = filter.filterSrc[filterDivId].filters[filter.index];
                     filterSrc = filter.filterSrc;
                     type = filter.type;
@@ -4692,15 +4695,12 @@ function Ktl($, appInfo) {
                         type = LS_UF; //By default, creating a new filter is always a User Filter.
                         filterSrc = getUserFilters();
                     }
-
-                    // if (filter.filterSrc[filterDivId] && )
-                    // filter.filterSrc[filterDivId].filters[filter.index] = {'hsc' : collapsed};
                 }
 
                 if (!filterName) return;
 
                 const previousFilterProperties = (filter.filterSrc[filterDivId] && filter.filterSrc[filterDivId].filters[filter.index]) ? filter.filterSrc[filterDivId].filters[filter.index] : {};
-                var fltObj = { ...previousFilterProperties, 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr, 'hsc' : collapsed };
+                var fltObj = { ...previousFilterProperties, 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr, 'collapsed' : collapsed };
 
                 if (type === LS_UFP)
                     fltObj.public = true;
@@ -5180,6 +5180,8 @@ function Ktl($, appInfo) {
 
         //TODO: Migrate all variables here.
         var cfg = {
+            hscCollapsedColumnsWidth: '5px',
+            hscGlobal: false,
         }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -5241,6 +5243,9 @@ function Ktl($, appInfo) {
                 ktlProcessKeywords(view, data);
 
             ktl.views.addViewId(view);
+
+            if (cfg.hscGlobal)
+                ktl.views.addHideShowIconsToTableHeaders(viewId);
 
             //Fix problem with re-appearing filter button when filtring is disabled in views.
             //Reported here: https://forums.knack.com/t/add-filter-buttons-keep-coming-back/13966
@@ -6725,6 +6730,9 @@ function Ktl($, appInfo) {
                     cfg.ktlOutlineColor = cfgObj.ktlOutlineColor;
                     document.documentElement.style.setProperty('--ktlOutlineColor', cfg.ktlOutlineColor);
                 }
+
+                cfgObj.hscCollapsedColumnsWidth && (cfg.hscCollapsedColumnsWidth = cfgObj.hscCollapsedColumnsWidth);
+                cfgObj.hscGlobal && (cfg.hscGlobal = cfgObj.hscGlobal);
             },
 
             refreshView: function (viewId) {
@@ -9338,8 +9346,8 @@ function Ktl($, appInfo) {
                 function getCollapsedColumns() {
                     const activeFilter = ktl.userFilters.getActiveFilter(viewId);
 
-                    if (activeFilter && activeFilter['hsc'])
-                        return activeFilter['hsc'];
+                    if (activeFilter && activeFilter['collapsed'])
+                        return activeFilter['collapsed'];
                     else
                         return (getUrlParameter(`${viewId}_collapsed`) || '' ).split(',').filter(value => value != '');
                 }
@@ -9354,7 +9362,8 @@ function Ktl($, appInfo) {
                 function showColumn(viewId, columnIndex) {
                     $(`#${viewId} .kn-table th:nth-child(${columnIndex}) i`).show();
                     $(`#${viewId} .kn-table tr`).find(`th:nth-child(${columnIndex}), td:nth-child(${columnIndex})`)
-                        .css('min-width', '') // Reset width
+                        .css('width', '') // Reset width
+                        .css('min-width', '')
                         .css('padding', '')
                         .removeClass('ktlCollapsedColumn')
                         .off('click.ktl-hsc');
@@ -9362,7 +9371,8 @@ function Ktl($, appInfo) {
 
                 function hideColumn(viewId, columnIndex) {
                     $(`#${viewId} .kn-table tr`).find(`th:nth-child(${columnIndex}), td:nth-child(${columnIndex})`)
-                        .css('min-width', '8px')
+                        .css('width', cfg.hscCollapsedColumnsWidth)
+                        .css('min-width', cfg.hscCollapsedColumnsWidth)
                         .css('padding', '0px')
                         .addClass('ktlCollapsedColumn');
 
@@ -9392,7 +9402,7 @@ function Ktl($, appInfo) {
                             collapsedColumn.push(title);
                     }
 
-                    if (!ktl.userFilters.appendToActiveFilter(viewId, 'hsc', collapsedColumn)) {
+                    if (!ktl.userFilters.appendToActiveFilter(viewId, 'collapsed', collapsedColumn)) {
                         let parameters = `${viewId}_collapsed=${collapsedColumn.join(',')}`;
                         const [url, params] = document.location.href.split('?');
 
