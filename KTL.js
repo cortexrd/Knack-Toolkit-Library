@@ -3717,22 +3717,23 @@ function Ktl($, appInfo) {
             if (!viewId) return;
 
             const kw = '_dpf';
-            const keywords = ktlKeywords[viewId];
+            const kwList = ktl.core.getKeywordsByType(viewId, kw);
+            kwList.forEach(kwInstance => { execKw(kwInstance); })
 
-            if (!(keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length)) return;
-
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
+            function execKw(kwInstance) {
+                const options = kwInstance.options;
                 if (!ktl.core.hasRoleAccess(options)) return;
-            }
+                if (!(kwInstance.params && kwInstance.params.length)) return;
 
-            const publicFilterName = keywords[kw][0].params[0][0];
-            if (publicFilterName) {
-                const publicFilter = getFilter(viewId, publicFilterName);
-                if (publicFilter) {
-                    ktl.userFilters.setActiveFilter(publicFilterName, viewId);
-                    const appliedFilter = publicFilter.filterSrc[viewId].filters[publicFilter.index];
-                    applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, appliedFilter.sort.split('-')[1], JSON.parse(appliedFilter.filterString));
+                const publicFilterName = kwInstance.params[0][0];
+                if (publicFilterName) {
+                    const publicFilter = getFilter(viewId, publicFilterName);
+                    if (publicFilter) {
+                        ktl.userFilters.setActiveFilter(publicFilterName, viewId);
+                        const appliedFilter = publicFilter.filterSrc[viewId].filters[publicFilter.index];
+                        if (appliedFilter)
+                            applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, appliedFilter.sort.split('-')[1], JSON.parse(appliedFilter.filterString));
+                    }
                 }
             }
         }
@@ -3741,21 +3742,21 @@ function Ktl($, appInfo) {
             if (!viewId) return;
 
             const kw = '_dpf';
-            const keywords = ktlKeywords[viewId];
+            const kwList = ktl.core.getKeywordsByType(viewId, kw);
+            kwList.forEach(kwInstance => { execKw(kwInstance); })
 
-            if (!(keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length)) return;
-
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
+            function execKw(kwInstance) {
+                const options = kwInstance.options;
                 if (!ktl.core.hasRoleAccess(options)) return;
-            }
+                if (!(kwInstance.params && kwInstance.params.length)) return;
 
-            const publicFilterName = keywords[kw][0].params[0][0];
-            if (publicFilterName) {
-                if (keywords[kw][0].params[0][0].length > 1) {
-                    const hidden = (keywords[kw][0].params[0][1] === 'h');
-                    if (hidden)
-                        $('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(publicFilterName)).addClass('ktlHidden');
+                const publicFilterName = kwInstance.params[0][0];
+                if (publicFilterName) {
+                    if (kwInstance.params[0][0].length > 1) {
+                        const hidden = (kwInstance.params[0][1] === 'h');
+                        if (hidden)
+                            $('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(publicFilterName)).addClass('ktlHidden');
+                    }
                 }
             }
         }
