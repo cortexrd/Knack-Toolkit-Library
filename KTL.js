@@ -9445,6 +9445,7 @@ function Ktl($, appInfo) {
              * @param {string} viewId
              * @param {number} viewHeight */
             stickTableHeader: function (viewId, viewHeight) {
+                $('.kn-dropdown-menu-list').css('z-index', '4');
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
