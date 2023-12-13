@@ -3702,15 +3702,12 @@ function Ktl($, appInfo) {
                 } else {
                     const filter = getActiveFilter(viewId);
                     var activeFilterIndex = filter.index;
-
                     if (activeFilterIndex >= 0) {
                         const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
-                        if (activeFilter) {
+                        if (activeFilter)
                             applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort.split('-')[1], JSON.parse(activeFilter.filterString));
-                        }
-                    } else {
+                    } else
                         applyDefaultPublicFilter(viewId);
-                    }
                 }
             });
         }
@@ -3731,20 +3728,11 @@ function Ktl($, appInfo) {
 
             const publicFilterName = keywords[kw][0].params[0][0];
             if (publicFilterName) {
-                console.log('keywords[kw] =', keywords[kw]);
-                console.log('publicFilterName =', publicFilterName);
-
-                if (keywords[kw][0].params[0][0].length > 1) {
-                    const hidden = (keywords[kw][0].params[0][1] === 'h');
+                const publicFilter = getFilter(viewId, publicFilterName);
+                if (publicFilter) {
                     ktl.userFilters.setActiveFilter(publicFilterName, viewId);
-
-                    const filter = getActiveFilter(viewId);
-                    var activeFilterIndex = filter.index;
-
-                    activeFilterIndex = getFilter(viewId, publicFilterName).index;
-                    const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
-                    if (activeFilter)
-                        applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort.split('-')[1], JSON.parse(activeFilter.filterString));
+                    const appliedFilter = publicFilter.filterSrc[viewId].filters[publicFilter.index];
+                    applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, appliedFilter.sort.split('-')[1], JSON.parse(appliedFilter.filterString));
                 }
             }
         }
@@ -3764,26 +3752,10 @@ function Ktl($, appInfo) {
 
             const publicFilterName = keywords[kw][0].params[0][0];
             if (publicFilterName) {
-                console.log('keywords[kw] =', keywords[kw]);
-                console.log('publicFilterName =', publicFilterName);
-
                 if (keywords[kw][0].params[0][0].length > 1) {
                     const hidden = (keywords[kw][0].params[0][1] === 'h');
-                    console.log('hidden =', hidden);
-                    if (hidden) {
-                        var btnSelector = '#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(publicFilterName);
-                        ktl.core.waitSelector(btnSelector, 20000)
-                            .then(function () {
-                                var filterBtn = document.querySelector(btnSelector);
-                                if (filterBtn) {
-                                    filterBtn.classList.add('ktlHidden');
-                                    console.log('ktlHidden =', publicFilterName);
-                                }
-                            })
-                            .catch(function () {
-                                ktl.log.clog('purple', 'setActiveFilter, Failed waiting for ' + btnSelector);
-                            })
-                    }
+                    if (hidden)
+                        $('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(publicFilterName)).addClass('ktlHidden');
                 }
             }
         }
