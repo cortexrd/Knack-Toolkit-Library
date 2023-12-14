@@ -6732,7 +6732,7 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlOutlineColor', cfg.ktlOutlineColor);
                 }
 
-                cfgObj.hscCollapsedColumnsWidth && (cfg.hscCollapsedColumnsWidth = cfgObj.hscCollapsedColumnsWidth);
+                cfgObj.hscCollapsedColumnsWidth && (cfg.hscCollapsedColumnsWidth = Math.max(Math.min(cfgObj.hscCollapsedColumnsWidth, 500), 0));
                 cfgObj.hscGlobal && (cfg.hscGlobal = cfgObj.hscGlobal);
                 cfgObj.hscAllowed && (cfg.hscAllowed = cfgObj.hscAllowed);
             },
