@@ -3705,7 +3705,7 @@ function Ktl($, appInfo) {
                     if (activeFilterIndex >= 0) {
                         const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
                         if (activeFilter)
-                            applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort.split('-')[1], JSON.parse(activeFilter.filterString));
+                            applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, (activeFilter.sort && activeFilter.sort.split('-')[1]), JSON.parse(activeFilter.filterString));
                     } else
                         applyDefaultPublicFilter(viewId);
                 }
@@ -3732,7 +3732,7 @@ function Ktl($, appInfo) {
                         ktl.userFilters.setActiveFilter(publicFilterName, viewId);
                         const appliedFilter = publicFilter.filterSrc[viewId].filters[publicFilter.index];
                         if (appliedFilter)
-                            applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, appliedFilter.sort.split('-')[1], JSON.parse(appliedFilter.filterString));
+                            applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, (appliedFilter.sort && appliedFilter.sort.split('-')[1]), JSON.parse(appliedFilter.filterString));
                     }
                 }
             }
@@ -3878,11 +3878,9 @@ function Ktl($, appInfo) {
                     updateSearchInFilter(view.key);
                 });
 
-                const onSaveFilterDebounced = debounce(function () {
+                $(`#${view.key} .kn-table-table th`).on('click', function () {
                     ktl.userFilters.saveFilter(view.key, true);
-                }, 2000);
-
-                $(`#${view.key} .kn-table-table th`).on('click', onSaveFilterDebounced);
+                });
             }
         })
 
@@ -4617,6 +4615,8 @@ function Ktl($, appInfo) {
                 if (filter.filterSrc[filterDivId] && filter.filterSrc[filterDivId].filters && filter.filterSrc[filterDivId].filters[filter.index]) {
                     filter.filterSrc[filterDivId].filters[filter.index][name] = property;
 
+                    filter.filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+
                     if (filter.type === LS_UF)
                         setUserFilters(filter.filterSrc);
                     else
@@ -5180,7 +5180,7 @@ function Ktl($, appInfo) {
 
         //TODO: Migrate all variables here.
         var cfg = {
-            hscCollapsedColumnsWidth: '5px',
+            hscCollapsedColumnsWidth: '5',
             hscGlobal: false,
             hscAllowed: null,
         }
@@ -9373,8 +9373,8 @@ function Ktl($, appInfo) {
 
                 function hideColumn(viewId, columnIndex) {
                     $(`#${viewId} .kn-table tr`).find(`th:nth-child(${columnIndex}), td:nth-child(${columnIndex})`)
-                        .css('width', cfg.hscCollapsedColumnsWidth)
-                        .css('min-width', cfg.hscCollapsedColumnsWidth)
+                        .css('width', cfg.hscCollapsedColumnsWidth + 'px')
+                        .css('min-width', cfg.hscCollapsedColumnsWidth + 'px')
                         .css('padding', '0px')
                         .addClass('ktlCollapsedColumn');
 
@@ -10980,7 +10980,7 @@ function Ktl($, appInfo) {
                     function updateUserPrefsFormText() {
                         userPrefsTmp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                         var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-                        document.querySelector('#' + acctPrefsFld).value = JSON.stringify(userPrefsTmp);
+                        $('#' + acctPrefsFld).val(JSON.stringify(userPrefsTmp));
                     }
                 }
             }
@@ -11410,23 +11410,33 @@ function Ktl($, appInfo) {
 
                 rec = ktl.views.findRecord(data, cfg.appSettingsItemFld, 'APP_PUBLIC_FILTERS');
                 if (rec) {
-                    var newPublicFilters = rec[cfg.appSettingsValueFld];
+                    var cloudPublicFilters = rec[cfg.appSettingsValueFld];
                     try {
                         var cloudPfDt = '';
                         var pubFiltersNeedDownload = false;
                         var pubFiltersNeedUpload = false;
-                        if (newPublicFilters && newPublicFilters.length > 1) {
-                            newPublicFilters = JSON.parse(newPublicFilters);
-                            if ($.isEmptyObject(newPublicFilters)) return;
-                            cloudPfDt = newPublicFilters.dt;
+                        if (cloudPublicFilters && cloudPublicFilters.length > 1) {
+                            cloudPublicFilters = JSON.parse(cloudPublicFilters);
+                            if ($.isEmptyObject(cloudPublicFilters)) return;
+                            if (!cloudPublicFilters.dt) {
+                                ktl.log.clog('purple', 'KTL has encountered an empty date in cloud public filters');
+                                return;
+                            }
+
+                            cloudPfDt = cloudPublicFilters.dt;
                         }
 
-                        var lastPfStr = ktl.storage.lsGetItem(LS_UFP);
-                        if (lastPfStr) {
+                        var localPfStr = ktl.storage.lsGetItem(LS_UFP);
+                        if (localPfStr) {
                             try {
-                                var lastPfTempObj = JSON.parse(lastPfStr);
-                                if (!$.isEmptyObject(lastPfTempObj)) {
-                                    var localPfDt = lastPfTempObj.dt;
+                                var localPfTempObj = JSON.parse(localPfStr);
+                                if (!$.isEmptyObject(localPfTempObj)) {
+                                    if (!localPfTempObj.dt) {
+                                        ktl.log.clog('purple', 'KTL has encountered an empty date in local public filters');
+                                        return;
+                                    }
+
+                                    var localPfDt = localPfTempObj.dt;
                                     //console.log('localPfDt =', localPfDt);
                                     //console.log('cloudPfDt =', cloudPfDt);
                                     if (ktl.core.isMoreRecent(cloudPfDt, localPfDt))
@@ -11442,7 +11452,7 @@ function Ktl($, appInfo) {
                             pubFiltersNeedDownload = true;
 
                         if (pubFiltersNeedDownload)
-                            ktl.wndMsg.send('publicFiltersNeedDownloadMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: newPublicFilters });
+                            ktl.wndMsg.send('publicFiltersNeedDownloadMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { newPublicFilters: cloudPublicFilters });
                         else if (pubFiltersNeedUpload)
                             ktl.userFilters.uploadPublicFilters(data);
                     }
