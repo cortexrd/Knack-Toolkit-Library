@@ -42,6 +42,10 @@
 	background-color: #e1e1e1;
 }
 
+.iFrameWnd #kn-app-header, .iFrameWnd .knHeader {
+	display: none;
+}
+
 .ktlHidden {
 	position: absolute !important;
 	left: -9000px;
