@@ -153,6 +153,19 @@ th .fa-caret-left {
 	margin-bottom: 500px;
 }
 
+/* Apply the style to the entire body of the webpage to allow scrolling, but with invisible H/V scrollbars. */
+.ktlInvisibleScrollBars {
+	overflow: auto; /* Enable scrolling */
+	scrollbar-width: none; /* For Firefox */
+	-ms-overflow-style: none; /* For Internet Explorer and Edge */
+}
+
+	/* For Webkit browsers like Chrome, Safari */
+	.ktlInvisibleScrollBars::-webkit-scrollbar {
+		display: none;
+	}
+
+
 .sortDisabled .knTable th {
 	pointer-events: none;
 }
