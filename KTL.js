@@ -3622,6 +3622,7 @@ function Ktl($, appInfo) {
         }
         function setUserFilters(filters) {
             try {
+                filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(LS_UF, JSON.stringify(cleanUpFilters(filters)));
             } catch (e) {
                 console.log('Error while saving filters:', e);
@@ -3633,6 +3634,7 @@ function Ktl($, appInfo) {
         }
         function setPublicFilters(filters) {
             try {
+                filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(LS_UFP, JSON.stringify(cleanUpFilters(filters)));
             } catch (e) {
                 console.log('Error while saving filters:', e);
@@ -3728,7 +3730,7 @@ function Ktl($, appInfo) {
                 const publicFilterName = kwInstance.params[0][0];
                 if (publicFilterName) {
                     const publicFilter = getFilter(viewId, publicFilterName);
-                    if (publicFilter) {
+                    if (publicFilter && publicFilter.type === LS_UFP) {
                         ktl.userFilters.setActiveFilter(publicFilterName, viewId);
                         const appliedFilter = publicFilter.filterSrc[viewId].filters[publicFilter.index];
                         if (appliedFilter)
@@ -4293,26 +4295,35 @@ function Ktl($, appInfo) {
                     const currentFilter = filter.filterSrc[viewId].filters[filter.index];
                     filter.filterSrc[viewId].filters.splice(filter.index, 1);
 
+                    const userFilters = getUserFilters();
+                    const publicFilters = getPublicFilters();
+
                     if (currentFilter.public) {
                         delete currentFilter.public;
-                        const userFilters = getUserFilters();
-                        if (userFilters[viewId]) {
+                        if (userFilters[viewId])
                             userFilters[viewId].filters.push(currentFilter);
-                        } else {
+                        else
                             userFilters[viewId] = { filters: [currentFilter] };
-                        }
+
+                        publicFilters[viewId].filters.splice(filter.index, 1);
+                        if (!publicFilters[viewId].filters.length)
+                            delete publicFilters[viewId];
+
                         setUserFilters(userFilters);
-                        setPublicFilters(filter.filterSrc);
+                        setPublicFilters(publicFilters);
                     } else {
                         currentFilter.public = true;
-                        const publicFilters = getPublicFilters();
-                        if (publicFilters[viewId]) {
+                        if (publicFilters[viewId])
                             publicFilters[viewId].filters.push(currentFilter);
-                        } else {
+                        else
                             publicFilters[viewId] = { filters: [currentFilter] };
-                        }
+
+                        userFilters[viewId].filters.splice(filter.index, 1);
+                        if (!userFilters[viewId].filters.length)
+                            delete userFilters[viewId];
+
+                        setUserFilters(userFilters);
                         setPublicFilters(publicFilters);
-                        setUserFilters(filter.filterSrc);
                     }
 
                     ktl.userFilters.addFilterButtons(viewId);
@@ -4615,8 +4626,6 @@ function Ktl($, appInfo) {
                 if (filter.filterSrc[filterDivId] && filter.filterSrc[filterDivId].filters && filter.filterSrc[filterDivId].filters[filter.index]) {
                     filter.filterSrc[filterDivId].filters[filter.index][name] = property;
 
-                    filter.filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-
                     if (filter.type === LS_UF)
                         setUserFilters(filter.filterSrc);
                     else
@@ -4712,8 +4721,6 @@ function Ktl($, appInfo) {
                     filterSrc[filterDivId].filters[filter.index] = fltObj;
                 else
                     filterSrc[filterDivId].filters.push(fltObj);
-
-                filterSrc.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
                 if (type === LS_UF)
                     setUserFilters(filterSrc);
