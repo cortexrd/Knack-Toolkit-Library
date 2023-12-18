@@ -5686,13 +5686,8 @@ function Ktl($, appInfo) {
                                 }
 
                                 // if options includes 'd' then details
-                                if (options.includes('d') && viewType === 'details') {
-                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a details tooltip
-                                }
-
-                                // if options includes 'l' then list
-                                if (options.includes('l') && viewType === 'list') {
-                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a details tooltip
+                                if ( (options.includes('d') && viewType === 'details') || (options.includes('l') && viewType === 'list' ) ){
+                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, "details"); // Add the tooltip to the current field in the current view as a details tooltip
                                 }
                             }
                         });
@@ -9266,12 +9261,10 @@ function Ktl($, appInfo) {
             addTooltipsToFields: function (viewId, fieldId, tooltipText, viewType) {
                 if (!viewId || !viewType || !fieldId) return;
                 // Define the tooltip position based on the view type
-                if (viewType === 'list') viewType = 'details';
                 const tooltipPosition = {
-                    form: `#${viewId} #kn-input-${fieldId} label :first-child`,
+                    form: `#${viewId} #kn-input-${fieldId} > label`,
                     details: `#${viewId} .${fieldId} .kn-detail-label`,
                     table: `#${viewId} th.${fieldId}`,
-                    list: `#${viewId} .${fieldId} .kn-detail-label`,
                 }[viewType];
 
                 // Define the tooltip icon HTML
