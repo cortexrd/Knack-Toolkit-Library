@@ -11240,15 +11240,13 @@ function Ktl($, appInfo) {
         var highPriLoggingInterval = null;
         var lowPriLoggingInterval = null;
 
-        var accountsObj = ktl.core.getObjectIdByName('Accounts');
+        var accountsObj = ktl.core.getObjectIdByName(getAccountsObjectName());
         var accountLogsObj = ktl.core.getObjectIdByName('Account Logs');
         var appSettingsObj = ktl.core.getObjectIdByName('App Settings');
         var userFiltersObj = ktl.core.getObjectIdByName('User Filters');
 
         var cfg = {
             iFrameReady: false,
-            accountsObjName: 'Accounts',
-
             appSettingsViewId: ktl.core.getViewIdByTitle('App Settings', 'iframewnd'),
             appSettingsItemFld: ktl.core.getFieldIdByName('Item', appSettingsObj),
             appSettingsValueFld: ktl.core.getFieldIdByName('Value', appSettingsObj),
@@ -11437,10 +11435,8 @@ function Ktl($, appInfo) {
 
                                     var localPfDt = localPfTempObj.dt;
 
-                                    if (localPfDt !== cloudPfDt) {
-                                        console.log('localPfDt =', localPfDt);
-                                        console.log('cloudPfDt =', cloudPfDt);
-                                    }
+                                    if (localPfDt !== cloudPfDt)
+                                        console.log(`Change found: localPfDt: ${localPfDt} vs cloudPfDt: ${cloudPfDt}`);
 
                                     if (ktl.core.isMoreRecent(cloudPfDt, localPfDt))
                                         pubFiltersNeedDownload = true;
@@ -11613,24 +11609,20 @@ function Ktl($, appInfo) {
         $(document).on('mousedown', updateLastActivity);
         $(document).on('keydown', updateLastActivity);
 
+        function getAccountsObjectName() {
+            const objects = Knack.objects.models;
+            for (let i = 0; i < objects.length; i++) {
+                const obj = objects[i];
+                if (obj.attributes && obj.attributes.profile_key && obj.attributes.profile_key === 'all_users')
+                    return obj.attributes.name;
+            }
+        }
+
         return {
             setCfg: function (cfgObj = {}) {
                 if (cfgObj.iFrameReady) {
                     cfg.iFrameReady = cfgObj.iFrameReady;
                     clearTimeout(iFrameTimeout);
-                }
-
-                if (cfgObj.accountsObjName) {
-                    cfg.accountsObjName = cfgObj.accountsObjName;
-                    accountsObj = ktl.core.getObjectIdByName(cfg.accountsObjName);
-
-                    cfg.acctSwVersionFld = ktl.core.getFieldIdByName('SW Version', accountsObj);
-                    cfg.acctUtcHbFld = ktl.core.getFieldIdByName('UTC HB', accountsObj);
-                    cfg.acctTimeZoneFld = ktl.core.getFieldIdByName('TZ', accountsObj);
-                    cfg.acctLocHbFld = ktl.core.getFieldIdByName('LOC HB', accountsObj);
-                    cfg.acctOnlineFld = ktl.core.getFieldIdByName('Online', accountsObj);
-                    cfg.acctUserPrefsFld = ktl.core.getFieldIdByName('User Prefs', accountsObj);
-                    cfg.acctUtcLastActFld = (ktl.core.getFieldIdByName('UTC ACT', accountsObj) || ktl.core.getFieldIdByName('UTC Last Activity', accountsObj));
                 }
             },
 

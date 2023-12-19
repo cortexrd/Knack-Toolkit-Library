@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.5.3 */
+/* KTL CSS version: 0.5.4 */
 
 /************ General Settings **************/
 :root {
@@ -123,6 +123,10 @@ th .fa-caret-left {
 	margin-left: -7px;
 	margin-right: 5px;
 	margin-top: 2px;
+}
+
+.ktlDenseGrid .ktlHideShowColumnIcon.fa-caret-left {
+	margin-left: 0px;
 }
 
 .hatched {
@@ -454,7 +458,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 /* Reduced page margins, to maximize available real-estate. */
-.ktlNarrowMarginsPage .kn-scene.kn-container {
+.ktlNarrowMarginsPage.kn-scene.kn-container {
 	padding: 2px;
 	margin-left: 2px !important;
 	margin-right: 2px !important;
