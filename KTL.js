@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.20.1';
+    const KTL_VERSION = '0.20.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3620,9 +3620,10 @@ function Ktl($, appInfo) {
         function getUserFilters() {
             return fetchFilters(LS_UF);
         }
-        function setUserFilters(filters) {
+        function setUserFilters(filters, dateIsNow = true) {
             try {
-                filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                if (dateIsNow)
+                    filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(LS_UF, JSON.stringify(cleanUpFilters(filters)));
             } catch (e) {
                 console.log('Error while saving filters:', e);
@@ -3632,9 +3633,10 @@ function Ktl($, appInfo) {
         function getPublicFilters() {
             return fetchFilters(LS_UFP);
         }
-        function setPublicFilters(filters) {
+        function setPublicFilters(filters, dateIsNow = true) {
             try {
-                filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                if (dateIsNow)
+                    filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(LS_UFP, JSON.stringify(cleanUpFilters(filters)));
             } catch (e) {
                 console.log('Error while saving filters:', e);
@@ -3748,10 +3750,6 @@ function Ktl($, appInfo) {
             kwList.forEach(kwInstance => { execKw(kwInstance); })
 
             function execKw(kwInstance) {
-                const options = kwInstance.options;
-                if (!ktl.core.hasRoleAccess(options)) return;
-                if (!(kwInstance.params && kwInstance.params.length)) return;
-
                 const publicFilterName = kwInstance.params[0][0];
                 if (publicFilterName) {
                     if (kwInstance.params[0][0].length > 1) {
@@ -3973,7 +3971,8 @@ function Ktl($, appInfo) {
 
             //Public Filters first
             createFltBtns(filterDivId, getPublicFilters()[filterDivId], getFilter(filterDivId, '', LS_UFP).index);
-            hideDefaultPublicFilter(filterDivId);
+            if (!Knack.getUserRoleNames().includes('Public Filters'))
+                hideDefaultPublicFilter(filterDivId);
 
             //User Filters second
             createFltBtns(filterDivId, getUserFilters()[filterDivId], getFilter(filterDivId, '', LS_UF).index);
@@ -4766,7 +4765,7 @@ function Ktl($, appInfo) {
                 try {
                     ktl.log.clog('blue', 'Downloading user filters...');
                     const userFilters = newUserFiltersData.newUserFilters;
-                    setUserFilters(userFilters);
+                    setUserFilters(userFilters, false);
 
                     //Live update of any relevant views.
                     const views = Object.keys(userFilters);
@@ -4821,7 +4820,7 @@ function Ktl($, appInfo) {
                 try {
                     ktl.log.clog('blue', 'Downloading Public filters...');
                     const publicFilters = newPublicFiltersData.newPublicFilters;
-                    setPublicFilters(publicFilters);
+                    setPublicFilters(publicFilters, false);
 
                     fixConflictWithUserFilters();
 
@@ -11437,11 +11436,15 @@ function Ktl($, appInfo) {
                                     }
 
                                     var localPfDt = localPfTempObj.dt;
-                                    //console.log('localPfDt =', localPfDt);
-                                    //console.log('cloudPfDt =', cloudPfDt);
+
+                                    if (localPfDt !== cloudPfDt) {
+                                        console.log('localPfDt =', localPfDt);
+                                        console.log('cloudPfDt =', cloudPfDt);
+                                    }
+
                                     if (ktl.core.isMoreRecent(cloudPfDt, localPfDt))
                                         pubFiltersNeedDownload = true;
-                                    else if (!cloudPfDt || ktl.core.isMoreRecent(localPfDt, cloudPfDt)) {
+                                    else if (Knack.getUserRoleNames().includes('Public Filters') && (!cloudPfDt || ktl.core.isMoreRecent(localPfDt, cloudPfDt))) {
                                         pubFiltersNeedUpload = true;
                                     }
                                 }
@@ -11759,7 +11762,7 @@ function Ktl($, appInfo) {
                                     ktl.iFrameWnd.delete();
                                     ktl.iFrameWnd.create();
                                 }
-                            }, FIVE_MINUTES_DELAY * 2);
+                            }, ONE_HOUR_DELAY);
                             break;
                         case 'heartbeatMsg':
                             var viewId = ktl.iFrameWnd.getCfg().hbViewId;
