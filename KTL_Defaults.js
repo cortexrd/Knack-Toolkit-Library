@@ -240,7 +240,6 @@ window.KnackApp = function ($, appInfo = {}) {
             }
 
             ktl.iFrameWnd.setCfg({
-                //accountsObjName: 'Accounts', //If your main accounts table is not "Accounts".
                 sendHeartbeat: true,
             });
 
