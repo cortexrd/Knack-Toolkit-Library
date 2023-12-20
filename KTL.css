@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.5.4 */
+/* KTL CSS version: 0.5.5 */
 
 /************ General Settings **************/
 :root {
@@ -138,9 +138,13 @@ th .fa-caret-left {
 
 .cell-edit.ktlNoInlineEdit {
 	cursor: default !important;
-	background-color: transparent !important;
 	font-weight: initial;
 }
+
+	.cell-edit.ktlNoInlineEdit.ktlInlineEditableCellsStyle {
+		background-color: unset;
+	}
+
 
 .ktlNotValid {
 	background-color: #fdb0b0 !important; /* Same pinkish color as Knack error */

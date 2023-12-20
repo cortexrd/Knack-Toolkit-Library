@@ -3303,6 +3303,9 @@ function Ktl($, appInfo) {
                         $('#' + view.key + ' .kn-table').addClass('ktlTable--rowHover');
                     }
                 })
+
+                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor)
+                    $(`#${view.key} td.cell-edit`).addClass('ktlInlineEditableCellsStyle');
             }
         })
 
@@ -3319,7 +3322,7 @@ function Ktl($, appInfo) {
 
                 if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor) {
                     ktl.core.injectCSS(
-                        '.cell-editable td.cell-edit {' +
+                        '.ktlInlineEditableCellsStyle {' +
                         'background-color: ' + sysColors.inlineEditBkgColor + ';' +
                         'font-weight: ' + sysColors.inlineEditFontWeight + '}' +
 
