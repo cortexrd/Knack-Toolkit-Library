@@ -22,11 +22,13 @@ http.createServer(function (req, res) {
     fs.readFile(url, function (err, data) {
         console.log('url =', url);
         if (err) {
-            console.log('err =', err);
+            if (err.code !== 'EISDIR') //Ignore requests to read directory.  Happens when clicking on Version Info Bar.
+                console.log('err =', err);
             res.writeHead(404);
             res.end(JSON.stringify(err));
             return;
         }
+
         res.writeHead(200);
         res.end(data);
     });
