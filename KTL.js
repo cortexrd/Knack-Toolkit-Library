@@ -404,98 +404,79 @@ function Ktl($, appInfo) {
                         reject(new Error('Called knAPI with invalid parameters: view = ' + viewId + ', recId = ' + recId + ', reqType = ' + requestType));
                         return;
                     }
-                    var failsafeTimeout = setTimeout(function () {
-                        if (intervalId) {
-                            clearInterval(intervalId);
-                            reject(new Error('Called knAPI with invalid scene key'));
-                            return;
-                        }
-                    }, 5000);
 
-                    //Wait for scene key to settle.  An undefined value happens sometimes when returning from a form's submit back to its parent.
-                    var sceneKey = Knack.router.scene_view.model.views._byId[viewId];
-                    var intervalId = setInterval(function () {
-                        if (!sceneKey) {
-                            sceneKey = Knack.router.scene_view.model.views._byId[viewId];
-                        } else {
-                            clearInterval(intervalId);
-                            intervalId = null;
-                            clearTimeout(failsafeTimeout);
+                    var sceneKey = ktl.views.getSceneKeyFromViewId(viewId);
 
-                            sceneKey = sceneKey.attributes.scene.key;
+                    var apiURL = 'https://api.knack.com/v1/pages/';
+                    if (Knack.app.attributes.account.settings.hipaa.enabled === true && Knack.app.attributes.account.settings.hipaa.region === 'us-govcloud')
+                        apiURL = 'https://usgc-api.knack.com/v1/pages/';
+                    apiURL += sceneKey + '/views/' + viewId + '/records/';
 
-                            var apiURL = 'https://api.knack.com/v1/pages/';
-                            if (Knack.app.attributes.account.settings.hipaa.enabled === true && Knack.app.attributes.account.settings.hipaa.region === 'us-govcloud')
-                                apiURL = 'https://usgc-api.knack.com/v1/pages/';
-                            apiURL += sceneKey + '/views/' + viewId + '/records/';
+                    if (recId) apiURL += recId;
 
-                            if (recId) apiURL += recId;
+                    //TODO: Support GET requests with filter.
 
-                            //TODO: Support GET requests with filter.
+                    if (showSpinner) Knack.showSpinner();
 
-                            if (showSpinner) Knack.showSpinner();
+                    //console.log('apiURL =', apiURL);
+                    //console.log('knAPI - viewId: ', viewId, ', recId:', recId, ', requestType', requestType);
 
-                            //console.log('apiURL =', apiURL);
-                            //console.log('knAPI - viewId: ', viewId, ', recId:', recId, ', requestType', requestType);
+                    $.ajax({
+                        url: apiURL,
+                        type: requestType,
+                        crossDomain: true, //Attempting to reduce the frequent but intermittent CORS error message.
+                        retryLimit: 4, //Make this configurable by app,
+                        headers: {
+                            'Authorization': Knack.getUserToken(),
+                            'X-Knack-Application-Id': Knack.application_id,
+                            'X-Knack-REST-API-Key': 'knack',
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*.knack.com',
+                        },
+                        data: JSON.stringify(apiData),
+                        success: function (data) {
+                            Knack.hideSpinner();
+                            if (viewsToRefresh.length === 0)
+                                resolve(data);
+                            else {
+                                ktl.views.refreshViewArray(viewsToRefresh).then(function () {
+                                    resolve(data);
+                                })
+                            }
+                        },
+                        error: function (response /*jqXHR*/) {
+                            //Example of the data format in response:
+                            //{ "readyState": 4, "responseText": "{\"errors\":[\"Invalid Record Id\"]}", "status": 400, "statusText": "Bad Request" }
 
-                            $.ajax({
-                                url: apiURL,
-                                type: requestType,
-                                crossDomain: true, //Attempting to reduce the frequent but intermittent CORS error message.
-                                retryLimit: 4, //Make this configurable by app,
-                                headers: {
-                                    'Authorization': Knack.getUserToken(),
-                                    'X-Knack-Application-Id': Knack.application_id,
-                                    'X-Knack-REST-API-Key': 'knack',
-                                    'Content-Type': 'application/json',
-                                    'Access-Control-Allow-Origin': '*.knack.com',
-                                },
-                                data: JSON.stringify(apiData),
-                                success: function (data) {
-                                    Knack.hideSpinner();
-                                    if (viewsToRefresh.length === 0)
-                                        resolve(data);
-                                    else {
-                                        ktl.views.refreshViewArray(viewsToRefresh).then(function () {
-                                            resolve(data);
-                                        })
-                                    }
-                                },
-                                error: function (response /*jqXHR*/) {
-                                    //Example of the data format in response:
-                                    //{ "readyState": 4, "responseText": "{\"errors\":[\"Invalid Record Id\"]}", "status": 400, "statusText": "Bad Request" }
+                            ktl.log.clog('purple', 'knAPI error:');
+                            console.log('retries:', this.retryLimit, '\nresponse:', response);
 
-                                    ktl.log.clog('purple', 'knAPI error:');
-                                    console.log('retries:', this.retryLimit, '\nresponse:', response);
+                            if (this.retryLimit-- > 0) {
+                                var ajaxParams = this; //Backup 'this' otherwise this will become the Window object in the setTimeout.
+                                setTimeout(function () {
+                                    $.ajax(ajaxParams);
+                                }, 500);
+                                return;
+                            } else { //All retries have failed, log this.
+                                Knack.hideSpinner();
 
-                                    if (this.retryLimit-- > 0) {
-                                        var ajaxParams = this; //Backup 'this' otherwise this will become the Window object in the setTimeout.
-                                        setTimeout(function () {
-                                            $.ajax(ajaxParams);
-                                        }, 500);
-                                        return;
-                                    } else { //All retries have failed, log this.
-                                        Knack.hideSpinner();
+                                response.caller = 'knAPI';
+                                response.viewId = viewId;
 
-                                        response.caller = 'knAPI';
-                                        response.viewId = viewId;
+                                //Process critical failures by forcing a logout or hard reset.
+                                ktl.wndMsg.ktlProcessServerErrors({
+                                    reason: 'KNACK_API_ERROR',
+                                    status: response.status,
+                                    statusText: response.statusText,
+                                    caller: response.caller,
+                                    viewId: response.viewId,
+                                });
 
-                                        //Process critical failures by forcing a logout or hard reset.
-                                        ktl.wndMsg.ktlProcessServerErrors({
-                                            reason: 'KNACK_API_ERROR',
-                                            status: response.status,
-                                            statusText: response.statusText,
-                                            caller: response.caller,
-                                            viewId: response.viewId,
-                                        });
-
-                                        reject(response);
-                                    }
-                                },
-                            });
-                        }
-                    }, 100);
-                })
+                                reject(response);
+                            }
+                        },
+                    });
+                });
             },
 
             isKiosk: function () {
@@ -2630,7 +2611,37 @@ function Ktl($, appInfo) {
                 if (!viewId || !fieldLabel) return;
 
                 var field;
+                const view = Knack.views[viewId].model.view;
                 const viewType = ktl.views.getViewType(viewId);
+
+                const name = findNameValue(view, 'name', fieldLabel);
+                console.log('name =', name);
+
+                function findNameValue(obj, keyToFind, keyValue, exactMatch = true) {
+                    if (typeof obj !== 'object' || obj === null) {
+                        return null; // Not an object or array, so return null
+                    }
+
+                    for (let key in obj) {
+                        if (key === keyToFind) {
+                            if (exactMatch && obj[key] === fieldLabel)
+                                return obj.key;
+                            else if (obj[key].includes(fieldLabel))
+                                return obj.key;
+                        } else if (typeof obj[key] === 'object') {
+                            let found = findNameValue(obj[key], keyToFind, keyValue, exactMatch);
+                            if (found !== null) {
+                                return found; // Found the 'name' key in a sub-object or array
+                            }
+                        }
+                    }
+
+                    return null; // 'name' key not found
+                }
+
+
+
+
                 try {
                     if (viewType === 'form') {
                         if (exactMatch)
@@ -2643,35 +2654,17 @@ function Ktl($, appInfo) {
                             return field ? field.attributes['data-input-id'].value : undefined;
                         }
                     } else if (viewType === 'details') {
-                        if (Knack.views[viewId].model.view.label_format === 'none') {
-                            const view = Knack.views[viewId].model.view;
-                            var foundField;
-                            view.columns.forEach(col => {
-                                col.groups.forEach(grp => {
-                                    grp.columns.forEach(cols => {
-                                        cols.forEach(fld => {
-                                            if (exactMatch && fld.name === fieldLabel)
-                                                foundField = fld.key;
-                                            else if (fld.name.includes(fieldLabel))
-                                                foundField = fld.key;
-                                        })
-                                    })
-                                })
-                            })
-
-                            return foundField;
-                        } else {
-                            if (exactMatch)
-                                field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
-                            else
-                                field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
-                        }
-
-                        if (field.length) {
-                            var classes = $(field).parent()[0].classList.value;
-                            const match = classes.match(/field_\d+/);
-                            if (match)
-                                return match[0];
+                        for (const col_a of view.columns) {
+                            for (const grp of col_a.groups) {
+                                for (const col_b of grp.columns) {
+                                    for (const fld of col_b) {
+                                        if (exactMatch && fld.name === fieldLabel)
+                                            return fld.key;
+                                        else if (fld.name.includes(fieldLabel))
+                                            return fld.key;
+                                    }
+                                }
+                            }
                         }
                     } else if (viewType === 'table' || viewType === 'search') {
                         if (exactMatch)
@@ -9596,7 +9589,18 @@ function Ktl($, appInfo) {
                     return false;
                 }
             },
-        }
+
+            getSceneKeyFromViewId: function (viewId) {
+                if (!viewId) return;
+                const scenes = Knack.scenes.models;
+                for (const scene of scenes) {
+                    for (const views of scene.views.models) {
+                        if (views.attributes.key === viewId)
+                            return scene.attributes.key;
+                    }
+                }
+            },
+        } //return
     })(); //Views feature
 
     //====================================================
