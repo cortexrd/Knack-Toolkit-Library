@@ -3327,7 +3327,7 @@ function Ktl($, appInfo) {
                     }
                 })
 
-                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor)
+                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor && ktl.views.viewHasInlineEdit(view.key))
                     $(`#${view.key} td.cell-edit`).addClass('ktlInlineEditableCellsStyle');
             }
         })
@@ -3860,6 +3860,7 @@ function Ktl($, appInfo) {
                         });
                     } else if (masterView.type === 'table') {
                         const srchVal = $(`#${masterViewId} .table-keyword-search input`).val() || '';
+                        //console.log('masterView.filters =', linkedViewId, masterView.filters);
                         applyUserFilterToTableView(linkedViewId, srchVal, masterView.rows_per_page, masterView.source.sort[0].field + '|' + masterView.source.sort[0].order, masterView.filters);
                     }
                 });
@@ -3884,11 +3885,13 @@ function Ktl($, appInfo) {
                 $(`#${view.key} .kn-button.search`).on('click', function () {
                     const tableSearchText = $(`#${view.key} .table-keyword-search input`).val();
                     const activeFilter = getActiveFilter(view.key);
-                    const filter = activeFilter.filterSrc[view.key].filters[activeFilter.index];
+                    if (activeFilter.filterSrc[view.key]) {
+                        const filter = activeFilter.filterSrc[view.key].filters[activeFilter.index];
 
-                    if (filter && tableSearchText !== filter.search) {
-                        ktl.userFilters.saveFilter(view.key, true);
-                        updateSearchInFilter(view.key);
+                        if (filter && tableSearchText !== filter.search) {
+                            ktl.userFilters.saveFilter(view.key, true);
+                            updateSearchInFilter(view.key);
+                        }
                     }
                 });
 
@@ -5370,6 +5373,7 @@ function Ktl($, appInfo) {
                     keywords._recid && setRecordId(viewId, keywords, data);
                     keywords._parent && goUpParentLevels(viewId, keywords);
                     keywords._vrd && viewRecordDetails(viewId, keywords);
+                    keywords._click && performClick(viewId, keywords, data);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5995,8 +5999,8 @@ function Ktl($, appInfo) {
                             const cell = record[fieldId + '_raw'];
 
                             let cellText;
-                            if (Array.isArray(cell) && cell.length === 1)
-                                cellText = cell[0].identifier;
+                            if (Array.isArray(cell) && cell.length > 0)
+                                cellText = cell.flat().map(obj => obj.identifier).join(' ');
                             else if (fieldType === 'phone')
                                 cellText = cell.formatted;
                             else
@@ -6030,7 +6034,9 @@ function Ktl($, appInfo) {
                     let value = valueParam;
                     let cellText = cellTextParam;
 
-                    //Compare refVal first. If condition not met, fail fast.
+                    if (Array.isArray(cellTextParam))
+                        cellText = cellTextParam.join(' ');
+
                     if (!value)
                         value = parameter[2];
 
@@ -6046,7 +6052,6 @@ function Ktl($, appInfo) {
                             value = valSel[0].textContent.trim();
                     }
 
-                    //TODO: Case-sensitivy: make it configurable, but app-wide or per keyword...?
                     cellText = cellText && cellText.toLowerCase();
                     value = value.toLowerCase();
 
@@ -6736,6 +6741,52 @@ function Ktl($, appInfo) {
                     .catch(() => {
                         ktl.log.clog('purple', `viewRecordDetails failed finding search view: ${viewToSearch}`)
                     })
+            }
+        }
+
+        function performClick(viewId, keywords, data) {
+            const kw = '_click';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const kwList = ktl.core.getKeywordsByType(viewId, kw);
+            kwList.forEach(kwInstance => { execKw(kwInstance); })
+
+            function execKw(kwInstance) {
+                const options = kwInstance.options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+
+                const params = kwInstance.params[0];
+                const action = params[0];
+                if (!action || params.length < 2) return;
+
+                const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
+
+                const view = conditions[3] || '';
+                const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
+                const viewType = ktl.views.getViewType(viewId);
+
+                if (viewType === 'table' || viewType === 'search') {
+                    for (let i = 0; i < data.length; i++) {
+                        const recordObj = data[i];
+                        if (recordObj.id === '64ac44591ac9280026a3fa03')
+                            console.log('found');
+                        ktl.views.validateKtlCond(options, recordObj)
+                            .then(valid => {
+                                if (valid) {
+                                    const sel = ktl.core.computeTargetSelector(viewId, '', options);
+                                    ktl.core.waitSelector(sel, 20000)
+                                        .then(() => {
+                                            if (action === 'click') {
+                                                const clickTarget = params[1];
+                                                console.log('recordObj.id =', recordObj.id);
+                                                //$(`#${viewId} tr[id="${recordObj.id}"] .kn-action-link:textEquals("${clickTarget}")`)[0].click();
+                                            }
+                                        })
+                                        .catch(function () { })
+                                }
+                            })
+                    }
+                }
             }
         }
 
@@ -8577,7 +8628,6 @@ function Ktl($, appInfo) {
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
-
                     const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
                     if (field.startsWith('$(')) {
@@ -8665,7 +8715,7 @@ function Ktl($, appInfo) {
                 });
             },
 
-            validateKtlCond: function (options = {}) {
+            validateKtlCond: function (options = {}, recordObj) {
                 return new Promise(function (resolve) {
                     if (!options.ktlCond) return resolve(true);
 
@@ -8675,7 +8725,6 @@ function Ktl($, appInfo) {
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
-
                     const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
                     if (field.startsWith('$(')) {
@@ -8687,10 +8736,7 @@ function Ktl($, appInfo) {
 
                             if ($(selector).is(':input')) {
                                 const update = (event) => {
-                                    if (ktlCompare(event.target.value, operator, value))
-                                        return resolve(true);
-                                    else
-                                        return resolve(false);
+                                    return resolve(ktlCompare(event.target.value, operator, value));
                                 }
                                 $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
                                 $(selector).one('change', update);
@@ -8700,12 +8746,8 @@ function Ktl($, appInfo) {
                         });
                     }
 
-                    if (field === 'ktlNow' || field === 'ktlNowUTC') {
-                        if (ktlCompare(field, operator, value))
-                            return resolve(true);
-                        else
-                            return resolve(false);
-                    }
+                    if (field === 'ktlNow' || field === 'ktlNowUTC')
+                        return resolve(ktlCompare(field, operator, value));
 
                     let fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
 
@@ -8719,15 +8761,34 @@ function Ktl($, appInfo) {
 
                     function apply() {
                         let selector = '';
-                        if (viewId && fieldId) {
+                        if (viewId) {
                             const viewType = ktl.views.getViewType(viewId);
                             selector = '#' + viewId;
-                            if (viewType === 'details')
-                                selector += ' .' + fieldId + ' .kn-detail-body';
-                            else if (viewType === 'form')
-                                selector += ' input#' + fieldId;
-                            else
+                            if (viewType === 'details') {
+                                if (fieldId)
+                                    selector += ' .' + fieldId + ' .kn-detail-body';
+                            } else if (viewType === 'form') {
+                                if (fieldId)
+                                    selector += ' input#' + fieldId;
+                            } else if (viewType === 'table' || viewType === 'search') {
+                                if (!fieldId) {
+                                    const actionLink = $(`#${viewId} tr[id="${recordObj.id}"] .kn-action-link:textEquals("${field}")`);
+                                    if (actionLink.length) {
+                                        const fieldValue = actionLink[0].innerText;
+                                        const result = ktlCompare(fieldValue, operator, value);
+                                        return resolve(result);
+                                    }
+                                } else {
+                                    const rawData = recordObj[`${fieldId}_raw`];
+                                    if (rawData.length)
+                                        return resolve(ktlCompare(rawData[0].identifier, operator, value));
+                                    else
+                                        return resolve(false);
+                                }
+                            } else {
                                 ktl.log.clog('purple', 'validateKtlCond - unsupported view type', viewId, viewType);
+                                return resolve(false);
+                            }
                         }
 
                         if (!selector) {
@@ -8738,10 +8799,7 @@ function Ktl($, appInfo) {
                                 if (ktl.views.getViewType(viewId) === 'form') {
                                     fieldValue = $(selector).val();
                                     $(selector).off('keyup.ktlHc').on('keyup.ktlHc', (event) => {
-                                        if (ktlCompare(event.target.value, operator, value))
-                                            return resolve(true);
-                                        else
-                                            return resolve(false);
+                                        return resolve(ktlCompare(event.target.value, operator, value));
                                     })
                                 } else
                                     fieldValue = $(selector)[0].textContent.trim();
@@ -8753,8 +8811,7 @@ function Ktl($, appInfo) {
                                 if (!fieldValue)
                                     return resolve(false);
 
-                                const res = ktlCompare(fieldValue, operator, value);
-                                return resolve(res);
+                                return resolve(ktlCompare(fieldValue, operator, value));
                             }).catch(() => {
                                 return resolve(false);
                             });
@@ -9515,6 +9572,28 @@ function Ktl($, appInfo) {
                     stickyColWidth += columnWidth;
                     tableHeadSelector.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px' });
                     tableBodySelector.css({ 'z-index': 1, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': stickyColBkgdColor });
+                }
+            },
+
+            viewHasInlineEdit: function (viewId) {
+                try {
+                    if (!viewId) return;
+                    var viewModel = Knack.router.scene_view.model.views._byId[viewId];
+                    if (!viewModel) return;
+
+                    var viewAttr = viewModel.attributes;
+                    const viewType = viewAttr.type;
+                    if (!['table', 'search'].includes(viewType)) return;
+
+                    var inlineEditing = false;
+                    if (viewType === 'table')
+                        inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
+                    else
+                        inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
+
+                    return inlineEditing;
+                } catch (e) {
+                    return false;
                 }
             },
         }
