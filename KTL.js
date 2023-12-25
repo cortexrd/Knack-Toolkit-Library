@@ -405,7 +405,13 @@ function Ktl($, appInfo) {
                         return;
                     }
 
-                    var sceneKey = ktl.views.getSceneKeyFromViewId(viewId);
+                    const sceneKey = ktl.scenes.getSceneKeyFromViewId(viewId);
+                    if (!sceneKey) {
+                        const error = 'knAPI error: invalid sceneKey';
+                        if (ktl.account.isDeveloper())
+                            alert(error);
+                        return reject(new Error(error));
+                    }
 
                     var apiURL = 'https://api.knack.com/v1/pages/';
                     if (Knack.app.attributes.account.settings.hipaa.enabled === true && Knack.app.attributes.account.settings.hipaa.region === 'us-govcloud')
@@ -1573,6 +1579,28 @@ function Ktl($, appInfo) {
                 else
                     ktl.storage.lsRemoveItem('forceDevRole', true);
             },
+
+            //Iterates through an object to find a key with a specified value.  Returns the found key.
+            findKeyWithValueInObject: function (obj, keyToFind, keyValue, keyNameToReturn, exactMatch = true, maxDepth = 20, currentDepth = 0) {
+                if (typeof obj !== 'object' || obj === null || currentDepth > maxDepth) return null;
+
+                for (let key in obj) {
+                    if (key === keyToFind) {
+                        if (exactMatch && obj[key] === keyValue)
+                            return obj[keyNameToReturn] || obj;
+                        else if (!exactMatch && obj[key].includes(keyValue))
+                            return obj[keyNameToReturn] || obj;
+                    } else if (typeof obj[key] === 'object') {
+                        let found = this.findKeyWithValueInObject(obj[key], keyToFind, keyValue, keyNameToReturn, exactMatch, maxDepth, currentDepth + 1);
+                        if (found !== null)
+                            return found;
+                    }
+                }
+
+                return null;
+            }
+
+
         }
     })(); //Core
 
@@ -2610,74 +2638,25 @@ function Ktl($, appInfo) {
             getFieldIdFromLabel: function (viewId, fieldLabel, exactMatch = true) {
                 if (!viewId || !fieldLabel) return;
 
+                let view = ktl.views.getViewObject(viewId);
+                if (!view) return;
+
+                const viewType = view.type;
                 var field;
-                const view = Knack.views[viewId].model.view;
-                const viewType = ktl.views.getViewType(viewId);
-
-                const name = findNameValue(view, 'name', fieldLabel);
-                console.log('name =', name);
-
-                function findNameValue(obj, keyToFind, keyValue, exactMatch = true) {
-                    if (typeof obj !== 'object' || obj === null) {
-                        return null; // Not an object or array, so return null
-                    }
-
-                    for (let key in obj) {
-                        if (key === keyToFind) {
-                            if (exactMatch && obj[key] === fieldLabel)
-                                return obj.key;
-                            else if (obj[key].includes(fieldLabel))
-                                return obj.key;
-                        } else if (typeof obj[key] === 'object') {
-                            let found = findNameValue(obj[key], keyToFind, keyValue, exactMatch);
-                            if (found !== null) {
-                                return found; // Found the 'name' key in a sub-object or array
-                            }
-                        }
-                    }
-
-                    return null; // 'name' key not found
-                }
-
-
-
 
                 try {
-                    if (viewType === 'form') {
-                        if (exactMatch)
-                            field = $('#' + viewId + ' .kn-label:textEquals("' + fieldLabel + '")');
-                        else
-                            field = $('#' + viewId + ' .kn-label:contains("' + fieldLabel + '")');
-
-                        if (field.length) {
-                            field = field[0].closest('.kn-input');
-                            return field ? field.attributes['data-input-id'].value : undefined;
-                        }
+                    if (viewType === 'table' || viewType === 'search') {
+                        const name = ktl.core.findKeyWithValueInObject(view, 'header', fieldLabel, 'id', exactMatch);
+                        console.log('fieldLabel =', name, fieldLabel);
+                        return name;
                     } else if (viewType === 'details') {
-                        for (const col_a of view.columns) {
-                            for (const grp of col_a.groups) {
-                                for (const col_b of grp.columns) {
-                                    for (const fld of col_b) {
-                                        if (exactMatch && fld.name === fieldLabel)
-                                            return fld.key;
-                                        else if (fld.name.includes(fieldLabel))
-                                            return fld.key;
-                                    }
-                                }
-                            }
-                        }
-                    } else if (viewType === 'table' || viewType === 'search') {
-                        if (exactMatch)
-                            field = $('#' + viewId + ' .kn-table th:textEquals("' + fieldLabel + '")');
-                        else
-                            field = $('#' + viewId + ' .kn-table th:contains("' + fieldLabel + '")');
-
-                        if (field.length) {
-                            var classes = $(field)[0].classList.value;
-                            const match = classes.match(/field_\d+/);
-                            if (match)
-                                return match[0];
-                        }
+                        const name = ktl.core.findKeyWithValueInObject(view, 'name', fieldLabel, 'key', exactMatch);
+                        console.log('fieldLabel =', name, fieldLabel);
+                        return name;
+                    } else if (viewType === 'form') {
+                        const name = ktl.core.findKeyWithValueInObject(view, 'label', fieldLabel, 'id', exactMatch);
+                        console.log('fieldLabel =', name, fieldLabel);
+                        return name;
                     } else if (viewType === 'list') {
                         if (exactMatch)
                             field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
@@ -2697,7 +2676,7 @@ function Ktl($, appInfo) {
                     //Support more view types as we go.
                 }
                 catch (e) {
-                    ktl.log.clog('purple', 'getFieldIdFromLabel error: Invalid field selector encountered', fieldLabel);
+                    ktl.log.clog('purple', 'getFieldIdFromLabel error: Invalid field selector encountered', fieldLabel, e);
                 }
             },
 
@@ -9590,16 +9569,23 @@ function Ktl($, appInfo) {
                 }
             },
 
-            getSceneKeyFromViewId: function (viewId) {
+            getViewObject: function (viewId) {
                 if (!viewId) return;
-                const scenes = Knack.scenes.models;
-                for (const scene of scenes) {
-                    for (const views of scene.views.models) {
-                        if (views.attributes.key === viewId)
-                            return scene.attributes.key;
+
+                let view = Knack.views[viewId];
+                if (!view) {
+                    const scenes = Knack.scenes.models;
+                    for (const scene of scenes) {
+                        for (const view of scene.views.models) {
+                            if (view.attributes.key === viewId)
+                                return view.attributes;
+                        }
                     }
                 }
+
+                return view.model.view;
             },
+
         } //return
     })(); //Views feature
 
@@ -10674,6 +10660,22 @@ function Ktl($, appInfo) {
                 //Actually, see how we can change from array to object...
                 if (!sceneChangeObservers.includes(callback))
                     sceneChangeObservers.push(callback);
+            },
+
+            getSceneKeyFromViewId: function (viewId) {
+                if (!viewId) return;
+
+                const view = Knack.views[viewId];
+                if (view && view.model && view.model.view && view.model.view.scene)
+                    return view.model.view.scene.key;
+
+                const scenes = Knack.scenes.models;
+                for (const scene of scenes) {
+                    for (const views of scene.views.models) {
+                        if (views.attributes.key === viewId)
+                            return scene.attributes.key;
+                    }
+                }
             },
         }
     })(); //Scenes feature
