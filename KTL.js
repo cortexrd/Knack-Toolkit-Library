@@ -2642,38 +2642,30 @@ function Ktl($, appInfo) {
                 if (!view) return;
 
                 const viewType = view.type;
-                var field;
-
                 try {
                     if (viewType === 'table' || viewType === 'search') {
-                        const name = ktl.core.findKeyWithValueInObject(view, 'header', fieldLabel, 'id', exactMatch);
-                        console.log('fieldLabel =', name, fieldLabel);
-                        return name;
+                        keyToFind = 'header';
+                        keyNameToReturn = 'id';
                     } else if (viewType === 'details') {
-                        const name = ktl.core.findKeyWithValueInObject(view, 'name', fieldLabel, 'key', exactMatch);
-                        console.log('fieldLabel =', name, fieldLabel);
-                        return name;
-                    } else if (viewType === 'form') {
-                        const name = ktl.core.findKeyWithValueInObject(view, 'label', fieldLabel, 'id', exactMatch);
-                        console.log('fieldLabel =', name, fieldLabel);
-                        return name;
-                    } else if (viewType === 'list') {
-                        if (exactMatch)
-                            field = $('#' + viewId + ' .kn-detail-label:textEquals("' + fieldLabel + '")');
-                        else
-                            field = $('#' + viewId + ' .kn-detail-label:contains("' + fieldLabel + '")');
-
-                        if (field.length) {
-                            var classes = $(field).parent()[0].classList.value;
-                            const match = classes.match(/field_\d+/);
-                            if (match)
-                                return match[0];
-                        }
+                        keyToFind = 'name';
+                        keyNameToReturn = 'key';
+                    } else if (viewType === 'form' || viewType === 'list') {
+                        keyToFind = 'label';
+                        keyNameToReturn = 'id';
                     } else if (viewType === 'rich_text')
                         return;
                     else
                         ktl.log.clog('purple', 'getFieldIdFromLabel - Unsupported view type', viewId, viewType);
                     //Support more view types as we go.
+
+                    const foundField = ktl.core.findKeyWithValueInObject(view, keyToFind, fieldLabel, keyNameToReturn, exactMatch);
+
+                    if (foundField !== null) {
+                        if (typeof foundField === 'string')
+                            return foundField;
+                        else if (typeof foundField === 'object' && foundField.field && foundField.field.key)
+                            return foundField.field.key;
+                    }
                 }
                 catch (e) {
                     ktl.log.clog('purple', 'getFieldIdFromLabel error: Invalid field selector encountered', fieldLabel, e);
