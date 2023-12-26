@@ -6713,7 +6713,9 @@ function Ktl($, appInfo) {
         }
 
         let clickIsRunning = false;
+        let clickLastRecIdProcessed;
         function performClick(viewId, keywords, data) {
+            console.log('Click render view', viewId);
             const kw = '_click';
             if (!(viewId && keywords && keywords[kw])) return;
 
@@ -6721,7 +6723,9 @@ function Ktl($, appInfo) {
             if (!(viewType === 'table' || viewType === 'search')) return;
 
             const kwList = ktl.core.getKeywordsByType(viewId, kw);
-            kwList.forEach(kwInstance => { execKw(kwInstance); })
+            //kwList.forEach(kwInstance => { execKw(kwInstance); })
+            const kwInstance = kwList[0];
+            execKw(kwInstance);
 
             function execKw(kwInstance) {
                 const options = kwInstance.options;
@@ -6735,10 +6739,26 @@ function Ktl($, appInfo) {
                 //const condViewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
                 const clickActionLinkText = params[0];
-                const linkSelector = $(`#${viewId} .knViewLink__label:textEquals("${clickActionLinkText}")`);
+                let linkSelectorString = `#${viewId} .knViewLink__label:textEquals("${clickActionLinkText}")`;
+                if (clickLastRecIdProcessed)
+                    linkSelectorString = `#${viewId} tr[id!="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${clickActionLinkText}")`;
+
+                const linkSelector = $(linkSelectorString);
+
+                if (clickIsRunning) {
+                    if (linkSelector.length) {
+                        doClick();
+                        return;
+                    } else {
+                        clickIsRunning = false;
+                        return;
+                    }
+                }
+
+
 
                 let needConfirm = true;
-                if (params.length >= 2 && params[1] === 'a')
+                if (params.length >= 2 && params[1] === 'auto')
                     needConfirm = false;
 
                 if (params.length >= 3 && params[2]) {
@@ -6772,12 +6792,12 @@ function Ktl($, appInfo) {
                                 })
                             } else {
                                 //Is there something to click?
-                                if (!linkSelector.length) {
-                                    clickIsRunning = false;
-                                    return;
-                                } else {
-                                    console.log('found a link');
-                                }
+                            //    if (!linkSelector.length) {
+                            //        clickIsRunning = false;
+                            //        return;
+                            //    } else {
+                            //        console.log('found a link');
+                            //    }
                             }
                         }
                     }
@@ -6795,6 +6815,7 @@ function Ktl($, appInfo) {
                 }
 
                 function doClick() {
+                    clickLastRecIdProcessed = linkSelector[0].closest(`tr`).id;
                     linkSelector[0].click();
                 }
             }
