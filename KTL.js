@@ -5966,7 +5966,15 @@ function Ktl($, appInfo) {
                                 cellText = cell.flat().map(obj => obj.identifier).join(' ');
                             else if (fieldType === 'phone')
                                 cellText = cell.formatted;
-                            else
+                            else if (fieldType === 'boolean') {
+                                const format = Knack.objects.getField(fieldId).attributes.format.format;
+                                if (format === 'yes_no')
+                                    cellText = (cell === true ? 'Yes' : 'No');
+                                else if (format === 'on_off')
+                                    cellText = (cell === true ? 'On' : 'Off');
+                                else
+                                    cellText = (cell === true ? 'True' : 'False');
+                            } else
                                 cellText = cell.toString();
 
                             if (cellText !== '' && numericFieldTypes.includes(fieldType))
