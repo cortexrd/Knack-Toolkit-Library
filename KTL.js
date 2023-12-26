@@ -1598,9 +1598,7 @@ function Ktl($, appInfo) {
                 }
 
                 return null;
-            }
-
-
+            },
         }
     })(); //Core
 
@@ -5338,6 +5336,7 @@ function Ktl($, appInfo) {
                     keywords._parent && goUpParentLevels(viewId, keywords);
                     keywords._vrd && viewRecordDetails(viewId, keywords);
                     keywords._click && performClick(viewId, keywords, data);
+                    keywords._mail && sendBulkEmails(viewId, keywords, data);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6614,15 +6613,18 @@ function Ktl($, appInfo) {
 
         function goUpParentLevels(viewId, keywords) {
             const kw = '_parent';
+
+            if (!(viewId && keywords && keywords[kw])) return;
+
             const viewType = ktl.views.getViewType(viewId);
-            if (!(viewId && keywords && keywords[kw] && (viewType === 'form' || viewType === 'menu'))) return;
+            if (!(viewType === 'form' || viewType === 'menu')) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
                 const options = keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+            if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const level = keywords[kw][0].params[0][0] || 1;
                 if (viewType === 'form') {
                     $(document).bindFirst('knack-form-submit.' + viewId, () => {
@@ -6646,9 +6648,11 @@ function Ktl($, appInfo) {
         }
 
         function viewRecordDetails(viewId, keywords) {
+            if (!viewId) return;
+
             const kw = '_vrd';
             const viewType = ktl.views.getViewType(viewId);
-            if (!(viewId && keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+            if (!(keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
 
             if (keywords[kw].length && keywords[kw][0].options) {
                 const options = keywords[kw][0].options;
@@ -6708,9 +6712,13 @@ function Ktl($, appInfo) {
             }
         }
 
+        let clickIsRunning = false;
         function performClick(viewId, keywords, data) {
             const kw = '_click';
             if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(viewType === 'table' || viewType === 'search')) return;
 
             const kwList = ktl.core.getKeywordsByType(viewId, kw);
             kwList.forEach(kwInstance => { execKw(kwInstance); })
@@ -6720,38 +6728,178 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
 
                 const params = kwInstance.params[0];
-                const action = params[0];
-                if (!action || params.length < 2) return;
+                if (params.length < 1) return;
 
-                const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
+                //const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
+                //const view = conditions[3] || '';
+                //const condViewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
-                const view = conditions[3] || '';
-                const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
-                const viewType = ktl.views.getViewType(viewId);
+                const clickActionLinkText = params[0];
+                const linkSelector = $(`#${viewId} .knViewLink__label:textEquals("${clickActionLinkText}")`);
 
-                if (viewType === 'table' || viewType === 'search') {
-                    for (let i = 0; i < data.length; i++) {
-                        const recordObj = data[i];
-                        if (recordObj.id === '64ac44591ac9280026a3fa03')
-                            console.log('found');
-                        ktl.views.validateKtlCond(options, recordObj)
-                            .then(valid => {
-                                if (valid) {
-                                    const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                                    ktl.core.waitSelector(sel, 20000)
-                                        .then(() => {
-                                            if (action === 'click') {
-                                                const clickTarget = params[1];
-                                                console.log('recordObj.id =', recordObj.id);
-                                                //$(`#${viewId} tr[id="${recordObj.id}"] .kn-action-link:textEquals("${clickTarget}")`)[0].click();
-                                            }
-                                        })
-                                        .catch(function () { })
+                let needConfirm = true;
+                if (params.length >= 2 && params[1] === 'a')
+                    needConfirm = false;
+
+                if (params.length >= 3 && params[2]) {
+                    //Add a start button
+                    const buttonLabel = params[2];
+                    let startButtonDiv = document.querySelector(`ktlButtonsDiv-${viewId}`);
+                    if (!startButtonDiv) {
+                        startButtonDiv = document.createElement('div');
+                        startButtonDiv.setAttribute('id', `ktlButtonsDiv-${viewId}`);
+                        startButtonDiv.style.marginTop = '10px';
+                        startButtonDiv.style.marginBottom = '30px';
+
+                        const div = document.querySelector(`#${viewId}`);
+                        if (div) {
+                            div.prepend(startButtonDiv);
+
+                            const startButton = ktl.fields.addButton(startButtonDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], 'ktlStartClickNow-' + viewId);
+
+                            if (!clickIsRunning) {
+                                startButton.addEventListener('click', function (e) {
+                                    if (needConfirm) {
+                                        if (confirm(`Proceed with auto-click on ${clickActionLinkText}?`)) {
+                                            clickIsRunning = true;
+                                            doClick();
+                                        }
+                                    }
+                                    else {
+                                        clickIsRunning = true;
+                                        doClick();
+                                    }
+                                })
+                            } else {
+                                //Is there something to click?
+                                if (!linkSelector.length) {
+                                    clickIsRunning = false;
+                                    return;
+                                } else {
+                                    console.log('found a link');
                                 }
+                            }
+                        }
+                    }
+                } else { //No button
+                    if (needConfirm) {
+                        if (confirm(`Proceed with auto-click on ${clickActionLinkText}?`)) {
+                            clickIsRunning = true;
+                            doClick();
+                        }
+                    }
+                    else {
+                        clickIsRunning = true;
+                        doClick();
+                    }
+                }
+
+                function doClick() {
+                    linkSelector[0].click();
+                }
+            }
+        }
+
+        function sendBulkEmails(viewId, keywords, data) {
+            const kw = '_mail';
+
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(viewId && keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            let sendEmailsButtonDiv = document.querySelector(`ktlButtonsDiv-${viewId}`);
+            if (!sendEmailsButtonDiv) {
+                sendEmailsButtonDiv = document.createElement('div');
+                sendEmailsButtonDiv.setAttribute('id', `ktlButtonsDiv-${viewId}`);
+                sendEmailsButtonDiv.style.marginTop = '10px';
+                sendEmailsButtonDiv.style.marginBottom = '30px';
+
+                const div = document.querySelector(`#${viewId}`);
+                if (div) {
+                    div.prepend(sendEmailsButtonDiv);
+
+                    const sendEmailsButton = ktl.fields.addButton(sendEmailsButtonDiv, 'Send Emails Now', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktlSendEmailNow-' + viewId);
+                    sendEmailsButton.addEventListener('click', function (e) {
+                        console.log('Send email now');
+
+                        //prepareEmailData();
+
+                    })
+                }
+            }
+
+            const SEND_DATE = 'Send';
+            const SENT_DATE = 'Last Sent';
+            const SUBJECT = 'Subject';
+            const BODY = 'Body';
+            const ML_POSTING = 'Posting ID';
+            const ML_DETAILS_VIEW = ktl.core.getViewIdByTitle('Posting Details', 'posting-details-review-and-send');
+            const ML_GRID_VIEW = ktl.core.getViewIdByTitle('Recipients', 'posting-details-review-and-send');
+
+            let isMLDetailsViewRendered = false;
+            let isMLGridViewRendered = false;
+            let gridData = {};
+            let apiData = {};
+            let postingSrcFldId, subjectSrcFldId, bodySrcFldId, sendSrcFldId;
+            let postingDstFldId, subjectDstFldId, bodyDstFldId, sendDstFldId, sentDstFldId;
+
+            $(document).on(`knack-view-render.${ML_GRID_VIEW} knack-view-render.${ML_DETAILS_VIEW}`, function (event, view, data) {
+                const viewId = view.key;
+                if (viewId === ML_DETAILS_VIEW) {
+                    postingSrcFldId = ktl.fields.getFieldIdFromLabel(ML_DETAILS_VIEW, ML_POSTING);
+                    subjectSrcFldId = ktl.fields.getFieldIdFromLabel(ML_DETAILS_VIEW, SUBJECT);
+                    bodySrcFldId = ktl.fields.getFieldIdFromLabel(ML_DETAILS_VIEW, 'Dead Body');
+                    sendSrcFldId = ktl.fields.getFieldIdFromLabel(ML_DETAILS_VIEW, SEND_DATE);
+                    isMLDetailsViewRendered = true;
+                } else if (viewId === ML_GRID_VIEW) {
+                    postingDstFldId = ktl.fields.getFieldIdFromLabel(ML_GRID_VIEW, ML_POSTING);
+                    subjectDstFldId = ktl.fields.getFieldIdFromLabel(ML_GRID_VIEW, SUBJECT);
+                    bodyDstFldId = ktl.fields.getFieldIdFromLabel(ML_GRID_VIEW, BODY);
+                    sendDstFldId = ktl.fields.getFieldIdFromLabel(ML_GRID_VIEW, SEND_DATE);
+                    sentDstFldId = ktl.fields.getFieldIdFromLabel(ML_GRID_VIEW, SENT_DATE);
+                    isMLGridViewRendered = true;
+                    gridData = data;
+                }
+
+                if (isMLDetailsViewRendered && isMLGridViewRendered) {
+                    const postingValue = Knack.views[ML_DETAILS_VIEW].record[postingSrcFldId];
+                    const postingRecId = Knack.views[ML_DETAILS_VIEW].record.id;
+                    const subjectValue = Knack.views[ML_DETAILS_VIEW].record[subjectSrcFldId];
+                    const bodyValue = Knack.views[ML_DETAILS_VIEW].record[bodySrcFldId];
+                    const sendValue = Knack.views[ML_DETAILS_VIEW].record[sendSrcFldId];
+
+                    apiData[postingDstFldId] = [postingRecId];
+                    apiData[subjectDstFldId] = subjectValue;
+                    apiData[bodyDstFldId] = bodyValue;
+                    apiData[sendDstFldId] = sendValue;
+                    apiData[sentDstFldId] = '';
+
+                    let bulkOpsRecIdArray = [];
+                    gridData.forEach(rec => {
+                        if (!rec[`${postingDstFldId}_raw`].length || rec[`${postingDstFldId}_raw`][0].identifier !== postingValue)
+                            bulkOpsRecIdArray.push(rec.id);
+                    })
+
+                    if (bulkOpsRecIdArray.length) {
+                        processAutomatedBulkEdit(ML_GRID_VIEW, bulkOpsRecIdArray, apiData)
+                            .then(countDone => {
+                                ktl.core.timedPopup('Mailing list pre-processing complete');
+
+                            })
+                            .catch(err => {
+                                alert(`Mailing List pre-processing error encountered:\n${err}`);
                             })
                     }
                 }
-            }
+            })
+
+
         }
 
         //Views
