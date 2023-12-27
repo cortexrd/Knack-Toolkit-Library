@@ -1384,7 +1384,7 @@ function Ktl($, appInfo) {
                 return [];
             },
 
-            computeTargetSelector: function (viewId, fieldId, options) {
+            computeTargetSelector: function (viewId, fieldId, options, recordId) {
                 var targetFieldId;
                 var targetViewId;
                 var ktlTarget;
@@ -1440,9 +1440,13 @@ function Ktl($, appInfo) {
 
                 if (targetFieldId) {
                     const viewType = ktl.views.getViewType(targetViewId); //Read once more, in case the view has changed since first call above.
-                    if (viewType === 'table')
+
+                    if (recordId && (viewType === 'table' || viewType === 'search' || viewType === 'list'))
+                        targetSel += ` tr[id="${recordId}"]`;
+
+                    if (viewType === 'table' || viewType === 'search') {
                         targetSel += ' .' + fieldId;
-                    else if (viewType === 'details' || viewType === 'list')
+                    } else if (viewType === 'details' || viewType === 'list')
                         targetSel += ' .' + fieldId + ' .kn-detail-body';
                     else if (viewType === 'form') {
                         targetSel += ' input#' + fieldId;
@@ -2644,10 +2648,10 @@ function Ktl($, appInfo) {
                     if (viewType === 'table' || viewType === 'search') {
                         keyToFind = 'header';
                         keyNameToReturn = 'id';
-                    } else if (viewType === 'details') {
+                    } else if (viewType === 'details' || viewType === 'list') {
                         keyToFind = 'name';
                         keyNameToReturn = 'key';
-                    } else if (viewType === 'form' || viewType === 'list') {
+                    } else if (viewType === 'form') {
                         keyToFind = 'label';
                         keyNameToReturn = 'id';
                     } else if (viewType === 'rich_text')
@@ -5306,7 +5310,7 @@ function Ktl($, appInfo) {
                     //These also need to be processed in the mutation observer.
                     keywords._hc && ktl.views.hideColumns(view, keywords);
                     keywords._rc && ktl.views.removeColumns(view, keywords);
-                    keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
+                    keywords._cls && ktl.views.addRemoveClass(viewId, keywords, data);
                     keywords._style && ktl.views.setStyle(viewId, keywords);
 
                     //These don't need to be processed in the mutation observer.
@@ -5959,23 +5963,23 @@ function Ktl($, appInfo) {
                         }
 
                         data.filter((record) => record[fieldId + '_raw'] != undefined).forEach((record) => {
-                            const cell = record[fieldId + '_raw'];
+                            const rawData = record[fieldId + '_raw'];
 
                             let cellText;
-                            if (Array.isArray(cell) && cell.length > 0)
-                                cellText = cell.flat().map(obj => obj.identifier).join(' ');
+                            if (Array.isArray(rawData) && rawData.length > 0)
+                                cellText = rawData.flat().map(obj => obj.identifier).join(' ');
                             else if (fieldType === 'phone')
-                                cellText = cell.formatted;
+                                cellText = rawData.formatted;
                             else if (fieldType === 'boolean') {
                                 const format = Knack.objects.getField(fieldId).attributes.format.format;
                                 if (format === 'yes_no')
-                                    cellText = (cell === true ? 'Yes' : 'No');
+                                    cellText = (rawData === true ? 'Yes' : 'No');
                                 else if (format === 'on_off')
-                                    cellText = (cell === true ? 'On' : 'Off');
+                                    cellText = (rawData === true ? 'On' : 'Off');
                                 else
-                                    cellText = (cell === true ? 'True' : 'False');
+                                    cellText = (rawData === true ? 'True' : 'False');
                             } else
-                                cellText = cell.toString();
+                                cellText = rawData.toString();
 
                             if (cellText !== '' && numericFieldTypes.includes(fieldType))
                                 cellText = ktl.core.extractNumericValue(cellText, fieldId);
@@ -8856,7 +8860,7 @@ function Ktl($, appInfo) {
                 });
             },
 
-            validateKtlCond: function (options = {}, recordObj) {
+            validateKtlCond: function (options = {}, recordObj = {}/*Used only with Tables and Lists*/) {
                 return new Promise(function (resolve) {
                     if (!options.ktlCond) return resolve(true);
 
@@ -8921,10 +8925,29 @@ function Ktl($, appInfo) {
                                     }
                                 } else {
                                     const rawData = recordObj[`${fieldId}_raw`];
-                                    if (rawData.length)
-                                        return resolve(ktlCompare(rawData[0].identifier, operator, value));
-                                    else
-                                        return resolve(false);
+
+                                    let cellText;
+                                    let fieldType = ktl.fields.getFieldType(fieldId);
+
+                                    if (Array.isArray(rawData) && rawData.length > 0)
+                                        cellText = rawData.flat().map(obj => obj.identifier).join(' ');
+                                    else if (fieldType === 'phone')
+                                        cellText = rawData.formatted;
+                                    else if (fieldType === 'boolean') {
+                                        const format = Knack.objects.getField(fieldId).attributes.format.format;
+                                        if (format === 'yes_no')
+                                            cellText = (rawData === true ? 'Yes' : 'No');
+                                        else if (format === 'on_off')
+                                            cellText = (rawData === true ? 'On' : 'Off');
+                                        else
+                                            cellText = (rawData === true ? 'True' : 'False');
+                                    } else
+                                        cellText = rawData.toString();
+
+                                    if (cellText !== '' && numericFieldTypes.includes(fieldType))
+                                        cellText = ktl.core.extractNumericValue(cellText, fieldId);
+
+                                    return resolve(ktlCompare(cellText, operator, value));
                                 }
                             } else {
                                 ktl.log.clog('purple', 'validateKtlCond - unsupported view type', viewId, viewType);
@@ -9014,7 +9037,7 @@ function Ktl($, appInfo) {
                 }
             },
 
-            addRemoveClass: function (viewId, keywords) {
+            addRemoveClass: function (viewId, keywords, data = []) {
                 const kw = '_cls';
                 if (!viewId || !keywords[kw]) return;
 
@@ -9025,24 +9048,35 @@ function Ktl($, appInfo) {
                     const options = kwInstance.options;
                     if (!ktl.core.hasRoleAccess(options)) return;
 
-                    ktl.views.validateKtlCond(options)
-                        .then(valid => {
-                            if (valid) {
-                                const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                                ktl.core.waitSelector(sel, 20000)
-                                    .then(() => {
-                                        var classes = kwInstance.params[0];
-                                        for (var i = 0; i < classes.length; i++) {
-                                            var params = classes[i];
-                                            if (params.startsWith('!'))
-                                                $(sel).removeClass(params.replace('!', ''));
-                                            else
-                                                $(sel).addClass(params);
-                                        }
-                                    })
-                                    .catch(function () { })
-                            }
-                        })
+
+                    const viewType = ktl.views.getViewType(viewId);
+
+                    if (viewType === 'table' || viewType === 'search' || viewType === 'list') {
+                        for (const recordObj of data)
+                            processClass(options, recordObj);
+                    } else
+                        processClass(options);
+
+                    function processClass(options, recordObj = {}) {
+                        ktl.views.validateKtlCond(options, recordObj)
+                            .then(valid => {
+                                if (valid) {
+                                    const sel = ktl.core.computeTargetSelector(viewId, '', options, recordObj.id);
+                                    ktl.core.waitSelector(sel, 20000)
+                                        .then(() => {
+                                            var classes = kwInstance.params[0];
+                                            for (var i = 0; i < classes.length; i++) {
+                                                var params = classes[i];
+                                                if (params.startsWith('!'))
+                                                    $(sel).removeClass(params.replace('!', ''));
+                                                else
+                                                    $(sel).addClass(params);
+                                            }
+                                        })
+                                        .catch(function () { })
+                                }
+                            })
+                    }
                 }
             },
 
@@ -12360,40 +12394,8 @@ function Ktl($, appInfo) {
             }
         })
 
-        $(document).on('knack-view-render.table', function (event, view, data) {
-            if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() ||
-                (!viewCanDoBulkOp(view.key, 'edit') && !viewCanDoBulkOp(view.key, 'copy') && !viewCanDoBulkOp(view.key, 'delete')))
-                return;
-
-            //Put code below in a shared function (see _lud in this.log).
-            var fields = view.fields;
-            if (!fields) return;
-
-            var lud = '';
-            var lub = '';
-            var descr = '';
-            for (var f = 0; f < view.fields.length; f++) {
-                var field = fields[f];
-                descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
-                descr === '_lud' && (lud = field.key);
-                descr === '_lub' && (lub = field.key);
-            }
-
-            if (lud && lub) {
-                bulkOpsLudFieldId = lud;
-                bulkOpsLubFieldId = lub;
-            }
-
-
-            //IMPORTANT!!  noInlineEditing must be called before enableBulkOperations because
-            //its effect on the cells' inline editing has an impact on the bulk selection process.
-            ktl.views.noInlineEditing(view);
-
-            if (viewCanDoBulkOp(view.key, 'edit') || viewCanDoBulkOp(view.key, 'copy') || viewCanDoBulkOp(view.key, 'delete')) {
-                bulkOpsActive[view.key] = true;
-                enableBulkOperations(view, data);
-            }
-
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            ktl.bulkOps.prepareBulkOps(view, data); //$$$  Move before process keywords?
         });
 
         var preventClick = false;
@@ -13104,6 +13106,44 @@ function Ktl($, appInfo) {
 
             getBulkOpsActive: function (viewId) {
                 return bulkOpsActive[viewId] === true;
+            },
+
+            prepareBulkOps: function (view, data) {
+                const viewType = ktl.views.getViewType(view.key);
+                if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() || !(viewType === 'table' || viewType === 'search'))
+                    return;
+
+                if (!viewCanDoBulkOp(view.key, 'edit') && !viewCanDoBulkOp(view.key, 'copy') && !viewCanDoBulkOp(view.key, 'delete'))
+                    return;
+
+                //Put code below in a shared function (see _lud in this.log).
+                var fields = view.fields;
+                if (!fields) return;
+
+                var lud = '';
+                var lub = '';
+                var descr = '';
+                for (var f = 0; f < view.fields.length; f++) {
+                    var field = fields[f];
+                    descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+                    descr === '_lud' && (lud = field.key);
+                    descr === '_lub' && (lub = field.key);
+                }
+
+                if (lud && lub) {
+                    bulkOpsLudFieldId = lud;
+                    bulkOpsLubFieldId = lub;
+                }
+
+
+                //IMPORTANT!!  noInlineEditing must be called before enableBulkOperations because
+                //its effect on the cells' inline editing has an impact on the bulk selection process.
+                ktl.views.noInlineEditing(view);
+
+                if (viewCanDoBulkOp(view.key, 'edit') || viewCanDoBulkOp(view.key, 'copy') || viewCanDoBulkOp(view.key, 'delete')) {
+                    bulkOpsActive[view.key] = true;
+                    enableBulkOperations(view, data);
+                }
             },
         }
     })(); //Bulk Operations feature
