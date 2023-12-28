@@ -5343,6 +5343,7 @@ function Ktl($, appInfo) {
                     keywords._vrd && viewRecordDetails(viewId, keywords);
                     keywords._click && performClick(viewId, keywords, data);
                     keywords._mail && sendBulkEmails(viewId, keywords, data);
+                    keywords._dnd && dragAndDrop(viewId, keywords, data);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5964,12 +5965,12 @@ function Ktl($, appInfo) {
                             fieldType = ktl.fields.getFieldType(displayFieldId);
                         }
 
-                        data.filter((record) => record[fieldId + '_raw'] != undefined).forEach((record) => {
-                            const rawData = record[fieldId + '_raw'];
+                        data.filter((record) => record[fieldId + '_raw'] != undefined).forEach((recordObj) => {
+                            const rawData = recordObj[`${fieldId}_raw`];
 
                             let cellText;
                             if (Array.isArray(rawData) && rawData.length > 0)
-                                cellText = rawData.flat().map(obj => obj.identifier).join(' ');
+                                cellText = rawData.flat().map(obj => (obj.identifier || obj)).join(' ');
                             else if (fieldType === 'phone')
                                 cellText = rawData.formatted;
                             else if (fieldType === 'boolean') {
@@ -5993,15 +5994,15 @@ function Ktl($, appInfo) {
                                 let valSel;
 
                                 if (viewType === 'list')
-                                    valSel = $('#' + viewId + ' [data-record-id="' + record.id + '"]' + ' .kn-detail-body .' + value);
+                                    valSel = $('#' + viewId + ' [data-record-id="' + recordObj.id + '"]' + ' .kn-detail-body .' + value);
                                 else
-                                    valSel = $('#' + viewId + ' tbody tr[id="' + record.id + '"]' + ' .' + value);
+                                    valSel = $('#' + viewId + ' tbody tr[id="' + recordObj.id + '"]' + ' .' + value);
 
                                 if (valSel.length)
                                     refVal = valSel[0].textContent.trim();
                             }
 
-                            applyColorizationToCells(fieldId, parameters, cellText, refVal, record, options);
+                            applyColorizationToCells(fieldId, parameters, cellText, refVal, recordObj, options);
                         }); //Data
                     }
                 }
@@ -6933,8 +6934,110 @@ function Ktl($, appInfo) {
                     }
                 }
             })
+        }
 
+        function dragAndDrop(viewId, keywords, data) {
+            const kw = '_dnd';
 
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(viewId && keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            if (!(keywords[kw][0].params && keywords[kw][0].params[0].length >= 2)) return;
+
+            const dndType = keywords[kw][0].params[0][0];
+            if (dndType === 'sort')
+                dndSort();
+            else {
+                //TODO: Implement other types as we go, ex: from srcView to dstView.
+            }
+
+            function dndSort() {
+                const lineIndexFieldLabel = keywords[kw][0].params[0][1];
+                const lineIndexFieldId = ktl.fields.getFieldIdFromLabel(viewId, lineIndexFieldLabel);
+                const dndDiv = document.querySelector('#' + viewId + ' tbody');
+
+                new Sortable(dndDiv, {
+                    swapThreshold: 0.96,
+                    animation: 250,
+                    easing: "cubic-bezier(1, 0, 0, 1)",
+                    onEnd: function (evt) {
+                        if (evt.oldIndex !== evt.newIndex) {
+                            ktl.core.infoPopup();
+                            ktl.views.autoRefresh(false);
+                            ktl.scenes.spinnerWatchdog(false);
+                            $.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
+
+                            var recIdArray = [];
+                            var idx;
+                            const newData = document.querySelectorAll('#' + viewId + ' tbody tr .' + lineIndexFieldId);
+                            for (idx = 0; idx < newData.length; idx++) {
+                                if (newData[idx].innerText !== (idx + 1).toString()) {
+                                    var recData = {};
+                                    recData[lineIndexFieldId] = idx + 1;
+                                    recData.recId = newData[idx].closest('tr').id;
+                                    recIdArray.push(recData);
+                                }
+                            }
+
+                            var arrayLen = recIdArray.length;
+                            idx = 0;
+                            var countDone = 0;
+                            var apiData = {};
+
+                            var itv = setInterval(() => {
+                                if (idx < arrayLen) {
+                                    apiData[lineIndexFieldId] = recIdArray[idx][lineIndexFieldId];
+                                    const recId = recIdArray[idx].recId;
+                                    updateRecord(recId, apiData);
+                                    idx++;
+                                } else
+                                    clearInterval(itv);
+                            }, 150);
+
+                            function updateRecord(recId, apiData) {
+                                showProgress();
+                                ktl.core.knAPI(viewId, recId, apiData, 'PUT')
+                                    .then(function () {
+                                        if (++countDone === recIdArray.length) {
+                                            recIdArray = [];
+                                            Knack.showSpinner();
+                                            ktl.core.removeInfoPopup();
+                                            ktl.views.refreshView(viewId).then(function () {
+                                                ktl.core.removeTimedPopup();
+                                                ktl.scenes.spinnerWatchdog();
+                                                ktl.views.autoRefresh();
+                                                Knack.hideSpinner();
+                                                $.unblockUI();
+                                                ktl.core.timedPopup('Checklist Lines Reordered successfully');
+                                            })
+                                        } else
+                                            showProgress();
+                                    })
+                                    .catch(function (reason) {
+                                        ktl.core.removeInfoPopup();
+                                        ktl.core.removeTimedPopup();
+                                        Knack.hideSpinner();
+                                        ktl.scenes.spinnerWatchdog();
+                                        ktl.views.autoRefresh();
+                                        $.unblockUI();
+                                        alert('Checklist Lines Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
+                                    })
+
+                                function showProgress() {
+                                    ktl.core.setInfoPopupText('Updating ' + arrayLen + ' Lines.    Records left: ' + (arrayLen - countDone));
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         //Views
@@ -8524,7 +8627,9 @@ function Ktl($, appInfo) {
                     return;
 
                 const viewType = ktl.views.getViewType(viewId);
-                const fieldId = $(event.currentTarget).attr('class').split(/\s+/)[0];
+                const classes = $(event.currentTarget).attr('class');
+                if (!classes) return;
+                const fieldId = classes.split(/\s+/)[0];
 
                 let model;
                 if (viewType === 'table') {
@@ -8932,7 +9037,7 @@ function Ktl($, appInfo) {
                                     let fieldType = ktl.fields.getFieldType(fieldId);
 
                                     if (Array.isArray(rawData) && rawData.length > 0)
-                                        cellText = rawData.flat().map(obj => obj.identifier).join(' ');
+                                        cellText = rawData.flat().map(obj => (obj.identifier || obj)).join(' ');
                                     else if (fieldType === 'phone')
                                         cellText = rawData.formatted;
                                     else if (fieldType === 'boolean') {
