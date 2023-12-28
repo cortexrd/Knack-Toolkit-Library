@@ -5301,6 +5301,8 @@ function Ktl($, appInfo) {
         function ktlProcessKeywords(view, data) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
             try {
+                ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
+
                 const viewId = view.key;
                 var keywords = ktlKeywords[viewId];
                 if (keywords && !$.isEmptyObject(keywords)) {
@@ -12393,10 +12395,6 @@ function Ktl($, appInfo) {
                 bulkOpsRecIdArray = [];
             }
         })
-
-        $(document).on('knack-view-render.any', function (event, view, data) {
-            ktl.bulkOps.prepareBulkOps(view, data); //$$$  Move before process keywords?
-        });
 
         var preventClick = false;
         $(document).on('mousedown', function (e) {
