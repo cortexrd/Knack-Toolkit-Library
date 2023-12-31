@@ -430,7 +430,7 @@ function Ktl($, appInfo) {
                     $.ajax({
                         url: apiURL,
                         type: requestType,
-                        crossDomain: true, //Attempting to reduce the frequent but intermittent CORS error message.
+                        crossDomain: true,
                         retryLimit: 4, //Make this configurable by app,
                         headers: {
                             'Authorization': Knack.getUserToken(),
@@ -2643,24 +2643,29 @@ function Ktl($, appInfo) {
                 let view = ktl.views.getViewObject(viewId);
                 if (!view) return;
 
+                let viewObjToScan = view;
+
                 const viewType = view.type;
                 try {
                     if (viewType === 'table' || viewType === 'search') {
                         keyToFind = 'header';
                         keyNameToReturn = 'id';
+                        viewObjToScan = view.columns;
                     } else if (viewType === 'details' || viewType === 'list') {
                         keyToFind = 'name';
                         keyNameToReturn = 'key';
+                        viewObjToScan = view.columns;
                     } else if (viewType === 'form') {
                         keyToFind = 'label';
                         keyNameToReturn = 'id';
+                        viewObjToScan = view;
                     } else if (viewType === 'rich_text')
                         return;
                     else
                         ktl.log.clog('purple', 'getFieldIdFromLabel - Unsupported view type', viewId, viewType);
                     //Support more view types as we go.
 
-                    const foundField = ktl.core.findKeyWithValueInObject(view, keyToFind, fieldLabel, keyNameToReturn, exactMatch);
+                    const foundField = ktl.core.findKeyWithValueInObject(viewObjToScan, keyToFind, fieldLabel, keyNameToReturn, exactMatch);
 
                     if (foundField !== null) {
                         if (typeof foundField === 'string')
@@ -5343,7 +5348,8 @@ function Ktl($, appInfo) {
                     keywords._vrd && viewRecordDetails(viewId, keywords);
                     keywords._click && performClick(viewId, keywords, data);
                     keywords._mail && sendBulkEmails(viewId, keywords, data);
-                    keywords._dnd && dragAndDrop(viewId, keywords, data);
+                    keywords._dnd && dragAndDrop(viewId, keywords);
+                    keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6174,12 +6180,12 @@ function Ktl($, appInfo) {
 
                     ktl.core.waitSelector(targetSel, 20000)
                         .then(function () {
-                            //Merge current and new styles.
                             if (remove)
                                 $(targetSel).remove();
                             else if (hide) {
                                 $(targetSel).addClass('ktlDisplayNone');
                             } else {
+                                //Merge current and new styles.
                                 const currentStyle = $(targetSel).attr('style');
                                 $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
                             }
@@ -6749,6 +6755,8 @@ function Ktl($, appInfo) {
                 const params = kwInstance.params[0];
                 if (params.length < 1) return;
 
+                //_click=Link Label, auto (or blank), Button Label
+
                 //const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
                 //const view = conditions[3] || '';
                 //const condViewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
@@ -6916,14 +6924,16 @@ function Ktl($, appInfo) {
                     apiData[sendDstFldId] = sendValue;
                     apiData[sentDstFldId] = '';
 
-                    let bulkOpsRecIdArray = [];
+                    let bulkOpsRecordsArray = [];
                     gridData.forEach(rec => {
-                        if (!rec[`${postingDstFldId}_raw`].length || rec[`${postingDstFldId}_raw`][0].identifier !== postingValue)
-                            bulkOpsRecIdArray.push(rec.id);
+                        if (!rec[`${postingDstFldId}_raw`].length || rec[`${postingDstFldId}_raw`][0].identifier !== postingValue) {
+                            apiData.id = rec.id;
+                            bulkOpsRecordsArray.push(apiData);
+                        }
                     })
 
-                    if (bulkOpsRecIdArray.length) {
-                        processAutomatedBulkEdit(ML_GRID_VIEW, bulkOpsRecIdArray, apiData)
+                    if (bulkOpsRecordsArray.length) {
+                        ktl.views.processAutomatedBulkOps(ML_GRID_VIEW, bulkOpsRecordsArray)
                             .then(countDone => {
                                 ktl.core.timedPopup('Mailing list pre-processing complete');
 
@@ -6936,7 +6946,7 @@ function Ktl($, appInfo) {
             })
         }
 
-        function dragAndDrop(viewId, keywords, data) {
+        function dragAndDrop(viewId, keywords) {
             const kw = '_dnd';
 
             if (!(viewId && keywords && keywords[kw])) return;
@@ -7038,6 +7048,212 @@ function Ktl($, appInfo) {
                     }
                 });
             }
+        }
+
+        function copyRecordsFromView(dstViewId, keywords, data) {
+            const kw = '_cpyfrom';
+            if (!(dstViewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(dstViewId);
+            if (viewType !== 'table') return;
+
+            var tableHasInlineEditing = false;
+            var viewModel = Knack.router.scene_view.model.views._byId[dstViewId];
+            if (viewModel) {
+                var viewAttr = viewModel.attributes;
+                tableHasInlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
+            }
+
+            if (!tableHasInlineEditing) {
+                ktl.log.clog('purple', `_recid keyword used in a table without inline edit: ${dstViewId}`);
+                return;
+            }
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            const params = keywords[kw][0].params;
+            if (params.length < 1 || params[0].length < 1) return;
+
+            const srcViewTitle = params[0][0];
+            const srcViewId = ktl.scenes.findViewWithTitle(srcViewTitle, true, dstViewId);
+
+            ktl.views.waitViewDataReady(srcViewId)
+                .then(() => {
+                    srcDataReady();
+                })
+                .catch(err => {
+                    ktl.log.clog('purple', `Error waiting for data: ${srcViewId}`);
+                })
+
+            function srcDataReady() {
+                const srcData = Knack.views[srcViewId].model.data.models;
+                if (!srcData.length) {
+                    debugger;
+                    return;
+                }
+
+                console.log('srcData =', srcData);
+
+                let needConfirm = true;
+                if (params[0].length >= 2 && params[0][1] === 'auto')
+                    needConfirm = false;
+
+                if (params[0].length >= 3 && params[0][2]) {
+                    //Add a start button
+                    const buttonLabel = params[0][2];
+                    let startButtonDiv = document.querySelector(`ktlButtonsDiv-${dstViewId}`);
+                    if (!startButtonDiv) {
+                        startButtonDiv = document.createElement('div');
+                        startButtonDiv.setAttribute('id', `ktlButtonsDiv-${dstViewId}`);
+                        startButtonDiv.style.marginTop = '10px';
+                        startButtonDiv.style.marginBottom = '30px';
+
+                        const div = document.querySelector(`#${dstViewId}`);
+                        if (div) {
+                            div.prepend(startButtonDiv);
+
+                            const startButton = ktl.fields.addButton(startButtonDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], 'ktlStartClickNow-' + dstViewId);
+                            startButton.addEventListener('click', function (e) {
+                                if (needConfirm) {
+                                    if (confirm(`Proceed with copy?`)) {
+                                        clickIsRunning = true;
+                                        proceed();
+                                    }
+                                }
+                                else {
+                                    clickIsRunning = true;
+                                    proceed();
+                                }
+                            })
+                        }
+                    }
+                } else { //No button
+                    if (needConfirm) {
+                        if (confirm(`Proceed with copy?`)) {
+                            proceed();
+                        }
+                    }
+                    else {
+                        proceed();
+                    }
+                }
+
+                function proceed() {
+                    let fieldsToCopy;
+                    if (params.length >= 2 && params[1].length >= 1) {
+                        fieldsToCopy = params[1];
+                    }
+
+                    console.log('fieldsToCopy =', fieldsToCopy);
+
+                    const model = (Knack.views[dstViewId] && Knack.views[dstViewId].model);
+                    const columns = model.view.columns;
+                    const headers = columns.map(col => col.header.trim()).filter(header => {
+                        return (fieldsToCopy.includes(header) || fieldsToCopy[0] === 'ktlAll');
+                    });
+
+                    console.log('headers =', headers);
+
+                    //Try to find the equivalent headers in source view.
+                    let dstHeaders = {};
+                    for (const header of headers) {
+                        const dstFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, header);
+                        if (dstFieldId && dstFieldId.startsWith('field_') && Knack.objects.getField(dstFieldId).attributes.type !== 'concatenation') {
+                            const srcFieldId = ktl.fields.getFieldIdFromLabel(srcViewId, header);
+                            if (srcFieldId)
+                                dstHeaders[header] = { src: srcFieldId, dst: dstFieldId };
+                        }
+                    }
+
+                    //Process additional parameter groups, if any.
+                    let otherFields;
+                    for (let i = 2; i < params.length; i++) {
+                        let param = params[i];
+                        if (param.length == 2) {
+                            if (param[1] === 'ktlLoggedInAccount') {
+                                dstHeaders[param[0]] = { src: 'ktlLoggedInAccount', dst: 'ktlLoggedInAccount' };
+                            } else {
+                                //Simple 1 to 1 field mapping.
+                                otherFields = param[1];
+                                dstHeaders[param[0]] = { src: 'ktlLoggedInAccount', dst: 'ktlLoggedInAccount' };
+                            }
+                        } else if (param.length == 3) {
+                            //When source is a field/view selector.
+                        }
+                    }
+
+                    console.log('dstHeaders =', dstHeaders);
+
+                    return;
+
+                    //[$('.kn-current_user')[0].id]
+
+
+                    let allFields = srcData[0].attributes;
+                    console.log('allFields =', allFields);
+
+                    const allRawFields = extractRawFields(allFields);
+                    console.log('allRawFields =', allRawFields);
+
+                    const allNonRawFields = extractNonRawFields(allFields);
+                    console.log('allNonRawFields =', allNonRawFields);
+                    for (const field of allNonRawFields) {
+                        console.log('field =', field.key);
+                    }
+
+
+
+
+                    let bulkCopyApiDataArray = [];
+
+                    for (const recordObj of srcData) {
+                        console.log('recordObj =', recordObj);
+                        let apiData = recordObj;
+                        apiData.field_533 = [Knack.getUserAttributes().id];
+                        apiData.field_534 = ['658d98b4dcaa2b0029ee2095'];
+                        //apiData.field_535 = ['658d98b4dcaa2b0029ee2095'];
+                        bulkCopyApiDataArray.push(apiData);
+                    }
+
+                    return;
+                    ktl.views.processAutomatedBulkOps(srcViewId, bulkCopyApiDataArray, 'POST')
+                        .then(countDone => {
+                            ktl.core.timedPopup(`Copy complete: ${countDone}`);
+                        })
+                        .catch(err => {
+                            alert(`Copy error encountered:\n${err}`);
+                        })
+                }
+            }
+
+            function extractNonRawFields(obj) {
+                const nonRawFields = [];
+
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key) && key.startsWith('field_') && !key.endsWith('_raw')) {
+                        nonRawFields.push({ key: key, value: obj[key] });
+                    }
+                }
+
+                return nonRawFields;
+            }
+
+            function extractRawFields(obj) {
+                const rawFields = [];
+
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key) && key.endsWith('_raw')) {
+                        rawFields.push({ key: key, value: obj[key] });
+                    }
+                }
+
+                return rawFields;
+            }
+
+            return;
         }
 
         //Views
@@ -9176,8 +9392,12 @@ function Ktl($, appInfo) {
                                                 var params = classes[i];
                                                 if (params.startsWith('!'))
                                                     $(sel).removeClass(params.replace('!', ''));
-                                                else
-                                                    $(sel).addClass(params);
+                                                else {
+                                                    if (params === 'ktlRemove')
+                                                        $(sel).remove();
+                                                    else
+                                                        $(sel).addClass(params);
+                                                }
                                             }
                                         })
                                         .catch(function () { })
@@ -9894,6 +10114,95 @@ function Ktl($, appInfo) {
                 }
 
                 return view.model.view;
+            },
+
+            processAutomatedBulkOps: function (bulkOpsViewId, bulkOpsRecordsArray, requestType = 'PUT', enableShowProgress = true) {
+                return new Promise(function (resolve, reject) {
+                    if (!bulkOpsViewId || !bulkOpsRecordsArray || !bulkOpsRecordsArray.length || !requestType)
+                        return reject('Called processAutomatedBulkOps with invalid parameters.');
+
+                    const objName = ktl.views.getViewSourceName(bulkOpsViewId);
+
+                    ktl.core.infoPopup();
+                    ktl.views.autoRefresh(false);
+                    ktl.scenes.spinnerWatchdog(false);
+
+                    var arrayLen = bulkOpsRecordsArray.length;
+
+                    var idx = 0;
+                    var countDone = 0;
+                    var itv = setInterval(() => {
+                        if (idx < arrayLen)
+                            updateRecord(bulkOpsRecordsArray[idx++]);
+                        else
+                            clearInterval(itv);
+                    }, 150);
+
+                    function updateRecord(apiData) {
+                        let recId = null;
+                        if (!apiData || $.isEmptyObject(apiData)) return;
+
+                        showProgress();
+
+                        if (requestType.toUpperCase() === 'PUT') {
+                            recId = apiData.id;
+                            delete apiData.id;
+                        }
+
+                        ktl.core.knAPI(bulkOpsViewId, recId, apiData, requestType)
+                            .then(function () {
+                                if (++countDone === bulkOpsRecordsArray.length) {
+                                    bulkOpsRecordsArray = [];
+                                    Knack.showSpinner();
+                                    ktl.core.removeInfoPopup();
+                                    ktl.views.refreshView(bulkOpsViewId).then(function () {
+                                        ktl.core.removeTimedPopup();
+                                        ktl.scenes.spinnerWatchdog();
+                                        setTimeout(function () {
+                                            ktl.views.autoRefresh();
+                                            Knack.hideSpinner();
+                                            return resolve(countDone);
+                                        }, 1000);
+                                    })
+                                } else
+                                    showProgress();
+                            })
+                            .catch(function (reason) {
+                                ktl.core.removeInfoPopup();
+                                ktl.core.removeTimedPopup();
+                                Knack.hideSpinner();
+                                ktl.scenes.spinnerWatchdog();
+                                ktl.views.autoRefresh();
+                                return reject('processAutomatedBulkOps error: ' + JSON.parse(reason.responseText).errors[0].message);
+                            })
+
+                        function showProgress() {
+                            if (enableShowProgress)
+                                ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                        }
+                    }
+                })
+            },
+
+            waitViewDataReady: function (viewId) {
+                return new Promise(function (resolve, reject) {
+                    if (!viewId || !Knack.views[viewId]) return reject();
+
+                    if (Knack.views[viewId].record || Knack.views[viewId].model.data.total_records)
+                        return resolve();
+
+                    const itv = setInterval(() => {
+                        if (Knack.views[viewId].record || Knack.views[viewId].model.data.total_records) {
+                            clearInterval(itv);
+                            resolve();
+                        }
+                    }, 100);
+
+                    setTimeout(() => { //Failsafe
+                        clearInterval(itv);
+                        reject();
+                    }, 20000);
+                })
             },
 
         } //return
