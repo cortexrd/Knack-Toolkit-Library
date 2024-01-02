@@ -1406,7 +1406,6 @@ function Ktl($, appInfo) {
                         const arrayLength = targetArray.length;
                         if (arrayLength) {
                             //Search parameters to see if we can find a direct view_id.
-
                             for (let i = targetArray.length - 1; i >= 0; i--) {
                                 let targetEl = targetArray[i];
 
@@ -1418,8 +1417,17 @@ function Ktl($, appInfo) {
                                     const viewFromTitle = ktl.scenes.findViewWithTitle(targetEl);
                                     if (viewFromTitle)
                                         targetViewId = viewFromTitle;
-                                    else
+                                    else {
                                         fieldId = ktl.fields.getFieldIdFromLabel(targetViewId || viewId, targetEl);
+                                        if (!fieldId) {
+                                            //Try with a link. Use case where a targetEl is a link instead of a typical field.
+                                            if (recordId) {
+                                                const linkTestSel = `#${viewId} [data-record-id="${recordId}"] .kn-details-link:textEquals("${targetEl}")`;
+                                                if (linkTestSel.length)
+                                                    return linkTestSel;
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
@@ -1435,7 +1443,7 @@ function Ktl($, appInfo) {
                 if (!targetSel)
                     targetSel = '#' + viewId; //Starting point - the view ID.
 
-                if (!targetFieldId)
+                if (!targetFieldId && fieldId.startsWith('field_'))
                     targetFieldId = fieldId;
 
                 if (targetFieldId) {
@@ -1445,11 +1453,16 @@ function Ktl($, appInfo) {
                         targetSel += ` tr[id="${recordId}"]`;
 
                     if (viewType === 'table' || viewType === 'search') {
-                        targetSel += ' .' + fieldId;
+                        const fieldType = ktl.views.getFieldTypeInView(viewId, targetFieldId);
+                        if (fieldType === 'link') {
+                            const colIndex = ktl.views.getColumnIndex(viewId, targetFieldId);
+                            targetSel += ` .col-${colIndex}`;
+                        } else
+                            targetSel += ` .${fieldId}`;
                     } else if (viewType === 'details' || viewType === 'list')
-                        targetSel += ' .' + fieldId + ' .kn-detail-body';
+                        targetSel += ` .${fieldId} .kn-detail-body`;
                     else if (viewType === 'form') {
-                        targetSel += ' input#' + fieldId;
+                        targetSel += ` input#${fieldId}`;
                     }
                     //TODO: Support all view types.
                 }
@@ -2138,45 +2151,47 @@ function Ktl($, appInfo) {
                             if ($('#cell-editor .input').length)
                                 viewId = 'cell-editor';
 
-                            const fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text, #' + viewId + ' .kn-input-number, #' + viewId + ' .kn-input-currency');
-                            fields.forEach(field => {
-                                var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
-                                var fieldId = fieldAttr.value;
-                                var fieldDesc = ktl.fields.getFieldDescription(fieldId);
-                                const fieldType = ktl.fields.getFieldType(fieldId);
-                                if ((fieldType && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
-                                    if (!field.getAttribute('numeric')) {
-                                        field.setAttribute('numeric', true);
+                            if (viewId) {
+                                const fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text, #' + viewId + ' .kn-input-number, #' + viewId + ' .kn-input-currency');
+                                fields.forEach(field => {
+                                    var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
+                                    var fieldId = fieldAttr.value;
+                                    var fieldDesc = ktl.fields.getFieldDescription(fieldId);
+                                    const fieldType = ktl.fields.getFieldType(fieldId);
+                                    if ((fieldType && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
+                                        if (!field.getAttribute('numeric')) {
+                                            field.setAttribute('numeric', true);
 
-                                        //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
-                                        if (cfg.convertNumToTel) {
-                                            var originalInput = $('#' + viewId + ' #' + fieldId);
-                                            if (originalInput.length) {
-                                                const originalValue = $('#' + viewId + ' #' + fieldId).val();
-                                                var originalHandlers = $._data(originalInput[0], 'events');
-                                                var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
+                                            //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
+                                            if (cfg.convertNumToTel) {
+                                                var originalInput = $('#' + viewId + ' #' + fieldId);
+                                                if (originalInput.length) {
+                                                    const originalValue = $('#' + viewId + ' #' + fieldId).val();
+                                                    var originalHandlers = $._data(originalInput[0], 'events');
+                                                    var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
 
-                                                // Copy over any relevant attributes from the original input to the new input
-                                                newInput.attr('name', originalInput.attr('name'));
-                                                newInput.attr('class', originalInput.attr('class'));
-                                                // ... (copy any other attributes you need)
+                                                    // Copy over any relevant attributes from the original input to the new input
+                                                    newInput.attr('name', originalInput.attr('name'));
+                                                    newInput.attr('class', originalInput.attr('class'));
+                                                    // ... (copy any other attributes you need)
 
-                                                originalInput.replaceWith(newInput);
-                                                newInput.val(originalValue);
+                                                    originalInput.replaceWith(newInput);
+                                                    newInput.val(originalValue);
 
-                                                // Restore the original event handlers to the new input field
-                                                if (originalHandlers) {
-                                                    $.each(originalHandlers, function (eventType, handlers) {
-                                                        $.each(handlers, function (index, handler) {
-                                                            newInput.on(eventType, handler.handler);
+                                                    // Restore the original event handlers to the new input field
+                                                    if (originalHandlers) {
+                                                        $.each(originalHandlers, function (eventType, handlers) {
+                                                            $.each(handlers, function (index, handler) {
+                                                                newInput.on(eventType, handler.handler);
+                                                            });
                                                         });
-                                                    });
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
-                            })
+                                })
+                            }
                         })
 
                         convertNumDone = true;
@@ -2197,57 +2212,59 @@ function Ktl($, appInfo) {
 
                 forms.forEach(form => {
                     var viewId = form.id;
-                    var formValid = true;
-                    var fields = document.querySelectorAll('#cell-editor #chznBetter[numeric=true]');
-                    if (!fields.length)
-                        fields = document.querySelectorAll('#cell-editor .kn-input[numeric=true]');
-                    if (!fields.length)
-                        fields = document.querySelectorAll('#' + viewId + ' .kn-input[numeric=true]');
+                    if (viewId) {
+                        var formValid = true;
+                        var fields = document.querySelectorAll('#cell-editor #chznBetter[numeric=true]');
+                        if (!fields.length)
+                            fields = document.querySelectorAll('#cell-editor .kn-input[numeric=true]');
+                        if (!fields.length)
+                            fields = document.querySelectorAll('#' + viewId + ' .kn-input[numeric=true]');
 
-                    fields.forEach(field => {
-                        var inputFld = document.querySelector('#chznBetter[numeric=true]') ||
-                            document.querySelector('#' + viewId + ' #' + field.getAttribute('data-input-id'));
+                        fields.forEach(field => {
+                            var inputFld = document.querySelector('#chznBetter[numeric=true]') ||
+                                document.querySelector('#' + viewId + ' #' + field.getAttribute('data-input-id'));
 
-                        if (inputFld) {
-                            var value = inputFld.value;
+                            if (inputFld) {
+                                var value = inputFld.value;
 
-                            var fieldValid = !isNaN(ktl.core.extractNumericValue(value, inputFld.id));
+                                var fieldValid = !isNaN(ktl.core.extractNumericValue(value, inputFld.id));
 
-                            var fieldDesc = ktl.fields.getFieldDescription(inputFld.id);
-                            if (fieldDesc && fieldDesc.includes('_int'))
-                                fieldValid = fieldValid && (value.search(/[^0-9]/) === -1);
+                                var fieldDesc = ktl.fields.getFieldDescription(inputFld.id);
+                                if (fieldDesc && fieldDesc.includes('_int'))
+                                    fieldValid = fieldValid && (value.search(/[^0-9]/) === -1);
 
-                            if (fieldDesc && fieldDesc.includes('_num'))
-                                fieldValid = fieldValid && (value.search(/[^0-9.-]/) === -1);
+                                if (fieldDesc && fieldDesc.includes('_num'))
+                                    fieldValid = fieldValid && (value.search(/[^0-9.-]/) === -1);
 
-                            formValid = formValid && fieldValid;
-                            inputFld.setAttribute('valid', fieldValid);
-                            if (fieldValid)
-                                $(inputFld).removeClass('ktlNotValid');
-                            else
-                                $(inputFld).addClass('ktlNotValid');
+                                formValid = formValid && fieldValid;
+                                inputFld.setAttribute('valid', fieldValid);
+                                if (fieldValid)
+                                    $(inputFld).removeClass('ktlNotValid');
+                                else
+                                    $(inputFld).addClass('ktlNotValid');
+                            }
+                        })
+
+                        var submit = document.querySelector('#' + viewId + ' .is-primary');
+                        if (submit) {
+                            if (!submit.validity)
+                                submit.validity = { ktlInvalidItemObj: {} };
+
+                            var submitInvalidItemObj = submit.validity.ktlInvalidItemObj;
+
+                            if (formValid) {
+                                if (submitInvalidItemObj && !submitInvalidItemObj.numericValid)
+                                    delete submitInvalidItemObj.numericValid;
+                            } else {
+                                if (submitInvalidItemObj)
+                                    submitInvalidItemObj.numericValid = false;
+                                else
+                                    submit.validity.ktlInvalidItemObj = { numericValid: false };
+                            }
                         }
-                    })
 
-                    var submit = document.querySelector('#' + viewId + ' .is-primary');
-                    if (submit) {
-                        if (!submit.validity)
-                            submit.validity = { ktlInvalidItemObj: {} };
-
-                        var submitInvalidItemObj = submit.validity.ktlInvalidItemObj;
-
-                        if (formValid) {
-                            if (submitInvalidItemObj && !submitInvalidItemObj.numericValid)
-                                delete submitInvalidItemObj.numericValid;
-                        } else {
-                            if (submitInvalidItemObj)
-                                submitInvalidItemObj.numericValid = false;
-                            else
-                                submit.validity.ktlInvalidItemObj = { numericValid: false };
-                        }
+                        ktl.views.updateSubmitButtonState(viewId);
                     }
-
-                    ktl.views.updateSubmitButtonState(viewId);
                 })
             },
 
@@ -2635,7 +2652,7 @@ function Ktl($, appInfo) {
                 return descr;
             },
 
-            //Returns the fieldId with the specified view and label.
+            //Returns the fieldId with the specified view ID and field label.
             //The label is the text displayed, not the field's real name.
             getFieldIdFromLabel: function (viewId, fieldLabel, exactMatch = true) {
                 if (!viewId || !fieldLabel) return;
@@ -2644,6 +2661,8 @@ function Ktl($, appInfo) {
                 if (!view) return;
 
                 let viewObjToScan = view;
+                let keyToFind;
+                let keyNameToReturn;
 
                 const viewType = view.type;
                 try {
@@ -2676,6 +2695,54 @@ function Ktl($, appInfo) {
                 }
                 catch (e) {
                     ktl.log.clog('purple', 'getFieldIdFromLabel error: Invalid field selector encountered', fieldLabel, e);
+                }
+            },
+
+            //Returns the field label with the specified view and field IDs.
+            //The label is the text displayed, not the field's real name.
+            getFieldLabelFromId: function (viewId, fieldId, exactMatch = true) {
+                if (!viewId || !fieldId) return;
+
+                let view = ktl.views.getViewObject(viewId);
+                if (!view) return;
+
+                let viewObjToScan = view;
+                let keyToFind;
+                let keyNameToReturn;
+                let foundField;
+
+                const viewType = view.type;
+                try {
+                    if (viewType === 'table' || viewType === 'search') {
+                        keyToFind = 'field';
+                        keyNameToReturn = 'header';
+                        viewObjToScan = view.columns;
+                        for (const key in viewObjToScan) {
+                            const obj = viewObjToScan[key];
+                            if (obj[keyToFind].key === fieldId)
+                                foundField = obj[keyNameToReturn];
+                        }
+                    } else if (viewType === 'details' || viewType === 'list') {
+                        keyToFind = 'key';
+                        keyNameToReturn = 'name';
+                        viewObjToScan = view.columns;
+                    } else if (viewType === 'form') {
+                        keyToFind = 'id';
+                        keyNameToReturn = 'label';
+                        viewObjToScan = view;
+                    } else if (viewType === 'rich_text')
+                        return;
+                    else
+                        ktl.log.clog('purple', 'getFieldLabelFromId - Unsupported view type', viewId, viewType);
+                    //Support more view types as we go.
+
+                    if (!foundField)
+                        foundField = ktl.core.findKeyWithValueInObject(viewObjToScan, keyToFind, fieldId, keyNameToReturn, exactMatch);
+
+                    return foundField;
+                }
+                catch (e) {
+                    ktl.log.clog('purple', 'getFieldLabelFromId error: Invalid field selector encountered', fieldId, e);
                 }
             },
 
@@ -5256,7 +5323,7 @@ function Ktl($, appInfo) {
 
             //Fix problem with re-appearing filter button when filtring is disabled in views.
             //Reported here: https://forums.knack.com/t/add-filter-buttons-keep-coming-back/13966
-            if (Knack.views[view.key] && Knack.views[view.key].model.view.filter === false)
+            if (Knack.views[view.key] && Knack.views[view.key].model && Knack.views[view.key].model.view.filter === false)
                 $('#' + view.key + ' .kn-filters-nav').remove();
 
             if (view.type === 'calendar') {
@@ -7025,7 +7092,7 @@ function Ktl($, appInfo) {
                                                 ktl.views.autoRefresh();
                                                 Knack.hideSpinner();
                                                 $.unblockUI();
-                                                ktl.core.timedPopup('Checklist Lines Reordered successfully');
+                                                ktl.core.timedPopup('Rows Reordered successfully');
                                             })
                                         } else
                                             showProgress();
@@ -7037,7 +7104,7 @@ function Ktl($, appInfo) {
                                         ktl.scenes.spinnerWatchdog();
                                         ktl.views.autoRefresh();
                                         $.unblockUI();
-                                        alert('Checklist Lines Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
+                                        alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
                                     })
 
                                 function showProgress() {
@@ -8720,7 +8787,7 @@ function Ktl($, appInfo) {
             //For KTL internal use.
             //Scans all fields in view and returns an object with those having keywords in their description.
             getAllFieldsWithKeywordsInView: function (viewId) {
-                if (!viewId || !Knack.views[viewId]) return {};
+                if (!viewId || !Knack.views[viewId] || !Knack.views[viewId].model) return {};
 
                 //Scan all fields in form to find any keywords.
                 const view = Knack.views[viewId].model.view;
@@ -9209,7 +9276,7 @@ function Ktl($, appInfo) {
                             } else if (viewType === 'form') {
                                 if (fieldId)
                                     selector += ' input#' + fieldId;
-                            } else if (viewType === 'table' || viewType === 'search') {
+                            } else if (viewType === 'table' || viewType === 'search' || viewType === 'list') {
                                 if (!fieldId) {
                                     const actionLink = $(`#${viewId} tr[id="${recordObj.id}"] .kn-action-link:textEquals("${field}")`);
                                     if (actionLink.length) {
@@ -9224,7 +9291,7 @@ function Ktl($, appInfo) {
                                     let fieldType = ktl.fields.getFieldType(fieldId);
 
                                     if (Array.isArray(rawData) && rawData.length > 0)
-                                        cellText = rawData.flat().map(obj => (obj.identifier || obj)).join(' ');
+                                        cellText = rawData.flat().map(obj => (obj.identifier || obj.timestamp || obj)).join(' ');
                                     else if (fieldType === 'phone')
                                         cellText = rawData.formatted;
                                     else if (fieldType === 'boolean') {
@@ -9297,7 +9364,7 @@ function Ktl($, appInfo) {
             getViewObj: function (viewId) {
                 if (!viewId) return;
                 var viewObj = Knack.views[viewId];
-                if (viewObj)
+                if (viewObj && viewObj.model && viewObj.model.view)
                     return viewObj.model.view;
                 else {
                     viewObj = Knack.router.scene_view.model.views._byId[viewId];
@@ -9765,6 +9832,69 @@ function Ktl($, appInfo) {
                         if (colFieldId === fieldId)
                             return i;
                     }
+                }
+            },
+
+            //Used when we need to get the field type, but at the view level.
+            //It happens that a field may become a link when the Link Type option is Field instead of Text.
+            getFieldTypeInView: function (viewId, fieldId, exactMatch = true) {
+                if (!viewId || !fieldId) return;
+
+                let view = ktl.views.getViewObject(viewId);
+                if (!view) return;
+
+                let viewObjToScan = view;
+                let keyToFind;
+                let keyNameToReturn;
+                let foundField;
+
+                const viewType = view.type;
+                try {
+                    if (viewType === 'table' || viewType === 'search') {
+                        keyToFind = 'field';
+                        keyNameToReturn = 'type';
+                        viewObjToScan = view.columns;
+                        for (const key in viewObjToScan) {
+                            const obj = viewObjToScan[key];
+                            if (obj[keyToFind].key === fieldId)
+                                foundField = obj[keyNameToReturn];
+                        }
+                    } else if (viewType === 'details' || viewType === 'list') {
+                        keyToFind = 'key';
+                        keyNameToReturn = 'type';
+                        viewObjToScan = view.columns;
+                    } else if (viewType === 'form') {
+                        keyToFind = 'id';
+                        keyNameToReturn = 'type';
+                        viewObjToScan = view;
+                    } else if (viewType === 'rich_text')
+                        return;
+                    else
+                        ktl.log.clog('purple', 'getFieldTypeInView - Unsupported view type', viewId, viewType);
+                    //Support more view types as we go.
+
+                    if (!foundField)
+                        foundField = ktl.core.findKeyWithValueInObject(viewObjToScan, keyToFind, fieldId, keyNameToReturn, exactMatch);
+
+                    return foundField;
+                }
+                catch (e) {
+                    ktl.log.clog('purple', 'getFieldTypeInView error: Invalid field selector encountered', fieldId, e);
+                }
+            },
+
+            getColumnIndex: function (viewId, fieldId) {
+                if (!viewId || !fieldId) return;
+                if (ktl.views.getViewType(viewId) !== 'table') return;
+
+                const header = $(`#${viewId} thead th.${fieldId}`);
+
+                if (header) {
+                    const hasBulkOperationColumn = $(`#${viewId} .kn-table thead tr th:first-child`).find('input[type="checkbox"]').length > 0;
+                    let colIndex = header[0].cellIndex;
+                    if (hasBulkOperationColumn && colIndex >= 1)
+                        colIndex--;
+                    return colIndex
                 }
             },
 
@@ -11722,8 +11852,10 @@ function Ktl($, appInfo) {
             ktlApplyUserPrefs: function (renderViews = false) {
                 ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
                 ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
-                for (var viewId in Knack.views)
-                    Knack.views[viewId] && (ktl.views.addViewId(Knack.views[viewId].model.view));
+                for (var viewId in Knack.views) {
+                    if (Knack.views[viewId] && Knack.views[viewId].model)
+                        ktl.views.addViewId(Knack.views[viewId].model.view);
+                }
 
                 var myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
                 myUserPrefsViewId && ktl.views.refreshView(myUserPrefsViewId);
