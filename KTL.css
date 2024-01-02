@@ -181,6 +181,11 @@ th .fa-caret-left {
 a.sortDisabled {
 	pointer-events: none;
 }
+.ktlLinkDisabled * {
+	text-decoration: none;
+	pointer-events: none;
+	color: #8888;
+}
 
 .ktlSingleLineTable {
 	white-space: nowrap;
