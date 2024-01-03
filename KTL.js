@@ -5898,6 +5898,7 @@ function Ktl($, appInfo) {
                     } else { //Grids and Lists.
                         fieldIds = Knack.views[viewId].model.view.fields.map((f) => f.key);
                     }
+                    
                     cfvScanGroups(fieldIds, params, options);
                 }
             }
@@ -6801,8 +6802,8 @@ function Ktl($, appInfo) {
         }
 
         //Example: _click=Link Label, auto (or blank), Button Label
-        let clickIsRunning = false;
-        let clickLastRecIdProcessed;
+        let clickCurrentlyRunning = null;
+        let clickLastRecIdProcessed = null;
         function performClick(viewId, keywords, data) {
             const kw = '_click';
             if (!(viewId && keywords && keywords[kw])) return;
@@ -6815,7 +6816,6 @@ function Ktl($, appInfo) {
 
 
             function execKw(kwInstance) {
-                console.log('clickIsRunning', clickIsRunning, viewId);
                 const options = kwInstance.options;
                 if (!ktl.core.hasRoleAccess(options)) return;
 
@@ -6827,28 +6827,6 @@ function Ktl($, appInfo) {
                 //const condViewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
                 const actionLinkText = params[0];
-                let linkSelectorString = `#${viewId} .knViewLink__label:textEquals("${actionLinkText}")`;
-                if (clickLastRecIdProcessed) {
-                    //linkSelectorString = `#${viewId} tr[id!="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${actionLinkText}")`;
-
-                    //Wait until the last clicked record disappears.
-                    if ($(`#${viewId} tr[id="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${actionLinkText}")`).length) {
-                        console.log('clickLastRecIdProcessed =', clickLastRecIdProcessed);
-                        return;
-                    }
-                }
-
-                const linkSelector = $(linkSelectorString);
-
-                if (clickIsRunning) {
-                    if (linkSelector.length) {
-                        doClick();
-                        return;
-                    } else {
-                        clickIsRunning = false;
-                        return;
-                    }
-                }
 
                 let needConfirm = true;
                 if (params.length >= 2 && params[1] === 'auto')
@@ -6861,43 +6839,72 @@ function Ktl($, appInfo) {
                     const buttonId = ktl.core.getCleanId(buttonLabel);
                     const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonId}-${viewId}`);
 
-                    if (!clickIsRunning) {
+                    console.log('clickCurrentlyRunning', clickCurrentlyRunning, viewId);
+
+                    if (clickCurrentlyRunning === actionLinkText) {
+                        startButton.textContent = 'Stop';
+                        doClick();
+                    } else {
                         startButton.addEventListener('click', function (e) {
-                            if (needConfirm) {
-                                if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
-                                    clickIsRunning = true;
+                            if (clickCurrentlyRunning)
+                                clickCurrentlyRunning = null;
+                            else {
+                                if (needConfirm) {
+                                    if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
+                                        clickCurrentlyRunning = actionLinkText;
+                                        doClick();
+                                    }
+                                } else {
+                                    clickCurrentlyRunning = actionLinkText;
                                     doClick();
                                 }
                             }
-                            else {
-                                clickIsRunning = true;
-                                doClick();
-                            }
                         })
-                    } else {
-                        //Becomes a Stop button
-                        startButton.textContent = 'Stop';
                     }
                 } else { //No button
                     if (needConfirm) {
                         if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
-                            clickIsRunning = true;
+                            clickCurrentlyRunning = actionLinkText;
                             doClick();
                         }
                     }
                     else {
-                        clickIsRunning = true;
+                        clickCurrentlyRunning = actionLinkText;
                         doClick();
                     }
                 }
 
                 function doClick() {
-                    setTimeout(() => {
-                        if (!linkSelector[0].closest(`tr`))
-                            debugger;
+                    setTimeout(() => { //Leave some time to apply any other keyword that might hide the link.
+                        //If last clicked record is still there, exit and wait for next refresh.
+                        if (clickLastRecIdProcessed) {
+                            if ($(`#${viewId} tr[id="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${clickCurrentlyRunning}")`).length) {
+                                ktl.log.clog('red', 'Last record still there:', clickLastRecIdProcessed);
+                                return;
+                            } else
+                                clickLastRecIdProcessed = null;
+                        }
 
-                        clickLastRecIdProcessed = linkSelector[0].closest(`tr`).id;
-                        linkSelector[0].click();
+                        console.log('actionLinkText =', actionLinkText);
+
+                        let linkSelector;
+
+                        if (clickCurrentlyRunning) {
+                            linkSelector = $(`#${viewId} .knViewLink__label:textEquals("${clickCurrentlyRunning}")`);
+
+                            if (linkSelector.length) {
+                                if (!linkSelector[0].closest(`tr`)) debugger;
+
+                                linkSelector[0].classList.add('ktlOutline');
+
+                                clickLastRecIdProcessed = linkSelector[0].closest(`tr`).id;
+                                linkSelector[0].click();
+                            } else {
+                                ktl.log.clog('green', 'FINISHED!!');
+                                clickLastRecIdProcessed = null;
+                                clickCurrentlyRunning = null;
+                            }
+                        }
                     }, 1000);
                 }
             }
@@ -7173,15 +7180,10 @@ function Ktl($, appInfo) {
                             const startButton = ktl.fields.addButton(startButtonDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], 'ktlStartClickNow-' + dstViewId);
                             startButton.addEventListener('click', function (e) {
                                 if (needConfirm) {
-                                    if (confirm(`Proceed with copy?`)) {
-                                        clickIsRunning = true;
+                                    if (confirm(`Proceed with copy?`))
                                         proceed();
-                                    }
-                                }
-                                else {
-                                    clickIsRunning = true;
+                                } else
                                     proceed();
-                                }
                             })
                         }
                     }
