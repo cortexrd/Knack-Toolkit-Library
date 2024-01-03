@@ -201,11 +201,11 @@ a.sortDisabled {
 }
 
 .ktlAddonsDiv {
-	display: flex;
+	display: inline-flex;
 }
 
 .ktlAddonsWithSearchDiv {
-	margin-inline-start: 5%;
+	margin-inline-start: 2em;
 }
 
 .ktlButtonMargin {
