@@ -6857,19 +6857,9 @@ function Ktl($, appInfo) {
                 if (params.length >= 3 && params[2]) {
                     //Add a start button
                     const buttonLabel = params[2];
-                    let ktlButtonsDiv = document.querySelector(`ktlButtonsDiv-${viewId}`);
-                    if (!ktlButtonsDiv) {
-                        ktlButtonsDiv = document.createElement('div');
-                        ktlButtonsDiv.setAttribute('id', `ktlButtonsDiv-${viewId}`);
-                        ktlButtonsDiv.style.marginTop = '10px';
-                        ktlButtonsDiv.style.marginBottom = '30px';
-
-                        const div = document.querySelector(`#${viewId}`);
-                        if (!div) return;
-                        div.prepend(ktlButtonsDiv);
-                    }
-
-                    const startButton = ktl.fields.addButton(ktlButtonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonLabel}-viewId`);
+                    let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+                    const buttonId = ktl.core.getCleanId(buttonLabel);
+                    const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonId}-${viewId}`);
 
                     if (!clickIsRunning) {
                         startButton.addEventListener('click', function (e) {
@@ -6884,6 +6874,9 @@ function Ktl($, appInfo) {
                                 doClick();
                             }
                         })
+                    } else {
+                        //Becomes a Stop button
+                        startButton.textContent = 'Stop';
                     }
                 } else { //No button
                     if (needConfirm) {
@@ -10303,6 +10296,47 @@ function Ktl($, appInfo) {
                         reject();
                     }, 20000);
                 })
+            },
+
+            //Will return the KTL add-ons div for this view, and create it if doesn't exist.
+            //This is where we add all KTL-related buttons and indicators.
+            getKtlAddOnsDiv: function (viewId) {
+                if (!viewId) return;
+
+                let ktlAddonsDiv = document.querySelector(`#${viewId} .ktlAddonsDiv`);
+                if (!ktlAddonsDiv) {
+                    var prepend = false;
+                    var searchFound = false;
+
+                    var div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`);
+                    if (div) {
+                        searchFound = true;
+                    } else
+                        div = document.querySelector(`#${viewId} .kn-submit.control`); //For search views.
+
+                    if (!div)
+                        div = document.querySelector(`#${viewId} .view-header`);
+
+                    if (!div) {
+                        div = document.querySelector('#' + viewId);
+                        if (!div) return; //Support other layout options as we go.
+                        prepend = true;
+                    }
+
+                    ktlAddonsDiv = document.createElement('div');
+                    ktlAddonsDiv.classList.add('ktlAddonsDiv');
+
+                    if (searchFound) {
+                        if (Knack.isMobile())
+                            $(ktlAddonsDiv).css('margin-top', '2%');
+                        else
+                            ktlAddonsDiv.classList.add('ktlAddonsWithSearchDiv');
+                    }
+
+                    prepend ? $(div).prepend(ktlAddonsDiv) : $(div).append(ktlAddonsDiv);
+                }
+
+                return ktlAddonsDiv;
             },
 
         } //return

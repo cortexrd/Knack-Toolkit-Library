@@ -200,6 +200,14 @@ a.sortDisabled {
 	margin-inline-start: 5%;
 }
 
+.ktlAddonsDiv {
+	display: flex;
+}
+
+.ktlAddonsWithSearchDiv {
+	margin-inline-start: 5%;
+}
+
 .ktlButtonMargin {
 	margin-inline: 5px !important;
 }
