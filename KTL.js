@@ -10333,7 +10333,10 @@ function Ktl($, appInfo) {
                             ktlAddonsDiv.classList.add('ktlAddonsWithSearchDiv');
                     }
 
-                    prepend ? $(div).prepend(ktlAddonsDiv) : $(div).append(ktlAddonsDiv);
+                    if (prepend)
+                        $(div).prepend(ktlAddonsDiv);
+                    else
+                        ktl.core.insertAfter(ktlAddonsDiv, div);
                 }
 
                 return ktlAddonsDiv;
