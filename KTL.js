@@ -6800,10 +6800,10 @@ function Ktl($, appInfo) {
             }
         }
 
+        //Example: _click=Link Label, auto (or blank), Button Label
         let clickIsRunning = false;
         let clickLastRecIdProcessed;
         function performClick(viewId, keywords, data) {
-            console.log('Click render view', viewId);
             const kw = '_click';
             if (!(viewId && keywords && keywords[kw])) return;
 
@@ -6811,27 +6811,32 @@ function Ktl($, appInfo) {
             if (!(viewType === 'table' || viewType === 'search')) return;
 
             const kwList = ktl.core.getKeywordsByType(viewId, kw);
-            //kwList.forEach(kwInstance => { execKw(kwInstance); })
-            const kwInstance = kwList[0];
-            execKw(kwInstance);
+            kwList.forEach(kwInstance => { execKw(kwInstance); })
+
 
             function execKw(kwInstance) {
+                console.log('clickIsRunning', clickIsRunning, viewId);
                 const options = kwInstance.options;
                 if (!ktl.core.hasRoleAccess(options)) return;
 
                 const params = kwInstance.params[0];
                 if (params.length < 1) return;
 
-                //_click=Link Label, auto (or blank), Button Label
-
                 //const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
                 //const view = conditions[3] || '';
                 //const condViewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
-                const clickActionLinkText = params[0];
-                let linkSelectorString = `#${viewId} .knViewLink__label:textEquals("${clickActionLinkText}")`;
-                if (clickLastRecIdProcessed)
-                    linkSelectorString = `#${viewId} tr[id!="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${clickActionLinkText}")`;
+                const actionLinkText = params[0];
+                let linkSelectorString = `#${viewId} .knViewLink__label:textEquals("${actionLinkText}")`;
+                if (clickLastRecIdProcessed) {
+                    //linkSelectorString = `#${viewId} tr[id!="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${actionLinkText}")`;
+
+                    //Wait until the last clicked record disappears.
+                    if ($(`#${viewId} tr[id="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${actionLinkText}")`).length) {
+                        console.log('clickLastRecIdProcessed =', clickLastRecIdProcessed);
+                        return;
+                    }
+                }
 
                 const linkSelector = $(linkSelectorString);
 
@@ -6845,8 +6850,6 @@ function Ktl($, appInfo) {
                     }
                 }
 
-
-
                 let needConfirm = true;
                 if (params.length >= 2 && params[1] === 'auto')
                     needConfirm = false;
@@ -6854,46 +6857,37 @@ function Ktl($, appInfo) {
                 if (params.length >= 3 && params[2]) {
                     //Add a start button
                     const buttonLabel = params[2];
-                    let startButtonDiv = document.querySelector(`ktlButtonsDiv-${viewId}`);
-                    if (!startButtonDiv) {
-                        startButtonDiv = document.createElement('div');
-                        startButtonDiv.setAttribute('id', `ktlButtonsDiv-${viewId}`);
-                        startButtonDiv.style.marginTop = '10px';
-                        startButtonDiv.style.marginBottom = '30px';
+                    let ktlButtonsDiv = document.querySelector(`ktlButtonsDiv-${viewId}`);
+                    if (!ktlButtonsDiv) {
+                        ktlButtonsDiv = document.createElement('div');
+                        ktlButtonsDiv.setAttribute('id', `ktlButtonsDiv-${viewId}`);
+                        ktlButtonsDiv.style.marginTop = '10px';
+                        ktlButtonsDiv.style.marginBottom = '30px';
 
                         const div = document.querySelector(`#${viewId}`);
-                        if (div) {
-                            div.prepend(startButtonDiv);
+                        if (!div) return;
+                        div.prepend(ktlButtonsDiv);
+                    }
 
-                            const startButton = ktl.fields.addButton(startButtonDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], 'ktlStartClickNow-' + viewId);
+                    const startButton = ktl.fields.addButton(ktlButtonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonLabel}-viewId`);
 
-                            if (!clickIsRunning) {
-                                startButton.addEventListener('click', function (e) {
-                                    if (needConfirm) {
-                                        if (confirm(`Proceed with auto-click on ${clickActionLinkText}?`)) {
-                                            clickIsRunning = true;
-                                            doClick();
-                                        }
-                                    }
-                                    else {
-                                        clickIsRunning = true;
-                                        doClick();
-                                    }
-                                })
-                            } else {
-                                //Is there something to click?
-                            //    if (!linkSelector.length) {
-                            //        clickIsRunning = false;
-                            //        return;
-                            //    } else {
-                            //        console.log('found a link');
-                            //    }
+                    if (!clickIsRunning) {
+                        startButton.addEventListener('click', function (e) {
+                            if (needConfirm) {
+                                if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
+                                    clickIsRunning = true;
+                                    doClick();
+                                }
                             }
-                        }
+                            else {
+                                clickIsRunning = true;
+                                doClick();
+                            }
+                        })
                     }
                 } else { //No button
                     if (needConfirm) {
-                        if (confirm(`Proceed with auto-click on ${clickActionLinkText}?`)) {
+                        if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
                             clickIsRunning = true;
                             doClick();
                         }
@@ -6905,8 +6899,13 @@ function Ktl($, appInfo) {
                 }
 
                 function doClick() {
-                    clickLastRecIdProcessed = linkSelector[0].closest(`tr`).id;
-                    linkSelector[0].click();
+                    setTimeout(() => {
+                        if (!linkSelector[0].closest(`tr`))
+                            debugger;
+
+                        clickLastRecIdProcessed = linkSelector[0].closest(`tr`).id;
+                        linkSelector[0].click();
+                    }, 1000);
                 }
             }
         }
