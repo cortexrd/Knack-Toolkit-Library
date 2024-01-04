@@ -9133,6 +9133,17 @@ function Ktl($, appInfo) {
                     const view = conditions[3] || '';
                     const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
+                    if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
+                        if (Knack.isMobile() && operator === 'is')
+                            hide();
+                        else if (!Knack.isMobile() && operator === 'not')
+                            hide();
+                        else
+                            unhide();
+
+                        return resolve();
+                    }
+
                     if (field.startsWith('$(')) {
                         const selector = ktl.core.extractJQuerySelector(field);
                         ktl.core.waitSelector(selector, 10000).then(() => {
@@ -9154,8 +9165,7 @@ function Ktl($, appInfo) {
                             unhide();
                         });
 
-                        resolve();
-                        return;
+                        return resolve();
                     }
 
                     if (field === 'ktlNow' || field === 'ktlNowUTC') {
@@ -9164,8 +9174,7 @@ function Ktl($, appInfo) {
                         else
                             unhide();
 
-                        resolve();
-                        return;
+                        return resolve();
                     }
 
                     let fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
@@ -9230,9 +9239,18 @@ function Ktl($, appInfo) {
                     const view = conditions[3] || '';
                     let viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
+                    if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
+                        if (Knack.isMobile() && operator === 'is')
+                            return resolve(true);
+                        else if (!Knack.isMobile() && operator === 'not')
+                            return resolve(true);
+                        else
+                            return resolve(false);
+                    }
+
                     let foreignViewId; //Foreign view and field are used for ktlExists, to indicate where to search.
                     let foreignFieldId;
-                    if (value === 'ktlExists') {
+                    if (value === 'ktlExists' && (operator === 'is' || operator === 'not')) {
                         foreignViewId = viewId;
                         viewId = keywordViewId;
                         foreignFieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(foreignViewId, field);
