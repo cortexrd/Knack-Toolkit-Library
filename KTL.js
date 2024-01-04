@@ -5898,7 +5898,7 @@ function Ktl($, appInfo) {
                     } else { //Grids and Lists.
                         fieldIds = Knack.views[viewId].model.view.fields.map((f) => f.key);
                     }
-                    
+
                     cfvScanGroups(fieldIds, params, options);
                 }
             }
@@ -6043,23 +6043,26 @@ function Ktl($, appInfo) {
                             const rawData = recordObj[`${fieldId}_raw`];
 
                             let cellText;
-                            if (Array.isArray(rawData) && rawData.length > 0)
-                                cellText = rawData.flat().map(obj => (obj.identifier || obj)).join(' ');
-                            else if (fieldType === 'phone')
-                                cellText = rawData.formatted;
-                            else if (fieldType === 'boolean') {
-                                const format = Knack.objects.getField(fieldId).attributes.format.format;
-                                if (format === 'yes_no')
-                                    cellText = (rawData === true ? 'Yes' : 'No');
-                                else if (format === 'on_off')
-                                    cellText = (rawData === true ? 'On' : 'Off');
-                                else
-                                    cellText = (rawData === true ? 'True' : 'False');
-                            } else
-                                cellText = rawData.toString();
 
-                            if (cellText !== '' && numericFieldTypes.includes(fieldType))
-                                cellText = ktl.core.extractNumericValue(cellText, fieldId);
+                            if (rawData) {
+                                if (Array.isArray(rawData) && rawData.length > 0)
+                                    cellText = rawData.flat().map(obj => (obj.identifier || obj)).join(' ');
+                                else if (fieldType === 'phone')
+                                    cellText = rawData.formatted;
+                                else if (fieldType === 'boolean') {
+                                    const format = Knack.objects.getField(fieldId).attributes.format.format;
+                                    if (format === 'yes_no')
+                                        cellText = (rawData === true ? 'Yes' : 'No');
+                                    else if (format === 'on_off')
+                                        cellText = (rawData === true ? 'On' : 'Off');
+                                    else
+                                        cellText = (rawData === true ? 'True' : 'False');
+                                } else
+                                    cellText = rawData.toString();
+
+                                if (cellText !== '' && numericFieldTypes.includes(fieldType))
+                                    cellText = ktl.core.extractNumericValue(cellText, fieldId);
+                            }
 
                             let refVal = value;
 
@@ -7149,7 +7152,7 @@ function Ktl($, appInfo) {
             ktl.views.waitViewDataReady(srcViewId)
                 .then(() => { srcDataReady(); })
                 .catch(reason => {
-                    ktl.log.clog('purple', `copyRecordsFromView - error waiting for data: ${srcViewId}`);
+                    ktl.log.clog('purple', `copyRecordsFromView - Timeout waiting for data: ${srcViewId}`);
                     console.error(reason);
                 })
 
@@ -7231,18 +7234,18 @@ function Ktl($, appInfo) {
                             //const header = param[0];
                             const fieldLabel = param[1];
                             const viewTitle = param[2];
-                            const extViewId = ktl.scenes.findViewWithTitle(viewTitle, true, srcViewId);
-                            const extFieldId = ktl.fields.getFieldIdFromLabel(extViewId, fieldLabel);
-                            if (extFieldId) {
-                                const viewType = ktl.views.getViewType(extViewId);
+                            const foreignViewId = ktl.scenes.findViewWithTitle(viewTitle, true, srcViewId);
+                            const foreignFieldId = ktl.fields.getFieldIdFromLabel(foreignViewId, fieldLabel);
+                            if (foreignFieldId) {
+                                const viewType = ktl.views.getViewType(foreignViewId);
                                 if (viewType === 'details') {
-                                    ktl.views.waitViewDataReady(extViewId)
+                                    ktl.views.waitViewDataReady(foreignViewId)
                                         .then(() => {
-                                            const value = Knack.views[extViewId].record;
+                                            const value = Knack.views[foreignViewId].record;
                                             dstHeaders[param[0]] = { src: 'ktlUseThisValue', dst: value };
                                         })
                                         .catch(err => {
-                                            ktl.log.clog('purple', `copyRecordsFromView, proceed - Error waiting for data: ${extViewId}`);
+                                            ktl.log.clog('purple', `copyRecordsFromView, proceed - Timeout waiting for data: ${foreignViewId}`);
                                             console.log('err =', err);
                                         })
                                 }
@@ -9215,7 +9218,7 @@ function Ktl($, appInfo) {
                 });
             },
 
-            validateKtlCond: function (options = {}, recordObj = {}/*Used only with Tables and Lists*/) {
+            validateKtlCond: function (keywordViewId, options = {}, recordObj = {}/*Used only with Tables and Lists*/) {
                 return new Promise(function (resolve) {
                     if (!options.ktlCond) return resolve(true);
 
@@ -9225,7 +9228,15 @@ function Ktl($, appInfo) {
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
-                    const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
+                    let viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
+
+                    let foreignViewId; //Foreign view and field are used for ktlExists, to indicate where to search.
+                    let foreignFieldId;
+                    if (value === 'ktlExists') {
+                        foreignViewId = viewId;
+                        viewId = keywordViewId;
+                        foreignFieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(foreignViewId, field);
+                    }
 
                     if (field.startsWith('$(')) {
                         const selector = ktl.core.extractJQuerySelector(field);
@@ -9282,27 +9293,58 @@ function Ktl($, appInfo) {
                                     const rawData = recordObj[`${fieldId}_raw`];
 
                                     let cellText;
-                                    let fieldType = ktl.fields.getFieldType(fieldId);
 
-                                    if (Array.isArray(rawData) && rawData.length > 0)
-                                        cellText = rawData.flat().map(obj => (obj.identifier || obj.timestamp || obj)).join(' ');
-                                    else if (fieldType === 'phone')
-                                        cellText = rawData.formatted;
-                                    else if (fieldType === 'boolean') {
-                                        const format = Knack.objects.getField(fieldId).attributes.format.format;
-                                        if (format === 'yes_no')
-                                            cellText = (rawData === true ? 'Yes' : 'No');
-                                        else if (format === 'on_off')
-                                            cellText = (rawData === true ? 'On' : 'Off');
-                                        else
-                                            cellText = (rawData === true ? 'True' : 'False');
+                                    if (rawData) {
+                                        let fieldType = ktl.fields.getFieldType(fieldId);
+
+                                        if (Array.isArray(rawData) && rawData.length > 0)
+                                            cellText = rawData.flat().map(obj => (obj.identifier || obj.timestamp || obj)).join(' ');
+                                        else if (fieldType === 'phone')
+                                            cellText = rawData.formatted;
+                                        else if (fieldType === 'boolean') {
+                                            const format = Knack.objects.getField(fieldId).attributes.format.format;
+                                            if (format === 'yes_no')
+                                                cellText = (rawData === true ? 'Yes' : 'No');
+                                            else if (format === 'on_off')
+                                                cellText = (rawData === true ? 'On' : 'Off');
+                                            else
+                                                cellText = (rawData === true ? 'True' : 'False');
+                                        } else
+                                            cellText = rawData.toString();
+
+                                        if (cellText !== '' && numericFieldTypes.includes(fieldType))
+                                            cellText = ktl.core.extractNumericValue(cellText, fieldId);
+                                    }
+
+                                    if (value === 'ktlExists') {
+                                        const foreignViewType = ktl.views.getViewType(foreignViewId);
+                                        if (foreignViewType === 'table' || foreignViewType === 'list') {
+                                            ktl.views.waitViewDataReady(foreignViewId)
+                                                .then(() => {
+                                                    const foreignData = Knack.views[foreignViewId].model.data.models;
+                                                    if (!foreignData.length)
+                                                        return resolve(false);
+
+                                                    //Search all records now.
+                                                    for (const record of foreignData) {
+                                                        let foreignCellText = record.attributes[`${foreignFieldId}_raw`];
+
+                                                        if (Array.isArray(foreignCellText) && foreignCellText.length)
+                                                            foreignCellText = foreignCellText[0].identifier;
+
+                                                        if (ktlCompare(cellText, operator, foreignCellText))
+                                                            return resolve(true);
+                                                    }
+
+                                                    return resolve(false);
+                                                })
+                                                .catch(err => {
+                                                    ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
+                                                    console.log('err =', err);
+                                                })
+                                        }
                                     } else
-                                        cellText = rawData.toString();
-
-                                    if (cellText !== '' && numericFieldTypes.includes(fieldType))
-                                        cellText = ktl.core.extractNumericValue(cellText, fieldId);
-
-                                    return resolve(ktlCompare(cellText, operator, value));
+                                        return resolve(ktlCompare(cellText, operator, value));
                                 }
                             } else {
                                 ktl.log.clog('purple', 'validateKtlCond - unsupported view type', viewId, viewType);
@@ -9413,7 +9455,7 @@ function Ktl($, appInfo) {
                         processClass(options);
 
                     function processClass(options, recordObj = {}) {
-                        ktl.views.validateKtlCond(options, recordObj)
+                        ktl.views.validateKtlCond(viewId, options, recordObj)
                             .then(valid => {
                                 if (valid) {
                                     const sel = ktl.core.computeTargetSelector(viewId, '', options, recordObj.id);
@@ -10814,8 +10856,9 @@ function Ktl($, appInfo) {
                 idleWatchDogTimeout && idleWatchDogTimeout();
             },
 
+            //Searches for a view title in the current scene.
             findViewWithTitle: function (viewTitle = '', exactMatch = true, excludeViewId = '') {
-                var views = Knack.router.scene_view.model.views.models; //Search only in current scene.
+                var views = Knack.router.scene_view.model.views.models;
                 var title = '';
                 var viewId = '';
                 viewTitle = viewTitle.toLowerCase();
