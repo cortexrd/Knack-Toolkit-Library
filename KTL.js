@@ -9248,9 +9248,9 @@ function Ktl($, appInfo) {
                             return resolve(false);
                     }
 
-                    let foreignViewId; //Foreign view and field are used for ktlExists, to indicate where to search.
+                    let foreignViewId; //Foreign view and field are used by ktlMatch, to indicate where to search.
                     let foreignFieldId;
-                    if (value === 'ktlExists' && (operator === 'is' || operator === 'not')) {
+                    if (value === 'ktlMatch' && (operator === 'is' || operator === 'not')) {
                         foreignViewId = viewId;
                         viewId = keywordViewId;
                         foreignFieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(foreignViewId, field);
@@ -9304,11 +9304,8 @@ function Ktl($, appInfo) {
                     }
 
                     function apply() {
-                        //console.log('111 ================');
-
                         let selector = '';
                         if (viewId) {
-                            //console.log('222 ================');
                             const viewType = ktl.views.getViewType(viewId);
                             selector = '#' + viewId;
                             if (viewType === 'details') {
@@ -9351,51 +9348,29 @@ function Ktl($, appInfo) {
                                             cellText = ktl.core.extractNumericValue(cellText, fieldId);
                                     }
 
-                                    if (value === 'ktlExists') {
-                                        //console.log('333 ================');
+                                    if (value === 'ktlMatch') {
                                         const foreignViewType = ktl.views.getViewType(foreignViewId);
                                         if (foreignViewType === 'table' || foreignViewType === 'list') {
-                                            console.log('444 ================');
-                                            ktl.views.waitViewDataReady(foreignViewId)
-                                                .then(() => {
-                                                    console.log('555 ================');
-                                                    const foreignData = Knack.views[foreignViewId].model.data.models;
-                                                    console.log('foreignData.length =', foreignData.length);
-                                                    if (!foreignData.length)
-                                                        return resolve(operator === 'not');
+                                            const foreignData = Knack.views[foreignViewId].model.data.models;
+                                            if (!foreignData.length)
+                                                return resolve(operator === 'not');
 
-                                                    //Search all records now.
-                                                    let result = false;
-                                                    for (const record of foreignData) {
-                                                        let foreignCellText = record.attributes[`${foreignFieldId}_raw`];
+                                            //Search all records now.
+                                            for (const record of foreignData) {
+                                                let foreignCellText = record.attributes[`${foreignFieldId}_raw`];
 
-                                                        if (Array.isArray(foreignCellText) && foreignCellText.length)
-                                                            foreignCellText = foreignCellText[0].identifier;
+                                                if (Array.isArray(foreignCellText) && foreignCellText.length)
+                                                    foreignCellText = foreignCellText[0].identifier;
 
-                                                        if (ktlCompare(cellText, operator, foreignCellText)) {
-                                                            console.log('FOUND!', cellText, operator, foreignCellText);
-                                                            result = true;
-                                                            //return resolve(true);
-                                                        }
-                                                    }
+                                                if (ktlCompare(cellText, operator, foreignCellText))
+                                                    return resolve(true);
+                                            }
 
-                                                    console.log('666 ================');
-                                                    console.log('result =', result);
-                                                    return resolve(result);
-                                                })
-                                                .catch(err => {
-                                                    ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
-                                                    console.log('err =', err);
-                                                    return resolve(false);
-                                                })
-                                        } else {
-                                            console.log('777 ================');
                                             return resolve(false);
-                                        }
+                                        } else
+                                            return resolve(false);
                                     } else
                                         return resolve(ktlCompare(cellText, operator, value));
-
-                                    console.log('888 ================');
                                 }
                             } else {
                                 ktl.log.clog('purple', 'validateKtlCond - unsupported view type', viewId, viewType);
@@ -9403,16 +9378,9 @@ function Ktl($, appInfo) {
                             }
                         }
 
-
-                        console.log('999 ================');
-
                         if (!selector) {
-                            console.log('AAA ================');
-
                             return resolve(false);
                         } else {
-                            console.log('BBB ================', selector);
-
                             ktl.core.waitSelector(selector, 10000).then(() => {
                                 let fieldValue;
                                 if (ktl.views.getViewType(viewId) === 'form') {
@@ -9510,9 +9478,8 @@ function Ktl($, appInfo) {
                             let recordObj = data[idx];
                             processClass(options, recordObj)
                                 .then(() => {
-                                    if (++idx < data.length) {
+                                    if (++idx < data.length)
                                         processClassForAllRecords(idx);
-                                    }
                                 })
                         })(0);
                     } else
@@ -9520,16 +9487,12 @@ function Ktl($, appInfo) {
 
                     function processClass(options, recordObj = {}) {
                         return new Promise(function (resolve) {
-                            //console.log('recordObj =', recordObj, viewId, options);
                             ktl.views.validateKtlCond(viewId, options, recordObj)
                                 .then(valid => {
-                                    console.log('valid =', valid);
                                     if (valid) {
                                         const sel = ktl.core.computeTargetSelector(viewId, '', options, recordObj.id);
-                                        //console.log('WAIT sel =', sel);
                                         ktl.core.waitSelector(sel, 20000)
                                             .then(() => {
-                                                //console.log('FOUND sel =', sel);
                                                 var classes = kwInstance.params[0];
                                                 for (var i = 0; i < classes.length; i++) {
                                                     var params = classes[i];
@@ -9546,13 +9509,11 @@ function Ktl($, appInfo) {
                                                 resolve();
                                             })
                                             .catch(function () {
-                                                console.log('error waiting for selector in _cls');
+                                                console.log('Timeout waiting for selector in _cls', sel);
                                                 resolve();
                                             })
-                                    } else {
-                                        console.log('processClass - valid false');
+                                    } else
                                         resolve();
-                                    }
                                 })
                         })
                     }
@@ -10408,7 +10369,6 @@ function Ktl($, appInfo) {
                         return resolve();
 
                     const itv = setInterval(() => {
-                        console.log('WAIT for data...');
                         if (Knack.views[viewId].record || Knack.views[viewId].model.data.total_records) {
                             clearInterval(itv);
                             return resolve();
