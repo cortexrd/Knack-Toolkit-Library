@@ -9282,10 +9282,33 @@ function Ktl($, appInfo) {
                     if (!fieldId) {
                         $(document).one(`knack-view-render.${viewId}`, () => {
                             fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
-                            apply();
+                            if (foreignViewId) {
+                                ktl.views.waitViewDataReady(foreignViewId)
+                                    .then(() => {
+                                        apply();
+                                    })
+                                    .catch(err => {
+                                        ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
+                                        console.log('err =', err);
+                                        return resolve(false);
+                                    })
+                            } else
+                                apply();
                         })
-                    } else
-                        apply();
+                    } else {
+                        if (foreignViewId) {
+                            ktl.views.waitViewDataReady(foreignViewId)
+                                .then(() => {
+                                    apply();
+                                })
+                                .catch(err => {
+                                    ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
+                                    console.log('err =', err);
+                                    return resolve(false);
+                                })
+                        } else
+                            apply();
+                    }
 
                     function apply() {
                         //console.log('111 ================');
@@ -9510,10 +9533,10 @@ function Ktl($, appInfo) {
                                     console.log('valid =', valid);
                                     if (valid) {
                                         const sel = ktl.core.computeTargetSelector(viewId, '', options, recordObj.id);
-                                        console.log('WAIT sel =', sel);
+                                        //console.log('WAIT sel =', sel);
                                         ktl.core.waitSelector(sel, 20000)
                                             .then(() => {
-                                                console.log('FOUND sel =', sel);
+                                                //console.log('FOUND sel =', sel);
                                                 var classes = kwInstance.params[0];
                                                 for (var i = 0; i < classes.length; i++) {
                                                     var params = classes[i];
