@@ -61,8 +61,13 @@ function Ktl($, appInfo) {
                         cleanedUpTitle = title.substring(0, firstKeywordIdx);
                         var keywordsToParse = title.substring(firstKeywordIdx).trim();
 
-                        if (attr.type === 'rich_text') //Remove line breaks and paragraphs after first kw found.
+                        if (attr.type === 'rich_text') {
+                            //Remove line breaks and paragraphs after first kw found.
                             keywordsToParse = keywordsToParse.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
+
+                            //Decode all special HTML characters to plain text. Ex: &gt to >
+                            keywordsToParse = $('<p/>').html(keywordsToParse).text();
+                        }
 
                         extractKeywords(keywordsToParse, viewKwObj);
                     }
@@ -2722,7 +2727,7 @@ function Ktl($, appInfo) {
                         viewObjToScan = view.columns;
                         for (const key in viewObjToScan) {
                             const obj = viewObjToScan[key];
-                            if (obj[keyToFind].key === fieldId)
+                            if (obj[keyToFind] && obj[keyToFind].key === fieldId)
                                 foundField = obj[keyNameToReturn];
                         }
                     } else if (viewType === 'details' || viewType === 'list') {
@@ -9935,7 +9940,7 @@ function Ktl($, appInfo) {
                         viewObjToScan = view.columns;
                         for (const key in viewObjToScan) {
                             const obj = viewObjToScan[key];
-                            if (obj[keyToFind].key === fieldId)
+                            if (obj[keyToFind] && obj[keyToFind].key === fieldId)
                                 foundField = obj[keyNameToReturn];
                         }
                     } else if (viewType === 'details' || viewType === 'list') {
