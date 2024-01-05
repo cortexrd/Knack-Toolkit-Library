@@ -9235,7 +9235,7 @@ function Ktl($, appInfo) {
                 });
             },
 
-            validateKtlCond: function (keywordViewId, options = {}, recordObj = {}/*Used only with Tables and Lists*/) {
+            validateKtlCond: function (options = {}, recordObj = {} /*Used only with Tables and Lists*/, keywordViewId) {
                 return new Promise(function (resolve) {
                     if (!options.ktlCond) return resolve(true);
 
@@ -9496,7 +9496,7 @@ function Ktl($, appInfo) {
 
                     function processClass(options, recordObj = {}) {
                         return new Promise(function (resolve) {
-                            ktl.views.validateKtlCond(viewId, options, recordObj)
+                            ktl.views.validateKtlCond(options, recordObj, viewId)
                                 .then(valid => {
                                     if (valid) {
                                         const sel = ktl.core.computeTargetSelector(viewId, '', options, recordObj.id);
