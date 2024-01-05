@@ -9235,6 +9235,7 @@ function Ktl($, appInfo) {
                     const operator = conditions[0] || '';
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
+                    let fieldId;
                     const view = conditions[3] || '';
                     let viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
@@ -9255,57 +9256,49 @@ function Ktl($, appInfo) {
                         foreignFieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(foreignViewId, field);
                     }
 
-                    if (field.startsWith('$(')) {
-                        const selector = ktl.core.extractJQuerySelector(field);
-                        ktl.core.waitSelector(selector, 10000).then(() => {
-                            const fieldValue = $(selector)[0].textContent.trim();
-                            if (!fieldValue || !ktlCompare(fieldValue, operator, value))
+                    if (foreignViewId) {
+                        ktl.views.waitViewDataReady(foreignViewId)
+                            .then(() => {
+                                allViewsReady();
+                            })
+                            .catch(err => {
+                                ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
+                                console.log('err =', err);
                                 return resolve(false);
+                            })
+                    } else
+                        allViewsReady();
 
-                            if ($(selector).is(':input')) {
-                                const update = (event) => {
-                                    return resolve(ktlCompare(event.target.value, operator, value));
-                                }
-                                $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
-                                $(selector).one('change', update);
-                            }
-                        }).catch(() => {
-                            return resolve(false);
-                        });
-                    }
-
-                    if (field === 'ktlNow' || field === 'ktlNowUTC')
-                        return resolve(ktlCompare(field, operator, value));
-
-                    let fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
-
-                    if (!fieldId) {
-                        $(document).one(`knack-view-render.${viewId}`, () => {
-                            fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
-                            if (foreignViewId) {
-                                ktl.views.waitViewDataReady(foreignViewId)
-                                    .then(() => {
-                                        apply();
-                                    })
-                                    .catch(err => {
-                                        ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
-                                        console.log('err =', err);
-                                        return resolve(false);
-                                    })
-                            } else
-                                apply();
-                        })
-                    } else {
-                        if (foreignViewId) {
-                            ktl.views.waitViewDataReady(foreignViewId)
-                                .then(() => {
-                                    apply();
-                                })
-                                .catch(err => {
-                                    ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
-                                    console.log('err =', err);
+                    function allViewsReady() {
+                        if (field.startsWith('$(')) {
+                            const selector = ktl.core.extractJQuerySelector(field);
+                            ktl.core.waitSelector(selector, 10000).then(() => {
+                                const fieldValue = $(selector)[0].textContent.trim();
+                                if (!fieldValue || !ktlCompare(fieldValue, operator, value))
                                     return resolve(false);
-                                })
+
+                                if ($(selector).is(':input')) {
+                                    const update = (event) => {
+                                        return resolve(ktlCompare(event.target.value, operator, value));
+                                    }
+                                    $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
+                                    $(selector).one('change', update);
+                                }
+                            }).catch(() => {
+                                return resolve(false);
+                            });
+                        }
+
+                        if (field === 'ktlNow' || field === 'ktlNowUTC')
+                            return resolve(ktlCompare(field, operator, value));
+
+                        fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+
+                        if (!fieldId) {
+                            $(document).one(`knack-view-render.${viewId}`, () => {
+                                fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                                apply();
+                            })
                         } else
                             apply();
                     }
