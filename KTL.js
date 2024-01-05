@@ -6040,10 +6040,9 @@ function Ktl($, appInfo) {
                         }
 
                         data.filter((record) => record[fieldId + '_raw'] != undefined).forEach((recordObj) => {
-                            const rawData = recordObj[`${fieldId}_raw`];
-
                             let cellText;
 
+                            const rawData = recordObj[`${fieldId}_raw`];
                             if (rawData) {
                                 if (Array.isArray(rawData) && rawData.length > 0)
                                     cellText = rawData.flat().map(obj => (obj.identifier || obj)).join(' ');
@@ -9236,6 +9235,7 @@ function Ktl($, appInfo) {
                     const operator = conditions[0] || '';
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
+                    let fieldId;
                     const view = conditions[3] || '';
                     let viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
 
@@ -9248,45 +9248,60 @@ function Ktl($, appInfo) {
                             return resolve(false);
                     }
 
-                    let foreignViewId; //Foreign view and field are used for ktlExists, to indicate where to search.
+                    let foreignViewId; //Foreign view and field are used by ktlMatch, to indicate where to search.
                     let foreignFieldId;
-                    if (value === 'ktlExists' && (operator === 'is' || operator === 'not')) {
+                    if (value === 'ktlMatch' && (operator === 'is' || operator === 'not')) {
                         foreignViewId = viewId;
                         viewId = keywordViewId;
                         foreignFieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(foreignViewId, field);
                     }
 
-                    if (field.startsWith('$(')) {
-                        const selector = ktl.core.extractJQuerySelector(field);
-                        ktl.core.waitSelector(selector, 10000).then(() => {
-                            const fieldValue = $(selector)[0].textContent.trim();
-                            if (!fieldValue || !ktlCompare(fieldValue, operator, value))
+                    if (foreignViewId) {
+                        ktl.views.waitViewDataReady(foreignViewId)
+                            .then(() => {
+                                allViewsReady();
+                            })
+                            .catch(err => {
+                                ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
+                                console.log('err =', err);
                                 return resolve(false);
-
-                            if ($(selector).is(':input')) {
-                                const update = (event) => {
-                                    return resolve(ktlCompare(event.target.value, operator, value));
-                                }
-                                $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
-                                $(selector).one('change', update);
-                            }
-                        }).catch(() => {
-                            return resolve(false);
-                        });
-                    }
-
-                    if (field === 'ktlNow' || field === 'ktlNowUTC')
-                        return resolve(ktlCompare(field, operator, value));
-
-                    let fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
-
-                    if (!fieldId) {
-                        $(document).one(`knack-view-render.${viewId}`, () => {
-                            fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
-                            apply();
-                        })
+                            })
                     } else
-                        apply();
+                        allViewsReady();
+
+                    function allViewsReady() {
+                        if (field.startsWith('$(')) {
+                            const selector = ktl.core.extractJQuerySelector(field);
+                            ktl.core.waitSelector(selector, 10000).then(() => {
+                                const fieldValue = $(selector)[0].textContent.trim();
+                                if (!fieldValue || !ktlCompare(fieldValue, operator, value))
+                                    return resolve(false);
+
+                                if ($(selector).is(':input')) {
+                                    const update = (event) => {
+                                        return resolve(ktlCompare(event.target.value, operator, value));
+                                    }
+                                    $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
+                                    $(selector).one('change', update);
+                                }
+                            }).catch(() => {
+                                return resolve(false);
+                            });
+                        }
+
+                        if (field === 'ktlNow' || field === 'ktlNowUTC')
+                            return resolve(ktlCompare(field, operator, value));
+
+                        fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+
+                        if (!fieldId) {
+                            $(document).one(`knack-view-render.${viewId}`, () => {
+                                fieldId = (field.startsWith('field_')) ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                                apply();
+                            })
+                        } else
+                            apply();
+                    }
 
                     function apply() {
                         let selector = '';
@@ -9308,10 +9323,9 @@ function Ktl($, appInfo) {
                                         return resolve(result);
                                     }
                                 } else {
-                                    const rawData = recordObj[`${fieldId}_raw`];
-
                                     let cellText;
 
+                                    const rawData = recordObj[`${fieldId}_raw`];
                                     if (rawData) {
                                         let fieldType = ktl.fields.getFieldType(fieldId);
 
@@ -9334,33 +9348,27 @@ function Ktl($, appInfo) {
                                             cellText = ktl.core.extractNumericValue(cellText, fieldId);
                                     }
 
-                                    if (value === 'ktlExists') {
+                                    if (value === 'ktlMatch') {
                                         const foreignViewType = ktl.views.getViewType(foreignViewId);
                                         if (foreignViewType === 'table' || foreignViewType === 'list') {
-                                            ktl.views.waitViewDataReady(foreignViewId)
-                                                .then(() => {
-                                                    const foreignData = Knack.views[foreignViewId].model.data.models;
-                                                    if (!foreignData.length)
-                                                        return resolve(false);
+                                            const foreignData = Knack.views[foreignViewId].model.data.models;
+                                            if (!foreignData.length)
+                                                return resolve(operator === 'not');
 
-                                                    //Search all records now.
-                                                    for (const record of foreignData) {
-                                                        let foreignCellText = record.attributes[`${foreignFieldId}_raw`];
+                                            //Search all records now.
+                                            for (const record of foreignData) {
+                                                let foreignCellText = record.attributes[`${foreignFieldId}_raw`];
 
-                                                        if (Array.isArray(foreignCellText) && foreignCellText.length)
-                                                            foreignCellText = foreignCellText[0].identifier;
+                                                if (Array.isArray(foreignCellText) && foreignCellText.length)
+                                                    foreignCellText = foreignCellText[0].identifier;
 
-                                                        if (ktlCompare(cellText, operator, foreignCellText))
-                                                            return resolve(true);
-                                                    }
+                                                if (ktlCompare(cellText, operator, foreignCellText))
+                                                    return resolve(true);
+                                            }
 
-                                                    return resolve(false);
-                                                })
-                                                .catch(err => {
-                                                    ktl.log.clog('purple', `validateKtlCond - Timeout waiting for data: ${foreignViewId}`);
-                                                    console.log('err =', err);
-                                                })
-                                        }
+                                            return resolve(false);
+                                        } else
+                                            return resolve(false);
                                     } else
                                         return resolve(ktlCompare(cellText, operator, value));
                                 }
@@ -9463,38 +9471,51 @@ function Ktl($, appInfo) {
                     const options = kwInstance.options;
                     if (!ktl.core.hasRoleAccess(options)) return;
 
-
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (viewType === 'table' || viewType === 'search' || viewType === 'list') {
-                        for (const recordObj of data)
-                            processClass(options, recordObj);
+                        (function processClassForAllRecords(idx) {
+                            let recordObj = data[idx];
+                            processClass(options, recordObj)
+                                .then(() => {
+                                    if (++idx < data.length)
+                                        processClassForAllRecords(idx);
+                                })
+                        })(0);
                     } else
                         processClass(options);
 
                     function processClass(options, recordObj = {}) {
-                        ktl.views.validateKtlCond(viewId, options, recordObj)
-                            .then(valid => {
-                                if (valid) {
-                                    const sel = ktl.core.computeTargetSelector(viewId, '', options, recordObj.id);
-                                    ktl.core.waitSelector(sel, 20000)
-                                        .then(() => {
-                                            var classes = kwInstance.params[0];
-                                            for (var i = 0; i < classes.length; i++) {
-                                                var params = classes[i];
-                                                if (params.startsWith('!'))
-                                                    $(sel).removeClass(params.replace('!', ''));
-                                                else {
-                                                    if (params === 'ktlRemove')
-                                                        $(sel).remove();
-                                                    else
-                                                        $(sel).addClass(params);
+                        return new Promise(function (resolve) {
+                            ktl.views.validateKtlCond(viewId, options, recordObj)
+                                .then(valid => {
+                                    if (valid) {
+                                        const sel = ktl.core.computeTargetSelector(viewId, '', options, recordObj.id);
+                                        ktl.core.waitSelector(sel, 20000)
+                                            .then(() => {
+                                                var classes = kwInstance.params[0];
+                                                for (var i = 0; i < classes.length; i++) {
+                                                    var params = classes[i];
+                                                    if (params.startsWith('!'))
+                                                        $(sel).removeClass(params.replace('!', ''));
+                                                    else {
+                                                        if (params === 'ktlRemove')
+                                                            $(sel).remove();
+                                                        else
+                                                            $(sel).addClass(params);
+                                                    }
                                                 }
-                                            }
-                                        })
-                                        .catch(function () { })
-                                }
-                            })
+
+                                                resolve();
+                                            })
+                                            .catch(function () {
+                                                console.log('Timeout waiting for selector in _cls', sel);
+                                                resolve();
+                                            })
+                                    } else
+                                        resolve();
+                                })
+                        })
                     }
                 }
             },
@@ -10341,7 +10362,8 @@ function Ktl($, appInfo) {
 
             waitViewDataReady: function (viewId) {
                 return new Promise(function (resolve, reject) {
-                    if (!viewId || !Knack.views[viewId]) return reject();
+                    if (!viewId || !Knack.views[viewId])
+                        return reject();
 
                     if (Knack.views[viewId].record || Knack.views[viewId].model.data.total_records)
                         return resolve();
@@ -10349,7 +10371,7 @@ function Ktl($, appInfo) {
                     const itv = setInterval(() => {
                         if (Knack.views[viewId].record || Knack.views[viewId].model.data.total_records) {
                             clearInterval(itv);
-                            resolve();
+                            return resolve();
                         }
                     }, 100);
 
