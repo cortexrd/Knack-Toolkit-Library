@@ -6641,7 +6641,7 @@ function Ktl($, appInfo) {
             }
 
             if (!tableHasInlineEditing) {
-                ktl.log.clog('purple', `_recid keyword used in a table without inline edit: ${viewId}`);
+                ktl.log.clog('purple', `_recid keyword used in a grid without inline edit: ${viewId}`);
                 return;
             }
 
@@ -7042,7 +7042,7 @@ function Ktl($, appInfo) {
             if (dndType === 'sort')
                 dndSort();
             else {
-                //TODO: Implement other types as we go, ex: from srcView to dstView.
+                //TODO: Implement other DnD types as we go, ex: from srcView to dstView.
             }
 
             function dndSort() {
@@ -7134,15 +7134,8 @@ function Ktl($, appInfo) {
             const viewType = ktl.views.getViewType(dstViewId);
             if (viewType !== 'table') return;
 
-            var tableHasInlineEditing = false;
-            var viewModel = Knack.router.scene_view.model.views._byId[dstViewId];
-            if (viewModel) {
-                var viewAttr = viewModel.attributes;
-                tableHasInlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
-            }
-
-            if (!tableHasInlineEditing) {
-                ktl.log.clog('purple', `_recid keyword used in a table without inline edit: ${dstViewId}`);
+            if (!ktl.views.viewHasInlineEdit(dstViewId)) {
+                ktl.log.clog('purple', `_recid keyword used in a grid without inline edit: ${dstViewId}`);
                 return;
             }
 
@@ -9139,7 +9132,7 @@ function Ktl($, appInfo) {
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
-                    const viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
+                    const viewId = ktl.scenes.findViewWithTitle(view);
 
                     if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
                         if (Knack.isMobile() && operator === 'is')
@@ -9246,7 +9239,7 @@ function Ktl($, appInfo) {
                     const field = conditions[2] || '';
                     let fieldId;
                     const view = conditions[3] || '';
-                    let viewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
+                    let viewId = ktl.scenes.findViewWithTitle(view);
 
                     if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
                         if (Knack.isMobile() && operator === 'is')
@@ -10906,6 +10899,7 @@ function Ktl($, appInfo) {
             },
 
             //Searches for a view title in the current scene.
+            //If a view Id is used as the first parameter, it will be returned as is.
             findViewWithTitle: function (viewTitle = '', exactMatch = true, excludeViewId = '') {
                 var views = Knack.router.scene_view.model.views.models;
                 var title = '';
