@@ -6566,7 +6566,7 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            $('#' + viewId + ' thead [href]').addClass('sortDisabled');
+            $('#' + viewId + ' thead [href]').addClass('ktlSortDisabled');
         }
 
         //Adjust header alignment of Grids and Pivot Tables
@@ -6857,9 +6857,10 @@ function Ktl($, appInfo) {
                         doClick();
                     } else {
                         startButton.addEventListener('click', function (e) {
-                            if (clickCurrentlyRunning)
+                            if (clickCurrentlyRunning) {
                                 clickCurrentlyRunning = null;
-                            else {
+                                startButton.textContent = buttonLabel;
+                            } else {
                                 if (needConfirm) {
                                     if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
                                         clickCurrentlyRunning = actionLinkText;
@@ -6889,14 +6890,11 @@ function Ktl($, appInfo) {
                     setTimeout(() => { //Leave some time to apply any other keyword that might hide the link.
                         //If last clicked record is still there, exit and wait for next refresh.
                         if (clickLastRecIdProcessed) {
-                            if ($(`#${viewId} tr[id="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${clickCurrentlyRunning}")`).length) {
-                                ktl.log.clog('red', 'Last record still there:', clickLastRecIdProcessed);
+                            if ($(`#${viewId} tr[id="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${clickCurrentlyRunning}")`).length)
                                 return;
-                            } else
+                            else
                                 clickLastRecIdProcessed = null;
                         }
-
-                        console.log('actionLinkText =', actionLinkText);
 
                         let linkSelector;
 
@@ -6904,14 +6902,10 @@ function Ktl($, appInfo) {
                             linkSelector = $(`#${viewId} .knViewLink__label:textEquals("${clickCurrentlyRunning}")`);
 
                             if (linkSelector.length) {
-                                if (!linkSelector[0].closest(`tr`)) debugger;
-
                                 linkSelector[0].classList.add('ktlOutline');
-
                                 clickLastRecIdProcessed = linkSelector[0].closest(`tr`).id;
                                 linkSelector[0].click();
                             } else {
-                                ktl.log.clog('green', 'FINISHED!!');
                                 clickLastRecIdProcessed = null;
                                 clickCurrentlyRunning = null;
                             }
@@ -13627,7 +13621,7 @@ function Ktl($, appInfo) {
             if (!viewId || !bulkOp) return false;
 
             const nbo = ktlKeywords[viewId] && ktlKeywords[viewId]._nbo;
-            var bulkOpDisabled = false;
+            let bulkOpDisabled = false;
             if (nbo !== undefined) {
                 if (nbo.length === 0)
                     bulkOpDisabled = true;
@@ -13637,15 +13631,7 @@ function Ktl($, appInfo) {
                 }
             }
 
-            var tableHasInlineEditing = false;
-            var viewModel = Knack.router.scene_view.model.views._byId[viewId];
-            if (viewModel) {
-                var viewAttr = viewModel.attributes;
-                if (viewAttr.type === 'search')
-                    tableHasInlineEditing = viewAttr.cell_editor ? viewAttr.cell_editor : false;
-                else
-                    tableHasInlineEditing = viewAttr.options ? viewAttr.options.cell_editor : false;
-            }
+            let tableHasInlineEditing = ktl.views.viewHasInlineEdit(viewId);
 
             //Bulk Edit
             if (bulkOp === 'edit'

@@ -173,12 +173,11 @@ th .fa-caret-left {
 		display: none;
 	}
 
-
-.sortDisabled .knTable th {
+.ktlSortDisabled .knTable th {
 	pointer-events: none;
 }
 
-a.sortDisabled {
+a.ktlSortDisabled {
 	pointer-events: none;
 }
 .ktlLinkDisabled * {
