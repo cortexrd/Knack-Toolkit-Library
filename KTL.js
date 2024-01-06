@@ -88,10 +88,10 @@ function Ktl($, appInfo) {
                     ktlKeywords[view.id] = viewKwObj;
 
                     //Add scene keywords.
-                    if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom)
+                    if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom || viewKwObj._nswd)
                         ktlKeywords[scn.attributes.key] = viewKwObj;
-                    else if (viewKwObj._nswd)
-                        ktlKeywords[scn.attributes.key] = viewKwObj;
+                    else if (viewKwObj._footer)
+                        ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
                 }
 
                 if (attr.type === 'rich_text' && (title && !title.includes('_ol')))
@@ -10481,6 +10481,8 @@ function Ktl($, appInfo) {
                 ktl.storage.lsSetItem('APP_KTL_VERSIONS', APP_KTL_VERSIONS);
             }
 
+            addFooter(ktlKeywords.ktlAppFooter);
+
             onSceneRender && onSceneRender(event, scene, appInfo);
         })
 
@@ -10527,6 +10529,22 @@ function Ktl($, appInfo) {
         function addMenuTitleToTab() {
             var page = ktl.core.getMenuInfo().page;
             (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
+        }
+
+        function addFooter(footerSlug) {
+            if (!footerSlug) return;
+            const footerHTML = Knack.scenes._byId[footerSlug].views.models[0].attributes.content;
+
+            const footerElement = document.createElement('footer');
+            footerElement.innerHTML = footerHTML;
+            footerElement.id = 'ktlFooter';
+            footerElement.style.textAlign = 'left';
+            footerElement.style.padding = '20px';
+            footerElement.style.marginLeft = '10px';
+            // Additional styling as needed
+
+            if (!document.getElementById('ktlFooter'))
+                document.body.appendChild(footerElement);
         }
 
         return {
