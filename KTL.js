@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.20.3';
+    const KTL_VERSION = '0.21.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5426,7 +5426,7 @@ function Ktl($, appInfo) {
                     keywords._mail && sendBulkEmails(viewId, keywords, data);
                     keywords._dnd && dragAndDrop(viewId, keywords);
                     keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
-                    keywords._csc && colorizeSortedColumn(viewId, keywords);
+                    keywords._scs && colorizeSortedColumn(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -7304,7 +7304,7 @@ function Ktl($, appInfo) {
         }
 
         function colorizeSortedColumn(viewId, keywords) {
-            const kw = '_csc';
+            const kw = '_scs';
             if (!(viewId && keywords && keywords[kw])) return;
 
             const viewType = ktl.views.getViewType(viewId);
@@ -7312,7 +7312,6 @@ function Ktl($, appInfo) {
 
             const kwList = ktl.core.getKeywordsByType(viewId, kw);
             kwList.forEach(kwInstance => { execKw(kwInstance); })
-
 
             function execKw(kwInstance) {
                 const options = kwInstance.options;
@@ -7322,11 +7321,9 @@ function Ktl($, appInfo) {
                 if (params.length < 1) return;
 
                 const style = params[0];
-                
-                $(`#${viewId} th.sorted-asc, #${viewId} th.sorted-desc`).each(function() {
-                
-                    const index = $(this).index();
 
+                $(`#${viewId} th.sorted-asc, #${viewId} th.sorted-desc`).each(function() {
+                    const index = $(this).index();
                     $(`#${viewId} tbody tr:not(.kn-table-group)`).each(function() {
                         $(this).find('td').eq(index).attr('style', style);
                     });
