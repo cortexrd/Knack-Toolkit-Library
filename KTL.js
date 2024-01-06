@@ -5426,6 +5426,7 @@ function Ktl($, appInfo) {
                     keywords._mail && sendBulkEmails(viewId, keywords, data);
                     keywords._dnd && dragAndDrop(viewId, keywords);
                     keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
+                    keywords._csc && colorizeSortedColumn(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -7301,6 +7302,37 @@ function Ktl($, appInfo) {
                             alert(`Copy error encountered:\n${err}`);
                         })
                 }
+            }
+        }
+
+        function colorizeSortedColumn(viewId, keywords) {
+            const kw = '_csc';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(viewType === 'table' || viewType === 'search')) return;
+
+            const kwList = ktl.core.getKeywordsByType(viewId, kw);
+            kwList.forEach(kwInstance => { execKw(kwInstance); })
+
+
+            function execKw(kwInstance) {
+                const options = kwInstance.options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+
+                const params = kwInstance.params[0];
+                if (params.length < 1) return;
+
+                const style = params[0];
+                
+                $(`#${viewId} th.sorted-asc, #${viewId} th.sorted-desc`).each(function() {
+                
+                    const index = $(this).index();
+
+                    $(`#${viewId} tbody tr:not(.kn-table-group)`).each(function() {
+                        $(this).find('td').eq(index).attr('style', style);
+                    });
+                });
             }
         }
 
