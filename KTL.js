@@ -6825,7 +6825,6 @@ function Ktl($, appInfo) {
             const kwList = ktl.core.getKeywordsByType(viewId, kw);
             kwList.forEach(kwInstance => { execKw(kwInstance); })
 
-
             function execKw(kwInstance) {
                 const options = kwInstance.options;
                 if (!ktl.core.hasRoleAccess(options)) return;
@@ -6833,6 +6832,7 @@ function Ktl($, appInfo) {
                 const params = kwInstance.params[0];
                 if (params.length < 1) return;
 
+                //TODO
                 //const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
                 //const view = conditions[3] || '';
                 //const condViewId = (view.startsWith('view_')) ? view : ktl.scenes.findViewWithTitle(view);
@@ -6842,34 +6842,42 @@ function Ktl($, appInfo) {
                 let needConfirm = true;
                 if (params.length >= 2 && params[1] === 'auto')
                     needConfirm = false;
+                let startButton;
+                let buttonLabel;
 
                 if (params.length >= 3 && params[2]) {
                     //Add a start button
-                    const buttonLabel = params[2];
+                    buttonLabel = params[2];
                     let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
                     const buttonId = ktl.core.getCleanId(buttonLabel);
-                    const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonId}-${viewId}`);
+                    startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonId}-${viewId}`);
 
-                    console.log('clickCurrentlyRunning', clickCurrentlyRunning, viewId);
+                    if (!data.length)
+                        startButton.disabled = true;
 
                     if (clickCurrentlyRunning === actionLinkText) {
-                        startButton.textContent = 'Stop';
-                        doClick();
-                    } else {
+                        startButton.textContent = startButton.textContent + ' - STOP';
                         startButton.addEventListener('click', function (e) {
                             if (clickCurrentlyRunning) {
                                 clickCurrentlyRunning = null;
                                 startButton.textContent = buttonLabel;
-                            } else {
-                                if (needConfirm) {
-                                    if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
-                                        clickCurrentlyRunning = actionLinkText;
-                                        doClick();
-                                    }
-                                } else {
+                            }
+                        })
+
+                        doClick();
+                    } else {
+                        if (clickCurrentlyRunning)
+                            startButton.disabled = true;
+
+                        startButton.addEventListener('click', function (e) {
+                            if (needConfirm) {
+                                if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
                                     clickCurrentlyRunning = actionLinkText;
                                     doClick();
                                 }
+                            } else {
+                                clickCurrentlyRunning = actionLinkText;
+                                doClick();
                             }
                         })
                     }
@@ -6906,6 +6914,8 @@ function Ktl($, appInfo) {
                                 clickLastRecIdProcessed = linkSelector[0].closest(`tr`).id;
                                 linkSelector[0].click();
                             } else {
+                                if (startButton)
+                                    startButton.textContent = buttonLabel;
                                 clickLastRecIdProcessed = null;
                                 clickCurrentlyRunning = null;
                             }
@@ -6915,6 +6925,7 @@ function Ktl($, appInfo) {
             }
         }
 
+        //Work in progress...
         function sendBulkEmails(viewId, keywords, data) {
             const kw = '_mail';
 
