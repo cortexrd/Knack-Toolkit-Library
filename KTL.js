@@ -10267,10 +10267,11 @@ function Ktl($, appInfo) {
              * @param {string} viewId
              * @param {number} viewHeight */
             stickTableHeader: function (viewId, viewHeight) {
+                const zIndex = (Knack.app.attributes.design.regions.header.isLegacy) ? 2 : 0;
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
-                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
+                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': zIndex });
             },
 
             /** Stick table Columns
