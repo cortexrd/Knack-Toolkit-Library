@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.6.0 */
+/* KTL CSS version: 0.6.1 */
 
 /************ General Settings **************/
 :root {
@@ -137,6 +137,7 @@ th .fa-caret-left {
 /* Dynamic Hide/Show Columns feature  - END */
 
 .cell-edit.ktlNoInlineEdit {
+	pointer-events: none;
 	cursor: default !important;
 	font-weight: initial;
 }
