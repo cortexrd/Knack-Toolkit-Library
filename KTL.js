@@ -7398,6 +7398,14 @@ function Ktl($, appInfo) {
                             var formAction = view.attributes.action;
                             var triggerChange = (formAction === 'insert' || formAction === 'create') ? false : true;
 
+                            let scrollLeft;
+                            let scrollTop;
+                            const viewWrapper = document.querySelector(`#${viewId} .kn-table-wrapper`);
+                            if (viewWrapper) {
+                                scrollLeft = document.querySelector(`#${viewId} .kn-table-wrapper`).scrollLeft;
+                                scrollTop = document.querySelector(`#${viewId} .kn-table-wrapper`).scrollTop;
+                            }
+
                             (function tryRefresh(retryCtr) {
                                 if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
                                     if (triggerChange) {
@@ -7415,6 +7423,14 @@ function Ktl($, appInfo) {
                                             if (['details' /*more types?*/].includes(viewType)) {
                                                 Knack.views[viewId].render();
                                                 Knack.views[viewId].postRender && Knack.views[viewId].postRender();
+                                            }
+
+                                            if (viewWrapper) {
+                                                if (scrollTop)
+                                                    document.querySelector(`#${viewId} .kn-table-wrapper`).scrollTop = scrollTop;
+
+                                                if (scrollLeft)
+                                                    document.querySelector(`#${viewId} .kn-table-wrapper`).scrollLeft = scrollLeft;
                                             }
 
                                             setTimeout(() => {
