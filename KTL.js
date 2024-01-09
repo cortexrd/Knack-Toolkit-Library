@@ -8961,7 +8961,8 @@ function Ktl($, appInfo) {
                 const field = model.view.fields.find((field) => field.key === fieldId);
                 if (field) {
                     if (event.currentTarget.classList.value.split(' ').every((c) => !c.includes('sorted'))) { // Not already sorted. First click
-                        if ((field.type === 'date_time' && !event.ctrlKey && !event.metaKey) || (field.type !== 'date_time' && (event.ctrlKey || event.metaKey))) {
+                        const isDateTime = (field.type === 'date_time') || (field.type === 'equation' && field.format.equation_type === 'date');
+                        if ((isDateTime && !event.ctrlKey && !event.metaKey) || (!isDateTime && (event.ctrlKey || event.metaKey))) {
                             const anchor = $(event.currentTarget).find('a');
                             const href = anchor.attr('href').split('|')[0]; // Safeguard if order is already there.
                             anchor.attr('href', `${href}|desc`);
