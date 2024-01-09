@@ -10315,11 +10315,13 @@ function Ktl($, appInfo) {
              * @param {string} viewId
              * @param {number} viewHeight */
             stickTableHeader: function (viewId, viewHeight) {
-                const zIndex = (Knack.app.attributes.design.regions.header.isLegacy) ? 2 : 0;
+                if (!Knack.app.attributes.design.regions.header.isLegacy)
+                    $(`.knHeader__menu-dropdown-list`).css({ 'z-index': '5' }); //4 works, 5 for safety margin.
+
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
-                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': zIndex });
+                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
             },
 
             /** Stick table Columns
