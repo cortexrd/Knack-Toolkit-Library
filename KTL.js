@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.21.0';
+    const KTL_VERSION = '0.21.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5427,6 +5427,7 @@ function Ktl($, appInfo) {
                     keywords._dnd && dragAndDrop(viewId, keywords);
                     keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
                     keywords._scs && colorizeSortedColumn(viewId, keywords);
+                    keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -7331,6 +7332,31 @@ function Ktl($, appInfo) {
             }
         }
 
+        function closeModalAndRefreshViews(viewId, keywords) {
+            const kw = '_cmr';
+            if (!(viewId && keywords && keywords[kw] && Knack.router.scene_view.model.attributes.modal)) return;
+
+            let viewsToRefreshArray = [];
+
+            if (keywords[kw].length && keywords[kw][0].params) {
+                for (const viewToRefresh of keywords[kw][0].params[0]) {
+                    const viewIdToRefresh = (viewToRefresh.startsWith('view_')) ? viewToRefresh : ktl.core.getViewIdByTitle(viewToRefresh, Knack.router.scene_view.model.attributes.parent, true);
+                    viewsToRefreshArray.push(viewIdToRefresh);
+                }
+            } else {
+                //All parent views.
+                const viewsInScene = Knack.scenes._byId[Knack.router.scene_view.model.attributes.parent].views.models;
+                for (const viewToRefresh of viewsInScene) {
+                    viewsToRefreshArray.push(viewToRefresh.attributes.key);
+                }
+            }
+
+            $(document).off(`knack-form-submit.${viewId}`).one(`knack-form-submit.${viewId}`, function (event, view, record) {
+                Knack.closeModal();
+                ktl.views.refreshViewArray(viewsToRefreshArray);
+            });
+        }
+
         //Views
         return {
             setCfg: function (cfgObj = {}) {
@@ -8699,11 +8725,16 @@ function Ktl($, appInfo) {
                             (function processKeywordsLoop(f) {
                                 var fieldId = fieldsWithKwAr[f];
                                 var keywords = fieldsWithKwObj[fieldId];
-                                if (!keywords) resolve();
+                                if (!keywords)
+                                    resolve();
 
                                 ktl.views.processFieldKeywords(viewId, fieldId, keywords, e)
                                     .then(ocObj => {
                                         outcomeObj.msg += ocObj.msg;
+                                        if (outcomeObj.msg !== '')
+                                            reject(outcomeObj);
+                                        else
+                                            resolve();
                                     })
                                     .catch(err => {
                                         console.log('preprocessFields Exception:', err);
@@ -8791,24 +8822,21 @@ function Ktl($, appInfo) {
                                                     if (foundRecords.length) {
                                                         outcomeObj.msg = fieldName + ' must be unique. "' + value + '" is already being used.';
                                                         outcomeObj.foundRecords = foundRecords;
-                                                        reject(outcomeObj);
-                                                        return;
-                                                    } else {
-                                                        resolve();
-                                                        return
-                                                    }
+                                                        return reject(outcomeObj);
+                                                    } else
+                                                        return resolve();
                                                 })
                                                 .catch(err => {
                                                     console.log('preprocessViews Exception:', err);
                                                     outcomeObj.msg = 'preprocessViews Exception: ' + err;
-                                                    reject(outcomeObj);
-                                                    return;
+                                                    return reject(outcomeObj);
                                                 })
                                         }
                                     }
                                 } else
                                     resolve();
-                            }
+                            } else
+                                resolve();
                         } else
                             resolve();
                     })
@@ -14677,7 +14705,7 @@ function Ktl($, appInfo) {
                 escSpan.style.margin = '0em 0.5em';
                 container.appendChild(escSpan);
 
-                if (!document.querySelector('#kn-add-option, .kn-modal')) {
+                if (!document.querySelector('#kn-add-option')) {
                     const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
                     container.appendChild(createLine(sceneId, `${baseURL}/pages/${sceneId}`));
                 }
@@ -14693,7 +14721,7 @@ function Ktl($, appInfo) {
             content: function (element) {
                 const container = defaultOptions.content(element);
 
-                if (!document.querySelector('#kn-add-option, .kn-modal')) {
+                if (!document.querySelector('#kn-add-option')) {
                     const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
                     const viewId = $(element).closest('.kn-view[id]').attr('id');
                     const viewType = Knack.views[viewId].model.view.type;
