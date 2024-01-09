@@ -3949,9 +3949,12 @@ function Ktl($, appInfo) {
                 });
 
                 //When the Reset button is clicked in table's search.
-                $(`#${view.key} .reset.kn-button.is-link`).on('click', function () {
+                $(`#${view.key} .reset.kn-button.is-link`).bindFirst('click', function (e) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
                     $(`#${view.key} .table-keyword-search input`).val(''); //Force to empty otherwise we sometimes get current search string.
-                    updateSearchInFilter(view.key);
+                    $(`#${view.key} .kn-button.search`).click();
                 });
 
                 $(`#${view.key} .kn-table-table th`).on('click', function () {
