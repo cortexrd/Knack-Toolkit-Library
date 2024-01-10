@@ -5628,14 +5628,17 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            if (view.type === 'table' /*TODO: add more view types*/) {
+            if (view.type === 'table' || view.type === 'list' /*TODO: add more view types*/) {
                 var fieldsAr = keywords[kw][0].params[0];
-                $('.kn-add-filter,.kn-filters').on('click', function (e) {
-                    var filterFields = document.querySelectorAll('.field.kn-select select option');
-                    filterFields.forEach(field => {
-                        if (fieldsAr.includes(field.value) || fieldsAr.includes(field.textContent))
-                            field.remove();
-                    })
+
+                $(document).on('click', function (e) {
+                    if (e.target.closest('.kn-add-filter,.kn-filters,#add-filter-link')) {
+                        var filterFields = document.querySelectorAll('.field.kn-select select option');
+                        filterFields.forEach(field => {
+                            if (fieldsAr.includes(field.value) || fieldsAr.includes(field.textContent))
+                                field.remove();
+                        })
+                    }
                 })
             }
         }
@@ -14743,9 +14746,9 @@ function Ktl($, appInfo) {
             content: function (element) {
                 const container = defaultOptions.content(element);
 
-                if (!document.querySelector('#kn-add-option')) {
+                const viewId = $(element).closest('.kn-view[id]').attr('id');
+                if (Knack.views[viewId] && !document.querySelector('#kn-add-option')) {
                     const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
-                    const viewId = $(element).closest('.kn-view[id]').attr('id');
                     const viewType = Knack.views[viewId].model.view.type;
                     const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
                     container.appendChild(createLine(viewId, viewUrl));
