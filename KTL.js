@@ -5440,6 +5440,7 @@ function Ktl($, appInfo) {
                 colorizeFieldByValue(viewId, data);
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
+                disableFilterOnFields(view, keywords);
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -5622,25 +5623,57 @@ function Ktl($, appInfo) {
         function disableFilterOnFields(view, keywords) {
             if (!view) return;
 
+            if (!(view.type === 'table' || view.type === 'list')) return;
+
             const kw = '_nf';
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
-                if (!ktl.core.hasRoleAccess(options)) return;
+            var fieldsAr = [];
+
+            //Process views keyword
+            if (keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
+                let canExecute = false;
+
+                if (keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (ktl.core.hasRoleAccess(options))
+                        canExecute = true;
+                } else
+                    canExecute = true;
+
+                if (canExecute && keywords[kw][0].params && keywords[kw][0].params.length)
+                    fieldsAr = keywords[kw][0].params[0];
             }
 
-            if (view.type === 'table' || view.type === 'list' /*TODO: add more view types*/) {
-                var fieldsAr = keywords[kw][0].params[0];
-
-                $(document).on('click', function (e) {
-                    if (e.target.closest('.kn-add-filter,.kn-filters,#add-filter-link')) {
-                        var filterFields = document.querySelectorAll('.field.kn-select select option');
-                        filterFields.forEach(field => {
-                            if (fieldsAr.includes(field.value) || fieldsAr.includes(field.textContent))
-                                field.remove();
-                        })
+            //Process fields keyword
+            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(view.key);
+            if (!$.isEmptyObject(fieldsWithKwObj)) {
+                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                var foundKwObj = {};
+                for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                    var fieldId = fieldsWithKwAr[i];
+                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                    if (!$.isEmptyObject(foundKwObj)) {
+                        if (foundKwObj[fieldId][kw]) {
+                            if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
+                                const options = foundKwObj[fieldId][kw][0].options;
+                                if (ktl.core.hasRoleAccess(options)) { //$$$
+                                    fieldsAr.push(fieldId);
+                                }
+                            } else
+                                fieldsAr.push(fieldId);
+                        }
                     }
-                })
+                }
             }
+
+            $(document).on('click', function (e) {
+                if (e.target.closest('.kn-add-filter,.kn-filters,#add-filter-link')) {
+                    var filterFields = document.querySelectorAll('.field.kn-select select option');
+                    filterFields.forEach(field => {
+                        if (fieldsAr.includes(field.value) || fieldsAr.includes(field.textContent))
+                            field.remove();
+                    })
+                }
+            })
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
