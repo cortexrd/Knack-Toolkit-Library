@@ -680,4 +680,39 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	max-width: 80px !important;
 }
 
+
+ul.ui-autocomplete {
+	border-radius: 0 0 4px 4px;
+    background-clip: padding-box;
+    border: 1px solid #dbdbdb;
+    border-top: 0;
+	background: white;
+	margin-top: -8px;
+	list-style: none;
+}
+.ui-autocomplete .ui-menu-item {
+	color: #1a1a1a;
+	position: relative;
+}
+
+
+.ui-autocomplete .ui-menu-item i {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 2em;
+    width: 3em;
+}
+.ui-autocomplete .ui-menu-item i:after {
+    position: absolute;
+    font-size: 16px;
+    font-family: FontAwesome;
+    content: "\F00D";
+    top: 3px;
+    right: 13px;
+    color: #c1bdbd;
+}
+.ui-autocomplete .ui-menu-item i:hover:after {
+    color: #1a1a1a;
+}
 /**** KTL_RELATED - END ****/
