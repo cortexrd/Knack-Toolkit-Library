@@ -5924,11 +5924,11 @@ function Ktl($, appInfo) {
             if (viewType !== 'table' && viewType !== 'list' && viewType !== 'details')
                 return;
 
-            //Begin with View's _cfv.
-            ktl.core.getKeywordsByType(viewId, CFV_KEYWORD).forEach(execKw);
-
-            //Then end with fields _cfv, for precedence.
+            //Begin with field _cfv.
             colorizeFromFieldKeyword();
+
+            //Then end with view _cfv, for precedence.
+            ktl.core.getKeywordsByType(viewId, CFV_KEYWORD).forEach(execKw);
 
             function execKw(keyword) {
                 if (!ktl.core.hasRoleAccess(keyword.options)) return;
@@ -5980,7 +5980,7 @@ function Ktl($, appInfo) {
                     const ktlRefValSplit = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
                     if (ktlRefValSplit.length === 2) {
                         const referenceViewId = ktl.scenes.findViewWithTitle(ktlRefValSplit[1]);
-                        if (referenceViewId) {
+                        if (referenceViewId && referenceViewId !== viewId/*prevent looping if ref view is provided and same as this view*/) {
                             $(document).off(`knack-view-render.${referenceViewId}.cfv${viewId}`).on(`knack-view-render.${referenceViewId}.cfv${viewId}`, () => {
                                 ktl.views.refreshView(viewId);
                             });
@@ -6114,6 +6114,12 @@ function Ktl($, appInfo) {
                             }
 
                             let refVal = value;
+                            if (!refVal && options.ktlRefVal) {
+                                if (options.ktlRefVal.startsWith('field_'))
+                                    value = options.ktlRefVal;
+                                else
+                                    value = ktl.fields.getFieldIdFromLabel(viewId, options.ktlRefVal);
+                            }
 
                             //When value is a reference field in same view. Only true for view keyword, n/a for fields.
                             if (value && value.startsWith('field_')) {
