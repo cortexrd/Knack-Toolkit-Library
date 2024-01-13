@@ -5629,7 +5629,7 @@ function Ktl($, appInfo) {
             var fieldsAr = [];
 
             //Process views keyword
-            if (keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
                 let canExecute = false;
 
                 if (keywords[kw][0].options) {
