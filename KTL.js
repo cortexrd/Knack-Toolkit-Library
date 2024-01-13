@@ -37,72 +37,109 @@ function Ktl($, appInfo) {
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
     //Extract all keywords from view titles and descriptions, and cleanup view titles and descriptions.
-    var ktlKeywords = {};
+    const ktlKeywords = {};
     window.ktlKeywords = ktlKeywords;
-    for (var t = 0; t < Knack.scenes.models.length; t++) {
-        var scn = Knack.scenes.models[t];
-        var views = scn.views;
-        for (var v = 0; v < views.models.length; v++) {
-            let view = views.models[v];
-            if (view) {
-                var viewKwObj = {};
-                var attr = view.attributes;
 
-                var title = attr.title;
-
-                if (attr.type === 'rich_text' && attr.content)
-                    title = attr.content.replace('<p>_', ' _');
-
-                var cleanedUpTitle = title;
-                var firstKeywordIdx;
-                if (title) {
-                    firstKeywordIdx = title.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-                    if (firstKeywordIdx >= 0) {
-                        cleanedUpTitle = title.substring(0, firstKeywordIdx);
-                        var keywordsToParse = title.substring(firstKeywordIdx).trim();
-
-                        if (attr.type === 'rich_text') {
-                            //Remove line breaks and paragraphs after first kw found.
-                            keywordsToParse = keywordsToParse.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
-
-                            //Decode all special HTML characters to plain text. Ex: &gt to >
-                            keywordsToParse = $('<p/>').html(keywordsToParse).text();
-                        }
-
-                        extractKeywords(keywordsToParse, viewKwObj);
-                    }
-                }
-
-                var description = attr.description;
-                var cleanedUpDescription = description;
-                if (description) {
-                    firstKeywordIdx = description.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
-                    if (firstKeywordIdx >= 0) {
-                        cleanedUpDescription = description.substring(0, firstKeywordIdx);
-                        extractKeywords(description.substring(firstKeywordIdx).trim(), viewKwObj);
-                    }
-                }
-
-                attr.orgTitle = attr.title; //Can probably be removed - not really used anymore.
-                if (!$.isEmptyObject(viewKwObj)) {
-                    ktlKeywords[view.id] = viewKwObj;
-
-                    //Add scene keywords.
-                    if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom || viewKwObj._nswd)
-                        ktlKeywords[scn.attributes.key] = viewKwObj;
-                    else if (viewKwObj._footer)
-                        ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
-                }
-
-                if (attr.type === 'rich_text' && (title && !title.includes('_ol')))
-                    attr.content = cleanedUpTitle;
-                else
-                    attr.title = cleanedUpTitle;
-
-                attr.description = cleanedUpDescription;
-            }
-        }
+    function getKeywordsStartIndex(text = '') {
+        return text.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
     }
+
+    function cleanUpKeywords(text = '') {
+        const firstKeywordIndex = getKeywordsStartIndex(text);
+        if (firstKeywordIndex >= 0) {
+            return text.substring(0, firstKeywordIndex).trim();
+        }
+        return text;
+    }
+
+    function getKeywords(text = '') {
+        const firstKeywordIndex = getKeywordsStartIndex(text);
+        if (firstKeywordIndex >= 0) {
+            return extractKeywords(text.substring(firstKeywordIndex).trim());
+        }
+        return {};
+    }
+
+    function getKeywordsFromContent(content = '') {
+        const firstKeywordIndex = getKeywordsStartIndex(content);
+
+        if (firstKeywordIndex >= 0) {
+            let keywordsToParse = content.substring(firstKeywordIndex).trim();
+
+            //Remove line breaks and paragraphs after first kw found.
+            keywordsToParse = keywordsToParse.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
+
+            //Decode all special HTML characters to plain text. Ex: &gt to >
+            keywordsToParse = $('<p/>').html(keywordsToParse).text();
+
+            return extractKeywords(keywordsToParse);
+        }
+        return {};
+    }
+
+    const extractKeywordsFromView = (scene, view) => {
+        const attributes = view.attributes;
+        const viewKwObj = {};
+
+        if (attributes.type === 'rich_text') {
+            const content = (attributes.content || '').replace('<p>_', ' _')
+            const viewKeywords = getKeywordsFromContent(content);
+            Object.assign(viewKwObj, viewKeywords);
+
+            if(!content.includes('_ol'))
+                attributes.content = cleanUpKeywords(content);
+
+        } else {
+            const viewKeywords = getKeywords(attributes.title);
+            const descriptionKeywords = getKeywords(attributes.description);
+
+            attributes.title = cleanUpKeywords(attributes.title);
+            attributes.description = cleanUpKeywords(attributes.description);
+
+            Object.assign(viewKwObj, viewKeywords, descriptionKeywords);
+        }
+
+
+        if (attributes.type === 'report') {
+            attributes.rows.forEach( (row, rowIndex) => {
+                row.reports.forEach( (report, columnIndex) => {
+                    const keywords = getKeywords(report.description);
+
+                    if (!$.isEmptyObject(keywords)) {
+                        ktlKeywords[`${view.id}_r${rowIndex}_c${columnIndex}`] = getKeywords(report.description); // _r's & _c's order matters for later matching
+                        report.description = cleanUpKeywords(report.description);
+                    }
+                });
+            });
+
+            attributes.columns.forEach( (column, columnIndex) => {
+                column.reports.forEach( (report, rowIndex) => {
+                    const keywords = getKeywords(report.description);
+
+                    if (!$.isEmptyObject(keywords)) {
+                        ktlKeywords[`${view.id}_c${columnIndex}_r${rowIndex}`] = getKeywords(report.description); // _r's & _c's order matters for later matching
+                        report.description = cleanUpKeywords(report.description);
+                    }
+                });
+            });
+        }
+
+        if (!$.isEmptyObject(viewKwObj)) {
+            ktlKeywords[view.id] = viewKwObj;
+
+            //Add scene keywords.
+            if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom || viewKwObj._nswd)
+                ktlKeywords[scene.attributes.key] = viewKwObj;
+            else if (viewKwObj._footer)
+                ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
+        }
+    };
+
+    Knack.scenes.models.forEach(scene => {
+        scene.views.forEach(view => {
+            extractKeywordsFromView(scene, view);
+        });
+    });
 
     //Add field keywords.
     const objects = Knack.objects.models;
@@ -3836,6 +3873,7 @@ function Ktl($, appInfo) {
         function getUserFilters() {
             return fetchFilters(LS_UF);
         }
+
         function setUserFilters(filters, dateIsNow = true) {
             try {
                 if (dateIsNow)
@@ -3849,6 +3887,7 @@ function Ktl($, appInfo) {
         function getPublicFilters() {
             return fetchFilters(LS_UFP);
         }
+
         function setPublicFilters(filters, dateIsNow = true) {
             try {
                 if (dateIsNow)
@@ -3888,6 +3927,109 @@ function Ktl($, appInfo) {
         var contextMenuFilterEnabled = true;
         var ufDndEnabled;
         var ufDndMoving = false;
+
+        function updateSearchTable(viewId, srchTxt) {
+            if (!viewId) return;
+            var i = Knack.getSceneHash();
+            var r = {}
+            var a = [];
+            !srchTxt && (srchTxt = '');
+            r[viewId + "_search"] = encodeURIComponent(srchTxt);
+            r[viewId + "_page"] = 1;
+            Knack.views[viewId].model.view.pagination_meta.page = 1;
+            Knack.views[viewId].model.view.source.page = 1;
+
+            var o = Knack.getQueryString(r, a);
+            o && (i += "?" + o);
+            Knack.router.navigate(i, false);
+            Knack.setHashVars();
+        }
+
+        function updateFilters(viewId, filters) {
+            if (!viewId || !filters) return;
+            const sceneHash = Knack.getSceneHash();
+            const queryString = Knack.getQueryString({ [`${viewId}_filters`]: encodeURIComponent(JSON.stringify(filters)) });
+            Knack.router.navigate(`${sceneHash}?${queryString}`, false);
+            Knack.setHashVars();
+            Knack.models[viewId].setFilters(filters); //Set new filters on view's model
+        };
+
+        function updatePerPage(viewId, perPage) {
+            if (!viewId || !perPage) return;
+            Knack.views[viewId].model.view.pagination_meta.page = 1;
+            Knack.views[viewId].model.view.source.page = 1;
+            Knack.views[viewId].model.view.pagination_meta.rows_per_page = perPage;
+            Knack.views[viewId].model.view.rows_per_page = perPage;
+            var query = {};
+            query[viewId + '_per_page'] = perPage;
+            query[viewId + '_page'] = 1;
+            Knack.router.navigate(Knack.getSceneHash() + "?" + Knack.getQueryString(query), false);
+            Knack.setHashVars();
+        }
+
+        function updateSort(viewId, sort) {
+            if (!viewId || !sort) return;
+            const sorts = decodeURIComponent(sort).split('|');
+
+            if (sorts.length < 2)
+                return;
+
+            const field = sorts[0];
+            const order = sorts[1];
+
+            Knack.views[viewId].model.view.source.sort[0].field = field;
+            Knack.views[viewId].model.view.source.sort[0].order = order;
+        }
+
+        function applyUserFilterToTableView(viewId, search, perPage, sort, filters) {
+            Knack.showSpinner();
+
+            updateSearchTable(viewId, search);
+            updatePerPage(viewId, perPage);
+            updateSort(viewId, sort);
+            updateFilters(viewId, filters);
+
+            Knack.models[viewId].fetch({
+                success: () => { Knack.hideSpinner(); }
+            });
+        }
+
+        function applyUserFilterToReportView(viewId, viewReport, filters) {
+            viewReport.this = Knack.views[viewId];
+            if (viewReport.index === undefined) { // View not rendered yet
+                $(document).one('knack-view-render.' + viewId, () => {
+                    Knack.views[viewId].handleChangeFilters.call(viewReport, filters);
+                });
+            } else {
+                Knack.views[viewId].handleChangeFilters.call(viewReport, filters);
+            }
+        }
+
+        //Apply default Public Filter if no active filter.
+        function applyDefaultPublicFilter(viewId) {
+            if (!viewId) return;
+
+            const kw = '_dpf';
+            const kwList = ktl.core.getKeywordsByType(viewId, kw);
+            kwList.forEach(kwInstance => { execKw(kwInstance); })
+
+            function execKw(kwInstance) {
+                const options = kwInstance.options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+                if (!(kwInstance.params && kwInstance.params.length)) return;
+
+                const publicFilterName = kwInstance.params[0][0];
+                if (publicFilterName) {
+                    const publicFilter = getFilter(viewId, publicFilterName);
+                    if (publicFilter && publicFilter.type === LS_UFP) {
+                        ktl.userFilters.setActiveFilter(publicFilterName, viewId);
+                        const appliedFilter = publicFilter.filterSrc[viewId].filters[publicFilter.index];
+                        if (appliedFilter)
+                            applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, (appliedFilter.sort && appliedFilter.sort.split('-')[1]), JSON.parse(appliedFilter.filterString));
+                    }
+                }
+            }
+        }
 
         function applyActiveFilters() {
             const models = Knack.router.scene_view.model.views.models;
@@ -3932,51 +4074,6 @@ function Ktl($, appInfo) {
             });
         }
 
-        //Apply default Public Filter if no active filter.
-        function applyDefaultPublicFilter(viewId) {
-            if (!viewId) return;
-
-            const kw = '_dpf';
-            const kwList = ktl.core.getKeywordsByType(viewId, kw);
-            kwList.forEach(kwInstance => { execKw(kwInstance); })
-
-            function execKw(kwInstance) {
-                const options = kwInstance.options;
-                if (!ktl.core.hasRoleAccess(options)) return;
-                if (!(kwInstance.params && kwInstance.params.length)) return;
-
-                const publicFilterName = kwInstance.params[0][0];
-                if (publicFilterName) {
-                    const publicFilter = getFilter(viewId, publicFilterName);
-                    if (publicFilter && publicFilter.type === LS_UFP) {
-                        ktl.userFilters.setActiveFilter(publicFilterName, viewId);
-                        const appliedFilter = publicFilter.filterSrc[viewId].filters[publicFilter.index];
-                        if (appliedFilter)
-                            applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, (appliedFilter.sort && appliedFilter.sort.split('-')[1]), JSON.parse(appliedFilter.filterString));
-                    }
-                }
-            }
-        }
-
-        function hideDefaultPublicFilter(viewId) {
-            if (!viewId) return;
-
-            const kw = '_dpf';
-            const kwList = ktl.core.getKeywordsByType(viewId, kw);
-            kwList.forEach(kwInstance => { execKw(kwInstance); })
-
-            function execKw(kwInstance) {
-                const publicFilterName = kwInstance.params[0][0];
-                if (publicFilterName) {
-                    if (kwInstance.params[0][0].length > 1) {
-                        const hidden = (kwInstance.params[0][1] === 'h');
-                        if (hidden)
-                            $('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(publicFilterName)).addClass('ktlHidden');
-                    }
-                }
-            }
-        }
-
         $(document).on('knack-scene-render.any', function (event, scene) {
             applyActiveFilters();
         });
@@ -3995,34 +4092,35 @@ function Ktl($, appInfo) {
                 .catch(() => { })
         });
 
-        function applyUserFilterToTableView(viewId, search, perPage, sort, filters) {
-            Knack.showSpinner();
+        function linkViews(viewTitles, masterView) {
+            const masterViewId = masterView.key;
+            const linkedViewIds = ktl.views.convertViewTitlesToViewIds(viewTitles, masterViewId);
 
-            updateSearchTable(viewId, search);
-            updatePerPage(viewId, perPage);
-            updateSort(viewId, sort);
-            updateFilters(viewId, filters);
-
-            Knack.models[viewId].fetch({
-                success: () => { Knack.hideSpinner(); }
-            });
-        }
-
-        function applyUserFilterToReportView(viewId, viewReport, filters) {
-            viewReport.this = Knack.views[viewId];
-            if (viewReport.index === undefined) { // View not rendered yet
-                $(document).one('knack-view-render.' + viewId, () => {
-                    Knack.views[viewId].handleChangeFilters.call(viewReport, filters);
+            if (linkedViewIds && !!masterView.filters && (masterView.filters.length === undefined || masterView.filters.length > 0)) {
+                linkedViewIds.forEach((linkedViewId) => {
+                    if (Knack.models[linkedViewId].view.type === 'report') {
+                        Knack.models[linkedViewId].view.rows.forEach(row => {
+                            row.reports.forEach(report => {
+                                applyUserFilterToReportView(linkedViewId, report, masterView.filters);
+                            });
+                        });
+                    } else if (masterView.type === 'table') {
+                        const srchVal = $(`#${masterViewId} .table-keyword-search input`).val() || '';
+                        applyUserFilterToTableView(
+                            linkedViewId,
+                            srchVal,
+                            masterView.rows_per_page,
+                            masterView.source.sort[0].field + '|' + masterView.source.sort[0].order,
+                            masterView.filters);
+                    }
                 });
-            } else {
-                Knack.views[viewId].handleChangeFilters.call(viewReport, filters);
             }
         }
 
         $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
             //Linked Filters _lf feature
 
-            if (ktl.scenes.isiFrameWnd()) return;
+            if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             const masterViewId = view.key;
             const keywords = ktlKeywords[masterViewId];
@@ -4033,29 +4131,55 @@ function Ktl($, appInfo) {
             if (!keywords || !keywords._lf)
                 return;
 
-            const linkedViewIds = ktl.views.convertViewTitlesToViewIds(keywords._lf[0].params[0], masterViewId);
-            const masterView = Knack.models[masterViewId].view;
+            linkViews(keywords._lf[0].params[0],  Knack.models[masterViewId].view);
+        });
 
-            if (linkedViewIds && !!masterView.filters && (masterView.filters.length === undefined || masterView.filters.length > 0)) {
-                // Report view contains multiple subviews. Adding itself allows to apply the filter to all the subviews.
-                if (masterView.type === 'report')
-                    linkedViewIds.push(masterViewId);
 
-                linkedViewIds.forEach((linkedViewId) => {
-                    if (Knack.models[linkedViewId].view.type === 'report') {
-                        Knack.models[linkedViewId].view.rows.forEach(row => {
+        $(document).on('knack-records-render.report', function (e, view, data) {
+            //Linked Filters _lf feature, Report Subviews
+
+            if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
+
+            const applyFilters = (keyword, index) => {
+
+                const urlFilters = getUrlParameter(`${view.key}_${index}_filters`);
+                const filters = JSON.parse(urlFilters || '{}');
+
+                ktl.views.convertViewTitlesToViewIds(keyword._lf[0].params[0], view.key).forEach (viewId => {
+                    if (Knack.models[viewId].view.type === 'report') {
+                        Knack.models[viewId].view.rows.forEach(row => {
                             row.reports.forEach(report => {
-                                applyUserFilterToReportView(linkedViewId, report, masterView.filters);
+                                applyUserFilterToReportView(viewId, report, filters);
                             });
                         });
-                    } else if (masterView.type === 'table') {
-                        const srchVal = $(`#${masterViewId} .table-keyword-search input`).val() || '';
-                        //console.log('masterView.filters =', linkedViewId, masterView.filters);
-                        applyUserFilterToTableView(linkedViewId, srchVal, masterView.rows_per_page, masterView.source.sort[0].field + '|' + masterView.source.sort[0].order, masterView.filters);
+                    } else {
+                        Knack.showSpinner();
+                        updateFilters(viewId, filters);
+                        Knack.models[viewId].fetch({
+                            success: () => { Knack.hideSpinner(); }
+                        });
                     }
                 });
             }
-        })
+
+            view.rows.forEach((row, rowIndex) => {
+                row.reports.forEach((report, columnIndex) => {
+                    const keyword = ktlKeywords[`${view.key}_r${rowIndex}_c${columnIndex}`];
+                    if (keyword) {
+                        applyFilters(keyword, report.index);
+                    }
+                });
+            });
+
+            view.columns.forEach((column, columnIndex) => { // Cannot find a use case for columns by Knack but it's in the object. Keeping it for consistency. NOT TESTED
+                column.reports.forEach((report, rowIndex) => {
+                    const keyword = ktlKeywords[`${view.key}_c${columnIndex}_r${rowIndex}`];
+                    if (keyword) {
+                        applyFilters(keyword.reportIndex);
+                    }
+                });
+            });
+        });
 
         $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
@@ -4065,46 +4189,7 @@ function Ktl($, appInfo) {
             if (!window.self.frameElement && allowUserFilters() && $(`#${viewId} .kn-add-filter`).length) {
                 ktl.userFilters.addFilterButtons(viewId);
             }
-
-            if (view.type === 'table') {
-                $(`#${view.key} .kn-pagination .kn-select`).on('change', function (e) {
-                    ktl.userFilters.saveFilter(view.key, true);
-                });
-
-                //When the Search button is clicked in table.
-                $(`#${view.key} .kn-button.search`).on('click', function () {
-                    const tableSearchText = $(`#${view.key} .table-keyword-search input`).val();
-                    const activeFilter = getActiveFilter(view.key);
-                    if (activeFilter.filterSrc[view.key]) {
-                        const filter = activeFilter.filterSrc[view.key].filters[activeFilter.index];
-
-                        if (filter && tableSearchText !== filter.search) {
-                            ktl.userFilters.saveFilter(view.key, true);
-                            updateSearchInFilter(view.key);
-                        }
-                    }
-                });
-
-                //When Enter is pressed in Search table field.
-                $(`#${view.key} .table-keyword-search`).on('submit', function () {
-                    ktl.userFilters.saveFilter(view.key, true);
-                    updateSearchInFilter(view.key);
-                });
-
-                //When the Reset button is clicked in table's search.
-                $(`#${view.key} .reset.kn-button.is-link`).bindFirst('click', function (e) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-
-                    $(`#${view.key} .table-keyword-search input`).val(''); //Force to empty otherwise we sometimes get current search string.
-                    $(`#${view.key} .kn-button.search`).click();
-                });
-
-                $(`#${view.key} .kn-table-table th`).on('click', function () {
-                    ktl.userFilters.saveFilter(view.key, true);
-                });
-            }
-        })
+        });
 
         //Retrieves the searched string from the field and saves it in the localStorage's filter entry.
         function updateSearchInFilter(viewId) {
@@ -4132,7 +4217,46 @@ function Ktl($, appInfo) {
                     }
                 }
             }
-        }
+        };
+
+        $(document).on('knack-records-render.table', function (e, view, data) {
+            $(`#${view.key} .kn-pagination .kn-select`).on('change', function (e) {
+                ktl.userFilters.saveFilter(view.key, true);
+            });
+
+            //When the Search button is clicked in table.
+            $(`#${view.key} .kn-button.search`).on('click', function () {
+                const tableSearchText = $(`#${view.key} .table-keyword-search input`).val();
+                const activeFilter = getActiveFilter(view.key);
+                if (activeFilter.filterSrc[view.key]) {
+                    const filter = activeFilter.filterSrc[view.key].filters[activeFilter.index];
+
+                    if (filter && tableSearchText !== filter.search) {
+                        ktl.userFilters.saveFilter(view.key, true);
+                        updateSearchInFilter(view.key);
+                    }
+                }
+            });
+
+            //When Enter is pressed in Search table field.
+            $(`#${view.key} .table-keyword-search`).on('submit', function () {
+                ktl.userFilters.saveFilter(view.key, true);
+                updateSearchInFilter(view.key);
+            });
+
+            //When the Reset button is clicked in table's search.
+            $(`#${view.key} .reset.kn-button.is-link`).bindFirst('click', function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                $(`#${view.key} .table-keyword-search input`).val(''); //Force to empty otherwise we sometimes get current search string.
+                $(`#${view.key} .kn-button.search`).click();
+            });
+
+            $(`#${view.key} .kn-table-table th`).on('click', function () {
+                ktl.userFilters.saveFilter(view.key, true);
+        });
+        });
 
         $(document).on('mousedown click', e => {
             if (ktl.scenes.isiFrameWnd()) return;
@@ -4186,6 +4310,26 @@ function Ktl($, appInfo) {
             }
 
             return {};
+        }
+
+
+        function hideDefaultPublicFilter(viewId) {
+            if (!viewId) return;
+
+            const kw = '_dpf';
+            const kwList = ktl.core.getKeywordsByType(viewId, kw);
+            kwList.forEach(kwInstance => { execKw(kwInstance); })
+
+            function execKw(kwInstance) {
+                const publicFilterName = kwInstance.params[0][0];
+                if (publicFilterName) {
+                    if (kwInstance.params[0][0].length > 1) {
+                        const hidden = (kwInstance.params[0][1] === 'h');
+                        if (hidden)
+                            $('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(publicFilterName)).addClass('ktlHidden');
+                    }
+                }
+            }
         }
 
         function createFilterButtons(filterDivId, fltBtnsDivId = '') {
@@ -4288,59 +4432,6 @@ function Ktl($, appInfo) {
                 applyUserFilterToReportView(viewId, report, JSON.parse(filterString));
             }
         };
-
-        function updateSearchTable(viewId, srchTxt) {
-            if (!viewId) return;
-            var i = Knack.getSceneHash();
-            var r = {}
-            var a = [];
-            !srchTxt && (srchTxt = '');
-            r[viewId + "_search"] = encodeURIComponent(srchTxt);
-            r[viewId + "_page"] = 1;
-            Knack.views[viewId].model.view.pagination_meta.page = 1;
-            Knack.views[viewId].model.view.source.page = 1;
-
-            var o = Knack.getQueryString(r, a);
-            o && (i += "?" + o);
-            Knack.router.navigate(i, false);
-            Knack.setHashVars();
-        }
-
-        function updateFilters(viewId, filters) {
-            if (!viewId || !filters) return;
-            const sceneHash = Knack.getSceneHash();
-            const queryString = Knack.getQueryString({ [`${viewId}_filters`]: encodeURIComponent(JSON.stringify(filters)) });
-            Knack.router.navigate(`${sceneHash}?${queryString}`, false);
-            Knack.setHashVars();
-            Knack.models[viewId].setFilters(filters); //Set new filters on view's model
-        };
-
-        function updatePerPage(viewId, perPage) {
-            if (!viewId || !perPage) return;
-            Knack.views[viewId].model.view.pagination_meta.page = 1;
-            Knack.views[viewId].model.view.source.page = 1;
-            Knack.views[viewId].model.view.pagination_meta.rows_per_page = perPage;
-            Knack.views[viewId].model.view.rows_per_page = perPage;
-            var query = {};
-            query[viewId + '_per_page'] = perPage;
-            query[viewId + '_page'] = 1;
-            Knack.router.navigate(Knack.getSceneHash() + "?" + Knack.getQueryString(query), false);
-            Knack.setHashVars();
-        }
-
-        function updateSort(viewId, sort) {
-            if (!viewId || !sort) return;
-            const sorts = decodeURIComponent(sort).split('|');
-
-            if (sorts.length < 2)
-                return;
-
-            const field = sorts[0];
-            const order = sorts[1];
-
-            Knack.views[viewId].model.view.source.sort[0].field = field;
-            Knack.views[viewId].model.view.source.sort[0].order = order;
-        }
 
         function onStopFilterBtnClicked(e, filterDivId) {
             var closeFilters = document.querySelectorAll('#' + filterDivId + ' .kn-remove-filter');
