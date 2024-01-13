@@ -262,6 +262,7 @@ function Ktl($, appInfo) {
         //Local Storage constants
         LS_USER_PREFS: 'USER_PREFS',
         LS_VIEW_DATES: 'VIEW_DATES',
+        LS_AUTOCOMPLETES: 'AUTOCOMPLETE',
 
         LS_LOGIN: 'LOGIN',
         LS_ACTIVITY: 'ACTIVITY',
@@ -2173,7 +2174,7 @@ function Ktl($, appInfo) {
                                             //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
                                             if (cfg.convertNumToTel) {
                                                 var originalInput = $('#' + viewId + ' #' + fieldId);
-                                                if (originalInput.length) {
+                                                if (originalInput.length && originalInput.attr('type') != 'tel') {
                                                     const originalValue = $('#' + viewId + ' #' + fieldId).val();
                                                     var originalHandlers = $._data(originalInput[0], 'events');
                                                     var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
@@ -2183,7 +2184,10 @@ function Ktl($, appInfo) {
                                                     newInput.attr('class', originalInput.attr('class'));
                                                     // ... (copy any other attributes you need)
 
-                                                    originalInput.replaceWith(newInput);
+                                                    // JQuery 'replaceWith' is not resilient to Aria elements
+                                                    originalInput.before(newInput);
+                                                    originalInput.hide();
+
                                                     newInput.val(originalValue);
 
                                                     // Restore the original event handlers to the new input field
@@ -2194,6 +2198,9 @@ function Ktl($, appInfo) {
                                                             });
                                                         });
                                                     }
+                                                    originalInput.trigger('KTL.convertNumToTel', [newInput]);
+                                                    originalInput.remove();
+                                                    originalInput.off();
                                                 }
                                             }
                                         }
@@ -2983,9 +2990,9 @@ function Ktl($, appInfo) {
                 loadFormData()
                     .then(() => {
                         isInitialized = true;
-                        setTimeout(function () {
+                        setTimeout( () => {
                             ktl.fields.enforceNumeric();
-                            $(document).trigger('KTL.persistentForm.completed');
+                            $(document).trigger('KTL.persistentForm.completed', [scene]);
                         }, 1000);
                     })
             });
@@ -3019,7 +3026,7 @@ function Ktl($, appInfo) {
         });
 
         const debouncedFormContentHasChanged = debounce(formContentHasChanged, 500);
-        document.addEventListener('input', function (event) {
+        $(document).on('input', function (event) {
             if (!isInitialized
                 || !ktl.core.getCfg().enabled.persistentForm
                 || scenesToExclude.includes(Knack.router.current_scene_key)
@@ -3030,7 +3037,6 @@ function Ktl($, appInfo) {
                 || !event.target.type
                 || event.target.id === 'chznBetter'
                 || event.target.className.includes('knack-date')
-                || event.target.className.includes('ui-autocomplete-input')
                 || $(event.target).closest('.chzn-container').length)
                 return;
 
@@ -3221,7 +3227,7 @@ function Ktl($, appInfo) {
                                 if (el) {
                                     //The condition !el.value means 'Write value only if currently empty'
                                     //and prevents overwriting fields just populated by code elsewhere.
-                                    !el.value && (el.value = fieldText);
+                                    !el.value && ($(el).val(fieldText));
                                 }
                             }
 
@@ -3351,6 +3357,143 @@ function Ktl($, appInfo) {
             },
         }
     })(); //persistentForm
+
+    //====================================================
+    //Autocomplete Feature
+    this.autocomplete = (function () {
+        function autocompleteFields(viewId) {
+            if (ktl.views.getViewType(viewId) != 'form')
+                return;
+
+            const fieldsWithKeywords = ktl.views.getAllFieldsWithKeywordsInView(viewId) || {};
+            const fieldIds = Object.entries(fieldsWithKeywords).filter(([key, value]) => !!value._ac).map(([key, value]) => key);
+
+            if (fieldIds.length === 0)
+                return;
+
+            function fetchSources() {
+                return JSON.parse(ktl.storage.lsGetItem(ktl.const.LS_AUTOCOMPLETES) || '{}');
+            }
+
+            function saveSources(source) {
+                ktl.storage.lsSetItem(ktl.const.LS_AUTOCOMPLETES, JSON.stringify(source));
+            }
+
+            function removeEntry(fieldId, entry) {
+                const sources = fetchSources();
+                sources[fieldId] = sources[fieldId].filter((value) => value != entry);
+
+                if (sources[fieldId].length == 0)
+                    delete sources[fieldId];
+
+                saveSources(sources);
+                return sources;
+            }
+
+            function appendEntry(fieldId, entry) {
+                const sources = fetchSources();
+                if (sources[fieldId]) {
+                    sources[fieldId] = [...new Set([...sources[fieldId], entry])];
+                } else {
+                    sources[fieldId] = [entry]
+                }
+                saveSources(sources);
+                return sources;
+            }
+
+            function setupAutocomplete(field, key) {
+                function deleteAndRefresh(value) {
+                    const source = removeEntry(key, value);
+                    field.autocomplete('option', 'source', source[key]);
+                    field.autocomplete('search');
+                }
+
+                // JQuery Autocomplete v1.9
+                field.autocomplete({
+                    source: fetchSources()[key] || [],
+                    appendTo: `#${viewId}`,
+                    minLength: 0,
+                    delay: 0,
+                    autoFocus: false,
+                    open: function(event) {
+                        if (!field.is(':visible')) {
+                            $(this).off(event); // Remove event kept by convertNumToTel switch
+                            return;
+                        }
+
+                        field.autocomplete('widget').children('li').append($('<i/>').on('click', (event) => {
+                            event.stopImmediatePropagation();
+                            deleteAndRefresh($(event.currentTarget).parent().text());
+                        }));
+                    },
+                    select: function(event, ui) {
+                        if (!field.is(':visible')) {
+                            $(this).off(event); // Remove event kept by convertNumToTel switch
+                            return;
+                        }
+
+                        field.trigger('input');
+                    }
+                }).keyup(function(event) {
+                    if (!field.is(':visible')) {
+                        $(this).off(event); // Remove event kept by convertNumToTel switch
+                        return;
+                    }
+
+                    if(event.key === "Delete") {
+                        deleteAndRefresh(field.autocomplete('widget').find('li > a.ui-state-focus').text());
+                    }
+                }).focus(function(event) {
+                    if (!field.is(':visible')) {
+                        $(this).off(event); // Remove event kept by convertNumToTel switch
+                        return;
+                    }
+
+                    field.autocomplete('search');
+                });
+            };
+
+            fieldIds.forEach( fieldId => {
+                $(`#${viewId} div[data-input-id="${fieldId}"] input[name]:not(:hidden)`).each(function() {
+                    const field = $(this);
+                    const name = $(this).attr('name');
+                    const key = fieldId + ( !name.includes('field_') ? '-' + name : '');
+                    setupAutocomplete(field, key);
+
+                    field.on('KTL.convertNumToTel', function(event, newField) {
+                        field.autocomplete('destroy');
+                        setupAutocomplete(newField, key);
+                        newField.focus();
+                    });
+                })
+            });
+
+            $(`#${viewId} button[type="submit"]`).on('click', event => {
+                fieldIds.forEach( fieldId => {
+                    $(`#${viewId} div[data-input-id="${fieldId}"] input[name]:not(:hidden)`).each(function() {
+                        const field = $(this);
+                        const name = field.attr('name');
+                        const key = fieldId + ( !name.includes('field_') ? '-' + name : '');
+                        const entry = field.val();
+                        if (entry)
+                            appendEntry(key, entry);
+                    });
+                });
+            });
+
+        }
+
+        $(document).on('knack-view-render.any', function (event, view) {
+            autocompleteFields(view.key)
+        });
+
+        $(document).on('KTL.persistentForm.completed', function (event, scene) {
+            scene.views.forEach( view => {
+                autocompleteFields(view.key)
+            })
+        });
+
+    })(); //Autocomplete
 
     //====================================================
     //System Colors feature
