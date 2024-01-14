@@ -6236,7 +6236,7 @@ function Ktl($, appInfo) {
                             let cellText;
 
                             const rawData = recordObj[`${fieldId}_raw`];
-                            if (rawData) {
+                            if (rawData !== undefined) {
                                 if (Array.isArray(rawData) && rawData.length > 0)
                                     cellText = rawData.flat().map(obj => (obj.identifier || obj)).join(' ');
                                 else if (fieldType === 'phone')
