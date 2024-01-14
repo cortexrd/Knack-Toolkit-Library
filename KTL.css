@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.6.1 */
+/* KTL CSS version: 0.6.2 */
 
 /************ General Settings **************/
 :root {
@@ -519,7 +519,6 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	}
 }
 
-
 .ktlFlashingOnOff {
 	animation: ktlFlashingOnOff var(--ktlFlashRate) infinite;
 }
@@ -680,7 +679,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	max-width: 80px !important;
 }
 
-
+/* Autocomplete feature */
 ul.ui-autocomplete {
 	border-radius: 0 0 4px 4px;
     background-clip: padding-box;
@@ -695,7 +694,6 @@ ul.ui-autocomplete {
 	position: relative;
 }
 
-
 .ui-autocomplete .ui-menu-item i {
     position: absolute;
     top: 0;
@@ -703,6 +701,7 @@ ul.ui-autocomplete {
     height: 2em;
     width: 3em;
 }
+
 .ui-autocomplete .ui-menu-item i:after {
     position: absolute;
     font-size: 16px;
@@ -712,6 +711,7 @@ ul.ui-autocomplete {
     right: 13px;
     color: #c1bdbd;
 }
+
 .ui-autocomplete .ui-menu-item i:hover:after {
     color: #1a1a1a;
 }
