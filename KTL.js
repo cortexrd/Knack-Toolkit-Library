@@ -5440,7 +5440,7 @@ function Ktl($, appInfo) {
                 colorizeFieldByValue(viewId, data);
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
-                disableFilterOnFields(view, keywords);
+                // disableFilterOnFields(view, keywords);
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -5771,14 +5771,51 @@ function Ktl($, appInfo) {
                 return summaryObj[summaryName][columnHeader];
         }
 
-        function addTooltips(view) {
-            if (!view) return;
-
-            const kw = '_ttip'; // @params = [tooltip text], [options] - Must be in two groups so that commas can be used in the tooltip text, options are tdfl (table, details, forms and lists)
-            const viewId = view.key;
-            const viewType = ktl.views.getViewType(viewId);
+        
+        function addTooltips(view, keywords) {
+            const kw = '_ttip';// @params = [tooltip text], [options] - Must be in two groups so that commas can be used in the tooltip text, options are tdfl (table, details, forms and lists)
+            const { key: viewId, type: viewType } = view;
             if (!viewId) return;
 
+            //Process views keyword
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                const kwList = ktl.core.getKeywordsByType(viewId, kw);
+                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                    execKw(kwList[kwIdx]);
+                }
+
+                function execKw(kwInstance) {
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+
+                    const paramGroups = kwInstance.params;
+                    if (paramGroups.length < 2 && paramGroups.length % 2 != 0) return; // Check if the number of parameter groups is even
+
+                    paramGroups.forEach((param, i) => {
+                        if (i % 2 === 0) {
+                            const [firstParam, fieldLabel] = paramGroups.slice(i, i + 2);
+                            const ttipText = firstParam.map(item => item.trim()).join(', ');
+                            fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel[0]);
+
+                            let tooltipIconPosition;
+                            const viewSelector = `#${viewId}`;
+
+                            if (viewType === 'form') {
+                                tooltipIconPosition = `${viewSelector} #kn-input-${fieldId} > label`;
+                            } else if (viewType === 'table') {
+                                tooltipIconPosition = fieldId ? `${viewSelector} th.${fieldId}` : `${viewSelector} th.kn-table-link:textEquals("${fieldLabel[0]}")`;
+                            } else if (viewType === 'list' || viewType === 'details') {
+                                tooltipIconPosition = fieldId ? `${viewSelector} .${fieldId} .kn-detail-label` : `${viewSelector} .kn-details-link .kn-detail-body:textEquals("${fieldLabel[0]}")`;
+                            }
+                            console.log(i)
+                            // Check if the selected element exists in the DOM
+                            if ($(tooltipIconPosition).length) ktl.views.addTooltipsToFields(viewId, ttipText, viewType, tooltipIconPosition); // Add the tooltip to the current field in the current view as a table tooltip 
+                        }
+                    });
+                }
+            }
+
+            //Process fields keyword
             var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             if (!$.isEmptyObject(fieldsWithKwObj)) {
                 var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
@@ -5787,41 +5824,40 @@ function Ktl($, appInfo) {
                     fieldId = fieldsWithKwAr[i];
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
                     if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {
-                        ktl.core.getKeywordsByType(fieldId, kw).forEach(execKw);
-                    }
-
-                    // Get all instances of the tooltip keyword for the current field
-                    function execKw(keyword) { // Loop through each instance of the tooltip keyword
-                        //console.log('_ttip keyword', keyword);
-                        if (!ktl.core.hasRoleAccess(keyword.options)) return; // Check if the current user has access to the tooltip keyword
-
-                        const paramGroups = keyword.params; // Get the parameter groups for the current tooltip keyword
-                        if (paramGroups.length < 2 && paramGroups.length % 2 != 0) return; // Check if the number of parameter groups is even
-
-                        paramGroups.forEach((param, i) => { // Loop through each parameter group for the current tooltip keyword
-                            if (i % 2 === 0) { // Check if the index of the current parameter group is even
-                                const params = paramGroups.slice(i, i + 2); // Get the current and next parameter groups as an array
-                                const ttipText = params[0].map(item => item.trim()).join(', '); // Get the tooltip text from the current parameter group and trim each item
-                                const options = params[1][0]; // Get the options from the next parameter group
-
-                                // if options includes 't' then table
-                                if (options.includes('t') && viewType === 'table') {
-                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a table tooltip
-                                }
-
-                                // if options includes 'f' then form
-                                if (options.includes('f') && viewType === 'form') {
-                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, viewType); // Add the tooltip to the current field in the current view as a form tooltip
-                                }
-
-                                // if options includes 'd' then details
-                                if ( (options.includes('d') && viewType === 'details') || (options.includes('l') && viewType === 'list' ) ){
-                                    ktl.views.addTooltipsToFields(viewId, fieldId, ttipText, "details"); // Add the tooltip to the current field in the current view as a details tooltip
-                                }
-                            }
-                        });
+                        ktl.core.getKeywordsByType(fieldId, kw).forEach(execFieldKw);
                     }
                 }
+            }
+
+            function execFieldKw(keyword) {
+                if (!ktl.core.hasRoleAccess(keyword.options)) return;
+
+                const paramGroups = keyword.params;
+                if (paramGroups.length < 2 && paramGroups.length % 2 != 0) return; // Check if the number of parameter groups is even
+
+                paramGroups.forEach((param, i) => {
+                    if (i % 2 === 0) {
+                        const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
+                        const ttipText = firstParam.map(item => item.trim()).join(', ');
+                        const viewOptionTxt = viewOptions[0]
+
+                        if (['f', 'l', 'd', 't'].some(option => viewOptionTxt.includes(option))) {
+
+                            let tooltipIconPosition
+
+                            if (viewOptionTxt.includes('f') && viewType === 'form') {
+                                tooltipIconPosition = `#${viewId} #kn-input-${fieldId} > label`;
+                            }
+                            else if (viewOptionTxt.includes('t') && viewType === 'table') {
+                                tooltipIconPosition = `#${viewId} th.${fieldId}`;
+                            }
+                            else if (viewOptionTxt.includes('l') && viewType === 'list' || viewOptionTxt.includes('d') && viewType === 'details') {
+                                tooltipIconPosition = `#${viewId} .${fieldId} .kn-detail-label`;
+                            }
+                            ktl.views.addTooltipsToFields(viewId, ttipText, viewType, tooltipIconPosition); // Add the tooltip to the current field in the current view as a table tooltip 
+                        }
+                    }
+                });
             }
         }
 
@@ -10145,20 +10181,14 @@ function Ktl($, appInfo) {
             },
 
             //Add a tooltip to a field label/header
-            addTooltipsToFields: function (viewId, fieldId, tooltipText, viewType) {
-                if (!viewId || !viewType || !fieldId) return;
-                // Define the tooltip position based on the view type
-                const tooltipPosition = {
-                    form: `#${viewId} #kn-input-${fieldId} > label`,
-                    details: `#${viewId} .${fieldId} .kn-detail-label`,
-                    table: `#${viewId} th.${fieldId}`,
-                }[viewType];
+            addTooltipsToFields: function (viewId, tooltipText, viewType, tooltipIconPosition) {
+                if (!viewId || !viewType) return;
 
-                // Define the tooltip icon HTML
+                // console.log(tooltipIconPosition)
                 const icon = '<i class="fa fa-question-circle ktlTooltipIcon ktlTtipIcon-' + viewType + '-view"> </i>';
 
                 // Add the tooltip icon to the DOM
-                $(tooltipPosition)
+                $(tooltipIconPosition)
                     .not('.has-tooltip')
                     .addClass('has-tooltip')
                     .append(icon)
@@ -10166,28 +10196,30 @@ function Ktl($, appInfo) {
                     .css('display', 'inline-block');
 
                 // Add event listeners to show and hide the tooltip
-                $(document).on('mouseenter', tooltipPosition + ' i.fa-question-circle', function (e) {
+                $(document).on('mouseenter', `${tooltipIconPosition} i.fa-question-circle`, function (e) {
                     if (!$(".ktlTooltip").length) {
-                        const tooltipElement = $('<div class="ktlTooltip ktlTtip-' + viewType + '-view">' + tooltipText + '</div>')
+                        const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`)
                         const icon = $(this);
                         const iconWidth = icon.width();
                         const iconHeight = icon.height();
                         let iconPosition;
 
                         // Add the tooltip to the DOM
-                        if (viewType === 'table') {
-                            $(tooltipElement).appendTo('body');
+                        if (viewType === 'table' || viewType === 'search') {
+                            tooltipElement.appendTo(`#${viewId} .kn-table-wrapper`);
                             iconPosition = icon.offset();
                         } else {
-                            $(tooltipElement).appendTo(icon.parent()); // Append to parent
+                            tooltipElement.appendTo(icon.parent());
                             iconPosition = icon.position();
                         }
 
                         // Position the tooltip
                         const tooltipWidth = tooltipElement.width();
                         const tooltipHeight = tooltipElement.height();
-                        let tooltipTop = iconPosition.top - tooltipHeight - (2 * iconHeight); // Calculate relative to the icon
-                        let tooltipLeft = iconPosition.left + (iconWidth / 2) - (tooltipWidth / 2); // Calculate relative to the icon
+                        let tooltipTop = viewType == 'table' ? $(tooltipIconPosition).position().top - tooltipHeight - 2 * iconHeight :
+                            iconPosition.top - tooltipHeight - 2 * iconHeight;
+
+                        let tooltipLeft = iconPosition.left + (iconWidth / 2) - (tooltipWidth / 2);
                         // Adjust tooltipLeft if it's off the left or right side of the page
                         const pageWidth = $(window).width();
                         if (tooltipLeft < 0) {
@@ -10200,7 +10232,7 @@ function Ktl($, appInfo) {
                     }
                 });
 
-                $(document).on('mouseleave', tooltipPosition + ' i.fa-question-circle', function () {
+                $(document).on('mouseleave', `${tooltipIconPosition} i.fa-question-circle`, function () {
                     $('.ktlTooltip').remove();
                 });
             },
