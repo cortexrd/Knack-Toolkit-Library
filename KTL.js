@@ -5800,22 +5800,35 @@ function Ktl($, appInfo) {
                         let tooltipIconPosition;
                         const viewSelector = `#${viewId}`;
 
-                        switch(viewType) {
+                        switch (viewType) {
                             case 'form':
                                 tooltipIconPosition = `${viewSelector} #kn-input-${fieldId} > label`;
                                 break;
+                            case 'search':
                             case 'table':
-                                tooltipIconPosition = fieldId ? `${viewSelector} th.${fieldId}` : `${viewSelector} th.kn-table-link:textEquals("${fieldLabel[0]}")`;
+                                if (fieldId) {
+                                    tooltipIconPosition = `${viewSelector} th.${fieldId}`;
+                                } else {
+                                    const selectors = [
+                                        `${viewSelector} th.kn-table-link:textEquals("${fieldLabel[0]}")`,
+                                        `${viewSelector} th.kn-table-action-link:textEquals("${fieldLabel[0]}")`
+                                    ];
+                                    selectors.forEach(selector => {
+                                        if ($(selector).length) {
+                                            tooltipIconPosition = selector;
+                                        }
+                                    });
+                                }
                                 break;
                             case 'list':
                             case 'details':
                                 tooltipIconPosition = fieldId ? `${viewSelector} .${fieldId} .kn-detail-label` : `${viewSelector} .kn-details-link .kn-detail-body:textEquals("${fieldLabel[0]}")`;
                                 break;
                         }
-                        tooltipIconPositions.push({position: tooltipIconPosition, text: ttipText});
+                        tooltipIconPositions.push({ position: tooltipIconPosition, text: ttipText });
                     }
 
-                    tooltipIconPositions.forEach(({position, text}) => {
+                    tooltipIconPositions.forEach(({ position, text }) => {
                         if ($(position).length) ktl.views.addTooltipsToFields(viewId, text, viewType, position);
                     });
                 }
