@@ -1201,10 +1201,12 @@ function Ktl($, appInfo) {
             //If optionalViewId parameter is provided, it will be used as the default view if not found explicitly in selector.
             getTextFromSelector: function (selector, optionalViewId) {
                 return new Promise(function (resolve, reject) {
-                    if (!selector) {
-                        reject('getTextFromSelector called with empty parameter');
-                        return;
-                    }
+                    if (!selector)
+                        return reject('getTextFromSelector called with empty parameter');
+
+                    const viewtype = ktl.views.getViewType(optionalViewId);
+                    if (viewtype === 'table' || viewtype === 'list')
+                        return resolve();
 
                     let viewId = optionalViewId;
                     let fieldId;
@@ -1230,18 +1232,16 @@ function Ktl($, appInfo) {
                             fieldId = fieldStr[0];
                         else {
                             //No field_ found, then try to find the field ID from the text of the first parameter.
-                            if (!selectorArray.length) return;
+                            if (!selectorArray.length)
+                                return reject('getTextFromSelector called with empty selectorArray');
 
-                            if (selectorArray[0]) {
+                            if (selectorArray[0])
                                 fieldId = ktl.fields.getFieldIdFromLabel(viewId, selectorArray[0]);
-                            }
                         }
 
                         //If no view, but just a field ID, resolve with that.  It will be used for each rec ID.
-                        if (!viewId && fieldId) {
-                            resolve(fieldId);
-                            return;
-                        }
+                        if (!viewId && fieldId)
+                            return resolve(fieldId);
 
                         //If we have a view and a field IDs but it wasn't part of a valid jQuery selector, try to read the value.
                         if (viewId && fieldId) {
@@ -6473,7 +6473,7 @@ function Ktl($, appInfo) {
 
             ////////////////////////////////////////////////////////////
             //The reference value is the value against which we will compare the value of a record's field.
-            //The refValSelString parameter can be a summary, a fixed field/view value or another field from the same record.
+            //The refValSelString parameter can be a summary, or a fixed field/view value from a details view.
             function getReferenceValue(refValSelString, viewId) {
                 return new Promise(function (resolve, reject) {
                     if (refValSelString && refValSelString !== '') {
