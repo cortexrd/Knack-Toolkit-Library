@@ -5554,7 +5554,6 @@ function Ktl($, appInfo) {
                     keywords._al && ktl.account.autoLogin(viewId);
                     keywords._rvs && refreshViewsAfterSubmit(viewId, keywords);
                     keywords._rvr && refreshViewsAfterRefresh(viewId, keywords);
-                    keywords._nf && disableFilterOnFields(view, keywords);
                     keywords._nsg && noSortingOnGrid(viewId, keywords);
                     keywords._bcg && ktl.fields.generateBarcode(viewId, keywords);
                     keywords._trk && ktl.views.truncateText(view, keywords);
