@@ -291,14 +291,13 @@ a.ktlSortDisabled {
 	padding: 10px 15px;
 	max-width: 315px;
 	width: max-content;
-	z-index: 2000;
 }
 
 /* Set the Icon Styles */
 .ktlTooltipIcon {
 	margin-top: 0.15em;
 	padding-left: 0.15em;
-	z-index: 2000;
+	opacity: 0.3;
 }
 
 /* set the user tooltip styles */
