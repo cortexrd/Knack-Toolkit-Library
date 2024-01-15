@@ -5582,7 +5582,7 @@ function Ktl($, appInfo) {
                 colorizeFieldByValue(viewId, data);
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
-                // disableFilterOnFields(view, keywords);
+                disableFilterOnFields(view, keywords);
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }

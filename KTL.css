@@ -296,7 +296,8 @@ a.ktlSortDisabled {
 
 /* Set the Icon Styles */
 .ktlTooltipIcon {
-	padding-left: 0.2em;
+	margin-top: 0.15em;
+	padding-left: 0.15em;
 	z-index: 2000;
 }
 
