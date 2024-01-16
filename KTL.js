@@ -6435,7 +6435,7 @@ function Ktl($, appInfo) {
                             }
 
                             let refVal = value;
-                            if (!refVal && options.ktlRefVal) {
+                            if (!refVal && options && options.ktlRefVal) {
                                 if (options.ktlRefVal.startsWith('field_'))
                                     value = options.ktlRefVal;
                                 else
