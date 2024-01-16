@@ -4092,7 +4092,7 @@ function Ktl($, appInfo) {
                 .catch(() => { })
         });
 
-        function linkViews(viewTitles, masterView) {
+        function linkFilters(viewTitles, masterView) {
             const masterViewId = masterView.key;
             const linkedViewIds = ktl.views.convertViewTitlesToViewIds(viewTitles, masterViewId);
 
@@ -4131,7 +4131,7 @@ function Ktl($, appInfo) {
             if (!keywords || !keywords._lf)
                 return;
 
-            linkViews(keywords._lf[0].params[0],  Knack.models[masterViewId].view);
+            linkFilters(keywords._lf[0].params[0],  Knack.models[masterViewId].view);
         });
 
 
@@ -4179,6 +4179,44 @@ function Ktl($, appInfo) {
                     }
                 });
             });
+        });
+
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            //Linked Searches _ls feature
+            if ((ktl.scenes.isiFrameWnd()) || window.self.frameElement) return;
+
+            const keywords = ktlKeywords[view.key];
+
+            if (!keywords || !keywords._ls)
+                return;
+
+            const searchInput = $(`#${view.key} .table-keyword-search input`);
+
+            if (searchInput.length === 0)
+                return;
+
+            const parameters = keywords._ls[0].params[0];
+            const linkedViewIds = ktl.views.convertViewTitlesToViewIds(parameters, view.key)
+                                                .filter(viewId =>  Knack.models[viewId].view.type === 'table');
+
+            searchInput.on('keyup', () => {
+                linkedViewIds.forEach((viewId) => {
+                    $(`#${viewId} .table-keyword-search input`).val(searchInput.val());
+                });
+            });
+
+            const updateTables = () => {
+                linkedViewIds.forEach((viewId) => {
+                    Knack.showSpinner();
+                    updateSearchTable(viewId, searchInput.val());
+                    Knack.models[viewId].fetch({
+                        success: () => { Knack.hideSpinner(); }
+                    });
+                });
+            }
+
+            $(`#${view.key} .kn-button.search`).on('click',updateTables);
+            $(`#${view.key} .table-keyword-search`).on('submit', updateTables);
         });
 
         $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
@@ -6004,7 +6042,7 @@ function Ktl($, appInfo) {
                 return summaryObj[summaryName][columnHeader];
         }
 
-        
+
         function addTooltips(view, keywords) {
             const kw = '_ttip';// @params = [tooltip text], [options] - Must be in two groups so that commas can be used in the tooltip text, options are tdfl (table, details, forms and lists)
             const { key: viewId, type: viewType } = view;
