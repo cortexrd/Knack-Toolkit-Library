@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.1';
+    const KTL_VERSION = '0.22.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6298,8 +6298,19 @@ function Ktl($, appInfo) {
                 if (!viewFieldIds || !data || !groups.length) return;
 
                 if (options && !!options.ktlRefVal) {
+
+                    if (options.ktlRefVal.endsWith(','))
+                        options.ktlRefVal = options.ktlRefVal.replace(',', '');
+
                     const ktlRefValSplit = ktl.core.splitAndTrimToArray(options.ktlRefVal) || [''];
-                    if (ktlRefValSplit.length === 2) {
+
+                    if ((ktlRefValSplit.length === 1 && !ktlRefValSplit[0]) ||
+                        (ktlRefValSplit.length === 2 && (!ktlRefValSplit[0] || !ktlRefValSplit[1]))) {
+                        ktl.log.clog('purple', `Called _cfv with invalid ktlTarget parameters in ${viewId}`);
+                        return;
+                    }
+
+                    if (ktlRefValSplit.length === 2 && ktlRefValSplit[0] && ktlRefValSplit[1]) {
                         const referenceViewId = ktl.scenes.findViewWithTitle(ktlRefValSplit[1]);
                         if (referenceViewId && referenceViewId !== viewId/*prevent looping if ref view is provided and same as this view*/) {
                             $(document).off(`knack-view-render.${referenceViewId}.cfv${viewId}`).on(`knack-view-render.${referenceViewId}.cfv${viewId}`, () => {
@@ -6451,8 +6462,35 @@ function Ktl($, appInfo) {
                                 else
                                     valSel = $('#' + viewId + ' tbody tr[id="' + recordObj.id + '"]' + ' .' + value);
 
-                                if (valSel.length)
+                                if (valSel.length) {
                                     refVal = valSel[0].textContent.trim();
+
+                                    let cellText;
+                                    const fieldType = ktl.fields.getFieldType(value);
+
+                                    const rawData = recordObj[`${value}_raw`];
+                                    if (rawData !== undefined) {
+                                        if (Array.isArray(rawData) && rawData.length > 0)
+                                            cellText = rawData.flat().map(obj => (obj.identifier || obj)).join(' ');
+                                        else if (fieldType === 'phone')
+                                            cellText = rawData.formatted;
+                                        else if (fieldType === 'boolean') {
+                                            const format = Knack.objects.getField(value).attributes.format.format;
+                                            if (format === 'yes_no')
+                                                cellText = (rawData === true ? 'Yes' : 'No');
+                                            else if (format === 'on_off')
+                                                cellText = (rawData === true ? 'On' : 'Off');
+                                            else
+                                                cellText = (rawData === true ? 'True' : 'False');
+                                        } else
+                                            cellText = rawData.toString();
+
+                                        if (cellText !== '' && numericFieldTypes.includes(fieldType))
+                                            cellText = ktl.core.extractNumericValue(cellText, value);
+
+                                        refVal = cellText;
+                                    }
+                                }
                             }
 
                             applyColorizationToCells(fieldId, parameters, cellText, refVal, recordObj, options);
