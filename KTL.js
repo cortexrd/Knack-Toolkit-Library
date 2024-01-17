@@ -3445,9 +3445,10 @@ function Ktl($, appInfo) {
                     field.autocomplete('search');
                 }
 
+                const source = (fetchSources()[key] || []).map( value => { return { label: value.substring(0, 100), value };});
                 // JQuery Autocomplete v1.9
                 field.autocomplete({
-                    source: fetchSources()[key] || [],
+                    source: source,
                     appendTo: `#${viewId}`,
                     minLength: 0,
                     delay: 0,
@@ -3502,7 +3503,11 @@ function Ktl($, appInfo) {
                         setupAutocomplete(newField, key);
                         newField.focus();
                     });
-                })
+                });
+
+                $(`#${viewId} div[data-input-id="${fieldId}"] textarea`).each(function() {
+                    setupAutocomplete($(this), fieldId);
+                });
             });
 
             $(`#${viewId} button[type="submit"]`).on('click', event => {
@@ -3514,6 +3519,12 @@ function Ktl($, appInfo) {
                         const entry = field.val();
                         if (entry)
                             appendEntry(key, entry);
+                    });
+
+                    $(`#${viewId} div[data-input-id="${fieldId}"] textarea`).each(function() {
+                        const entry = $(this).val();
+                        if (entry)
+                            appendEntry(fieldId, entry);
                     });
                 });
             });
