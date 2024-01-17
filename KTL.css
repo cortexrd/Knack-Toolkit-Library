@@ -357,7 +357,7 @@ a.ktlSortDisabled {
 .menuDiv {
 	background-color: #dfe8ff;
 	position: fixed;
-	z-index: 1;
+	z-index: 3;
 	white-space: nowrap;
 }
 
