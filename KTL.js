@@ -11487,7 +11487,7 @@ function Ktl($, appInfo) {
 
                 var ktlVer = vi.viShowKtlInfo ? 'KTL v' + KTL_VERSION : '';
                 if (info.ktlVersion === 'dev')
-                    ktlVer += '-dev';
+                    ktlVer = 'KTL-dev';
 
                 var versionInfo = appVer + ktlVer + (info.hostname ? '    ' + info.hostname : '');
 

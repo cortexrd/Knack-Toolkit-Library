@@ -4,7 +4,7 @@
 /* ktlVersion:
  *  - 'x,y,z' will use that specific Prod version.
  *  - if empty, will use the latest Prod version from KTL_LATEST_JS_VERSION.
- *  - if 'dev', will use /Prod/KTL-dev.js version, which is same as dev, copied by FTP.  See C:\code\FTP\WinSCP_Script.txt
+ *  - if 'dev', will use /Prod/KTL-dev.js version, which is the latest "experimental" code
 */
 
 var callback;
