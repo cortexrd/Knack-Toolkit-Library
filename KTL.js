@@ -13644,8 +13644,9 @@ function Ktl($, appInfo) {
                 function enableBulkOperationsPostSummary() {
                     addBulkdOpsGuiElements(view, data);
                 }
-            } else
-                addBulkdOpsGuiElements(view, data);
+            }
+
+            addBulkdOpsGuiElements(view, data);
 
             function addBulkdOpsGuiElements(view, data) {
                 bulkOpsAddCheckboxesToTable(view.key);
