@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.3';
+    const KTL_VERSION = '0.22.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -10682,26 +10682,26 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                var linkSelector = '.knTable td a, .kn-detail-body a';
+                //Assume all views by default, in case ktlTarget is "page"...
+                var linkSelector = '.knTable td a:not(".kn-action-link"), .kn-detail-body a:not(".kn-action-link")';
 
-                //Apply to all views if ktlTarget is page.
-                if (options && (!options.ktlTarget || options.ktlTarget !== 'page'))
+                //...and if not, then only this view.
+                //if (options && (!options.ktlTarget || options.ktlTarget !== 'page'))
+                if (!options || (options && options.ktlTarget && options.ktlTarget !== 'page'))
                     linkSelector = '#' + viewId + ' ' + linkSelector;
 
-                const linkElement = $(linkSelector);
-                linkElement.off('click').on('click', e => {
-                    const target = e.target;
+                const elements = $(linkSelector);
+                elements.each((ix, el) => {
                     let preventClick = false;
-
-                    if (target.classList.contains('kn-link'))
+                    if (el.classList.contains('kn-link'))
                         preventClick = true;
                     else {
                         let fieldId;
-                        let fld = target.closest('[class^="field_"]');
+                        let fld = el.closest('[class^="field_"]');
                         if (fld)
                             fieldId = fld.getAttribute('data-field-key');
                         else {
-                            const detailsView = $(target).closest('.kn-detail');
+                            const detailsView = $(el).closest('.kn-detail');
                             if (detailsView.length)
                                 fieldId = detailsView.attr('class').split(/\s+/)[1];
                         }
@@ -10713,10 +10713,9 @@ function Ktl($, appInfo) {
                             preventClick = true;
                     }
 
-                    if (preventClick && e.target.href)
-                        e.preventDefault();
+                    if (preventClick && el.href)
+                        elements.addClass('ktlLinkDisabled');
                 })
-
             },
 
             /** Stick table Headers
@@ -12518,6 +12517,8 @@ function Ktl($, appInfo) {
         //Show logged-in user ID when double-clicking on First name.
         //Useful to copy/pase in the localStorage filtering field to see only those entries.
         $(document).on('knack-scene-render.any', function (event, scene) {
+            ktl.developperPopupTool();
+
             $('.kn-current_user > span.first').on('dblclick', (e) => {
                 var userId = $('.kn-current_user').attr('id');
                 console.log('\nApp:\t', app_id);
@@ -12550,8 +12551,8 @@ function Ktl($, appInfo) {
 
                                         ktl.iFrameWnd.create();
                                     })
-                                    .catch(() => {
-                                        console.error('waitLoginOutcome: Failed waiting for user ID.');
+                                    .catch(err => {
+                                        console.error('waitLoginOutcome: Failed waiting for user ID.', err);
                                     })
                             } else {
                                 //If an error occurred, redirect to the error page as a last resort, so we can post a log (we need user id).
@@ -15029,7 +15030,7 @@ function Ktl($, appInfo) {
 
     //===================================================
     //Developper Popup Tool feature
-    this.developperPopupTool = (function () {
+    this.developperPopupTool = function () {
         if (!ktl.account.isDeveloper()) return;
 
         const baseURL = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}`;
@@ -15417,7 +15418,7 @@ function Ktl($, appInfo) {
                 closePopOver(openedPopOverTarget);
             }
         });
-    })();//developperPopupTool
+    };//developperPopupTool
 
     //===================================================
     //Virtual Keyboard feature
