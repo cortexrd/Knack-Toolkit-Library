@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.5';
+    const KTL_VERSION = '0.22.6';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -13642,13 +13642,13 @@ function Ktl($, appInfo) {
                 ktl.views.addSummaryObserver(view.key, enableBulkOperationsPostSummary); //TODO: replace with new trigger('KTL... method?
 
                 function enableBulkOperationsPostSummary() {
-                    addBulkdOpsGuiElements(view, data);
+                    addBulkOpsGuiElements(view, data);
                 }
             }
 
-            addBulkdOpsGuiElements(view, data);
+            addBulkOpsGuiElements(view, data);
 
-            function addBulkdOpsGuiElements(view, data) {
+            function addBulkOpsGuiElements(view, data) {
                 bulkOpsAddCheckboxesToTable(view.key);
                 ktl.views.fixTableRowsAlignment(view.key);
                 addBulkOpsButtons(view, data);
