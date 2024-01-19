@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.6';
+    const KTL_VERSION = '0.22.7';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6059,6 +6059,46 @@ function Ktl($, appInfo) {
             const { key: viewId, type: viewType } = view;
             if (!viewId) return;
 
+            //Process fields keyword
+            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            if (!$.isEmptyObject(fieldsWithKwObj)) {
+                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                var foundKwObj = {};
+                for (var i = 0; i < fieldsWithKwAr.length; i++) {
+                    fieldId = fieldsWithKwAr[i];
+                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {
+                        ktl.core.getKeywordsByType(fieldId, kw).forEach(execFieldKw);
+                    }
+                }
+            }
+
+            function execFieldKw(keyword) {
+                if (!ktl.core.hasRoleAccess(keyword.options)) return;
+
+                const paramGroups = keyword.params;
+                if (paramGroups.length < 2 && paramGroups.length % 2 != 0) return; // Check if the number of parameter groups is even
+
+                const tooltipPositions = {
+                    f: viewType === 'form' ? `#${viewId} #kn-input-${fieldId} > label` : null,
+                    t: viewType === 'table' ? `#${viewId} th.${fieldId}` : null,
+                    l: viewType === 'list' ? `#${viewId} .${fieldId} .kn-detail-label` : null,
+                    d: viewType === 'details' ? `#${viewId} .${fieldId} .kn-detail-label` : null
+                };
+
+                for (let i = 0; i < paramGroups.length; i += 2) {
+                    const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
+                    const ttipText = firstParam.map(item => item.trim()).join(', ');
+                    const viewOptionTxt = viewOptions[0];
+
+                    ['f', 'l', 'd', 't'].forEach(option => {
+                        if (viewOptionTxt.includes(option) && tooltipPositions[option]) {
+                            ktl.views.addTooltipsToFields(viewId, ttipText, viewType, tooltipPositions[option]);
+                        }
+                    });
+                }
+            }
+
             //Process views keyword
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const kwList = ktl.core.getKeywordsByType(viewId, kw);
@@ -6112,46 +6152,6 @@ function Ktl($, appInfo) {
 
                     tooltipIconPositions.forEach(({ position, text }) => {
                         if ($(position).length) ktl.views.addTooltipsToFields(viewId, text, viewType, position);
-                    });
-                }
-            }
-
-            //Process fields keyword
-            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
-            if (!$.isEmptyObject(fieldsWithKwObj)) {
-                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                var foundKwObj = {};
-                for (var i = 0; i < fieldsWithKwAr.length; i++) {
-                    fieldId = fieldsWithKwAr[i];
-                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {
-                        ktl.core.getKeywordsByType(fieldId, kw).forEach(execFieldKw);
-                    }
-                }
-            }
-
-            function execFieldKw(keyword) {
-                if (!ktl.core.hasRoleAccess(keyword.options)) return;
-
-                const paramGroups = keyword.params;
-                if (paramGroups.length < 2 && paramGroups.length % 2 != 0) return; // Check if the number of parameter groups is even
-
-                const tooltipPositions = {
-                    f: viewType === 'form' ? `#${viewId} #kn-input-${fieldId} > label` : null,
-                    t: viewType === 'table' ? `#${viewId} th.${fieldId}` : null,
-                    l: viewType === 'list' ? `#${viewId} .${fieldId} .kn-detail-label` : null,
-                    d: viewType === 'details' ? `#${viewId} .${fieldId} .kn-detail-label` : null
-                };
-
-                for (let i = 0; i < paramGroups.length; i += 2) {
-                    const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
-                    const ttipText = firstParam.map(item => item.trim()).join(', ');
-                    const viewOptionTxt = viewOptions[0];
-
-                    ['f', 'l', 'd', 't'].forEach(option => {
-                        if (viewOptionTxt.includes(option) && tooltipPositions[option]) {
-                            ktl.views.addTooltipsToFields(viewId, ttipText, viewType, tooltipPositions[option]);
-                        }
                     });
                 }
             }
@@ -10683,12 +10683,12 @@ function Ktl($, appInfo) {
                 }
 
                 //Assume all views by default, in case ktlTarget is "page"...
-                var linkSelector = '.knTable td a:not(".kn-action-link"), .kn-detail-body a:not(".kn-action-link")';
+                var linkSelector = `.knTable td a:not(".kn-action-link"), .kn-detail-body a:not(".kn-action-link")`;
 
                 //...and if not, then only this view.
                 //if (options && (!options.ktlTarget || options.ktlTarget !== 'page'))
                 if (!options || (options && options.ktlTarget && options.ktlTarget !== 'page'))
-                    linkSelector = '#' + viewId + ' ' + linkSelector;
+                    linkSelector = `#${viewId} .knTable td a:not(".kn-action-link"), #${viewId} .kn-detail-body a:not(".kn-action-link")`;
 
                 const elements = $(linkSelector);
                 elements.each((ix, el) => {
@@ -10709,7 +10709,7 @@ function Ktl($, appInfo) {
                         if (!fieldId || !fieldId.startsWith('field_')) return;
 
                         const fieldType = ktl.fields.getFieldType(fieldId);
-                        if (fieldType === 'link')
+                        if (fieldType === 'link' || fieldType === 'phone' || fieldType === 'email')
                             preventClick = true;
                     }
 
