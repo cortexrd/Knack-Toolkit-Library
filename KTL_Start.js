@@ -39,30 +39,34 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         cssVersion = '';
         prodFolder = '';
         fullCode = 'full';
-        var fileName = localStorage.getItem(lsShortName + 'fileName');
-        !fileName && (fileName = Knack.app.attributes.name);
         ktlSvr = 'http://localhost:3000/';
-        var appUrl = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
-        appUrl = encodeURI(appUrl);
 
-        delete KnackApp; //JIC, for users before the transition.  To be deleted in a few weeks.  Today: May 30, 2023.
+        var fileName = localStorage.getItem(lsShortName + 'fileName');
+        if (fileName !== 'NO_APP_FILE') {
+            !fileName && (fileName = Knack.app.attributes.name);
+            var appUrl = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
+            appUrl = encodeURI(appUrl);
 
-        if (typeof window.ktlReady === 'function')
-            delete window.ktlReady;
+            delete KnackApp;
 
-        LazyLoad.js([appUrl], () => {
-            if (typeof window.ktlReady !== 'function') {
-                var srcFileName = prompt('Error - Cannot find source file with ktlReady:\n' + appUrl + '\nWhat is file name (without .js)?', Knack.app.attributes.name);
-                if (srcFileName) {
-                    localStorage.setItem(lsShortName + 'fileName', srcFileName);
-                    location.reload(true);
-                } else {
-                    localStorage.removeItem(lsShortName + 'dev'); //JIC
-                    alert('Reverting to Prod mode.');
-                    location.reload(true);
+            if (typeof window.ktlReady === 'function')
+                delete window.ktlReady;
+
+            LazyLoad.js([appUrl], () => {
+                if (typeof window.ktlReady !== 'function') {
+                    var srcFileName = prompt(`Can't find source file with ktlReady:\n\n${appUrl}\n\nWhat is file name (without .js)?\n\nLeave empty for none.`, Knack.app.attributes.name);
+                    if (srcFileName === null) {
+                        localStorage.removeItem(lsShortName + 'dev');
+                        alert('Reverting to Prod mode.');
+                        location.reload(true);
+                    } else if (srcFileName !== '') {
+                        localStorage.setItem(lsShortName + 'fileName', srcFileName);
+                        location.reload(true);
+                    } else
+                        localStorage.setItem(lsShortName + 'fileName', 'NO_APP_FILE');
                 }
-            }
-        })
+            })
+        }
     }
 
     if (ktlVersion === 'dev') {
