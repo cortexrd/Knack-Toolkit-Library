@@ -82,7 +82,7 @@ function Ktl($, appInfo) {
         const viewKwObj = {};
 
         if (attributes.type === 'rich_text') {
-            const content = (attributes.content || '').replace('<p>_', ' _')
+            const content = (attributes.content || '').replace('<p>_', ' _');
             const viewKeywords = getKeywordsFromContent(content);
             Object.assign(viewKwObj, viewKeywords);
 
@@ -5901,7 +5901,7 @@ function Ktl($, appInfo) {
                 $('#asset-viewer > div > div > a.kn-asset-next').trigger('click');
         })
 
-        //Filter Restriction Rules from view's Description.
+        //Hides a field from the filter's drop-down.
         function disableFilterOnFields(view, keywords) {
             if (!view) return;
 
@@ -5925,8 +5925,16 @@ function Ktl($, appInfo) {
                     fieldsAr = keywords[kw][0].params[0];
             }
 
-            //Process fields keyword
-            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(view.key);
+            //Process fields keywords
+            const viewId = view.key;
+            var fieldsWithKwObj;
+            if (Knack.views[viewId].model.view.filter_fields === 'view')
+                fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            else { //object
+                const objectId = Knack.views.view_410.model.view.source.object;
+                fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInObject(objectId);
+            }
+
             if (!$.isEmptyObject(fieldsWithKwObj)) {
                 var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                 var foundKwObj = {};
@@ -5937,9 +5945,8 @@ function Ktl($, appInfo) {
                         if (foundKwObj[fieldId][kw]) {
                             if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
                                 const options = foundKwObj[fieldId][kw][0].options;
-                                if (ktl.core.hasRoleAccess(options)) { //$$$
+                                if (ktl.core.hasRoleAccess(options))
                                     fieldsAr.push(fieldId);
-                                }
                             } else
                                 fieldsAr.push(fieldId);
                         }
@@ -9280,7 +9287,7 @@ function Ktl($, appInfo) {
             getAllFieldsWithKeywordsInView: function (viewId) {
                 if (!viewId || !Knack.views[viewId] || !Knack.views[viewId].model) return {};
 
-                //Scan all fields in form to find any keywords.
+                //Scan all fields in view to find any keywords.
                 const view = Knack.views[viewId].model.view;
                 var foundFields = [];
                 var fields = [];
@@ -9334,13 +9341,21 @@ function Ktl($, appInfo) {
 
                 if (!foundFields.length) return {};
 
-                //console.log('viewId =', viewId);
-                //console.log('viewType =', viewType);
-                //console.log('fields =', fields);
-
                 var fieldsWithKwObj = {};
                 for (var j = 0; j < foundFields.length; j++)
                     ktl.fields.getFieldKeywords(foundFields[j], fieldsWithKwObj);
+
+                return fieldsWithKwObj;
+            },
+
+            getAllFieldsWithKeywordsInObject: function (objectId) {
+                if (!objectId || !Knack.objects._byId[objectId]) return {};
+
+                const fieldsWithKwObj = {};
+
+                const objectFields = Knack.objects._byId[objectId].attributes.fields;
+                for (const field of objectFields)
+                    ktl.fields.getFieldKeywords(field.key, fieldsWithKwObj);
 
                 return fieldsWithKwObj;
             },
