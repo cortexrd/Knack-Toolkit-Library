@@ -5760,7 +5760,7 @@ function Ktl($, appInfo) {
                     keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
                     keywords._scs && colorizeSortedColumn(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
-                    keywords._dg && disableGrid(viewId, keywords);
+                    keywords._dv && disableView(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6300,21 +6300,34 @@ function Ktl($, appInfo) {
             return false;
         }
 
-        function disableGrid(viewId, keywords) {
-            const kw = '_dg';
-            
-            if (!keywords[kw]) return;
+        function disableView(view, keywords) {
+            const keywordKey = '_dv';
+            if (!keywords[keywordKey]) return;
 
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
+            const { key: viewId, type: viewType, columns } = view;
+
+            if (keywords[keywordKey].length && keywords[keywordKey][0].options) {
+                const options = keywords[keywordKey][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            const viewSelector = $(`#${viewId} td`);
-            const anchorSelector = viewSelector.find("a");
+            if (viewType !== 'table' && viewType !== 'search') {
+                const selector = `#${viewId} .kn-detail-body, #${viewId} .kn-input, #${viewId} li`;
+                $(selector).find("a").removeAttr("href").addClass('ktlLinkDisabled');
+                return;
+            }
 
-            viewSelector.addClass('ktlNoInlineEdit');
-            anchorSelector.removeAttr("href").css('cursor', 'default');
+            columns.forEach(col => {
+                const { type, field } = col;
+                const selector = `#${viewId} tbody td`;
+                if (type === 'field') {
+                    const { key } = field;
+                    $(`${selector}.${key}`).addClass('ktlNoInlineEdit');
+                }
+                else {
+                    $(selector).find("a").removeAttr("href").addClass('ktlLinkDisabled');
+                }
+            });
         }
 
         /////////////////////////////////////////////////////////////////////////////////
