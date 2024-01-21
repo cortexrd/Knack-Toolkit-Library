@@ -12765,6 +12765,10 @@ function Ktl($, appInfo) {
                 if (!rolesToCheck.length) return true;
                 var defaultRes = false;
                 const userRoles = Knack.getUserRoleNames().split(', ');
+
+                if (ktl.storage.lsGetItem('forceDevRole', true) === 'true')
+                    userRoles.push('Developer');
+
                 for (let i = 0; i < rolesToCheck.length; i++) {
                     if (rolesToCheck[i].startsWith('!')) {
                         defaultRes = true;
