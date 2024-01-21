@@ -471,8 +471,14 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	height: 40px !important;
 }
 
-.smallKioskButtons {
+.ktlSmallKioskButtons {
 	margin-left: 20px !important;
+}
+
+.ktlLargerCheckBox {
+	width: 20px;
+	height: 20px;
+	vertical-align: text-top !important;
 }
 
 /* Reduced page margins, to maximize available real-estate. */
