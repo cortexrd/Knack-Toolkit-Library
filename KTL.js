@@ -2304,7 +2304,7 @@ function Ktl($, appInfo) {
                 if (!forms.length)
                     forms = document.querySelectorAll('.kn-form');
 
-                forms.forEach(form => {
+                for (const form of forms) {
                     var viewId = form.id;
                     if (viewId) {
                         var formValid = true;
@@ -2314,7 +2314,7 @@ function Ktl($, appInfo) {
                         if (!fields.length)
                             fields = document.querySelectorAll('#' + viewId + ' .kn-input[numeric=true]');
 
-                        fields.forEach(field => {
+                        for (const field of fields) {
                             var inputFld = document.querySelector('#chznBetter[numeric=true]') ||
                                 document.querySelector('#' + viewId + ' #' + field.getAttribute('data-input-id'));
 
@@ -2337,29 +2337,11 @@ function Ktl($, appInfo) {
                                 else
                                     $(inputFld).addClass('ktlNotValid');
                             }
-                        })
-
-                        var submit = document.querySelector('#' + viewId + ' .is-primary');
-                        if (submit) {
-                            if (!submit.validity)
-                                submit.validity = { ktlInvalidItemObj: {} };
-
-                            var submitInvalidItemObj = submit.validity.ktlInvalidItemObj;
-
-                            if (formValid) {
-                                if (submitInvalidItemObj && !submitInvalidItemObj.numericValid)
-                                    delete submitInvalidItemObj.numericValid;
-                            } else {
-                                if (submitInvalidItemObj)
-                                    submitInvalidItemObj.numericValid = false;
-                                else
-                                    submit.validity.ktlInvalidItemObj = { numericValid: false };
-                            }
                         }
 
-                        ktl.views.updateSubmitButtonState(viewId);
+                        ktl.views.updateSubmitButtonState(viewId, 'numericValid', formValid);
                     }
-                })
+                }
             },
 
             addButton: function (div = null, label = '', style = '', classes = [], id = '') {
@@ -9534,19 +9516,33 @@ function Ktl($, appInfo) {
                 })
             },
 
-            updateSubmitButtonState: function (viewId = '') {
-                if (!viewId || !ktl.core.getCfg().enabled.formPreValidation) return;
+            //Will disable the Submit button of the viewId, if any of the validationKey exists.
+            //In other words, the ktlInvalidItemObj must be empty to enable Submit.
+            //Global flag formPreValidation must be enabled.
+            updateSubmitButtonState: function (viewId, validationKey, isValid) {
+                if (!viewId || !validationKey || !ktl.core.getCfg().enabled.formPreValidation) return;
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
                 if (submit) {
-                    var validity = submit.validity ? submit.validity : true;
-                    var submitDisabled = !$.isEmptyObject(validity.ktlInvalidItemObj);
-                    if (submitDisabled)
-                        submit.setAttribute('disabled', true);
-                    else
-                        submit.removeAttribute('disabled');
+                    let validity = {};
 
-                    submitDisabled && ktl.scenes.spinnerWatchdog(!submitDisabled); //Don't let the disabled Submit cause a page reload.
+                    if (submit.validity && submit.validity.ktlInvalidItemObj) {
+                        validity = submit.validity.ktlInvalidItemObj;
+                    } else
+                        validity = {};
+
+                    if (isValid === true)
+                        delete validity[validationKey];
+                    else
+                        validity[validationKey] = false; //Value (false) doesn't matter here, only the key's existence.
+
+                    var submitEnabled = $.isEmptyObject(validity);
+                    if (submitEnabled)
+                        submit.removeAttribute('disabled');
+                    else {
+                        submit.setAttribute('disabled', true);
+                        ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
+                    }
                 }
             },
 
@@ -11198,7 +11194,7 @@ function Ktl($, appInfo) {
                                 messagingBtn = document.getElementById(ktlKioskButtons.ADD_MESSAGING.id);
                                 if (!messagingBtn) {
                                     messagingBtn = document.createElement('BUTTON');
-                                    messagingBtn.classList.add('kn-button', 'smallKioskButtons');
+                                    messagingBtn.classList.add('kn-button', 'ktlSmallKioskButtons');
                                     messagingBtn.id = ktlKioskButtons.ADD_MESSAGING.id;
                                     messagingBtn.innerHTML = ktlKioskButtons.ADD_MESSAGING.html;
 
@@ -11211,7 +11207,7 @@ function Ktl($, appInfo) {
                             } else if (kioskBtn === 'ADD_REFRESH') {
                                 if (!document.getElementById(ktlKioskButtons.ADD_REFRESH.id)) {
                                     refreshBtn = document.createElement('BUTTON');
-                                    refreshBtn.classList.add('kn-button', 'smallKioskButtons');
+                                    refreshBtn.classList.add('kn-button', 'ktlSmallKioskButtons');
 
                                     refreshBtn.id = ktlKioskButtons.ADD_REFRESH.id;
                                     refreshBtn.innerHTML = ktlKioskButtons.ADD_REFRESH.html;
@@ -11230,7 +11226,7 @@ function Ktl($, appInfo) {
 
                                 if (btnKey && !document.getElementById(ktlKioskButtons.ADD_BACK.id)) {
                                     backBtn = document.createElement('BUTTON');
-                                    backBtn.classList.add('kn-button', 'smallKioskButtons');
+                                    backBtn.classList.add('kn-button', 'ktlSmallKioskButtons');
 
                                     backBtn.id = ktlKioskButtons[btnKey].id;
                                     backBtn.innerHTML = ktlKioskButtons[btnKey].html;
@@ -11276,7 +11272,7 @@ function Ktl($, appInfo) {
                                 var kioskAppBtn = ktlKioskButtons[kioskBtn] && document.getElementById(ktlKioskButtons[kioskBtn].id);
                                 if (!kioskAppBtn && !ktlKioskButtons[kioskBtn].scenesToExclude.includes(Knack.router.current_scene_key)) {
                                     kioskAppBtn = document.createElement('BUTTON');
-                                    kioskAppBtn.classList.add('kn-button', 'smallKioskButtons');
+                                    kioskAppBtn.classList.add('kn-button', 'ktlSmallKioskButtons');
                                     kioskAppBtn.style.marginLeft = '30px';
                                     kioskAppBtn.id = ktlKioskButtons[kioskBtn].id;
 
