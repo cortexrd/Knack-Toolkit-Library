@@ -6301,13 +6301,13 @@ function Ktl($, appInfo) {
         }
 
         function disableView(view, keywords) {
-            const keywordKey = '_dv';
-            if (!keywords[keywordKey]) return;
+            const kw = '_dv';
+            if (!keywords[kw]) return;
 
             const { key: viewId, type: viewType, columns } = view;
 
-            if (keywords[keywordKey].length && keywords[keywordKey][0].options) {
-                const options = keywords[keywordKey][0].options;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
