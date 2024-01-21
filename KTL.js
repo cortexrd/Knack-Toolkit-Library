@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.7';
+    const KTL_VERSION = '0.22.8';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -367,10 +367,16 @@ function Ktl($, appInfo) {
     this.core = (function () {
         var dndOrgX, dndOrgY, dndFromX, dndFromY, dndToX, dndToY;
 
-        window.addEventListener("resize", (event) => {
-            ktl.core.sortMenu(); //To resize menu and prevent overflowing out of screen bottom when Sticky is used.
-        });
+        const resizeSubscribers = [];
+        window.addEventListener('resize', handleResize);
+        function handleResize() {
+            for (const subscriber of resizeSubscribers)
+                subscriber.callback(...subscriber.additionalParameters);
+        }
 
+        $(document).on('KTL.DefaultConfigReady', () => {
+            ktl.core.addAppResizeSubscriber(ktl.core.sortMenu);
+        })
 
         var cfg = {
             //Let the App do the settings.  See function ktl.core.setCfg in KTL_Defaults.js file.
@@ -1564,16 +1570,18 @@ function Ktl($, appInfo) {
 
             //Used to center an element on screen dynamically, without using classes or forcing styles.
             centerElementOnScreen: function (element, fixed = true) {
-                var elementWidth = element.offsetWidth;
-                var elementHeight = element.offsetHeight;
-                var screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-                var screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-                var centeredLeft = (screenWidth - elementWidth) / 2;
-                var centeredTop = (screenHeight - elementHeight) / 2;
+                const elementWidth = element.offsetWidth;
+                const elementHeight = element.offsetHeight;
+                const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+                const centeredLeft = (screenWidth - elementWidth) / 2;
+                const centeredTop = (screenHeight - elementHeight) / 2;
                 element.style.position = (fixed ? 'fixed' : 'absolute');
 
                 element.style.left = centeredLeft + 'px';
                 element.style.top = centeredTop + 'px';
+
+                return { left: centeredLeft, top: centeredTop };
             },
 
             showKnackStyleMessage: function (viewId, message, style = 'error' /*or success*/) {
@@ -1658,6 +1666,40 @@ function Ktl($, appInfo) {
                 }
 
                 return null;
+            },
+
+            addAppResizeSubscriber: function (callback) {
+                const additionalParameters = Array.from(arguments).slice(1);
+                resizeSubscribers.push({ callback, additionalParameters });
+            },
+
+            removeAppResizeSubscriber: function (callback) {
+                const index = resizeSubscribers.findIndex(subscriber => subscriber.callback === callback);
+                if (index !== -1) {
+                    resizeSubscribers.splice(index, 1);
+                }
+            },
+
+            ktlDevToolsAdjustPositionAndSave: function (div, devToolStorageName, position = {}) {
+                if (!devToolStorageName || !position)
+                    return;
+
+                const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+
+                const ktlDevToolWidth = div.clientWidth;
+                const ktlDevToolHeight = div.clientHeight;
+
+                if ((div.offsetLeft + ktlDevToolWidth > screenWidth) || (div.offsetTop + ktlDevToolHeight > screenHeight)) {
+                    position = ktl.core.centerElementOnScreen(div);
+                    ktl.storage.appendItemJSON(devToolStorageName, position);
+                } else {
+                    if (!$.isEmptyObject(position)) {
+                        div.style.left = position.left + 'px';
+                        div.style.top = position.top + 'px';
+                        ktl.storage.appendItemJSON(devToolStorageName, position);
+                    }
+                }
             },
         }
     })(); //Core
@@ -5351,6 +5393,7 @@ function Ktl($, appInfo) {
                                     const devToolStorageName = 'ktlDbgWnd';
                                     ktl.core.enableSortableDrag(debugWnd, debounce((position) => {
                                         ktl.storage.appendItemJSON(devToolStorageName, { ...position });
+                                        //ktlDevToolsAdjustPositionAndSave(devToolStorageName, position);
                                     }));
 
                                     const resizeObserver = new ResizeObserver(debounce((entries) => {
@@ -5373,8 +5416,12 @@ function Ktl($, appInfo) {
                                             debugWndText.style.height = savedPosition.height + 'px';
                                             debugWndText.style.width = savedPosition.width + 'px';
                                         }
-                                    } else
-                                        ktl.core.centerElementOnScreen(debugWnd);
+
+                                        ktl.core.ktlDevToolsAdjustPositionAndSave(debugWnd, devToolStorageName, savedPosition);
+                                    } else {
+                                        const position = ktl.core.centerElementOnScreen(debugWnd);
+                                        ktl.core.ktlDevToolsAdjustPositionAndSave(debugWnd, devToolStorageName, position);
+                                    }
                                 } else {
                                     ktl.debugWnd.showLogsInDebugWnd();
                                 }
@@ -5931,7 +5978,7 @@ function Ktl($, appInfo) {
             if (Knack.views[viewId].model.view.filter_fields === 'view')
                 fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             else { //object
-                const objectId = Knack.views.view_410.model.view.source.object;
+                const objectId = Knack.views[viewId].model.view.source.object;
                 fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInObject(objectId);
             }
 
@@ -5954,7 +6001,7 @@ function Ktl($, appInfo) {
                 }
             }
 
-            $(document).on('click', function (e) {
+            $(document).off('click.ktlNf').on('click.ktlNf', function (e) {
                 if (e.target.closest('.kn-add-filter,.kn-filters,#add-filter-link')) {
                     var filterFields = document.querySelectorAll('.field.kn-select select option');
                     filterFields.forEach(field => {
@@ -11741,16 +11788,20 @@ function Ktl($, appInfo) {
                                         document.body.appendChild(devToolSearchDiv);
 
                                         const devToolStorageName = 'devToolSearch';
+                                        ktl.core.addAppResizeSubscriber(ktl.core.ktlDevToolsAdjustPositionAndSave, devToolSearchDiv, devToolStorageName);
                                         ktl.core.enableSortableDrag(devToolSearchDiv, debounce((position) => {
-                                            ktl.storage.setItemJSON(devToolStorageName, position)
+                                            ktl.core.ktlDevToolsAdjustPositionAndSave(devToolSearchDiv, devToolStorageName, position);
                                         }));
 
                                         const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
                                         if (savedPosition) {
                                             devToolSearchDiv.style.left = savedPosition.left + 'px';
                                             devToolSearchDiv.style.top = savedPosition.top + 'px';
-                                        } else
-                                            ktl.core.centerElementOnScreen(devToolSearchDiv);
+                                            ktl.core.ktlDevToolsAdjustPositionAndSave(devToolSearchDiv, devToolStorageName, savedPosition);
+                                        } else {
+                                            const position = ktl.core.centerElementOnScreen(devToolSearchDiv);
+                                            ktl.core.ktlDevToolsAdjustPositionAndSave(devToolSearchDiv, devToolStorageName, position);
+                                        }
 
                                         var paragraph = document.createElement('p');
                                         paragraph.appendChild(document.createTextNode('Enter field_id, view_id, scene_id,\n'));
@@ -11893,8 +11944,9 @@ function Ktl($, appInfo) {
                                                         resultWndText.style.width = Math.min(resultWndText.clientWidth, DEFAULT_WIDTH) + 'px';
 
                                                         const devToolStorageName = 'devToolSearchResult';
+                                                        ktl.core.addAppResizeSubscriber(ktl.core.ktlDevToolsAdjustPositionAndSave, resultWnd, devToolStorageName);
                                                         ktl.core.enableSortableDrag(resultWnd, debounce((position) => {
-                                                            ktl.storage.appendItemJSON(devToolStorageName, { ...position });
+                                                            ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, { ...position });
                                                         }));
 
                                                         const resizeObserver = new ResizeObserver(debounce((entries) => {
@@ -11917,9 +11969,12 @@ function Ktl($, appInfo) {
                                                                 resultWndText.style.height = savedPosition.height + 'px';
                                                                 resultWndText.style.width = savedPosition.width + 'px';
                                                             }
-                                                        } else
-                                                            ktl.core.centerElementOnScreen(resultWnd);
 
+                                                            ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, savedPosition);
+                                                        } else {
+                                                            const position = ktl.core.centerElementOnScreen(resultWnd);
+                                                            ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, position);
+                                                        }
                                                     } else {
                                                         resultWndText.innerHTML = kwResults;
                                                     }
@@ -11983,18 +12038,24 @@ function Ktl($, appInfo) {
                                     })
                                     $(closeBtn).css('margin-top', '20px');
 
-                                    //Now that all buttons are added, load position or calculate default at center.
+                                    //Now that all buttons are added, load position and adjust if necessary, based on window size.
                                     const devToolStorageName = 'devToolBtns';
-                                    ktl.core.enableSortableDrag(devBtnsDiv, debounce((position) => {
-                                        ktl.storage.setItemJSON(devToolStorageName, position);
-                                    }));
 
                                     const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
                                     if (savedPosition) {
                                         devBtnsDiv.style.left = savedPosition.left + 'px';
                                         devBtnsDiv.style.top = savedPosition.top + 'px';
-                                    } else
-                                        ktl.core.centerElementOnScreen(devBtnsDiv);
+                                        ktl.core.ktlDevToolsAdjustPositionAndSave(devBtnsDiv, devToolStorageName, savedPosition);
+                                    } else {
+                                        const position = ktl.core.centerElementOnScreen(devBtnsDiv);
+                                        ktl.core.ktlDevToolsAdjustPositionAndSave(devBtnsDiv, devToolStorageName, position);
+                                    }
+
+                                    //Handle resizing of window and moving of tool.
+                                    ktl.core.addAppResizeSubscriber(ktl.core.ktlDevToolsAdjustPositionAndSave, devBtnsDiv, devToolStorageName);
+                                    ktl.core.enableSortableDrag(devBtnsDiv, debounce((newPosition) => {
+                                        ktl.core.ktlDevToolsAdjustPositionAndSave(devBtnsDiv, devToolStorageName, newPosition);
+                                    }));
                                 }
                             })
                     }
