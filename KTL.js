@@ -5760,6 +5760,7 @@ function Ktl($, appInfo) {
                     keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
                     keywords._scs && colorizeSortedColumn(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
+                    keywords._dg && disableGrid(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6297,6 +6298,23 @@ function Ktl($, appInfo) {
                 }
             }
             return false;
+        }
+
+        function disableGrid(viewId, keywords) {
+            const kw = '_dg';
+            
+            if (!keywords[kw]) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            const viewSelector = $(`#${viewId} td`);
+            const anchorSelector = viewSelector.find("a");
+
+            viewSelector.addClass('ktlNoInlineEdit');
+            anchorSelector.removeAttr("href").css('cursor', 'default');
         }
 
         /////////////////////////////////////////////////////////////////////////////////
