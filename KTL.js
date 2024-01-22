@@ -6311,21 +6311,30 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
+            let selector;
             if (viewType !== 'table' && viewType !== 'search') {
-                const selector = `#${viewId} .kn-detail-body, #${viewId} .kn-input, #${viewId} li`;
-                $(selector).find("a").removeAttr("href").addClass('ktlLinkDisabled');
+                if (viewType === 'details' || viewType === 'list') {
+                    selector = `#${viewId} .kn-details-link`;
+                } else if (viewType === 'form') {
+                    selector = `#${viewId} .kn-input`;
+                } else if (viewType === 'menu') {
+                    selector = `#${viewId} li`;
+                }
+                const aElements = $(selector).find("a");
+                aElements.removeAttr("href").addClass('ktlLinkDisabled');
                 return;
             }
 
             columns.forEach(col => {
                 const { type, field } = col;
-                const selector = `#${viewId} tbody td`;
+                selector = `#${viewId} tbody td`;
                 if (type === 'field') {
                     const { key } = field;
                     $(`${selector}.${key}`).addClass('ktlNoInlineEdit');
                 }
                 else {
-                    $(selector).find("a").removeAttr("href").addClass('ktlLinkDisabled');
+                    const aElements = $(selector).find("a");
+                    aElements.removeAttr("href").addClass('ktlLinkDisabled');
                 }
             });
         }
