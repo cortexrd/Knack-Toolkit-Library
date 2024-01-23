@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.6.3 */
+/* KTL CSS version: 0.6.4 */
 
 /************ General Settings **************/
 :root {
@@ -76,18 +76,18 @@ th.ktlCollapsedColumn {
 	z-index: 1;
 }
 
-.ktlCollapsedColumn span{
+.ktlCollapsedColumn span {
 	display: none !important;
 }
 
 .ktlCollapsedColumn i.ktlHideShowColumnIcon {
-    position: absolute;
-    top: -10px;
-    color: grey;
-    left: 3px;
-    transform: rotate(-90deg);
-    font-size: 1.5em;
-    display: block;
+	position: absolute;
+	top: -10px;
+	color: grey;
+	left: 3px;
+	transform: rotate(-90deg);
+	font-size: 1.5em;
+	display: block;
 }
 
 td.ktlCollapsedColumn {
@@ -552,6 +552,25 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	animation: ktlFlashingFadeInOut var(--ktlFlashRate) infinite;
 }
 
+/* Moving stripes for progress indicator. */
+@keyframes ktlMoveStripes {
+	0% {
+		background-position: 0 0;
+	}
+
+	100% {
+		background-position: 50px 0;
+	}
+}
+
+.ktlProgress {
+	height: 20px;
+	background-size: 10px 10px;
+	background-image: repeating-linear-gradient( 45deg, #ccc, #ccc 1px, transparent 1px, transparent 50% );
+	animation: ktlMoveStripes 2s linear infinite;
+	opacity: 0.5;
+}
+
 .ktlBlurry {
 	color: transparent;
 	text-shadow: 0 0 8px #000;
@@ -689,37 +708,39 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 /* Autocomplete feature */
 ul.ui-autocomplete {
 	border-radius: 0 0 4px 4px;
-    background-clip: padding-box;
-    border: 1px solid #dbdbdb;
-    border-top: 0;
+	background-clip: padding-box;
+	border: 1px solid #dbdbdb;
+	border-top: 0;
 	background: white;
 	margin-top: -8px;
 	list-style: none;
 }
+
 .ui-autocomplete .ui-menu-item {
 	color: #1a1a1a;
 	position: relative;
 }
 
-.ui-autocomplete .ui-menu-item i {
-    position: absolute;
-    top: 0;
-    right: 0;
-    height: 2em;
-    width: 3em;
-}
+	.ui-autocomplete .ui-menu-item i {
+		position: absolute;
+		top: 0;
+		right: 0;
+		height: 2em;
+		width: 3em;
+	}
 
-.ui-autocomplete .ui-menu-item i:after {
-    position: absolute;
-    font-size: 16px;
-    font-family: FontAwesome;
-    content: "\F00D";
-    top: 3px;
-    right: 13px;
-    color: #c1bdbd;
-}
+		.ui-autocomplete .ui-menu-item i:after {
+			position: absolute;
+			font-size: 16px;
+			font-family: FontAwesome;
+			content: "\F00D";
+			top: 3px;
+			right: 13px;
+			color: #c1bdbd;
+		}
 
-.ui-autocomplete .ui-menu-item i:hover:after {
-    color: #1a1a1a;
-}
+		.ui-autocomplete .ui-menu-item i:hover:after {
+			color: #1a1a1a;
+		}
+
 /**** KTL_RELATED - END ****/
