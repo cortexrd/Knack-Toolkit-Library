@@ -3143,7 +3143,10 @@ function Ktl($, appInfo) {
             const field = Knack.objects.getField(fieldId);
 
             if (field && field.attributes) {
-                if (field.attributes.format && field.attributes.format.type === 'checkboxes') {
+                if (field.attributes.type === 'boolean') {
+                    if (field.attributes.format.input === 'checkbox')
+                        inputValue = element.checked;
+                } else if (field.attributes.format && field.attributes.format.type === 'checkboxes') {
                     var options = document.querySelectorAll('#' + viewId + ' [data-input-id=' + fieldId + '] input.checkbox');
                     var optObj = {};
                     options.forEach(opt => {
@@ -3343,7 +3346,16 @@ function Ktl($, appInfo) {
                                 $(`#${view.key}-${fieldId}`).val([...values, ...choices ]).trigger("liszt:updated");
                             }
                         } else if (fieldType === 'boolean') {
-                            $(`#${view.key} [data-input-id="${fieldId}"] input[value="${fieldText}"]`).first().click();
+                            if (field.attributes.format.input === 'checkbox') {
+                                if (fieldText === 'true')
+                                    $(`#${view.key} [data-input-id="${fieldId}"] input`).first().click();
+                            } else if (field.attributes.format.input === 'radios')
+                                $(`#${view.key} [data-input-id="${fieldId}"] input[value="${fieldText}"]`).first().click();
+                            else {
+                                $(`#${view.key} [data-input-id="${fieldId}"] option`).removeAttr('selected');
+                                $(`#${view.key} [data-input-id="${fieldId}"] option[value=${fieldText}]`).attr('selected', 'selected');
+                                $(`#${view.key} select#${fieldId}.select`).trigger('change');
+                            }
                         } else if (fieldType === 'password') {
                             //Ignore.
                         } else {
