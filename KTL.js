@@ -7082,7 +7082,17 @@ function Ktl($, appInfo) {
             const viewType = view.type;
 
             if (viewType === 'details') {
-                $(`#${view.key} .kn-detail-body`).css('text-align', alignment);
+                const fields = keywords[kw][0].params[0].slice(1);
+                if (fields.length) {
+                    for (const field of fields) {
+                        let fieldId = field;
+                        if (!field.startsWith('field_'))
+                            fieldId = ktl.fields.getFieldIdFromLabel(view.key, field);
+                            
+                        $(`#${view.key} .${fieldId} .kn-detail-body`).css('text-align', alignment);
+                    }
+                } else
+                    $(`#${view.key} .kn-detail-body`).css('text-align', alignment);
             }
         }
 
