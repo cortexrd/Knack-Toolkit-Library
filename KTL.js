@@ -5729,6 +5729,7 @@ function Ktl($, appInfo) {
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(viewId, keywords);
                     keywords._ha && headerAlignment(view, keywords);
+                    keywords._da && dataAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
                     keywords._sth && stickyTableHeader(viewId, keywords, data);
@@ -7062,6 +7063,26 @@ function Ktl($, appInfo) {
                 } catch (e) {
                     console.log('headerAlignment error:', e);
                 }
+            }
+        }
+
+        function dataAlignment(view, keywords) {
+            const kw = '_da';
+            if (!view || !keywords || (keywords && !keywords[kw])) return;
+
+            if (keywords[kw][0].params.length < 1) return;
+            const alignment = keywords[kw][0].params[0][0];
+            if (alignment !== 'left' && alignment !== 'center' && alignment !== 'right') return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            const viewType = view.type;
+
+            if (viewType === 'details') {
+                $(`#${view.key} .kn-detail-body`).css('text-align', alignment);
             }
         }
 
