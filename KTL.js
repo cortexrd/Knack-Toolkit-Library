@@ -5743,6 +5743,7 @@ function Ktl($, appInfo) {
                     keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
                     keywords._scs && colorizeSortedColumn(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
+                    keywords._dv && disableView(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -6280,6 +6281,45 @@ function Ktl($, appInfo) {
                 }
             }
             return false;
+        }
+
+        function disableView(view, keywords) {
+            const kw = '_dv';
+            if (!keywords[kw]) return;
+
+            const { key: viewId, type: viewType, columns } = view;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            let selector;
+            if (viewType !== 'table' && viewType !== 'search') {
+                if (viewType === 'details' || viewType === 'list') {
+                    selector = `#${viewId} .kn-detail-body`;
+                } else if (viewType === 'form') {
+                    selector = `#${viewId} .kn-input`;
+                } else if (viewType === 'menu') {
+                    selector = `#${viewId} li`;
+                }
+                const aElements = $(selector).find('a');
+                aElements.removeAttr('href').addClass('ktlLinkDisabled');
+                return;
+            }
+
+            columns.forEach(col => {
+                const { type, field } = col;
+                selector = `#${viewId} tbody td`;
+                if (type === 'field') {
+                    const { key } = field;
+                    $(`${selector}.${key}`).addClass('ktlNoInlineEdit');
+                }
+                else {
+                    const aElements = $(selector).find('a');
+                    aElements.removeAttr('href').addClass('ktlLinkDisabled');
+                }
+            });
         }
 
         /////////////////////////////////////////////////////////////////////////////////
