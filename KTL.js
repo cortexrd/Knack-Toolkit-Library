@@ -6314,14 +6314,14 @@ function Ktl($, appInfo) {
             let selector;
             if (viewType !== 'table' && viewType !== 'search') {
                 if (viewType === 'details' || viewType === 'list') {
-                    selector = `#${viewId} .kn-details-link`;
+                    selector = `#${viewId} .kn-detail-body`;
                 } else if (viewType === 'form') {
                     selector = `#${viewId} .kn-input`;
                 } else if (viewType === 'menu') {
                     selector = `#${viewId} li`;
                 }
-                const aElements = $(selector).find("a");
-                aElements.removeAttr("href").addClass('ktlLinkDisabled');
+                const aElements = $(selector).find('a');
+                aElements.removeAttr('href').addClass('ktlLinkDisabled');
                 return;
             }
 
@@ -6333,8 +6333,8 @@ function Ktl($, appInfo) {
                     $(`${selector}.${key}`).addClass('ktlNoInlineEdit');
                 }
                 else {
-                    const aElements = $(selector).find("a");
-                    aElements.removeAttr("href").addClass('ktlLinkDisabled');
+                    const aElements = $(selector).find('a');
+                    aElements.removeAttr('href').addClass('ktlLinkDisabled');
                 }
             });
         }
