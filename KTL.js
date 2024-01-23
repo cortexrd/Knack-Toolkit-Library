@@ -3312,14 +3312,42 @@ function Ktl($, appInfo) {
                                 fieldText = formDataObj[view.key][fieldId][subField];
                             }
 
-                            if ($(`#${view.key}-${fieldId}`).hasClass('chzn-select')) { // Dropdown Selector
-                                const ids = fieldText.split(';').map(record => {
-                                    const [text, id] = record.split(':');
-                                    return id;
-                                }).filter(v => !!v);
+                            if ($(`#${view.key}-${fieldId}`).hasClass('chzn-select')) {
+                                if ($(`#${view.key}_${fieldId}_chzn`).find('.chzn-search').length) {
+                                    // Dropdown Search
+                                    var textToFind = fieldText.split(':');
+                                    var recId = textToFind.length === 2 ? textToFind[1] : '';
+                                    textToFind = textToFind[0];
 
-                                const values = $(`#${view.key}-${fieldId}`).val() || [];
-                                $(`#${view.key}-${fieldId}`).val([...values, ...ids ]).trigger("liszt:updated");
+                                    //Start with a first 'rough' pass to populate option records...
+                                    var viewSrch = view.key;
+                                    var fieldSrch = fieldId;
+                                    ktl.views.searchDropdown(textToFind, fieldSrch, false, false, viewSrch, false)
+                                        .then(function () {
+                                            findRecId(recId);
+                                        })
+                                        .catch(function () {
+                                            findRecId(recId);
+                                        })
+
+                                    //... then a second pass to find exact match with recId.
+                                    function findRecId(recId) {
+                                        recId && $('#' + viewSrch + '-' + fieldSrch).val(recId).trigger('liszt:updated').chosen().trigger('change');
+
+                                        var chznContainer = $('#' + viewSrch + ' [data-input-id="' + fieldSrch + '"] .chzn-container');
+                                        $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                        ktl.scenes.autoFocus();
+                                    }
+                                } else {
+                                    // Dropdown Selector
+                                    const ids = fieldText.split(';').map(record => {
+                                        const [text, id] = record.split(':');
+                                        return id;
+                                    }).filter(v => !!v);
+
+                                    const values = $(`#${view.key}-${fieldId}`).val() || [];
+                                    $(`#${view.key}-${fieldId}`).val([...values, ...ids]).trigger("liszt:updated");
+                                }
                             } else if ($(`#${view.key} #connection-picker-radio-${fieldId}`).length) { // Radio buttons
                                 $(`#${view.key} #connection-picker-radio-${fieldId} input[value="${fieldText}"]`).click();
                             } else if ($(`#${view.key} #connection-picker-checkbox-${fieldId}`).length) { // Checkboxes
