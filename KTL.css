@@ -476,9 +476,9 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 .ktlLargerCheckBox {
-	width: 20px;
-	height: 20px;
-	vertical-align: text-top !important;
+	width: 30px;
+	height: 30px;
+	vertical-align: middle !important;
 }
 
 /* Reduced page margins, to maximize available real-estate. */
