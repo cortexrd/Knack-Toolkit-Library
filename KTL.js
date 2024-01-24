@@ -7920,10 +7920,20 @@ function Ktl($, appInfo) {
                 }
             }
 
-            $(document).off(`knack-form-submit.${viewId}`).one(`knack-form-submit.${viewId}`, function (event, view, record) {
-                Knack.closeModal();
-                ktl.views.refreshViewArray(viewsToRefreshArray);
-            });
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType === 'form') {
+                $(document).off(`knack-form-submit.${viewId}`).one(`knack-form-submit.${viewId}`, function (event, view, record) {
+                    Knack.closeModal();
+                    ktl.views.refreshViewArray(viewsToRefreshArray);
+                });
+            } else {
+                $(`.delete.close-modal`).bindFirst('click', e => {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    Knack.closeModal();
+                    ktl.views.refreshViewArray(viewsToRefreshArray);
+                })
+            }
         }
 
         //Views
@@ -9651,7 +9661,7 @@ function Ktl($, appInfo) {
                             submit.validity.ktlInvalidItemObj[validationKey] = false; //Value (false) doesn't matter here, only the key's existence.
                     }
 
-                    if ($.isEmptyObject(submit.validity.ktlInvalidItemObj))
+                    if (submit.validity && $.isEmptyObject(submit.validity.ktlInvalidItemObj))
                         submit.removeAttribute('disabled');
                     else {
                         submit.setAttribute('disabled', true);
