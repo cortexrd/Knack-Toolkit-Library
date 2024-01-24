@@ -2129,18 +2129,25 @@ function Ktl($, appInfo) {
             var timeout = null;
             $('.chzn-select').chosen().change(function (e, p) {
                 if (e.target.id && e.target.selectedOptions[0]) {
-                    const records = [...e.target.selectedOptions].map(option => {
-                        return {
-                            text: option.innerText,
-                            id: option.value
-                        }
-                    });
 
-                    const [viewId, fieldId] = e.target.id.split('-');
-                    ktl.persistentForm.ktlOnSelectValueChanged({ viewId: viewId, fieldId: fieldId, records: records, e: e });
+                    //This timeout is required to ignore the first undesired change event.
+                    //For some reason we get a first event with the current value, but we want the next one with the NEW changed value.
+                    //Maybe this is by design, to provide the before-and-after values that could be useful.
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        const records = [...e.target.selectedOptions].map(option => {
+                            return {
+                                text: option.innerText,
+                                id: option.value
+                            }
+                        });
 
-                    // Keep single record call for retro-compatibility of external code
-                    ktl.fields.onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: e.target.selectedOptions[0].value, text: e.target.selectedOptions[0].innerText, e: e }); //Notify app of change
+                        const [viewId, fieldId] = e.target.id.split('-');
+                        ktl.persistentForm.ktlOnSelectValueChanged({ viewId: viewId, fieldId: fieldId, records: records, e: e });
+
+                        // Keep single record call for retro-compatibility of external code
+                        ktl.fields.onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: e.target.selectedOptions[0].value, text: e.target.selectedOptions[0].innerText, e: e }); //Notify app of change
+                    }, 500);
                 }
             })
 
@@ -8935,8 +8942,7 @@ function Ktl($, appInfo) {
                                 }
                                 $(document).off('knack-view-render.' + viewId); //Prevent multiple re-entry.
 
-                                resolve(foundData);
-                                return;
+                                return resolve(foundData);
                             });
                         } else
                             reject('findInSearchView has null searchInput');
@@ -9635,20 +9641,17 @@ function Ktl($, appInfo) {
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
                 if (submit) {
-                    let validity = {};
+                    if (submit.validity) {
+                        if (!submit.validity.ktlInvalidItemObj)
+                            submit.validity.ktlInvalidItemObj = {};
 
-                    if (submit.validity && submit.validity.ktlInvalidItemObj) {
-                        validity = submit.validity.ktlInvalidItemObj;
-                    } else
-                        validity = {};
+                        if (isValid === true)
+                            delete submit.validity.ktlInvalidItemObj[validationKey];
+                        else
+                            submit.validity.ktlInvalidItemObj[validationKey] = false; //Value (false) doesn't matter here, only the key's existence.
+                    }
 
-                    if (isValid === true)
-                        delete validity[validationKey];
-                    else
-                        validity[validationKey] = false; //Value (false) doesn't matter here, only the key's existence.
-
-                    var submitEnabled = $.isEmptyObject(validity);
-                    if (submitEnabled)
+                    if ($.isEmptyObject(submit.validity.ktlInvalidItemObj))
                         submit.removeAttribute('disabled');
                     else {
                         submit.setAttribute('disabled', true);
