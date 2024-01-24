@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.8';
+    const KTL_VERSION = '0.22.9';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2032,6 +2032,11 @@ function Ktl($, appInfo) {
                 //Find a better way than redo all over again.
                 convertNumDone = false;
                 ktl.fields.convertNumToTel();
+
+                try {
+                    const fieldId = e.target.id;
+                    $(`#${fieldId}`).focus();
+                } catch { /*ignore*/ }
             }
 
             //Do we need to add the chznBetter object?
@@ -9661,7 +9666,7 @@ function Ktl($, appInfo) {
                             submit.validity.ktlInvalidItemObj[validationKey] = false; //Value (false) doesn't matter here, only the key's existence.
                     }
 
-                    if (submit.validity && $.isEmptyObject(submit.validity.ktlInvalidItemObj))
+                    if (!submit.validity || (submit.validity && $.isEmptyObject(submit.validity.ktlInvalidItemObj)))
                         submit.removeAttribute('disabled');
                     else {
                         submit.setAttribute('disabled', true);
