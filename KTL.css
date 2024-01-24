@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.6.4 */
+/* KTL CSS version: 0.6.5 */
 
 /************ General Settings **************/
 :root {
@@ -129,7 +129,7 @@ th .fa-caret-left {
 	margin-left: 0px;
 }
 
-.hatched {
+.ktlHatched {
 	background-image: linear-gradient(45deg, #808080 25%, transparent 25%, transparent 75%, #808080 75%, #808080), linear-gradient(45deg, #808080 25%, transparent 25%, transparent 75%, #808080 75%, #808080);
 	background-size: 10px 10px; /* The size of the hatching */
 	background-position: 0 0, 5px 5px; /* Positioning of each layer */
@@ -588,6 +588,10 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 
 .ktlNoBgColor {
 	background-color: transparent !important;
+}
+
+.ktlAttention {
+	background-color: orangered !important;
 }
 
 /* Status Monitoring */
