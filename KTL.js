@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.9';
+    const KTL_VERSION = '0.22.10';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2034,8 +2034,10 @@ function Ktl($, appInfo) {
                 ktl.fields.convertNumToTel();
 
                 try {
-                    const fieldId = e.target.id;
-                    $(`#${fieldId}`).focus();
+                    if (e.target && e.target.id && e.target.id.startsWith('field_')) {
+                        const fieldId = e.target.id;
+                        $(`#${fieldId}`).focus();
+                    }
                 } catch { /*ignore*/ }
             }
 
