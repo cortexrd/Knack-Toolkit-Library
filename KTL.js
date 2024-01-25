@@ -5730,6 +5730,8 @@ function Ktl($, appInfo) {
             }
 
             addLongClickListener('#' + viewId, function (e) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
                 document.querySelector('#' + viewId).classList.add('ktlOutline');
                 Knack.showSpinner();
                 setTimeout(() => {
