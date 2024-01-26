@@ -6361,6 +6361,8 @@ function Ktl($, appInfo) {
                 }
                 const aElements = $(selector).find('a');
                 aElements.removeAttr('href').addClass('ktlLinkDisabled');
+                $(`#${view.key} .kn-input input`).attr('disabled', 'disabled');
+                $(`#${view.key} .kn-input select`).attr('disabled', 'disabled');
                 return;
             }
 
