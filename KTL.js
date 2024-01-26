@@ -10171,7 +10171,6 @@ function Ktl($, appInfo) {
                             processClass(options);
                         else {
                             (function processClassForAllRecords(idx) {
-                                console.log('idx =', idx);
                                 let recordObj = data[idx];
                                 processClass(options, recordObj)
                                     .then(() => {
