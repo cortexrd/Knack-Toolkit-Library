@@ -6423,16 +6423,34 @@ function Ktl($, appInfo) {
                 }
 
                 if (selector) {
-                    $(selector).each(function () {
-                        const option = $(this);
-                        const optionText = isOptionBased ? option.text().trim() : option.val().trim();
-                        if (params[0].includes(optionText)) {
-                            option.hide();
-                            if (fieldType === 'connection') {
-                                selector.trigger('liszt:updated');
+
+                    const hide = () => { 
+                        $(selector).each(function () {
+                            const option = $(this);
+                            const optionText = isOptionBased ? option.text().trim() : option.val().trim();
+                            if (params[0].includes(optionText)) {
+                                option.hide();
+                                if (fieldType === 'connection') {
+                                    selector.trigger('liszt:updated');
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
+                    const unhide = () => { 
+                        $(selector).each(function () {
+                            const option = $(this);
+                            const optionText = isOptionBased ? option.text().trim() : option.val().trim();
+                            if (params[0].includes(optionText)) {
+                                option.show();
+                                if (fieldType === 'connection') {
+                                    selector.trigger('liszt:updated');
+                                }
+                            }
+                        });
+                    }
+
+                    ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                    
                 }
             }
         }
