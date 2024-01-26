@@ -4612,7 +4612,7 @@ function Ktl($, appInfo) {
             $('#' + e.target.id).append(menuDiv);
 
             var pos = ktl.core.setContextMenuPostion(e, $('.menuDiv'));
-            $('.menuDiv').css({ 'left': pos.x + 'px', 'top': pos.y + 'px', 'z-index': 2 });
+            $('.menuDiv').css({ 'left': pos.x + 'px', 'top': pos.y + 'px' });
 
             var ul = document.createElement('ul');
             menuDiv.appendChild(ul);
@@ -7999,7 +7999,10 @@ function Ktl($, appInfo) {
                                         Knack.views[viewId].renderView && Knack.views[viewId].renderView();
                                         Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                     }
-                                    Knack.views[viewId].render();
+
+                                    if (!Knack.views[viewId].renderResults) //This erases Search results in Search views.
+                                        Knack.views[viewId].render();
+
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
                                     return resolve();
                                 } else {
@@ -12825,7 +12828,7 @@ function Ktl($, appInfo) {
 
         return {
             isDeveloper: function () {
-                return Knack.getUserRoleNames().includes('Developer') || (ktl.storage.lsGetItem('forceDevRole', true) === 'true');
+                return ( (Knack.getUserRoleNames().split(',').map((element) => element.trim()).includes('Developer')) || (ktl.storage.lsGetItem('forceDevRole', true) === 'true') );
             },
 
             isLoggedIn: function () {
@@ -13930,10 +13933,15 @@ function Ktl($, appInfo) {
                         var kw = {};
                         var fieldId = el.classList[0];
                         if (fieldId && fieldId.startsWith('field_')) {
-                            ktl.fields.getFieldKeywords(fieldId, kw);
-                            if (!$.isEmptyObject(kw)) {
-                                if (kw[fieldId]._lud || kw[fieldId]._lub)
-                                    kwNoCheckBox = true;
+                            const fieldType = ktl.fields.getFieldType(fieldId);
+                            if (fieldType === 'file') //Not supported in API calls.
+                                kwNoCheckBox = true;
+                            else {
+                                ktl.fields.getFieldKeywords(fieldId, kw);
+                                if (!$.isEmptyObject(kw)) {
+                                    if (kw[fieldId]._lud || kw[fieldId]._lub)
+                                        kwNoCheckBox = true;
+                                }
                             }
                         }
 

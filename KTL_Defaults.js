@@ -296,7 +296,7 @@ window.KnackApp = function ($, appInfo = {}) {
         if (field !== undefined) {
             $('#' + field).focus();
         } else {
-            var sel = $('.kn-input:not(.kn-input-connection) input, input[type="date"]').first();
+            var sel = $('.kn-input:not(.kn-input-connection, .kn-input-date_time) input').first();
             if (sel.length && !sel.is(':offscreen')) //Prevent annoying scroll down.
                 sel[0].focus();
             else {
