@@ -10166,14 +10166,20 @@ function Ktl($, appInfo) {
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (viewType === 'table' || viewType === 'search' || viewType === 'list') {
-                        (function processClassForAllRecords(idx) {
-                            let recordObj = data[idx];
-                            processClass(options, recordObj)
-                                .then(() => {
-                                    if (++idx < data.length)
-                                        processClassForAllRecords(idx);
-                                })
-                        })(0);
+                        const isJQueryTarget = ktl.core.extractJQuerySelector(kwInstance.options.ktlTarget);
+                        if (isJQueryTarget)
+                            processClass(options);
+                        else {
+                            (function processClassForAllRecords(idx) {
+                                console.log('idx =', idx);
+                                let recordObj = data[idx];
+                                processClass(options, recordObj)
+                                    .then(() => {
+                                        if (++idx < data.length)
+                                            processClassForAllRecords(idx);
+                                    })
+                            })(0);
+                        }
                     } else
                         processClass(options);
 
