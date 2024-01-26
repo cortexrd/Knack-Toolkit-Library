@@ -7938,12 +7938,19 @@ function Ktl($, appInfo) {
                     ktl.views.refreshViewArray(viewsToRefreshArray);
                 });
             } else {
-                $(`.delete.close-modal`).bindFirst('click', e => {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    Knack.closeModal();
-                    ktl.views.refreshViewArray(viewsToRefreshArray);
-                })
+                const keepModalOpen = Knack.router.scene_view.model.attributes.modal_prevent_background_click_close;
+                if (keepModalOpen && keepModalOpen === true) {
+                    $(`.delete.close-modal`).bindFirst('click', e => {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        Knack.closeModal();
+                        ktl.views.refreshViewArray(viewsToRefreshArray);
+                    })
+                } else {
+                    $(document).on('knack-modal-close', (e) => {
+                        ktl.views.refreshViewArray(viewsToRefreshArray);
+                    })
+                }
             }
         }
 
@@ -7999,11 +8006,10 @@ function Ktl($, appInfo) {
                                         Knack.views[viewId].model.trigger('change');
                                         Knack.views[viewId].renderForm && Knack.views[viewId].renderForm();
                                         Knack.views[viewId].renderView && Knack.views[viewId].renderView();
-                                        Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                     }
 
-                                    if (!Knack.views[viewId].renderResults) //This erases Search results in Search views.
-                                        Knack.views[viewId].render();
+                                    Knack.views[viewId].render();
+                                    Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
 
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
                                     return resolve();
