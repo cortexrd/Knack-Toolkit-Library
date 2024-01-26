@@ -5800,7 +5800,7 @@ function Ktl($, appInfo) {
                     keywords._scs && colorizeSortedColumn(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
                     keywords._dv && disableView(view, keywords);
-                    removeOption(view, keywords);
+                    keywords._ro && removeOption(view)
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5811,9 +5811,7 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 disableFilterOnFields(view, keywords);
-                removeOption(view, keywords);
                 
-
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
             catch (err) { console.log('err', err); };
@@ -6384,70 +6382,60 @@ function Ktl($, appInfo) {
         }
 
         function removeOption(view, keywords) {
-            const kw = '_ro';           
+            const kw = '_ro';
 
-            const { key: viewId} = view;
+            const { key: viewId } = view;
             if (!viewId) return;
 
-            //Process fields keyword
-            const fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
-            if (!$.isEmptyObject(fieldsWithKwObj)) {
-                const fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                const foundKwObj = {};
-                for (let i = 0; i < fieldsWithKwAr.length; i++) {
-                    const fieldId = fieldsWithKwAr[i];
-                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {
-                        ktl.core.getKeywordsByType(fieldId, kw).forEach((keyword) => {
-                            if (ktl.core.hasRoleAccess(keyword.options)) {
-                                if (!fieldId || !keyword.params || !keyword.params.length) return;
-                                processRemoveOption( keyword.options, fieldId, keyword.params);
+            //Process views keyword
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                ktl.core.getKeywordsByType(viewId, kw).forEach((keyword) => {
+                    if (ktl.core.hasRoleAccess(keyword.options)) {
+                        processViewRemoveOption(keyword.params, keyword.options);
+                    }
+                });
+            }
+
+            async function processViewRemoveOption(params, options) {
+                return ktl.views.validateKtlCond(options, recordObj = {}, viewId)
+                    .then(valid => {
+                        if (!valid) return;
+
+                        const [fieldLabel, ...optionsToRemove] = params[0];
+                        let fieldId = fieldLabel.startsWith('field_') ? fieldLabel : ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
+                        if (!fieldId) return;
+
+                        let isOptionBased = false; //Used to determine if dealing with a select or a checkbox/radio.
+                        const fieldType = ktl.fields.getFieldType(fieldId);
+                        const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
+
+                        let selector;
+                        if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
+                            selector = $(`#${viewId}-${fieldId}`).find('option');
+                            isOptionBased = true;
+                        } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
+                            selector = $(`#${viewId} #kn-input-${fieldId}`).find('input');
+                        }
+
+                        if (!selector) return;
+
+                        $(selector).each(function () {
+                            const option = $(this);
+                            const optionText = isOptionBased ? option.text().trim() : option.val().trim();
+                            if (!optionsToRemove.includes(optionText)) return;
+
+                            if (isOptionBased) {
+                                option.remove();
+                                selector.trigger('liszt:updated');
+                            } else {
+                                option.closest('.control').remove();
                             }
                         });
-                    }
-                }
-            }
-            function processRemoveOption(options, fieldId, params) {
-                return new Promise(function (resolve) {
-                    ktl.views.validateKtlCond(options, recordObj = {}, viewId)
-                        .then(valid => {
-                            if (valid) {
-                                console.log(params[0])
-                                const fieldType = ktl.fields.getFieldType(fieldId);
-                                const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
-
-                                let selector;
-                                let isOptionBased = false;
-
-                                if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
-                                    selector = $(`#${viewId}-${fieldId}`).find('option');
-                                    isOptionBased = true;
-                                } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
-                                    selector = $(`#kn-input-${fieldId}`).find('input');
-                                }
-
-                                if (selector) {
-                                    $(selector).each(function () {
-                                        const option = $(this);
-                                        const optionText = isOptionBased ? option.text().trim() : option.val().trim();
-                                        if (params[0].includes(optionText)) {
-                                            if (isOptionBased) {
-                                                option.remove();
-                                                selector.trigger('liszt:updated');
-                                            } else {
-                                                option.closest('.control').remove();
-                                            }
-                                        }
-                                    });
-                                }
-                                resolve();
-                            } else
-                                resolve();
-                        })
-                })
+                    });
             }
         }
-            
+
         /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
             const CFV_KEYWORD = '_cfv';
