@@ -5798,7 +5798,7 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 disableFilterOnFields(view, keywords);
-                
+
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
             catch (err) { console.log('err', err); };
@@ -6376,9 +6376,7 @@ function Ktl($, appInfo) {
 
         function removeOption(view, keywords) {
             const kw = '_ro';
-            const kw = '_ro';
 
-            const { key: viewId } = view;
             const { key: viewId } = view;
             if (!viewId) return;
 
@@ -6404,28 +6402,6 @@ function Ktl($, appInfo) {
                         let isOptionBased = false; //Used to determine if dealing with a select or a checkbox/radio.
                         const fieldType = ktl.fields.getFieldType(fieldId);
                         const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
-            //Process views keyword
-            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                ktl.core.getKeywordsByType(viewId, kw).forEach((keyword) => {
-                    if (ktl.core.hasRoleAccess(keyword.options)) {
-                        processViewRemoveOption(keyword.params, keyword.options);
-                    }
-                });
-            }
-
-            async function processViewRemoveOption(params, options) {
-                return ktl.views.validateKtlCond(options, recordObj = {}, viewId)
-                    .then(valid => {
-                        if (!valid) return;
-
-                        const [fieldLabel, ...optionsToRemove] = params[0];
-                        let fieldId = fieldLabel.startsWith('field_') ? fieldLabel : ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
-
-                        if (!fieldId) return;
-
-                        let isOptionBased = false; //Used to determine if dealing with a select or a checkbox/radio.
-                        const fieldType = ktl.fields.getFieldType(fieldId);
-                        const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
 
                         let selector;
                         if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
@@ -6434,29 +6410,7 @@ function Ktl($, appInfo) {
                         } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
                             selector = $(`#${viewId} #kn-input-${fieldId}`).find('input');
                         }
-                        let selector;
-                        if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
-                            selector = $(`#${viewId}-${fieldId}`).find('option');
-                            isOptionBased = true;
-                        } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
-                            selector = $(`#${viewId} #kn-input-${fieldId}`).find('input');
-                        }
-
-                        if (!selector) return;
-
-                        $(selector).each(function () {
-                            const option = $(this);
-                            const optionText = isOptionBased ? option.text().trim() : option.val().trim();
-                            if (!optionsToRemove.includes(optionText)) return;
-
-                            if (isOptionBased) {
-                                option.remove();
-                                selector.trigger('liszt:updated');
-                            } else {
-                                option.closest('.control').remove();
-                            }
-                        });
-                    });
+                        
                         if (!selector) return;
 
                         $(selector).each(function () {
