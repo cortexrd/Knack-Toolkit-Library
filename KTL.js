@@ -86,9 +86,8 @@ function Ktl($, appInfo) {
             const viewKeywords = getKeywordsFromContent(content);
             Object.assign(viewKwObj, viewKeywords);
 
-            if(!content.includes('_ol'))
+            if (!content.includes('_ol'))
                 attributes.content = cleanUpKeywords(content);
-
         } else {
             const viewKeywords = getKeywords(attributes.title);
             const descriptionKeywords = getKeywords(attributes.description);
@@ -99,10 +98,9 @@ function Ktl($, appInfo) {
             Object.assign(viewKwObj, viewKeywords, descriptionKeywords);
         }
 
-
         if (attributes.type === 'report') {
-            attributes.rows.forEach( (row, rowIndex) => {
-                row.reports.forEach( (report, columnIndex) => {
+            attributes.rows.forEach((row, rowIndex) => {
+                row.reports.forEach((report, columnIndex) => {
                     const keywords = getKeywords(report.description);
 
                     if (!$.isEmptyObject(keywords)) {
@@ -112,8 +110,8 @@ function Ktl($, appInfo) {
                 });
             });
 
-            attributes.columns.forEach( (column, columnIndex) => {
-                column.reports.forEach( (report, rowIndex) => {
+            attributes.columns.forEach((column, columnIndex) => {
+                column.reports.forEach((report, rowIndex) => {
                     const keywords = getKeywords(report.description);
 
                     if (!$.isEmptyObject(keywords)) {
@@ -2019,52 +2017,32 @@ function Ktl($, appInfo) {
         })
 
         document.addEventListener('focus', function (e) {
-            if (document.activeElement.classList.contains('input')) {
-                //Turn-off auto complete for Kiosks. Users are annoyed by the dropdown that blocks the Submit button.
-                if (ktl.core.isKiosk())
-                    document.activeElement.setAttribute('autocomplete', 'off');
-
-                try { //Prevent error on unsupported elements.
-                    ktl.core.getCfg().enabled.selTextOnFocus && document.activeElement.setSelectionRange(0, document.activeElement.value.length); //Auto-select all text of input field.
-                } catch { /*ignore*/ }
-
-
-                //Find a better way than redo all over again.
-                convertNumDone = false;
-                ktl.fields.convertNumToTel();
-
-                try {
-                    if (e.target && e.target.id && e.target.id.startsWith('field_')) {
-                        const fieldId = e.target.id;
-                        $(`#${fieldId}`).focus();
-                    }
-                } catch { /*ignore*/ }
+            let viewId = e.target.closest('.kn-view');
+            if (viewId)
+                viewId = viewId.id;
+            else {
+                if (e.target.closest('#cell-editor'))
+                    viewId = 'cell-editor';
             }
 
-            //Do we need to add the chznBetter object?
-            //chznBetter is ktl's fix to a few chzn dropdown problems.
-            //Note that support of multi-selection type has been removed.  Too buggy for now, and needs more work.
-            if (ktl.core.getCfg().enabled.chznBetter && !ktl.fields.getUsingBarcode()) {
-                //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
-                var dropdownId = $(e.target).closest('.chzn-container').attr('id');
+            convertNumDone = false;
+            let newInput;
+            if (viewId)
+                newInput = ktl.fields.fieldConvertNumToTel(viewId, e.target.closest('.kn-input'));
 
-                var dropdownNeedsFix = false;
-                if (dropdownId !== undefined && !dropdownId.includes('kn_conn_'))
-                    dropdownNeedsFix = $('#' + dropdownId).find('.ui-autocomplete-input').length > 0;
+            let newTarget;
+            if (newInput) {
+                newInput.select();
+                newTarget = newInput[0];
+            } else {
+                $(e.target).select();
+                newTarget = e.target;
+            }
 
-                if (e.target.tagName.toLowerCase() === 'input') {
-                    if (dropdownId !== undefined && $('#' + dropdownId).find('#chznBetter').length > 0) {
-                        //console.log('Clicked dropdown already has chznBetter');
-                    } else {
-                        clearInterval(chznChoicesIntervalId);
-                        $('#chznBetter').remove();
-
-                        if (dropdownNeedsFix && dropdownId.length > 0) {
-                            if ($('#chznBetter').length === 0)
-                                ktl.fields.addChznBetter(dropdownId);
-                        }
-                    }
-                }
+            //Turn-off auto complete for Kiosks. Users are annoyed by the dropdown that blocks the Submit button.
+            if (newTarget.classList.contains('input')) {
+                if (ktl.core.isKiosk())
+                    newTarget.setAttribute('autocomplete', 'off');
             }
         }, true);
 
@@ -2242,7 +2220,56 @@ function Ktl($, appInfo) {
 
             //Converts all applicable fields in the scene from text to numeric (telephone) type to allow numeric keypad on mobile devices.
             //Also, using tel type is a little trick that allows auto-selection of text in a number field upon focus.
-            convertNumToTel: function () {
+            fieldConvertNumToTel: function (viewId, field) {
+                var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
+                var fieldId = fieldAttr.value;
+                var fieldDesc = ktl.fields.getFieldDescription(fieldId);
+                const fieldType = ktl.fields.getFieldType(fieldId);
+                if ((fieldType && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
+                    if (!field.getAttribute('numeric')) {
+                        field.setAttribute('numeric', true);
+
+                        //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
+                        if (cfg.convertNumToTel) {
+                            var originalInput = $('#' + viewId + ' #' + fieldId);
+                            if (originalInput.length && originalInput.attr('type') != 'tel') {
+                                const originalValue = $('#' + viewId + ' #' + fieldId).val();
+                                var originalHandlers = $._data(originalInput[0], 'events');
+                                var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
+
+                                // Copy over any relevant attributes from the original input to the new input
+                                newInput.attr('name', originalInput.attr('name'));
+                                newInput.attr('class', originalInput.attr('class'));
+                                // ... (copy any other attributes you need)
+
+                                // JQuery 'replaceWith' is not resilient to Aria elements
+                                originalInput.before(newInput);
+                                originalInput.hide();
+
+                                newInput.val(originalValue);
+
+                                // Restore the original event handlers to the new input field
+                                if (originalHandlers) {
+                                    $.each(originalHandlers, function (eventType, handlers) {
+                                        $.each(handlers, function (index, handler) {
+                                            newInput.on(eventType, handler.handler);
+                                        });
+                                    });
+                                }
+                                originalInput.trigger('KTL.convertNumToTel', [newInput]);
+                                originalInput.remove();
+                                originalInput.off();
+
+                                return newInput;
+                            }
+                        }
+                    }
+                }
+
+                return undefined;
+            },
+
+            sceneConvertNumToTel: function () {
                 return new Promise(function (resolve) {
                     if (convertNumDone || ktl.scenes.isiFrameWnd() || textAsNumericExcludeScenes.includes(Knack.router.current_scene_key)) {
                         resolve();
@@ -2250,54 +2277,10 @@ function Ktl($, appInfo) {
                         var forms = document.querySelectorAll('.kn-form');
                         forms.forEach(form => {
                             var viewId = form.id;
-                            if ($('#cell-editor .input').length)
-                                viewId = 'cell-editor';
-
                             if (viewId) {
                                 const fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text, #' + viewId + ' .kn-input-number, #' + viewId + ' .kn-input-currency');
                                 fields.forEach(field => {
-                                    var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
-                                    var fieldId = fieldAttr.value;
-                                    var fieldDesc = ktl.fields.getFieldDescription(fieldId);
-                                    const fieldType = ktl.fields.getFieldType(fieldId);
-                                    if ((fieldType && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
-                                        if (!field.getAttribute('numeric')) {
-                                            field.setAttribute('numeric', true);
-
-                                            //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
-                                            if (cfg.convertNumToTel) {
-                                                var originalInput = $('#' + viewId + ' #' + fieldId);
-                                                if (originalInput.length && originalInput.attr('type') != 'tel') {
-                                                    const originalValue = $('#' + viewId + ' #' + fieldId).val();
-                                                    var originalHandlers = $._data(originalInput[0], 'events');
-                                                    var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
-
-                                                    // Copy over any relevant attributes from the original input to the new input
-                                                    newInput.attr('name', originalInput.attr('name'));
-                                                    newInput.attr('class', originalInput.attr('class'));
-                                                    // ... (copy any other attributes you need)
-
-                                                    // JQuery 'replaceWith' is not resilient to Aria elements
-                                                    originalInput.before(newInput);
-                                                    originalInput.hide();
-
-                                                    newInput.val(originalValue);
-
-                                                    // Restore the original event handlers to the new input field
-                                                    if (originalHandlers) {
-                                                        $.each(originalHandlers, function (eventType, handlers) {
-                                                            $.each(handlers, function (index, handler) {
-                                                                newInput.on(eventType, handler.handler);
-                                                            });
-                                                        });
-                                                    }
-                                                    originalInput.trigger('KTL.convertNumToTel', [newInput]);
-                                                    originalInput.remove();
-                                                    originalInput.off();
-                                                }
-                                            }
-                                        }
-                                    }
+                                    ktl.fields.fieldConvertNumToTel(viewId, field);
                                 })
                             }
                         })
@@ -2329,8 +2312,7 @@ function Ktl($, appInfo) {
                             fields = document.querySelectorAll('#' + viewId + ' .kn-input[numeric=true]');
 
                         for (const field of fields) {
-                            var inputFld = document.querySelector('#chznBetter[numeric=true]') ||
-                                document.querySelector('#' + viewId + ' #' + field.getAttribute('data-input-id'));
+                            var inputFld = document.querySelector('#' + viewId + ' #' + field.getAttribute('data-input-id'));
 
                             if (inputFld) {
                                 var value = inputFld.value;
@@ -2734,6 +2716,9 @@ function Ktl($, appInfo) {
             },
 
             getFieldDescription: function (fieldId = '') {
+                if (typeof fieldId !== 'string')
+                    debugger;
+
                 if (!fieldId || !fieldId.startsWith('field_')) return;
 
                 var descr = '';
@@ -3061,11 +3046,11 @@ function Ktl($, appInfo) {
             if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key))
                 return;
 
-            ktl.fields.convertNumToTel().then(() => {
+            ktl.fields.sceneConvertNumToTel().then(() => {
                 loadFormData()
                     .then(() => {
                         isInitialized = true;
-                        setTimeout( () => {
+                        setTimeout(() => {
                             ktl.fields.enforceNumeric();
                             $(document).trigger('KTL.persistentForm.completed', [scene]);
                         }, 1000);
@@ -3261,7 +3246,7 @@ function Ktl($, appInfo) {
                 var intervalId = null;
 
                 //Reload stored data, but only for Form type of views.
-                Knack.router.scene_view.model.views.models.map(model => model.attributes).forEach( view => {
+                Knack.router.scene_view.model.views.models.map(model => model.attributes).forEach(view => {
                     if (view.action != 'insert' && view.action != 'create')  //Add only, not Edit or any other type
                         return;
 
@@ -3272,7 +3257,7 @@ function Ktl($, appInfo) {
                     currentViews[view.key] = view.key;
                     formDataObj[view.key] = viewData;
 
-                    Object.keys(formDataObj[view.key]).forEach( fieldId => {
+                    Object.keys(formDataObj[view.key]).forEach(fieldId => {
                         if (fieldsToExclude.includes(fieldId)) {
                             ktl.log.clog('purple', 'Skipped field for PF: ' + fieldId);
                             return; //JIC - should never happen since fieldsToExclude are never saved in the first place.
@@ -3369,7 +3354,7 @@ function Ktl($, appInfo) {
                             }
                         } else if (fieldType === 'multiple_choice') {
                             if (typeof fieldText === 'object') {
-                                 Object.keys(formDataObj[view.key][fieldId]).forEach( subField => {
+                                Object.keys(formDataObj[view.key][fieldId]).forEach(subField => {
                                     const value = formDataObj[view.key][fieldId][subField];
                                     $(`#${subField}`).val(value);
                                 })
@@ -3385,7 +3370,7 @@ function Ktl($, appInfo) {
                             } else {
                                 const values = $(`#${view.key}-${fieldId}`).val() || [];
                                 const choices = fieldText.split(';').map(choice => choice.split(':')[0])
-                                $(`#${view.key}-${fieldId}`).val([...values, ...choices ]).trigger("liszt:updated");
+                                $(`#${view.key}-${fieldId}`).val([...values, ...choices]).trigger("liszt:updated");
                             }
                         } else if (fieldType === 'boolean') {
                             if (field.attributes.format.input === 'checkbox') {
@@ -3523,7 +3508,7 @@ function Ktl($, appInfo) {
                     field.autocomplete('search');
                 }
 
-                const source = (fetchSources()[key] || []).map( value => { return { label: value.substring(0, 100), value };});
+                const source = (fetchSources()[key] || []).map(value => { return { label: value.substring(0, 100), value }; });
                 // JQuery Autocomplete v1.9
                 field.autocomplete({
                     source: source,
@@ -3531,7 +3516,7 @@ function Ktl($, appInfo) {
                     minLength: 0,
                     delay: 0,
                     autoFocus: false,
-                    open: function(event) {
+                    open: function (event) {
                         if (!field.is(':visible')) {
                             $(this).off(event); // Remove event kept by convertNumToTel switch
                             return;
@@ -3542,7 +3527,7 @@ function Ktl($, appInfo) {
                             deleteAndRefresh($(event.currentTarget).parent().text());
                         }));
                     },
-                    select: function(event, ui) {
+                    select: function (event, ui) {
                         if (!field.is(':visible')) {
                             $(this).off(event); // Remove event kept by convertNumToTel switch
                             return;
@@ -3550,16 +3535,16 @@ function Ktl($, appInfo) {
 
                         field.trigger('input');
                     }
-                }).keyup(function(event) {
+                }).keyup(function (event) {
                     if (!field.is(':visible')) {
                         $(this).off(event); // Remove event kept by convertNumToTel switch
                         return;
                     }
 
-                    if(event.key === "Delete") {
+                    if (event.key === "Delete") {
                         deleteAndRefresh(field.autocomplete('widget').find('li > a.ui-state-focus').text());
                     }
-                }).focus(function(event) {
+                }).focus(function (event) {
                     if (!field.is(':visible')) {
                         $(this).off(event); // Remove event kept by convertNumToTel switch
                         return;
@@ -3569,37 +3554,37 @@ function Ktl($, appInfo) {
                 });
             };
 
-            fieldIds.forEach( fieldId => {
-                $(`#${viewId} div[data-input-id="${fieldId}"] input[name]:not(:hidden)`).each(function() {
+            fieldIds.forEach(fieldId => {
+                $(`#${viewId} div[data-input-id="${fieldId}"] input[name]:not(:hidden)`).each(function () {
                     const field = $(this);
                     const name = $(this).attr('name');
-                    const key = fieldId + ( !name.includes('field_') ? '-' + name : '');
+                    const key = fieldId + (!name.includes('field_') ? '-' + name : '');
                     setupAutocomplete(field, key);
 
-                    field.on('KTL.convertNumToTel', function(event, newField) {
+                    field.on('KTL.convertNumToTel', function (event, newField) {
                         field.autocomplete('destroy');
                         setupAutocomplete(newField, key);
                         newField.focus();
                     });
                 });
 
-                $(`#${viewId} div[data-input-id="${fieldId}"] textarea`).each(function() {
+                $(`#${viewId} div[data-input-id="${fieldId}"] textarea`).each(function () {
                     setupAutocomplete($(this), fieldId);
                 });
             });
 
             $(`#${viewId} button[type="submit"]`).on('click', event => {
-                fieldIds.forEach( fieldId => {
-                    $(`#${viewId} div[data-input-id="${fieldId}"] input[name]:not(:hidden)`).each(function() {
+                fieldIds.forEach(fieldId => {
+                    $(`#${viewId} div[data-input-id="${fieldId}"] input[name]:not(:hidden)`).each(function () {
                         const field = $(this);
                         const name = field.attr('name');
-                        const key = fieldId + ( !name.includes('field_') ? '-' + name : '');
+                        const key = fieldId + (!name.includes('field_') ? '-' + name : '');
                         const entry = field.val();
                         if (entry)
                             appendEntry(key, entry);
                     });
 
-                    $(`#${viewId} div[data-input-id="${fieldId}"] textarea`).each(function() {
+                    $(`#${viewId} div[data-input-id="${fieldId}"] textarea`).each(function () {
                         const entry = $(this).val();
                         if (entry)
                             appendEntry(fieldId, entry);
@@ -3614,7 +3599,7 @@ function Ktl($, appInfo) {
         });
 
         $(document).on('KTL.persistentForm.completed', function (event, scene) {
-            scene.views.forEach( view => {
+            scene.views.forEach(view => {
                 autocompleteFields(view.key)
             })
         });
@@ -4125,7 +4110,7 @@ function Ktl($, appInfo) {
             if (!models.length || ($.isEmptyObject(getUserFilters()) && $.isEmptyObject(getPublicFilters())))
                 return;
 
-            models.forEach( model => {
+            models.forEach(model => {
                 const viewId = model.attributes.key;
                 if (model.attributes.type === 'report') {
                     //Reports are risky, since they don't have an absolute ID. Instead, they have an index and if they are moved around
@@ -4220,7 +4205,7 @@ function Ktl($, appInfo) {
             if (!keywords || !keywords._lf)
                 return;
 
-            linkFilters(keywords._lf[0].params[0],  Knack.models[masterViewId].view);
+            linkFilters(keywords._lf[0].params[0], Knack.models[masterViewId].view);
         });
 
 
@@ -4234,7 +4219,7 @@ function Ktl($, appInfo) {
                 const urlFilters = getUrlParameter(`${view.key}_${index}_filters`);
                 const filters = JSON.parse(urlFilters || '{}');
 
-                ktl.views.convertViewTitlesToViewIds(keyword._lf[0].params[0], view.key).forEach (viewId => {
+                ktl.views.convertViewTitlesToViewIds(keyword._lf[0].params[0], view.key).forEach(viewId => {
                     if (Knack.models[viewId].view.type === 'report') {
                         Knack.models[viewId].view.rows.forEach(row => {
                             row.reports.forEach(report => {
@@ -4286,7 +4271,7 @@ function Ktl($, appInfo) {
 
             const parameters = keywords._ls[0].params[0];
             const linkedViewIds = ktl.views.convertViewTitlesToViewIds(parameters, view.key)
-                                                .filter(viewId =>  Knack.models[viewId].view.type === 'table');
+                .filter(viewId => Knack.models[viewId].view.type === 'table');
 
             searchInput.on('keyup', () => {
                 linkedViewIds.forEach((viewId) => {
@@ -4304,7 +4289,7 @@ function Ktl($, appInfo) {
                 });
             }
 
-            $(`#${view.key} .kn-button.search`).on('click',updateTables);
+            $(`#${view.key} .kn-button.search`).on('click', updateTables);
             $(`#${view.key} .table-keyword-search`).on('submit', updateTables);
         });
 
@@ -4382,7 +4367,7 @@ function Ktl($, appInfo) {
 
             $(`#${view.key} .kn-table-table th`).on('click', function () {
                 ktl.userFilters.saveFilter(view.key, true);
-        });
+            });
         });
 
         $(document).on('mousedown click', e => {
@@ -4554,7 +4539,7 @@ function Ktl($, appInfo) {
                 const [viewId, reportId] = filterDivId.replace('kn-report-', '').split('-');
                 const report = Knack.models[viewId].view.rows
                     .reduce((result, row) => result || row.reports
-                            .find( (report) => report.index === (reportId - 1)), undefined);
+                        .find((report) => report.index === (reportId - 1)), undefined);
 
                 applyUserFilterToReportView(viewId, report, JSON.parse(filterString));
             }
@@ -5148,7 +5133,7 @@ function Ktl($, appInfo) {
                 if (!filterName) return;
 
                 const previousFilterProperties = (filter.filterSrc[filterDivId] && filter.filterSrc[filterDivId].filters[filter.index]) ? filter.filterSrc[filterDivId].filters[filter.index] : {};
-                var fltObj = { ...previousFilterProperties, 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr, 'collapsed' : collapsed };
+                var fltObj = { ...previousFilterProperties, 'filterName': filterName, 'filterString': newFilterStr, 'perPage': newPerPageStr, 'sort': newSortStr, 'search': newSearchStr, 'collapsed': collapsed };
 
                 if (type === LS_UFP)
                     fltObj.public = true;
@@ -6361,8 +6346,14 @@ function Ktl($, appInfo) {
                 }
                 const aElements = $(selector).find('a');
                 aElements.removeAttr('href').addClass('ktlLinkDisabled');
-                $(`#${view.key} .kn-input input`).attr('disabled', 'disabled');
+
+                //one('KTL.convertNumToTel' is necessary in case we call sceneConvertNumToTel more than once.
+                $(`#${view.key} .kn-input input`).attr('disabled', 'disabled').one('KTL.convertNumToTel', function (event, newField) {
+                    newField.attr('disabled', 'disabled');
+                })
+
                 $(`#${view.key} .kn-input select`).attr('disabled', 'disabled');
+
                 return;
             }
 
@@ -7186,7 +7177,7 @@ function Ktl($, appInfo) {
                         let fieldId = field;
                         if (!field.startsWith('field_'))
                             fieldId = ktl.fields.getFieldIdFromLabel(view.key, field);
-                            
+
                         $(`#${view.key} .${fieldId} .kn-detail-body`).css('text-align', alignment);
                     }
                 } else
@@ -7903,9 +7894,9 @@ function Ktl($, appInfo) {
 
                 const style = params[0];
 
-                $(`#${viewId} th.sorted-asc, #${viewId} th.sorted-desc`).each(function() {
+                $(`#${viewId} th.sorted-asc, #${viewId} th.sorted-desc`).each(function () {
                     const index = $(this).index();
-                    $(`#${viewId} tbody tr:not(.kn-table-group)`).each(function() {
+                    $(`#${viewId} tbody tr:not(.kn-table-group)`).each(function () {
                         $(this).find('td').eq(index).attr('style', style);
                     });
                 });
@@ -10810,12 +10801,12 @@ function Ktl($, appInfo) {
                     if (activeFilter && activeFilter['collapsed'])
                         return activeFilter['collapsed'];
                     else
-                        return (getUrlParameter(`${viewId}_collapsed`) || '' ).split(',').filter(value => value != '');
+                        return (getUrlParameter(`${viewId}_collapsed`) || '').split(',').filter(value => value != '');
                 }
 
                 getCollapsedColumns().forEach(title => {
                     $(`#${viewId} .kn-table th`).each((index, element) => {
-                        if ( $(element).text().trim() === title)
+                        if ($(element).text().trim() === title)
                             hideColumn(viewId, index + 1);
                     })
                 });
@@ -10854,9 +10845,9 @@ function Ktl($, appInfo) {
                     const title = $(this).parent().text().trim();
                     let collapsedColumn = getCollapsedColumns();
 
-                    if($(this).parent().hasClass('ktlCollapsedColumn')) {
+                    if ($(this).parent().hasClass('ktlCollapsedColumn')) {
                         showColumn(viewId, columnIndex);
-                        collapsedColumn = collapsedColumn.filter( t => t != title);
+                        collapsedColumn = collapsedColumn.filter(t => t != title);
                     } else {
                         hideColumn(viewId, columnIndex);
                         if (collapsedColumn.findIndex(t => t === title) < 0)
@@ -11167,7 +11158,7 @@ function Ktl($, appInfo) {
             ktl.iFrameWnd.create();
             ktl.views.autoRefresh();
             ktl.scenes.resetIdleWatchdog();
-            ktl.fields.convertNumToTel();
+            ktl.fields.sceneConvertNumToTel();
             ktl.core.sortMenu();
 
             //Handle Scene change.
@@ -12841,7 +12832,7 @@ function Ktl($, appInfo) {
 
         return {
             isDeveloper: function () {
-                return ( (Knack.getUserRoleNames().split(',').map((element) => element.trim()).includes('Developer')) || (ktl.storage.lsGetItem('forceDevRole', true) === 'true') );
+                return ((Knack.getUserRoleNames().split(',').map((element) => element.trim()).includes('Developer')) || (ktl.storage.lsGetItem('forceDevRole', true) === 'true'));
             },
 
             isLoggedIn: function () {
