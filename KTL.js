@@ -6398,48 +6398,54 @@ function Ktl($, appInfo) {
                     if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {
                         ktl.core.getKeywordsByType(fieldId, kw).forEach((keyword) => {
                             if (ktl.core.hasRoleAccess(keyword.options)) {
-                                execFieldKw(fieldId, keyword.params, keyword.options);
+                                if (!fieldId || !keyword.params || !keyword.params.length) return;
+                                processRemoveOption( keyword.options, fieldId, keyword.params);
                             }
                         });
                     }
                 }
             }
+            function processRemoveOption(options, fieldId, params) {
+                return new Promise(function (resolve) {
+                    ktl.views.validateKtlCond(options, recordObj = {}, viewId)
+                        .then(valid => {
+                            if (valid) {
+                                const fieldType = ktl.fields.getFieldType(fieldId);
+                                const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
 
-            function execFieldKw(fieldId, params, options) {
-                console.log('execFieldKw', fieldId, params, options);
-                if (!fieldId || !params || !params.length) return;
+                                let selector;
+                                let isOptionBased = false;
 
-                const fieldType = ktl.fields.getFieldType(fieldId);
-                const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
-
-                let selector;
-                let isOptionBased = false;
-
-                if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
-                    selector = $(`#${viewId}-${fieldId}`).find('option');
-                    isOptionBased = true;
-                } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
-                    selector = $(`#kn-input-${fieldId}`).find('input');
-                }
-
-                if (selector) {
-                    $(selector).each(function () {
-                        const option = $(this);
-                        const optionText = isOptionBased ? option.text().trim() : option.val().trim();
-                        if (params[0].includes(optionText)) {
-                            if (isOptionBased) {
-                                option.remove();
-                                if (fieldType === 'connection') {
-                                    selector.trigger('liszt:updated');
+                                if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
+                                    selector = $(`#${viewId}-${fieldId}`).find('option');
+                                    OptionBased = true;
+                                } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
+                                    selector = $(`#kn-input-${fieldId}`).find('input');
                                 }
-                            } else {
-                                option.parent().remove();
-                            }
-                        }
-                    });
-                   
-                    
-                }
+
+                                if (selector) {
+                                    $(selector).each(function () {
+                                        const option = $(this);
+                                        const optionText = isOptionBased ? option.text().trim() : option.val().trim();
+                                        if (params[2].includes(optionText)) {
+                                            if (isOptionBased) {
+                                                option.remove();
+                                                selector.trigger('liszt:updated');
+                                            } else {
+                                                option.closest('.control').remove();
+                                            }
+                                        }
+                                    });
+                                
+                                    
+                                }
+
+                                resolve();
+                                    
+                            } else
+                                resolve();
+                        })
+                })
             }
         }
             
