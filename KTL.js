@@ -6405,6 +6405,7 @@ function Ktl($, appInfo) {
                     ktl.views.validateKtlCond(options, recordObj = {}, viewId)
                         .then(valid => {
                             if (valid) {
+                                console.log(params[0])
                                 const fieldType = ktl.fields.getFieldType(fieldId);
                                 const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
 
@@ -6413,7 +6414,7 @@ function Ktl($, appInfo) {
 
                                 if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
                                     selector = $(`#${viewId}-${fieldId}`).find('option');
-                                    OptionBased = true;
+                                    isOptionBased = true;
                                 } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
                                     selector = $(`#kn-input-${fieldId}`).find('input');
                                 }
@@ -6422,7 +6423,7 @@ function Ktl($, appInfo) {
                                     $(selector).each(function () {
                                         const option = $(this);
                                         const optionText = isOptionBased ? option.text().trim() : option.val().trim();
-                                        if (params[2].includes(optionText)) {
+                                        if (params[0].includes(optionText)) {
                                             if (isOptionBased) {
                                                 option.remove();
                                                 selector.trigger('liszt:updated');
@@ -6431,12 +6432,8 @@ function Ktl($, appInfo) {
                                             }
                                         }
                                     });
-                                
-                                    
                                 }
-
                                 resolve();
-                                    
                             } else
                                 resolve();
                         })
