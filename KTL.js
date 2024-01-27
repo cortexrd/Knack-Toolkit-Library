@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.11';
+    const KTL_VERSION = '0.22.12';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2221,6 +2221,8 @@ function Ktl($, appInfo) {
             //Converts all applicable fields in the scene from text to numeric (telephone) type to allow numeric keypad on mobile devices.
             //Also, using tel type is a little trick that allows auto-selection of text in a number field upon focus.
             fieldConvertNumToTel: function (viewId, field) {
+                if (!viewId || !field) return;
+
                 var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
                 var fieldId = fieldAttr.value;
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
