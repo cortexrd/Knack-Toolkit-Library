@@ -2018,6 +2018,7 @@ function Ktl($, appInfo) {
             }
         })
 
+        //$(document).on('focus', function (e) {
         document.addEventListener('focus', function (e) {
             if (document.activeElement.classList.contains('input')) {
                 //Turn-off auto complete for Kiosks. Users are annoyed by the dropdown that blocks the Submit button.
@@ -2030,13 +2031,33 @@ function Ktl($, appInfo) {
 
 
                 //Find a better way than redo all over again.
-                convertNumDone = false;
-                ktl.fields.convertNumToTel();
+                //convertNumDone = false;
+                //ktl.fields.convertNumToTel();
 
+                //This fixes the issue where fields replaced by the convertNumToTel above disappear when being focused in some cases.
                 try {
                     if (e.target && e.target.id && e.target.id.startsWith('field_')) {
-                        const fieldId = e.target.id;
-                        $(`#${fieldId}`).focus();
+                        let viewId = e.target.closest('.kn-view');
+                        if (viewId && viewId.id) {
+                            const fieldId = e.target.id;
+                            console.log('fieldId =', fieldId);
+                            console.log('viewId =', viewId.id);
+
+
+
+                            //ktl.core.waitSelector("#cell-editor").then(() => {
+                            //    setTimeout(() => { // Wait for cell-editor's content to change
+                            //        $("#cell-editor").find('div:not(.chzn-search) > input:visible').trigger('focus');
+                            //    }, 500);
+                            //});
+
+                        //    setTimeout(() => {
+                        //        if (document.querySelector('#cell-editor'))
+                        //            $(`#cell-editor #${fieldId}`).focus();
+                        //        else
+                        //            $(`#${viewId.id} #${fieldId}`).focus();
+                        //    }, 1000);
+                        }
                     }
                 } catch { /*ignore*/ }
             }
@@ -2044,28 +2065,29 @@ function Ktl($, appInfo) {
             //Do we need to add the chznBetter object?
             //chznBetter is ktl's fix to a few chzn dropdown problems.
             //Note that support of multi-selection type has been removed.  Too buggy for now, and needs more work.
-            if (ktl.core.getCfg().enabled.chznBetter && !ktl.fields.getUsingBarcode()) {
-                //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
-                var dropdownId = $(e.target).closest('.chzn-container').attr('id');
+        // Search & Destroy - part 1
+        //    if (ktl.core.getCfg().enabled.chznBetter && !ktl.fields.getUsingBarcode()) {
+        //        //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field and need a fix.
+        //        var dropdownId = $(e.target).closest('.chzn-container').attr('id');
 
-                var dropdownNeedsFix = false;
-                if (dropdownId !== undefined && !dropdownId.includes('kn_conn_'))
-                    dropdownNeedsFix = $('#' + dropdownId).find('.ui-autocomplete-input').length > 0;
+        //        var dropdownNeedsFix = false;
+        //        if (dropdownId !== undefined && !dropdownId.includes('kn_conn_'))
+        //            dropdownNeedsFix = $('#' + dropdownId).find('.ui-autocomplete-input').length > 0;
 
-                if (e.target.tagName.toLowerCase() === 'input') {
-                    if (dropdownId !== undefined && $('#' + dropdownId).find('#chznBetter').length > 0) {
-                        //console.log('Clicked dropdown already has chznBetter');
-                    } else {
-                        clearInterval(chznChoicesIntervalId);
-                        $('#chznBetter').remove();
+        //        if (e.target.tagName.toLowerCase() === 'input') {
+        //            if (dropdownId !== undefined && $('#' + dropdownId).find('#chznBetter').length > 0) {
+        //                //console.log('Clicked dropdown already has chznBetter');
+        //            } else {
+        //                clearInterval(chznChoicesIntervalId);
+        //                $('#chznBetter').remove();
 
-                        if (dropdownNeedsFix && dropdownId.length > 0) {
-                            if ($('#chznBetter').length === 0)
-                                ktl.fields.addChznBetter(dropdownId);
-                        }
-                    }
-                }
-            }
+        //                if (dropdownNeedsFix && dropdownId.length > 0) {
+        //                    if ($('#chznBetter').length === 0)
+        //                        ktl.fields.addChznBetter(dropdownId);
+        //                }
+        //            }
+        //        }
+        //    }
         }, true);
 
         $(document).on('input', function (e) {
