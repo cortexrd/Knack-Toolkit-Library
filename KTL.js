@@ -6406,31 +6406,36 @@ function Ktl($, appInfo) {
                 let selector;
                 let isOptionBased = false;
 
-                if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
-                    selector = $(`#${viewId}-${fieldId}`).find('option');
-                    isOptionBased = true;
-                } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
-                    selector = $(`#kn-input-${fieldId}`).find('input');
-                }
-
-                if (selector) {
-                    $(selector).each(function () {
-                        const option = $(this);
-                        const optionText = isOptionBased ? option.text().trim() : option.val().trim();
-                        if (params[0].includes(optionText)) {
-                            if (isOptionBased) {
-                                option.remove();
-                                if (fieldType === 'connection') {
-                                    selector.trigger('liszt:updated');
+                                if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
+                                    selector = $(`#${viewId}-${fieldId}`).find('option');
+                                    OptionBased = true;
+                                } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
+                                    selector = $(`#kn-input-${fieldId}`).find('input');
                                 }
-                            } else {
-                                option.parent().remove();
-                            }
-                        }
-                    });
-                   
-                    
-                }
+
+                                if (selector) {
+                                    $(selector).each(function () {
+                                        const option = $(this);
+                                        const optionText = isOptionBased ? option.text().trim() : option.val().trim();
+                                        if (params[2].includes(optionText)) {
+                                            if (isOptionBased) {
+                                                option.remove();
+                                                selector.trigger('liszt:updated');
+                                            } else {
+                                                option.closest('.control').remove();
+                                            }
+                                        }
+                                    });
+                                
+                                    
+                                }
+
+                                resolve();
+                                    
+                            } else
+                                resolve();
+                        })
+                })
             }
         }
 
