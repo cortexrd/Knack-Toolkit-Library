@@ -5787,7 +5787,7 @@ function Ktl($, appInfo) {
                     keywords._scs && colorizeSortedColumn(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
                     keywords._dv && disableView(view, keywords);
-                    keywords._ro && removeOption(view)
+                    keywords._ro && removeOption(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
