@@ -6403,39 +6403,29 @@ function Ktl($, appInfo) {
                         const fieldType = ktl.fields.getFieldType(fieldId);
                         const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
 
-                let selector;
-                let isOptionBased = false;
+                        let selector;
+                        if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
+                            selector = $(`#${viewId}-${fieldId}`).find('option');
+                            isOptionBased = true;
+                        } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
+                            selector = $(`#${viewId} #kn-input-${fieldId}`).find('input');
+                        }
 
-                                if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
-                                    selector = $(`#${viewId}-${fieldId}`).find('option');
-                                    OptionBased = true;
-                                } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
-                                    selector = $(`#kn-input-${fieldId}`).find('input');
-                                }
+                        if (!selector) return;
 
-                                if (selector) {
-                                    $(selector).each(function () {
-                                        const option = $(this);
-                                        const optionText = isOptionBased ? option.text().trim() : option.val().trim();
-                                        if (params[2].includes(optionText)) {
-                                            if (isOptionBased) {
-                                                option.remove();
-                                                selector.trigger('liszt:updated');
-                                            } else {
-                                                option.closest('.control').remove();
-                                            }
-                                        }
-                                    });
-                                
-                                    
-                                }
+                        $(selector).each(function () {
+                            const option = $(this);
+                            const optionText = isOptionBased ? option.text().trim() : option.val().trim();
+                            if (!optionsToRemove.includes(optionText)) return;
 
-                                resolve();
-                                    
-                            } else
-                                resolve();
-                        })
-                })
+                            if (isOptionBased) {
+                                option.remove();
+                                selector.trigger('liszt:updated');
+                            } else {
+                                option.closest('.control').remove();
+                            }
+                        });
+                    });
             }
         }
 
