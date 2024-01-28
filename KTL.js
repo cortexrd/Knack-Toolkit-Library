@@ -10165,7 +10165,7 @@ function Ktl($, appInfo) {
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (viewType === 'table' || viewType === 'search' || viewType === 'list') {
-                        const isJQueryTarget = ktl.core.extractJQuerySelector(kwInstance.options.ktlTarget);
+                        const isJQueryTarget = kwInstance.options && kwInstance.options.ktlTarget && ktl.core.extractJQuerySelector(kwInstance.options.ktlTarget);
                         if (isJQueryTarget)
                             processClass(options);
                         else {
