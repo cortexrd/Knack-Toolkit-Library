@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.12';
+    const KTL_VERSION = '0.22.13';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -7525,7 +7525,7 @@ function Ktl($, appInfo) {
                 if (div) {
                     div.prepend(sendEmailsButtonDiv);
 
-                    const sendEmailsButton = ktl.fields.addButton(sendEmailsButtonDiv, 'Send Emails Now', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktlSendEmailNow-' + viewId);
+                    const sendEmailsButton = ktl.fields.addButton(sendEmailsButtonDiv, 'Send Emails Now', '', ['kn-button', 'ktlButtonMargin'], 'ktlSendEmailNow-' + viewId);
                     sendEmailsButton.addEventListener('click', function (e) {
                         console.log('Send email now');
 
@@ -14148,11 +14148,12 @@ function Ktl($, appInfo) {
             if (numChecked) {
                 $('#' + viewId + ' .bulkEditHeaderCbox').removeClass('ktlDisplayNone');
 
-                if ($('#' + viewId + ' .bulkEditHeaderCbox:checked').length)
-                    $('#' + viewId + ' tbody tr td').addClass('bulkEditSelectSrc');
-                else
-                    $('#' + viewId + ' tbody tr td.cell-edit').addClass('bulkEditSelectSrc');
-
+                if (viewCanDoBulkOp(viewId, 'edit')) {
+                    if ($('#' + viewId + ' .bulkEditHeaderCbox:checked').length)
+                        $('#' + viewId + ' tbody tr td').addClass('bulkEditSelectSrc');
+                    else
+                        $('#' + viewId + ' tbody tr td.cell-edit').addClass('bulkEditSelectSrc');
+                }
             } else {
                 $('#' + viewId + ' .bulkEditHeaderCbox').addClass('ktlDisplayNone');
                 $('#' + viewId + ' tbody tr td').removeClass('bulkEditSelectSrc');
@@ -14363,8 +14364,30 @@ function Ktl($, appInfo) {
             if (!viewId || !bulkOp) return false;
 
             const nbo = ktlKeywords[viewId] && ktlKeywords[viewId]._nbo;
+            const ebo = ktlKeywords[viewId] && ktlKeywords[viewId]._ebo;
+
+            let bulkOpEnabled = false;
+            if (ebo !== undefined) {
+                if (ebo.length && ebo[0].options) {
+                    const options = ebo[0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                if (ebo.length === 0)
+                    bulkOpEnabled = true;
+                else {
+                    if (!ebo[0].params[0].length || ebo[0].params[0].includes(bulkOp))
+                        bulkOpEnabled = true;
+                }
+            }
+
             let bulkOpDisabled = false;
             if (nbo !== undefined) {
+                if (nbo.length && nbo[0].options) {
+                    const options = nbo[0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
                 if (nbo.length === 0)
                     bulkOpDisabled = true;
                 else {
@@ -14376,28 +14399,28 @@ function Ktl($, appInfo) {
             let tableHasInlineEditing = ktl.views.viewHasInlineEdit(viewId);
 
             //Bulk Edit
-            if (bulkOp === 'edit'
-                && ktl.core.getCfg().enabled.bulkOps.bulkEdit
-                && Knack.getUserRoleNames().includes('Bulk Edit')
-                && tableHasInlineEditing
-                && !bulkOpDisabled)
-                return true;
+            if (bulkOp === 'edit' && ktl.core.getCfg().enabled.bulkOps.bulkEdit) {
+                if ((Knack.getUserRoleNames().includes('Bulk Edit') || bulkOpEnabled)
+                    && tableHasInlineEditing
+                    && !bulkOpDisabled)
+                    return true;
+            }
 
             //Bulk Copy
-            if (bulkOp === 'copy'
-                && ktl.core.getCfg().enabled.bulkOps.bulkCopy
-                && Knack.getUserRoleNames().includes('Bulk Copy')
-                && tableHasInlineEditing
-                && !bulkOpDisabled)
-                return true;
+            if (bulkOp === 'copy' && ktl.core.getCfg().enabled.bulkOps.bulkCopy) {
+                if ((Knack.getUserRoleNames().includes('Bulk Copy') || bulkOpEnabled)
+                    && tableHasInlineEditing
+                    && !bulkOpDisabled)
+                    return true;
+            }
 
             //Bulk Delete
-            if (bulkOp === 'delete'
-                && ktl.core.getCfg().enabled.bulkOps.bulkDelete
-                && Knack.getUserRoleNames().includes('Bulk Delete')
-                && document.querySelector('#' + viewId + ' .kn-link-delete')
-                && !bulkOpDisabled)
-                return true;
+            if (bulkOp === 'delete' && ktl.core.getCfg().enabled.bulkOps.bulkDelete) {
+                if ((Knack.getUserRoleNames().includes('Bulk Delete') || bulkOpEnabled)
+                    && tableHasInlineEditing
+                    && !bulkOpDisabled)
+                    return true;
+            }
 
             return false;
         }
