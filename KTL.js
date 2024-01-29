@@ -5787,6 +5787,7 @@ function Ktl($, appInfo) {
                     keywords._scs && colorizeSortedColumn(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
                     keywords._dv && disableView(view, keywords);
+                    keywords._ro && removeOption(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5797,7 +5798,7 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 disableFilterOnFields(view, keywords);
-
+                
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
             catch (err) { console.log('err', err); };
@@ -6371,6 +6372,77 @@ function Ktl($, appInfo) {
                     aElements.removeAttr('href').addClass('ktlLinkDisabled');
                 }
             });
+        }
+
+        function removeOption(view, keywords) {
+            const kw = '_ro';
+
+            const { key: viewId } = view;
+            if (!viewId) return;
+
+            //Process views keyword
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                ktl.core.getKeywordsByType(viewId, kw).forEach((keyword) => {
+                    if (ktl.core.hasRoleAccess(keyword.options)) {
+                        processViewRemoveOption(keyword);
+                    }
+                });
+            }
+
+            async function processViewRemoveOption({ params, options }) {
+                return ktl.views.validateKtlCond(options, recordObj = {}, viewId)
+                    .then(valid => {
+                        if (!valid) return;
+
+                        const [fieldLabel, ...optionsToRemove] = params[0];
+                        let fieldId = fieldLabel.startsWith('field_') ? fieldLabel : ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
+                        if (!fieldId) return;
+
+                        const fieldType = ktl.fields.getFieldType(fieldId);
+                        const fieldFormat = Knack.objects.getField(fieldId).attributes.format;
+
+                        let isOptionBased = false;
+                        let selector;
+
+                        const isMultipleChoice = fieldType === 'multiple_choice';
+                        const isConnection = fieldType === 'connection';
+                        const isBoolean = fieldType === 'boolean';
+
+                        const formatType = fieldFormat.type;
+                        const formatInput = fieldFormat.input;
+
+                        if ((isMultipleChoice && ['single', 'multi'].includes(formatType)) || isConnection) {
+                            selector = $(`#${viewId}-${fieldId}`).find('option');
+                            isOptionBased = true;
+                        }
+                        else if (isMultipleChoice && ['checkboxes', 'radios'].includes(formatType)) {
+                            selector = $(`#${viewId} #kn-input-${fieldId}`).find('input');
+                        }
+                        else if (isBoolean && ['dropdown'].includes(formatInput)) {
+                            selector = $(`#${viewId} #${fieldId}`).find('option');
+                            isOptionBased = true;
+                        }
+                        else if (isBoolean && ['radios', 'checkbox'].includes(formatInput)) {
+                            selector = $(`#${viewId} #kn-input-${fieldId}`).find('input');
+                        }
+
+                        if (!selector) return;
+
+                        $(selector).each(function () {
+                            const option = $(this);
+                            const optionText = isOptionBased ? option.text().trim() : option.val().trim();
+                            if (!optionsToRemove.includes(optionText)) return;
+
+                            if (isOptionBased) {
+                                option.remove();
+                                selector.trigger('liszt:updated');
+                            } else {
+                                option.closest('.control').remove();
+                            }
+                        });
+                    });
+            }
         }
 
         /////////////////////////////////////////////////////////////////////////////////
