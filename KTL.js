@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.13';
+    const KTL_VERSION = '0.22.14';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -257,6 +257,7 @@ function Ktl($, appInfo) {
                                     keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                                     keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
                                     ktl.fields.hideFields(viewId, keywords);
+                                    keywords._ro && $('#' + viewId).addClass('ktlVisibilityHidden');
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
                                         if (!ktl.core.isKiosk())
@@ -5787,7 +5788,7 @@ function Ktl($, appInfo) {
                     keywords._scs && colorizeSortedColumn(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
                     keywords._dv && disableView(view, keywords);
-                    keywords._ro && removeOption(view, keywords);
+                    keywords._ro && removeOptions(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -5798,7 +5799,7 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 disableFilterOnFields(view, keywords);
-                
+
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
             catch (err) { console.log('err', err); };
@@ -6374,7 +6375,7 @@ function Ktl($, appInfo) {
             });
         }
 
-        function removeOption(view, keywords) {
+        function removeOptions(view, keywords) {
             const kw = '_ro';
 
             const { key: viewId } = view;
@@ -6382,10 +6383,15 @@ function Ktl($, appInfo) {
 
             //Process views keyword
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                ktl.core.getKeywordsByType(viewId, kw).forEach((keyword) => {
+                const promises = ktl.core.getKeywordsByType(viewId, kw).map((keyword) => {
                     if (ktl.core.hasRoleAccess(keyword.options)) {
-                        processViewRemoveOption(keyword);
+                        return processViewRemoveOption(keyword);
                     }
+                    return Promise.resolve();
+                });
+
+                Promise.all(promises).then(() => {
+                    $('#' + viewId).removeClass('ktlVisibilityHidden');
                 });
             }
 
@@ -6409,8 +6415,8 @@ function Ktl($, appInfo) {
                         const isConnection = fieldType === 'connection';
                         const isBoolean = fieldType === 'boolean';
 
-                        const formatType = fieldFormat.type;
-                        const formatInput = fieldFormat.input;
+                        const formatType = fieldFormat && fieldFormat.type;
+                        const formatInput = fieldFormat && fieldFormat.input;
 
                         if ((isMultipleChoice && ['single', 'multi'].includes(formatType)) || isConnection) {
                             selector = $(`#${viewId}-${fieldId}`).find('option');
