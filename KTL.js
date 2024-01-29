@@ -6384,12 +6384,12 @@ function Ktl($, appInfo) {
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 ktl.core.getKeywordsByType(viewId, kw).forEach((keyword) => {
                     if (ktl.core.hasRoleAccess(keyword.options)) {
-                        processViewRemoveOption(keyword.params, keyword.options);
+                        processViewRemoveOption(keyword);
                     }
                 });
             }
 
-            async function processViewRemoveOption(params, options) {
+            async function processViewRemoveOption({ params, options }) {
                 return ktl.views.validateKtlCond(options, recordObj = {}, viewId)
                     .then(valid => {
                         if (!valid) return;
