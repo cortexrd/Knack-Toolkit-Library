@@ -5798,7 +5798,7 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 disableFilterOnFields(view, keywords);
-
+                
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
             catch (err) { console.log('err', err); };
