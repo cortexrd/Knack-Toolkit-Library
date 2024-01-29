@@ -6399,15 +6399,31 @@ function Ktl($, appInfo) {
 
                         if (!fieldId) return;
 
-                        let isOptionBased = false; //Used to determine if dealing with a select or a checkbox/radio.
                         const fieldType = ktl.fields.getFieldType(fieldId);
-                        const fieldFormat = Knack.objects.getField(fieldId).attributes.format.type;
+                        const fieldFormat = Knack.objects.getField(fieldId).attributes.format;
 
+                        let isOptionBased = false;
                         let selector;
-                        if ((fieldType === 'multiple_choice' && ['single', 'multi'].includes(fieldFormat)) || fieldType === 'connection') {
+
+                        const isMultipleChoice = fieldType === 'multiple_choice';
+                        const isConnection = fieldType === 'connection';
+                        const isBoolean = fieldType === 'boolean';
+
+                        const formatType = fieldFormat.type;
+                        const formatInput = fieldFormat.input;
+
+                        if ((isMultipleChoice && ['single', 'multi'].includes(formatType)) || isConnection) {
                             selector = $(`#${viewId}-${fieldId}`).find('option');
                             isOptionBased = true;
-                        } else if (fieldType === 'multiple_choice' && ['checkboxes', 'radios'].includes(fieldFormat)) {
+                        }
+                        else if (isMultipleChoice && ['checkboxes', 'radios'].includes(formatType)) {
+                            selector = $(`#${viewId} #kn-input-${fieldId}`).find('input');
+                        }
+                        else if (isBoolean && ['dropdown'].includes(formatInput)) {
+                            selector = $(`#${viewId} #${fieldId}`).find('option');
+                            isOptionBased = true;
+                        }
+                        else if (isBoolean && ['radios', 'checkbox'].includes(formatInput)) {
                             selector = $(`#${viewId} #kn-input-${fieldId}`).find('input');
                         }
 
