@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.6.5 */
+/* KTL CSS version: 0.6.6 */
 
 /************ General Settings **************/
 :root {
@@ -495,7 +495,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 @media print {
-	#addVersionInfoDiv {
+	#addVersionInfoDiv, .bulkEditCb {
 		display: none;
 	}
 
