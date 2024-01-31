@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.6.6 */
+/* KTL CSS version: 0.6.7 */
 
 /************ General Settings **************/
 :root {
@@ -482,7 +482,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 /* Reduced page margins, to maximize available real-estate. */
-.ktlNarrowMarginsPage.kn-scene.kn-container {
+.ktlNarrowMarginsPage .kn-scene.kn-container {
 	padding: 2px;
 	margin-left: 2px !important;
 	margin-right: 2px !important;
@@ -491,7 +491,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 /* For any page where high data density is required, typically for Dashboards */
 .ktlDenseGrid .knTable th,
 .ktlDenseGrid .knTable td {
-	padding: 1px 2px 1px 2px;
+	padding: 1px 2px 1px 2px!important;
 }
 
 @media print {
