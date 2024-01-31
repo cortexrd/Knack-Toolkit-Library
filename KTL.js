@@ -2838,8 +2838,11 @@ function Ktl($, appInfo) {
 
 
             //Parameters are size, field ID and hidden text flag "h".
-            generateBarcode: function (viewId, keywords) {
-                if (!viewId || ktl.views.getViewType(viewId) !== 'details') return;
+            generateBarcode: function (viewId, keywords, data) {
+                if (!viewId) return;
+
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType !== 'details' && viewType !== 'list') return;
 
                 const kw = '_bcg';
                 if (keywords[kw].length && keywords[kw][0].options) {
@@ -2894,25 +2897,57 @@ function Ktl($, appInfo) {
                         return;
                     }
 
-                    //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
-                    const text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
-                    const barcodeData = { text: text, width: size, height: size };
                     ktl.core.loadLib('QRGenerator')
                         .then(() => {
-                            var qrCodeDiv = document.getElementById('qrCodeDiv');
-                            if (!qrCodeDiv) {
-                                qrCodeDiv = document.createElement('div');
-                                $('#' + viewId + ' .' + fieldId).append(qrCodeDiv);
-                                qrCodeDiv.setAttribute('id', 'qrCodeDiv');
+                            if (viewType === 'details') {
+                                //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
+                                const text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
+                                const barcodeData = { text: text, width: size, height: size };
+
+                                var qrCodeDiv = document.getElementById('qrCodeDiv');
+                                if (!qrCodeDiv) {
+                                    qrCodeDiv = document.createElement('div');
+
+                                    if (hideText) {
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).remove()
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span`).append(qrCodeDiv);
+                                    } else
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).prepend(qrCodeDiv);
+
+                                    qrCodeDiv.setAttribute('id', 'qrCodeDiv');
+                                    qrCodeDiv.style.textAlign = 'center';
+                                }
+
+                                $('#qrCodeDiv').qrcode(barcodeData);
+                            } else if (viewType === 'list') {
+                                data.forEach(row => {
+                                    //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
+                                    const text = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`)[0].textContent.replace(/<br \/>/g, '\n');
+                                    const barcodeData = { text: text, width: size, height: size };
+
+                                    var qrCodeDiv = document.getElementById(`${viewId}-qrCodeDiv-${fieldId}-${row.id}`);
+                                    if (!qrCodeDiv) {
+                                        qrCodeDiv = document.createElement('div');
+                                        const test = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId}`);
+                                        const str = `#${viewId} [data-record-id="${row.id}"] .${fieldId}`;
+
+                                        if (hideText) {
+                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`).remove();
+                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`).append(qrCodeDiv);
+                                        } else
+                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`).prepend(qrCodeDiv);
+
+                                        qrCodeDiv.setAttribute('id', `${viewId}-qrCodeDiv-${fieldId}-${row.id}`);
+
+                                        if (Knack.views[viewId].model.view.label_format === 'none' || Knack.views[viewId].model.view.label_format === 'top')
+                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body`).css('text-align', 'center');
+                                        else
+                                            qrCodeDiv.style.textAlign = 'center';
+                                    }
+
+                                    $(`#${viewId}-qrCodeDiv-${fieldId}-${row.id}`).qrcode(barcodeData);
+                                })
                             }
-
-                            if (qrCodeDiv.lastChild)
-                                qrCodeDiv.removeChild(qrCodeDiv.lastChild);
-
-                            $('#qrCodeDiv').qrcode(barcodeData);
-
-                            if (hideText)
-                                $('#' + viewId + ' .' + fieldId + ' .kn-detail-body').remove();
                         })
                         .catch(reason => { reject('generateBarcode error:', reason); })
                 }
@@ -5768,7 +5803,7 @@ function Ktl($, appInfo) {
                     keywords._rvs && refreshViewsAfterSubmit(viewId, keywords);
                     keywords._rvr && refreshViewsAfterRefresh(viewId, keywords);
                     keywords._nsg && noSortingOnGrid(viewId, keywords);
-                    keywords._bcg && ktl.fields.generateBarcode(viewId, keywords);
+                    keywords._bcg && ktl.fields.generateBarcode(viewId, keywords, data);
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(viewId, keywords);
@@ -10964,7 +10999,6 @@ function Ktl($, appInfo) {
                 var linkSelector = `.knTable td a:not(".kn-action-link"), .kn-detail-body a:not(".kn-action-link")`;
 
                 //...and if not, then only this view.
-                //if (options && (!options.ktlTarget || options.ktlTarget !== 'page'))
                 if (!options || (options && options.ktlTarget && options.ktlTarget !== 'page'))
                     linkSelector = `#${viewId} .knTable td a:not(".kn-action-link"), #${viewId} .kn-detail-body a:not(".kn-action-link")`;
 
