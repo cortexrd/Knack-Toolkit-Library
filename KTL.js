@@ -2842,7 +2842,7 @@ function Ktl($, appInfo) {
                 if (!viewId) return;
 
                 const viewType = ktl.views.getViewType(viewId);
-                if (viewType !== 'details' && viewType !== 'list') return;
+                if (viewType !== 'details' && viewType !== 'list' && viewType !== 'form') return;
 
                 const kw = '_bcg';
                 if (keywords[kw].length && keywords[kw][0].options) {
@@ -2873,7 +2873,7 @@ function Ktl($, appInfo) {
                                 if (!fieldId.startsWith('field_'))
                                     fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
 
-                                if (!$('#' + viewId + ' .' + fieldId).length) {
+                                if (!$('#' + viewId + ' .' + fieldId).length && !$('#' + viewId + ' #' + fieldId).length) {
                                     ktl.log.clog('purple', 'generateBarcode called with invalid field ID:', viewId, fieldId);
                                     return;
                                 }
@@ -2904,48 +2904,74 @@ function Ktl($, appInfo) {
                                 const text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
                                 const barcodeData = { text: text, width: size, height: size };
 
-                                var qrCodeDiv = document.getElementById('qrCodeDiv');
-                                if (!qrCodeDiv) {
-                                    qrCodeDiv = document.createElement('div');
+                                var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
+                                if (!bcgDiv) {
+                                    bcgDiv = document.createElement('div');
 
                                     if (hideText) {
-                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).remove()
-                                        $(`#${viewId} .${fieldId} .kn-detail-body span`).append(qrCodeDiv);
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).remove();
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span`).append(bcgDiv);
                                     } else
-                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).prepend(qrCodeDiv);
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).prepend(bcgDiv);
 
-                                    qrCodeDiv.setAttribute('id', 'qrCodeDiv');
-                                    qrCodeDiv.style.textAlign = 'center';
+                                    bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}`);
+                                    bcgDiv.style.textAlign = 'center';
                                 }
 
-                                $('#qrCodeDiv').qrcode(barcodeData);
+                                $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
                             } else if (viewType === 'list') {
                                 data.forEach(row => {
                                     //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                                     const text = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`)[0].textContent.replace(/<br \/>/g, '\n');
                                     const barcodeData = { text: text, width: size, height: size };
 
-                                    var qrCodeDiv = document.getElementById(`${viewId}-qrCodeDiv-${fieldId}-${row.id}`);
-                                    if (!qrCodeDiv) {
-                                        qrCodeDiv = document.createElement('div');
+                                    var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}-${row.id}`);
+                                    if (!bcgDiv) {
+                                        bcgDiv = document.createElement('div');
                                         const test = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId}`);
                                         const str = `#${viewId} [data-record-id="${row.id}"] .${fieldId}`;
 
                                         if (hideText) {
                                             $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`).remove();
-                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`).append(qrCodeDiv);
+                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`).append(bcgDiv);
                                         } else
-                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`).prepend(qrCodeDiv);
+                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`).prepend(bcgDiv);
 
-                                        qrCodeDiv.setAttribute('id', `${viewId}-qrCodeDiv-${fieldId}-${row.id}`);
+                                        bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}-${row.id}`);
 
                                         if (Knack.views[viewId].model.view.label_format === 'none' || Knack.views[viewId].model.view.label_format === 'top')
                                             $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body`).css('text-align', 'center');
                                         else
-                                            qrCodeDiv.style.textAlign = 'center';
+                                            bcgDiv.style.textAlign = 'center';
                                     }
 
-                                    $(`#${viewId}-qrCodeDiv-${fieldId}-${row.id}`).qrcode(barcodeData);
+                                    $(`#${viewId}-bcgDiv-${fieldId}-${row.id}`).qrcode(barcodeData);
+                                })
+                            } else if (viewType === 'form') {
+                                //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
+                                const text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
+                                const barcodeData = { text: text, width: size, height: size };
+
+                                var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
+                                if (!bcgDiv) {
+                                    bcgDiv = document.createElement('div');
+
+                                    $(`#${viewId} [data-input-id="${fieldId}"]`).append(bcgDiv);
+
+                                    bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}`);
+                                    bcgDiv.style.marginTop = '10px';
+                                }
+
+                                $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
+
+                                $(`#${viewId} #${fieldId}`).on('input', function (e) {
+                                    const text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
+                                    const barcodeData = { text: text, width: size, height: size };
+
+                                    if (bcgDiv.lastChild)
+                                        bcgDiv.removeChild(bcgDiv.lastChild);
+
+                                    $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
                                 })
                             }
                         })
