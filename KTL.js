@@ -6201,7 +6201,7 @@ function Ktl($, appInfo) {
         function addTooltips(view, keywords) {
             const kw = '_ttip';// @params = [tooltip text], [options] - Must be in two groups so that commas can be used in the tooltip text, options are tdfl (table, details, forms and lists)
             const { key: viewId, type: viewType } = view;
-            if (!viewId) return;
+            if (!viewId || !viewType) return;
 
             //Process fields keyword
             var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
@@ -10862,7 +10862,7 @@ function Ktl($, appInfo) {
             //Add a tooltip to a field label/header
             addTooltipsToFields: function (viewId, tooltipText, viewType, tooltipIconPosition) {
                 if (!viewId || !viewType) return;
-
+                viewType = viewType === 'list' ? 'details' : viewType;
                 // console.log(tooltipIconPosition)
                 const icon = '<i class="fa fa-question-circle ktlTooltipIcon ktlTtipIcon-' + viewType + '-view"> </i>';
 
