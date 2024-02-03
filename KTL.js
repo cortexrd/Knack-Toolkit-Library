@@ -1588,8 +1588,8 @@ function Ktl($, appInfo) {
             },
 
             findParentURL: function (URLNow, numParents) {
-                if (numParents < 1 || numParents > 10) {
-                    console.error("Number of parents should be between 1 and 10.");
+                if (isNaN(numParents) || numParents < 2 || numParents > 10) {
+                    ktl.log.clog('purple', `findParentURL called with invalid numParents: ${level}.  Value must be between 2 and 10.`);
                     return null;
                 }
 
@@ -2928,9 +2928,6 @@ function Ktl($, appInfo) {
                                     var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}-${row.id}`);
                                     if (!bcgDiv) {
                                         bcgDiv = document.createElement('div');
-                                        const test = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId}`);
-                                        const str = `#${viewId} [data-record-id="${row.id}"] .${fieldId}`;
-
                                         if (hideText) {
                                             $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`).remove();
                                             $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`).append(bcgDiv);
@@ -7458,10 +7455,15 @@ function Ktl($, appInfo) {
             }
 
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                const level = keywords[kw][0].params[0][0] || 1;
+                const numParents = keywords[kw][0].params[0][0] || 2;
+                if (isNaN(numParents) || numParents < 2 || numParents > 10) {
+                    ktl.log.clog('purple', `_parent has an illegal level value: ${numParents} in ${viewId}.  Value must be between 2 and 10.`);
+                    return;
+                }
+
                 if (viewType === 'form') {
                     $(document).bindFirst('knack-form-submit.' + viewId, () => {
-                        const url = ktl.core.findParentURL(window.location.href, level);
+                        const url = ktl.core.findParentURL(window.location.href, numParents);
                         url && (window.location.href = url);
                     })
                 } else if (viewType === 'menu') {
@@ -7472,7 +7474,7 @@ function Ktl($, appInfo) {
                             const sysColors = sc;
                             var gotoParentBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .menu-links__list'), buttonLabel, `color:${sysColors.links.rgb}`, ['menu-links__list-item', 'knMenuLink', 'knMenuLink--button', 'knMenuLink--filled', 'knMenuLink--size-medium'], 'ktlGotoParent-' + viewId);
                             gotoParentBtn.addEventListener('click', function (e) {
-                                const url = ktl.core.findParentURL(window.location.href, level);
+                                const url = ktl.core.findParentURL(window.location.href, numParents);
                                 url && (window.location.href = url);
                             })
                         })
