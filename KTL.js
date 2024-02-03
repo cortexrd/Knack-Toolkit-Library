@@ -6261,7 +6261,7 @@ function Ktl($, appInfo) {
                     for (let i = 0; i < paramGroups.length; i += 2) {
                         const [firstParam, fieldLabel] = paramGroups.slice(i, i + 2);
                         const ttipText = firstParam.map(item => item.trim()).join(', ');
-                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel[0]);
+                        const fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel[0]);
 
                         let tooltipIconPosition;
                         const viewSelector = `#${viewId}`;
