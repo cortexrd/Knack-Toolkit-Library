@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.15';
+    const KTL_VERSION = '0.22.16';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6091,13 +6091,32 @@ function Ktl($, appInfo) {
                 }
             }
 
+            fieldsAr = fieldsAr.map(field =>
+                field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+            );
+
+            //For temporary debug ouput, until issue #216 is resolved.
+            const remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
+
+            if (fieldsAr.length)
+                remoteDev && console.log('viewId and fieldsAr =', viewId, fieldsAr);
+
             $(document).off('click.ktlNf').on('click.ktlNf', function (e) {
+                remoteDev && console.log('_nf click processed');
                 if (e.target.closest('.kn-add-filter,.kn-filters,#add-filter-link')) {
-                    var filterFields = document.querySelectorAll('.field.kn-select select option');
-                    filterFields.forEach(field => {
-                        if (fieldsAr.includes(field.value) || fieldsAr.includes(field.textContent))
-                            field.remove();
-                    })
+                    remoteDev && console.log('filter element found');
+                    for (const fieldId of fieldsAr) {
+                        const fieldSelector = `.field.kn-select select option[value="${fieldId}"]`;
+                        remoteDev && console.log('Waiting for: ', fieldSelector);
+                        ktl.core.waitSelector(fieldSelector, 3000)
+                            .then(function () {
+                                remoteDev && console.log('Removing: ', fieldSelector);
+                                $(fieldSelector).remove();
+                            })
+                            .catch(function () {
+                                //ktl.log.clog('purple', `Failed wiating for selector in _nf, ${viewId}, ${fieldSelector}`);
+                            })
+                    }
                 }
             })
         }
