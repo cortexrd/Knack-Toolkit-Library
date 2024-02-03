@@ -5890,13 +5890,14 @@ function Ktl($, appInfo) {
             var eventFieldId = view.events.event_field.key;
             var recId = event.id;
             var dndConfViewId = viewIds[0]; //First view must always be the DnD Confirmation view.
+            viewIds.shift();
 
             //The retries are necessary due to the latency chain: calendar > server > view being updated.
-            (function tryRefresh(DndConfViewId, retryCtr) {
+            (function tryRefresh(dndConfirmationViewId, retryCtr) {
                 setTimeout(() => {
-                    ktl.views.refreshView(DndConfViewId).then(function (data) {
-                        ktl.core.knAPI(DndConfViewId, recId, {}, 'GET')
-                            .then((record) => {
+                    ktl.views.refreshView(dndConfirmationViewId).then(function (data) {
+                        ktl.core.knAPI(dndConfirmationViewId, recId, {}, 'GET')
+                            .then(record => {
                                 try {
                                     if (!record[eventFieldId] || (record.records && record.records.length === 0)) {
                                         ktl.log.clog('purple', 'Empty record found in processRvd.');
@@ -5928,13 +5929,14 @@ function Ktl($, appInfo) {
                                         if (Date.parse(dtTo) === Date.parse(eventEnd)) {
                                             ktl.log.clog('green', 'Date match found!');
 
-                                            //Must refresh all views, including the DnD Confirmation, otherwise the view is not always updated.
+                                            //Don't expect to see the API call's data in the DnD view.
+                                            //It's normal that it always shows the same data, the first record found.
                                             ktl.views.refreshViewArray(viewIds);
                                         }
                                     } else {
                                         if (retryCtr-- > 0) {
                                             //ktl.log.clog('purple', 'date mismatch', retryCtr);
-                                            tryRefresh(DndConfViewId, retryCtr);
+                                            tryRefresh(dndConfirmationViewId, retryCtr);
                                         } else
                                             ktl.log.clog('red', 'Error refreshing view after drag n drop operation.');
                                     }
