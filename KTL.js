@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.16';
+    const KTL_VERSION = '0.22.17';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -257,7 +257,12 @@ function Ktl($, appInfo) {
                                     keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                                     keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
                                     ktl.fields.hideFields(viewId, keywords);
-                                    keywords._ro && $('#' + viewId).addClass('ktlVisibilityHidden');
+
+                                    if (keywords._ro) {
+                                        //Process exceptions that cause unwanted view disappearance.
+                                        if (!mutRec.target.classList.contains('kn-asset-current')) //File Uploads
+                                            keywords._ro && $('#' + viewId).addClass('ktlVisibilityHidden');
+                                    }
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
                                         if (!ktl.core.isKiosk())
@@ -6038,89 +6043,78 @@ function Ktl($, appInfo) {
         })
 
         //Hides a field from the filter's drop-down.
+        let noFilteringViewFields = {};
         function disableFilterOnFields(view) {
             if (!view) return;
 
             if (!(view.type === 'table' || view.type === 'list'))
                 return;
 
-            let viewId;
+            const kw = '_nf';
+            let viewId = view.key;
             var fieldsAr = [];
-            let lastClickedViewId;
 
-            $(document).off(`mousedown.ktl_nf`).on(`mousedown.ktl_nf`, function (e) {
-                const kw = '_nf';
-                const view = e.target.closest('.kn-view');
-                if (view && view.id && view.id.startsWith('view_')) {
-                    viewId = view.id;
+            //Process views keyword
+            const keywords = ktlKeywords[viewId];
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
+                let canBeProcessed = false;
 
-                    if (lastClickedViewId !== viewId) {
-                        lastClickedViewId = viewId;
-                        fieldsAr = [];
-                    }
+                if (keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (ktl.core.hasRoleAccess(options))
+                        canBeProcessed = true;
+                } else
+                    canBeProcessed = true;
 
-                    const viewType = ktl.views.getViewType(viewId);
-                    if (!(viewType === 'table' || viewType === 'list'))
-                        return;
+                if (canBeProcessed && keywords[kw][0].params && keywords[kw][0].params.length)
+                    fieldsAr = keywords[kw][0].params[0];
+            }
 
-                    //Process views keyword
-                    const keywords = ktlKeywords[viewId];
-                    if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
-                        let canBeProcessed = false;                        
+            //Process fields keywords
+            var fieldsWithKwObj;
+            if (Knack.views[viewId].model.view.filter_fields === 'view')
+                fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            else { //object
+                const objectId = Knack.views[viewId].model.view.source.object;
+                fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInObject(objectId);
+            }
 
-                        if (keywords[kw][0].options) {
-                            const options = keywords[kw][0].options;
-                            if (ktl.core.hasRoleAccess(options))
-                                canBeProcessed = true;
-                        } else
-                            canBeProcessed = true;
-
-                        if (canBeProcessed && keywords[kw][0].params && keywords[kw][0].params.length)
-                            fieldsAr = keywords[kw][0].params[0];
-                    }
-
-                    //Process fields keywords
-                    var fieldsWithKwObj;
-                    if (Knack.views[viewId].model.view.filter_fields === 'view')
-                        fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
-                    else { //object
-                        const objectId = Knack.views[viewId].model.view.source.object;
-                        fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInObject(objectId);
-                    }
-
-                    if (!$.isEmptyObject(fieldsWithKwObj)) {
-                        var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                        var foundKwObj = {};
-                        for (let i = 0; i < fieldsWithKwAr.length; i++) {
-                            var fieldId = fieldsWithKwAr[i];
-                            ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                            if (!$.isEmptyObject(foundKwObj)) {
-                                if (foundKwObj[fieldId][kw]) {
-                                    if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
-                                        const options = foundKwObj[fieldId][kw][0].options;
-                                        if (ktl.core.hasRoleAccess(options))
-                                            fieldsAr.push(fieldId);
-                                    } else
-                                        fieldsAr.push(fieldId);
-                                }
-                            }
+            if (!$.isEmptyObject(fieldsWithKwObj)) {
+                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                var foundKwObj = {};
+                for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                    var fieldId = fieldsWithKwAr[i];
+                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                    if (!$.isEmptyObject(foundKwObj)) {
+                        if (foundKwObj[fieldId][kw]) {
+                            if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
+                                const options = foundKwObj[fieldId][kw][0].options;
+                                if (ktl.core.hasRoleAccess(options) && !fieldsAr.includes(fieldId))
+                                    fieldsAr.push(fieldId);
+                            } else if (!fieldsAr.includes(fieldId))
+                                fieldsAr.push(fieldId);
                         }
                     }
-
-                    fieldsAr = fieldsAr.map(field =>
-                        field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
-                    );
                 }
-            })
+            }
 
-            $(document).off(`click.ktl_nf`).on(`click.ktl_nf`, function (e) {
+            fieldsAr = fieldsAr.map(field =>
+                field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+            );
+
+            noFilteringViewFields[viewId] = { fieldsAr: fieldsAr };
+            
+            $(document).off(`mousedown`).on(`mousedown`, function (e) {
+                const view = e.target.closest('.kn-view');
+                if (view && view.id && view.id.startsWith('view_'))
+                    viewId = view.id;
+
                 if (e.target.closest('.kn-add-filter,.kn-filters,#add-filter-link')) {
-                    console.log('fieldsAr =', fieldsAr);
+                    const fieldsAr = noFilteringViewFields[viewId].fieldsAr;
                     for (const fieldId of fieldsAr) {
                         const fieldSelector = `.field.kn-select select option[value="${fieldId}"]`;
                         ktl.core.waitSelector(fieldSelector, 3000)
                             .then(function () {
-                                //console.log('fieldSelector =', fieldSelector);
                                 $(fieldSelector).remove();
                             })
                             .catch(function () { })
