@@ -138,7 +138,7 @@ th .fa-caret-left {
 
 .cell-edit.ktlNoInlineEdit {
 	pointer-events: none;
-	cursor: default !important;
+	cursor: default;
 	font-weight: initial;
 }
 
@@ -146,6 +146,15 @@ th .fa-caret-left {
 		background-color: unset;
 	}
 
+.ktlDragAndDrop tbody tr {
+	pointer-events: all;
+	cursor: grab;
+}
+
+.ktlDragAndDrop .cell-edit.ktlNoInlineEdit {
+	pointer-events: all;
+	cursor: grab !important;
+}
 
 .ktlNotValid {
 	background-color: #fdb0b0 !important; /* Same pinkish color as Knack error */
