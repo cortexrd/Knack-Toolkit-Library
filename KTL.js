@@ -5856,7 +5856,7 @@ function Ktl($, appInfo) {
                 colorizeFieldByValue(viewId, data);
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
-                disableFilterOnFields(view, keywords);
+                disableFilterOnFields(view);
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -6038,83 +6038,92 @@ function Ktl($, appInfo) {
         })
 
         //Hides a field from the filter's drop-down.
-        function disableFilterOnFields(view, keywords) {
+        function disableFilterOnFields(view) {
             if (!view) return;
 
-            if (!(view.type === 'table' || view.type === 'list')) return;
+            if (!(view.type === 'table' || view.type === 'list'))
+                return;
 
-            const kw = '_nf';
+            let viewId;
             var fieldsAr = [];
+            let lastClickedViewId;
 
-            //Process views keyword
-            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
-                let canExecute = false;
+            $(document).off(`mousedown.ktl_nf`).on(`mousedown.ktl_nf`, function (e) {
+                const kw = '_nf';
+                const view = e.target.closest('.kn-view');
+                if (view && view.id && view.id.startsWith('view_')) {
+                    viewId = view.id;
 
-                if (keywords[kw][0].options) {
-                    const options = keywords[kw][0].options;
-                    if (ktl.core.hasRoleAccess(options))
-                        canExecute = true;
-                } else
-                    canExecute = true;
+                    if (lastClickedViewId !== viewId) {
+                        lastClickedViewId = viewId;
+                        fieldsAr = [];
+                    }
 
-                if (canExecute && keywords[kw][0].params && keywords[kw][0].params.length)
-                    fieldsAr = keywords[kw][0].params[0];
-            }
+                    const viewType = ktl.views.getViewType(viewId);
+                    if (!(viewType === 'table' || viewType === 'list'))
+                        return;
 
-            //Process fields keywords
-            const viewId = view.key;
-            var fieldsWithKwObj;
-            if (Knack.views[viewId].model.view.filter_fields === 'view')
-                fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
-            else { //object
-                const objectId = Knack.views[viewId].model.view.source.object;
-                fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInObject(objectId);
-            }
+                    //Process views keyword
+                    const keywords = ktlKeywords[viewId];
+                    if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
+                        let canBeProcessed = false;                        
 
-            if (!$.isEmptyObject(fieldsWithKwObj)) {
-                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                var foundKwObj = {};
-                for (let i = 0; i < fieldsWithKwAr.length; i++) {
-                    var fieldId = fieldsWithKwAr[i];
-                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj)) {
-                        if (foundKwObj[fieldId][kw]) {
-                            if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
-                                const options = foundKwObj[fieldId][kw][0].options;
-                                if (ktl.core.hasRoleAccess(options))
-                                    fieldsAr.push(fieldId);
-                            } else
-                                fieldsAr.push(fieldId);
+                        if (keywords[kw][0].options) {
+                            const options = keywords[kw][0].options;
+                            if (ktl.core.hasRoleAccess(options))
+                                canBeProcessed = true;
+                        } else
+                            canBeProcessed = true;
+
+                        if (canBeProcessed && keywords[kw][0].params && keywords[kw][0].params.length)
+                            fieldsAr = keywords[kw][0].params[0];
+                    }
+
+                    //Process fields keywords
+                    var fieldsWithKwObj;
+                    if (Knack.views[viewId].model.view.filter_fields === 'view')
+                        fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+                    else { //object
+                        const objectId = Knack.views[viewId].model.view.source.object;
+                        fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInObject(objectId);
+                    }
+
+                    if (!$.isEmptyObject(fieldsWithKwObj)) {
+                        var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                        var foundKwObj = {};
+                        for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                            var fieldId = fieldsWithKwAr[i];
+                            ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                            if (!$.isEmptyObject(foundKwObj)) {
+                                if (foundKwObj[fieldId][kw]) {
+                                    if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
+                                        const options = foundKwObj[fieldId][kw][0].options;
+                                        if (ktl.core.hasRoleAccess(options))
+                                            fieldsAr.push(fieldId);
+                                    } else
+                                        fieldsAr.push(fieldId);
+                                }
+                            }
                         }
                     }
+
+                    fieldsAr = fieldsAr.map(field =>
+                        field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+                    );
                 }
-            }
+            })
 
-            fieldsAr = fieldsAr.map(field =>
-                field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
-            );
-
-            //For temporary debug ouput, until issue #216 is resolved.
-            const remoteDev = (ktl.storage.lsGetItem('remoteDev', true) === 'true');
-
-            if (fieldsAr.length)
-                remoteDev && console.log('viewId and fieldsAr =', viewId, fieldsAr);
-
-            $(document).off('click.ktlNf').on('click.ktlNf', function (e) {
-                remoteDev && console.log('_nf click processed');
+            $(document).off(`click.ktl_nf`).on(`click.ktl_nf`, function (e) {
                 if (e.target.closest('.kn-add-filter,.kn-filters,#add-filter-link')) {
-                    remoteDev && console.log('filter element found');
+                    console.log('fieldsAr =', fieldsAr);
                     for (const fieldId of fieldsAr) {
                         const fieldSelector = `.field.kn-select select option[value="${fieldId}"]`;
-                        remoteDev && console.log('Waiting for: ', fieldSelector);
                         ktl.core.waitSelector(fieldSelector, 3000)
                             .then(function () {
-                                remoteDev && console.log('Removing: ', fieldSelector);
+                                //console.log('fieldSelector =', fieldSelector);
                                 $(fieldSelector).remove();
                             })
-                            .catch(function () {
-                                //ktl.log.clog('purple', `Failed wiating for selector in _nf, ${viewId}, ${fieldSelector}`);
-                            })
+                            .catch(function () { })
                     }
                 }
             })
@@ -7510,7 +7519,7 @@ function Ktl($, appInfo) {
                         if (fieldToSearch.startsWith('field_'))
                             fieldIdToSearch = fieldToSearch;
                         else {
-                            $(`#${viewId} td`).on('click.ktlVrd', processVrd);
+                            $(`#${viewId} td`).on('click.ktl_vrd', processVrd);
 
                             function processVrd(e) {
                                 const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
@@ -7524,8 +7533,8 @@ function Ktl($, appInfo) {
                                             $(`#${viewIdToSearch}-search input`).val(textToSearch);
                                             $(`#${viewIdToSearch} .is-primary`).click();
 
-                                            $(`#${viewId} td`).off('click.ktlVrd');
-                                            $(`#${viewId} td`).on('click.ktlVrd', processVrd);
+                                            $(`#${viewId} td`).off('click.ktl_vrd');
+                                            $(`#${viewId} td`).on('click.ktl_vrd', processVrd);
 
                                             $(document).on(`knack-view-render.${viewIdToSearch}`, function (event, view, data) {
                                                 $(`#${viewIdToSearch}`).removeClass('ktlHidden');
@@ -7788,9 +7797,20 @@ function Ktl($, appInfo) {
             }
 
             function dndSort() {
+                $(`#${viewId} tbody tr`).addClass(`ktlDragAndDrop`);
+
                 const lineIndexFieldLabel = keywords[kw][0].params[0][1];
                 const lineIndexFieldId = ktl.fields.getFieldIdFromLabel(viewId, lineIndexFieldLabel);
                 const dndDiv = document.querySelector('#' + viewId + ' tbody');
+
+                $(document).off('click.ktl_dnd').on('click.ktl_dnd', function (e) {
+                    //console.log('dnd click, e =', e);
+                    const isDnd = (e.target.closest('.ktlDragAndDrop'));
+                    isDnd && console.log('isDnd =', isDnd);
+
+                    const hasGroup = (e.target.closest('.kn-table-group'));
+                    hasGroup && console.log('hasGroup =', hasGroup);
+                })
 
                 new Sortable(dndDiv, {
                     swapThreshold: 0.96,
@@ -9825,23 +9845,24 @@ function Ktl($, appInfo) {
                 if (!viewId || !validationKey || !ktl.core.getCfg().enabled.formPreValidation) return;
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
-                if (submit) {
-                    if (submit.validity) {
-                        if (!submit.validity.ktlInvalidItemObj)
-                            submit.validity.ktlInvalidItemObj = {};
+                if (!submit) return;
 
-                        if (isValid === true)
-                            delete submit.validity.ktlInvalidItemObj[validationKey];
-                        else
-                            submit.validity.ktlInvalidItemObj[validationKey] = false; //Value (false) doesn't matter here, only the key's existence.
-                    }
+                if (submit.validity) {
+                    if (!submit.validity.ktlInvalidItemObj)
+                        submit.validity.ktlInvalidItemObj = {};
+                } else
+                    submit.validity = { ktlInvalidItemObj: {} };
 
-                    if (!submit.validity || (submit.validity && $.isEmptyObject(submit.validity.ktlInvalidItemObj)))
-                        submit.removeAttribute('disabled');
-                    else {
-                        submit.setAttribute('disabled', true);
-                        ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
-                    }
+                if (isValid === true)
+                    delete submit.validity.ktlInvalidItemObj[validationKey];
+                else
+                    submit.validity.ktlInvalidItemObj[validationKey] = false; //Value (false) doesn't matter here, only the key's existence.
+
+                if ($.isEmptyObject(submit.validity.ktlInvalidItemObj))
+                    submit.removeAttribute('disabled');
+                else {
+                    submit.setAttribute('disabled', true);
+                    ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
                 }
             },
 
@@ -10940,7 +10961,7 @@ function Ktl($, appInfo) {
             },
 
             addHideShowIconsToTableHeaders: function (viewId) {
-                if (!viewId || (cfg.hscAllowed && !cfg.hscAllowed(viewId)))
+                if (!viewId || ktl.scenes.isiFrameWnd() || (cfg.hscAllowed && !cfg.hscAllowed(viewId)))
                     return;
 
                 if (!['table', 'search'].includes(ktl.views.getViewType(viewId)))
@@ -10982,7 +11003,7 @@ function Ktl($, appInfo) {
                         .css('min-width', '')
                         .css('padding', '')
                         .removeClass('ktlCollapsedColumn')
-                        .off('click.ktl-hsc');
+                        .off('click.ktl_hsc');
                 }
 
                 function hideColumn(viewId, columnIndex) {
@@ -10993,11 +11014,12 @@ function Ktl($, appInfo) {
                         .addClass('ktlCollapsedColumn');
 
                     // Replace click events to unshrink column on the next event
-                    $(`#${viewId} .kn-table th.ktlCollapsedColumn, #${viewId} .kn-table td.ktlCollapsedColumn`).off('click.ktl-hsc').bindFirst('click.ktl-hsc', function (headerClickEvent) {
-                        headerClickEvent.preventDefault();
-                        headerClickEvent.stopPropagation();
-                        headerClickEvent.stopImmediatePropagation();
-                        showColumn(viewId, headerClickEvent.currentTarget.cellIndex + 1);
+                    $(`#${viewId} .kn-table th.ktlCollapsedColumn, #${viewId} .kn-table td.ktlCollapsedColumn`).off('click.ktl_hsc').bindFirst('click.ktl_hsc', function (collapsedColumnClickEvent) {
+                        collapsedColumnClickEvent.preventDefault();
+                        collapsedColumnClickEvent.stopPropagation();
+                        collapsedColumnClickEvent.stopImmediatePropagation();
+
+                        showColumn(viewId, collapsedColumnClickEvent.currentTarget.cellIndex + 1);
                     });
                 }
 
@@ -11028,7 +11050,7 @@ function Ktl($, appInfo) {
                             parameters = filteredParams.join('&');
                         }
 
-                        window.history.replaceState(null, 'unused', [url, parameters].join('?'));
+                        window.history.replaceState(null, '', [url, parameters].join('?'));
                     }
                 });
             },
