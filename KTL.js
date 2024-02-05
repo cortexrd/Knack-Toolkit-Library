@@ -7811,6 +7811,7 @@ function Ktl($, appInfo) {
                     let groupName;
                     for (const row of rows) {
                         if (row.classList.contains('kn-table-group')) {
+                            row.classList.add('ktlNotAllowed');
                             groupName = row.textContent;
                         } else {
                             row.classList.add(`dnd_grp_${groupName}`);
@@ -7842,7 +7843,7 @@ function Ktl($, appInfo) {
                     onMove: function (evt, originalEvent) {
                         if (viewHasGrouping) {
                             const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dnd_grp_'));
-                            if (dndGrpClassName && dndGrpClassName !== initialGroup) {
+                            if (evt.related.classList.contains('kn-table-group') || (dndGrpClassName && dndGrpClassName !== initialGroup)) {
                                 $(`#${viewId} tr.${dndGrpClassName}`).addClass('ktlNotValid');
                                 return false;
                             } else {

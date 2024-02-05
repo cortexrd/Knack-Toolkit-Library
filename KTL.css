@@ -161,7 +161,6 @@ th .fa-caret-left {
 }
 
 .ktlNotAllowed {
-	pointer-events: none;
 	cursor: not-allowed;
 }
 
