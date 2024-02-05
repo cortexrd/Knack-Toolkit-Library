@@ -7803,7 +7803,7 @@ function Ktl($, appInfo) {
             //If the grid has groupings, the DnD operation will be constrained within its group.
             function dndSort() {
                 const lineIndexFieldLabel = params[0][1];
-                const lineIndexFieldId = ktl.fields.getFieldIdFromLabel(viewId, lineIndexFieldLabel);
+                const sortFieldId = ktl.fields.getFieldIdFromLabel(viewId, lineIndexFieldLabel);
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
                 if (viewHasGrouping) {
@@ -7862,11 +7862,17 @@ function Ktl($, appInfo) {
 
                             var recIdArray = [];
                             var idx;
-                            const newData = document.querySelectorAll('#' + viewId + ' tbody tr .' + lineIndexFieldId);
+                            let newData;
+
+                            if (viewHasGrouping)
+                                newData = document.querySelectorAll(`#${viewId} tbody tr.${initialGroup} .${sortFieldId}`);
+                            else
+                                newData = document.querySelectorAll('#' + viewId + ' tbody tr .' + sortFieldId);
+
                             for (idx = 0; idx < newData.length; idx++) {
                                 if (newData[idx].innerText !== (idx + 1).toString()) {
                                     var recData = {};
-                                    recData[lineIndexFieldId] = idx + 1;
+                                    recData[sortFieldId] = idx + 1;
                                     recData.recId = newData[idx].closest('tr').id;
                                     recIdArray.push(recData);
                                 }
@@ -7879,7 +7885,7 @@ function Ktl($, appInfo) {
 
                             var itv = setInterval(() => {
                                 if (idx < arrayLen) {
-                                    apiData[lineIndexFieldId] = recIdArray[idx][lineIndexFieldId];
+                                    apiData[sortFieldId] = recIdArray[idx][sortFieldId];
                                     const recId = recIdArray[idx].recId;
                                     updateRecord(recId, apiData);
                                     idx++;
