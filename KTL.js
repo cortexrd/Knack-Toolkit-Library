@@ -6103,24 +6103,31 @@ function Ktl($, appInfo) {
             );
 
             noFilteringViewFields[viewId] = { fieldsAr: fieldsAr };
-            
-            $(document).off(`mousedown`).on(`mousedown`, function (e) {
-                const view = e.target.closest('.kn-view');
-                if (view && view.id && view.id.startsWith('view_'))
-                    viewId = view.id;
 
-                if (e.target.closest('.kn-add-filter,.kn-filters,#add-filter-link')) {
-                    const fieldsAr = noFilteringViewFields[viewId].fieldsAr;
-                    for (const fieldId of fieldsAr) {
-                        const fieldSelector = `.field.kn-select select option[value="${fieldId}"]`;
-                        ktl.core.waitSelector(fieldSelector, 3000)
-                            .then(function () {
-                                $(fieldSelector).remove();
-                            })
-                            .catch(function () { })
-                    }
-                }
+            $(`#${viewId} .kn-add-filter, #${viewId} .kn-filters`).on('mousedown', function (e) {
+                noFilteringRemoveFields(viewId);
+
+                ktl.core.waitSelector('#add-filter-link', 3000)
+                    .then(function () {
+                        $(`#add-filter-link`).on('mousedown', function (e) {
+                            noFilteringRemoveFields(viewId);
+                        })
+                    })
+                    .catch(function () { })
+               
             })
+
+            function noFilteringRemoveFields(viewId) {
+                const fieldsAr = noFilteringViewFields[viewId].fieldsAr;
+                for (const fieldId of fieldsAr) {
+                    const fieldSelector = `.field.kn-select select option[value="${fieldId}"]`;
+                    ktl.core.waitSelector(fieldSelector, 3000)
+                        .then(function () {
+                            $(fieldSelector).remove();
+                        })
+                        .catch(function () { })
+                }
+            }
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
@@ -7781,36 +7788,72 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            if (!(keywords[kw][0].params && keywords[kw][0].params[0].length >= 2)) return;
+            const params = keywords[kw][0].params;
 
-            const dndType = keywords[kw][0].params[0][0];
+            if (!(params && params[0].length >= 2)) return;
+
+            const dndType = params[0][0];
             if (dndType === 'sort')
                 dndSort();
             else {
                 //TODO: Implement other DnD types as we go, ex: from srcView to dstView.
             }
 
+            //To reposition rows vertically withing a grid.
+            //If the grid has groupings, the DnD operation will be constrained within its group.
             function dndSort() {
-                $(`#${viewId} tbody tr`).addClass(`ktlDragAndDrop`);
-
-                const lineIndexFieldLabel = keywords[kw][0].params[0][1];
+                const lineIndexFieldLabel = params[0][1];
                 const lineIndexFieldId = ktl.fields.getFieldIdFromLabel(viewId, lineIndexFieldLabel);
-                const dndDiv = document.querySelector('#' + viewId + ' tbody');
+                let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
-                $(document).off('click.ktl_dnd').on('click.ktl_dnd', function (e) {
-                    //console.log('dnd click, e =', e);
-                    const isDnd = (e.target.closest('.ktlDragAndDrop'));
-                    isDnd && console.log('isDnd =', isDnd);
+                if (viewHasGrouping) {
+                    const rows = document.querySelectorAll(`#${viewId} tbody tr`);
+                    let groupName;
+                    for (const row of rows) {
+                        if (row.classList.contains('kn-table-group')) {
+                            groupName = row.textContent;
+                        } else {
+                            row.classList.add(`dnd_grp_${groupName}`);
+                        }
+                    }
+                }
 
-                    const hasGroup = (e.target.closest('.kn-table-group'));
-                    hasGroup && console.log('hasGroup =', hasGroup);
-                })
+                $(`#${viewId} tbody tr:not(.kn-table-group)`).addClass(`ktlDragAndDrop`);
 
+                let initialGroup;
+
+                const dndDiv = document.querySelector(`#${viewId} tbody`);
                 new Sortable(dndDiv, {
                     swapThreshold: 0.96,
                     animation: 250,
-                    easing: "cubic-bezier(1, 0, 0, 1)",
+                    easing: 'cubic-bezier(1, 0, 0, 1)',
+                    filter: `#${viewId} .kn-table-group`,
+
+                    onStart: function (evt) {
+                        if (viewHasGrouping) {
+                            const dndGrpClassName = Array.from(evt.item.classList).find(className => className.startsWith('dnd_grp_'));
+                            if (dndGrpClassName) {
+                                initialGroup = dndGrpClassName;
+                                $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
+                            }
+                        }
+                    },
+
+                    onMove: function (evt, originalEvent) {
+                        if (viewHasGrouping) {
+                            const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dnd_grp_'));
+                            if (dndGrpClassName && dndGrpClassName !== initialGroup) {
+                                $(`#${viewId} tr.${dndGrpClassName}`).addClass('ktlNotValid');
+                                return false;
+                            } else {
+                                $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
+                            }
+                        }
+                    },
+
                     onEnd: function (evt) {
+                        $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
+
                         if (evt.oldIndex !== evt.newIndex) {
                             ktl.core.infoPopup();
                             ktl.views.autoRefresh(false);
@@ -7879,7 +7922,7 @@ function Ktl($, appInfo) {
                             }
                         }
                     }
-                });
+                })
             }
         }
 
@@ -11296,6 +11339,16 @@ function Ktl($, appInfo) {
 
                 return ktlAddonsDiv;
             },
+
+            viewHasGroups: function (viewId) {
+                if (!viewId) return;
+                var viewObj = ktl.views.getViewObj(viewId);
+                if (!viewObj) return false;
+                for (const col of viewObj.columns) {
+                    if (col.grouping)
+                        return true;
+                }
+            }
 
         } //return
     })(); //Views feature

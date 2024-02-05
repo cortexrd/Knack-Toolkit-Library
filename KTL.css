@@ -160,6 +160,11 @@ th .fa-caret-left {
 	background-color: #fdb0b0 !important; /* Same pinkish color as Knack error */
 }
 
+.ktlNotAllowed {
+	pointer-events: none;
+	cursor: not-allowed;
+}
+
 .center {
 	position: absolute;
 	top: 50%;
