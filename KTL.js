@@ -7810,7 +7810,6 @@ function Ktl($, appInfo) {
                 if (viewHasGrouping) {
                     ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
                         //console.log('A - groups rendered', $(`#${viewId} .kn-table-group`).length);
-
                         const rows = document.querySelectorAll(`#${viewId} tbody tr`);
                         let groupName = 'noGrp';
                         for (const row of rows) {
@@ -14141,43 +14140,47 @@ function Ktl($, appInfo) {
             addBulkOpsGuiElements(view, data);
 
             function addBulkOpsGuiElements(view, data) {
-                bulkOpsAddCheckboxesToTable(view.key);
-                ktl.views.fixTableRowsAlignment(view.key);
-                addBulkOpsButtons(view, data);
+                //Waiting for the spinner to disappear is required to prevent issues when 
+                //there are groups and / or summaries.  Otherwise we get bad layout.
+                ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
+                    bulkOpsAddCheckboxesToTable(view.key);
+                    ktl.views.fixTableRowsAlignment(view.key);
+                    addBulkOpsButtons(view, data);
 
-                //Put back checkboxes that were checked before view refresh.
-                if (view.key === bulkOpsViewId) {
-                    //Rows
-                    for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
-                        var cb = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
-                        if (cb.length)
-                            cb[0].checked = true;
-                    }
-
-                    //Columns
-                    for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
-                        var cb = $('#' + view.key + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
-                        if (cb.length)
-                            cb[0].checked = true;
-                    }
-                }
-
-                if (viewCanDoBulkOp(view.key, 'edit')) {
-                    //When user clicks on a row, to indicate the record source.
-                    $('#' + view.key + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
-                        var tableRow = e.target.closest('tr');
-                        if (tableRow) {
-                            if (bulkOpsRecIdArray.length > 0) {
-                                //Prevent Inline Edit.
-                                e.stopImmediatePropagation();
-                                apiData = {};
-                                processBulkOps(view.key, e);
-                            }
+                    //Put back checkboxes that were checked before view refresh.
+                    if (view.key === bulkOpsViewId) {
+                        //Rows
+                        for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
+                            var cb = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
+                            if (cb.length)
+                                cb[0].checked = true;
                         }
-                    })
-                }
 
-                updateBulkOpsGuiElements(view.key);
+                        //Columns
+                        for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
+                            var cb = $('#' + view.key + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
+                            if (cb.length)
+                                cb[0].checked = true;
+                        }
+                    }
+
+                    if (viewCanDoBulkOp(view.key, 'edit')) {
+                        //When user clicks on a row, to indicate the record source.
+                        $('#' + view.key + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
+                            var tableRow = e.target.closest('tr');
+                            if (tableRow) {
+                                if (bulkOpsRecIdArray.length > 0) {
+                                    //Prevent Inline Edit.
+                                    e.stopImmediatePropagation();
+                                    apiData = {};
+                                    processBulkOps(view.key, e);
+                                }
+                            }
+                        })
+                    }
+
+                    updateBulkOpsGuiElements(view.key);
+                })
             }
         }
 
