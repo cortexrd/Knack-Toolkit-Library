@@ -7775,6 +7775,7 @@ function Ktl($, appInfo) {
             })
         }
 
+        let dndInstance;
         function dragAndDrop(viewId, keywords) {
             const kw = '_dnd';
 
@@ -7807,28 +7808,21 @@ function Ktl($, appInfo) {
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
                 if (viewHasGrouping) {
-                    ktl.core.waitSelector(`#${viewId} .kn-table-group`).then(() => {
-                        console.log('A - groups rendered', $(`#${viewId} .kn-table-group`).length);
+                    ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
+                        //console.log('A - groups rendered', $(`#${viewId} .kn-table-group`).length);
 
-                        setTimeout(() => {
-                            console.log('B - groups rendered', $(`#${viewId} .kn-table-group`).length);
+                        const rows = document.querySelectorAll(`#${viewId} tbody tr`);
+                        let groupName = 'noGrp';
+                        for (const row of rows) {
+                            if (row.classList.contains('kn-table-group') || row.classList.contains('kn-table-totals')) {
+                                row.classList.add('ktlNotAllowed');
+                                if (row.classList.contains('kn-table-group') && row.textContent)
+                                    groupName = row.textContent.replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
+                            } else
+                                row.classList.add(`dndGrp_${groupName}`);
+                        }
 
-                            const rows = document.querySelectorAll(`#${viewId} tbody tr`);
-                            let groupName = 'noGrp';
-                            for (const row of rows) {
-                                if (row.classList.contains('kn-table-group') || row.classList.contains('kn-table-totals')) {
-                                    row.classList.add('ktlNotAllowed');
-                                    if (row.classList.contains('kn-table-group')) {
-                                        console.log('row.textContent =', row.textContent);
-                                        groupName = row.textContent.replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
-                                    }
-                                } else {
-                                    row.classList.add(`dndGrp_${groupName}`);
-                                }
-                            }
-
-                            processDndSort();
-                        }, 1000)
+                        processDndSort();
                     });
                 } else
                     processDndSort();
@@ -7839,7 +7833,15 @@ function Ktl($, appInfo) {
                     let initialGroup;
 
                     const dndDiv = document.querySelector(`#${viewId} tbody`);
-                    new Sortable(dndDiv, {
+
+                    if (dndInstance) {
+                        console.log('dndInstance =', dndInstance);
+                        //dndInstance.destroy();
+                        //dndInstance = null;
+                        return;
+                    }
+
+                    dndInstance = new Sortable(dndDiv, {
                         swapThreshold: 0.96,
                         animation: 250,
                         easing: 'cubic-bezier(1, 0, 0, 1)',
@@ -7848,15 +7850,25 @@ function Ktl($, appInfo) {
                         onStart: function (evt) {
                             if (viewHasGrouping) {
                                 const dndGrpClassName = Array.from(evt.item.classList).find(className => className.startsWith('dndGrp_'));
+                                console.log('dndGrpClassName =', dndGrpClassName);
+                                if (!dndGrpClassName)
+                                    debugger;
+
                                 if (dndGrpClassName) {
                                     initialGroup = dndGrpClassName;
                                     $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
                                 }
                             }
+
+                            if (!initialGroup)
+                                debugger;
                         },
 
                         onMove: function (evt, originalEvent) {
                             if (viewHasGrouping) {
+                                if (!initialGroup)
+                                    debugger;
+
                                 const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dndGrp_'));
                                 if (evt.related.classList.contains('kn-table-group') || (dndGrpClassName && dndGrpClassName !== initialGroup)) {
                                     $(`#${viewId} tr.${dndGrpClassName}`).addClass('ktlNotValid');
@@ -7917,6 +7929,11 @@ function Ktl($, appInfo) {
                                                 recIdArray = [];
                                                 Knack.showSpinner();
                                                 ktl.core.removeInfoPopup();
+
+                                                //Call destroy first?
+                                                dndInstance.destroy();
+                                                dndInstance = null;
+
                                                 ktl.views.refreshView(viewId).then(function () {
                                                     ktl.core.removeTimedPopup();
                                                     ktl.scenes.spinnerWatchdog();
