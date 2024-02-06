@@ -762,7 +762,7 @@ function Ktl($, appInfo) {
 
             //Used to generate a clean element ID from any string.  Ex: from a button's text.
             getCleanId: function (text = '') {
-                return text.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_"); //Any character other than a-z or 0-9, replace by underscore.
+                return text.toLowerCase().replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
             },
 
             getSubstringPosition: function (string, subString, nthOccurence) {
@@ -7807,129 +7807,145 @@ function Ktl($, appInfo) {
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
                 if (viewHasGrouping) {
-                    const rows = document.querySelectorAll(`#${viewId} tbody tr`);
-                    let groupName;
-                    for (const row of rows) {
-                        if (row.classList.contains('kn-table-group')) {
-                            row.classList.add('ktlNotAllowed');
-                            groupName = row.textContent;
-                        } else {
-                            row.classList.add(`dnd_grp_${groupName}`);
-                        }
-                    }
-                }
+                    ktl.core.waitSelector(`#${viewId} .kn-table-group`).then(() => {
+                        console.log('A - groups rendered', $(`#${viewId} .kn-table-group`).length);
 
-                $(`#${viewId} tbody tr:not(.kn-table-group)`).addClass(`ktlDragAndDrop`);
+                        setTimeout(() => {
+                            console.log('B - groups rendered', $(`#${viewId} .kn-table-group`).length);
 
-                let initialGroup;
-
-                const dndDiv = document.querySelector(`#${viewId} tbody`);
-                new Sortable(dndDiv, {
-                    swapThreshold: 0.96,
-                    animation: 250,
-                    easing: 'cubic-bezier(1, 0, 0, 1)',
-                    filter: `#${viewId} .kn-table-group`,
-
-                    onStart: function (evt) {
-                        if (viewHasGrouping) {
-                            const dndGrpClassName = Array.from(evt.item.classList).find(className => className.startsWith('dnd_grp_'));
-                            if (dndGrpClassName) {
-                                initialGroup = dndGrpClassName;
-                                $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
-                            }
-                        }
-                    },
-
-                    onMove: function (evt, originalEvent) {
-                        if (viewHasGrouping) {
-                            const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dnd_grp_'));
-                            if (evt.related.classList.contains('kn-table-group') || (dndGrpClassName && dndGrpClassName !== initialGroup)) {
-                                $(`#${viewId} tr.${dndGrpClassName}`).addClass('ktlNotValid');
-                                return false;
-                            } else {
-                                $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
-                            }
-                        }
-                    },
-
-                    onEnd: function (evt) {
-                        $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
-
-                        if (evt.oldIndex !== evt.newIndex) {
-                            ktl.core.infoPopup();
-                            ktl.views.autoRefresh(false);
-                            ktl.scenes.spinnerWatchdog(false);
-                            $.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
-
-                            var recIdArray = [];
-                            var idx;
-                            let newData;
-
-                            if (viewHasGrouping)
-                                newData = document.querySelectorAll(`#${viewId} tbody tr.${initialGroup} .${sortFieldId}`);
-                            else
-                                newData = document.querySelectorAll('#' + viewId + ' tbody tr .' + sortFieldId);
-
-                            for (idx = 0; idx < newData.length; idx++) {
-                                if (newData[idx].innerText !== (idx + 1).toString()) {
-                                    var recData = {};
-                                    recData[sortFieldId] = idx + 1;
-                                    recData.recId = newData[idx].closest('tr').id;
-                                    recIdArray.push(recData);
+                            const rows = document.querySelectorAll(`#${viewId} tbody tr`);
+                            let groupName = 'noGrp';
+                            for (const row of rows) {
+                                if (row.classList.contains('kn-table-group') || row.classList.contains('kn-table-totals')) {
+                                    row.classList.add('ktlNotAllowed');
+                                    if (row.classList.contains('kn-table-group')) {
+                                        console.log('row.textContent =', row.textContent);
+                                        groupName = row.textContent.replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
+                                    }
+                                } else {
+                                    row.classList.add(`dndGrp_${groupName}`);
                                 }
                             }
 
-                            var arrayLen = recIdArray.length;
-                            idx = 0;
-                            var countDone = 0;
-                            var apiData = {};
+                            processDndSort();
+                        }, 1000)
+                    });
+                } else
+                    processDndSort();
 
-                            var itv = setInterval(() => {
-                                if (idx < arrayLen) {
-                                    apiData[sortFieldId] = recIdArray[idx][sortFieldId];
-                                    const recId = recIdArray[idx].recId;
-                                    updateRecord(recId, apiData);
-                                    idx++;
-                                } else
-                                    clearInterval(itv);
-                            }, 150);
+                function processDndSort() {
+                    $(`#${viewId} tbody tr:not(.kn-table-group):not(.kn-table-totals)`).addClass(`ktlDragAndDrop`);
 
-                            function updateRecord(recId, apiData) {
-                                showProgress();
-                                ktl.core.knAPI(viewId, recId, apiData, 'PUT')
-                                    .then(function () {
-                                        if (++countDone === recIdArray.length) {
-                                            recIdArray = [];
-                                            Knack.showSpinner();
+                    let initialGroup;
+
+                    const dndDiv = document.querySelector(`#${viewId} tbody`);
+                    new Sortable(dndDiv, {
+                        swapThreshold: 0.96,
+                        animation: 250,
+                        easing: 'cubic-bezier(1, 0, 0, 1)',
+                        filter: `#${viewId} .kn-table-group`,
+
+                        onStart: function (evt) {
+                            if (viewHasGrouping) {
+                                const dndGrpClassName = Array.from(evt.item.classList).find(className => className.startsWith('dndGrp_'));
+                                if (dndGrpClassName) {
+                                    initialGroup = dndGrpClassName;
+                                    $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
+                                }
+                            }
+                        },
+
+                        onMove: function (evt, originalEvent) {
+                            if (viewHasGrouping) {
+                                const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dndGrp_'));
+                                if (evt.related.classList.contains('kn-table-group') || (dndGrpClassName && dndGrpClassName !== initialGroup)) {
+                                    $(`#${viewId} tr.${dndGrpClassName}`).addClass('ktlNotValid');
+                                    return false;
+                                } else {
+                                    $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
+                                }
+                            }
+                        },
+
+                        onEnd: function (evt) {
+                            $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
+
+                            if (evt.oldIndex !== evt.newIndex) {
+                                ktl.core.infoPopup();
+                                ktl.views.autoRefresh(false);
+                                ktl.scenes.spinnerWatchdog(false);
+                                $.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
+
+                                var recIdArray = [];
+                                var idx;
+                                let newData;
+
+                                if (viewHasGrouping)
+                                    newData = document.querySelectorAll(`#${viewId} tbody tr.${initialGroup} .${sortFieldId}`);
+                                else
+                                    newData = document.querySelectorAll('#' + viewId + ' tbody tr .' + sortFieldId);
+
+                                for (idx = 0; idx < newData.length; idx++) {
+                                    if (newData[idx].innerText !== (idx + 1).toString()) {
+                                        var recData = {};
+                                        recData[sortFieldId] = idx + 1;
+                                        recData.recId = newData[idx].closest('tr').id;
+                                        recIdArray.push(recData);
+                                    }
+                                }
+
+                                var arrayLen = recIdArray.length;
+                                idx = 0;
+                                var countDone = 0;
+                                var apiData = {};
+
+                                var itv = setInterval(() => {
+                                    if (idx < arrayLen) {
+                                        apiData[sortFieldId] = recIdArray[idx][sortFieldId];
+                                        const recId = recIdArray[idx].recId;
+                                        updateRecord(recId, apiData);
+                                        idx++;
+                                    } else
+                                        clearInterval(itv);
+                                }, 150);
+
+                                function updateRecord(recId, apiData) {
+                                    showProgress();
+                                    ktl.core.knAPI(viewId, recId, apiData, 'PUT')
+                                        .then(function () {
+                                            if (++countDone === recIdArray.length) {
+                                                recIdArray = [];
+                                                Knack.showSpinner();
+                                                ktl.core.removeInfoPopup();
+                                                ktl.views.refreshView(viewId).then(function () {
+                                                    ktl.core.removeTimedPopup();
+                                                    ktl.scenes.spinnerWatchdog();
+                                                    ktl.views.autoRefresh();
+                                                    Knack.hideSpinner();
+                                                    $.unblockUI();
+                                                    ktl.core.timedPopup('Rows Reordered successfully');
+                                                })
+                                            } else
+                                                showProgress();
+                                        })
+                                        .catch(function (reason) {
                                             ktl.core.removeInfoPopup();
-                                            ktl.views.refreshView(viewId).then(function () {
-                                                ktl.core.removeTimedPopup();
-                                                ktl.scenes.spinnerWatchdog();
-                                                ktl.views.autoRefresh();
-                                                Knack.hideSpinner();
-                                                $.unblockUI();
-                                                ktl.core.timedPopup('Rows Reordered successfully');
-                                            })
-                                        } else
-                                            showProgress();
-                                    })
-                                    .catch(function (reason) {
-                                        ktl.core.removeInfoPopup();
-                                        ktl.core.removeTimedPopup();
-                                        Knack.hideSpinner();
-                                        ktl.scenes.spinnerWatchdog();
-                                        ktl.views.autoRefresh();
-                                        $.unblockUI();
-                                        alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
-                                    })
+                                            ktl.core.removeTimedPopup();
+                                            Knack.hideSpinner();
+                                            ktl.scenes.spinnerWatchdog();
+                                            ktl.views.autoRefresh();
+                                            $.unblockUI();
+                                            alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
+                                        })
 
-                                function showProgress() {
-                                    ktl.core.setInfoPopupText('Updating ' + arrayLen + ' Lines.    Records left: ' + (arrayLen - countDone));
+                                    function showProgress() {
+                                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' Lines.    Records left: ' + (arrayLen - countDone));
+                                    }
                                 }
                             }
                         }
-                    }
-                })
+                    })
+                }
             }
         }
 
@@ -8227,16 +8243,20 @@ function Ktl($, appInfo) {
                                         Knack.views[viewId].renderView && Knack.views[viewId].renderView();
                                     }
 
+                                    //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
                                     Knack.views[viewId].render();
                                     Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-
+                                    Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
                                     return resolve();
                                 } else {
                                     Knack.views[viewId].model.fetch({
                                         success: function (model, response, options) {
-                                            if (['details' /*more types?*/].includes(viewType)) {
+                                            if (['details', 'table' /*more types?*/].includes(viewType)) {
+                                                //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
                                                 Knack.views[viewId].render();
+                                                Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
+                                                Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                                 Knack.views[viewId].postRender && Knack.views[viewId].postRender();
                                             }
 
