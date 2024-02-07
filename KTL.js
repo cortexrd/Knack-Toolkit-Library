@@ -5669,6 +5669,7 @@ function Ktl($, appInfo) {
         var processViewKeywords = null;
         var handleCalendarEventDrop = null;
         var handlePreprocessSubmitError = null;
+        var onDragAndDropEvent = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
         var currentFocus = null;
         var gotoDateObj = new Date();
@@ -7809,7 +7810,6 @@ function Ktl($, appInfo) {
 
                 if (viewHasGrouping) {
                     ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
-                        //console.log('A - groups rendered', $(`#${viewId} .kn-table-group`).length);
                         const rows = document.querySelectorAll(`#${viewId} tbody tr`);
                         let groupName = 'noGrp';
                         for (const row of rows) {
@@ -7834,10 +7834,8 @@ function Ktl($, appInfo) {
                     const dndDiv = document.querySelector(`#${viewId} tbody`);
 
                     if (dndInstance) {
-                        console.log('dndInstance =', dndInstance);
-                        //dndInstance.destroy();
-                        //dndInstance = null;
-                        return;
+                        dndInstance.destroy();
+                        dndInstance = null;
                     }
 
                     dndInstance = new Sortable(dndDiv, {
@@ -7849,25 +7847,17 @@ function Ktl($, appInfo) {
                         onStart: function (evt) {
                             if (viewHasGrouping) {
                                 const dndGrpClassName = Array.from(evt.item.classList).find(className => className.startsWith('dndGrp_'));
-                                console.log('dndGrpClassName =', dndGrpClassName);
-                                if (!dndGrpClassName)
-                                    debugger;
-
                                 if (dndGrpClassName) {
                                     initialGroup = dndGrpClassName;
                                     $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
                                 }
                             }
 
-                            if (!initialGroup)
-                                debugger;
+                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
                         },
 
                         onMove: function (evt, originalEvent) {
                             if (viewHasGrouping) {
-                                if (!initialGroup)
-                                    debugger;
-
                                 const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dndGrp_'));
                                 if (evt.related.classList.contains('kn-table-group') || (dndGrpClassName && dndGrpClassName !== initialGroup)) {
                                     $(`#${viewId} tr.${dndGrpClassName}`).addClass('ktlNotValid');
@@ -7876,10 +7866,15 @@ function Ktl($, appInfo) {
                                     $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
                                 }
                             }
+
+                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
                         },
 
                         onEnd: function (evt) {
-                            $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
+                            const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+
+                            $(`#${viewId} tbody tr.ktlNotValid`).removeClass('ktlNotValid');
+                            $(`#${viewId} tbody tr.ktlNotAllowed`).removeClass('ktlNotAllowed');
 
                             if (evt.oldIndex !== evt.newIndex) {
                                 ktl.core.infoPopup();
@@ -7928,10 +7923,6 @@ function Ktl($, appInfo) {
                                                 recIdArray = [];
                                                 Knack.showSpinner();
                                                 ktl.core.removeInfoPopup();
-
-                                                //Call destroy first?
-                                                dndInstance.destroy();
-                                                dndInstance = null;
 
                                                 ktl.views.refreshView(viewId).then(function () {
                                                     ktl.core.removeTimedPopup();
@@ -8212,6 +8203,7 @@ function Ktl($, appInfo) {
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
                 cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
+                cfgObj.onDragAndDropEvent && (onDragAndDropEvent = cfgObj.onDragAndDropEvent);
 
                 if (cfgObj.headerAlignment !== undefined)
                     cfg.headerAlignment = cfgObj.headerAlignment;
@@ -8272,7 +8264,6 @@ function Ktl($, appInfo) {
                                                 //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
                                                 Knack.views[viewId].render();
                                                 Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-                                                Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                                 Knack.views[viewId].postRender && Knack.views[viewId].postRender();
                                             }
 
@@ -8571,7 +8562,8 @@ function Ktl($, appInfo) {
                         ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT)
                             .then(function () {
                                 $('#' + viewId + ' tr.kn-table-group').each(function () {
-                                    $(this).find('td').attr('colspan', document.querySelectorAll('#' + viewId + ' thead th').length);
+                                    if (!$(this).find('td').hasClass('blankCell'))
+                                        $(this).prepend(`<td class="blankCell" style="border-top: 1px solid #dadada;"></td>`);
                                 });
                             })
                             .catch(function (e) { ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e); })
