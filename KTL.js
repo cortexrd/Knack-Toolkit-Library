@@ -762,7 +762,7 @@ function Ktl($, appInfo) {
 
             //Used to generate a clean element ID from any string.  Ex: from a button's text.
             getCleanId: function (text = '') {
-                return text.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_"); //Any character other than a-z or 0-9, replace by underscore.
+                return text.toLowerCase().replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
             },
 
             getSubstringPosition: function (string, subString, nthOccurence) {
@@ -5669,6 +5669,7 @@ function Ktl($, appInfo) {
         var processViewKeywords = null;
         var handleCalendarEventDrop = null;
         var handlePreprocessSubmitError = null;
+        var onDragAndDropEvent = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
         var currentFocus = null;
         var gotoDateObj = new Date();
@@ -7775,6 +7776,7 @@ function Ktl($, appInfo) {
             })
         }
 
+        let dndInstance;
         function dragAndDrop(viewId, keywords) {
             const kw = '_dnd';
 
@@ -7807,129 +7809,150 @@ function Ktl($, appInfo) {
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
                 if (viewHasGrouping) {
-                    const rows = document.querySelectorAll(`#${viewId} tbody tr`);
-                    let groupName;
-                    for (const row of rows) {
-                        if (row.classList.contains('kn-table-group')) {
-                            row.classList.add('ktlNotAllowed');
-                            groupName = row.textContent;
-                        } else {
-                            row.classList.add(`dnd_grp_${groupName}`);
+                    ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
+                        const rows = document.querySelectorAll(`#${viewId} tbody tr`);
+                        let groupName = 'noGrp';
+                        for (const row of rows) {
+                            if (row.classList.contains('kn-table-group') || row.classList.contains('kn-table-totals')) {
+                                row.classList.add('ktlNotAllowed');
+                                if (row.classList.contains('kn-table-group') && row.textContent)
+                                    groupName = row.textContent.replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
+                            } else
+                                row.classList.add(`dndGrp_${groupName}`);
                         }
+
+                        processDndSort();
+                    });
+                } else
+                    processDndSort();
+
+                function processDndSort() {
+                    $(`#${viewId} tbody tr:not(.kn-table-group):not(.kn-table-totals)`).addClass(`ktlDragAndDrop`);
+
+                    let initialGroup;
+
+                    const dndDiv = document.querySelector(`#${viewId} tbody`);
+
+                    if (dndInstance) {
+                        dndInstance.destroy();
+                        dndInstance = null;
                     }
-                }
 
-                $(`#${viewId} tbody tr:not(.kn-table-group)`).addClass(`ktlDragAndDrop`);
+                    dndInstance = new Sortable(dndDiv, {
+                        swapThreshold: 0.96,
+                        animation: 250,
+                        easing: 'cubic-bezier(1, 0, 0, 1)',
+                        filter: `#${viewId} .kn-table-group`,
 
-                let initialGroup;
-
-                const dndDiv = document.querySelector(`#${viewId} tbody`);
-                new Sortable(dndDiv, {
-                    swapThreshold: 0.96,
-                    animation: 250,
-                    easing: 'cubic-bezier(1, 0, 0, 1)',
-                    filter: `#${viewId} .kn-table-group`,
-
-                    onStart: function (evt) {
-                        if (viewHasGrouping) {
-                            const dndGrpClassName = Array.from(evt.item.classList).find(className => className.startsWith('dnd_grp_'));
-                            if (dndGrpClassName) {
-                                initialGroup = dndGrpClassName;
-                                $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
-                            }
-                        }
-                    },
-
-                    onMove: function (evt, originalEvent) {
-                        if (viewHasGrouping) {
-                            const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dnd_grp_'));
-                            if (evt.related.classList.contains('kn-table-group') || (dndGrpClassName && dndGrpClassName !== initialGroup)) {
-                                $(`#${viewId} tr.${dndGrpClassName}`).addClass('ktlNotValid');
-                                return false;
-                            } else {
-                                $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
-                            }
-                        }
-                    },
-
-                    onEnd: function (evt) {
-                        $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
-
-                        if (evt.oldIndex !== evt.newIndex) {
-                            ktl.core.infoPopup();
-                            ktl.views.autoRefresh(false);
-                            ktl.scenes.spinnerWatchdog(false);
-                            $.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
-
-                            var recIdArray = [];
-                            var idx;
-                            let newData;
-
-                            if (viewHasGrouping)
-                                newData = document.querySelectorAll(`#${viewId} tbody tr.${initialGroup} .${sortFieldId}`);
-                            else
-                                newData = document.querySelectorAll('#' + viewId + ' tbody tr .' + sortFieldId);
-
-                            for (idx = 0; idx < newData.length; idx++) {
-                                if (newData[idx].innerText !== (idx + 1).toString()) {
-                                    var recData = {};
-                                    recData[sortFieldId] = idx + 1;
-                                    recData.recId = newData[idx].closest('tr').id;
-                                    recIdArray.push(recData);
+                        onStart: function (evt) {
+                            if (viewHasGrouping) {
+                                const dndGrpClassName = Array.from(evt.item.classList).find(className => className.startsWith('dndGrp_'));
+                                if (dndGrpClassName) {
+                                    initialGroup = dndGrpClassName;
+                                    $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
                                 }
                             }
 
-                            var arrayLen = recIdArray.length;
-                            idx = 0;
-                            var countDone = 0;
-                            var apiData = {};
+                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+                        },
 
-                            var itv = setInterval(() => {
-                                if (idx < arrayLen) {
-                                    apiData[sortFieldId] = recIdArray[idx][sortFieldId];
-                                    const recId = recIdArray[idx].recId;
-                                    updateRecord(recId, apiData);
-                                    idx++;
-                                } else
-                                    clearInterval(itv);
-                            }, 150);
+                        onMove: function (evt, originalEvent) {
+                            if (viewHasGrouping) {
+                                const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dndGrp_'));
+                                if (evt.related.classList.contains('kn-table-group') || (dndGrpClassName && dndGrpClassName !== initialGroup)) {
+                                    $(`#${viewId} tr.${dndGrpClassName}`).addClass('ktlNotValid');
+                                    return false;
+                                } else {
+                                    $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
+                                }
+                            }
 
-                            function updateRecord(recId, apiData) {
-                                showProgress();
-                                ktl.core.knAPI(viewId, recId, apiData, 'PUT')
-                                    .then(function () {
-                                        if (++countDone === recIdArray.length) {
-                                            recIdArray = [];
-                                            Knack.showSpinner();
+                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+                        },
+
+                        onEnd: function (evt) {
+                            const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+
+                            $(`#${viewId} tbody tr.ktlNotValid`).removeClass('ktlNotValid');
+                            $(`#${viewId} tbody tr.ktlNotAllowed`).removeClass('ktlNotAllowed');
+
+                            if (evt.oldIndex !== evt.newIndex) {
+                                ktl.core.infoPopup();
+                                ktl.views.autoRefresh(false);
+                                ktl.scenes.spinnerWatchdog(false);
+                                $.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
+
+                                var recIdArray = [];
+                                var idx;
+                                let newData;
+
+                                if (viewHasGrouping)
+                                    newData = document.querySelectorAll(`#${viewId} tbody tr.${initialGroup} .${sortFieldId}`);
+                                else
+                                    newData = document.querySelectorAll('#' + viewId + ' tbody tr .' + sortFieldId);
+
+                                for (idx = 0; idx < newData.length; idx++) {
+                                    if (newData[idx].innerText !== (idx + 1).toString()) {
+                                        var recData = {};
+                                        recData[sortFieldId] = idx + 1;
+                                        recData.recId = newData[idx].closest('tr').id;
+                                        recIdArray.push(recData);
+                                    }
+                                }
+
+                                var arrayLen = recIdArray.length;
+                                idx = 0;
+                                var countDone = 0;
+                                var apiData = {};
+
+                                var itv = setInterval(() => {
+                                    if (idx < arrayLen) {
+                                        apiData[sortFieldId] = recIdArray[idx][sortFieldId];
+                                        const recId = recIdArray[idx].recId;
+                                        updateRecord(recId, apiData);
+                                        idx++;
+                                    } else
+                                        clearInterval(itv);
+                                }, 150);
+
+                                function updateRecord(recId, apiData) {
+                                    showProgress();
+                                    ktl.core.knAPI(viewId, recId, apiData, 'PUT')
+                                        .then(function () {
+                                            if (++countDone === recIdArray.length) {
+                                                recIdArray = [];
+                                                Knack.showSpinner();
+                                                ktl.core.removeInfoPopup();
+
+                                                ktl.views.refreshView(viewId).then(function () {
+                                                    ktl.core.removeTimedPopup();
+                                                    ktl.scenes.spinnerWatchdog();
+                                                    ktl.views.autoRefresh();
+                                                    Knack.hideSpinner();
+                                                    $.unblockUI();
+                                                    ktl.core.timedPopup('Rows Reordered successfully');
+                                                })
+                                            } else
+                                                showProgress();
+                                        })
+                                        .catch(function (reason) {
                                             ktl.core.removeInfoPopup();
-                                            ktl.views.refreshView(viewId).then(function () {
-                                                ktl.core.removeTimedPopup();
-                                                ktl.scenes.spinnerWatchdog();
-                                                ktl.views.autoRefresh();
-                                                Knack.hideSpinner();
-                                                $.unblockUI();
-                                                ktl.core.timedPopup('Rows Reordered successfully');
-                                            })
-                                        } else
-                                            showProgress();
-                                    })
-                                    .catch(function (reason) {
-                                        ktl.core.removeInfoPopup();
-                                        ktl.core.removeTimedPopup();
-                                        Knack.hideSpinner();
-                                        ktl.scenes.spinnerWatchdog();
-                                        ktl.views.autoRefresh();
-                                        $.unblockUI();
-                                        alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
-                                    })
+                                            ktl.core.removeTimedPopup();
+                                            Knack.hideSpinner();
+                                            ktl.scenes.spinnerWatchdog();
+                                            ktl.views.autoRefresh();
+                                            $.unblockUI();
+                                            alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
+                                        })
 
-                                function showProgress() {
-                                    ktl.core.setInfoPopupText('Updating ' + arrayLen + ' Lines.    Records left: ' + (arrayLen - countDone));
+                                    function showProgress() {
+                                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' Lines.    Records left: ' + (arrayLen - countDone));
+                                    }
                                 }
                             }
                         }
-                    }
-                })
+                    })
+                }
             }
         }
 
@@ -8180,6 +8203,7 @@ function Ktl($, appInfo) {
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
                 cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
+                cfgObj.onDragAndDropEvent && (onDragAndDropEvent = cfgObj.onDragAndDropEvent);
 
                 if (cfgObj.headerAlignment !== undefined)
                     cfg.headerAlignment = cfgObj.headerAlignment;
@@ -8227,16 +8251,19 @@ function Ktl($, appInfo) {
                                         Knack.views[viewId].renderView && Knack.views[viewId].renderView();
                                     }
 
+                                    //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
                                     Knack.views[viewId].render();
                                     Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-
+                                    Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
                                     return resolve();
                                 } else {
                                     Knack.views[viewId].model.fetch({
                                         success: function (model, response, options) {
-                                            if (['details' /*more types?*/].includes(viewType)) {
+                                            if (['details', 'table' /*more types?*/].includes(viewType)) {
+                                                //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
                                                 Knack.views[viewId].render();
+                                                Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                                 Knack.views[viewId].postRender && Knack.views[viewId].postRender();
                                             }
 
@@ -8535,7 +8562,8 @@ function Ktl($, appInfo) {
                         ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT)
                             .then(function () {
                                 $('#' + viewId + ' tr.kn-table-group').each(function () {
-                                    $(this).find('td').attr('colspan', document.querySelectorAll('#' + viewId + ' thead th').length);
+                                    if (!$(this).find('td').hasClass('blankCell'))
+                                        $(this).prepend(`<td class="blankCell" style="border-top: 1px solid #dadada;"></td>`);
                                 });
                             })
                             .catch(function (e) { ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e); })
@@ -14104,43 +14132,47 @@ function Ktl($, appInfo) {
             addBulkOpsGuiElements(view, data);
 
             function addBulkOpsGuiElements(view, data) {
-                bulkOpsAddCheckboxesToTable(view.key);
-                ktl.views.fixTableRowsAlignment(view.key);
-                addBulkOpsButtons(view, data);
+                //Waiting for the spinner to disappear is required to prevent issues when 
+                //there are groups and / or summaries.  Otherwise we get bad layout.
+                ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
+                    bulkOpsAddCheckboxesToTable(view.key);
+                    ktl.views.fixTableRowsAlignment(view.key);
+                    addBulkOpsButtons(view, data);
 
-                //Put back checkboxes that were checked before view refresh.
-                if (view.key === bulkOpsViewId) {
-                    //Rows
-                    for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
-                        var cb = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
-                        if (cb.length)
-                            cb[0].checked = true;
-                    }
-
-                    //Columns
-                    for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
-                        var cb = $('#' + view.key + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
-                        if (cb.length)
-                            cb[0].checked = true;
-                    }
-                }
-
-                if (viewCanDoBulkOp(view.key, 'edit')) {
-                    //When user clicks on a row, to indicate the record source.
-                    $('#' + view.key + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
-                        var tableRow = e.target.closest('tr');
-                        if (tableRow) {
-                            if (bulkOpsRecIdArray.length > 0) {
-                                //Prevent Inline Edit.
-                                e.stopImmediatePropagation();
-                                apiData = {};
-                                processBulkOps(view.key, e);
-                            }
+                    //Put back checkboxes that were checked before view refresh.
+                    if (view.key === bulkOpsViewId) {
+                        //Rows
+                        for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
+                            var cb = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
+                            if (cb.length)
+                                cb[0].checked = true;
                         }
-                    })
-                }
 
-                updateBulkOpsGuiElements(view.key);
+                        //Columns
+                        for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
+                            var cb = $('#' + view.key + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
+                            if (cb.length)
+                                cb[0].checked = true;
+                        }
+                    }
+
+                    if (viewCanDoBulkOp(view.key, 'edit')) {
+                        //When user clicks on a row, to indicate the record source.
+                        $('#' + view.key + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
+                            var tableRow = e.target.closest('tr');
+                            if (tableRow) {
+                                if (bulkOpsRecIdArray.length > 0) {
+                                    //Prevent Inline Edit.
+                                    e.stopImmediatePropagation();
+                                    apiData = {};
+                                    processBulkOps(view.key, e);
+                                }
+                            }
+                        })
+                    }
+
+                    updateBulkOpsGuiElements(view.key);
+                })
             }
         }
 
