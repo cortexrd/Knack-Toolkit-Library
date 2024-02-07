@@ -2041,7 +2041,8 @@ function Ktl($, appInfo) {
                 newInput.select();
                 newTarget = newInput[0];
             } else {
-                $(e.target).select();
+                if (ktl.core.getCfg().enabled.selTextOnFocus)
+                    $(e.target).select();
                 newTarget = e.target;
             }
 
@@ -7776,7 +7777,7 @@ function Ktl($, appInfo) {
             })
         }
 
-        let dndInstance;
+        let dndInstancePerView = {};
         function dragAndDrop(viewId, keywords) {
             const kw = '_dnd';
 
@@ -7792,7 +7793,7 @@ function Ktl($, appInfo) {
 
             const params = keywords[kw][0].params;
 
-            if (!(params && params[0].length >= 2)) return;
+            if (!params || params[0].length < 2) return;
 
             const dndType = params[0][0];
             if (dndType === 'sort')
@@ -7808,6 +7809,23 @@ function Ktl($, appInfo) {
                 const sortFieldId = ktl.fields.getFieldIdFromLabel(viewId, lineIndexFieldLabel);
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
+                let maxIndexRenumber;
+                let noDragElement = [];
+                let noDragFieldId;
+
+                for (const group of params) {
+                    if (group.length === 2 && group[0] === 'max')
+                        maxIndexRenumber = group[1];
+                    else if (group.length >= 3 && group[0] === 'nodrag') {
+                        noDragFieldId = group[1];
+                        if (!noDragFieldId.startsWith('field_'))
+                            noDragFieldId = ktl.fields.getFieldIdFromLabel(viewId, noDragFieldId);
+                        noDragElement = group;
+                        noDragElement.splice(0, 2);
+                    }
+                }
+
+
                 if (viewHasGrouping) {
                     ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
                         const rows = document.querySelectorAll(`#${viewId} tbody tr`);
@@ -7817,8 +7835,16 @@ function Ktl($, appInfo) {
                                 row.classList.add('ktlNotAllowed');
                                 if (row.classList.contains('kn-table-group') && row.textContent)
                                     groupName = row.textContent.replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
-                            } else
+                            } else {
+                                if (noDragFieldId) {
+                                    console.log('row =', row);
+                                    const fieldText = $(row).find(`.${noDragFieldId} span`)[0].innerText;
+                                    if (noDragElement.includes(fieldText))
+                                        row.classList.add('ktlNotAllowed');
+                                }
+
                                 row.classList.add(`dndGrp_${groupName}`);
+                            }
                         }
 
                         processDndSort();
@@ -7833,12 +7859,12 @@ function Ktl($, appInfo) {
 
                     const dndDiv = document.querySelector(`#${viewId} tbody`);
 
-                    if (dndInstance) {
-                        dndInstance.destroy();
-                        dndInstance = null;
+                    if (dndInstancePerView[viewId]) {
+                        dndInstancePerView[viewId].destroy();
+                        delete dndInstancePerView[viewId];
                     }
 
-                    dndInstance = new Sortable(dndDiv, {
+                    dndInstancePerView[viewId] = new Sortable(dndDiv, {
                         swapThreshold: 0.96,
                         animation: 250,
                         easing: 'cubic-bezier(1, 0, 0, 1)',
@@ -7853,7 +7879,7 @@ function Ktl($, appInfo) {
                                 }
                             }
 
-                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+                            const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
                         },
 
                         onMove: function (evt, originalEvent) {
@@ -7867,7 +7893,7 @@ function Ktl($, appInfo) {
                                 }
                             }
 
-                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+                            const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
                         },
 
                         onEnd: function (evt) {
@@ -7889,7 +7915,7 @@ function Ktl($, appInfo) {
                                 if (viewHasGrouping)
                                     newData = document.querySelectorAll(`#${viewId} tbody tr.${initialGroup} .${sortFieldId}`);
                                 else
-                                    newData = document.querySelectorAll('#' + viewId + ' tbody tr .' + sortFieldId);
+                                    newData = document.querySelectorAll(`#${viewId} tbody tr .${sortFieldId}`);
 
                                 for (idx = 0; idx < newData.length; idx++) {
                                     if (newData[idx].innerText !== (idx + 1).toString()) {
@@ -8167,7 +8193,16 @@ function Ktl($, appInfo) {
                 }
             } else {
                 //All parent views.
-                const viewsInScene = Knack.scenes._byId[Knack.router.scene_view.model.attributes.parent].views.models;
+
+                //Do not use this technique below to get this modal view's parent.
+                //It will give wrong parent in some cases, depending on the pages structure.
+                //BAD=> const viewsInScene = Knack.scenes._byId[Knack.router.scene_view.model.attributes.parent].views.models;
+
+                //This is the correct way to get parent in the page based on HTML, not from the Builder's structure.
+                const sceneKey = $('.kn-scenes .kn-scene')[0].id.replace('kn-', '');
+                const sceneSlug = Knack.scenes.getByKey(sceneKey).attributes.slug;
+                const viewsInScene = Knack.scenes._byId[sceneSlug].views.models;
+
                 for (const viewToRefresh of viewsInScene) {
                     viewsToRefreshArray.push(viewToRefresh.attributes.key);
                 }
