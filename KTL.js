@@ -6263,7 +6263,7 @@ function Ktl($, appInfo) {
                     const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
                     const ttipText = firstParam[0];
                     const viewOptionTxt = viewOptions[0];
-                    const tooltipIcon = firstParam[1];
+                    const tooltipIcon = viewOptions[1] || 'fa-question-circle';
 
                     ['f', 'l', 'd', 't'].forEach(option => {
                         if (viewOptionTxt.includes(option) && tooltipPositions[option]) {
@@ -6289,10 +6289,10 @@ function Ktl($, appInfo) {
 
                     const tooltipIconPositions = [];
                     for (let i = 0; i < paramGroups.length; i += 2) {
-                        const [firstParam, fieldLabel] = paramGroups.slice(i, i + 2);
-                        const ttipText = firstParam[0];
-                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel[0]);
-                        const tooltipsIcon = firstParam[1];
+                        const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
+                        const ttipText = firstParam.map(item => item.trim()).join(', ');;
+                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, viewOptions[0]);
+                        const tooltipsIcon = viewOptions[1] || 'fa-question-circle';
 
                         let tooltipIconPosition;
                         const viewSelector = `#${viewId}`;
@@ -11019,11 +11019,8 @@ function Ktl($, appInfo) {
             //Add a tooltip to a field label/header
             addTooltipsToFields: function (viewId, tooltipText, viewType, tooltipIconPosition, tooltipIcon) {
                 if (!viewId || !viewType) return;
+                viewType = viewType === 'list' ? 'details' : viewType;
 
-                // console.log(tooltipIconPosition)
-                if(!tooltipIcon) {
-                    tooltipIcon = 'fa-question-circle';
-                }
                 const icon = `<i class="fa ${tooltipIcon} ktlTooltipIcon ktlTtipIcon-${viewType}-view"> </i>`;
 
                 // Add the tooltip icon to the DOM
