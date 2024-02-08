@@ -6307,8 +6307,8 @@ function Ktl($, appInfo) {
                                     tooltipIconPosition = `${viewSelector} th.${fieldId}`;
                                 } else {
                                     const selectors = [
-                                        `${viewSelector} th.kn-table-link:textEquals("${fieldLabel[0]}")`,
-                                        `${viewSelector} th.kn-table-action-link:textEquals("${fieldLabel[0]}")`
+                                        `${viewSelector} th.kn-table-link:textEquals("${viewOptions[0]}")`,
+                                        `${viewSelector} th.kn-table-action-link:textEquals("${viewOptions[0]}")`
                                     ];
                                     selectors.forEach(selector => {
                                         if ($(selector).length) {
