@@ -1528,7 +1528,7 @@ function Ktl($, appInfo) {
             //Ex2: $("li.menu-links__list-item:contains('Prev. Stay Info')")
             //MUST NOT include any backslashes for escaped characters like \' for quotes.
             extractJQuerySelector: function (selector) {
-                if ((selector.startsWith("$('") || selector.startsWith('$("')) && (selector.endsWith("')") || selector.endsWith('")'))) {
+                if ( (selector.startsWith("$('") && selector.endsWith("')")) || (selector.startsWith('$("') && selector.endsWith('")')) ) {
                     return selector.substring(3, selector.length - 2);
                 }
             },
@@ -7778,7 +7778,6 @@ function Ktl($, appInfo) {
             })
         }
 
-        let dndInstancePerView = {};
         function dragAndDrop(viewId, keywords) {
             const kw = '_dnd';
 
@@ -7858,19 +7857,19 @@ function Ktl($, appInfo) {
                     let initialGroup;
 
                     const dndDiv = document.querySelector(`#${viewId} tbody`);
+                    if (Sortable.get(dndDiv)) return;
 
-                    if (dndInstancePerView[viewId]) {
-                        dndInstancePerView[viewId].destroy();
-                        delete dndInstancePerView[viewId];
-                    }
-
-                    dndInstancePerView[viewId] = new Sortable(dndDiv, {
+                    new Sortable(dndDiv, {
                         swapThreshold: 0.96,
                         animation: 250,
                         easing: 'cubic-bezier(1, 0, 0, 1)',
                         filter: `#${viewId} .kn-table-group, #${viewId} .ktlNotAllowed`,
 
                         onStart: function (evt) {
+                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+
+                            draggedRecId = evt.item.id;
+
                             if (viewHasGrouping) {
                                 const dndGrpClassName = Array.from(evt.item.classList).find(className => className.startsWith('dndGrp_'));
                                 if (dndGrpClassName) {
@@ -7878,13 +7877,11 @@ function Ktl($, appInfo) {
                                     $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
                                 }
                             }
-
-                            draggedRecId = evt.item.id;
-
-                            const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
                         },
 
                         onMove: function (evt, originalEvent) {
+                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+
                             if (viewHasGrouping) {
                                 const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dndGrp_'));
                                 if (evt.related.classList.contains('kn-table-group') || (dndGrpClassName && dndGrpClassName !== initialGroup)) {
@@ -7894,12 +7891,10 @@ function Ktl($, appInfo) {
                                     $(`#${viewId} tr.ktlNotValid`).removeClass('ktlNotValid');
                                 }
                             }
-
-                            const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
                         },
 
                         onEnd: function (evt) {
-                            const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
 
                             $(`#${viewId} tbody tr.ktlNotValid`).removeClass('ktlNotValid');
                             $(`#${viewId} tbody tr.ktlNotAllowed:not(.ktlNotAllowedKeep)`).removeClass('ktlNotAllowed');
