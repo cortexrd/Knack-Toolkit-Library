@@ -6231,7 +6231,7 @@ function Ktl($, appInfo) {
         function addTooltips(view, keywords) {
             const kw = '_ttip';// @params = [tooltip text], [options] - Must be in two groups so that commas can be used in the tooltip text, options are tdfl (table, details, forms and lists)
             const { key: viewId, type: viewType } = view;
-            if (!viewId || !viewType) return;
+            if (!viewId) return;
 
             //Process fields keyword
             var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
@@ -6249,7 +6249,6 @@ function Ktl($, appInfo) {
 
             function execFieldKw(keyword) {
                 if (!ktl.core.hasRoleAccess(keyword.options)) return;
-
                 const paramGroups = keyword.params;
                 if (paramGroups.length < 2 && paramGroups.length % 2 != 0) return; // Check if the number of parameter groups is even
 
@@ -6262,12 +6261,13 @@ function Ktl($, appInfo) {
 
                 for (let i = 0; i < paramGroups.length; i += 2) {
                     const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
-                    const ttipText = firstParam.map(item => item.trim()).join(', ');
+                    const ttipText = firstParam[0];
                     const viewOptionTxt = viewOptions[0];
+                    const tooltipIcon = firstParam[1];
 
                     ['f', 'l', 'd', 't'].forEach(option => {
                         if (viewOptionTxt.includes(option) && tooltipPositions[option]) {
-                            ktl.views.addTooltipsToFields(viewId, ttipText, viewType, tooltipPositions[option]);
+                            ktl.views.addTooltipsToFields(viewId, ttipText, viewType, tooltipPositions[option], tooltipIcon);
                         }
                     });
                 }
@@ -6290,8 +6290,9 @@ function Ktl($, appInfo) {
                     const tooltipIconPositions = [];
                     for (let i = 0; i < paramGroups.length; i += 2) {
                         const [firstParam, fieldLabel] = paramGroups.slice(i, i + 2);
-                        const ttipText = firstParam.map(item => item.trim()).join(', ');
-                        const fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel[0]);
+                        const ttipText = firstParam[0];
+                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel[0]);
+                        const tooltipsIcon = firstParam[1];
 
                         let tooltipIconPosition;
                         const viewSelector = `#${viewId}`;
@@ -6321,11 +6322,11 @@ function Ktl($, appInfo) {
                                 tooltipIconPosition = fieldId ? `${viewSelector} .${fieldId} .kn-detail-label` : `${viewSelector} .kn-details-link .kn-detail-body:textEquals("${fieldLabel[0]}")`;
                                 break;
                         }
-                        tooltipIconPositions.push({ position: tooltipIconPosition, text: ttipText });
+                        tooltipIconPositions.push({ position: tooltipIconPosition, text: ttipText, icon: tooltipsIcon });
                     }
 
-                    tooltipIconPositions.forEach(({ position, text }) => {
-                        if ($(position).length) ktl.views.addTooltipsToFields(viewId, text, viewType, position);
+                    tooltipIconPositions.forEach(({ position, text, icon }) => {
+                        if ($(position).length) ktl.views.addTooltipsToFields(viewId, text, viewType, position, icon);
                     });
                 }
             }
@@ -11016,11 +11017,14 @@ function Ktl($, appInfo) {
             },
 
             //Add a tooltip to a field label/header
-            addTooltipsToFields: function (viewId, tooltipText, viewType, tooltipIconPosition) {
+            addTooltipsToFields: function (viewId, tooltipText, viewType, tooltipIconPosition, tooltipIcon) {
                 if (!viewId || !viewType) return;
-                viewType = viewType === 'list' ? 'details' : viewType;
+
                 // console.log(tooltipIconPosition)
-                const icon = '<i class="fa fa-question-circle ktlTooltipIcon ktlTtipIcon-' + viewType + '-view"> </i>';
+                if(!tooltipIcon) {
+                    tooltipIcon = 'fa-question-circle';
+                }
+                const icon = `<i class="fa ${tooltipIcon} ktlTooltipIcon ktlTtipIcon-${viewType}-view"> </i>`;
 
                 // Add the tooltip icon to the DOM
                 $(tooltipIconPosition)
@@ -11031,7 +11035,8 @@ function Ktl($, appInfo) {
                     .css('display', 'inline-block');
 
                 // Add event listeners to show and hide the tooltip
-                $(document).on('mouseenter', `${tooltipIconPosition} i.fa-question-circle`, function (e) {
+                $(document).on('mouseenter', `${tooltipIconPosition} i.${tooltipIcon}`, function (e) {
+                    console.log("hover");
                     if (!$(".ktlTooltip").length) {
                         const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`)
                         const icon = $(this);
@@ -11067,7 +11072,7 @@ function Ktl($, appInfo) {
                     }
                 });
 
-                $(document).on('mouseleave', `${tooltipIconPosition} i.fa-question-circle`, function () {
+                $(document).on('mouseleave', `${tooltipIconPosition} i.${tooltipIcon}`, function () {
                     $('.ktlTooltip').remove();
                 });
             },
@@ -14172,7 +14177,7 @@ function Ktl($, appInfo) {
             addBulkOpsGuiElements(view, data);
 
             function addBulkOpsGuiElements(view, data) {
-                //Waiting for the spinner to disappear is required to prevent issues when 
+                //Waiting for the spinner to disappear is required to prevent issues when
                 //there are groups and / or summaries.  Otherwise we get bad layout.
                 ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
                     bulkOpsAddCheckboxesToTable(view.key);
