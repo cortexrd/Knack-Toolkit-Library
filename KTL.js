@@ -11033,7 +11033,6 @@ function Ktl($, appInfo) {
 
                 // Add event listeners to show and hide the tooltip
                 $(document).on('mouseenter', `${tooltipIconPosition} i.${tooltipIcon}`, function (e) {
-                    console.log("hover");
                     if (!$(".ktlTooltip").length) {
                         const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`)
                         const icon = $(this);
