@@ -6261,7 +6261,7 @@ function Ktl($, appInfo) {
 
                 for (let i = 0; i < paramGroups.length; i += 2) {
                     const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
-                    const ttipText = firstParam[0];
+                    const ttipText = firstParam.map(item => item.trim()).join(', ');
                     const viewOptionTxt = viewOptions[0];
                     const tooltipIcon = viewOptions[1] || 'fa-question-circle';
 
@@ -6290,7 +6290,7 @@ function Ktl($, appInfo) {
                     const tooltipIconPositions = [];
                     for (let i = 0; i < paramGroups.length; i += 2) {
                         const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
-                        const ttipText = firstParam.map(item => item.trim()).join(', ');;
+                        const ttipText = firstParam.map(item => item.trim()).join(', ');
                         fieldId = ktl.fields.getFieldIdFromLabel(viewId, viewOptions[0]);
                         const tooltipsIcon = viewOptions[1] || 'fa-question-circle';
 
