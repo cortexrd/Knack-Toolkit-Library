@@ -6116,7 +6116,7 @@ function Ktl($, appInfo) {
                         })
                     })
                     .catch(function () { })
-               
+
             })
 
             function noFilteringRemoveFields(viewId) {
@@ -7810,51 +7810,50 @@ function Ktl($, appInfo) {
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
                 let maxIndexRenumber;
-                let noDragElement = [];
+                let noDragElements = [];
                 let noDragFieldId;
 
                 for (const group of params) {
-                    if (group.length === 2 && group[0] === 'max')
-                        maxIndexRenumber = group[1];
+                    if (group.length === 2 && group[0] === 'lte')
+                        maxIndexRenumber = Number(group[1]);
                     else if (group.length >= 3 && group[0] === 'nodrag') {
                         noDragFieldId = group[1];
                         if (!noDragFieldId.startsWith('field_'))
                             noDragFieldId = ktl.fields.getFieldIdFromLabel(viewId, noDragFieldId);
-                        noDragElement = group;
-                        noDragElement.splice(0, 2);
+                        noDragElements = group.slice(2);
                     }
                 }
 
-
-                if (viewHasGrouping) {
-                    ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
-                        const rows = document.querySelectorAll(`#${viewId} tbody tr`);
-                        let groupName = 'noGrp';
-                        for (const row of rows) {
+                ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
+                    const rows = document.querySelectorAll(`#${viewId} tbody tr`);
+                    let groupName = 'noGrp';
+                    for (const row of rows) {
+                        if (viewHasGrouping) {
                             if (row.classList.contains('kn-table-group') || row.classList.contains('kn-table-totals')) {
                                 row.classList.add('ktlNotAllowed');
                                 if (row.classList.contains('kn-table-group') && row.textContent)
                                     groupName = row.textContent.replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
                             } else {
-                                if (noDragFieldId) {
-                                    console.log('row =', row);
-                                    const fieldText = $(row).find(`.${noDragFieldId} span`)[0].innerText;
-                                    if (noDragElement.includes(fieldText))
-                                        row.classList.add('ktlNotAllowed');
-                                }
-
                                 row.classList.add(`dndGrp_${groupName}`);
                             }
                         }
 
-                        processDndSort();
-                    });
-                } else
+                        if (noDragFieldId) {
+                            const fieldText = $(row).find(`.${noDragFieldId} span`)[0].innerText;
+                            if (noDragElements.includes(fieldText)) {
+                                row.classList.add('ktlNotAllowed', 'ktlNotAllowedKeep');
+                                $(row).find('td').css('cursor', 'unset');
+                            }
+                        }
+                    }
+
                     processDndSort();
+                });
 
                 function processDndSort() {
-                    $(`#${viewId} tbody tr:not(.kn-table-group):not(.kn-table-totals)`).addClass(`ktlDragAndDrop`);
+                    $(`#${viewId} tbody tr:not(.kn-table-group):not(.kn-table-totals):not(.ktlNotAllowed)`).addClass(`ktlDragAndDrop`);
 
+                    let draggedRecId;
                     let initialGroup;
 
                     const dndDiv = document.querySelector(`#${viewId} tbody`);
@@ -7868,7 +7867,7 @@ function Ktl($, appInfo) {
                         swapThreshold: 0.96,
                         animation: 250,
                         easing: 'cubic-bezier(1, 0, 0, 1)',
-                        filter: `#${viewId} .kn-table-group`,
+                        filter: `#${viewId} .kn-table-group, #${viewId} .ktlNotAllowed`,
 
                         onStart: function (evt) {
                             if (viewHasGrouping) {
@@ -7878,6 +7877,8 @@ function Ktl($, appInfo) {
                                     $(`#${viewId} tbody tr:not(.${initialGroup})`).addClass(`ktlNotAllowed`);
                                 }
                             }
+
+                            draggedRecId = evt.item.id;
 
                             const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
                         },
@@ -7900,7 +7901,7 @@ function Ktl($, appInfo) {
                             const dndAppInfo = onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
 
                             $(`#${viewId} tbody tr.ktlNotValid`).removeClass('ktlNotValid');
-                            $(`#${viewId} tbody tr.ktlNotAllowed`).removeClass('ktlNotAllowed');
+                            $(`#${viewId} tbody tr.ktlNotAllowed:not(.ktlNotAllowedKeep)`).removeClass('ktlNotAllowed');
 
                             if (evt.oldIndex !== evt.newIndex) {
                                 ktl.core.infoPopup();
@@ -7918,11 +7919,15 @@ function Ktl($, appInfo) {
                                     newData = document.querySelectorAll(`#${viewId} tbody tr .${sortFieldId}`);
 
                                 for (idx = 0; idx < newData.length; idx++) {
-                                    if (newData[idx].innerText !== (idx + 1).toString()) {
-                                        var recData = {};
-                                        recData[sortFieldId] = idx + 1;
-                                        recData.recId = newData[idx].closest('tr').id;
-                                        recIdArray.push(recData);
+                                    const sortValue = Number(newData[idx].innerText);
+                                    if (sortValue !== (idx + 1)) {
+                                        const recId = newData[idx].closest('tr').id;
+                                        if (sortValue <= maxIndexRenumber || recId === draggedRecId) {
+                                            var recData = {};
+                                            recData[sortFieldId] = idx + 1;
+                                            recData.recId = recId;
+                                            recIdArray.push(recData);
+                                        }
                                     }
                                 }
 
