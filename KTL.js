@@ -143,9 +143,9 @@ function Ktl($, appInfo) {
     const objects = Knack.objects.models;
     for (var o = 0; o < objects.length; o++) {
         var obj = objects[o];
-        var fields = obj.attributes.fields;
-        for (f = 0; f < fields.length; f++) {
-            const fieldId = fields[f].key;
+
+        obj.attributes.fields.filter(f => !!f).forEach( f => {
+            const fieldId = f.key;
             const field = Knack.fields[fieldId];
             var fieldDesc = field.attributes && field.attributes.meta && field.attributes.meta.description;
             if (fieldDesc) {
@@ -154,7 +154,7 @@ function Ktl($, appInfo) {
                 if (!$.isEmptyObject(fieldKwObj))
                     ktlKeywords[fieldId] = fieldKwObj;
             }
-        }
+        });
     }
 
     //window.ktlParserEnd = window.performance.now();
@@ -996,7 +996,8 @@ function Ktl($, appInfo) {
 
             getFieldIdByName: function (fieldName = '', objectId = '') {
                 if (!objectId || !fieldName) return;
-                var fields = Knack.objects._byId[objectId].fields.models;
+
+                const fields = Knack.objects._byId[objectId].fields.models.filter(f => !!f);
                 for (var i = 0; i < fields.length; i++) {
                     if (fields[i].attributes.name === fieldName)
                         return fields[i].attributes.key;
@@ -2694,7 +2695,7 @@ function Ktl($, appInfo) {
                                         if (type === 'form')
                                             fieldsAr = Knack.views[viewId].getInputs();
                                         else
-                                            fieldsAr = Knack.views[viewId].model.view.fields;
+                                            fieldsAr = Knack.views[viewId].model.view.fields.filter(f => !!f);
 
                                         if (typeof fieldsAr === 'object') {
                                             for (var i = 0; i < fieldsAr.length; i++) {
@@ -6575,7 +6576,7 @@ function Ktl($, appInfo) {
                             return fieldId;
                         });
                     } else { //Grids and Lists.
-                        fieldIds = Knack.views[viewId].model.view.fields.map((f) => f.key);
+                        fieldIds = Knack.views[viewId].model.view.fields.filter(f => !!f).map((f) => f.key);
                     }
 
                     cfvScanGroups(fieldIds, params, options);
@@ -9781,11 +9782,9 @@ function Ktl($, appInfo) {
                             })
                         })
                     })
-                } else if (viewType === 'table' || viewType === 'list') {
-                    var fields = view.fields;
-                    for (var f = 0; f < fields.length; f++)
-                        foundFields.push(fields[f].key);
-                } else if (viewType === 'details') {
+                } else if (viewType === 'table' || viewType === 'list')
+                    foundFields.push(...view.fields.filter(f => !!f).map( field => field.key));
+                else if (viewType === 'details') {
                     view.columns.forEach(col => {
                         col.groups.forEach(grp => {
                             grp.columns.forEach(cols => {
@@ -9809,11 +9808,14 @@ function Ktl($, appInfo) {
             getAllFieldsWithKeywordsInObject: function (objectId) {
                 if (!objectId || !Knack.objects._byId[objectId]) return {};
 
-                const fieldsWithKwObj = {};
+                let fieldsWithKwObj = {};
 
-                const objectFields = Knack.objects._byId[objectId].attributes.fields;
-                for (const field of objectFields)
-                    ktl.fields.getFieldKeywords(field.key, fieldsWithKwObj);
+                Knack.objects._byId[objectId].attributes.fields.filter(f => !!f).forEach( field =>
+                    fieldsWithKwObj = {
+                        ...fieldsWithKwObj,
+                        ...ktl.fields.getFieldKeywords(field.key)
+                    }
+                );
 
                 return fieldsWithKwObj;
             },
@@ -9859,7 +9861,7 @@ function Ktl($, appInfo) {
                     return;
                 }
 
-                const field = model.view.fields.find((field) => field.key === fieldId);
+                const field = model.view.fields.find((field) => !!field && field.key === fieldId);
                 if (field) {
                     if (event.currentTarget.classList.value.split(' ').every((c) => !c.includes('sorted'))) { // Not already sorted. First click
                         const isDateTime = (field.type === 'date_time') || (field.type === 'equation' && field.format.equation_type === 'date');
@@ -12568,19 +12570,16 @@ function Ktl($, appInfo) {
         $(document).on('knack-view-render.any', function (event, view, data) {
             if (ktl.scenes.isiFrameWnd() || (view.type !== 'table' && view.type !== 'search')) return;
 
-            var fields = view.fields;
-            if (!fields) return;
+            if (!view.fields) return;
 
-            var bulkOpsLudFieldId = '';
-            var bulkOpsLubFieldId = '';
-            var descr = '';
+            let bulkOpsLudFieldId = '';
+            let bulkOpsLubFieldId = '';
 
-            for (var f = 0; f < view.fields.length; f++) {
-                var field = fields[f];
-                descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+            view.fields.filter(f => !!f).forEach( field => {
+                const descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
                 descr === '_lud' && (bulkOpsLudFieldId = field.key);
                 descr === '_lub' && (bulkOpsLubFieldId = field.key);
-            }
+            });
 
             if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
                 $('#' + view.key + ' .cell-edit.' + bulkOpsLudFieldId).addClass('ktlNoInlineEdit');
@@ -14795,18 +14794,16 @@ function Ktl($, appInfo) {
                     return;
 
                 //Put code below in a shared function (see _lud in this.log).
-                var fields = view.fields;
-                if (!fields) return;
+                if (!view.fields) return;
 
-                var lud = '';
-                var lub = '';
-                var descr = '';
-                for (var f = 0; f < view.fields.length; f++) {
-                    var field = fields[f];
-                    descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
+                let lud = '';
+                let lub = '';
+
+                view.fields.filter(f => !!f).forEach( field => {
+                    const descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
                     descr === '_lud' && (lud = field.key);
                     descr === '_lub' && (lub = field.key);
-                }
+                })
 
                 if (lud && lub) {
                     bulkOpsLudFieldId = lud;
