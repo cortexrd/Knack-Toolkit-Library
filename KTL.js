@@ -6260,10 +6260,9 @@ function Ktl($, appInfo) {
                 };
 
                 for (let i = 0; i < paramGroups.length; i += 2) {
-                    const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
+                    const [firstParam, [viewOptionTxt, ttipIcon]] = paramGroups.slice(i, i + 2);
                     const ttipText = firstParam.map(item => item.trim()).join(', ');
-                    const viewOptionTxt = viewOptions[0];
-                    const tooltipIcon = viewOptions[1] || 'fa-question-circle';
+                    const tooltipIcon = ttipIcon || 'fa-question-circle';
 
                     ['f', 'l', 'd', 't'].forEach(option => {
                         if (viewOptionTxt.includes(option) && tooltipPositions[option]) {
@@ -6289,10 +6288,10 @@ function Ktl($, appInfo) {
 
                     const tooltipIconPositions = [];
                     for (let i = 0; i < paramGroups.length; i += 2) {
-                        const [firstParam, viewOptions] = paramGroups.slice(i, i + 2);
+                        const [firstParam, [fieldLabel, ttipIcon]] = paramGroups.slice(i, i + 2);
                         const ttipText = firstParam.map(item => item.trim()).join(', ');
-                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, viewOptions[0]);
-                        const tooltipsIcon = viewOptions[1] || 'fa-question-circle';
+                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                        const tooltipIcon = ttipIcon || 'fa-question-circle';
 
                         let tooltipIconPosition;
                         const viewSelector = `#${viewId}`;
@@ -6307,8 +6306,8 @@ function Ktl($, appInfo) {
                                     tooltipIconPosition = `${viewSelector} th.${fieldId}`;
                                 } else {
                                     const selectors = [
-                                        `${viewSelector} th.kn-table-link:textEquals("${viewOptions[0]}")`,
-                                        `${viewSelector} th.kn-table-action-link:textEquals("${viewOptions[0]}")`
+                                        `${viewSelector} th.kn-table-link:textEquals("${fieldLabel}")`,
+                                        `${viewSelector} th.kn-table-action-link:textEquals("${fieldLabel}")`
                                     ];
                                     selectors.forEach(selector => {
                                         if ($(selector).length) {
@@ -6319,10 +6318,10 @@ function Ktl($, appInfo) {
                                 break;
                             case 'list':
                             case 'details':
-                                tooltipIconPosition = fieldId ? `${viewSelector} .${fieldId} .kn-detail-label` : `${viewSelector} .kn-details-link .kn-detail-body:textEquals("${fieldLabel[0]}")`;
+                                tooltipIconPosition = fieldId ? `${viewSelector} .${fieldId} .kn-detail-label` : `${viewSelector} .kn-details-link .kn-detail-body:textEquals("${fieldLabel}")`;
                                 break;
                         }
-                        tooltipIconPositions.push({ position: tooltipIconPosition, text: ttipText, icon: tooltipsIcon });
+                        tooltipIconPositions.push({ position: tooltipIconPosition, text: ttipText, icon: tooltipIcon });
                     }
 
                     tooltipIconPositions.forEach(({ position, text, icon }) => {
