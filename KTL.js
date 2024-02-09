@@ -1497,7 +1497,7 @@ function Ktl($, appInfo) {
                 if (!targetSel)
                     targetSel = '#' + viewId; //Starting point - the view ID.
 
-                if (!targetFieldId && fieldId.startsWith('field_'))
+                if (!targetFieldId && (fieldId && fieldId.startsWith('field_')))
                     targetFieldId = fieldId;
 
                 if (targetFieldId) {
@@ -5671,7 +5671,6 @@ function Ktl($, appInfo) {
         var processViewKeywords = null;
         var handleCalendarEventDrop = null;
         var handlePreprocessSubmitError = null;
-        var onDragAndDropEvent = null;
         var dropdownSearching = {}; //Used to prevent concurrent searches on same field.
         var currentFocus = null;
         var gotoDateObj = new Date();
@@ -7778,6 +7777,7 @@ function Ktl($, appInfo) {
             })
         }
 
+        const dragAndDropSubscribers = [];
         function dragAndDrop(viewId, keywords) {
             const kw = '_dnd';
 
@@ -7866,7 +7866,7 @@ function Ktl($, appInfo) {
                         filter: `#${viewId} .kn-table-group, #${viewId} .ktlNotAllowed`,
 
                         onStart: function (evt) {
-                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+                            ktl.views.onDragAndDropEvent(viewId, evt);
 
                             draggedRecId = evt.item.id;
 
@@ -7880,7 +7880,7 @@ function Ktl($, appInfo) {
                         },
 
                         onMove: function (evt, originalEvent) {
-                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+                            ktl.views.onDragAndDropEvent(viewId, evt);
 
                             if (viewHasGrouping) {
                                 const dndGrpClassName = Array.from(evt.related.classList).find(className => className.startsWith('dndGrp_'));
@@ -7894,7 +7894,7 @@ function Ktl($, appInfo) {
                         },
 
                         onEnd: function (evt) {
-                            onDragAndDropEvent && onDragAndDropEvent(viewId, evt);
+                            ktl.views.onDragAndDropEvent(viewId, evt);
 
                             $(`#${viewId} tbody tr.ktlNotValid`).removeClass('ktlNotValid');
                             $(`#${viewId} tbody tr.ktlNotAllowed:not(.ktlNotAllowedKeep)`).removeClass('ktlNotAllowed');
@@ -7957,7 +7957,7 @@ function Ktl($, appInfo) {
                                                     ktl.views.autoRefresh();
                                                     Knack.hideSpinner();
                                                     $.unblockUI();
-                                                    ktl.core.timedPopup('Rows Reordered successfully');
+                                                    ktl.core.timedPopup('Rows Reordered successfully', 'success', 1000);
                                                 })
                                             } else
                                                 showProgress();
@@ -8239,7 +8239,6 @@ function Ktl($, appInfo) {
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
                 cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
-                cfgObj.onDragAndDropEvent && (onDragAndDropEvent = cfgObj.onDragAndDropEvent);
 
                 if (cfgObj.headerAlignment !== undefined)
                     cfg.headerAlignment = cfgObj.headerAlignment;
@@ -11420,7 +11419,32 @@ function Ktl($, appInfo) {
                     if (col.grouping)
                         return true;
                 }
-            }
+            },
+
+            addDragAndDropObserver: function (callback) {
+                const additionalParameters = Array.from(arguments).slice(1);
+                let observerExists = false; //Assuming no callback doesn't have a UUID.
+                //Unique ID may be used to prevent multiple callback instances, when different functions have the same name.
+                if (callback.uuid) {
+                    observerExists = dragAndDropSubscribers.some(observer => observer.callback.uuid === callback.uuid);
+                    if (!observerExists) {
+                        dragAndDropSubscribers.push({ callback, additionalParameters });
+                    }
+                }
+            },
+
+            removeDragAndDropObserver: function (callback) {
+                const index = dragAndDropSubscribers.findIndex(subscriber => subscriber.callback === callback);
+                if (index !== -1) {
+                    dragAndDropSubscribers.splice(index, 1);
+                }
+            },
+
+            onDragAndDropEvent: function (viewId, evt) {
+                if (!viewId || !evt) return;
+                for (const subscriber of dragAndDropSubscribers)
+                    subscriber.callback(viewId, evt, ...subscriber.additionalParameters);
+            },
 
         } //return
     })(); //Views feature
