@@ -7809,7 +7809,7 @@ function Ktl($, appInfo) {
                 const sortFieldId = ktl.fields.getFieldIdFromLabel(viewId, lineIndexFieldLabel);
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
-                let maxIndexRenumber;
+                let maxIndexRenumber = Number.MAX_SAFE_INTEGER;
                 let noDragElements = [];
                 let noDragFieldId;
 
