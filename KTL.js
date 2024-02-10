@@ -90,12 +90,16 @@ function Ktl($, appInfo) {
                 attributes.content = cleanUpKeywords(content);
         } else {
             const viewKeywords = getKeywords(attributes.title);
-            const descriptionKeywords = getKeywords(attributes.description);
-
-            attributes.title = cleanUpKeywords(attributes.title);
-            attributes.description = cleanUpKeywords(attributes.description);
-
-            Object.assign(viewKwObj, viewKeywords, descriptionKeywords);
+            if (attributes.description) {
+                //Allow <br> in description directly in front of a keyword to improve readbility.
+                //Note: When typing <br> in the description, builder converts it to <br />.
+                //Syntax looks like this while being typed: <br>_cls=params
+                //Syntax looks like this once we get here: <br />_cls=params
+                const descriptionKeywords = getKeywords(attributes.description.replace(/<br \/>_/g, '_'));
+                attributes.title = cleanUpKeywords(attributes.title);
+                attributes.description = cleanUpKeywords(attributes.description);
+                Object.assign(viewKwObj, viewKeywords, descriptionKeywords);
+            }
         }
 
         if (attributes.type === 'report') {
