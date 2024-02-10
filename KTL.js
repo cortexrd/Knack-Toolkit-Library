@@ -11019,9 +11019,12 @@ function Ktl($, appInfo) {
                 const icon = `<i class="fa ${tooltipIcon} ktlTooltipIcon ktlTtipIcon-${viewType}-view"> </i>`;
 
                 // Add the tooltip icon to the DOM
+
+                //If view ttip found remove it.  Field has precedence.
+                if ($(`${tooltipIconPosition} .ktlTooltipIcon`).length)
+                    $(`${tooltipIconPosition} .ktlTooltipIcon`).remove();
+
                 $(tooltipIconPosition)
-                    .not('.has-tooltip')
-                    .addClass('has-tooltip')
                     .append(icon)
                     .find('.table-fixed-label')
                     .css('display', 'inline-block');
