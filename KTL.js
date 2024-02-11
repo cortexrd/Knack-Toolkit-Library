@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.23.0';
+    const KTL_VERSION = '0.23.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -8460,9 +8460,6 @@ function Ktl($, appInfo) {
                                     Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
 
-                                    if (viewType === 'search')
-                                        ktlKeywords[viewId]._ts && ktl.views.addTimeStampToHeader(viewId, ktlKeywords[viewId]);
-
                                     return resolve();
                                 } else {
                                     Knack.views[viewId].model.fetch({
@@ -8805,8 +8802,8 @@ function Ktl($, appInfo) {
                 if ($('#' + viewId + '-timestamp-id').length === 0/*Add only once*/) {
                     var timestamp = document.createElement('label');
                     timestamp.setAttribute('id', viewId + '-timestamp-id');
+                    timestamp.classList.add('ktlTimeStamp');
                     timestamp.appendChild(document.createTextNode(ktl.core.getCurrentDateTime(false, true, false, false)));
-                    timestamp.setAttribute('style', 'margin-left: 60px; color: blue; font-weight: bold;');
 
                     var submitBtn = $('#' + viewId + ' .kn-submit');
                     var divHdr = document.querySelector('#' + viewId + ' h1:not(#knack-logo), #' + viewId + ' h2, #' + viewId + ' h3, #' + viewId + ' h4');
