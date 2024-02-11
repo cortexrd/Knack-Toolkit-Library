@@ -10750,9 +10750,11 @@ function Ktl($, appInfo) {
                     document.querySelector('#' + viewId).innerHTML = innerHTML.replace(/_ol[sn]=/, '');
 
                     //In rich text views, jump directly to the URL, without requiring a click.
-                    const href = keywords[kw][0].params[0][0];
-                    let parser = new DOMParser();
-                    let url = parser.parseFromString(href, 'text/html').querySelector('a').getAttribute('href');
+
+                    const url = $(`#${viewId} a`).filter(function () {
+                        return $.trim($(this).text()) === keywords[kw][0].params[0][0];
+                    }).attr('href'); // Get the href attribute of the matched element
+
                     window.open(url, kw === '_ols' ? '_self' : '_blank');
                 } else {
                     if (kw === '_ols') return;
