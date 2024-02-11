@@ -90,16 +90,18 @@ function Ktl($, appInfo) {
                 attributes.content = cleanUpKeywords(content);
         } else {
             const viewKeywords = getKeywords(attributes.title);
+            let descriptionKeywords;
             if (attributes.description) {
                 //Allow <br> in description directly in front of a keyword to improve readbility.
                 //Note: When typing <br> in the description, builder converts it to <br />.
                 //Syntax looks like this while being typed: <br>_cls=params
                 //Syntax looks like this once we get here: <br />_cls=params
-                const descriptionKeywords = getKeywords(attributes.description.replace(/<br \/>_/g, '_'));
-                attributes.title = cleanUpKeywords(attributes.title);
+                descriptionKeywords = getKeywords(attributes.description.replace(/<br \/>_/g, '_'));
                 attributes.description = cleanUpKeywords(attributes.description.replace(/<br \/>_/g, '_'));
-                Object.assign(viewKwObj, viewKeywords, descriptionKeywords);
             }
+
+            attributes.title = cleanUpKeywords(attributes.title);
+            Object.assign(viewKwObj, viewKeywords, descriptionKeywords);
         }
 
         if (attributes.type === 'report') {
@@ -6041,8 +6043,10 @@ function Ktl($, appInfo) {
 
 
         $(document).on('click', function (e) {
-            //Pause auto-refresh when on a tables's search field.
-            if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword' /*Needed to discriminate checkboxes.  We only want Search fields*/)
+            //Pause auto-refresh when on a tables's search field, or search fields in Search views.
+            if (e.target.closest('.table-keyword-search') && e.target.name === 'keyword')
+                ktl.views.autoRefresh(false);
+            else if (e.target.closest('.kn-keyword-search, .kn-search-filter') && e.target.name === 'value')
                 ktl.views.autoRefresh(false);
 
             var viewId = e.target.closest('.kn-view');
@@ -6054,7 +6058,7 @@ function Ktl($, appInfo) {
 
         document.addEventListener('focusout', function (e) {
             try {
-                if (e.target.form.classList[0].includes('table-keyword-search') && $.isEmptyObject(autoRefreshViews))
+                if ((e.target.form.classList[0].includes('table-keyword-search') || e.target.form.classList[0].includes('kn-search_form') ) && $.isEmptyObject(autoRefreshViews))
                     ktl.views.autoRefresh();
             } catch { /*ignore*/ }
         }, true);
@@ -8449,10 +8453,16 @@ function Ktl($, appInfo) {
                                     }
 
                                     //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
-                                    Knack.views[viewId].render();
+                                    if (viewType !== 'search')
+                                        Knack.views[viewId].render();
+
                                     Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                     Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
+
+                                    if (viewType === 'search')
+                                        ktlKeywords[viewId]._ts && ktl.views.addTimeStampToHeader(viewId, ktlKeywords[viewId]);
+
                                     return resolve();
                                 } else {
                                     Knack.views[viewId].model.fetch({
@@ -8833,6 +8843,9 @@ function Ktl($, appInfo) {
                             $('#' + viewId).prepend(timestamp);
                         }
                     }
+                } else {
+                    //Just update existing.  This happens with Search views, where render() is not called, thus keeping the timestamp.
+                    $('#' + viewId + '-timestamp-id')[0].textContent = ktl.core.getCurrentDateTime(false, true, false, false);
                 }
             },
 
@@ -14864,7 +14877,7 @@ function Ktl($, appInfo) {
             if (ebo !== undefined) {
                 if (ebo.length && ebo[0].options) {
                     const options = ebo[0].options;
-                    if (!ktl.core.hasRoleAccess(options)) return;
+                    if (!ktl.core.hasRoleAccess(options)) return false;
                 }
 
                 if (ebo.length === 0)
@@ -14879,7 +14892,7 @@ function Ktl($, appInfo) {
             if (nbo !== undefined) {
                 if (nbo.length && nbo[0].options) {
                     const options = nbo[0].options;
-                    if (!ktl.core.hasRoleAccess(options)) return;
+                    if (!ktl.core.hasRoleAccess(options)) return false;
                 }
 
                 if (nbo.length === 0)
