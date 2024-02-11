@@ -8453,12 +8453,18 @@ function Ktl($, appInfo) {
                                     }
 
                                     //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
-                                    if (viewType !== 'search')
+                                    if (viewType !== 'search') //Skip here, otherwise will erase the search form section.
                                         Knack.views[viewId].render();
+                                    else {
+                                        //Spinner shows for Search views. Hide it until done.
+                                        $("#kn-loading-spinner").attr('id', 'ktlHide-kn-loading-spinner');
+                                        Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
+                                    }
 
-                                    Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                     Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
+
+                                    $("#ktlHide-kn-loading-spinner").attr('id', 'kn-loading-spinner');
 
                                     return resolve();
                                 } else {
