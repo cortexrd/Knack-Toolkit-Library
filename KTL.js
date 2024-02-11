@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.22.20';
+    const KTL_VERSION = '0.23.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -97,7 +97,7 @@ function Ktl($, appInfo) {
                 //Syntax looks like this once we get here: <br />_cls=params
                 const descriptionKeywords = getKeywords(attributes.description.replace(/<br \/>_/g, '_'));
                 attributes.title = cleanUpKeywords(attributes.title);
-                attributes.description = cleanUpKeywords(attributes.description);
+                attributes.description = cleanUpKeywords(attributes.description.replace(/<br \/>_/g, '_'));
                 Object.assign(viewKwObj, viewKeywords, descriptionKeywords);
             }
         }
@@ -3083,6 +3083,20 @@ function Ktl($, appInfo) {
                     }
                 }
             },
+
+            //Fields can be by label or ID.
+            disableFields: function (viewId, fields = []) {
+                if (!viewId || !fields.length) return;
+
+                for (const field of fields) {
+                    const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                    const fieldType = this.getFieldType(fieldId);
+                    if (fieldType === 'connection')
+                        $(`#${viewId} [data-input-id="${fieldId}"] a`).attr('disabled', true);
+                    else
+                        $(`#${viewId} [data-input-id="${fieldId}"] input`).attr('disabled', true);
+                }
+            },
         }
     })(); //fields
 
@@ -3509,6 +3523,11 @@ function Ktl($, appInfo) {
             setCfg: function (cfgObj = {}) {
                 cfgObj.scenesToExclude && (scenesToExclude = cfgObj.scenesToExclude);
                 cfgObj.fieldsToExclude && (fieldsToExclude = cfgObj.fieldsToExclude);
+            },
+
+            disablePersistentForm: function (sceneKey) {
+                if (!scenesToExclude.includes(sceneKey))
+                    scenesToExclude.push(sceneKey);
             },
 
             //For KTL internal use.  Add Change event handlers for Dropdowns, Calendars, etc.
@@ -5858,6 +5877,8 @@ function Ktl($, appInfo) {
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
                     keywords._dv && disableView(view, keywords);
                     keywords._ro && removeOptions(view, keywords);
+                    keywords._afs && autoFillAndSubmit(view, keywords);
+                    keywords._afsg && autoFillAndSubmitQRGenerator(view, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -8232,6 +8253,143 @@ function Ktl($, appInfo) {
                     $(document).on('knack-modal-close', (e) => {
                         ktl.views.refreshViewArray(viewsToRefreshArray);
                     })
+                }
+            }
+        }
+
+        function autoFillAndSubmitQRGenerator(view, keywords) {
+            const kw = '_afsg';
+            if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
+
+            const viewId = view.key;
+
+            const formAction = view.action;
+            if (!(formAction === 'insert' || formAction === 'create')) return;
+
+            const options = keywords[kw][0].options;
+            if (!ktl.core.hasRoleAccess(options)) return;
+
+            const params = keywords[kw][0].params;
+            if (params.length < 2 || params[0].length < 2) return;
+
+            const url = params[0][0];
+            let afsViewId = params[0][1];
+
+            let qrCodeSize = 200;
+            if (params[0].length >= 3)
+                qrCodeSize = Number(params[0][2]);
+
+            const fieldUrl = ktl.fields.getFieldIdFromLabel(viewId, 'URL');
+
+            let varsObject = {};
+            let urlWithVars;
+            let fieldsAutoPopulatedByQrCode;
+            let otherParams = {};
+
+            const groups = keywords[kw][0].params.slice(1);
+            for (const group of groups) {
+                if (group[0] === 'qr') {
+                    fieldsAutoPopulatedByQrCode = group.slice(1);
+                    for (const autoPopField of fieldsAutoPopulatedByQrCode) {
+                        const fieldId = autoPopField.startsWith('field_') ? autoPopField : ktl.fields.getFieldIdFromLabel(viewId, autoPopField);
+                        varsObject[fieldId] = '';
+                    }
+                } else if (group[0] === 'disable') {
+                    let disable = group.slice(1);
+                    if (disable.length >= 1)
+                        otherParams.disable = disable;
+                } else if (group[0] === 'auto') {
+                    let automation = group.slice(1);
+                    if (automation.length >= 1)
+                        otherParams.automation = automation;
+                }
+            }
+
+            ktl.core.loadLib('QRGenerator')
+                .then(() => {
+                    $(`#${viewId}`).on('input', function (e) {
+                        for (const fieldId in varsObject) {
+                            let value = $(`#${viewId} #${fieldId}`).val();
+
+                            if (ktl.fields.getFieldType(fieldId) === 'connection')
+                                value = [`${document.querySelector(`#${viewId}-${fieldId}`).selectedOptions[0].value}`];
+
+                            varsObject[fieldId] = value;
+                        }
+
+                        let varsJson = encodeURIComponent(JSON.stringify(varsObject));
+
+                        urlWithVars = `${url}?${afsViewId}_vars=${varsJson}`;
+
+                        if (!$.isEmptyObject(otherParams))
+                            urlWithVars += `&otherParams=${encodeURIComponent(JSON.stringify(otherParams))}`;
+
+                        $(`#${viewId} #${fieldUrl}`).val(urlWithVars);
+
+                        const barcodeData = { text: urlWithVars, width: qrCodeSize, height: qrCodeSize };
+
+                        var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldUrl}`);
+                        if (!bcgDiv) {
+                            bcgDiv = document.createElement('div');
+
+                            $(`#${viewId} [data-input-id="${fieldUrl}"]`).append(bcgDiv);
+
+                            bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldUrl}`);
+                            bcgDiv.style.marginTop = '10px';
+                        }
+
+                        if (bcgDiv.lastChild)
+                            bcgDiv.removeChild(bcgDiv.lastChild);
+                        $(`#${viewId}-bcgDiv-${fieldUrl}`).qrcode(barcodeData);
+                    })
+                })
+                .catch(reason => { reject('generateBarcode error:', reason); })
+        }
+
+        function autoFillAndSubmit(view, keywords) {
+            const kw = '_afs';
+            if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
+
+            if (!(view.action === 'insert' || view.action === 'create')) return;
+
+            ktl.persistentForm.disablePersistentForm(Knack.router.current_scene_key);
+
+            const viewId = view.key;
+
+            const parts = ktl.core.splitUrl(window.location.href);
+            let otherParams = parts.params.otherParams;
+            if (otherParams) {
+                otherParams = JSON.parse(otherParams);
+                if (otherParams.disable)
+                    ktl.fields.disableFields(viewId, otherParams.disable);
+
+                let timerValueAfterClose;
+                if (otherParams.automation.includes('close')) {
+                    //Extract optional timer value in seconds, following 'close'.
+                    const closeIndex = otherParams.automation.indexOf('close');
+                    timerValueAfterClose =
+                        closeIndex !== -1 &&
+                            closeIndex + 1 < otherParams.automation.length &&
+                            !isNaN(otherParams.automation[closeIndex + 1])
+                            ? Number(otherParams.automation[closeIndex + 1])
+                            : null;
+                }
+
+                if (otherParams.automation.includes('submit')) {
+                    $(`#${viewId} .is-primary`).click();
+                    $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
+                        processClose();
+                    });
+                } else
+                    processClose();
+
+                function processClose() {
+                    if (timerValueAfterClose > 0 || timerValueAfterClose < 172800 /*2 days*/) {
+                        setTimeout(() => {
+                            window.close();
+                        }, 1000 * timerValueAfterClose);
+                    } else if (!timerValueAfterClose)
+                        window.close();
                 }
             }
         }
