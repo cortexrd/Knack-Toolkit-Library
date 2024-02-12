@@ -271,7 +271,7 @@ function Ktl($, appInfo) {
                                     }
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
-                                        if (!ktl.core.isKiosk())
+                                        if (!ktl.account.isDeveloper() && !ktl.core.isKiosk())
                                             keywords._km && ktl.core.kioskMode(true);
                                         keywords._hc && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
                                         keywords._rc && ktl.views.removeColumns(Knack.views[viewId].model.view, keywords);
@@ -3166,6 +3166,19 @@ function Ktl($, appInfo) {
             elementsToObserve.forEach((element) =>
                 observer.observe(element, { subtree: true, childList: true, attributes: false, characterData: true })
             );
+
+            if (ktlKeywords[view.key] && ktlKeywords[view.key]._rlv) {
+                loadFormData()
+                    .then(() => {
+                        isInitialized = true;
+                        setTimeout(() => {
+                            ktl.fields.enforceNumeric();
+                            $(document).trigger('KTL.persistentForm.completed', [Knack.router.scene_view.model.attributes]);
+                        }, 1000);
+                    })
+
+            }
+
         });
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
@@ -3505,12 +3518,25 @@ function Ktl($, appInfo) {
         //Remove all saved data for this view after a submit
         //If changing scene, erase for all previous scene's views.
         //If viewId is empty, erase all current scene's views.
-        function eraseFormData(viewId = '') {
+        function eraseFormData(viewId) {
             if (viewId) {
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
                 if (formDataObjStr) {
                     var formDataObj = JSON.parse(formDataObjStr);
-                    delete formDataObj[viewId];
+
+                    //Process Reload Last Values _rlv
+                    if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv.length && ktlKeywords[viewId]._rlv[0].params[0].length) {
+                        const rlvFields = ktlKeywords[viewId]._rlv[0].params[0];
+                        const rlvFieldsId = rlvFields.map(field => field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field));
+
+                        Object.keys(formDataObj[viewId]).forEach(persistentFieldId => {
+                            if (!rlvFieldsId.includes(persistentFieldId)) {
+                                delete formDataObj[viewId][persistentFieldId];
+                            }
+                        });
+                    } else
+                        delete formDataObj[viewId];
+
                     ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
                 }
             } else {
@@ -5827,6 +5853,86 @@ function Ktl($, appInfo) {
             $('.kn-table-table th').on('click', ktl.views.handleClickDateTimeSort);
         })
 
+        $(document).on('knack-form-submit.any', function (event, view, record) {
+            if (ktl.scenes.isiFrameWnd()) return;
+
+            const keywords = ktlKeywords[view.key];
+
+            //_rcm Remove confirmation Message
+            if (keywords._rcm) {
+                let delayBeforeRemovingMsg = 0;
+                if (keywords._rcm.length && keywords._rcm[0].params[0].length) {
+                    delayBeforeRemovingMsg = Number(keywords._rcm[0].params[0]);
+                    if (isNaN(delayBeforeRemovingMsg) || delayBeforeRemovingMsg < 0 || delayBeforeRemovingMsg > 50000)
+                        delayBeforeRemovingMsg = 0;
+                }
+
+                ktl.core.waitSelector(`#${view.key} .kn-form-confirmation`, 30000)
+                    .then(() => {
+                        setTimeout(() => {
+                            $('#' + view.key + ' .kn-form-confirmation').css('display', 'none');
+                        }, delayBeforeRemovingMsg);
+                    })
+                    .catch(() => { })
+            }
+
+            //_hsr Highlight Submitted Record
+            if (keywords._hsr) {
+                ktl.scenes.renderViews()
+                    .then(() => {
+                        var rowSel = '.kn-view tr[id="' + record.id + '"]'; //Note: View ID is not included intentionnally to flash new record in all views.
+                        if (!$(rowSel).length)
+                            rowSel = '.kn-view tr:has(.' + record.id + ')';
+
+                        if ($(rowSel).length) {
+                            let duration = 1000;
+                            let flashRate = 500;
+                            let highlightColor = 'green';
+                            let classes = 'ktlFlashingFadeInOut highlightedSubmittedRow';
+                            let style;
+
+                            const params = keywords._hsr[0].params;
+                            for (const param of params) {
+                                if (param.length) {
+                                    console.log('param =', param.length, param);
+
+                                    if (param[0] === 'dr' && param.length >= 3) {
+                                        duration = param[1];
+                                        flashRate = Number(param[2]);
+                                        if (isNaN(flashRate) || flashRate < 0 || flashRate > 50000)
+                                            flashRate = 500;
+                                        flashRate /= 1000;
+                                    } else if (param[0] === 'clr' && param.length >= 2)
+                                        highlightColor = param[1];
+                                    else if (param[0] === 'cls' && param.length >= 2)
+                                        classes = param.slice(1).join(' ');
+                                    else if (param[0] === 'style' && param.length >= 2)
+                                        style = param.slice(1).join(',');
+                                }
+                            }
+
+                            ktl.views.setCfg({ ktlFlashRate: `${flashRate}s` });
+                            ktl.views.setCfg({ ktlOutlineColor: highlightColor });
+
+                            $(rowSel).addClass(classes);
+                            const currentStyle = $(rowSel).attr('style');
+                            $(rowSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+
+                            $(rowSel + ' td').addClass('ktlNoBgColor');
+                            setTimeout(() => {
+                                $(rowSel).removeClass(classes);
+                                $(rowSel + ' td').removeClass('ktlNoBgColor');
+                                ktl.views.setCfg({ ktlFlashRate: '1s' });
+                                $(rowSel).attr('style', currentStyle ? currentStyle : '');
+                            }, duration);
+                        }
+                    })
+                    .catch(reason => {
+                        ktl.log.clog('purple', 'Submit any, renderViews failure:', reason);
+                    })
+            }
+        });
+
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
@@ -7163,8 +7269,7 @@ function Ktl($, appInfo) {
             }
 
             //Process cell clicks.
-            //$('#' + viewId + ' .qtCell').off('click').on('click', e => {
-            $('#' + viewId + ' .qtCell').on('click', e => {
+            $('#' + viewId + ' .qtCell').bindFirst('click', e => {
                 if (document.querySelectorAll('.bulkEditCb:checked').length) return;
 
                 e.stopImmediatePropagation();
@@ -11708,7 +11813,6 @@ function Ktl($, appInfo) {
                     }
                 }, 500)
             }
-
         })
 
         $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
