@@ -3700,6 +3700,54 @@ function Ktl($, appInfo) {
     })(); //Autocomplete
 
     //====================================================
+    // Searchable Dropdown Threshold Feature
+    this.searchableDropdownThreshold = (function () {
+        const KEYWORD = '_sddt';
+
+        function searchableDropdownThresholdFields(viewId, containerId) {
+
+            const fieldsWithKeywords = ktl.views.getAllFieldsWithKeywordsInView(viewId) || {};
+            const fields = Object.entries(fieldsWithKeywords).filter(([key, value]) => !!value[KEYWORD]);
+
+            fields.forEach(([fieldId, args]) => {
+                const [minLength, delay] = args[KEYWORD][0].params[0];
+                let input = $(`#${containerId || viewId} [data-input-id="${fieldId}"] input.ui-autocomplete-input`);
+
+                if (!input.length)
+                    return;
+
+                if (!input.data().autocomplete)
+                    return;
+
+                const options = input.autocomplete('option');
+                input.autocomplete('option', {
+                    ...options,
+                    minLength,
+                    delay,
+                });
+            });
+        }
+
+        $(document).on('knack-view-render.any', function (event, view) {
+            searchableDropdownThresholdFields(view.key)
+        });
+
+        $(document).on('KTL.persistentForm.completed', function (event, scene) {
+            scene.views.forEach(view => {
+                searchableDropdownThresholdFields(view.key)
+            })
+        });
+
+        $(document).on('click','td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)', function (event) {
+            const viewId = $(event.target).closest('.kn-view[id]').attr('id');
+
+            ktl.core.waitSelector('#cell-editor input.ui-autocomplete-input', 1000)
+                .then(() => searchableDropdownThresholdFields(viewId, 'cell-editor'));
+        });
+
+    })(); // Searchable Dropdown Threshold Feature
+
+    //====================================================
     //System Colors feature
     this.systemColors = (function () {
         var sysColors = {};
