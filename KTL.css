@@ -607,6 +607,10 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	background-color: orangered !important;
 }
 
+.highlightedSubmittedRow {
+	background-color: #e0ddb8;
+}
+
 /* Status Monitoring */
 .ktlOfflineStatusCritical {
 	background-color: yellow !important;
