@@ -5886,7 +5886,7 @@ function Ktl($, appInfo) {
             const keywords = ktlKeywords[view.key];
 
             //_rcm Remove confirmation Message
-            if (keywords._rcm) {
+            if (keywords && keywords._rcm) {
                 let delayBeforeRemovingMsg = 0;
                 if (keywords._rcm.length && keywords._rcm[0].params[0].length) {
                     delayBeforeRemovingMsg = Number(keywords._rcm[0].params[0]);
@@ -5921,8 +5921,6 @@ function Ktl($, appInfo) {
                             const params = keywords._hsr[0].params;
                             for (const param of params) {
                                 if (param.length) {
-                                    console.log('param =', param.length, param);
-
                                     if (param[0] === 'dr' && param.length >= 3) {
                                         duration = param[1];
                                         flashRate = Number(param[2]);
@@ -14463,7 +14461,7 @@ function Ktl($, appInfo) {
             bulkOpsHeaderArray = [];
             $('#' + viewId + ' .bulkEditHeaderCbox').each((idx, cb) => {
                 var fieldId = $(cb).closest('th');
-                fieldId = fieldId.attr('class').split(' ')[0];
+                fieldId = fieldId.attr('class').split(' ')[0].split(':')[0];
                 if (fieldId.startsWith('field_')) {
                     if (cb.checked) {
                         $('#' + viewId + ' td.' + fieldId).addClass('bulkEditSelectedCol');
