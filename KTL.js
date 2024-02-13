@@ -267,7 +267,7 @@ function Ktl($, appInfo) {
                                     if (keywords._ro) {
                                         //Process exceptions that cause unwanted view disappearance.
                                         if (!mutRec.target.classList.contains('kn-asset-current')) //File Uploads
-                                            keywords._ro && $('#' + viewId).addClass('ktlVisibilityHidden');
+                                            $('#' + viewId).addClass('ktlVisibilityHidden');
                                     }
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
@@ -2145,7 +2145,8 @@ function Ktl($, appInfo) {
                         ktl.persistentForm.ktlOnSelectValueChanged({ viewId: viewId, fieldId: fieldId, records: records, e: e });
 
                         // Keep single record call for retro-compatibility of external code
-                        ktl.fields.onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: e.target.selectedOptions[0].value, text: e.target.selectedOptions[0].innerText, e: e }); //Notify app of change
+                        if (e.target.selectedOptions[0])
+                            ktl.fields.onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: e.target.selectedOptions[0].value, text: e.target.selectedOptions[0].innerText, e: e }); //Notify app of change
                     }, 500);
                 }
             })
@@ -3176,9 +3177,7 @@ function Ktl($, appInfo) {
                             $(document).trigger('KTL.persistentForm.completed', [Knack.router.scene_view.model.attributes]);
                         }, 1000);
                     })
-
             }
-
         });
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
@@ -3464,7 +3463,7 @@ function Ktl($, appInfo) {
                                 $(`#${view.key} [data-input-id="${fieldId}"] option[value=${fieldText}]`).attr('selected', 'selected');
                                 $(`#${view.key} select#${fieldId}.select`).trigger('change');
                             }
-                        } else if (fieldType === 'password') {
+                        } else if (['password', 'file'].includes(fieldType)) {
                             //Ignore.
                         } else {
                             ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
@@ -3505,7 +3504,7 @@ function Ktl($, appInfo) {
                     var formDataObj = JSON.parse(formDataObjStr);
 
                     //Process Reload Last Values _rlv
-                    if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv.length && ktlKeywords[viewId]._rlv[0].params[0].length) {
+                    if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv && ktlKeywords[viewId]._rlv.length && ktlKeywords[viewId]._rlv[0].params[0].length) {
                         const rlvFields = ktlKeywords[viewId]._rlv[0].params[0];
                         const rlvFieldsId = rlvFields.map(field => field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field));
 
