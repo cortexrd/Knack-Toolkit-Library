@@ -134,8 +134,8 @@ function Ktl($, appInfo) {
             //Add scene keywords.
             if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom || viewKwObj._nswd)
                 ktlKeywords[scene.attributes.key] = viewKwObj;
-            else if (viewKwObj._footer)
-                ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
+            else if (viewKwObj._footer) 
+                ktlKeywords.ktlAppFooter = view.id//Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
         }
     };
 
@@ -263,6 +263,7 @@ function Ktl($, appInfo) {
                                     keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                                     keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
                                     ktl.fields.hideFields(viewId, keywords);
+                                    keywords._footer && $('#' + viewId).addClass('ktlVisibilityHidden');
 
                                     if (keywords._ro) {
                                         //Process exceptions that cause unwanted view disappearance.
@@ -11869,9 +11870,9 @@ function Ktl($, appInfo) {
             (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
         }
 
-        function addFooter(footerSlug) {
-            if (!footerSlug) return;
-            const footerHTML = Knack.scenes._byId[footerSlug].views.models[0].attributes.content;
+        function addFooter(viewId) {
+            if (!viewId) return;
+            const footerHTML = Knack.views[viewId].model.view.content;
 
             const footerElement = document.createElement('footer');
             footerElement.innerHTML = footerHTML;
