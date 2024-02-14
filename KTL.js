@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.23.1';
+    const KTL_VERSION = '0.23.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -266,8 +266,17 @@ function Ktl($, appInfo) {
 
                                     if (keywords._ro) {
                                         //Process exceptions that cause unwanted view disappearance.
-                                        if (!mutRec.target.classList.contains('kn-asset-current')) //File Uploads
+                                        if (!mutRec.target.classList.contains('kn-asset-current')) { //File Uploads
+                                            //console.log('mutRec.target =', mutRec.target);
                                             $('#' + viewId).addClass('ktlVisibilityHidden');
+                                        //        setTimeout(() => {
+                                        //            $('#' + viewId).removeClass('ktlVisibilityHidden');
+                                        //            console.log('remove hidden', viewId);
+                                        //        }, 3000);
+                                        }
+
+                                    //    if (mutRec.addedNodes.length)
+                                    //        console.log('mutRec.addedNodes =', mutRec.addedNodes);
                                     }
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
@@ -2030,6 +2039,8 @@ function Ktl($, appInfo) {
         })
 
         document.addEventListener('focus', function (e) {
+            if (!e.target) return;
+
             let viewId = e.target.closest('.kn-view');
             if (viewId)
                 viewId = viewId.id;
@@ -8023,6 +8034,10 @@ function Ktl($, appInfo) {
                     if (Sortable.get(dndDiv)) return;
 
                     new Sortable(dndDiv, {
+                        delay: 500,
+                        delayOnTouchOnly: true,
+                        touchStartThreshold: 5,
+                        //handle: '.dndHandle',
                         swapThreshold: 0.96,
                         animation: 250,
                         easing: 'cubic-bezier(1, 0, 0, 1)',
