@@ -5961,6 +5961,10 @@ function Ktl($, appInfo) {
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
+
+            if (view.scene.key !== Knack.router.scene_view.model.attributes.key)
+                return; //To investigate:  why do we get here?
+
             try {
                 ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
 
