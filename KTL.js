@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.23.2';
+    const KTL_VERSION = '0.23.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3721,7 +3721,6 @@ function Ktl($, appInfo) {
         const KEYWORD = '_sddt';
 
         function searchableDropdownThresholdFields(viewId, containerId) {
-
             const fieldsWithKeywords = ktl.views.getAllFieldsWithKeywordsInView(viewId) || {};
             const fields = Object.entries(fieldsWithKeywords).filter(([key, value]) => !!value[KEYWORD]);
 
@@ -3758,7 +3757,9 @@ function Ktl($, appInfo) {
             const viewId = $(event.target).closest('.kn-view[id]').attr('id');
 
             ktl.core.waitSelector('#cell-editor input.ui-autocomplete-input', 1000)
-                .then(() => searchableDropdownThresholdFields(viewId, 'cell-editor'));
+                .then(() => searchableDropdownThresholdFields(viewId, 'cell-editor'))
+                .catch(() => { })
+
         });
 
     })(); // Searchable Dropdown Threshold Feature
@@ -5915,7 +5916,7 @@ function Ktl($, appInfo) {
             }
 
             //_hsr Highlight Submitted Record
-            if (keywords._hsr) {
+            if (keywords && keywords._hsr) {
                 ktl.scenes.renderViews()
                     .then(() => {
                         var rowSel = '.kn-view tr[id="' + record.id + '"]'; //Note: View ID is not included intentionnally to flash new record in all views.
@@ -5973,7 +5974,7 @@ function Ktl($, appInfo) {
         function ktlProcessKeywords(view, data) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
 
-            if (view.scene.key !== Knack.router.scene_view.model.attributes.key)
+            if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key))
                 return; //To investigate:  why do we get here?
 
             try {
