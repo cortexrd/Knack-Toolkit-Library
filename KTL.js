@@ -150,7 +150,7 @@ function Ktl($, appInfo) {
     for (var o = 0; o < objects.length; o++) {
         var obj = objects[o];
 
-        obj.attributes.fields.filter(f => !!f).forEach( f => {
+        obj.attributes.fields.filter(f => !!f).forEach(f => {
             const fieldId = f.key;
             const field = Knack.fields[fieldId];
             var fieldDesc = field.attributes && field.attributes.meta && field.attributes.meta.description;
@@ -264,19 +264,19 @@ function Ktl($, appInfo) {
                                     keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
                                     ktl.fields.hideFields(viewId, keywords);
 
-                                    if (keywords._ro) {
+                                    if (keywords._ro && mutRec.addedNodes.length) {
                                         //Process exceptions that cause unwanted view disappearance.
                                         if (!mutRec.target.classList.contains('kn-asset-current')) { //File Uploads
                                             //console.log('mutRec.target =', mutRec.target);
                                             $('#' + viewId).addClass('ktlVisibilityHidden');
-                                        //        setTimeout(() => {
-                                        //            $('#' + viewId).removeClass('ktlVisibilityHidden');
-                                        //            console.log('remove hidden', viewId);
-                                        //        }, 3000);
+                                            //        setTimeout(() => {
+                                            //            $('#' + viewId).removeClass('ktlVisibilityHidden');
+                                            //            console.log('remove hidden', viewId);
+                                            //        }, 3000);
                                         }
 
-                                    //    if (mutRec.addedNodes.length)
-                                    //        console.log('mutRec.addedNodes =', mutRec.addedNodes);
+                                        //    if (mutRec.addedNodes.length)
+                                        //        console.log('mutRec.addedNodes =', mutRec.addedNodes);
                                     }
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
@@ -1544,7 +1544,7 @@ function Ktl($, appInfo) {
             //Ex2: $("li.menu-links__list-item:contains('Prev. Stay Info')")
             //MUST NOT include any backslashes for escaped characters like \' for quotes.
             extractJQuerySelector: function (selector) {
-                if ( (selector.startsWith("$('") && selector.endsWith("')")) || (selector.startsWith('$("') && selector.endsWith('")')) ) {
+                if ((selector.startsWith("$('") && selector.endsWith("')")) || (selector.startsWith('$("') && selector.endsWith('")'))) {
                     return selector.substring(3, selector.length - 2);
                 }
             },
@@ -3425,13 +3425,13 @@ function Ktl($, appInfo) {
                             if ($(`#${view.key}-${fieldId}`).hasClass('chzn-select')) {
                                 const options = fieldText.split(';').map(record => {
                                     const [label, id] = record.split(':');
-                                    return {label, id};
+                                    return { label, id };
                                 }).filter(v => !!v.id);
 
                                 const input = $(`#${view.key}-${fieldId}`);
 
                                 options.forEach(option => {
-                                    if(!input.find(`option[value="${option.id}"]`).length) {
+                                    if (!input.find(`option[value="${option.id}"]`).length) {
                                         input.append(`<option value="${option.id}">${option.label}</option>`);
                                     }
                                 });
@@ -3753,7 +3753,7 @@ function Ktl($, appInfo) {
             })
         });
 
-        $(document).on('click','td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)', function (event) {
+        $(document).on('click', 'td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)', function (event) {
             const viewId = $(event.target).closest('.kn-view[id]').attr('id');
 
             ktl.core.waitSelector('#cell-editor input.ui-autocomplete-input', 1000)
@@ -6205,7 +6205,7 @@ function Ktl($, appInfo) {
 
         document.addEventListener('focusout', function (e) {
             try {
-                if ((e.target.form.classList[0].includes('table-keyword-search') || e.target.form.classList[0].includes('kn-search_form') ) && $.isEmptyObject(autoRefreshViews))
+                if ((e.target.form.classList[0].includes('table-keyword-search') || e.target.form.classList[0].includes('kn-search_form')) && $.isEmptyObject(autoRefreshViews))
                     ktl.views.autoRefresh();
             } catch { /*ignore*/ }
         }, true);
@@ -8384,7 +8384,8 @@ function Ktl($, appInfo) {
                 const viewsInScene = Knack.scenes._byId[sceneSlug].views.models;
 
                 for (const viewToRefresh of viewsInScene) {
-                    viewsToRefreshArray.push(viewToRefresh.attributes.key);
+                    if (ktl.views.getViewType(viewToRefresh.attributes.key) !== 'calendar') //These don't need a refresh since it's done automatically.
+                        viewsToRefreshArray.push(viewToRefresh.attributes.key);
                 }
             }
 
@@ -10110,7 +10111,7 @@ function Ktl($, appInfo) {
                         })
                     })
                 } else if (viewType === 'table' || viewType === 'list')
-                    foundFields.push(...view.fields.filter(f => !!f).map( field => field.key));
+                    foundFields.push(...view.fields.filter(f => !!f).map(field => field.key));
                 else if (viewType === 'details') {
                     view.columns.forEach(col => {
                         col.groups.forEach(grp => {
@@ -10137,7 +10138,7 @@ function Ktl($, appInfo) {
 
                 let fieldsWithKwObj = {};
 
-                Knack.objects._byId[objectId].attributes.fields.filter(f => !!f).forEach( field =>
+                Knack.objects._byId[objectId].attributes.fields.filter(f => !!f).forEach(field =>
                     fieldsWithKwObj = {
                         ...fieldsWithKwObj,
                         ...ktl.fields.getFieldKeywords(field.key)
@@ -12470,9 +12471,11 @@ function Ktl($, appInfo) {
                                         if (showHiddenElem) {
                                             $('.ktlHidden').replaceClass('ktlHidden', 'ktlHidden_dis');
                                             $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'ktlDisplayNone_dis');
+                                            $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'ktlVisibilityHidden_dis');
                                         } else {
                                             $('.ktlHidden_dis').replaceClass('ktlHidden_dis', 'ktlHidden');
                                             $('.ktlDisplayNone_dis').replaceClass('ktlDisplayNone_dis', 'ktlDisplayNone');
+                                            $('.ktlVisibilityHidden_dis').replaceClass('ktlVisibilityHidden_dis', 'ktlVisibilityHidden');
                                         }
                                     })
 
@@ -12931,7 +12934,7 @@ function Ktl($, appInfo) {
             let bulkOpsLudFieldId = '';
             let bulkOpsLubFieldId = '';
 
-            view.fields.filter(f => !!f).forEach( field => {
+            view.fields.filter(f => !!f).forEach(field => {
                 const descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
                 descr === '_lud' && (bulkOpsLudFieldId = field.key);
                 descr === '_lub' && (bulkOpsLubFieldId = field.key);
@@ -15155,7 +15158,7 @@ function Ktl($, appInfo) {
                 let lud = '';
                 let lub = '';
 
-                view.fields.filter(f => !!f).forEach( field => {
+                view.fields.filter(f => !!f).forEach(field => {
                     const descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
                     descr === '_lud' && (lud = field.key);
                     descr === '_lub' && (lub = field.key);
