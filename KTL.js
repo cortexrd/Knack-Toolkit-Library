@@ -9072,19 +9072,19 @@ function Ktl($, appInfo) {
 
                 inputType = periodToInputType(period);
 
-                var startDateInput = ktl.fields.addInput(div, 'From', inputType, startDateIso, `#${viewId}-startDateInput`, 'width: 140px; height: 25px;');
-                var endDateInput = ktl.fields.addInput(div, 'To', inputType, endDateIso, `#${viewId}-endDateInput`, 'width: 140px; height: 25px;');
-                var periodMonthly = ktl.fields.addRadioButton(div, 'Monthly', 'PERIOD', `#${viewId}-monthly`, 'monthly');
-                var periodWeekly = ktl.fields.addRadioButton(div, 'Weekly', 'PERIOD', `#${viewId}-weekly`, 'weekly');
-                var periodDaily = ktl.fields.addRadioButton(div, 'Daily', 'PERIOD', `#${viewId}-daily`, 'daily');
+                var startDateInput = ktl.fields.addInput(div, 'From', inputType, startDateIso, `${viewId}-startDateInput`, 'width: 140px; height: 25px;');
+                var endDateInput = ktl.fields.addInput(div, 'To', inputType, endDateIso, `${viewId}-endDateInput`, 'width: 140px; height: 25px;');
+                var periodMonthly = ktl.fields.addRadioButton(div, 'Monthly', 'PERIOD', `${viewId}-monthly`, 'monthly');
+                var periodWeekly = ktl.fields.addRadioButton(div, 'Weekly', 'PERIOD', `${viewId}-weekly`, 'weekly');
+                var periodDaily = ktl.fields.addRadioButton(div, 'Daily', 'PERIOD', `${viewId}-daily`, 'daily');
 
-                document.querySelector('#' + period).checked = true;
+                document.querySelector(`#${viewId}-${period}`).checked = true;
 
                 startDateInput.value = startDateIso;
                 endDateInput.value = endDateIso;
 
                 if (endDateUs < startDateUs)
-                    document.querySelector('#endDateInput').classList.add('ktlNotValid');
+                    document.querySelector(`#${viewId}-endDateInput`).classList.add('ktlNotValid');
 
                 /* This code was an attempt to allow using the keyboard up/down arrows to properly scroll through dates, but it doesn't work well.
                  * It only increases the day (in date type), or month (in month type), but the year can't be changed.
@@ -9132,8 +9132,9 @@ function Ktl($, appInfo) {
                     updatePeriodFilter(startDateUs, endDateUs);
                 })
 
-                startDateInput.onfocus = (e) => { currentFocus = '#startDateInput'; }
-                endDateInput.onfocus = (e) => { currentFocus = '#endDateInput'; }
+                startDateInput.onfocus = (e) => { currentFocus = `#${viewId}-startDateInput`; }
+                endDateInput.onfocus = (e) => { currentFocus = `#${viewId}-endDateInput`; }
+
                 if (currentFocus) {
                     document.querySelector(currentFocus).focus();
                 } else
@@ -9156,8 +9157,8 @@ function Ktl($, appInfo) {
                 function updatePeriod(e) {
                     period = e.target.defaultValue;
                     inputType = periodToInputType(period);
-                    document.querySelector('#startDateInput').type = inputType;
-                    document.querySelector('#endDateInput').type = inputType;
+                    document.querySelector(`#${viewId}-startDateInput`).type = inputType;
+                    document.querySelector(`#${viewId}-endDateInput`).type = inputType;
                     adjustEndDate(period);
                     ktl.views.saveViewDates(
                         viewId,
@@ -9279,16 +9280,19 @@ function Ktl($, appInfo) {
             loadViewDates: function (viewId = '') {
                 if (!viewId) return {};
 
-                var startDt = '';
-                var endDt = '';
+                let startDt = '';
+                let endDt = '';
+                let period = '';
 
-                var viewDates = ktl.storage.lsGetItem(ktl.const.LS_VIEW_DATES);
+                let viewDates = ktl.storage.lsGetItem(ktl.const.LS_VIEW_DATES);
                 if (viewDates) {
                     try {
                         viewDates = JSON.parse(viewDates);
-                        startDt = viewDates[viewId].startDt;
-                        endDt = viewDates[viewId].endDt;
-                        period = viewDates[viewId].period;
+                        if (viewDates[viewId]) {
+                            startDt = viewDates[viewId].startDt;
+                            endDt = viewDates[viewId].endDt;
+                            period = viewDates[viewId].period;
+                        }
                     } catch (e) {
                         console.log('Error parsing report period', e);
                     }
