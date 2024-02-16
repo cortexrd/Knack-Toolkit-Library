@@ -9072,11 +9072,11 @@ function Ktl($, appInfo) {
 
                 inputType = periodToInputType(period);
 
-                var startDateInput = ktl.fields.addInput(div, 'From', inputType, startDateIso, 'startDateInput', 'width: 140px; height: 25px;');
-                var endDateInput = ktl.fields.addInput(div, 'To', inputType, endDateIso, 'endDateInput', 'width: 140px; height: 25px;');
-                var periodMonthly = ktl.fields.addRadioButton(div, 'Monthly', 'PERIOD', 'monthly', 'monthly');
-                var periodWeekly = ktl.fields.addRadioButton(div, 'Weekly', 'PERIOD', 'weekly', 'weekly');
-                var periodDaily = ktl.fields.addRadioButton(div, 'Daily', 'PERIOD', 'daily', 'daily');
+                var startDateInput = ktl.fields.addInput(div, 'From', inputType, startDateIso, `#${viewId}-startDateInput`, 'width: 140px; height: 25px;');
+                var endDateInput = ktl.fields.addInput(div, 'To', inputType, endDateIso, `#${viewId}-endDateInput`, 'width: 140px; height: 25px;');
+                var periodMonthly = ktl.fields.addRadioButton(div, 'Monthly', 'PERIOD', `#${viewId}-monthly`, 'monthly');
+                var periodWeekly = ktl.fields.addRadioButton(div, 'Weekly', 'PERIOD', `#${viewId}-weekly`, 'weekly');
+                var periodDaily = ktl.fields.addRadioButton(div, 'Daily', 'PERIOD', `#${viewId}-daily`, 'daily');
 
                 document.querySelector('#' + period).checked = true;
 
