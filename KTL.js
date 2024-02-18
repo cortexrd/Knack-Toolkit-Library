@@ -8646,6 +8646,12 @@ function Ktl($, appInfo) {
                 document.querySelector(`#${viewId}-endDateInput`).classList.add('ktlNotValid');
 
             startDateInput.addEventListener('change', (e) => {
+                if (!e.target.value) {
+                    startDateInput.classList.add('ktlNotValid');
+                    return;
+                } else
+                    startDateInput.classList.remove('ktlNotValid');
+
                 let startDateFromPicker = e.target.value.replace(/-/g, '/');
                 startDateInFieldFormat = new Date(startDateFromPicker);
                 endDateInFieldFormat = computeEndDate(startDateInFieldFormat, period);
@@ -8662,6 +8668,12 @@ function Ktl($, appInfo) {
             })
 
             endDateInput.addEventListener('change', (e) => {
+                if (!e.target.value) {
+                    endDateInput.classList.add('ktlNotValid');
+                    return;
+                } else
+                    endDateInput.classList.remove('ktlNotValid');
+
                 endDateInFieldFormat = new Date(e.target.value.replace(/-/g, '/'));
 
                 saveViewDates(
@@ -8711,6 +8723,9 @@ function Ktl($, appInfo) {
 
                 startDatePickerIso = ktl.core.convertDateToIso(startDateInFieldFormat, period, '-');
                 endDatePickerIso = ktl.core.convertDateToIso(endDateInFieldFormat, period, '-');
+
+                if (startDatePickerIso.includes('Invalid Date') || endDatePickerIso.includes('Invalid Date'))
+                    return;
 
                 startDateInput.value = startDatePickerIso;
                 endDateInput.value = endDatePickerIso;
