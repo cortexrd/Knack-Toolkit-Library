@@ -1093,50 +1093,63 @@ function Ktl($, appInfo) {
                 }
             },
 
-            convertDateTimeToString: function (dateTimeObj, iso = false, dateOnly = false) {
+            convertDateTimeToString: function (dateTimeObj, iso = false, dateOnly = false, dateTimeFormat) {
                 if (!dateTimeObj) return;
 
-                var dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-                if (dateOnly) {
-                    dtOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
+                let year = dateTimeObj.toLocaleString(undefined, { year: 'numeric' });
+                let month = dateTimeObj.toLocaleString(undefined, { month: '2-digit' });
+                let day = dateTimeObj.toLocaleString(undefined, { day: '2-digit' });
+                let slashSeparator = (dateTimeFormat && dateTimeFormat.includes('/'));
+
+                //ISO format by default: yyyy-mm-dd format.  Used by input of type calendar.
+                let convertedDateTime = `${year}-${month}-${day}`;
+
+                if (!iso) {
+                    dateTimeFormat = dateTimeFormat || 'mm/dd/yyyy'; //If none supplied, use Knack's default format.
+
+                    dateTimeFormat = dateTimeFormat.replace(/-/g, '/');
+
+                    if (dateTimeFormat === 'mm/dd/yyyy')
+                        convertedDateTime = `${month}-${day}-${year}`;
+                    else if (dateTimeFormat === 'dd/mm/yyyy')
+                        convertedDateTime = `${day}-${month}-${year}`;
+                    else if (dateTimeFormat === 'M D, yyyy')
+                        convertedDateTime = `${month}-${day}-${year}`;
                 }
 
-                if (iso) {
-                    //yyyy-mm-dd format, for example used by input of type calendar.
-                    var year = dateTimeObj.toLocaleString(undefined, { year: 'numeric' });
-                    var month = dateTimeObj.toLocaleString(undefined, { month: '2-digit' });
-                    var day = dateTimeObj.toLocaleString(undefined, { day: '2-digit' });
-                    var isoDate = year + '-' + month + '-' + day;
+                if (slashSeparator)
+                    convertedDateTime = convertedDateTime.replace(/\-/g, '/');
 
-                    //yyyy-mm-dd hh:mm:ss format when time is included.
-                    if (!dateOnly)
-                        isoDate += ' ' + dateTimeObj.toTimeString(undefined, { 'hour': '2-digit', 'minute': '2-digit', hourCycle: 'h23', 'second': '2-digit' });
+                //yyyy-mm-dd hh:mm:ss format when time is included.
+                if (!dateOnly)
+                    convertedDateTime += ' ' + dateTimeObj.toTimeString(undefined, { 'hour': '2-digit', 'minute': '2-digit', hourCycle: 'h23', 'second': '2-digit' });
 
-                    return isoDate;
-                } else {
-                    //mm-dd-yyyy Knack's default format.
-                    return dateTimeObj.toLocaleDateString(undefined, dtOptions);
-                }
+                return convertedDateTime;
             },
 
-            convertDateToIso: function (dateObj, period = '') {
+            convertDateToIso: function (dateObj, period = '', separator = '/') {
                 if (!dateObj) return '';
-                var year = dateObj.toLocaleString(undefined, { year: 'numeric' });
-                var month = dateObj.toLocaleString(undefined, { month: '2-digit' });
-                var day = dateObj.toLocaleString(undefined, { day: '2-digit' });
-                var isoDate = year + '-' + month;
+                let year = dateObj.toLocaleString(undefined, { year: 'numeric' });
+                let month = dateObj.toLocaleString(undefined, { month: '2-digit' });
+                let day = dateObj.toLocaleString(undefined, { day: '2-digit' });
+                let isoDate = `${year}${separator}${month}`;
                 if (period !== 'monthly')
-                    isoDate += '-' + day;
+                    isoDate += `${separator}${day}`;
                 return isoDate;
             },
 
             getLastDayOfMonth: function (dateObj, iso = false) {
-                var lastDayOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
+                let lastDayOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
                 return lastDayOfMonth;
             },
 
             injectCSS: (css) => { //Add custom styles to existing CSS.
-                var ktlCSS = (document.querySelector('#ktlCSS') || ((ktlCSS = document.createElement('style')) && document.head.appendChild(ktlCSS)));
+                let ktlCSS = document.querySelector('#ktlCSS');
+                if (!ktlCSS) {
+                    ktlCSS = document.createElement('style');
+                    document.head.appendChild(ktlCSS);
+                }
+
                 ktlCSS.id = 'ktlCSS';
                 ktlCSS.type = 'text/css';
                 ktlCSS.textContent += css + '\n\n';
@@ -1146,7 +1159,7 @@ function Ktl($, appInfo) {
                 //Dev mode on mobile devices is only possible if NodeJS runs with file server on main developer's machine.
                 if (Knack.isMobile() && !ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) return;
 
-                var prod = (localStorage.getItem(APP_ROOT_NAME + 'dev') === null);
+                let prod = (localStorage.getItem(APP_ROOT_NAME + 'dev') === null);
                 if (prod)
                     ktl.storage.lsSetItem('dev', '', true);
                 else
@@ -3903,6 +3916,9 @@ function Ktl($, appInfo) {
                             return { rgb: color, hsl: hsl, hsv: hsv };
                         }
                     })
+                    .catch(err => {
+                        ktl.log.clog('purple', 'Timeout waiting for #kn-dynamic-styles');
+                    })
             },
 
             getSystemColors: function () {
@@ -5974,8 +5990,15 @@ function Ktl($, appInfo) {
         function ktlProcessKeywords(view, data) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
 
-            if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key))
-                return; //To investigate:  why do we get here?
+            if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key)) {
+                const isLoginPage = document.querySelector('.kn-login');
+                if (isLoginPage && isLoginPage.id && ktlKeywords[isLoginPage.id] && ktlKeywords[isLoginPage.id]._al)
+                    ktl.account.autoLogin(view.key);
+                else
+                    ktl.log.clog('purple', `Scene vs View mismatch found: ${view.scene.key}, ${Knack.router.scene_view.model.attributes.key}`);
+
+                return;
+            }
 
             try {
                 ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
@@ -6001,7 +6024,6 @@ function Ktl($, appInfo) {
                     keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                     keywords._ts && ktl.views.addTimeStampToHeader(viewId, keywords);
                     keywords._dtp && ktl.views.addDateTimePickers(viewId, keywords);
-                    keywords._al && ktl.account.autoLogin(viewId);
                     keywords._rvs && refreshViewsAfterSubmit(viewId, keywords);
                     keywords._rvr && refreshViewsAfterRefresh(viewId, keywords);
                     keywords._nsg && noSortingOnGrid(viewId, keywords);
@@ -6166,7 +6188,7 @@ function Ktl($, appInfo) {
                 }
             }
 
-            var gotoDateIso = ktl.core.convertDateToIso(gotoDateObj, period);
+            var gotoDateIso = ktl.core.convertDateToIso(gotoDateObj, period, '-');
 
             var gotoDateField = document.querySelector('#' + viewId + ' #' + viewId + '_gotoDate');
             if (!gotoDateField) {
@@ -9012,124 +9034,96 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                var period = 'monthly';
-                var inputType = 'month';
-
-                //These two variables are always a Date object in Knack's default format: mm/dd/yyyy.
-                var startDateUs = '';
-                var endDateUs = '';
-
-                //These two variables are always a string in the date picker's ISO format: yyyy-mm-dd.
-                var startDateIso = '';
-                var endDateIso = '';
-
                 //The tables Date/Time field on which the filtering is applied.  Always the first one found from the left.
-                var fieldId = '';
-                var fieldName = '';
+                let fieldId = '';
 
-                //Find first Date/Time field type.
-                var cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
-                for (var i = 0; i < cols.length; i++) {
-                    fieldId = cols[i].field && cols[i].field.key;
-                    if (fieldId) {
-                        var field = Knack.objects.getField(fieldId);
-                        if (field && field.attributes && field.attributes.type === 'date_time') {
-                            fieldName = field.attributes.name;
-                            break;
-                        }
-                    }
-                }
+                // Find first Date/Time field type using array functions.
+                let cols = Knack.router.scene_view.model.views._byId[viewId].attributes.columns;
+                let field = cols.find(col => {
+                    fieldId = col.field && col.field.key;
+                    if (!fieldId) return false;
+                    let field = Knack.objects.getField(fieldId);
+                    return field && field.attributes && field.attributes.type === 'date_time';
+                });
+
+                let fieldName = field ? Knack.objects.getField(field.field.key).attributes.name : undefined;
 
                 if (!fieldId || !fieldName) {
                     ktl.core.timedPopup('This table doesn\'t have a Date/Time column.', 'warning', 4000);
                     return;
                 }
 
-                var div = document.createElement('div');
+                let period = 'monthly';
+                let inputType = 'month';
 
-                //If Search exists, append at end to save space.
-                if (document.querySelector('#' + viewId + ' .table-keyword-search')) {
-                    document.querySelector('#' + viewId + ' .table-keyword-search').appendChild(div);
-                    div.style.marginLeft = '100px';
-                } else {
-                    ktl.core.insertAfter(div, document.querySelector('#' + viewId + ' .view-header'));
-                    div.style.marginTop = '15px';
-                    div.style.marginBottom = '15px';
-                }
+                //These two variables are always a Date object, in Knack's field format.
+                let startDateInFieldFormat;
+                let endDateInFieldFormat;
 
-                var viewDates = ktl.views.loadViewDates(viewId);
-                if (!viewDates.startDt) {
-                    startDateUs = new Date(); //Nothing yet for this view, use "now".
-                    endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
-                } else {
-                    startDateUs = new Date(viewDates.startDt);
+                //These two variables are always a string in the date picker's ISO format: yyyy-mm or yyyy-mm-dd.
+                let startDatePickerIso = '';
+                let endDatePickerIso = '';
+
+                const dateTimeFormat = Knack.fields[fieldId].attributes.format.date_format;
+
+                let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+                ktlAddonsDiv.classList.add('ktlDateTimePickerDiv');
+
+                let viewDates = ktl.views.loadViewDates(viewId);
+                if (viewDates.startDt) {
+                    startDateInFieldFormat = new Date(viewDates.startDt + 'T00:00:00');
                     viewDates.period && (period = viewDates.period);
-                    endDateUs = new Date(viewDates.endDt);
+                    endDateInFieldFormat = new Date(viewDates.endDt + 'T00:00:00');
+                } else {
+                    startDateInFieldFormat = new Date(); //Nothing yet for this view, use "now".
+                    endDateInFieldFormat = ktl.core.getLastDayOfMonth(startDateInFieldFormat);
                 }
 
-                startDateIso = ktl.core.convertDateToIso(startDateUs, period);
-                endDateIso = ktl.core.convertDateToIso(endDateUs, period);
+                startDatePickerIso = ktl.core.convertDateToIso(startDateInFieldFormat, period, '-');
+                endDatePickerIso = ktl.core.convertDateToIso(endDateInFieldFormat, period, '-');
 
                 inputType = periodToInputType(period);
 
-                var startDateInput = ktl.fields.addInput(div, 'From', inputType, startDateIso, `${viewId}-startDateInput`, 'width: 140px; height: 25px;');
-                var endDateInput = ktl.fields.addInput(div, 'To', inputType, endDateIso, `${viewId}-endDateInput`, 'width: 140px; height: 25px;');
-                var periodMonthly = ktl.fields.addRadioButton(div, 'Monthly', 'PERIOD', `${viewId}-monthly`, 'monthly');
-                var periodWeekly = ktl.fields.addRadioButton(div, 'Weekly', 'PERIOD', `${viewId}-weekly`, 'weekly');
-                var periodDaily = ktl.fields.addRadioButton(div, 'Daily', 'PERIOD', `${viewId}-daily`, 'daily');
+                let startDateInput = ktl.fields.addInput(ktlAddonsDiv, 'From', inputType, '', `${viewId}-startDateInput`, 'width: 140px; height: 25px;');
+                let endDateInput = ktl.fields.addInput(ktlAddonsDiv, 'To', inputType, '', `${viewId}-endDateInput`, 'width: 140px; height: 25px;');
+                let periodMonthly = ktl.fields.addRadioButton(ktlAddonsDiv, 'Monthly', 'PERIOD', `${viewId}-monthly`, 'monthly');
+                let periodWeekly = ktl.fields.addRadioButton(ktlAddonsDiv, 'Weekly', 'PERIOD', `${viewId}-weekly`, 'weekly');
+                let periodDaily = ktl.fields.addRadioButton(ktlAddonsDiv, 'Daily', 'PERIOD', `${viewId}-daily`, 'daily');
 
                 document.querySelector(`#${viewId}-${period}`).checked = true;
 
-                startDateInput.value = startDateIso;
-                endDateInput.value = endDateIso;
+                startDateInput.value = startDatePickerIso;
+                endDateInput.value = endDatePickerIso;
 
-                if (endDateUs < startDateUs)
+                if (endDateInFieldFormat < startDateInFieldFormat)
                     document.querySelector(`#${viewId}-endDateInput`).classList.add('ktlNotValid');
 
-                /* This code was an attempt to allow using the keyboard up/down arrows to properly scroll through dates, but it doesn't work well.
-                 * It only increases the day (in date type), or month (in month type), but the year can't be changed.
-                 * We'd have to split the d/m/y into separate inputs and control each separately depending on focus.
-                 *
-                startDateInput.addEventListener('keydown', (e) => { processDtpKeydown(e); })
-                endDateInput.addEventListener('keydown', (e) => { processDtpKeydown(e); })
-                function processDtpKeydown(e) {
-                    if (e.target.id !== 'startDateInput' && e.target.id !== 'endDateInput') return;
-                    if (e.code === 'ArrowDown') {
-                        e.preventDefault();
-                        document.querySelector('#' + e.target.id).stepDown();
-                        document.querySelector('#' + e.target.id).dispatchEvent(new Event('change'));
-                    } else if (e.code === 'ArrowUp') {
-                        e.preventDefault();
-                        document.querySelector('#' + e.target.id).stepUp();
-                        document.querySelector('#' + e.target.id).dispatchEvent(new Event('change'));
-                    }
-                }
-                */
-
                 startDateInput.addEventListener('change', (e) => {
-                    var sd = e.target.value.replaceAll('-', '/');
-                    startDateUs = new Date(sd);
-                    adjustEndDate(period);
+                    let startDateFromPicker = e.target.value.replace(/-/g, '/');
+                    startDateInFieldFormat = new Date(startDateFromPicker);
+                    endDateInFieldFormat = computeEndDate(startDateInFieldFormat, period);
 
-                    endDateInput.value = ktl.core.convertDateToIso(endDateUs, period);
+                    endDateInput.value = ktl.core.convertDateToIso(endDateInFieldFormat, period, '-');
+
                     ktl.views.saveViewDates(
                         viewId,
-                        ktl.core.convertDateTimeToString(startDateUs, false, true),
-                        ktl.core.convertDateTimeToString(endDateUs, false, true),
+                        ktl.core.convertDateTimeToString(startDateInFieldFormat, true, true),
+                        ktl.core.convertDateTimeToString(endDateInFieldFormat, true, true),
                         period);
-                    updatePeriodFilter(startDateUs, endDateUs);
+
+                    updatePeriodFilter(startDateInFieldFormat, endDateInFieldFormat);
                 })
 
                 endDateInput.addEventListener('change', (e) => {
-                    endDateUs = new Date(e.target.value.replace(/-/g, '/'));
+                    endDateInFieldFormat = new Date(e.target.value.replace(/-/g, '/'));
 
                     ktl.views.saveViewDates(
                         viewId,
-                        ktl.core.convertDateTimeToString(startDateUs, false, true),
-                        ktl.core.convertDateTimeToString(endDateUs, false, true),
+                        ktl.core.convertDateTimeToString(startDateInFieldFormat, true, true),
+                        ktl.core.convertDateTimeToString(endDateInFieldFormat, true, true),
                         period);
 
-                    updatePeriodFilter(startDateUs, endDateUs);
+                    updatePeriodFilter(startDateInFieldFormat, endDateInFieldFormat);
                 })
 
                 startDateInput.onfocus = (e) => { currentFocus = `#${viewId}-startDateInput`; }
@@ -9140,52 +9134,67 @@ function Ktl($, appInfo) {
                 } else
                     startDateInput.focus();
 
-                function adjustEndDate(period) {
+                function computeEndDate(startDate, period) {
+                    let endDate;
+
                     if (period === 'monthly')
-                        endDateUs = ktl.core.getLastDayOfMonth(startDateUs);
+                        endDate = ktl.core.getLastDayOfMonth(startDate);
                     else if (period === 'weekly') {
-                        endDateUs = new Date(startDateUs);
-                        endDateUs.setDate(endDateUs.getDate() + 6);
+                        endDate = new Date(startDate);
+                        endDate.setDate(endDate.getDate() + 6);
                     } else if (period === 'daily')
-                        endDateUs = new Date(startDateUs);
+                        endDate = new Date(startDate);
+
+                    return endDate;
                 }
 
-                periodMonthly.addEventListener('click', e => { updatePeriod(e); });
-                periodWeekly.addEventListener('click', e => { updatePeriod(e); });
-                periodDaily.addEventListener('click', e => { updatePeriod(e); });
+                periodMonthly.addEventListener('click', e => { handlePeriodTypeChange(e); });
+                periodWeekly.addEventListener('click', e => { handlePeriodTypeChange(e); });
+                periodDaily.addEventListener('click', e => { handlePeriodTypeChange(e); });
 
-                function updatePeriod(e) {
+                function handlePeriodTypeChange(e) {
                     period = e.target.defaultValue;
                     inputType = periodToInputType(period);
-                    document.querySelector(`#${viewId}-startDateInput`).type = inputType;
-                    document.querySelector(`#${viewId}-endDateInput`).type = inputType;
-                    adjustEndDate(period);
+                    startDateInput.type = inputType;
+                    endDateInput.type = inputType;
+
+                    //let st = startDateInput.value;
+                    startDateInFieldFormat = new Date(viewDates.startDt + 'T00:00:00');
+                    endDateInFieldFormat = computeEndDate(startDateInFieldFormat, period);
+
+                    startDatePickerIso = ktl.core.convertDateToIso(startDateInFieldFormat, period, '-');
+                    endDatePickerIso = ktl.core.convertDateToIso(endDateInFieldFormat, period, '-');
+
+                    startDateInput.value = startDatePickerIso;
+                    endDateInput.value = endDatePickerIso;
+
                     ktl.views.saveViewDates(
                         viewId,
-                        ktl.core.convertDateTimeToString(startDateUs, false, true),
-                        ktl.core.convertDateTimeToString(endDateUs, false, true),
+                        ktl.core.convertDateTimeToString(startDateInFieldFormat, true, true),
+                        ktl.core.convertDateTimeToString(endDateInFieldFormat, true, true),
                         period);
-                    updatePeriodFilter(startDateUs, endDateUs);
+
+                    updatePeriodFilter(startDateInFieldFormat, endDateInFieldFormat);
                 }
 
                 function periodToInputType(period) {
-                    var inputType = 'month';
+                    let inputType = 'month';
                     if (period !== 'monthly')
                         inputType = 'date';
                     return inputType;
                 }
 
-                function updatePeriodFilter(startDateUs, endDateUs) {
+                function updatePeriodFilter(startDateInFieldFormat, endDateInFieldFormat) {
                     Knack.showSpinner();
 
                     //Merge current filter with new one, if possible, i.e. using the AND operator.
-                    var currentFilters = Knack.views[viewId].getFilters();
-                    var curRules = [];
-                    var foundAnd = true;
+                    let currentFilters = Knack.views[viewId].getFilters();
+                    let curRules = [];
+                    let foundAnd = true;
                     if (!$.isEmptyObject(currentFilters)) {
                         //Sometimes, the filters have a rules key, but not always.
                         //If not, then the object itself is the array that contain the rules.
-                        var rules;
+                        let rules;
                         if (currentFilters.rules && currentFilters.rules.length > 0)
                             rules = currentFilters.rules;
                         else if (currentFilters.length > 0)
@@ -9209,22 +9218,22 @@ function Ktl($, appInfo) {
                     }
 
                     //Must adjust end date due to "is before" nature of date filter.
-                    startDateUs.setDate(startDateUs.getDate() - 1);
+                    startDateInFieldFormat.setDate(startDateInFieldFormat.getDate() - 1);
 
                     if (period === 'monthly')
-                        endDateUs = new Date(endDateUs.getFullYear(), endDateUs.getMonth() + 1);
+                        endDateInFieldFormat = new Date(endDateInFieldFormat.getFullYear(), endDateInFieldFormat.getMonth() + 1);
                     else
-                        endDateUs.setDate(endDateUs.getDate() + 1);
+                        endDateInFieldFormat.setDate(endDateInFieldFormat.getDate() + 1);
 
-                    startDateUs = ktl.core.convertDateTimeToString(startDateUs, false, true);
-                    endDateUs = ktl.core.convertDateTimeToString(endDateUs, false, true);
+                    startDateInFieldFormat = ktl.core.convertDateTimeToString(startDateInFieldFormat, false, true, dateTimeFormat);
+                    endDateInFieldFormat = ktl.core.convertDateTimeToString(endDateInFieldFormat, false, true, dateTimeFormat);
 
-                    var filterRules = [
+                    let filterRules = [
                         {
                             "field": fieldId,
                             "operator": "is after",
                             "value": {
-                                "date": startDateUs,
+                                "date": startDateInFieldFormat,
                                 "time": ""
                             },
                             "field_name": fieldName
@@ -9234,14 +9243,14 @@ function Ktl($, appInfo) {
                             "field": fieldId,
                             "operator": "is before",
                             "value": {
-                                "date": endDateUs,
+                                "date": endDateInFieldFormat,
                                 "time": ""
                             },
                             "field_name": fieldName
                         }
                     ];
 
-                    var filterObj = {
+                    let filterObj = {
                         "match": "and",
                         "rules": filterRules.concat(curRules)
                     }
@@ -9250,19 +9259,25 @@ function Ktl($, appInfo) {
                     const queryString = Knack.getQueryString({ [`${viewId}_filters`]: encodeURIComponent(JSON.stringify(filterObj)) });
                     Knack.router.navigate(`${sceneHash}?${queryString}`, false);
                     Knack.setHashVars();
-                    Knack.models[viewId].setFilters(filterObj);
-                    Knack.models[viewId].fetch({
-                        success: () => { Knack.hideSpinner(); },
-                        error: () => { Knack.hideSpinner(); }
-                    });
+
+                    try {
+                        Knack.models[viewId].setFilters(filterObj);
+                        Knack.models[viewId].fetch({
+                            success: () => { Knack.hideSpinner(); },
+                            error: () => { Knack.hideSpinner(); }
+                        });
+                    }
+                    catch (e) {
+                        ktl.log.clog('purple', '_dtp error', viewId);
+                    }
                 }
             },
 
             saveViewDates: function (viewId = '', startDt = '', endDt = '', period = 'monthly') {
                 if (!viewId || (!startDt && !endDt)) return;
 
-                var viewDates = {};
-                var viewDatesStr = ktl.storage.lsGetItem(ktl.const.LS_VIEW_DATES);
+                let viewDates = {};
+                let viewDatesStr = ktl.storage.lsGetItem(ktl.const.LS_VIEW_DATES);
                 if (viewDatesStr) {
                     try {
                         viewDates = JSON.parse(viewDatesStr);

@@ -222,6 +222,15 @@ a.ktlSortDisabled {
 	margin-inline-start: 2em;
 }
 
+.ktlDateTimePickerDiv {
+	margin-top: 0.3em;
+}
+
+.ktlDateTimePickerDiv:not(.ktlAddonsWithSearchDiv) {
+	margin-top: 0.5em;
+	margin-bottom: 2em;
+}
+
 .ktlButtonMargin {
 	margin-inline: 5px !important;
 }
