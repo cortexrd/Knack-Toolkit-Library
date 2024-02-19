@@ -3071,15 +3071,17 @@ function Ktl($, appInfo) {
                                 fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
 
                             if (fieldId) {
-                                const el = document.querySelector('#' + viewId + ' [data-input-id="' + fieldId + '"]')
-                                    || document.querySelector('#' + viewId + ' .' + fieldId);
-
-                                el && elementsArray.push(el);
+                                const elements = document.querySelectorAll(`#${viewId} [data-input-id="${fieldId}"], #${viewId} .${fieldId}`);
+                                if (elements.length)
+                                    elements.forEach(el => elementsArray.push(el));
                             } else {
                                 //Try with an action link.
-                                const actLink = $('#' + viewId + ' .kn-details-link .kn-detail-body:textEquals("' + fieldLabel + '")');
-                                if (actLink.length)
-                                    elementsArray.push(actLink.parent());
+                                const actLink = $(`#${viewId} .kn-details-link .kn-detail-body:textEquals("${fieldLabel}")`);
+                                if (actLink.length) {
+                                    actLink.each(function () {
+                                        elementsArray.push($(this).parent());
+                                    });
+                                }
                             }
                         }
 
@@ -4389,6 +4391,7 @@ function Ktl($, appInfo) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             const applyFilters = (keyword, index) => {
+                if (!keyword._lf) return;
 
                 const urlFilters = getUrlParameter(`${view.key}_${index}_filters`);
                 const filters = JSON.parse(urlFilters || '{}');
@@ -6247,7 +6250,7 @@ function Ktl($, appInfo) {
         function disableFilterOnFields(view) {
             if (!view) return;
 
-            if (!(view.type === 'table' || view.type === 'list'))
+            if (!(view.type === 'table' || view.type === 'list'/* || view.type === 'report'    TODO Issue #242   */))
                 return;
 
             const kw = '_nf';
@@ -12969,11 +12972,14 @@ function Ktl($, appInfo) {
             let bulkOpsLudFieldId = '';
             let bulkOpsLubFieldId = '';
 
-            view.fields.filter(f => !!f).forEach(field => {
-                const descr = field.meta && field.meta.description.replace(/(\r\n|\n|\r)|<[^>]*>/gm, " ").replace(/ {2,}/g, ' ').trim();
-                descr === '_lud' && (bulkOpsLudFieldId = field.key);
-                descr === '_lub' && (bulkOpsLubFieldId = field.key);
-            });
+            const fieldsWithKeywords = ktl.views.getAllFieldsWithKeywordsInView(view.key);
+            Object.keys(fieldsWithKeywords).forEach((fieldId) => {
+                const fieldKeywords = ktl.fields.getFieldKeywords(fieldId);
+                if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._lud)
+                    bulkOpsLudFieldId = fieldId;
+                else if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._lub)
+                    bulkOpsLubFieldId = fieldId;
+            })
 
             if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
                 $('#' + view.key + ' .cell-edit.' + bulkOpsLudFieldId).addClass('ktlNoInlineEdit');
