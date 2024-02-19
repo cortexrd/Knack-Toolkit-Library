@@ -1794,7 +1794,7 @@ function Ktl($, appInfo) {
                     Object.keys(obj).forEach(key => {
                         count++;
                         const value = obj[key];
-                        count += countOwnPropertiesRecursively(value, depth - 1);
+                        count += ktl.core.countOwnPropertiesRecursively(value, depth - 1);
                     });
                 }
 
@@ -15592,6 +15592,9 @@ function Ktl($, appInfo) {
             keywordsToString: function (depth = 10) {
                 const stringifiedKeywords = ktl.core.objectToString(ktlKeywords, depth);
                 console.log(stringifiedKeywords);
+                const numberOfKeys = ktl.core.countOwnPropertiesRecursively(ktlKeywords, depth);
+                console.log('Number of keys:', numberOfKeys);
+                console.log('Stringified keywords length, as currently displayed:\n', stringifiedKeywords.length);
             },
 
             getLinuxDeviceInfo: function () {
