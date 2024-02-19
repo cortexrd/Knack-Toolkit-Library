@@ -1734,6 +1734,72 @@ function Ktl($, appInfo) {
                     }
                 }
             },
+
+            objectToString: function (obj, depth = 10) {
+                let result = {};
+
+                function collectProperties(currentObj, path, currentDepth) {
+                    if (currentDepth > depth) return;
+
+                    if (depth === 1 && currentDepth === 1) {
+                        // At depth 1, we only include the top-level keys, without exploring their values
+                        Object.keys(currentObj).forEach(key => {
+                            const newPath = path ? `${path}.${key}` : key;
+                            result[newPath] = {};
+                        });
+                    } else {
+                        // For depth > 1, dive into the object as usual but respect the depth limit
+                        Object.keys(currentObj).forEach(key => {
+                            const value = currentObj[key];
+                            const newPath = path ? `${path}.${key}` : key;
+
+                            if (typeof value === 'object' && value !== null && currentDepth < depth) {
+                                collectProperties(value, newPath, currentDepth + 1);
+                            } else {
+                                // Include the property if it's not an object or we're at the leaf allowed by depth
+                                result[newPath] = typeof value === 'object' ? "Object" : value;
+                            }
+                        });
+                    }
+                }
+
+                function organizeProperties(flatProperties) {
+                    const organized = {};
+
+                    Object.keys(flatProperties).forEach(key => {
+                        const parts = key.split('.');
+                        let current = organized;
+
+                        for (let i = 0; i < parts.length - 1; i++) {
+                            current[parts[i]] = current[parts[i]] || {};
+                            current = current[parts[i]];
+                        }
+
+                        const lastKey = parts[parts.length - 1];
+                        current[lastKey] = flatProperties[key];
+                    });
+
+                    return organized;
+                }
+
+                collectProperties(obj, '', 1);
+                const organizedProperties = organizeProperties(result);
+
+                return JSON.stringify(organizedProperties, null, 2);
+            },
+
+            countOwnPropertiesRecursively: function (obj, depth = 10) {
+                let count = 0;
+                if (obj !== null && typeof obj === 'object' && depth > 0) {
+                    Object.keys(obj).forEach(key => {
+                        count++;
+                        const value = obj[key];
+                        count += countOwnPropertiesRecursively(value, depth - 1);
+                    });
+                }
+
+                return count;
+            },
         }
     })(); //Core
 
@@ -15523,6 +15589,11 @@ function Ktl($, appInfo) {
                 return result;
             },
 
+            keywordsToString: function (depth = 10) {
+                const stringifiedKeywords = ktl.core.objectToString(ktlKeywords, depth);
+                console.log(stringifiedKeywords);
+            },
+
             getLinuxDeviceInfo: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
@@ -16706,6 +16777,10 @@ window.ktlkw = function (param) {
 
 window.ktlpause = function () {
     ktl.views.autoRefresh(false);
+}
+
+window.kw2str = function (depth = 10) {
+    ktl.sysInfo.keywordsToString(depth);
 }
 
 function ktlCompare(a, operator, b) {
