@@ -11390,21 +11390,13 @@ function Ktl($, appInfo) {
                 // Add the tooltip icon to the DOM
 
                 //If view ttip found remove it.  Field has precedence.
-                const tooltipIconSelector = `${tooltipIconPosition} .ktlTooltipIcon`;
-                if ($(tooltipIconSelector).length) {
-                    $(tooltipIconSelector).remove();
-                }
+                if ($(`${tooltipIconPosition} .ktlTooltipIcon`).length)
+                    $(`${tooltipIconPosition} .ktlTooltipIcon`).remove();
 
                 $(tooltipIconPosition)
                     .append(icon)
                     .find('.table-fixed-label')
                     .css('display', 'inline-block');
-
-                // Hide the tooltip icon if it's in a collapsed column
-                const isColumnCollapsed = $(tooltipIconPosition)[0].classList.contains('ktlCollapsedColumn');
-                if (isColumnCollapsed) {
-                    $(`${tooltipIconPosition} i.ktlTooltipIcon`).hide();
-                }
 
                 // Add event listeners to show and hide the tooltip
                 $(document).on('mouseenter', `${tooltipIconPosition} i.${tooltipIcon}`, function (e) {
@@ -11495,7 +11487,6 @@ function Ktl($, appInfo) {
                 }
 
                 function hideColumn(viewId, columnIndex) {
-                    $(`#${viewId} tr > th:nth-child(${columnIndex}) i.ktlTooltipIcon`).hide(); // Hide all icons
                     $(`#${viewId} .kn-table tr`).find(`th:nth-child(${columnIndex}), td:nth-child(${columnIndex})`)
                         .css('width', cfg.hscCollapsedColumnsWidth + 'px')
                         .css('min-width', cfg.hscCollapsedColumnsWidth + 'px')
