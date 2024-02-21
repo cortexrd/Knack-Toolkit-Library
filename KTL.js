@@ -9191,17 +9191,33 @@ function Ktl($, appInfo) {
                 if (!(viewId && keywords && keywords[kw])) return;
 
                 const keywordsArray = ktl.core.getKeywordsByType(viewId, kw);
+                const view = $('#' + viewId);
+
                 if (!keywordsArray.length)
-                    $('#' + viewId).addClass('ktlHidden');
+                    view.addClass('ktlHidden_hv');
                 else {
-                    keywordsArray.forEach(keyword => {
-                        if (!ktl.core.hasRoleAccess(keyword.options))
-                            return;
+                    keywordsArray.forEach((keyword, index) => {
+                        if (keyword.options.ktlRoles) {
+                            if (!ktl.core.hasRoleAccess(keyword.options))
+                                view.addClass('ktlHidden_hv_'+index);
+                        } else if (keyword.options.ktlCond) {
+                            const hide = () => { view.addClass('ktlHidden_hv_'+index); }
+                            const unhide = () => { view.removeClass('ktlHidden_hv_'+index); }
 
-                        const hide = () => { $('#' + viewId).addClass('ktlHidden'); }
-                        const unhide = () => { $('#' + viewId).removeClass('ktlHidden'); }
+                            const conditions = keyword.options.ktlCond.replace(']', '').split(',').map(e => e.trim());
+                            const viewParam = conditions[3] || '';
+                            const viewParamId = ktl.scenes.findViewWithTitle(viewParam);
+                            const viewType = ktl.views.getViewType(viewParamId);
 
-                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                            if (viewType === 'form') {
+                                hide();
+                                $(document).one('KTL.persistentForm.completed', () => {
+                                    ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                                });
+                            } else {
+                                ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                            }
+                        }
                     });
                 }
             },
