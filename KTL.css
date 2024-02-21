@@ -46,7 +46,9 @@
 	display: none;
 }
 
-.ktlHidden {
+.ktlHidden,
+[class^="ktlHidden_hv"],
+[class*=" ktlHidden_hv"] {
 	position: absolute !important;
 	left: -9000px;
 }
