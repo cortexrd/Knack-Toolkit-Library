@@ -1741,26 +1741,26 @@ function Ktl($, appInfo) {
                 function collectProperties(currentObj, path, currentDepth) {
                     if (currentDepth > depth) return;
 
-                    if (depth === 1 && currentDepth === 1) {
-                        // At depth 1, we only include the top-level keys, without exploring their values
-                        Object.keys(currentObj).forEach(key => {
-                            const newPath = path ? `${path}.${key}` : key;
-                            result[newPath] = {};
-                        });
-                    } else {
-                        // For depth > 1, dive into the object as usual but respect the depth limit
-                        Object.keys(currentObj).forEach(key => {
-                            const value = currentObj[key];
-                            const newPath = path ? `${path}.${key}` : key;
+                    Object.keys(currentObj).forEach(key => {
+                        const value = currentObj[key];
+                        const newPath = path ? `${path}.${key}` : key;
 
-                            if (typeof value === 'object' && value !== null && currentDepth < depth) {
-                                collectProperties(value, newPath, currentDepth + 1);
-                            } else {
-                                // Include the property if it's not an object or we're at the leaf allowed by depth
-                                result[newPath] = typeof value === 'object' ? "Object" : value;
+                        // Check if value is an object or an array, and handle arrays explicitly
+                        if (Array.isArray(value)) {
+                            // For arrays, simply mark them with a placeholder or their type to ensure they're included
+                            result[newPath] = 'Array'; // Or use [] to represent an empty array as is
+                            if (value.length && currentDepth < depth) {
+                                value.forEach((item, index) => {
+                                    collectProperties(item, `${newPath}.${index}`, currentDepth + 1);
+                                });
                             }
-                        });
-                    }
+                        } else if (typeof value === 'object' && value !== null && currentDepth < depth) {
+                            collectProperties(value, newPath, currentDepth + 1);
+                        } else {
+                            // Primitive values or the final objects/arrays at the maximum depth
+                            result[newPath] = typeof value === 'object' ? "Object" : value;
+                        }
+                    });
                 }
 
                 function organizeProperties(flatProperties) {
@@ -1771,12 +1771,21 @@ function Ktl($, appInfo) {
                         let current = organized;
 
                         for (let i = 0; i < parts.length - 1; i++) {
-                            current[parts[i]] = current[parts[i]] || {};
-                            current = current[parts[i]];
+                            const part = parts[i];
+                            // Check if the next part represents an array or a terminal value
+                            if (!current[part] || typeof current[part] !== 'object' || Array.isArray(current[part])) {
+                                current[part] = {};
+                            }
+                            current = current[part];
                         }
 
                         const lastKey = parts[parts.length - 1];
-                        current[lastKey] = flatProperties[key];
+                        // Handle the case where the last part of the path is an array or terminal value differently
+                        if (flatProperties[key] === "Array") {
+                            current[lastKey] = []; // Assign an empty array if the value is indicated as "Array"
+                        } else {
+                            current[lastKey] = flatProperties[key];
+                        }
                     });
 
                     return organized;
@@ -3191,6 +3200,17 @@ function Ktl($, appInfo) {
                     else
                         $(`#${viewId} [data-input-id="${fieldId}"] input`).attr('disabled', true);
                 }
+            },
+
+            //These two functions work together.
+            //They are used to disable then re-enable anchors temporarily.
+            //This enables showing the desired text color instead of the link color with the underline,
+            //then restoring them back to their original anchor state.
+            disableAnchor: function (html) {
+                return html.replace(/<a /g, '<a-ktlnoanchor ').replace(/<\/a>/g, '</a-ktlnoanchor>');
+            },
+            revertToAnchor: function (html) {
+                return html.replace(/<a-ktlnoanchor /g, '<a ').replace(/<\/a-ktlnoanchor>/g, '</a>');
             },
         }
     })(); //fields
@@ -5987,7 +6007,7 @@ function Ktl($, appInfo) {
                 let delayBeforeRemovingMsg = 0;
                 if (keywords._rcm.length && keywords._rcm[0].params[0].length) {
                     delayBeforeRemovingMsg = Number(keywords._rcm[0].params[0]);
-                    if (isNaN(delayBeforeRemovingMsg) || delayBeforeRemovingMsg < 0 || delayBeforeRemovingMsg > 50000)
+                    if (isNaN(delayBeforeRemovingMsg) || delayBeforeRemovingMsg < 0 || delayBeforeRemovingMsg > 3600000)
                         delayBeforeRemovingMsg = 0;
                 }
 
@@ -6019,7 +6039,10 @@ function Ktl($, appInfo) {
                             for (const param of params) {
                                 if (param.length) {
                                     if (param[0] === 'dr' && param.length >= 3) {
-                                        duration = param[1];
+                                        duration = Number(param[1]);
+                                        if (isNaN(duration) || duration < 100 || duration > 3600000)
+                                            duration = 100;
+
                                         flashRate = Number(param[2]);
                                         if (isNaN(flashRate) || flashRate < 0 || flashRate > 50000)
                                             flashRate = 500;
@@ -6041,11 +6064,14 @@ function Ktl($, appInfo) {
                             $(rowSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
 
                             $(rowSel + ' td').addClass('ktlNoBgColor');
+                            $(rowSel + ' td a').each((ix, el) => { el.outerHTML = ktl.fields.disableAnchor(el.outerHTML); })
+
                             setTimeout(() => {
                                 $(rowSel).removeClass(classes);
                                 $(rowSel + ' td').removeClass('ktlNoBgColor');
-                                ktl.views.setCfg({ ktlFlashRate: '1s' });
+                                $(rowSel + ' td a-ktlnoanchor').each((ix, el) => { el.outerHTML = ktl.fields.revertToAnchor(el.outerHTML); })
                                 $(rowSel).attr('style', currentStyle ? currentStyle : '');
+                                ktl.views.setCfg({ ktlFlashRate: '1s' });
                             }, duration);
                         }
                     })
@@ -8287,8 +8313,6 @@ function Ktl($, appInfo) {
                 const srcData = Knack.views[srcViewId].model.data.models;
                 if (!srcData.length) return;
 
-                if (data.length === srcData.length) return;
-
                 let needConfirm = true;
                 if (params[0].length >= 2 && params[0][1] === 'auto')
                     needConfirm = false;
@@ -8326,6 +8350,12 @@ function Ktl($, appInfo) {
                 }
 
                 function proceed() {
+                    let mode = 'add';
+                    if (params[0].length >= 4 && params[0][3] && params[0][3] === 'edit')
+                        mode = 'edit';
+
+                    if (mode === 'add' && data.length) return; //Destination view must be empty for Add.
+
                     let fieldsToCopy = ['']; //All fields by default
                     if (params.length >= 2 && params[1].length >= 1)
                         fieldsToCopy = params[1];
@@ -8337,13 +8367,13 @@ function Ktl($, appInfo) {
                     });
 
                     //Try to find the equivalent headers in source view.
-                    let dstHeaders = {};
+                    let headersMapping = {};
                     for (const header of headers) {
                         const dstFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, header);
                         if (dstFieldId && dstFieldId.startsWith('field_') && Knack.objects.getField(dstFieldId).attributes.type !== 'concatenation') {
                             const srcFieldId = ktl.fields.getFieldIdFromLabel(srcViewId, header);
                             if (srcFieldId)
-                                dstHeaders[header] = { src: srcFieldId, dst: dstFieldId };
+                                headersMapping[header] = { src: srcFieldId, dst: dstFieldId };
                         }
                     }
 
@@ -8354,7 +8384,7 @@ function Ktl($, appInfo) {
                             if (param[0] !== '' && param[1] === 'ktlLoggedInAccount') {
                                 const dstFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, param[0]);
                                 if (dstFieldId && dstFieldId.startsWith('field_') && Knack.objects.getField(dstFieldId).attributes.type !== 'concatenation') //Exclude Text Formulas
-                                    dstHeaders[param[0]] = { src: 'ktlLoggedInAccount', dst: dstFieldId };
+                                    headersMapping[param[0]] = { src: 'ktlLoggedInAccount', dst: dstFieldId };
                             }
                         } else if (param.length == 3) {
                             //When source is a field/view selector.
@@ -8369,7 +8399,7 @@ function Ktl($, appInfo) {
                                     ktl.views.waitViewDataReady(foreignViewId)
                                         .then(() => {
                                             const value = Knack.views[foreignViewId].record;
-                                            dstHeaders[param[0]] = { src: 'ktlUseThisValue', dst: value };
+                                            headersMapping[param[0]] = { src: 'ktlUseThisValue', dst: value };
                                         })
                                         .catch(err => {
                                             ktl.log.clog('purple', `copyRecordsFromView, proceed - Timeout waiting for data: ${foreignViewId}`);
@@ -8382,25 +8412,49 @@ function Ktl($, appInfo) {
 
                     let bulkCopyApiDataArray = [];
 
-                    for (const recordObj of srcData) {
-                        let recId;
+                    for (const srcRecord of srcData) {
+                        let srcRecId = srcRecord.id;
+
                         let apiData = {};
-                        for (const header in dstHeaders) {
-                            if (dstHeaders[header].src.startsWith('field_')) {
-                                let viewObj = Knack.objects.getField(dstHeaders[header].src).attributes.object_key;
-                                let displayField = Knack.objects._byId[viewObj].attributes.identifier;
-                                if (dstHeaders[header].src === displayField) {
-                                    recId = recordObj.id;
-                                    apiData[dstHeaders[header].dst] = [recId];
-                                } else
-                                    apiData[dstHeaders[header].dst] = recordObj.attributes[`${dstHeaders[header].src}_raw`];
+                        for (const header in headersMapping) {
+                            const srcFieldId = headersMapping[header].src;
+                            const dstFieldId = headersMapping[header].dst;
+
+                            if (srcFieldId.startsWith('field_')) {
+                                const span = $(srcRecord.attributes[srcFieldId]).find('span');
+                                if (span.length) {
+                                    apiData[dstFieldId] = [span[0].id];
+                                } else {
+                                    let srcFieldObject = Knack.objects.getField(srcFieldId).attributes.object_key;
+                                    let displayField = Knack.objects._byId[srcFieldObject].attributes.identifier;
+
+                                    if (srcFieldId === displayField) {
+                                        apiData[dstFieldId] = [srcRecId];
+                                    } else
+                                        apiData[dstFieldId] = srcRecord.attributes[`${srcFieldId}_raw`];
+                                }
                             } else {
-                                if (dstHeaders[header].src === 'ktlLoggedInAccount')
-                                    apiData[dstHeaders[header].dst] = [Knack.getUserAttributes().id];
+                                if (srcFieldId === 'ktlLoggedInAccount')
+                                    apiData[dstFieldId] = [Knack.getUserAttributes().id];
                             }
                         }
 
-                        bulkCopyApiDataArray.push(apiData);
+                        if (mode === 'edit') {
+                            let sel = `#${dstViewId}`;
+                            const dstRowsWithSameRecId = $(`${sel} tbody tr td .${srcRecId}`);
+                            if (dstRowsWithSameRecId.length) {
+                                dstRowsWithSameRecId.each((ix, el) => {
+                                    let dstApiData = { apiData: apiData};
+                                    const dstRecId = el.closest('tr').id;
+                                    //console.log('dstRecId =', dstRecId);
+                                    dstApiData.id = dstRecId;
+                                    bulkCopyApiDataArray.push(dstApiData);
+                                    //console.log('bulkCopyApiDataArray =', bulkCopyApiDataArray);
+                                });
+
+                            }
+                        } else
+                            bulkCopyApiDataArray.push(apiData);
                     }
 
                     $.blockUI({
@@ -8411,7 +8465,11 @@ function Ktl($, appInfo) {
                         css: { padding: 20 }
                     })
 
-                    ktl.views.processAutomatedBulkOps(dstViewId, bulkCopyApiDataArray, 'POST', [], false, false)
+                    let requestType = 'POST';
+                    if (mode === 'edit')
+                        requestType = 'PUT';
+
+                    ktl.views.processAutomatedBulkOps(dstViewId, bulkCopyApiDataArray, requestType, [], false, false)
                         .then(countDone => {
                             $.unblockUI();
                         })
@@ -11746,6 +11804,7 @@ function Ktl($, appInfo) {
 
                         if (requestType.toUpperCase() === 'PUT') {
                             recId = apiData.id;
+                            apiData = apiData.apiData;
                             delete apiData.id;
                         }
 
@@ -15592,9 +15651,15 @@ function Ktl($, appInfo) {
             keywordsToString: function (depth = 10) {
                 const stringifiedKeywords = ktl.core.objectToString(ktlKeywords, depth);
                 console.log(stringifiedKeywords);
-                const numberOfKeys = ktl.core.countOwnPropertiesRecursively(ktlKeywords, depth);
-                console.log('Number of keys:', numberOfKeys);
-                console.log('Stringified keywords length, as currently displayed:\n', stringifiedKeywords.length);
+                const numberOfProperties = ktl.core.countOwnPropertiesRecursively(ktlKeywords, depth);
+                console.log('Stringified keywords length, as currently displayed: ', stringifiedKeywords.length);
+                console.log('Number of properties: ', numberOfProperties);
+                if (depth >= 2) {
+                    const pattern = /"_([a-zA-Z])/g;
+                    const matches = stringifiedKeywords.match(pattern);
+                    const count = matches ? matches.length : 0;
+                    console.log('Number of Keywords: ', count);
+                }
             },
 
             getLinuxDeviceInfo: function () {
