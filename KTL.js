@@ -5855,6 +5855,8 @@ function Ktl($, appInfo) {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
             bgColorPending: '#dd08',
+            hideSpinner: false,
+            hideNotification: false,
         };
 
         //TODO: Migrate all variables here.
@@ -7428,8 +7430,10 @@ function Ktl($, appInfo) {
             })
 
             function startQtScanning() {
-                ktl.core.infoPopup();
-                showProgress();
+                if (!quickToggleParams.hideNotification) {
+                    ktl.core.infoPopup();
+                    showProgress();
+                }
 
                 if (qtScanItv) return;
                 ktl.views.autoRefresh(false);
@@ -7445,20 +7449,24 @@ function Ktl($, appInfo) {
             }
 
             function doQuickToggle(dt) {
-                var recObj = quickToggleObj[dt];
+                const recObj = quickToggleObj[dt];
                 if ($.isEmptyObject(recObj) || !recObj.viewId || !recObj.fieldId) return;
 
-                var apiData = {};
+                const apiData = {};
                 apiData[recObj.fieldId] = recObj.value;
                 ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
                     .then(() => {
-                        showProgress();
+                        if (!quickToggleParams.hideNotification) {
+                            showProgress();
+                        }
                         numToProcess--;
                         delete quickToggleObj[dt];
                         if ($.isEmptyObject(quickToggleObj)) {
                             clearInterval(qtScanItv);
                             qtScanItv = null;
-                            Knack.showSpinner();
+                            if (!quickToggleParams.hideSpinner) {
+                                Knack.showSpinner();
+                            }
                             refreshTimer = setTimeout(() => {
                                 ktl.core.removeInfoPopup();
                                 ktl.views.refreshViewArray(viewsToRefresh)
