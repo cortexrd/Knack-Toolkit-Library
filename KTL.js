@@ -9198,9 +9198,12 @@ function Ktl($, appInfo) {
                 else {
                     keywordsArray.forEach((keyword, index) => {
                         if (keyword.options.ktlRoles) {
-                            if (!ktl.core.hasRoleAccess(keyword.options))
+                            const roles = keyword.options.ktlRoles.split(',').map((role) => role.trim());
+                            if (ktl.account.matchUserRoles(roles))
                                 view.addClass('ktlHidden_hv_'+index);
-                        } else if (keyword.options.ktlCond) {
+                        }
+
+                        if (keyword.options.ktlCond) {
                             const hide = () => { view.addClass('ktlHidden_hv_'+index); }
                             const unhide = () => { view.removeClass('ktlHidden_hv_'+index); }
 
@@ -13691,8 +13694,7 @@ function Ktl($, appInfo) {
                 for (let i = 0; i < rolesToCheck.length; i++) {
                     if (rolesToCheck[i].startsWith('!')) {
                         defaultRes = true;
-                        rolesToCheck[i] = rolesToCheck[i].replace('!', '');
-                        if (userRoles.includes(rolesToCheck[i]))
+                        if (userRoles.includes(rolesToCheck[i].replace('!', '')))
                             return false;
                     } else {
                         defaultRes = false;
@@ -13702,6 +13704,21 @@ function Ktl($, appInfo) {
                 }
 
                 return defaultRes;
+            },
+
+            matchUserRoles: function (roles = []) {
+                const userRoles = Knack.getUserRoleNames().split(', ');
+
+                if (ktl.storage.lsGetItem('forceDevRole', true) === 'true')
+                    userRoles.push('Developer');
+
+                return roles.every(role => {
+                    if (role.startsWith('!')) {
+                        return !userRoles.includes(role.replace('!', ''));
+                    }
+
+                    return userRoles.includes(role);
+                });
             },
         }
     })(); //account
