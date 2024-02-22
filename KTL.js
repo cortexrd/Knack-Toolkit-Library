@@ -12595,10 +12595,34 @@ function Ktl($, appInfo) {
                                             $('.ktlHidden').replaceClass('ktlHidden', 'ktlHidden_dis');
                                             $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'ktlDisplayNone_dis');
                                             $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'ktlVisibilityHidden_dis');
+
+                                            $('[class^=ktlHidden_], [class*=" ktlHidden_"]').each(function () {
+                                                var currentClass = $(this).attr('class');
+                                                var newClass = currentClass.split(' ').map(function (className) {
+                                                    if (className.startsWith('ktlHidden_')) {
+                                                        return 'dis_' + className;
+                                                    }
+                                                    return className;
+                                                }).join(' ');
+
+                                                $(this).attr('class', newClass);
+                                            });
                                         } else {
                                             $('.ktlHidden_dis').replaceClass('ktlHidden_dis', 'ktlHidden');
                                             $('.ktlDisplayNone_dis').replaceClass('ktlDisplayNone_dis', 'ktlDisplayNone');
                                             $('.ktlVisibilityHidden_dis').replaceClass('ktlVisibilityHidden_dis', 'ktlVisibilityHidden');
+
+                                            $('[class^=dis_ktlHidden_], [class*=" dis_ktlHidden_"]').each(function () {
+                                                var currentClass = $(this).attr('class');
+                                                var newClass = currentClass.split(' ').map(function (className) {
+                                                    if (className.startsWith('dis_ktlHidden_')) {
+                                                        return className.replace('dis_', '');
+                                                    }
+                                                    return className;
+                                                }).join(' ');
+
+                                                $(this).attr('class', newClass);
+                                            });
                                         }
                                     })
 
