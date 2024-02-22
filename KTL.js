@@ -5855,8 +5855,8 @@ function Ktl($, appInfo) {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
             bgColorPending: '#dd08',
-            hideSpinner: false,
-            hideNotification: false,
+            showSpinner: true,
+            showNotification: true,
         };
 
         //TODO: Migrate all variables here.
@@ -7430,7 +7430,7 @@ function Ktl($, appInfo) {
             })
 
             function startQtScanning() {
-                if (!quickToggleParams.hideNotification) {
+                if (quickToggleParams.showNotification) {
                     ktl.core.infoPopup();
                     showProgress();
                 }
@@ -7456,7 +7456,7 @@ function Ktl($, appInfo) {
                 apiData[recObj.fieldId] = recObj.value;
                 ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
                     .then(() => {
-                        if (!quickToggleParams.hideNotification) {
+                        if (quickToggleParams.showNotification) {
                             showProgress();
                         }
                         numToProcess--;
@@ -7464,7 +7464,7 @@ function Ktl($, appInfo) {
                         if ($.isEmptyObject(quickToggleObj)) {
                             clearInterval(qtScanItv);
                             qtScanItv = null;
-                            if (!quickToggleParams.hideSpinner) {
+                            if (quickToggleParams.showSpinner) {
                                 Knack.showSpinner();
                             }
                             refreshTimer = setTimeout(() => {
@@ -8961,7 +8961,7 @@ function Ktl($, appInfo) {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processViewKeywords && (processViewKeywords = cfgObj.processViewKeywords);
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
-                cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
+                cfgObj.quickToggleParams && (quickToggleParams = {...quickToggleParams, ...cfgObj.quickToggleParams});
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
 
                 if (cfgObj.headerAlignment !== undefined)
