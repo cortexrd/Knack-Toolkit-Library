@@ -5855,6 +5855,8 @@ function Ktl($, appInfo) {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
             bgColorPending: '#dd08',
+            showSpinner: true,
+            showNotification: true,
         };
 
         //TODO: Migrate all variables here.
@@ -7428,14 +7430,16 @@ function Ktl($, appInfo) {
             })
 
             function startQtScanning() {
-                ktl.core.infoPopup();
-                showProgress();
+                if (quickToggleParams.showNotification) {
+                    ktl.core.infoPopup();
+                    showProgress();
+                }
 
                 if (qtScanItv) return;
                 ktl.views.autoRefresh(false);
                 qtScanItv = setInterval(() => {
                     if (!$.isEmptyObject(quickToggleObj)) {
-                        var dt = Object.keys(quickToggleObj)[0];
+                        const dt = Object.keys(quickToggleObj)[0];
                         if (!quickToggleObj[dt].processed) {
                             quickToggleObj[dt].processed = true;
                             doQuickToggle(dt);
@@ -7445,20 +7449,24 @@ function Ktl($, appInfo) {
             }
 
             function doQuickToggle(dt) {
-                var recObj = quickToggleObj[dt];
+                const recObj = quickToggleObj[dt];
                 if ($.isEmptyObject(recObj) || !recObj.viewId || !recObj.fieldId) return;
 
-                var apiData = {};
+                const apiData = {};
                 apiData[recObj.fieldId] = recObj.value;
                 ktl.core.knAPI(recObj.viewId, recObj.recId, apiData, 'PUT', [], false /*must be false otherwise spinner blocks click events*/)
                     .then(() => {
-                        showProgress();
+                        if (quickToggleParams.showNotification) {
+                            showProgress();
+                        }
                         numToProcess--;
                         delete quickToggleObj[dt];
                         if ($.isEmptyObject(quickToggleObj)) {
                             clearInterval(qtScanItv);
                             qtScanItv = null;
-                            Knack.showSpinner();
+                            if (quickToggleParams.showSpinner) {
+                                Knack.showSpinner();
+                            }
                             refreshTimer = setTimeout(() => {
                                 ktl.core.removeInfoPopup();
                                 ktl.views.refreshViewArray(viewsToRefresh)
@@ -8953,7 +8961,7 @@ function Ktl($, appInfo) {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processViewKeywords && (processViewKeywords = cfgObj.processViewKeywords);
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
-                cfgObj.quickToggleParams && (quickToggleParams = cfgObj.quickToggleParams);
+                cfgObj.quickToggleParams && (quickToggleParams = {...quickToggleParams, ...cfgObj.quickToggleParams});
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
 
                 if (cfgObj.headerAlignment !== undefined)
