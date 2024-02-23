@@ -220,7 +220,7 @@ function Ktl($, appInfo) {
     function extractParamsAndOptions(paramGroups = [], params = {}, options = {}) {
         paramGroups.forEach(group => {
             const firstParam = group.split(',')[0].trim();
-            if (['ktlRoles', 'ktlRefVal', 'ktlTarget', 'ktlCond'].includes(firstParam)) {
+            if (['ktlRoles', 'ktlRefVal', 'ktlTarget', 'ktlCond', 'ktlMsg'].includes(firstParam)) {
                 const pattern = /[^,]*,\s*(.*)/; // Regular expression pattern to match everything after the first word, comma, and possible spaces.
                 const groupParams = group.match(pattern);
                 if (groupParams && groupParams.length >= 2)
@@ -1808,6 +1808,15 @@ function Ktl($, appInfo) {
                 }
 
                 return count;
+            },
+
+            //Function to extract IDs from span of other HTML elements.
+            extractIds: function (html) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const elementsWithId = doc.querySelectorAll('[id]');
+                const ids = Array.from(elementsWithId).map(el => el.id);
+                return ids;
             },
         }
     })(); //Core
@@ -8291,8 +8300,9 @@ function Ktl($, appInfo) {
                 return;
             }
 
+            let options;
             if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
+                options = keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
@@ -8332,13 +8342,13 @@ function Ktl($, appInfo) {
                             div.prepend(startButtonDiv);
 
                             const startButton = ktl.fields.addButton(startButtonDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], 'ktlStartClickNow-' + dstViewId);
-                            startButton.addEventListener('click', function (e) {
+                            $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', e => {
                                 if (needConfirm) {
                                     if (confirm(`Proceed with copy?`))
                                         proceed();
                                 } else
                                     proceed();
-                            })
+                            });
                         }
                     }
                 } else { //No button
@@ -8412,10 +8422,13 @@ function Ktl($, appInfo) {
 
                     let bulkCopyApiDataArray = [];
 
+                    let srcFieldObject = ktl.views.getViewObj(srcViewId);
+                    let srcViewDisplayFieldId = Knack.objects._byId[srcFieldObject.source.object].attributes.identifier;
+
                     for (const srcRecord of srcData) {
                         let srcRecId = srcRecord.id;
 
-                        let apiData = {};
+                        const apiData = {};
                         for (const header in headersMapping) {
                             const srcFieldId = headersMapping[header].src;
                             const dstFieldId = headersMapping[header].dst;
@@ -8423,15 +8436,17 @@ function Ktl($, appInfo) {
                             if (srcFieldId.startsWith('field_')) {
                                 const span = $(srcRecord.attributes[srcFieldId]).find('span');
                                 if (span.length) {
-                                    apiData[dstFieldId] = [span[0].id];
+                                    const ids = ktl.core.extractIds(srcRecord.attributes[srcFieldId]);
+                                    apiData[dstFieldId] = ids;
                                 } else {
-                                    let srcFieldObject = Knack.objects.getField(srcFieldId).attributes.object_key;
-                                    let displayField = Knack.objects._byId[srcFieldObject].attributes.identifier;
-
-                                    if (srcFieldId === displayField) {
+                                    if (srcFieldId === srcViewDisplayFieldId)
                                         apiData[dstFieldId] = [srcRecId];
-                                    } else
-                                        apiData[dstFieldId] = srcRecord.attributes[`${srcFieldId}_raw`];
+                                    else {
+                                        const data = srcRecord.attributes[`${srcFieldId}_raw`];
+                                        if (data && data.length) {
+                                            apiData[dstFieldId] = data;
+                                        }
+                                    }
                                 }
                             } else {
                                 if (srcFieldId === 'ktlLoggedInAccount')
@@ -8439,31 +8454,47 @@ function Ktl($, appInfo) {
                             }
                         }
 
-                        if (mode === 'edit') {
-                            let sel = `#${dstViewId}`;
-                            const dstRowsWithSameRecId = $(`${sel} tbody tr td .${srcRecId}`);
-                            if (dstRowsWithSameRecId.length) {
-                                dstRowsWithSameRecId.each((ix, el) => {
-                                    let dstApiData = { apiData: apiData};
-                                    const dstRecId = el.closest('tr').id;
-                                    //console.log('dstRecId =', dstRecId);
-                                    dstApiData.id = dstRecId;
-                                    bulkCopyApiDataArray.push(dstApiData);
-                                    //console.log('bulkCopyApiDataArray =', bulkCopyApiDataArray);
-                                });
+                        if (mode === 'edit') { //Edit mode requires the additional record ID for each destination row.
+                            if (!$.isEmptyObject(apiData)) {
+                                const dstRowsWithSameRecId = $(`#${dstViewId} tbody tr td .${srcRecId}`);
+                                if (dstRowsWithSameRecId.length) {
+                                    dstRowsWithSameRecId.each((ix, el) => {
+                                        const dstRecId = el.closest('tr').id;
 
+                                        for (const header in headersMapping) {
+                                            const srcFieldId = headersMapping[header].src;
+                                            const dstFieldId = headersMapping[header].dst;
+                                            const srcText = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId}`).text();
+                                            const dstText = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).text();
+                                            if (srcText !== dstText)
+                                                bulkCopyApiDataArray.push({ apiData: apiData, id: dstRecId });
+                                        }
+                                    });
+                                }
                             }
                         } else
                             bulkCopyApiDataArray.push(apiData);
                     }
 
-                    $.blockUI({
-                        message: 'Loading form, please wait...',
-                        overlayCSS: {
-                            backgroundColor: '#ddd', opacity: 0.2, cursor: 'wait'
-                        },
-                        css: { padding: 20 }
-                    })
+                    if (!bulkCopyApiDataArray.length) return;
+
+                    //console.log('bulkCopyApiDataArray =', bulkCopyApiDataArray);
+
+                    if (options && options.ktlMsg) {
+                        const message = options.ktlMsg.split(',').slice(1).join(',').trim();
+                        const displayMode = options.ktlMsg.split(',')[0].trim();
+                        if (message) {
+                            if (displayMode === 'static') {
+                                $.blockUI({
+                                    message: message,
+                                    overlayCSS: {
+                                        backgroundColor: '#ddd', opacity: 0.2, cursor: 'wait'
+                                    },
+                                    css: { padding: 20 }
+                                })
+                            }
+                        }
+                    }
 
                     let requestType = 'POST';
                     if (mode === 'edit')
@@ -10898,13 +10929,14 @@ function Ktl($, appInfo) {
 
             getViewObj: function (viewId) {
                 if (!viewId) return;
-                var viewObj = Knack.views[viewId];
-                if (viewObj && viewObj.model && viewObj.model.view)
-                    return viewObj.model.view;
+
+                var view = Knack.views[viewId];
+                if (view && view.model && view.model.view)
+                    return view.model.view;
                 else {
-                    viewObj = Knack.router.scene_view.model.views._byId[viewId];
-                    if (viewObj)
-                        return viewObj.attributes;
+                    view = Knack.router.scene_view.model.views._byId[viewId];
+                    if (view)
+                        return view.attributes;
                 }
             },
 
