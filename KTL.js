@@ -9242,16 +9242,38 @@ function Ktl($, appInfo) {
                     $('#' + viewId).remove();
                 else {
                     keywordsArray.forEach(keyword => {
-                        if (!ktl.core.hasRoleAccess(keyword.options))
-                            return;
-
-                        const hide = () => { $('#' + viewId).addClass('ktlHidden'); }
-                        const unhide = () => {
-                            $('#' + viewId).removeClass('ktlHidden');
+                        if (keyword.options.ktlRoles) {
+                            const roles = keyword.options.ktlRoles.split(',').map((role) => role.trim());
+                            if (ktl.account.matchUserRoles(roles))
+                                $('#' + viewId).remove();
                         }
 
-                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
-                            .then(() => { $('#' + viewId + '.ktlHidden').remove(); })
+                        if (keyword.options.ktlCond) {
+                            let validatingKtlCond = true;
+                            const hide = () => { $('#' + viewId).addClass('ktlHidden'); }
+                            const unhide = () => {
+                                if (validatingKtlCond)
+                                    $('#' + viewId).removeClass('ktlHidden');
+                                else
+                                    $('#' + viewId + '.ktlHidden').remove();
+                            }
+
+                            const conditions = keyword.options.ktlCond.replace(']', '').split(',').map(e => e.trim());
+                            const viewParam = conditions[3] || '';
+                            const viewParamId = ktl.scenes.findViewWithTitle(viewParam);
+                            const viewType = ktl.views.getViewType(viewParamId);
+
+                            if (viewType === 'form') {
+                                hide();
+                                $(document).one('KTL.persistentForm.completed', () => {
+                                    ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
+                                    .then(() => { validatingKtlCond = false })
+                                });
+                            } else {
+                                ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
+                                .then(() => { validatingKtlCond = false })
+                            }
+                        }
                     });
                 }
             },
