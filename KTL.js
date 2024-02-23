@@ -6734,40 +6734,58 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            let selector;
-            if (viewType !== 'table' && viewType !== 'search') {
+            if (viewType === 'table' || viewType === 'search') {
+                columns.forEach(column => {
+                    const selector = `#${viewId} tbody td`;
+
+                    if (column.type === 'field') {
+                        $(`${selector}.${column.field.key}`).addClass('ktlNoInlineEdit');
+                    }
+                    else {
+                        $(selector).find('a').removeAttr('href').addClass('ktlLinkDisabled');
+                    }
+                });
+
+                $(document).on('KTL.BulkOperation.Updated', () => {
+                    $(`#${viewId} .bulkEditCb`).attr('disabled', 'disabled');
+                });
+            } else {
+                let elementSelector;
                 if (viewType === 'details' || viewType === 'list') {
-                    selector = `#${viewId} .kn-detail-body`;
+                    elementSelector = `#${viewId} .kn-detail-body`;
                 } else if (viewType === 'form') {
-                    selector = `#${viewId} .kn-input`;
+                    elementSelector = `#${viewId} .kn-input`;
                 } else if (viewType === 'menu') {
-                    selector = `#${viewId} li`;
+                    elementSelector = `#${viewId} li`;
                 }
-                const aElements = $(selector).find('a');
-                aElements.removeAttr('href').addClass('ktlLinkDisabled');
+
+                const elements = $(elementSelector);
+
+                elements.find('a').removeAttr('href').addClass('ktlLinkDisabled');
+                elements.find('.redactor-editor').attr('contenteditable', 'false');
 
                 //one('KTL.convertNumToTel' is necessary in case we call sceneConvertNumToTel more than once.
-                $(`#${view.key} .kn-input input`).attr('disabled', 'disabled').one('KTL.convertNumToTel', function (event, newField) {
+                elements.find('input').attr('disabled', 'disabled').one('KTL.convertNumToTel', function (event, newField) {
                     newField.attr('disabled', 'disabled');
                 })
 
-                $(`#${view.key} .kn-input select`).attr('disabled', 'disabled');
+                elements.find('select').attr('disabled', 'disabled');
+                elements.find('textarea').attr('disabled', 'disabled');
+                elements.find('.rateit').rateit('readonly', true);
+                elements.filter('.kn-input-signature').css('pointer-events', 'none');
 
-                return;
+
+                if (viewType === 'form') {
+                    $(document).one('KTL.persistentForm.completed', () => {
+                        // Persistent Form is adding and removing the attribute during its process
+                        $(`#${viewId} .kn-button`).attr('disabled', 'disabled');
+                        ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
+                    });
+                }
             }
 
-            columns.forEach(col => {
-                const { type, field } = col;
-                selector = `#${viewId} tbody td`;
-                if (type === 'field') {
-                    const { key } = field;
-                    $(`${selector}.${key}`).addClass('ktlNoInlineEdit');
-                }
-                else {
-                    const aElements = $(selector).find('a');
-                    aElements.removeAttr('href').addClass('ktlLinkDisabled');
-                }
-            });
+            $(`#${viewId} .kn-button`).attr('disabled', 'disabled');
+            ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
         }
 
         function removeOptions(view, keywords) {
@@ -14795,6 +14813,8 @@ function Ktl($, appInfo) {
                 ktl.views.autoRefresh(false);
             else
                 ktl.views.autoRefresh();
+
+            $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
         }
 
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
@@ -14856,6 +14876,8 @@ function Ktl($, appInfo) {
                     }
 
                     updateBulkOpsGuiElements(view.key);
+
+                    $(document).trigger('KTL.BulkOperation.Updated', [statusMonitoring]);
                 })
             }
         }
