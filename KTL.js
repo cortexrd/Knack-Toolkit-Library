@@ -11398,7 +11398,6 @@ function Ktl($, appInfo) {
                     .find('.table-fixed-label')
                     .css('display', 'inline-block');
 
-                // Hide the tooltip icon if it's in a collapsed column
                 const isColumnCollapsed = $(tooltipIconPosition)[0].classList.contains('ktlCollapsedColumn');
                 if (isColumnCollapsed) {
                     $(`${tooltipIconPosition} i.ktlTooltipIcon`).hide();
@@ -11493,7 +11492,7 @@ function Ktl($, appInfo) {
                 }
 
                 function hideColumn(viewId, columnIndex) {
-                    $(`#${viewId} tr > th:nth-child(${columnIndex}) i.ktlTooltipIcon`).hide(); // Hide tooltip icons
+                    $(`#${viewId} tr > th:nth-child(${columnIndex}) i.ktlTooltipIcon`).hide()
                     $(`#${viewId} .kn-table tr`).find(`th:nth-child(${columnIndex}), td:nth-child(${columnIndex})`)
                         .css('width', cfg.hscCollapsedColumnsWidth + 'px')
                         .css('min-width', cfg.hscCollapsedColumnsWidth + 'px')
