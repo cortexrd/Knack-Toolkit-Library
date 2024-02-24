@@ -8352,12 +8352,8 @@ function Ktl($, appInfo) {
                 if (params[0].length >= 3 && params[0][2]) {
                     //Add a start button
                     const buttonLabel = params[0][2];
-                    console.log('buttonLabel =', buttonLabel);
-
                     let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
                     const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], 'ktlStartClickNow-' + dstViewId);
-                    console.log('startButton =', startButton);
-
                     $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', e => {
                         if (needConfirm) {
                             if (confirm(`Proceed with copy?`))
