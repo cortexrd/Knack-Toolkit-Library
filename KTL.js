@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.23.8';
+    const KTL_VERSION = '0.23.9';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -11952,11 +11952,11 @@ function Ktl($, appInfo) {
                     if (!viewId || !Knack.views[viewId])
                         return reject();
 
-                    if (Knack.views[viewId].record || Knack.views[viewId].model.data.total_records)
+                    if (Knack.views[viewId].record || (Knack.views[viewId].model.data && Knack.views[viewId].model.data.total_records >= 0))
                         return resolve();
 
                     const itv = setInterval(() => {
-                        if (Knack.views[viewId].record || Knack.views[viewId].model.data.total_records) {
+                        if (Knack.views[viewId].record || (Knack.views[viewId].model.data && Knack.views[viewId].model.data.total_records >= 0)) {
                             clearInterval(itv);
                             return resolve();
                         }
@@ -14877,7 +14877,7 @@ function Ktl($, appInfo) {
 
                     updateBulkOpsGuiElements(view.key);
 
-                    $(document).trigger('KTL.BulkOperation.Updated', [statusMonitoring]);
+                    $(document).trigger('KTL.BulkOperation.Updated', [view.key]);
                 })
             }
         }
