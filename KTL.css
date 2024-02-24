@@ -47,8 +47,8 @@
 }
 
 .ktlHidden,
-[class^="ktlHidden_hv"],
-[class*=" ktlHidden_hv"] {
+[class^="ktlHidden_"],
+[class*=" ktlHidden_"] {
 	position: absolute !important;
 	left: -9000px;
 }
@@ -228,10 +228,10 @@ a.ktlSortDisabled {
 	margin-top: 0.3em;
 }
 
-.ktlDateTimePickerDiv:not(.ktlAddonsWithSearchDiv) {
-	margin-top: 0.5em;
-	margin-bottom: 2em;
-}
+	.ktlDateTimePickerDiv:not(.ktlAddonsWithSearchDiv) {
+		margin-top: 0.5em;
+		margin-bottom: 2em;
+	}
 
 .ktlButtonMargin {
 	margin-inline: 5px !important;
@@ -515,7 +515,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 /* For any page where high data density is required, typically for Dashboards */
 .ktlDenseGrid .knTable th,
 .ktlDenseGrid .knTable td {
-	padding: 1px 2px 1px 2px!important;
+	padding: 1px 2px 1px 2px !important;
 }
 
 @media print {

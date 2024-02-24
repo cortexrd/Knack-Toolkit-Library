@@ -268,15 +268,8 @@ function Ktl($, appInfo) {
                                         //Process exceptions that cause unwanted view disappearance.
                                         if (!mutRec.target.classList.contains('kn-asset-current')) { //File Uploads
                                             //console.log('mutRec.target =', mutRec.target);
-                                            $('#' + viewId).addClass('ktlVisibilityHidden');
-                                            //        setTimeout(() => {
-                                            //            $('#' + viewId).removeClass('ktlVisibilityHidden');
-                                            //            console.log('remove hidden', viewId);
-                                            //        }, 3000);
+                                            $('#' + viewId).addClass('ktlHidden_ro')
                                         }
-
-                                        //    if (mutRec.addedNodes.length)
-                                        //        console.log('mutRec.addedNodes =', mutRec.addedNodes);
                                     }
 
                                     if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
@@ -3143,7 +3136,7 @@ function Ktl($, appInfo) {
                         const options = kwInstance.options;
                         if (!ktl.core.hasRoleAccess(options)) return;
 
-                        $('#' + viewId).addClass('ktlVisibilityHidden');
+                        $('#' + viewId).addClass('ktlHidden_hf');
 
                         var elementsArray = [];
                         const kwFields = kwInstance.params[0];
@@ -3189,10 +3182,10 @@ function Ktl($, appInfo) {
 
                             ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
                                 .then(() => {
-                                    $('#' + viewId).removeClass('ktlVisibilityHidden');
+                                    $('#' + viewId).removeClass('ktlHidden_hf');
                                 })
                         } else
-                            $('#' + viewId).removeClass('ktlVisibilityHidden');
+                            $('#' + viewId).removeClass('ktlHidden_hf');
                     }
                 }
             },
@@ -6804,7 +6797,7 @@ function Ktl($, appInfo) {
                 });
 
                 Promise.all(promises).then(() => {
-                    $('#' + viewId).removeClass('ktlVisibilityHidden');
+                    $('#' + viewId).removeClass('ktlHidden_ro');
                 });
             }
 
@@ -8151,31 +8144,33 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
-                    const rows = document.querySelectorAll(`#${viewId} tbody tr`);
-                    let groupName = 'noGrp';
-                    for (const row of rows) {
-                        if (viewHasGrouping) {
-                            if (row.classList.contains('kn-table-group') || row.classList.contains('kn-table-totals')) {
-                                row.classList.add('ktlNotAllowed');
-                                if (row.classList.contains('kn-table-group') && row.textContent)
-                                    groupName = row.textContent.replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
-                            } else {
-                                row.classList.add(`dndGrp_${groupName}`);
+                ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden')
+                    .then(() => {
+                        const rows = document.querySelectorAll(`#${viewId} tbody tr`);
+                        let groupName = 'noGrp';
+                        for (const row of rows) {
+                            if (viewHasGrouping) {
+                                if (row.classList.contains('kn-table-group') || row.classList.contains('kn-table-totals')) {
+                                    row.classList.add('ktlNotAllowed');
+                                    if (row.classList.contains('kn-table-group') && row.textContent)
+                                        groupName = row.textContent.replace(/[^a-zA-Z0-9]/g, '_'); //Any character other than a-z or 0-9, replace by underscore.
+                                } else {
+                                    row.classList.add(`dndGrp_${groupName}`);
+                                }
+                            }
+
+                            if (noDragFieldId) {
+                                const fieldText = $(row).find(`.${noDragFieldId} span`)[0].innerText;
+                                if (noDragElements.includes(fieldText)) {
+                                    row.classList.add('ktlNotAllowed', 'ktlNotAllowedKeep');
+                                    $(row).find('td').css('cursor', 'unset');
+                                }
                             }
                         }
 
-                        if (noDragFieldId) {
-                            const fieldText = $(row).find(`.${noDragFieldId} span`)[0].innerText;
-                            if (noDragElements.includes(fieldText)) {
-                                row.classList.add('ktlNotAllowed', 'ktlNotAllowedKeep');
-                                $(row).find('td').css('cursor', 'unset');
-                            }
-                        }
-                    }
-
-                    processDndSort();
-                });
+                        processDndSort();
+                    })
+                    .catch(() => { })
 
                 function processDndSort() {
                     $(`#${viewId} tbody tr:not(.kn-table-group):not(.kn-table-totals):not(.ktlNotAllowed)`).addClass(`ktlDragAndDrop`);
@@ -8347,6 +8342,7 @@ function Ktl($, appInfo) {
 
             function srcDataReady() {
                 const srcData = Knack.views[srcViewId].model.data.models;
+                console.log('srcData =', srcData);
                 if (!srcData.length) return;
 
                 let needConfirm = true;
@@ -8356,27 +8352,19 @@ function Ktl($, appInfo) {
                 if (params[0].length >= 3 && params[0][2]) {
                     //Add a start button
                     const buttonLabel = params[0][2];
-                    let startButtonDiv = document.querySelector(`ktlButtonsDiv-${dstViewId}`);
-                    if (!startButtonDiv) {
-                        startButtonDiv = document.createElement('div');
-                        startButtonDiv.setAttribute('id', `ktlButtonsDiv-${dstViewId}`);
-                        startButtonDiv.style.marginTop = '10px';
-                        startButtonDiv.style.marginBottom = '30px';
+                    console.log('buttonLabel =', buttonLabel);
 
-                        const div = document.querySelector(`#${dstViewId}`);
-                        if (div) {
-                            div.prepend(startButtonDiv);
+                    let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
+                    const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], 'ktlStartClickNow-' + dstViewId);
+                    console.log('startButton =', startButton);
 
-                            const startButton = ktl.fields.addButton(startButtonDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], 'ktlStartClickNow-' + dstViewId);
-                            $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', e => {
-                                if (needConfirm) {
-                                    if (confirm(`Proceed with copy?`))
-                                        proceed();
-                                } else
-                                    proceed();
-                            });
-                        }
-                    }
+                    $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', e => {
+                        if (needConfirm) {
+                            if (confirm(`Proceed with copy?`))
+                                proceed();
+                        } else
+                            proceed();
+                    });
                 } else { //No button
                     if (needConfirm) {
                         if (confirm(`Proceed with copy?`))
@@ -9068,7 +9056,7 @@ function Ktl($, appInfo) {
             setCfg: function (cfgObj = {}) {
                 cfgObj.processViewKeywords && (processViewKeywords = cfgObj.processViewKeywords);
                 cfgObj.handleCalendarEventDrop && (handleCalendarEventDrop = cfgObj.handleCalendarEventDrop);
-                cfgObj.quickToggleParams && (quickToggleParams = {...quickToggleParams, ...cfgObj.quickToggleParams});
+                cfgObj.quickToggleParams && (quickToggleParams = { ...quickToggleParams, ...cfgObj.quickToggleParams });
                 cfgObj.handlePreprocessSubmitError && (handlePreprocessSubmitError = cfgObj.handlePreprocessSubmitError);
 
                 if (cfgObj.headerAlignment !== undefined)
@@ -9315,12 +9303,12 @@ function Ktl($, appInfo) {
                         if (keyword.options.ktlRoles) {
                             const roles = keyword.options.ktlRoles.split(',').map((role) => role.trim());
                             if (ktl.account.matchUserRoles(roles))
-                                view.addClass('ktlHidden_hv_'+index);
+                                view.addClass('ktlHidden_hv_' + index);
                         }
 
                         if (keyword.options.ktlCond) {
-                            const hide = () => { view.addClass('ktlHidden_hv_'+index); }
-                            const unhide = () => { view.removeClass('ktlHidden_hv_'+index); }
+                            const hide = () => { view.addClass('ktlHidden_hv_' + index); }
+                            const unhide = () => { view.removeClass('ktlHidden_hv_' + index); }
 
                             const conditions = keyword.options.ktlCond.replace(']', '').split(',').map(e => e.trim());
                             const viewParam = conditions[3] || '';
@@ -9374,11 +9362,11 @@ function Ktl($, appInfo) {
                                 hide();
                                 $(document).one('KTL.persistentForm.completed', () => {
                                     ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
-                                    .then(() => { validatingKtlCond = false })
+                                        .then(() => { validatingKtlCond = false })
                                 });
                             } else {
                                 ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
-                                .then(() => { validatingKtlCond = false })
+                                    .then(() => { validatingKtlCond = false })
                             }
                         }
                     });
@@ -11015,7 +11003,7 @@ function Ktl($, appInfo) {
                     const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
 
-                    $('#' + viewId).addClass('ktlVisibilityHidden');
+                    $('#' + viewId).addClass('ktlHidden_zm');
 
                     const sel = ktl.core.computeTargetSelector(viewId, '', options);
                     ktl.core.waitSelector(sel, 20000)
@@ -11026,7 +11014,7 @@ function Ktl($, appInfo) {
                         })
                         .catch(function () { })
                         .finally(() => {
-                            $('#' + viewId).removeClass('ktlVisibilityHidden');
+                            $('#' + viewId).removeClass('ktlHidden_zm');
                         })
 
                 }
@@ -11239,7 +11227,7 @@ function Ktl($, appInfo) {
                     var perPage = keywords[kw][0].params[0][0];
                     var href = window.location.href;
                     if (!href.includes(viewId + '_per_page=')) {
-                        $('#' + viewId).addClass('ktlVisibilityHidden');
+                        $('#' + viewId).addClass('ktlHidden_dr');
                         Knack.showSpinner();
 
                         const view = Knack.views[viewId].model.view;
@@ -11266,11 +11254,11 @@ function Ktl($, appInfo) {
                             Knack.models[viewId].fetch({
                                 success: () => {
                                     Knack.hideSpinner();
-                                    $('#' + viewId).removeClass('ktlVisibilityHidden');
+                                    $('#' + viewId).removeClass('ktlHidden_dr');
                                 }
                             });
                         } else
-                            $('#' + viewId).removeClass('ktlVisibilityHidden');
+                            $('#' + viewId).removeClass('ktlHidden_dr');
                     }
                 }
             },
@@ -11952,11 +11940,16 @@ function Ktl($, appInfo) {
                     if (!viewId || !Knack.views[viewId])
                         return reject();
 
-                    if (Knack.views[viewId].record || (Knack.views[viewId].model.data && Knack.views[viewId].model.data.total_records >= 0))
+                    if (Knack.views[viewId].record
+                        || (Knack.views[viewId].model.data && Knack.views[viewId].model.data.total_records > 0)
+                        || document.querySelector(`#${viewId} .kn-tr-nodata`)) {
                         return resolve();
+                    }
 
                     const itv = setInterval(() => {
-                        if (Knack.views[viewId].record || (Knack.views[viewId].model.data && Knack.views[viewId].model.data.total_records >= 0)) {
+                        if (Knack.views[viewId].record
+                            || (Knack.views[viewId].model.data && Knack.views[viewId].model.data.total_records > 0)
+                            || document.querySelector(`#${viewId} .kn-tr-nodata`)) {
                             clearInterval(itv);
                             return resolve();
                         }
@@ -14838,47 +14831,49 @@ function Ktl($, appInfo) {
             function addBulkOpsGuiElements(view, data) {
                 //Waiting for the spinner to disappear is required to prevent issues when
                 //there are groups and / or summaries.  Otherwise we get bad layout.
-                ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden').then(() => {
-                    bulkOpsAddCheckboxesToTable(view.key);
-                    ktl.views.fixTableRowsAlignment(view.key);
-                    addBulkOpsButtons(view, data);
+                ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden')
+                    .then(() => {
+                        bulkOpsAddCheckboxesToTable(view.key);
+                        ktl.views.fixTableRowsAlignment(view.key);
+                        addBulkOpsButtons(view, data);
 
-                    //Put back checkboxes that were checked before view refresh.
-                    if (view.key === bulkOpsViewId) {
-                        //Rows
-                        for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
-                            var cb = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
-                            if (cb.length)
-                                cb[0].checked = true;
-                        }
-
-                        //Columns
-                        for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
-                            var cb = $('#' + view.key + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
-                            if (cb.length)
-                                cb[0].checked = true;
-                        }
-                    }
-
-                    if (viewCanDoBulkOp(view.key, 'edit')) {
-                        //When user clicks on a row, to indicate the record source.
-                        $('#' + view.key + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
-                            var tableRow = e.target.closest('tr');
-                            if (tableRow) {
-                                if (bulkOpsRecIdArray.length > 0) {
-                                    //Prevent Inline Edit.
-                                    e.stopImmediatePropagation();
-                                    apiData = {};
-                                    processBulkOps(view.key, e);
-                                }
+                        //Put back checkboxes that were checked before view refresh.
+                        if (view.key === bulkOpsViewId) {
+                            //Rows
+                            for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
+                                var cb = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
+                                if (cb.length)
+                                    cb[0].checked = true;
                             }
-                        })
-                    }
 
-                    updateBulkOpsGuiElements(view.key);
+                            //Columns
+                            for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
+                                var cb = $('#' + view.key + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
+                                if (cb.length)
+                                    cb[0].checked = true;
+                            }
+                        }
 
-                    $(document).trigger('KTL.BulkOperation.Updated', [view.key]);
-                })
+                        if (viewCanDoBulkOp(view.key, 'edit')) {
+                            //When user clicks on a row, to indicate the record source.
+                            $('#' + view.key + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
+                                var tableRow = e.target.closest('tr');
+                                if (tableRow) {
+                                    if (bulkOpsRecIdArray.length > 0) {
+                                        //Prevent Inline Edit.
+                                        e.stopImmediatePropagation();
+                                        apiData = {};
+                                        processBulkOps(view.key, e);
+                                    }
+                                }
+                            })
+                        }
+
+                        updateBulkOpsGuiElements(view.key);
+
+                        $(document).trigger('KTL.BulkOperation.Updated', [view.key]);
+                    })
+                    .catch(() => { })
             }
         }
 
@@ -15739,7 +15734,7 @@ function Ktl($, appInfo) {
                 for (var kwKey in ktlKeywords) {
                     const kwInfo = ktlKeywords[kwKey];
                     const str = JSON.stringify(kwInfo, null, 4);
-                    if (regex.test(str)) {
+                    if (regex.test(kwKey) || regex.test(str)) {
                         if (kwKey.startsWith('view_')) {
                             for (var s = 0; s < Knack.scenes.models.length; s++) {
                                 var views = Knack.scenes.models[s].views;
