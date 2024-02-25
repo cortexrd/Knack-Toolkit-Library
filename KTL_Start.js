@@ -5,6 +5,7 @@
  *  - 'x,y,z' will use that specific Prod version.
  *  - if empty, will use the latest Prod version from KTL_LATEST_JS_VERSION.
  *  - if 'dev', will use /Prod/KTL-dev.js version, which is the latest "experimental" code
+ *  - if 'beta', will use /Prod/KTL-beta.js version, which is the candidate for next release
 */
 
 var callback;
@@ -22,19 +23,35 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
     const lsShortName = Knack.app.attributes.name.substr(0, 6).replace(/ /g, '') + '_' + app_id.substr(-4, 4) + '_';
 
-    //Used to bypass KTL completely, typically to troubleshoot and isolate an issue.  Used with the Knack Dev Tools popup.
+    //Used to bypass KTL completely, typically to troubleshoot and isolate an issue.  Used with the KTL Developer Tools popup.
     const bypassKtl = (sessionStorage.getItem(lsShortName + 'bypassKtl') !== null);
     if (bypassKtl) {
         callback();
         return;
     }
 
-    //Debug this specific device, if it has the remoteDev entry in localStorage.
-    if (localStorage.getItem(lsShortName + 'remoteDev') === 'true')
-        ktlVersion = 'dev';
+    let ktlCode = localStorage.getItem(lsShortName + 'ktlCode') || 'prod';
 
-    const localDevMode = (localStorage.getItem(lsShortName + 'dev') !== null);
-    if (localDevMode) {
+    //Cleanup legacy and update to new naming: remoteDev -> dev
+    const legacyRemoteDev = (localStorage.getItem(lsShortName + 'remoteDev') === 'true');
+    if (legacyRemoteDev) {
+        localStorage.removeItem(lsShortName + 'remoteDev');
+        ktlCode = 'dev';
+        localStorage.setItem(lsShortName + 'ktlCode', ktlCode);
+    }
+
+    //Cleanup legacy and update to new naming: dev -> local 
+    const legacyDev = localStorage.getItem(lsShortName + 'dev');
+    if (legacyDev !== null) {
+        localStorage.removeItem(lsShortName + 'dev');
+        ktlCode = 'local';
+        localStorage.setItem(lsShortName + 'ktlCode', ktlCode);
+    }
+
+    if (['dev', 'beta'].includes(ktlCode) || /^\d.*\./.test(ktlCode))
+        ktlVersion = ktlCode;
+
+    if (ktlCode === 'local') {
         ktlVersion = '';
         cssVersion = '';
         prodFolder = '';
@@ -69,20 +86,23 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         }
     }
 
-    if (ktlVersion === 'dev') {
-        fullCode = 'full';
-        cssVersion = 'dev';
-    }
-
     LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js']);
     LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']); //Docs: https://github.com/SortableJS/Sortable#readme
-    var cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css';
-    var ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js';
+
+    let bypassCacheSuffix = '';
+    if (ktlVersion === 'dev' || ktlVersion === 'beta') {
+        fullCode = 'full';
+        cssVersion = ktlVersion;
+        //bypassCacheSuffix = `?v=${new Date().getTime()}`; //Append this to end of filename to force loading new code without requiring Ctrl+F5.
+    }
+
+    var cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css' + bypassCacheSuffix;
+    var ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js' + bypassCacheSuffix;
 
     LazyLoad.css([cssFile], () => {
         LazyLoad.js([ktlFile], () => {
             if (typeof Ktl === 'function') {
-                LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + (ktlVersion === 'dev' ? '-dev' : '') + '.js'], () => {
+                LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + ((ktlVersion === 'dev' || ktlVersion === 'beta') ? '-' + ktlVersion : '') + '.js'], () => {
                     if (typeof KnackApp === 'function') {
                         KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
                     } else
@@ -91,10 +111,10 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                     callback();
                 })
             } else {
-                if (localDevMode) {
+                if (ktlCode === 'local') {
                     alert('KTL not found');
                 } else {
-                    localStorage.removeItem(lsShortName + 'dev'); //JIC
+                    localStorage.setItem(lsShortName + 'ktlCode', 'prod');
                     location.reload(true);
                 }
             }
