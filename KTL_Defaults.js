@@ -10,10 +10,6 @@ window.KnackApp = function ($, appInfo = {}) {
     window.ktl = ktl;
     const IFRAME_WND_ID = 'iFrameWnd';
 
-    //Debug helper to open the app code by clicking the VM log at right.
-    if (ktl.storage.lsGetItem('remoteDev', true) === 'true')
-        console.log('Open App code by clicking VM here -=>');
-
     //====================================================
     //KTL Setup - BEGIN
     (function () {
