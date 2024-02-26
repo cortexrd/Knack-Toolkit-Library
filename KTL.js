@@ -7802,9 +7802,9 @@ function Ktl($, appInfo) {
             }
 
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                const numParents = keywords[kw][0].params[0][0] || 2;
-                if (isNaN(numParents) || numParents < 2 || numParents > 10) {
-                    ktl.log.clog('purple', `_parent has an illegal level value: ${numParents} in ${viewId}.  Value must be between 2 and 10.`);
+                const numParents = keywords[kw][0].params[0][0] || 1;
+                if (isNaN(numParents) || numParents < 1 || numParents > 10) {
+                    ktl.log.clog('purple', `_parent has an illegal level value: ${numParents} in ${viewId}.  Value must be between 1 and 10.`);
                     return;
                 }
 
