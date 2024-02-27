@@ -1630,8 +1630,8 @@ function Ktl($, appInfo) {
             },
 
             findParentURL: function (URLNow, numParents) {
-                if (isNaN(numParents) || numParents < 2 || numParents > 10) {
-                    ktl.log.clog('purple', `findParentURL called with invalid numParents: ${level}.  Value must be between 2 and 10.`);
+                if (isNaN(numParents) || numParents < 1 || numParents > 10) {
+                    ktl.log.clog('purple', `findParentURL called with invalid numParents: ${level}.  Value must be between 1 and 10.`);
                     return null;
                 }
 
