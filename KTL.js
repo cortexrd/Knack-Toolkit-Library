@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.23.9';
+    const KTL_VERSION = '0.23.10';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3003,10 +3003,8 @@ function Ktl($, appInfo) {
                                 if (!fieldId.startsWith('field_'))
                                     fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
 
-                                if (!$('#' + viewId + ' .' + fieldId).length && !$('#' + viewId + ' #' + fieldId).length) {
-                                    ktl.log.clog('purple', 'generateBarcode called with invalid field ID:', viewId, fieldId);
+                                if (!$('#' + viewId + ' .' + fieldId).length && !$('#' + viewId + ' #' + fieldId).length)
                                     return;
-                                }
                             }
 
                             if (params[0].length >= 3 && params[0][2] === 'h')
@@ -8355,7 +8353,6 @@ function Ktl($, appInfo) {
 
             function srcDataReady() {
                 const srcData = Knack.views[srcViewId].model.data.models;
-                console.log('srcData =', srcData);
                 if (!srcData.length) return;
 
                 let needConfirm = true;
@@ -8637,9 +8634,15 @@ function Ktl($, appInfo) {
             if (params[0].length >= 3)
                 qrCodeSize = Number(params[0][2]);
 
-            const fieldUrl = ktl.fields.getFieldIdFromLabel(viewId, 'URL');
+            const qrCodeUrlFieldId = ktl.fields.getFieldIdFromLabel(viewId, 'QR Code URL');
+            if (!qrCodeUrlFieldId) {
+                ktl.log.clog('purple', `"QR Code URL" field is missing for _afsg keyword`);
+                return;
+            }
 
-            let varsObject = {};
+            ktl.fields.disableFields(viewId, [qrCodeUrlFieldId]);
+
+            let varsObject = {}; //Named after the _vars parameters.  See here: https://learn.knack.com/article/z36i2it02b-how-to-use-url-variables-to-pre-populate-a-form
             let urlWithVars;
             let fieldsAutoPopulatedByQrCode;
             let otherParams = {};
@@ -8675,31 +8678,35 @@ function Ktl($, appInfo) {
                             varsObject[fieldId] = value;
                         }
 
-                        let varsJson = encodeURIComponent(JSON.stringify(varsObject));
+                        generateQRCode();
+                    })
 
-                        urlWithVars = `${url}?${afsViewId}_vars=${varsJson}`;
+                    generateQRCode();
+
+                    function generateQRCode() {
+                        urlWithVars = `${url}?${afsViewId}_vars=${encodeURIComponent(JSON.stringify(varsObject))}`;
 
                         if (!$.isEmptyObject(otherParams))
                             urlWithVars += `&otherParams=${encodeURIComponent(JSON.stringify(otherParams))}`;
 
-                        $(`#${viewId} #${fieldUrl}`).val(urlWithVars);
+                        $(`#${viewId} #${qrCodeUrlFieldId}`).val(urlWithVars);
 
                         const barcodeData = { text: urlWithVars, width: qrCodeSize, height: qrCodeSize };
 
-                        var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldUrl}`);
+                        var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${qrCodeUrlFieldId}`);
                         if (!bcgDiv) {
                             bcgDiv = document.createElement('div');
 
-                            $(`#${viewId} [data-input-id="${fieldUrl}"]`).append(bcgDiv);
+                            $(`#${viewId} [data-input-id="${qrCodeUrlFieldId}"]`).append(bcgDiv);
 
-                            bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldUrl}`);
+                            bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${qrCodeUrlFieldId}`);
                             bcgDiv.style.marginTop = '10px';
                         }
 
                         if (bcgDiv.lastChild)
                             bcgDiv.removeChild(bcgDiv.lastChild);
-                        $(`#${viewId}-bcgDiv-${fieldUrl}`).qrcode(barcodeData);
-                    })
+                        $(`#${viewId}-bcgDiv-${qrCodeUrlFieldId}`).qrcode(barcodeData);
+                    }
                 })
                 .catch(reason => { reject('generateBarcode error:', reason); })
         }
