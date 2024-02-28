@@ -1818,12 +1818,12 @@ function Ktl($, appInfo) {
                 return count;
             },
 
-            //Function to extract IDs from span of other HTML elements.
+            //Function to extract IDs from span or other HTML elements.
             extractIds: function (html) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const elementsWithId = doc.querySelectorAll('[id]');
-                const ids = Array.from(elementsWithId).map(el => el.id);
+                const elements = doc.querySelectorAll('[id]');
+                const ids = Array.from(elements).map(el => el.id);
                 return ids;
             },
         }
@@ -5892,6 +5892,8 @@ function Ktl($, appInfo) {
             showNotification: true,
         };
 
+        const automatedBulkOpsQueue = {};
+
         //TODO: Migrate all variables here.
         var cfg = {
             hscCollapsedColumnsWidth: '5',
@@ -8476,6 +8478,24 @@ function Ktl($, appInfo) {
 
                         if (mode === 'edit') { //Edit mode requires the additional record ID for each destination row.
                             if (!$.isEmptyObject(apiData)) {
+
+                                //for (const dstRec of data) {
+                                //    if (dstRec.id === srcRecId) {
+                                //        console.log('dstRec =', dstRec);
+
+                                //        for (const header in headersMapping) {
+                                //            const srcFieldId = headersMapping[header].src;
+                                //            const dstFieldId = headersMapping[header].dst;
+
+                                //            const fieldType = ktl.fields.getFieldType(fieldId);
+                                //            if (fieldType === 'connection') {
+                                //                console.log('connection');
+                                //            }
+                                //        }
+                                //    }
+                                //}
+
+
                                 const dstRowsWithSameRecId = $(`#${dstViewId} tbody tr td .${srcRecId}`);
                                 if (dstRowsWithSameRecId.length) {
                                     dstRowsWithSameRecId.each((ix, el) => {
@@ -8484,10 +8504,30 @@ function Ktl($, appInfo) {
                                         for (const header in headersMapping) {
                                             const srcFieldId = headersMapping[header].src;
                                             const dstFieldId = headersMapping[header].dst;
-                                            const srcText = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId}`).text();
-                                            const dstText = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).text();
-                                            if (srcText !== dstText)
-                                                bulkCopyApiDataArray.push({ apiData: apiData, id: dstRecId });
+
+
+                                            const fieldType = ktl.fields.getFieldType(dstFieldId);
+                                            if (fieldType === 'connection') {
+                                                console.log('connection');
+                                                const html = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId} [href]`)[0].innerHTML;
+                                                const ids = ktl.core.extractIds(html);
+                                                console.log('ids =', ids);
+                                            } else {
+                                                const srcText = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId}`).text();
+                                                const dstText = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).text();
+
+                                                if (srcText !== dstText) {
+                                                    console.log('src vs dst text', srcText, dstText);
+                                                    console.log('sel', `#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`);
+
+                                                    const html = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`);
+                                                    console.log('html =', html);
+                                                    const dstRecIds = ktl.core.extractIds(html);
+                                                    console.log('dstRecIds =', dstRecIds);
+
+                                                    bulkCopyApiDataArray.push({ apiData: apiData, id: dstRecId });
+                                                }
+                                            }
                                         }
                                     });
                                 }
@@ -8496,9 +8536,8 @@ function Ktl($, appInfo) {
                             bulkCopyApiDataArray.push(apiData);
                     }
 
+                    return;
                     if (!bulkCopyApiDataArray.length) return;
-
-                    //console.log('bulkCopyApiDataArray =', bulkCopyApiDataArray);
 
                     if (options && options.ktlMsg) {
                         const message = options.ktlMsg.split(',').slice(1).join(',').trim();
@@ -8519,6 +8558,8 @@ function Ktl($, appInfo) {
                     let requestType = 'POST';
                     if (mode === 'edit')
                         requestType = 'PUT';
+                    extract
+                    console.log('Calling processAutomatedBulkOps, bulkCopyApiDataArray =', bulkCopyApiDataArray, dstViewId);
 
                     ktl.views.processAutomatedBulkOps(dstViewId, bulkCopyApiDataArray, requestType, [], false, false)
                         .then(countDone => {
@@ -8526,7 +8567,8 @@ function Ktl($, appInfo) {
                         })
                         .catch(err => {
                             $.unblockUI();
-                            alert(`Copy error encountered:\n${err}`);
+                            //alert(`Copy error encountered:\n${err}`);
+                            ktl.log.clog('purple', `Copy error encountered:\n${err}`);
                         })
                 }
             }
@@ -11891,24 +11933,53 @@ function Ktl($, appInfo) {
                     if (!bulkOpsViewId || !bulkOpsRecordsArray || !bulkOpsRecordsArray.length || !requestType)
                         return reject('Called processAutomatedBulkOps with invalid parameters.');
 
+                    //Check if already existing in current queue.
+                    if (!automatedBulkOpsQueue[bulkOpsViewId]) {
+                        automatedBulkOpsQueue[bulkOpsViewId] = bulkOpsRecordsArray;
+                    } else {
+                        for (const newApiRequest of bulkOpsRecordsArray) {
+                            addRequestIfNotQueued(newApiRequest);
+                        }
+
+                        function addRequestIfNotQueued(newRequest) {
+                            const existingQueue = automatedBulkOpsQueue[bulkOpsViewId];
+
+                            // Check if newRequest's ID is already in the queue
+                            const isAlreadyQueued = existingQueue.some(request => request.id === newRequest.id);
+
+                            // If not already queued, add the new request
+                            if (!isAlreadyQueued) {
+                                automatedBulkOpsQueue[bulkOpsViewId].push(newRequest);
+                            }
+                        }
+                    }
+
+                    console.log('222', automatedBulkOpsQueue[bulkOpsViewId]);
+
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
                     enableShowProgress && ktl.core.infoPopup();
                     ktl.views.autoRefresh(false);
                     ktl.scenes.spinnerWatchdog(false);
 
-                    var arrayLen = bulkOpsRecordsArray.length;
+                    if (!automatedBulkOpsQueue[bulkOpsViewId])
+                        debugger;
+
+                    var arrayLen = automatedBulkOpsQueue[bulkOpsViewId].length;
 
                     var idx = 0;
                     var countDone = 0;
                     var itv = setInterval(() => {
                         if (idx < arrayLen)
-                            updateRecord(bulkOpsRecordsArray[idx++]);
-                        else
+                            updateRecord(automatedBulkOpsQueue[bulkOpsViewId][idx++]);
+                        else {
                             clearInterval(itv);
+                            //delete automatedBulkOpsQueue[bulkOpsViewId];
+                        }
                     }, 150);
 
                     function updateRecord(apiData) {
+                        console.log('333');
                         let recId = null;
                         if (!apiData || $.isEmptyObject(apiData)) return;
 
@@ -11922,14 +11993,19 @@ function Ktl($, appInfo) {
 
                         ktl.core.knAPI(bulkOpsViewId, recId, apiData, requestType, viewsToRefresh, showSpinner)
                             .then(function (data) {
-                                if (++countDone === bulkOpsRecordsArray.length) {
-                                    bulkOpsRecordsArray = [];
+                                if (!automatedBulkOpsQueue[bulkOpsViewId])
+                                    debugger;
+
+                                console.log('444');
+                                if (++countDone === automatedBulkOpsQueue[bulkOpsViewId].length) {
+                                    automatedBulkOpsQueue[bulkOpsViewId] = [];
                                     Knack.showSpinner();
                                     ktl.core.removeInfoPopup();
                                     ktl.views.refreshView(bulkOpsViewId).then(function () {
                                         ktl.core.removeTimedPopup();
                                         ktl.scenes.spinnerWatchdog();
                                         setTimeout(function () {
+                                            console.log('555');
                                             ktl.views.autoRefresh();
                                             Knack.hideSpinner();
                                             return resolve(countDone);
@@ -11944,7 +12020,7 @@ function Ktl($, appInfo) {
                                 Knack.hideSpinner();
                                 ktl.scenes.spinnerWatchdog();
                                 ktl.views.autoRefresh();
-                                return reject('processAutomatedBulkOps error: ' + JSON.parse(reason.responseText).errors[0].message);
+                                return reject('processAutomatedBulkOps error: ' + reason.stack);
                             })
 
                         function showProgress() {
@@ -15290,7 +15366,7 @@ function Ktl($, appInfo) {
                             .catch(function (reason) {
                                 postBulkOpsRestoreState();
                                 setTimeout(() => {
-                                    alert('Bulk Edit Error: ' + JSON.parse(reason.responseText).errors[0].message);
+                                    alert('Bulk Edit Error: ' + reason.stack);
                                 }, 500);
                             })
 
@@ -15336,7 +15412,7 @@ function Ktl($, appInfo) {
                             })
                             .catch(function (reason) {
                                 postBulkOpsRestoreState();
-                                alert('Bulk Copy Error: ' + JSON.parse(reason.responseText).errors[0].message);
+                                alert('Bulk Copy Error: ' + reason.stack);
                             })
 
                         function showProgress() {
