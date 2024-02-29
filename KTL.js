@@ -1822,9 +1822,20 @@ function Ktl($, appInfo) {
             extractIds: function (html) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const elements = doc.querySelectorAll('[id]');
-                const ids = Array.from(elements).map(el => el.id);
-                return ids;
+                const elements = doc.querySelectorAll('[id], [class]');
+                const hex24Regex = /^[0-9a-fA-F]{24}$/; // Regex for 24-char hexadecimal
+                const idsAndClassesHex24 = Array.from(elements).flatMap(el => [el.id, ...el.className.split(/\s+/)])
+                    .filter(Boolean) // Remove empty strings
+                    .filter(s => hex24Regex.test(s)); // Keep only 24-char hex values
+                return idsAndClassesHex24;
+            },
+
+            //Compares two arrays and returns true if they contain the same elements, regardless of their order.
+            //Only works with simple values like strings or numbers, not objects.
+            isArraysContainSameElements: function (array1, array2) {
+                return array1.length === array2.length &&
+                    array1.every(id => array2.includes(id)) &&
+                    array2.every(id => array1.includes(id));
             },
         }
     })(); //Core
@@ -8420,7 +8431,6 @@ function Ktl($, appInfo) {
                             }
                         } else if (param.length == 3) {
                             //When source is a field/view selector.
-                            //const header = param[0];
                             const fieldLabel = param[1];
                             const viewTitle = param[2];
                             const foreignViewId = ktl.scenes.findViewWithTitle(viewTitle, true, srcViewId);
@@ -8476,26 +8486,11 @@ function Ktl($, appInfo) {
                             }
                         }
 
-                        if (mode === 'edit') { //Edit mode requires the additional record ID for each destination row.
+                        if (mode === 'add')
+                            bulkCopyApiDataArray.push(apiData);
+                        else {
+                            //Edit mode requires the additional record ID for each destination row.
                             if (!$.isEmptyObject(apiData)) {
-
-                                //for (const dstRec of data) {
-                                //    if (dstRec.id === srcRecId) {
-                                //        console.log('dstRec =', dstRec);
-
-                                //        for (const header in headersMapping) {
-                                //            const srcFieldId = headersMapping[header].src;
-                                //            const dstFieldId = headersMapping[header].dst;
-
-                                //            const fieldType = ktl.fields.getFieldType(fieldId);
-                                //            if (fieldType === 'connection') {
-                                //                console.log('connection');
-                                //            }
-                                //        }
-                                //    }
-                                //}
-
-
                                 const dstRowsWithSameRecId = $(`#${dstViewId} tbody tr td .${srcRecId}`);
                                 if (dstRowsWithSameRecId.length) {
                                     dstRowsWithSameRecId.each((ix, el) => {
@@ -8505,38 +8500,39 @@ function Ktl($, appInfo) {
                                             const srcFieldId = headersMapping[header].src;
                                             const dstFieldId = headersMapping[header].dst;
 
+                                            const dstFieldType = ktl.fields.getFieldType(dstFieldId);
+                                            if (dstFieldType === 'connection') {
+                                                const html = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).html();
+                                                const dstRecIds = ktl.core.extractIds(html);
 
-                                            const fieldType = ktl.fields.getFieldType(dstFieldId);
-                                            if (fieldType === 'connection') {
-                                                console.log('connection');
-                                                const html = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId} [href]`)[0].innerHTML;
-                                                const ids = ktl.core.extractIds(html);
-                                                console.log('ids =', ids);
-                                            } else {
+                                                let array1 = [];
+                                                let array2 = [];
+
+                                                if (apiData[dstFieldId]) {
+                                                    array1 = apiData[dstFieldId];
+                                                    array2 = dstRecIds;
+                                                }
+
+                                                if (!ktl.core.isArraysContainSameElements(array1, array2))
+                                                    bulkCopyApiDataArray.push({ apiData: apiData, id: dstRecId });
+                                            } else { //Text and numeric values.
                                                 const srcText = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId}`).text();
                                                 const dstText = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).text();
 
                                                 if (srcText !== dstText) {
-                                                    console.log('src vs dst text', srcText, dstText);
-                                                    console.log('sel', `#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`);
-
-                                                    const html = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`);
-                                                    console.log('html =', html);
-                                                    const dstRecIds = ktl.core.extractIds(html);
-                                                    console.log('dstRecIds =', dstRecIds);
-
+                                                    //console.log('src vs dst text', srcText, dstText);
+                                                    //console.log('sel', `#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`);
                                                     bulkCopyApiDataArray.push({ apiData: apiData, id: dstRecId });
                                                 }
-                                            }
+
+                                            } //TODO: add support for all field types.
                                         }
                                     });
                                 }
                             }
-                        } else
-                            bulkCopyApiDataArray.push(apiData);
+                        }
                     }
 
-                    return;
                     if (!bulkCopyApiDataArray.length) return;
 
                     if (options && options.ktlMsg) {
@@ -8555,20 +8551,16 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    let requestType = 'POST';
-                    if (mode === 'edit')
-                        requestType = 'PUT';
-                    extract
-                    console.log('Calling processAutomatedBulkOps, bulkCopyApiDataArray =', bulkCopyApiDataArray, dstViewId);
+                    let requestType = (mode === 'add') ? 'POST' : 'PUT';
 
+                    //console.log('Calling processAutomatedBulkOps, bulkCopyApiDataArray =', bulkCopyApiDataArray, dstViewId);
                     ktl.views.processAutomatedBulkOps(dstViewId, bulkCopyApiDataArray, requestType, [], false, false)
                         .then(countDone => {
                             $.unblockUI();
                         })
                         .catch(err => {
                             $.unblockUI();
-                            //alert(`Copy error encountered:\n${err}`);
-                            ktl.log.clog('purple', `Copy error encountered:\n${err}`);
+                            ktl.log.clog('purple', `processAutomatedBulkOps error encountered:\n${err}`);
                         })
                 }
             }
@@ -9711,7 +9703,7 @@ function Ktl($, appInfo) {
                                                     }
                                                 } else { //Multiple options.
                                                     if (onlyExactMatch) {
-                                                        ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
+                                                        ktl.core.timedPopup('Could not find ' + srchTxt, 'error', 3000);
                                                         delete dropdownSearching[fieldId];
                                                         reject(foundText);
                                                         return;
@@ -9723,7 +9715,7 @@ function Ktl($, appInfo) {
                                                 return;
                                             } else { //Nothing found.
                                                 if (showPopup)
-                                                    ktl.core.timedPopup('Could Not Find ' + srchTxt, 'error', 3000);
+                                                    ktl.core.timedPopup('Could not find ' + srchTxt, 'error', 3000);
 
                                                 if (onlyExactMatch) {
                                                     if (chznContainer.length) {
@@ -10556,21 +10548,25 @@ function Ktl($, appInfo) {
                 return new Promise(function (resolve, reject) {
                     if (!viewId) return;
 
-                    var success = null;
-                    var failure = null;
+                    var success = false;
+                    var failure = false;
                     var loggedIn = (Knack.getUserAttributes() !== 'No user found');
 
                     var intervalId = setInterval(function () {
-                        success = document.querySelector('#' + viewId + ' .kn-message.success') && document.querySelector('#' + viewId + ' .kn-message.success').textContent.replace(/\n/g, '').trim();
+                        const successMsg = document.querySelector('#' + viewId + ' .kn-message.success');
+                        success = !!(successMsg && successMsg.checkVisibility());
                         if (!loggedIn && (Knack.getUserAttributes() !== 'No user found'))
                             success = true;
-                        failure = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body') && document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body').textContent.replace(/\n/g, '').trim();
+                        const failureMsg = document.querySelector('#' + viewId + ' .kn-message.is-error .kn-message-body');
+                        failure = !!(failureMsg && failureMsg.checkVisibility());
                         if (success || failure) {
                             clearInterval(intervalId);
                             clearTimeout(failsafe);
-                            success && resolve({ outcome: 'waitSubmitOutcome, ' + viewId + ' : ' + success });
-                            failure && reject('waitSubmitOutcome, ' + viewId + ' : ' + failure);
-                            return;
+                            if (success)
+                                return resolve({ outcome: 'waitSubmitOutcome, ' + viewId + ' : ' + successMsg.textContent.replace(/\n/g, '').trim() });
+
+                            if (failure)
+                                return reject('waitSubmitOutcome, ' + viewId + ' : ' + failureMsg.textContent.replace(/\n/g, '').trim());
                         }
                     }, 200);
 
@@ -11933,28 +11929,18 @@ function Ktl($, appInfo) {
                     if (!bulkOpsViewId || !bulkOpsRecordsArray || !bulkOpsRecordsArray.length || !requestType)
                         return reject('Called processAutomatedBulkOps with invalid parameters.');
 
-                    //Check if already existing in current queue.
+                    //Check if already existing in current queue, and only add if not already existing.
                     if (!automatedBulkOpsQueue[bulkOpsViewId]) {
                         automatedBulkOpsQueue[bulkOpsViewId] = bulkOpsRecordsArray;
                     } else {
-                        for (const newApiRequest of bulkOpsRecordsArray) {
-                            addRequestIfNotQueued(newApiRequest);
-                        }
-
-                        function addRequestIfNotQueued(newRequest) {
-                            const existingQueue = automatedBulkOpsQueue[bulkOpsViewId];
-
-                            // Check if newRequest's ID is already in the queue
-                            const isAlreadyQueued = existingQueue.some(request => request.id === newRequest.id);
-
-                            // If not already queued, add the new request
-                            if (!isAlreadyQueued) {
-                                automatedBulkOpsQueue[bulkOpsViewId].push(newRequest);
+                        bulkOpsRecordsArray.forEach(newRequest => {
+                            const queue = automatedBulkOpsQueue[bulkOpsViewId];
+                            if (!queue.some(request => request.id === newRequest.id)) {
+                                ktl.log.clog('blue', 'New entry added', bulkOpsViewId, newRequest);
+                                queue.push(newRequest);
                             }
-                        }
+                        });
                     }
-
-                    console.log('222', automatedBulkOpsQueue[bulkOpsViewId]);
 
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
@@ -11962,24 +11948,18 @@ function Ktl($, appInfo) {
                     ktl.views.autoRefresh(false);
                     ktl.scenes.spinnerWatchdog(false);
 
-                    if (!automatedBulkOpsQueue[bulkOpsViewId])
-                        debugger;
-
                     var arrayLen = automatedBulkOpsQueue[bulkOpsViewId].length;
 
                     var idx = 0;
                     var countDone = 0;
                     var itv = setInterval(() => {
                         if (idx < arrayLen)
-                            updateRecord(automatedBulkOpsQueue[bulkOpsViewId][idx++]);
-                        else {
+                            automatedBulkOpsQueue[bulkOpsViewId] && updateRecord(automatedBulkOpsQueue[bulkOpsViewId][idx++]);
+                        else
                             clearInterval(itv);
-                            //delete automatedBulkOpsQueue[bulkOpsViewId];
-                        }
                     }, 150);
 
                     function updateRecord(apiData) {
-                        console.log('333');
                         let recId = null;
                         if (!apiData || $.isEmptyObject(apiData)) return;
 
@@ -11993,19 +11973,16 @@ function Ktl($, appInfo) {
 
                         ktl.core.knAPI(bulkOpsViewId, recId, apiData, requestType, viewsToRefresh, showSpinner)
                             .then(function (data) {
-                                if (!automatedBulkOpsQueue[bulkOpsViewId])
-                                    debugger;
-
-                                console.log('444');
-                                if (++countDone === automatedBulkOpsQueue[bulkOpsViewId].length) {
+                                if (automatedBulkOpsQueue[bulkOpsViewId] && (++countDone === automatedBulkOpsQueue[bulkOpsViewId].length)) {
                                     automatedBulkOpsQueue[bulkOpsViewId] = [];
+                                    delete automatedBulkOpsQueue[bulkOpsViewId];
+
                                     Knack.showSpinner();
                                     ktl.core.removeInfoPopup();
                                     ktl.views.refreshView(bulkOpsViewId).then(function () {
                                         ktl.core.removeTimedPopup();
                                         ktl.scenes.spinnerWatchdog();
                                         setTimeout(function () {
-                                            console.log('555');
                                             ktl.views.autoRefresh();
                                             Knack.hideSpinner();
                                             return resolve(countDone);
@@ -12053,7 +12030,7 @@ function Ktl($, appInfo) {
                     setTimeout(() => { //Failsafe
                         clearInterval(itv);
                         reject();
-                    }, 20000);
+                    }, 60000);
                 })
             },
 
@@ -12064,6 +12041,8 @@ function Ktl($, appInfo) {
 
                 let ktlAddonsDiv = document.querySelector(`#${viewId} .ktlAddonsDiv`);
                 if (!ktlAddonsDiv) {
+                    ktlAddonsDiv = document.createElement('div');
+
                     var prepend = false;
                     var searchFound = false;
 
@@ -12073,8 +12052,9 @@ function Ktl($, appInfo) {
                     } else
                         div = document.querySelector(`#${viewId} .kn-submit.control`); //For search views.
 
+                    const viewHeader = document.querySelector(`#${viewId} .view-header`);
                     if (!div)
-                        div = document.querySelector(`#${viewId} .view-header`);
+                        div = viewHeader;
 
                     if (!div) {
                         div = document.querySelector('#' + viewId);
@@ -12082,7 +12062,6 @@ function Ktl($, appInfo) {
                         prepend = true;
                     }
 
-                    ktlAddonsDiv = document.createElement('div');
                     ktlAddonsDiv.classList.add('ktlAddonsDiv');
 
                     if (searchFound) {
@@ -12091,6 +12070,8 @@ function Ktl($, appInfo) {
                         else
                             ktlAddonsDiv.classList.add('ktlAddonsWithSearchDiv');
                     }
+
+                    $(ktlAddonsDiv).css('margin-bottom', '1.1em');
 
                     if (prepend)
                         $(div).prepend(ktlAddonsDiv);
