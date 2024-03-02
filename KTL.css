@@ -47,8 +47,8 @@
 }
 
 .ktlHidden,
-[class^="ktlHidden_"],
-[class*=" ktlHidden_"] {
+[class^="ktlHidden_"]:not(.ktlHidden_dis),
+[class*=" ktlHidden_"]:not(.ktlHidden_dis) {
 	position: absolute !important;
 	left: -9000px;
 }

@@ -9448,8 +9448,12 @@ function Ktl($, appInfo) {
                                     submitBtn.append(label);
                                 else
                                     $('#' + viewId + ' .view-header').append(label);
-                            } else
-                                $('#' + viewId + ' .kn-title').append(label);
+                            } else {
+                                if (ktlKeywords[viewId] && ktlKeywords[viewId]._ht)
+                                    $('#' + viewId).prepend(label);
+                                else
+                                    $('#' + viewId + ' .kn-title').append(label);
+                            }
                         } else {
                             //Why Search views don't show it the first render?
                             $('#' + viewId).append(label);
