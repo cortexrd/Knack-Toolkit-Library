@@ -12207,6 +12207,13 @@ function Ktl($, appInfo) {
         $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
 
         //Early detection of scene change to prevent multi-rendering and flickering of views.
+        //New code from Slack's Icewolf: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
+        Knack.router.on('route:viewScene', function (slug, search) {
+            const currentScene = Knack.getCurrentScene();
+            const newSceneKey = Knack.scenes.getBySlug(currentScene.slug)?.get('key');
+            console.log('newSceneKey:', newSceneKey);
+        });
+
         var sceneChangeObservers = [];
         var newScene = '';
         setInterval(function () {
