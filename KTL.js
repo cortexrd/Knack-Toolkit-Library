@@ -15530,7 +15530,6 @@ function Ktl($, appInfo) {
             //Bulk Delete
             if (bulkOp === 'delete' && ktl.core.getCfg().enabled.bulkOps.bulkDelete) {
                 if ((Knack.getUserRoleNames().includes('Bulk Delete') || bulkOpEnabled)
-                    && tableHasInlineEditing
                     && !bulkOpDisabled)
                     return true;
             }
