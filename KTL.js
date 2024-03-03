@@ -7841,6 +7841,7 @@ function Ktl($, appInfo) {
             }
         }
 
+        const vrdCurrentlySelectedRows = {};
         function viewRecordDetails(viewId, keywords) {
             if (!viewId) return;
 
@@ -7867,7 +7868,7 @@ function Ktl($, appInfo) {
                         if (fieldToSearch.startsWith('field_'))
                             fieldIdToSearch = fieldToSearch;
                         else {
-                            $(`#${viewId} td`).on('click.ktl_vrd', processVrd);
+                            $(`#${viewId} td`).bindFirst('click.ktl_vrd', processVrd);
 
                             function processVrd(e) {
                                 const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
@@ -7875,25 +7876,32 @@ function Ktl($, appInfo) {
                                     const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
                                     const recId = (clickedObj && clickedObj.id);
                                     if (recId) {
-                                        fieldIdToSearch = ktl.fields.getFieldIdFromLabel(viewId, fieldToSearch);
-                                        if (fieldIdToSearch) {
-                                            const textToSearch = document.querySelector(`#${clickedViewId} tr[id="${recId}"] .${fieldIdToSearch}`).innerText;
-                                            $(`#${viewIdToSearch}-search input`).val(textToSearch);
-                                            $(`#${viewIdToSearch} .is-primary`).click();
+                                        if (recId !== vrdCurrentlySelectedRows[viewId]) {
+                                            //Do not allow Inline Editing or opening links. Wait for next click, when row is selected.
+                                            e.preventDefault();
+                                            e.stopImmediatePropagation();
 
-                                            $(`#${viewId} td`).off('click.ktl_vrd');
-                                            $(`#${viewId} td`).on('click.ktl_vrd', processVrd);
+                                            fieldIdToSearch = ktl.fields.getFieldIdFromLabel(viewId, fieldToSearch);
+                                            if (fieldIdToSearch) {
+                                                const textToSearch = document.querySelector(`#${clickedViewId} tr[id="${recId}"] .${fieldIdToSearch}`).innerText;
+                                                $(`#${viewIdToSearch}-search input`).val(textToSearch);
+                                                $(`#${viewIdToSearch} .is-primary`).click();
 
-                                            $(document).on(`knack-view-render.${viewIdToSearch}`, function (event, view, data) {
-                                                $(`#${viewIdToSearch}`).removeClass('ktlHidden');
+                                                $(`#${viewId} td`).off('click.ktl_vrd');
+                                                $(`#${viewId} td`).bindFirst('click.ktl_vrd', processVrd);
 
-                                                //Remove any similar rows, ex: two persons with same name. Keep only the row with same recId.
-                                                $(`#${viewIdToSearch} tbody tr:not([id="${recId}"])`).remove();
-                                                $(document).off(`knack-view-render.${viewIdToSearch}`);
+                                                $(document).on(`knack-view-render.${viewIdToSearch}`, function (event, view, data) {
+                                                    $(`#${viewIdToSearch}`).removeClass('ktlHidden');
 
-                                                $(`#${clickedViewId} .ktlOutline`).removeClass('ktlOutline');
-                                                $(clickedObj).addClass('ktlOutline');
-                                            });
+                                                    //Remove any similar rows, ex: two persons with same name. Keep only the row with same recId.
+                                                    $(`#${viewIdToSearch} tbody tr:not([id="${recId}"])`).remove();
+                                                    $(document).off(`knack-view-render.${viewIdToSearch}`);
+
+                                                    $(`#${clickedViewId} .ktlOutline`).removeClass('ktlOutline');
+                                                    $(clickedObj).addClass('ktlOutline');
+                                                    vrdCurrentlySelectedRows[viewId] = recId;
+                                                });
+                                            }
                                         }
                                     }
                                 }
