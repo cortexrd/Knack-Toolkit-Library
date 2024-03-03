@@ -7874,6 +7874,12 @@ function Ktl($, appInfo) {
                                     const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
                                     const recId = (clickedObj && clickedObj.id);
                                     if (recId) {
+                                        const clickedRow = $(clickedObj);
+                                        const clickedCell = $(e.target).closest('td');
+
+                                        if (clickedRow.hasClass('ktlOutline') && (clickedCell.hasClass('cell-edit') || $(e.target).hasClass('knViewLink__label'))) {
+                                            return;
+                                        }
                                         fieldIdToSearch = ktl.fields.getFieldIdFromLabel(viewId, fieldToSearch);
                                         if (fieldIdToSearch) {
                                             const textToSearch = document.querySelector(`#${clickedViewId} tr[id="${recId}"] .${fieldIdToSearch}`).innerText;
@@ -7891,7 +7897,7 @@ function Ktl($, appInfo) {
                                                 $(document).off(`knack-view-render.${viewIdToSearch}`);
 
                                                 $(`#${clickedViewId} .ktlOutline`).removeClass('ktlOutline');
-                                                $(clickedObj).addClass('ktlOutline');
+                                                clickedRow.addClass('ktlOutline');
                                             });
                                         }
                                     }
