@@ -8601,6 +8601,14 @@ function Ktl($, appInfo) {
 
             let viewsToRefreshArray = [];
 
+            //Do not use this technique below to get this modal view's parent.
+            //It will give wrong parent in some cases, depending on the pages structure.
+            //BAD=> const viewsInScene = Knack.scenes._byId[Knack.router.scene_view.model.attributes.parent].views.models;
+
+            //This is the correct way to get parent in the page based on HTML, not from the Builder's structure.
+            const sceneKey = $('.kn-scenes .kn-scene')[0].id.replace('kn-', '');
+            const sceneSlug = Knack.scenes.getByKey(sceneKey).attributes.slug;
+
             if (keywords[kw].length && keywords[kw][0].params) {
                 for (const viewToRefresh of keywords[kw][0].params[0]) {
                     const viewIdToRefresh = (viewToRefresh.startsWith('view_')) ? viewToRefresh : ktl.core.getViewIdByTitle(viewToRefresh, Knack.router.scene_view.model.attributes.parent, true);
@@ -8608,16 +8616,7 @@ function Ktl($, appInfo) {
                 }
             } else {
                 //All parent views.
-
-                //Do not use this technique below to get this modal view's parent.
-                //It will give wrong parent in some cases, depending on the pages structure.
-                //BAD=> const viewsInScene = Knack.scenes._byId[Knack.router.scene_view.model.attributes.parent].views.models;
-
-                //This is the correct way to get parent in the page based on HTML, not from the Builder's structure.
-                const sceneKey = $('.kn-scenes .kn-scene')[0].id.replace('kn-', '');
-                const sceneSlug = Knack.scenes.getByKey(sceneKey).attributes.slug;
                 const viewsInScene = Knack.scenes._byId[sceneSlug].views.models;
-
                 for (const viewToRefresh of viewsInScene) {
                     if (ktl.views.getViewType(viewToRefresh.attributes.key) !== 'calendar') //These don't need a refresh since it's done automatically.
                         viewsToRefreshArray.push(viewToRefresh.attributes.key);
@@ -8628,7 +8627,7 @@ function Ktl($, appInfo) {
             if (viewType === 'form') {
                 $(document).off(`knack-form-submit.${viewId}`).one(`knack-form-submit.${viewId}`, function (event, view, record) {
                     Knack.closeModal();
-                    ktl.views.refreshViewArray(viewsToRefreshArray);
+                    refreshViews();
                 });
             } else {
                 const keepModalOpen = Knack.router.scene_view.model.attributes.modal_prevent_background_click_close;
@@ -8637,13 +8636,20 @@ function Ktl($, appInfo) {
                         e.preventDefault();
                         e.stopImmediatePropagation();
                         Knack.closeModal();
-                        ktl.views.refreshViewArray(viewsToRefreshArray);
+                        refreshViews();
                     })
                 } else {
                     $(document).on('knack-modal-close', (e) => {
-                        ktl.views.refreshViewArray(viewsToRefreshArray);
+                        refreshViews();
                     })
                 }
+            }
+
+            function refreshViews() {
+                if (Knack.scenes._byId[sceneSlug].attributes.rules.length)
+                    Knack.router.scene_view.render(); //If some page rules exist, we must call this instead of individual view refreshes to force a full page update.
+                else
+                    ktl.views.refreshViewArray(viewsToRefreshArray);
             }
         }
 
