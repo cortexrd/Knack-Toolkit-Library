@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.0';
+    const KTL_VERSION = '0.24.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -457,7 +457,7 @@ function Ktl($, appInfo) {
 
             // Generic Knack API call function.
             // BTW, you can use connected records by enclosing your recId param in braces.  Ex: [myRecId]
-            knAPI: function (viewId = null, recId = null, apiData = {}, requestType = '', viewsToRefresh = [], showSpinner = true) {
+            knAPI: function (viewId = null, recId = null, apiData = {}, requestType = '', viewsToRefresh = [], showSpinner = true, filters) {
                 return new Promise(function (resolve, reject) {
                     requestType = requestType.toUpperCase();
                     if (viewId === null || /*recId === null || @@@ can be null for post req*/ /*data === null ||*/
@@ -481,7 +481,8 @@ function Ktl($, appInfo) {
 
                     if (recId) apiURL += recId;
 
-                    //TODO: Support GET requests with filter.
+                    if (filters)
+                        apiURL += '?filters=' + encodeURIComponent(JSON.stringify(filters));
 
                     showSpinner && Knack.showSpinner();
 
@@ -10111,14 +10112,22 @@ function Ktl($, appInfo) {
                 }
             },
 
-            //When a table is rendered, pass its data to this function along with the field and a value to search.
+            //Can be used with grids, search and list views to find a specific record that has a given value for a given field.
             //It returns the first record found, or undefined if nothing is found.
+            //The data source can come from the view's render event or directly from the Knack.view.view_id data object.
             findRecord: function (data = [], fieldId = '', value = '') {
                 if (!data.length || !fieldId || !value) return;
-                for (var i = 0; i < data.length; i++) {
-                    if (data[i][fieldId] === value)
-                        return data[i];
+                for (const record of data) {
+                    if (record[fieldId]) {
+                        if (record[fieldId] === value)
+                            return record;
+                    } else if (record.attributes) {
+                        if (record.attributes[fieldId] === value)
+                            return record.attributes;
+                    }
                 }
+
+                return undefined;
             },
 
             //This is used in a Search view, where you pass the viewId and value to be searched.
@@ -10130,7 +10139,7 @@ function Ktl($, appInfo) {
                         reject('Called searchRecordByValue with invalid parameters.');
                     } else {
                         if (viewId === '_uvx') {
-                            var uvxViewId = ktl.scenes.findViewWithKeyword('_uvx', viewId);
+                            var uvxViewId = ktl.scenes.findViewWithKeywordInCurrentScene('_uvx', viewId);
                             if (uvxViewId) {
                                 $('#' + uvxViewId + ' input').val(''); //Clear all inputs.
                                 var field = Knack.objects.getField(fieldId);
@@ -10145,7 +10154,7 @@ function Ktl($, appInfo) {
                                 })
                             }
                         } else if (viewId === '_uvc') {
-                            var uvcViewId = ktl.scenes.findViewWithKeyword('_uvc', viewId);
+                            var uvcViewId = ktl.scenes.findViewWithKeywordInCurrentScene('_uvc', viewId);
                             if (uvcViewId) {
                                 $('#' + uvcViewId + ' input').val(''); //Clear all inputs.
                                 var field = Knack.objects.getField(fieldId);
@@ -10337,7 +10346,7 @@ function Ktl($, appInfo) {
 
                                 //Search for duplicate in _uvc Search view.
                                 if (value && value !== '' && value !== 'Type to search') {
-                                    var uvcSearchViewId = ktl.scenes.findViewWithKeyword('_uvc', viewId);
+                                    var uvcSearchViewId = ktl.scenes.findViewWithKeywordInCurrentScene('_uvc', viewId);
                                     if (uvcSearchViewId) {
                                         var fieldToCheck = ktl.views.findFirstFieldWithKeyword(uvcSearchViewId, '_uvc');
                                         if (fieldToCheck) {
@@ -12208,11 +12217,14 @@ function Ktl($, appInfo) {
 
         //Early detection of scene change to prevent multi-rendering and flickering of views.
         //New code from Slack's Icewolf: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
-        Knack.router.on('route:viewScene', function (slug, search) {
-            const currentScene = Knack.getCurrentScene();
-            const newSceneKey = Knack.scenes.getBySlug(currentScene.slug)?.get('key');
-            console.log('newSceneKey:', newSceneKey);
-        });
+        //Knack.router.on('route:viewScene', function (slug, search) {
+        //    const currentScene = Knack.getCurrentScene();
+        //    const newSceneKey = Knack.scenes.getBySlug(currentScene.slug)?.get('key');
+
+        //    if (!ktl.scenes.isiFrameWnd()) {
+        //        console.log('newSceneKey:', newSceneKey);
+        //    }
+        //});
 
         var sceneChangeObservers = [];
         var newScene = '';
@@ -12642,9 +12654,15 @@ function Ktl($, appInfo) {
                 return '';
             },
 
-            //For KTL internal use.
             findViewWithKeyword: function (keyword = '', excludeViewId = '') {
-                var views = Knack.router.scene_view.model.views.models; //Search only in current scene.
+                ktl.log.clog('purple', 'findViewWithKeyword is deprecated.  Use findViewWithKeywordInCurrentScene instead.');
+                return findViewWithKeywordInCurrentScene(keyword = '', excludeViewId = '');
+            },
+
+            //Searches in the current scene for a view with the specified keyword.
+            //Returns on the first occurence found.
+            findViewWithKeywordInCurrentScene: function (keyword = '', excludeViewId = '') {
+                var views = Knack.router.scene_view.model.views.models;
                 var viewId = '';
                 keyword = keyword.toLowerCase();
                 try {
@@ -12663,6 +12681,31 @@ function Ktl($, appInfo) {
                     ktl.log.clog('purple', 'Exception in findViewWithKeyword:');
                     console.log(e);
                 }
+            },
+
+            //Searches through the whole app, in all scenes, for all views using the specified keyword.
+            //Returns an array containing the found view IDs.
+            //If firstOccurenceOnly is true, will return an array with the first view ID found.
+            findViewsWithKeywordInAllScenes: function (keyword, firstOccurenceOnly = false) {
+                if (!keyword) return [];
+                let foundViewIds = [];
+                const scenes = Knack.scenes.models;
+                for (const scene of scenes) {
+                    var views = scene.views.models;
+                    for (const view of views) {
+                        const viewId = view.id;
+                        if (viewId) {
+                            if (ktlKeywords[viewId] && ktlKeywords[viewId][keyword]) {
+                                if (firstOccurenceOnly)
+                                    return [viewId];
+                                else
+                                    foundViewIds.push(viewId);
+                            }
+                        }
+                    }
+                }
+
+                return foundViewIds;
             },
 
             scrollToTop: function () {
