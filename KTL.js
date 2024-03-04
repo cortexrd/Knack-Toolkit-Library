@@ -8617,7 +8617,10 @@ function Ktl($, appInfo) {
             const sceneKey = $('.kn-scenes .kn-scene')[0].id.replace('kn-', '');
             const sceneSlug = Knack.scenes.getByKey(sceneKey).attributes.slug;
 
+            let hasSpecificViewsToRefresh = false;
+
             if (keywords[kw].length && keywords[kw][0].params) {
+                hasSpecificViewsToRefresh = true;
                 for (const viewToRefresh of keywords[kw][0].params[0]) {
                     const viewIdToRefresh = (viewToRefresh.startsWith('view_')) ? viewToRefresh : ktl.core.getViewIdByTitle(viewToRefresh, Knack.router.scene_view.model.attributes.parent, true);
                     viewsToRefreshArray.push(viewIdToRefresh);
@@ -8654,10 +8657,15 @@ function Ktl($, appInfo) {
             }
 
             function refreshViews() {
-                if (Knack.scenes._byId[sceneSlug].attributes.rules.length)
-                    Knack.router.scene_view.render(); //If some page rules exist, we must call this instead of individual view refreshes to force a full page update.
-                else
+                if (hasSpecificViewsToRefresh)
                     ktl.views.refreshViewArray(viewsToRefreshArray);
+                else {
+                    const sceneHasPageRules = !!(Knack.scenes._byId[sceneSlug] && Knack.scenes._byId[sceneSlug].attributes && Knack.scenes._byId[sceneSlug].attributes.rules && Knack.scenes._byId[sceneSlug].attributes.rules.length);
+                    if (sceneHasPageRules)
+                        Knack.router.scene_view.render(); //If some page rules exist, we must call this instead of individual view refreshes to force a full page update.
+                    else
+                        ktl.views.refreshViewArray(viewsToRefreshArray);
+                }
             }
         }
 
