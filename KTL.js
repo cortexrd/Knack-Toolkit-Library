@@ -14956,6 +14956,7 @@ function Ktl($, appInfo) {
             const numChecked = updateBulkOpsRecIdArray(viewId);
 
             updateHeaderCheckboxes(viewId, numChecked);
+
             updateDeleteButtonState(viewId, numChecked);
             updateCopyButtonState(viewId, numChecked);
             updatePasteButtonState(viewId, numChecked);
@@ -14983,6 +14984,11 @@ function Ktl($, appInfo) {
                 function enableBulkOperationsPostSummary() {
                     addBulkOpsGuiElements(view, data);
                 }
+
+                //Tried this also but not better.  We still lose checkboxes one time out of 10.
+                //    $(document).off('KTL.' + view.key + '.totalsRendered.').on('KTL.' + view.key + '.totalsRendered.', () => {
+                //        addBulkOpsGuiElements(view, data);
+                //    })
             }
 
             addBulkOpsGuiElements(view, data);
@@ -15086,8 +15092,10 @@ function Ktl($, appInfo) {
                         }
                     })
 
-                    $('#' + viewId + ' thead input:checkbox').addClass('bulkEditCb');
                 }
+
+                if (viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy') || viewCanDoBulkOp(viewId, 'delete'))
+                    $('#' + viewId + ' thead input:checkbox').addClass('bulkEditCb');
 
                 //Add a checkbox to each row in the table body
                 $('#' + viewId + ' tbody tr').each(function () {
@@ -15252,6 +15260,8 @@ function Ktl($, appInfo) {
 
         function addCopyButton(view) {
             const viewId = view.key;
+            if (!viewCanDoBulkOp(viewId, 'edit')) return;
+
             if (document.querySelector('#ktl-bulk-copy-' + viewId)) return;
             const copyBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Copy', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-copy-' + viewId);
             copyBtn.addEventListener('click', function (e) {
@@ -15280,27 +15290,38 @@ function Ktl($, appInfo) {
                     }
                 })
 
-                updatePasteButtonState(viewId, checkedFields);
+                if ($.isEmptyObject(apiData))
+                    ktl.core.timedPopup('No data found.  Please try again', 'error');
+                else {
+                    ktl.core.timedPopup('Data copied successfully - ready to be pasted.', 'success');
+                    $(`#${viewId} tbody tr[id="${recId}"] input:checkbox`)[0].checked = false;
+                }
+
+                updateBulkOpsGuiElements(viewId);
             })
         }
 
         function addPasteButton(view) {
-            if (document.querySelector('#ktl-bulk-paste-' + view.key)) return;
-            const pasteBtn = ktl.fields.addButton(document.querySelector('#' + view.key + ' .bulkOpsControlsDiv'), 'Paste', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktl-bulk-paste-' + view.key);
+            const viewId = view.key;
+            if (!viewCanDoBulkOp(viewId, 'edit')) return;
+            if (document.querySelector('#ktl-bulk-paste-' + viewId)) return;
+            const pasteBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Paste', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktl-bulk-paste-' + viewId);
             pasteBtn.addEventListener('click', function (e) {
                 if (e.ctrlKey)
                     previewLastBulkEditData();
                 else
-                    processBulkOps(view.key, e);
+                    processBulkOps(viewId, e);
             })
         }
 
         function addDuplicateButton(view) {
-            if (document.querySelector(`#ktl-bulk-duplicate-${view.key}`)) return;
-            const duplicateBtn = ktl.fields.addButton(document.querySelector('#' + view.key + ' .bulkOpsControlsDiv'), 'Duplicate', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-duplicate-' + view.key);
+            const viewId = view.key;
+            if (!viewCanDoBulkOp(viewId, 'copy')) return;
+            if (document.querySelector(`#ktl-bulk-duplicate-${viewId}`)) return;
+            const duplicateBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Duplicate', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-duplicate-' + viewId);
             duplicateBtn.addEventListener('click', function (e) {
-                console.log('click Duplicate');
                 apiData = {};
+                processBulkOps(viewId, e);
             })
         }
 
@@ -15409,7 +15430,7 @@ function Ktl($, appInfo) {
         }
 
         //For Bulk Edit, called when user clicks on a row and when there are some checkboxes enabled.
-        //For Bulk Copy, called when user clicks on Bulk Copy button, when one row is selected and at least one column.
+        //For Bulk Duplicate, called when user clicks on Duplicate button, when one row is selected.  No columns checked means all.
         function processBulkOps(viewId, e) {
             if (!viewId) return;
 
@@ -15576,7 +15597,7 @@ function Ktl($, appInfo) {
             }
         }
 
-        //bulkOp must be "edit", "copy" or "delete".  No parameter means disable ALL bulk ops.
+        //bulkOp must be "edit", "copy" or "delete".
         function viewCanDoBulkOp(viewId, bulkOp) {
             if (!viewId || !bulkOp) return false;
 
@@ -15632,7 +15653,7 @@ function Ktl($, appInfo) {
             }
 
             //Bulk Delete
-            if (bulkOp === 'delete' && ktl.core.getCfg().enabled.bulkOps.bulkDelete) {
+            if (bulkOp === 'delete' && ktl.core.getCfg().enabled.bulkOps.bulkDelete && document.querySelector('#' + viewId + ' .kn-link-delete')) {
                 if ((Knack.getUserRoleNames().includes('Bulk Delete') || bulkOpEnabled)
                     && !bulkOpDisabled)
                     return true;
