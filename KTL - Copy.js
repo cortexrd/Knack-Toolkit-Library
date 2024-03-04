@@ -14988,10 +14988,12 @@ function Ktl($, appInfo) {
             addBulkOpsGuiElements(view, data);
 
             function addBulkOpsGuiElements(view, data) {
+                console.log('111');
                 //Waiting for the spinner to disappear is required to prevent issues when
                 //there are groups and / or summaries.  Otherwise we get bad layout.
                 ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden')
                     .then(() => {
+                        console.log('222');
                         bulkOpsAddCheckboxesToTable(view.key);
                         ktl.views.fixTableRowsAlignment(view.key);
                         addBulkOpsButtons(view, data);
@@ -15134,7 +15136,9 @@ function Ktl($, appInfo) {
 
             prepend ? $(div).prepend(bulkOpsControlsDiv) : $(div).append(bulkOpsControlsDiv);
 
+            console.log('data.length =', data.length);
             if (data.length) {
+                console.log('333');
                 addBulkDeleteButtons(view, data);
                 addCopyButton(view);
                 addPasteButton(view);
@@ -15143,6 +15147,7 @@ function Ktl($, appInfo) {
         }
 
         function addBulkDeleteButtons(view, data) {
+            console.log('444');
             if (!document.querySelector('#' + view.key + ' .kn-link-delete')
                 || !ktl.core.getCfg().enabled.bulkOps.bulkDelete
                 || !viewCanDoBulkOp(view.key, 'delete')
@@ -15150,6 +15155,7 @@ function Ktl($, appInfo) {
                 || ktl.scenes.isiFrameWnd())
                 return;
 
+            console.log('555');
             //Add Delete Selected button.
             if (!document.querySelector('#ktl-bulk-delete-selected-' + view.key)) {
                 var deleteRecordsBtn = ktl.fields.addButton(document.querySelector('#' + view.key + ' .bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-selected-' + view.key);
