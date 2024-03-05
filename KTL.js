@@ -12865,6 +12865,7 @@ function Ktl($, appInfo) {
                                     //This forces loading a specific 'KTL-xyz.js' version code from CTRND's CDN, in Prod folder.
                                     //See 'ktlCode' in KTL_Start.js
                                     let newKtlCode = prompt('Prod, Local, Dev, Beta or numbered version?\nType: p, l, d, b or version no.\nLeave empty for prod');
+                                    if (newKtlCode === null) return;
                                     newKtlCode = newKtlCode.toLowerCase();
                                     if (!newKtlCode || newKtlCode === 'p')
                                         ktl.core.switchKtlCode('prod');
