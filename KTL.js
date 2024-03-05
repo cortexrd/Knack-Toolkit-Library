@@ -266,8 +266,9 @@ function Ktl($, appInfo) {
 
                                     if (keywords._ro && mutRec.addedNodes.length) {
                                         //Process exceptions that cause unwanted view disappearance.
-                                        if (!mutRec.target.classList.contains('kn-asset-current')) { //File Uploads
-                                            //console.log('mutRec.target =', mutRec.target);
+                                        if (!mutRec.target.classList.contains('kn-asset-current' /*File Uploads*/)
+                                            && !mutRec.target.closest('.kn-signature')) {
+                                            console.log('mutRec.target =', mutRec.target);
                                             $('#' + viewId).addClass('ktlHidden_ro')
                                         }
                                     }
@@ -12907,9 +12908,9 @@ function Ktl($, appInfo) {
                                     showHiddenElem = !showHiddenElem;
                                     showHiddenElemBtn.textContent = 'Hidden Elements: ' + (showHiddenElem ? 'Show' : 'Hide');
                                     if (showHiddenElem) {
-                                        $('.ktlHidden').replaceClass('ktlHidden', 'ktlHidden_dis');
-                                        $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'ktlDisplayNone_dis');
-                                        $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'ktlVisibilityHidden_dis');
+                                        $('.ktlHidden').replaceClass('ktlHidden', 'dis_ktlHidden');
+                                        $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'dis_ktlDisplayNone');
+                                        $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
 
                                         $('[class^=ktlHidden_], [class*=" ktlHidden_"]').each(function () {
                                             var currentClass = $(this).attr('class');
@@ -12923,9 +12924,9 @@ function Ktl($, appInfo) {
                                             $(this).attr('class', newClass);
                                         });
                                     } else {
-                                        $('.ktlHidden_dis').replaceClass('ktlHidden_dis', 'ktlHidden');
-                                        $('.ktlDisplayNone_dis').replaceClass('ktlDisplayNone_dis', 'ktlDisplayNone');
-                                        $('.ktlVisibilityHidden_dis').replaceClass('ktlVisibilityHidden_dis', 'ktlVisibilityHidden');
+                                        $('.dis_ktlHidden').replaceClass('dis_ktlHidden', 'ktlHidden');
+                                        $('.dis_ktlDisplayNone').replaceClass('dis_ktlDisplayNone', 'ktlDisplayNone');
+                                        $('.dis_ktlVisibilityHidden').replaceClass('dis_ktlVisibilityHidden', 'ktlVisibilityHidden');
 
                                         $('[class^=dis_ktlHidden_], [class*=" dis_ktlHidden_"]').each(function () {
                                             var currentClass = $(this).attr('class');
