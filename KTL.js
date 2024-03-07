@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.1';
+    const KTL_VERSION = '0.24.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1141,7 +1141,7 @@ function Ktl($, appInfo) {
                     $('.ktlFormKioskButtons').removeClass('ktlFormKioskButtons');
                     $('.ktlKioskButtons').removeClass('ktlKioskButtons');
                     $('#kn-app-header,.knHeader,.kn-info-bar').removeClass('ktlDisplayNone');
-                    $('body').removeClass('ktlKioskMode ktlBottomExtraSpaces');
+                    $('body').removeClass('ktlKioskMode');
                 }
             },
 
