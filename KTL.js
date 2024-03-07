@@ -6124,6 +6124,7 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 disableFilterOnFields(view);
+                labelText(view, keywords);
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -6819,6 +6820,47 @@ function Ktl($, appInfo) {
                             }
                         });
                     });
+            }
+        }
+
+        function labelText({ key: viewId, type: viewType }, keywords) {
+            const kw = '_lbl';// @params = [label text], [options] OR @params = label text
+            if (!viewId && !keywords[kw]) return;
+
+            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            if (!$.isEmptyObject(fieldsWithKwObj)) {
+                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                var foundKwObj = {};
+                for (var i = 0; i < fieldsWithKwAr.length; i++) {
+                    fieldId = fieldsWithKwAr[i];
+                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {
+                        ktl.core.getKeywordsByType(fieldId, kw).forEach(execFieldKw);
+                    }
+                }
+            }
+
+            function execFieldKw({ params }) {
+                const selectors = {
+                    form: `#${viewId} #kn-input-${fieldId} .kn-label span:not(.kn-required)`,
+                    details: `#${viewId} .${fieldId} .kn-detail-label > span`,
+                    list: `#${viewId} .${fieldId} .kn-detail-label > span`,
+                    table: `#${viewId} th.${fieldId} > span > a > span:not(span.icon)`
+                };
+
+                let labelTxt = params[0].join(', ');
+                let selector = selectors[viewType];
+
+                if (params.length === 2) {
+                    let type = params[1];
+                    if (type[0].includes(viewType[0])) {
+                        selector = selectors[viewType];
+                    }
+                }
+
+                if (selector) {
+                    $(selector).text(labelTxt);
+                }
             }
         }
 
