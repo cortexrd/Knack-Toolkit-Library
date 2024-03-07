@@ -348,6 +348,7 @@ function Ktl($, appInfo) {
                 cfgObj.devDebugCode && (cfg.devDebugCode = cfgObj.devDebugCode);
                 cfgObj.isKiosk && (isKiosk = cfgObj.isKiosk);
                 cfgObj.virtualKeyboard && (virtualKeyboard = cfgObj.virtualKeyboard);
+                cfgObj.forceVirtualKeyboard && (cfg.forceVirtualKeyboard = cfgObj.forceVirtualKeyboard);
 
                 if (cfgObj.popupStyle !== undefined) {
                     if (!cfg.popupStyle)
@@ -1512,33 +1513,32 @@ function Ktl($, appInfo) {
                     .then((sc) => {
                         var sysColors = sc;
 
-                        var popupDiv = document.createElement('div');
-                        popupDiv.setAttribute('id', 'popupDivId');
-                        popupDiv.classList.add('devBtnsDiv', 'center');
+                        var popupForm = document.createElement('form');
+                        popupForm.setAttribute('id', 'popupFormId');
+                        popupForm.classList.add('devBtnsDiv', 'center');
+                        popupForm.onsubmit = function (event) {
+                            event.preventDefault();
+                            $('#popupFormId').remove();
+                            callback(inputField.value);
+                        };
+
                         var popupHdr = document.createElement('div');
                         popupHdr.setAttribute('id', 'popupHdrIdheader');
                         popupHdr.classList.add('ktlDevToolsHeader');
                         popupHdr.style['background-color'] = sysColors.paleLowSatClr;
                         popupHdr.innerText = ':: Enter Password ::';
-                        popupDiv.appendChild(popupHdr);
-                        document.body.appendChild(popupDiv);
+                        popupForm.appendChild(popupHdr);
+                        document.body.appendChild(popupForm);
 
                         var inputField = document.createElement("input");
                         inputField.type = 'password';
                         inputField.setAttribute('autocomplete', 'off');
                         inputField.classList.add('ktlDevToolsSearchInput');
-                        popupDiv.appendChild(inputField);
+                        popupForm.appendChild(inputField);
                         inputField.focus();
                         setTimeout(() => {
-                            inputField.value = ''; //Needed because autocomplete off doesn't work sometimes.
+                            inputField.value = ''; // Needed because autocomplete off doesn't work sometimes.
                         }, 1000);
-
-                        inputField.addEventListener('keyup', function (event) {
-                            if (event.key === 'Enter') {
-                                $('#popupDivId').remove();
-                                callback(inputField.value);
-                            }
-                        });
                     });
             },
 
@@ -6114,6 +6114,7 @@ function Ktl($, appInfo) {
                     keywords._ro && removeOptions(view, keywords);
                     keywords._afs && autoFillAndSubmit(view, keywords);
                     keywords._afsg && autoFillAndSubmitQRGenerator(view, keywords);
+                    keywords._vk && virtualKeyboard(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -7784,7 +7785,6 @@ function Ktl($, appInfo) {
 
         function goUpParentLevels(viewId, keywords) {
             const kw = '_parent';
-
             if (!(viewId && keywords && keywords[kw])) return;
 
             const viewType = ktl.views.getViewType(viewId);
@@ -8012,7 +8012,6 @@ function Ktl($, appInfo) {
         //Work in progress...
         function sendBulkEmails(viewId, keywords, data) {
             const kw = '_mail';
-
             if (!(viewId && keywords && keywords[kw])) return;
 
             const viewType = ktl.views.getViewType(viewId);
@@ -8115,7 +8114,6 @@ function Ktl($, appInfo) {
         const dragAndDropSubscribers = [];
         function dragAndDrop(viewId, keywords) {
             const kw = '_dnd';
-
             if (!(viewId && keywords && keywords[kw])) return;
 
             const viewType = ktl.views.getViewType(viewId);
@@ -8798,7 +8796,6 @@ function Ktl($, appInfo) {
             }
         }
 
-
         function addDateTimePickers(viewId = '', keywords) {
             const kw = '_dtp';
             if (!(viewId && keywords && keywords[kw])) return;
@@ -9104,6 +9101,18 @@ function Ktl($, appInfo) {
 
                 return { startDt: startDt, endDt: endDt, period: period };
             }
+        }
+
+        function virtualKeyboard(viewId, keywords) {
+            const kw = '_vk';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            ktl.core.setCfg({
+                enabled: { virtualKeyboard: true },
+                forceVirtualKeyboard: 'all',
+            });
+
+            ktl.virtualKeyboard.load();
         }
 
         //Views
@@ -12849,8 +12858,11 @@ function Ktl($, appInfo) {
                         showDevPopup();
                     else {
                         ktl.core.createPopup(pw => {
-                            if (pw === ktl.core.getCfg().devOptionsPin)
-                                showDevPopup();
+                            if (pw === ktl.core.getCfg().devOptionsPin) {
+                                setTimeout(() => {
+                                    showDevPopup();
+                                }, 500);
+                            }
                         })
                     }
 
@@ -17240,7 +17252,7 @@ function Ktl($, appInfo) {
 
                 //Only for Linux systems without a built-in VK, like Raspberry PI 4.
                 const sys = ktl.sysInfo.getSysInfo();
-                if (sys.os === 'Linux' /*&& sys.processor.includes('arm')*/)
+                if (sys.os === 'Linux' /*&& sys.processor.includes('arm')*/ || ktl.core.getCfg().forceVirtualKeyboard !== undefined)
                     load();
                 else
                     ktl.core.setCfg({ enabled: { virtualKeyboard: false } });
