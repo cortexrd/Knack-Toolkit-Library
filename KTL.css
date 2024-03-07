@@ -174,7 +174,7 @@ th .fa-caret-left {
 }
 
 .ktlBottomExtraSpaces {
-	margin-bottom: 500px;
+	margin-bottom: 500px !important;
 }
 
 /* Apply the style to the entire body of the webpage to allow scrolling, but with invisible H/V scrollbars. */
