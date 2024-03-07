@@ -233,75 +233,6 @@ function Ktl($, appInfo) {
         });
     }
 
-    //This is for early notifications of DOM changes.
-    //Prevents spurious GUI updates (flickering).
-    //Also used to track summary updates since they are asychronous and often delayed.
-    var observer = null;
-    var headerProcessed = false;
-    if (!observer) {
-        observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutRec => {
-                if (!ktl.scenes.isiFrameWnd()) {
-                    if (!headerProcessed) {
-                        headerProcessed = true;
-                        if (ktl.core.isKiosk()) {
-                            if (!document.querySelector('.ktlKioskMode'))
-                                ktl.core.kioskMode(true);
-                        } else
-                            ktl.core.kioskMode(false);
-                    }
-
-                    const knView = mutRec.target.closest('.kn-view');
-                    var viewId = (knView && knView.id);
-                    if (viewId) {
-                        var viewObj = Knack.views[viewId];
-                        if (viewObj && typeof viewObj.model === 'object') {
-                            if (viewId && (mutRec.target.localName === 'tbody' || mutRec.target.localName === 'div')) {
-                                var keywords = ktlKeywords[viewId];
-                                if (keywords) {
-                                    //Pre-render keyword processing.
-                                    keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
-                                    keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
-                                    ktl.fields.hideFields(viewId, keywords);
-
-                                    if (keywords._ro && mutRec.addedNodes.length) {
-                                        //Process exceptions that cause unwanted view disappearance.
-                                        if (!mutRec.target.classList.contains('kn-asset-current' /*File Uploads*/)
-                                            && !mutRec.target.closest('.kn-signature')) {
-                                            console.log('mutRec.target =', mutRec.target);
-                                            $('#' + viewId).addClass('ktlHidden_ro')
-                                        }
-                                    }
-
-                                    if (mutRec.addedNodes.length && mutRec.removedNodes.length) { //Filter out to eliminate redundant processing.
-                                        if (!ktl.account.isDeveloper() && !ktl.core.isKiosk())
-                                            keywords._km && ktl.core.kioskMode(true);
-                                        keywords._hc && ktl.views.hideColumns(Knack.views[viewId].model.view, keywords);
-                                        keywords._rc && ktl.views.removeColumns(Knack.views[viewId].model.view, keywords);
-                                        keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
-                                        keywords._style && ktl.views.setStyle(viewId, keywords);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    ktl.scenes.getCfg().processMutation && ktl.scenes.getCfg().processMutation(mutRec); //App's callback.
-                } else {
-                    if (!headerProcessed) {
-                        headerProcessed = true;
-                        $('#kn-app-header,.knHeader').addClass('ktlDisplayNone');
-                    }
-                }
-            });
-        })
-
-        observer.observe(document.querySelector('.kn-content'), {
-            childList: true,
-            subtree: true,
-        });
-    }
-
     const numericFieldTypes = ['number', 'currency', 'sum', 'min', 'max', 'average', 'equation'];
 
     /**
@@ -3281,6 +3212,7 @@ function Ktl($, appInfo) {
                         isInitialized = true;
                         setTimeout(() => {
                             ktl.fields.enforceNumeric();
+                            $('.kn-scene').addClass('ktlPersistenFormLoaded');
                             $(document).trigger('KTL.persistentForm.completed', [scene]);
                         }, 1000);
                     })
@@ -3314,6 +3246,7 @@ function Ktl($, appInfo) {
                         isInitialized = true;
                         setTimeout(() => {
                             ktl.fields.enforceNumeric();
+                            $('.kn-scene').addClass('ktlPersistenFormLoaded');
                             $(document).trigger('KTL.persistentForm.completed', [Knack.router.scene_view.model.attributes]);
                         }, 1000);
                     })
@@ -3719,7 +3652,9 @@ function Ktl($, appInfo) {
 
             function removeEntry(fieldId, entry) {
                 const sources = fetchSources();
-                sources[fieldId] = sources[fieldId].filter((value) => value != entry);
+                if (!sources || $.isEmptyObject(sources)) return;
+
+                sources[fieldId] = sources[fieldId] && sources[fieldId].filter((value) => value != entry);
 
                 if (sources[fieldId].length == 0)
                     delete sources[fieldId];
@@ -3742,8 +3677,12 @@ function Ktl($, appInfo) {
             function setupAutocomplete(field, key) {
                 function deleteAndRefresh(value) {
                     const source = removeEntry(key, value);
-                    field.autocomplete('option', 'source', source[key]);
-                    field.autocomplete('search');
+                    if (!source || $.isEmptyObject(source)) return;
+
+                    if (source[key]) {
+                        field.autocomplete('option', 'source', source[key]);
+                        field.autocomplete('search');
+                    }
                 }
 
                 const source = (fetchSources()[key] || []).map(value => { return { label: value.substring(0, 100), value }; });
@@ -9172,6 +9111,8 @@ function Ktl($, appInfo) {
                             }
 
                             (function tryRefresh(retryCtr) {
+                                $(document).trigger('KTL.preprocessView', Knack.views[viewId]);
+
                                 if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
                                     if (triggerChange) {
                                         Knack.views[viewId].model.trigger('change');
@@ -9391,9 +9332,11 @@ function Ktl($, appInfo) {
 
                             if (viewType === 'form') {
                                 hide();
-                                $(document).one('KTL.persistentForm.completed', () => {
-                                    ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
-                                });
+                                ktl.core.waitSelector('.ktlPersistenFormLoaded', 5000)
+                                    .then(() => {
+                                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                                    })
+                                    .catch(() => { })
                             } else {
                                 ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
                             }
@@ -12239,15 +12182,48 @@ function Ktl($, appInfo) {
         $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
 
         //Early detection of scene change to prevent multi-rendering and flickering of views.
-        //New code from Slack's Icewolf: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
-        //Knack.router.on('route:viewScene', function (slug, search) {
-        //    const currentScene = Knack.getCurrentScene();
-        //    const newSceneKey = Knack.scenes.getBySlug(currentScene.slug)?.get('key');
+        //Inspired from David Roizenman's code on Slack: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
+        Knack.router.on('route:viewScene', function (slug, search) {
+            if (!ktl.scenes.isiFrameWnd()) {
+                if (ktl.core.isKiosk()) {
+                    if (!document.querySelector('.ktlKioskMode'))
+                        ktl.core.kioskMode(true);
+                } else
+                    ktl.core.kioskMode(false);
 
-        //    if (!ktl.scenes.isiFrameWnd()) {
-        //        console.log('newSceneKey:', newSceneKey);
-        //    }
-        //});
+                const views = Knack.router.scene_view.model.attributes.views;
+                for (const view of views) {
+                    const viewId = view.key;
+                    $(document).on('knack-view-init.' + viewId, function (event, view) {
+                        $(document).trigger('KTL.preprocessView', view);
+                    })
+                }
+            }
+        });
+
+        $(document).on('KTL.preprocessView', (event, view) => {
+            const viewObj = view.model.view;
+            const viewId = viewObj.key;
+
+            //Pre-process keywords.
+            var keywords = ktlKeywords[viewId];
+            if (keywords) {
+                if (keywords._ro)
+                    $('#' + viewId).addClass('ktlHidden_ro');
+
+                keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
+                keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
+                ktl.fields.hideFields(viewId, keywords);
+
+                if (!ktl.account.isDeveloper() && !ktl.core.isKiosk())
+                    keywords._km && ktl.core.kioskMode(true);
+                keywords._hv && ktl.views.hideView(viewId, keywords);
+                keywords._hc && ktl.views.hideColumns(viewObj, keywords);
+                keywords._rc && ktl.views.removeColumns(viewObj, keywords);
+                keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
+                keywords._style && ktl.views.setStyle(viewId, keywords);
+            }
+        });
 
         var sceneChangeObservers = [];
         var newScene = '';
