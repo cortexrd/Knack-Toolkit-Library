@@ -4328,7 +4328,7 @@ function Ktl($, appInfo) {
                         ktl.userFilters.setActiveFilter(publicFilterName, viewId);
                         const appliedFilter = publicFilter.filterSrc[viewId].filters[publicFilter.index];
                         if (appliedFilter)
-                            applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, (appliedFilter.sort && appliedFilter.sort.split('-')[1]), JSON.parse(appliedFilter.filterString));
+                            applyUserFilterToTableView(viewId, appliedFilter.search, appliedFilter.perPage, appliedFilter.sort, JSON.parse(appliedFilter.filterString));
                     }
                 }
             }
@@ -4370,7 +4370,7 @@ function Ktl($, appInfo) {
                     if (activeFilterIndex >= 0) {
                         const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
                         if (activeFilter)
-                            applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, (activeFilter.sort && activeFilter.sort.split('-')[1]), JSON.parse(activeFilter.filterString));
+                            applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort, JSON.parse(activeFilter.filterString));
                     } else
                         applyDefaultPublicFilter(viewId);
                 }
