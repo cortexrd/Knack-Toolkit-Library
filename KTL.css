@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.7.3 */
+/* KTL CSS version: 0.7.4 */
 
 /************ General Settings **************/
 :root {
@@ -47,8 +47,8 @@
 }
 
 .ktlHidden,
-[class^="ktlHidden_"]:not(.ktlHidden_dis),
-[class*=" ktlHidden_"]:not(.ktlHidden_dis) {
+[class^="ktlHidden_"],
+[class*=" ktlHidden_"] {
 	position: absolute !important;
 	left: -9000px;
 }
