@@ -6885,7 +6885,7 @@ function Ktl($, appInfo) {
         }
 
         function labelText({ key: viewId, type: viewType }, keywords) {
-            const kw = '_ltxt';// @params = [label text], [options] OR @params = label text
+            const kw = '_lblt';// @params = [label text], [options] OR @params = label text
             if (!viewId && !keywords[kw]) return;
 
             var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
