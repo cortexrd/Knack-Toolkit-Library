@@ -4928,13 +4928,26 @@ function Ktl($, appInfo) {
                 listPublicFilters.innerHTML = '<i class="fa fa-gift" style="margin-top: 2px;"></i> Public: ';
                 listPublicFilters.style.marginBottom = '8px';
 
-                if (isPublic)
-                    listPublicFilters.innerHTML += 'Yes';
-                else
-                    listPublicFilters.innerHTML += 'No';
+                const hasIframeWnd = !!(ktl.core.getCfg().enabled.iFrameWnd && ktl.iFrameWnd.getiFrameWnd());
+
+                if (hasIframeWnd) {
+                    if (isPublic)
+                        listPublicFilters.innerHTML += 'Yes';
+                    else
+                        listPublicFilters.innerHTML += 'No';
+                } else {
+                    listPublicFilters.innerHTML += '(no iFrameWnd)';
+                    listPublicFilters.style.color = 'gray';
+                }
 
                 $(listPublicFilters).on('click touchstart', function (e) {
                     e.preventDefault();
+
+                    if (!hasIframeWnd) {
+                        e.stopImmediatePropagation();
+                        return;
+                    }
+
                     $('.menuDiv').remove();
                     ufDndEnabled && ufDndEnabled.option('disabled', false);
 
