@@ -14881,8 +14881,12 @@ function Ktl($, appInfo) {
                 if ([401, 403, 500].includes(msg.status)) {
                     if (msg.status === 401 || msg.status === 403) {
                         if (typeof Android === 'object') {
-                            if (confirm(`A reboot is needed, do you want to do it now? (code ${msg.status})`))
-                                Android.restartApplication();
+                            if (confirm(`A reboot is needed, do you want to do it now? (code ${msg.status})`)) {
+                                ktl.account.logout(); //Login has expired, force logout.
+                                setTimeout(() => {
+                                    Android.restartApplication();
+                                }, 500);
+                            }
                         } else {
                             ktl.core.timedPopup('Your log-in has expired. Please log back in to continue.', 'warning', 4000);
                             ktl.account.logout(); //Login has expired, force logout.
