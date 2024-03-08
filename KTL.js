@@ -4594,7 +4594,9 @@ function Ktl($, appInfo) {
             });
 
             $(`#${view.key} .kn-table-table th`).on('click', function () {
-                ktl.userFilters.saveFilter(view.key, true);
+                $(document).one(`knack-view-render.${view.key}`, function (event, view, data) {
+                    ktl.userFilters.saveFilter(view.key, true);
+                })
             });
         });
 
