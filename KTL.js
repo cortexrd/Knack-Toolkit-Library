@@ -9462,6 +9462,7 @@ function Ktl($, appInfo) {
                     const divHdr = viewElement.find('h1:not(#knack-logo), h2, h3, h4').first();
                     const divTitle = viewElement.find('.kn-title').first();
 
+                    //If there's no title or no title text, let's try our best to get an elegant layout.
                     if (divHdr.length && divTitle.length && divTitle.css('display') !== 'none' && divHdr.text()) {
                         if (ktlKeywords[viewId] && ktlKeywords[viewId]._ht) {
                             viewElement.prepend(label);
