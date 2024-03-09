@@ -4331,53 +4331,8 @@ function Ktl($, appInfo) {
             }
         }
 
-        function applyActiveFilters() {
-            const models = Knack.router.scene_view.model.views.models;
-            if (!models.length || ($.isEmptyObject(getUserFilters()) && $.isEmptyObject(getPublicFilters())))
-                return;
-
-            models.forEach(model => {
-                const viewId = model.attributes.key;
-                if (model.attributes.type === 'report') {
-                    //Reports are risky, since they don't have an absolute ID. Instead, they have an index and if they are moved around
-                    //in the builder, the filters won't know about it and will stop working.
-                    let reportIndex = 0;
-                    model.attributes.rows.forEach((row) => {
-                        const reports = row.reports;
-                        if (reports.length) {
-                            reports.forEach((report) => {
-                                const filterId = `kn-report-${viewId}-${reportIndex + 1}`;
-                                const filter = getActiveFilter(filterId);
-                                const activeFilterIndex = filter.index;
-
-                                if (activeFilterIndex >= 0) {
-                                    const activeFilter = filter.filterSrc[filterId].filters[activeFilterIndex];
-
-                                    if (activeFilter) {
-                                        applyUserFilterToReportView(viewId, report, JSON.parse(activeFilter.filterString));
-                                    }
-                                }
-                                reportIndex++;
-                            })
-                        }
-                    })
-                } else {
-                    const filter = getActiveFilter(viewId);
-                    var activeFilterIndex = filter.index;
-                    if (activeFilterIndex >= 0) {
-                        const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
-                        if (activeFilter)
-                            applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort, JSON.parse(activeFilter.filterString));
-                    } else
-                        applyDefaultPublicFilter(viewId);
-                }
-            });
-        }
-
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) return;
-
-            applyActiveFilters();
 
             //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
             ktl.core.waitSelector('.view-column', 5000) //Needed otherwise we miss them once in a while.
@@ -5529,7 +5484,44 @@ function Ktl($, appInfo) {
                     if (foundConflict)
                         setUserFilters(userFilters);
                 }
-            }
+            },
+
+            applyActiveFilters: function (view) {
+                const viewId = view.key;
+                if (view.type === 'report') {
+                    //Reports are risky, since they don't have an absolute ID. Instead, they have an index and if they are moved around
+                    //in the builder, the filters won't know about it and will stop working.
+                    let reportIndex = 0;
+                    view.rows.forEach((row) => {
+                        const reports = row.reports;
+                        if (reports.length) {
+                            reports.forEach((report) => {
+                                const filterId = `kn-report-${viewId}-${reportIndex + 1}`;
+                                const filter = getActiveFilter(filterId);
+                                const activeFilterIndex = filter.index;
+
+                                if (activeFilterIndex >= 0) {
+                                    const activeFilter = filter.filterSrc[filterId].filters[activeFilterIndex];
+
+                                    if (activeFilter) {
+                                        applyUserFilterToReportView(viewId, report, JSON.parse(activeFilter.filterString));
+                                    }
+                                }
+                                reportIndex++;
+                            })
+                        }
+                    })
+                } else {
+                    const filter = getActiveFilter(viewId);
+                    var activeFilterIndex = filter.index;
+                    if (activeFilterIndex >= 0) {
+                        const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
+                        if (activeFilter)
+                            applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort, JSON.parse(activeFilter.filterString));
+                    } else
+                        applyDefaultPublicFilter(viewId);
+                }
+            },
         }
     })(); //User Filters feature
 
@@ -12286,6 +12278,8 @@ function Ktl($, appInfo) {
                 keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
                 keywords._style && ktl.views.setStyle(viewId, keywords);
             }
+
+            ktl.userFilters.applyActiveFilters(viewObj);
         });
 
         var sceneChangeObservers = [];
@@ -13854,13 +13848,15 @@ function Ktl($, appInfo) {
             ktlApplyUserPrefs: function (renderViews = false) {
                 ktl.debugWnd.showDebugWnd(ktl.userPrefs.getUserPrefs().showDebugWnd);
                 ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
-                for (var viewId in Knack.views) {
-                    if (Knack.views[viewId] && Knack.views[viewId].model)
-                        ktl.views.addViewId(Knack.views[viewId].model.view);
+
+                const views = Knack.router.scene_view.model.attributes.views;
+                for (const view of views) {
+                    ktl.views.addViewId(view);
                 }
 
                 var myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
-                myUserPrefsViewId && ktl.views.refreshView(myUserPrefsViewId);
+                if (myUserPrefsViewId && $(`#${myUserPrefsViewId}`).length)
+                    ktl.views.refreshView(myUserPrefsViewId);
 
                 if (renderViews && !applyUserPrefs)
                     ktl.scenes.renderViews();
