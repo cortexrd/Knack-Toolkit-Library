@@ -3845,8 +3845,6 @@ function Ktl($, appInfo) {
         $(document).on('knack-view-render.any', function (event, view, data) {
             //Apply System Colors
             if (initDone) {
-                $('.ktlOfflineStatusCritical').css({ 'color': sysColors.text.rgb + '!important' });
-
                 ktl.systemColors.getSystemColors().then(sc => {
                     if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
                         $('#' + view.key + ' .kn-table').removeClass('knTable--rowHover');
@@ -3858,7 +3856,6 @@ function Ktl($, appInfo) {
                     $(`#${view.key} td.cell-edit`).addClass('ktlInlineEditableCellsStyle');
             }
         })
-
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -5840,7 +5837,7 @@ function Ktl($, appInfo) {
     //====================================================
     //Views feature
     this.views = (function () {
-        const PAUSE_REFRESH = 'pause_auto_refresh';
+        const PAUSE_AUTO_REFRESH_CHECKBOX_ID = 'pause_auto_refresh';
         var autoRefreshViews = {};
         var unPauseTimer = null;
         var processViewKeywords = null;
@@ -5875,7 +5872,7 @@ function Ktl($, appInfo) {
                 if (div.length > 0) {
                     var cbStyle = 'position: absolute; left: 40vw; top: 0.7vh; width: 20px; height: 20px';
                     var lbStyle = 'position: absolute; left: 42vw; top: 0.7vh';
-                    var autoRefreshCb = ktl.fields.addCheckbox(div[0], 'Pause Auto-Refresh', false, '', cbStyle, lbStyle);
+                    var autoRefreshCb = ktl.fields.addCheckbox(div[0], 'Pause Auto-Refresh', false, PAUSE_AUTO_REFRESH_CHECKBOX_ID, cbStyle, lbStyle);
                     autoRefreshCb.addEventListener('change', function () {
                         ktl.views.autoRefresh(!this.checked);
                     });
@@ -9339,15 +9336,15 @@ function Ktl($, appInfo) {
                             }
                         }
                     })
-                    $('#' + PAUSE_REFRESH + '-label-id').css('background-color', '');
+                    $('#' + PAUSE_AUTO_REFRESH_CHECKBOX_ID + '-label-id').css('background-color', '');
                 } else
                     stopAutoRefresh();
 
-                $('#' + PAUSE_REFRESH + '-id').prop('checked', !run);
+                $('#' + PAUSE_AUTO_REFRESH_CHECKBOX_ID + '-id').prop('checked', !run);
 
                 //Stop all auto refresh interval timers for all views.
                 function stopAutoRefresh(restart = true) {
-                    $('#' + PAUSE_REFRESH + '-label-id').css('background-color', 'red');
+                    $('#' + PAUSE_AUTO_REFRESH_CHECKBOX_ID + '-label-id').css('background-color', 'red');
                     const views = Object.entries(autoRefreshViews);
                     if (views.length > 0) {
                         views.forEach(function (element) {
@@ -16455,10 +16452,27 @@ function Ktl($, appInfo) {
 
         const SCENE_URL_NAME = 'status-monitoring';
         const SYSOP_DASHBOARD_ACC_STATUS = ktl.core.getViewIdByTitle('Status Monitoring', SCENE_URL_NAME);
+
         const statusMonitoring = {
             online: [],
             offline: [],
         }
+
+        // Create the debounced function outside the event listener
+        const debouncedUpdate = debounce(async (data, viewKey) => {
+            const recordsToUpdate = refreshRecords(data);
+            const updateCount = await updateAccounts(recordsToUpdate, viewKey);
+
+            if (updateCount)
+                ktl.views.refreshView(SYSOP_DASHBOARD_ACC_STATUS);
+
+            $(document).trigger('KTL.StatusMonitoring.Updated', [statusMonitoring]);
+        }, 3000);
+
+        $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, function (event, view, data) {
+            if (data.length)
+                debouncedUpdate(data, view.key);
+        });
 
         function refreshRecords(data) {
             const DEVICE_OFFLINE_DELAY = 60000 * 3;
@@ -16499,13 +16513,13 @@ function Ktl($, appInfo) {
                         recordsToUpdate.push({ record: record, online: 'No' });
 
                     statusMonitoring.offline.push(record);
-                    $(`#${record.id} .${localHeartBeatFieldId}`).addClass('ktlOfflineStatusCritical')
+                    $(`#${record.id} .${localHeartBeatFieldId}`).addClass('ktlOfflineStatus')
                 } else {
                     if (onlineField === 'No')
                         recordsToUpdate.push({ record: record, online: 'Yes' });
 
                     statusMonitoring.online.push(record);
-                    $(`#${record.id} .${localHeartBeatFieldId}`).removeClass('ktlOfflineStatusCritical')
+                    $(`#${record.id} .${localHeartBeatFieldId}`).removeClass('ktlOfflineStatus')
                 }
             })
 
@@ -16564,23 +16578,6 @@ function Ktl($, appInfo) {
                 }
             })
         }
-
-        function highlightOfflineAccounts(event, view, data) {
-            if (!data.length) return;
-
-            const recordsToUpdate = refreshRecords(data);
-            updateAccounts(recordsToUpdate, view.key).then(updateCount => {
-
-                if (updateCount) {
-                    console.debug('updateCount =', updateCount);
-                    ktl.views.refreshView(SYSOP_DASHBOARD_ACC_STATUS);
-                }
-
-                $(document).trigger('KTL.StatusMonitoring.Updated', [statusMonitoring]);
-            });
-        }
-
-        $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, highlightOfflineAccounts);
     })(); //Status Monitoring feature
 
     //===================================================
