@@ -16455,9 +16455,10 @@ function Ktl($, appInfo) {
 
         const SCENE_URL_NAME = 'status-monitoring';
         const SYSOP_DASHBOARD_ACC_STATUS = ktl.core.getViewIdByTitle('Status Monitoring', SCENE_URL_NAME);
+        if (!SYSOP_DASHBOARD_ACC_STATUS) return;
+
         const onlineStatusFieldId = ktl.iFrameWnd.getCfg().acctOnlineFld;
         const localHeartBeatFieldId = ktl.iFrameWnd.getCfg().acctLocHbFld;
-
 
         const statusMonitoring = {
             online: [],
