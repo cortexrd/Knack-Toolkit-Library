@@ -9534,7 +9534,7 @@ function Ktl($, appInfo) {
                     }
 
                     //For groups, extend line up to end.
-                    var cols = viewObj.columns;
+                    var cols = viewObj.results.columns || viewObj.columns;
                     var groupingFound = false;
                     for (var i = 0; i < cols.length; i++) {
                         if (cols[i].grouping) {
