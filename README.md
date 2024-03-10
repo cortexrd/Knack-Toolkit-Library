@@ -56,7 +56,7 @@ Keywords can be added in a view’s **title** or **description** - interchangeab
 
 When used in a view, the keyword will be applied **in that view only**.
 
-Also, to make them more readable in the Builder, you can add `<br>` in front of each, to force them to spread on separate lines.  They must be at the beginning and in direct contact with the keyword's underscore.
+Also, to make them more readable in the Builder, you can add `<br>` in front of each, to force them to spread over separate lines.  They must be at the beginning and in direct contact with the keyword's underscore.
 
 Example:
 
