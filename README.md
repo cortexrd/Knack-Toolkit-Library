@@ -55,6 +55,15 @@ When used in a field, the keyword will be applied **across the board** in your a
 Keywords can be added in a view’s **title** or **description** - interchangeably or together. Each keywords are separated by a space, or line feeds (return) when used in the description box. In some cases, it can also be used inside a Rich Text.
 
 When used in a view, the keyword will be applied **in that view only**.
+Also, to make them more readable in the Builder, you can add `<br>` in front of each, to force them to spread on separate lines.  They must be at the beginning and in direct contact with the keyword's underscore.
+
+Example:
+
+```
+_ar=60
+<br>_ts
+<br>_ha
+```
 
 ## Placement
 
