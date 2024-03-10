@@ -4290,7 +4290,10 @@ function Ktl($, appInfo) {
             updateFilters(viewId, filters);
 
             Knack.models[viewId].fetch({
-                success: () => { Knack.hideSpinner(); }
+                success: () => {
+                    Knack.hideSpinner();
+                    $(document).trigger('KTL.filterApplied', viewId);
+                }
             });
         }
 
@@ -4311,7 +4314,10 @@ function Ktl($, appInfo) {
 
             const kw = '_dpf';
             const kwList = ktl.core.getKeywordsByType(viewId, kw);
-            kwList.forEach(kwInstance => { execKw(kwInstance); })
+            if (kwList.length)
+                kwList.forEach(kwInstance => { execKw(kwInstance); })
+            else
+                $(document).trigger('KTL.filterApplied', viewId);
 
             function execKw(kwInstance) {
                 const options = kwInstance.options;
@@ -5486,7 +5492,7 @@ function Ktl($, appInfo) {
                 }
             },
 
-            applyActiveFilters: function (view) {
+            applyActiveFilter: function (view) {
                 const viewId = view.key;
                 if (view.type === 'report') {
                     //Reports are risky, since they don't have an absolute ID. Instead, they have an index and if they are moved around
@@ -5518,8 +5524,10 @@ function Ktl($, appInfo) {
                         const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
                         if (activeFilter)
                             applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort, JSON.parse(activeFilter.filterString));
+                        else
+                            $(document).trigger('KTL.filterApplied', viewId);
                     } else
-                        applyDefaultPublicFilter(viewId);
+                        applyDefaultPublicFilter(viewId); //No active filter, apply _dpf if any.
                 }
             },
         }
@@ -12246,10 +12254,8 @@ function Ktl($, appInfo) {
                 } else
                     ktl.core.kioskMode(false);
 
-                const views = Knack.router.scene_view.model.attributes.views;
-                for (const view of views) {
-                    const viewId = view.key;
-                    $(document).on('knack-view-init.' + viewId, function (event, view) {
+                for (const view of Knack.router.scene_view.model.attributes.views) {
+                    $(document).on('knack-view-init.' + view.key, function (event, view) {
                         $(document).trigger('KTL.preprocessView', view);
                     })
                 }
@@ -12279,7 +12285,7 @@ function Ktl($, appInfo) {
                 keywords._style && ktl.views.setStyle(viewId, keywords);
             }
 
-            ktl.userFilters.applyActiveFilters(viewObj);
+            ktl.userFilters.applyActiveFilter(viewObj);
         });
 
         var sceneChangeObservers = [];
@@ -13414,6 +13420,7 @@ function Ktl($, appInfo) {
         })
 
         $(document).on('knack-view-render.any', function (event, view, data) {
+
             if (ktl.scenes.isiFrameWnd() || (view.type !== 'table' && view.type !== 'search')) return;
 
             if (!view.fields) return;
@@ -16448,27 +16455,64 @@ function Ktl($, appInfo) {
 
         const SCENE_URL_NAME = 'status-monitoring';
         const SYSOP_DASHBOARD_ACC_STATUS = ktl.core.getViewIdByTitle('Status Monitoring', SCENE_URL_NAME);
+        const onlineStatusFieldId = ktl.iFrameWnd.getCfg().acctOnlineFld;
+        const localHeartBeatFieldId = ktl.iFrameWnd.getCfg().acctLocHbFld;
+
 
         const statusMonitoring = {
             online: [],
             offline: [],
         }
 
-        // Create the debounced function outside the event listener
-        const debouncedUpdate = debounce(async (data, viewKey) => {
-            const recordsToUpdate = refreshRecords(data);
-            const updateCount = await updateAccounts(recordsToUpdate, viewKey);
+        let readyToProcessRecords = true;
 
-            if (updateCount)
-                ktl.views.refreshView(SYSOP_DASHBOARD_ACC_STATUS);
+        $(document).on('KTL.filterApplied', (event, viewId) => {
+            if (viewId !== SYSOP_DASHBOARD_ACC_STATUS) return;
 
-            $(document).trigger('KTL.StatusMonitoring.Updated', [statusMonitoring]);
-        }, 3000);
-
-        $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, function (event, view, data) {
-            if (data.length)
-                debouncedUpdate(data, view.key);
+            //const activeFilter = ktl.userFilters.getActiveFilter(SYSOP_DASHBOARD_ACC_STATUS);
+            Knack.models[viewId].fetch();
         });
+
+        $(document).on('KTL.StatusMonitoring.Updated', (event, statusMonitoring) => {
+            //console.log('statusMonitoring =', statusMonitoring);
+        });
+        
+        $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, function (event, view, data) {
+            if (readyToProcessRecords) {
+                processRecordsUpdate(view.key);
+            }
+
+            $(`#${SYSOP_DASHBOARD_ACC_STATUS} tbody .${localHeartBeatFieldId}`).removeClass('ktlOfflineStatus');
+
+            for (const offline of statusMonitoring.offline) {
+                const onlineStatus = offline[onlineStatusFieldId];
+                const recId = offline.id;
+                $(`#${SYSOP_DASHBOARD_ACC_STATUS} tbody tr[id=${recId}] .${localHeartBeatFieldId}`).addClass('ktlOfflineStatus');
+            }
+        });
+
+        function processRecordsUpdate(viewId) {
+            readyToProcessRecords = false;
+            //console.log('processRecordsUpdate');
+
+            const data = Knack.views[viewId].model && Knack.views[viewId].model.data && Knack.views[viewId].model.data.models;
+            if (!data || !data.length) return;
+
+            const recordsToUpdate = refreshRecords(data);
+            updateAccounts(recordsToUpdate, viewId)
+                .then(updatedCount => {
+                    $(document).trigger('KTL.StatusMonitoring.Updated', [statusMonitoring]);
+
+                    if (updatedCount) {
+                        ktl.log.clog('green', 'Status Monitoring - updated count', updatedCount);
+                        ktl.views.refreshView(SYSOP_DASHBOARD_ACC_STATUS);
+                    }
+
+                    setTimeout(() => {
+                        readyToProcessRecords = true; //Prevent re-entry due to refresh view.
+                    }, 3000);
+                })
+        }
 
         function refreshRecords(data) {
             const DEVICE_OFFLINE_DELAY = 60000 * 3;
@@ -16477,7 +16521,8 @@ function Ktl($, appInfo) {
             statusMonitoring.online = [];
             statusMonitoring.offline = [];
 
-            data.forEach(record => {
+            data.forEach(rec => {
+                const record = rec.attributes;
                 const swVersionFieldId = ktl.iFrameWnd.getCfg().acctSwVersionFld;
                 const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
                 const rowSelector = `#${SYSOP_DASHBOARD_ACC_STATUS} tr[id="${record.id}"]`
@@ -16499,8 +16544,7 @@ function Ktl($, appInfo) {
                 }
 
                 const utcHeartBeatField = record[ktl.iFrameWnd.getCfg().acctUtcHbFld];
-                const onlineField = record[ktl.iFrameWnd.getCfg().acctOnlineFld];
-                const localHeartBeatFieldId = ktl.iFrameWnd.getCfg().acctLocHbFld;
+                const onlineField = record[onlineStatusFieldId];
                 const diff = nowUTC - Date.parse(utcHeartBeatField);
 
                 //Take note of those who need their Online status to be updated.
@@ -16509,13 +16553,11 @@ function Ktl($, appInfo) {
                         recordsToUpdate.push({ record: record, online: 'No' });
 
                     statusMonitoring.offline.push(record);
-                    $(`#${record.id} .${localHeartBeatFieldId}`).addClass('ktlOfflineStatus')
                 } else {
                     if (onlineField === 'No')
                         recordsToUpdate.push({ record: record, online: 'Yes' });
 
                     statusMonitoring.online.push(record);
-                    $(`#${record.id} .${localHeartBeatFieldId}`).removeClass('ktlOfflineStatus')
                 }
             })
 
@@ -16526,7 +16568,7 @@ function Ktl($, appInfo) {
             return new Promise(async function (resolve) {
                 ktl.scenes.spinnerWatchdog(false);
 
-                let updateSuccessfulCount = 0;
+                let updatedCount = 0;
 
                 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
                 const delayMS = 150;
@@ -16540,23 +16582,22 @@ function Ktl($, appInfo) {
                     Knack.hideSpinner();
                     ktl.scenes.spinnerWatchdog();
 
-                    resolve(updateSuccessfulCount);
+                    resolve(updatedCount);
                 });
 
                 function sendUpdate(recObj) {
                     const record = recObj.record;
 
-                    const onlineFieldId = ktl.iFrameWnd.getCfg().acctOnlineFld;
                     const firstNameField = record[ktl.iFrameWnd.getCfg().acctFirstNameFld];
                     const lastNameField = record[ktl.iFrameWnd.getCfg().acctLastNameFld];
                     const accountName = firstNameField + ' ' + lastNameField;
 
                     const apiData = {};
-                    apiData[onlineFieldId] = recObj.online;
+                    apiData[onlineStatusFieldId] = recObj.online;
 
                     return ktl.core.knAPI(viewKey, record.id, apiData, 'PUT', [], false)
                         .then(function () {
-                            updateSuccessfulCount++;
+                            updatedCount++;
                             updateInfoPopup(accountName, ` is ${recObj.online === 'Yes' ? 'ONLINE' : 'OFFLINE'}`);
                         })
                         .catch(function (reason) {
@@ -16566,8 +16607,8 @@ function Ktl($, appInfo) {
                 }
 
                 function updateInfoPopup(accountName, status) {
-                    if (accountName && updateSuccessfulCount) {
-                        if (updateSuccessfulCount === 1)
+                    if (accountName && updatedCount) {
+                        if (updatedCount === 1)
                             ktl.core.infoPopup();
                         ktl.core.setInfoPopupText('Updated ' + accountName + status);
                     }
