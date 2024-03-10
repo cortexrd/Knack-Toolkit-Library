@@ -56,6 +56,16 @@ Keywords can be added in a view’s **title** or **description** - interchangeab
 
 When used in a view, the keyword will be applied **in that view only**.
 
+Also, to make them more readable in the Builder, you can add `<br>` in front of each, to force them to spread over separate lines.  They must be at the beginning and in direct contact with the keyword's underscore.
+
+Example:
+
+```
+_ar=60
+<br>_ts
+<br>_ha
+```
+
 ## Placement
 
 For views, all keywords must be placed **after** the last word that you intend to keep visible. All text beyond the first keyword found will be truncated (invisible) in the app.
