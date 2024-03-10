@@ -6847,33 +6847,31 @@ function Ktl($, appInfo) {
                 for (var i = 0; i < fieldsWithKwAr.length; i++) {
                     fieldId = fieldsWithKwAr[i];
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId]) {
+                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId])
                         ktl.core.getKeywordsByType(fieldId, kw).forEach(execFieldKw);
-                    }
                 }
             }
 
             function execFieldKw({ params }) {
                 const selectors = {
                     form: `#${viewId} #kn-input-${fieldId} .kn-label span:not(.kn-required)`,
-                    details: `#${viewId} .${fieldId} .kn-detail-label > span`,
-                    list: `#${viewId} .${fieldId} .kn-detail-label > span`,
-                    table: `#${viewId} th.${fieldId} > span > a > span:not(span.icon)`
+                    details: `#${viewId} .${fieldId} .kn-detail-label span`,
+                    list: `#${viewId} .${fieldId} .kn-detail-label span`,
+                    table: `#${viewId} th.${fieldId} span span:not(span.icon)`
                 };
 
                 let labelTxt = params[0].join(', ');
                 let selector = selectors[viewType];
 
                 if (params.length === 2) {
-                    let type = params[1];
-                    if (type[0].includes(viewType[0])) {
+                    let applyToViewTypes = params[1];
+                    if (applyToViewTypes[0].includes(viewType[0]))
                         selector = selectors[viewType];
-                    }
+                    else
+                        selector = '';
                 }
 
-                if (selector) {
-                    $(selector).text(labelTxt);
-                }
+                selector && $(selector).text(labelTxt);
             }
         }
 
