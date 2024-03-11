@@ -9172,6 +9172,7 @@ function Ktl($, appInfo) {
                             }
 
                             (function tryRefresh(retryCtr) {
+                                $("#kn-loading-spinner").addClass('ktlHidden');
                                 $(document).trigger('KTL.preprocessView', Knack.views[viewId]);
 
                                 if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
@@ -9185,20 +9186,17 @@ function Ktl($, appInfo) {
                                     if (viewType !== 'search') //Skip here, otherwise will erase the search form section.
                                         Knack.views[viewId].render();
                                     else {
-                                        //Spinner shows for Search views. Hide it until done.
-                                        $("#kn-loading-spinner").attr('id', 'ktlHide-kn-loading-spinner');
                                         Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                     }
 
                                     Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
 
-                                    $("#ktlHide-kn-loading-spinner").attr('id', 'kn-loading-spinner');
-
                                     return resolve();
                                 } else {
                                     Knack.views[viewId].model.fetch({
                                         success: function (model, response, options) {
+                                            $("#kn-loading-spinner").removeClass('ktlHidden');
                                             if (['details', 'table' /*more types?*/].includes(viewType)) {
                                                 //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
                                                 Knack.views[viewId].render();
@@ -16477,17 +16475,37 @@ function Ktl($, appInfo) {
         });
         
         $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, function (event, view, data) {
-            if (readyToProcessRecords) {
+            if (readyToProcessRecords)
                 processRecordsUpdate(view.key);
-            }
 
+            //Colorize fields - Online and Last Activity.
             $(`#${SYSOP_DASHBOARD_ACC_STATUS} tbody .${localHeartBeatFieldId}`).removeClass('ktlOfflineStatus');
-
             for (const offline of statusMonitoring.offline) {
-                const onlineStatus = offline[onlineStatusFieldId];
-                const recId = offline.id;
-                $(`#${SYSOP_DASHBOARD_ACC_STATUS} tbody tr[id=${recId}] .${localHeartBeatFieldId}`).addClass('ktlOfflineStatus');
+                $(`#${SYSOP_DASHBOARD_ACC_STATUS} tbody tr[id=${offline.id}] .${localHeartBeatFieldId}`).addClass('ktlOfflineStatus');
             }
+
+            const nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
+            data.forEach(record => {
+                const swVersionFieldId = ktl.iFrameWnd.getCfg().acctSwVersionFld;
+                const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
+                const rowSelector = `#${SYSOP_DASHBOARD_ACC_STATUS} tr[id="${record.id}"]`
+
+                const swVersionSelector = $(`${rowSelector} .${swVersionFieldId}`);
+                if (record[swVersionFieldId] !== window.APP_KTL_VERSIONS)
+                    swVersionSelector.css({ 'color': 'red', 'font-weight': 'bold' });
+                else
+                    swVersionSelector.css({ 'font-weight': 'normal' });
+
+                if (record[lastActivityFieldId]) {
+                    const diff = nowUTC - Date.parse(record[lastActivityFieldId]);
+                    const lastActivitySelector = $(`${rowSelector} .${lastActivityFieldId}`);
+
+                    if (diff <= FIVE_MINUTES_DELAY)
+                        lastActivitySelector.css({ 'background-color': 'lightgreen', 'font-weight': 'bold' });
+                    else if (diff <= ONE_HOUR_DELAY)
+                        lastActivitySelector.css({ 'background-color': '#ffff72', 'font-weight': 'bold' });
+                }
+            })
         });
 
         function processRecordsUpdate(viewId) {
@@ -16522,26 +16540,6 @@ function Ktl($, appInfo) {
 
             data.forEach(rec => {
                 const record = rec.attributes;
-                const swVersionFieldId = ktl.iFrameWnd.getCfg().acctSwVersionFld;
-                const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
-                const rowSelector = `#${SYSOP_DASHBOARD_ACC_STATUS} tr[id="${record.id}"]`
-
-                const swVersionSelector = $(`${rowSelector} .${swVersionFieldId}`);
-                if (record[swVersionFieldId] !== window.APP_KTL_VERSIONS)
-                    swVersionSelector.css({ 'color': 'red', 'font-weight': 'bold' });
-                else
-                    swVersionSelector.css({ 'font-weight': 'normal' });
-
-                if (record[lastActivityFieldId]) {
-                    const diff = nowUTC - Date.parse(record[lastActivityFieldId]);
-                    const lastActivitySelector = $(`${rowSelector} .${lastActivityFieldId}`);
-
-                    if (diff <= FIVE_MINUTES_DELAY)
-                        lastActivitySelector.css({ 'background-color': 'lightgreen', 'font-weight': 'bold' });
-                    else if (diff <= ONE_HOUR_DELAY)
-                        lastActivitySelector.css({ 'background-color': '#ffff72', 'font-weight': 'bold' });
-                }
-
                 const utcHeartBeatField = record[ktl.iFrameWnd.getCfg().acctUtcHbFld];
                 const onlineField = record[onlineStatusFieldId];
                 const diff = nowUTC - Date.parse(utcHeartBeatField);

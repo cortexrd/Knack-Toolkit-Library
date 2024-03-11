@@ -50,7 +50,7 @@
 [class^="ktlHidden_"],
 [class*=" ktlHidden_"] {
 	position: absolute !important;
-	left: -9000px;
+	left: -9000px !important;
 }
 
 .ktlDisplayNone {
