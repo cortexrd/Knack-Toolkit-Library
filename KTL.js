@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.2';
+    const KTL_VERSION = '0.24.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5995,7 +5995,7 @@ function Ktl($, appInfo) {
                 ktl.core.waitSelector(`#${view.key} .kn-form-confirmation`, 30000)
                     .then(() => {
                         setTimeout(() => {
-                            $('#' + view.key + ' .kn-form-confirmation').css('display', 'none');
+                            $('#' + view.key + ' .kn-form-confirmation').addClass('ktlHidden');
                         }, delayBeforeRemovingMsg);
                     })
                     .catch(() => { })
@@ -10252,7 +10252,7 @@ function Ktl($, appInfo) {
                 if (viewType !== 'form')
                     return;
 
-                $('#' + viewId + ' .kn-form-confirmation').css('display', 'none');
+                $('#' + viewId + ' .kn-form-confirmation').addClass('ktlHidden');
                 $('#' + viewId + ' input').removeClass('input-error');
                 $('.kn-message.is-error').remove();
 
