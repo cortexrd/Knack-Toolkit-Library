@@ -7398,8 +7398,6 @@ function Ktl($, appInfo) {
             else
                 inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
 
-            if (!inlineEditing) return;
-
             //Start with hard coded default colors.
             var bgColorTrue = quickToggleParams.bgColorTrue;
             var bgColorFalse = quickToggleParams.bgColorFalse;
@@ -7448,7 +7446,8 @@ function Ktl($, appInfo) {
 
                             if (fieldHasQt) {
                                 fieldsColor[fieldId] = tmpFieldColors;
-                                $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCell');
+                                if (inlineEditing && !col.ignore_edit)
+                                    $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCellClickable');
                             }
                         }
                     }
@@ -7467,7 +7466,7 @@ function Ktl($, appInfo) {
             }
 
             //Process cell clicks.
-            $('#' + viewId + ' .qtCell').bindFirst('click', e => {
+            $('#' + viewId + ' .qtCellClickable').bindFirst('click', e => {
                 if (document.querySelectorAll('.bulkEditCb:checked').length) return;
 
                 e.stopImmediatePropagation();
