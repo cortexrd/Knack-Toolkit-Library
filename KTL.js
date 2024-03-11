@@ -7422,7 +7422,7 @@ function Ktl($, appInfo) {
             const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
             for (var i = 0; i < cols.length; i++) {
                 var col = cols[i];
-                if (col.type === 'field' && col.field && col.field.key && !col.ignore_edit) {
+                if (col.type === 'field' && col.field && col.field.key) {
                     var field = Knack.objects.getField(col.field.key);
                     if (field && !col.connection) { //Field must be local to view's object, not a connected field.
                         if (field.attributes.type === 'boolean') {
@@ -9192,11 +9192,11 @@ function Ktl($, appInfo) {
                                     Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
 
+                                    $("#kn-loading-spinner").removeClass('ktlHidden');
                                     return resolve();
                                 } else {
                                     Knack.views[viewId].model.fetch({
                                         success: function (model, response, options) {
-                                            $("#kn-loading-spinner").removeClass('ktlHidden');
                                             if (['details', 'table' /*more types?*/].includes(viewType)) {
                                                 //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
                                                 Knack.views[viewId].render();
@@ -9213,6 +9213,7 @@ function Ktl($, appInfo) {
                                             }
 
                                             setTimeout(() => {
+                                                $("#kn-loading-spinner").removeClass('ktlHidden');
                                                 return resolve(model);
                                             }, 1);
                                         },
@@ -9228,8 +9229,10 @@ function Ktl($, appInfo) {
                                             if (response.status === 401 || response.status === 403 || response.status === 500)
                                                 procRefreshViewSvrErr(response);
                                             else {
-                                                if (ktlKeywords[viewId] && ktlKeywords[viewId]._ar)
+                                                if (ktlKeywords[viewId] && ktlKeywords[viewId]._ar) {
+                                                    $("#kn-loading-spinner").removeClass('ktlHidden');
                                                     return resolve(); //Just ignore, we'll try again shortly anyways.
+                                                }
 
                                                 if (retryCtr-- > 0) {
                                                     var responseTxt = JSON.stringify(response);
@@ -9255,6 +9258,7 @@ function Ktl($, appInfo) {
                                     viewId: response.viewId,
                                 });
 
+                                $("#kn-loading-spinner").removeClass('ktlHidden');
                                 return resolve();
                             }
                         }
