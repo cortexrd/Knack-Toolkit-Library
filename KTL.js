@@ -5910,43 +5910,31 @@ function Ktl($, appInfo) {
             }
         }
 
-        // Object to hold render counts for each viewId
-        const renderCounts = {};
+        // Object to hold render counts for each viewId that has a summary and groups.
+        const viewWithSummaryRenderCounts = {};
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
-            // Only proceed if the view has a summary and we haven't fetched recently
-            // Initialize or increment the render count for this viewId
-            renderCounts[viewId] = (renderCounts[viewId] || 0) + 1;
+            viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
 
-            // Only proceed if the view has a summary and this is the second render event for the view
             const resultsLength = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
-            console.log('RENDER resultsLength =', resultsLength);
             const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
-            if (ktl.views.viewHasSummary(viewId)) {
-                if (renderCounts[viewId] === 2) {
-                    renderCounts[viewId] = 0;
+
+            if (ktl.views.viewHasSummary(viewId) && ktl.views.viewHasGroups(viewId)) {
+                if (viewWithSummaryRenderCounts[viewId] === 2) {
+                    viewWithSummaryRenderCounts[viewId] = 0;
                 } else {
                     if (resultsLength === 1 && !noData) {
-                        console.log('fetch');
-
                         Knack.models[viewId].results_model.fetch();
-
-                        // Reset the render count after the fetch to allow for future updates
-                        // Use the condition you've found necessary for resetting
                         Knack.models[viewId].results_model.once("fetch", function () {
-                            console.log('ONCE resultsLength =', resultsLength);
-                            if (resultsLength === 1 && !noData) {
-                                // Reset the count, allowing for another sequence if conditions are met again
-                                renderCounts[viewId] = 0;
-                            }
+                            if (resultsLength === 1 && !noData)
+                                viewWithSummaryRenderCounts[viewId] = 0;
                         });
 
                         return;
                     }
                 }
-
 
                 /* This code is needed for keywords that may require summary data to achieve their task.
 
@@ -5982,12 +5970,9 @@ function Ktl($, appInfo) {
             } else
                 ktlProcessKeywords(view, data);
 
-            // If conditions aren't met, reset the count to allow for future processing
-            // This line might need to be adjusted based on your exact needs
-            if (renderCounts[viewId] > 2 || !(resultsLength === 1 && !noData)) {
-                renderCounts[viewId] = 0;
+            if (viewWithSummaryRenderCounts[viewId] > 2 || !(resultsLength === 1 && !noData)) {
+                viewWithSummaryRenderCounts[viewId] = 0;
             }
-
 
             ktl.views.addViewId(view);
 
