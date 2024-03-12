@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.3';
+    const KTL_VERSION = '0.24.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5885,10 +5885,56 @@ function Ktl($, appInfo) {
             });
         })
 
+
+
+
+        // Throttle function that calls the func at the first event and ignores subsequent events for 'limit' milliseconds
+        function throttle(func, limit) {
+            let lastFunc;
+            let lastRan;
+            return function () {
+                const context = this;
+                const args = arguments;
+                if (!lastRan) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+                } else {
+                    clearTimeout(lastFunc);
+                    lastFunc = setTimeout(function () {
+                        if ((Date.now() - lastRan) >= limit) {
+                            func.apply(context, args);
+                            lastRan = Date.now();
+                        }
+                    }, limit - (Date.now() - lastRan));
+                }
+            }
+        }
+
+        //Object that keeps a render count for each viewId that has a summary and groups.
+        const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
-            if (ktl.views.viewHasSummary(viewId)) {
+            if (ktl.views.viewHasSummary(viewId) && Knack.models[viewId].results_model) {
+                if (ktl.views.viewHasGroups(viewId)) {
+                    viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
+
+                    const numberOfSummaryLines = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
+                    const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
+
+                    if (viewWithSummaryRenderCounts[viewId] === 2) {
+                        viewWithSummaryRenderCounts[viewId] = 0;
+                    } else {
+                        if (numberOfSummaryLines === 1 && !noData) {
+                            Knack.models[viewId].results_model.fetch();
+                            return;
+                        }
+                    }
+
+                    if (viewWithSummaryRenderCounts[viewId] > 2 || !(numberOfSummaryLines === 1 && !noData))
+                        viewWithSummaryRenderCounts[viewId] = 0;
+                }
+
                 /* This code is needed for keywords that may require summary data to achieve their task.
 
                 Since the summaries are rendered "a bit later" than the rest of the grid data,
@@ -9535,7 +9581,8 @@ function Ktl($, appInfo) {
                     }
 
                     //For groups, extend line up to end.
-                    var cols = viewObj.results.columns || viewObj.columns;
+                    var cols = (viewObj.results && viewObj.results.columns) || viewObj.columns;
+                    //var cols = viewObj.columns;
                     var groupingFound = false;
                     for (var i = 0; i < cols.length; i++) {
                         if (cols[i].grouping) {
@@ -15330,7 +15377,8 @@ function Ktl($, appInfo) {
                 apiData = {};
 
                 const recId = bulkOpsRecIdArray[0];
-                const src = Knack.views[viewId].model.data._byId[recId].attributes;
+                const src = (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.data._byId[recId].attributes)
+                    || Knack.views[viewId].model.data._byId[recId].attributes;
 
                 //TODO:  put the duplicate code below in a common function.
                 checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
@@ -16476,7 +16524,7 @@ function Ktl($, appInfo) {
         $(document).on('KTL.StatusMonitoring.Updated', (event, statusMonitoring) => {
             //console.log('statusMonitoring =', statusMonitoring);
         });
-        
+
         $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, function (event, view, data) {
             if (readyToProcessRecords)
                 processRecordsUpdate(view.key);
