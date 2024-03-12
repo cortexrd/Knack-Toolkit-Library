@@ -5885,10 +5885,69 @@ function Ktl($, appInfo) {
             });
         })
 
+
+
+
+        // Throttle function that calls the func at the first event and ignores subsequent events for 'limit' milliseconds
+        function throttle(func, limit) {
+            let lastFunc;
+            let lastRan;
+            return function () {
+                const context = this;
+                const args = arguments;
+                if (!lastRan) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+                } else {
+                    clearTimeout(lastFunc);
+                    lastFunc = setTimeout(function () {
+                        if ((Date.now() - lastRan) >= limit) {
+                            func.apply(context, args);
+                            lastRan = Date.now();
+                        }
+                    }, limit - (Date.now() - lastRan));
+                }
+            }
+        }
+
+        // Object to hold render counts for each viewId
+        const renderCounts = {};
+
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
+            // Only proceed if the view has a summary and we haven't fetched recently
+            // Initialize or increment the render count for this viewId
+            renderCounts[viewId] = (renderCounts[viewId] || 0) + 1;
+
+            // Only proceed if the view has a summary and this is the second render event for the view
+            const resultsLength = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
+            console.log('RENDER resultsLength =', resultsLength);
+            const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
             if (ktl.views.viewHasSummary(viewId)) {
+                if (renderCounts[viewId] === 2) {
+                    renderCounts[viewId] = 0;
+                } else {
+                    if (resultsLength === 1 && !noData) {
+                        console.log('fetch');
+
+                        Knack.models[viewId].results_model.fetch();
+
+                        // Reset the render count after the fetch to allow for future updates
+                        // Use the condition you've found necessary for resetting
+                        Knack.models[viewId].results_model.once("fetch", function () {
+                            console.log('ONCE resultsLength =', resultsLength);
+                            if (resultsLength === 1 && !noData) {
+                                // Reset the count, allowing for another sequence if conditions are met again
+                                renderCounts[viewId] = 0;
+                            }
+                        });
+
+                        return;
+                    }
+                }
+
+
                 /* This code is needed for keywords that may require summary data to achieve their task.
 
                 Since the summaries are rendered "a bit later" than the rest of the grid data,
@@ -5922,6 +5981,13 @@ function Ktl($, appInfo) {
                 }
             } else
                 ktlProcessKeywords(view, data);
+
+            // If conditions aren't met, reset the count to allow for future processing
+            // This line might need to be adjusted based on your exact needs
+            if (renderCounts[viewId] > 2 || !(resultsLength === 1 && !noData)) {
+                renderCounts[viewId] = 0;
+            }
+
 
             ktl.views.addViewId(view);
 
@@ -9535,7 +9601,8 @@ function Ktl($, appInfo) {
                     }
 
                     //For groups, extend line up to end.
-                    var cols = viewObj.results.columns || viewObj.columns;
+                    var cols = (viewObj.results && viewObj.results.columns) || viewObj.columns;
+                    //var cols = viewObj.columns;
                     var groupingFound = false;
                     for (var i = 0; i < cols.length; i++) {
                         if (cols[i].grouping) {
@@ -15330,7 +15397,8 @@ function Ktl($, appInfo) {
                 apiData = {};
 
                 const recId = bulkOpsRecIdArray[0];
-                const src = Knack.views[viewId].model.data._byId[recId].attributes;
+                const src = (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.data._byId[recId].attributes)
+                    || Knack.views[viewId].model.data._byId[recId].attributes;
 
                 //TODO:  put the duplicate code below in a common function.
                 checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
