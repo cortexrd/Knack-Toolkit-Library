@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.4';
+    const KTL_VERSION = '0.24.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -8652,13 +8652,16 @@ function Ktl($, appInfo) {
             const sceneKey = $('.kn-scenes .kn-scene')[0].id.replace('kn-', '');
             const sceneSlug = Knack.scenes.getByKey(sceneKey).attributes.slug;
 
-            let hasSpecificViewsToRefresh = false;
+            let forcePageRefresh = false;
 
             if (keywords[kw].length && keywords[kw][0].params) {
-                hasSpecificViewsToRefresh = true;
-                for (const viewToRefresh of keywords[kw][0].params[0]) {
-                    const viewIdToRefresh = (viewToRefresh.startsWith('view_')) ? viewToRefresh : ktl.core.getViewIdByTitle(viewToRefresh, Knack.router.scene_view.model.attributes.parent, true);
-                    viewsToRefreshArray.push(viewIdToRefresh);
+                if (keywords[kw][0].params[0][0] === 'ktlPageRefresh')
+                    forcePageRefresh = true;
+                else {
+                    for (const viewToRefresh of keywords[kw][0].params[0]) {
+                        const viewIdToRefresh = (viewToRefresh.startsWith('view_')) ? viewToRefresh : ktl.core.getViewIdByTitle(viewToRefresh, Knack.router.scene_view.model.attributes.parent, true);
+                        viewsToRefreshArray.push(viewIdToRefresh);
+                    }
                 }
             } else {
                 //All parent views.
@@ -8692,15 +8695,12 @@ function Ktl($, appInfo) {
             }
 
             function refreshViews() {
-                if (hasSpecificViewsToRefresh)
+                if (forcePageRefresh)
+                    //If some page rules exist and must be enforced, the user can use this param 
+                    //to force a full page update instead of individual view refreshes.
+                    Knack.router.scene_view.render();
+                else
                     ktl.views.refreshViewArray(viewsToRefreshArray);
-                else {
-                    const sceneHasPageRules = !!(Knack.scenes._byId[sceneSlug] && Knack.scenes._byId[sceneSlug].attributes && Knack.scenes._byId[sceneSlug].attributes.rules && Knack.scenes._byId[sceneSlug].attributes.rules.length);
-                    if (sceneHasPageRules)
-                        Knack.router.scene_view.render(); //If some page rules exist, we must call this instead of individual view refreshes to force a full page update.
-                    else
-                        ktl.views.refreshViewArray(viewsToRefreshArray);
-                }
             }
         }
 
@@ -9618,7 +9618,7 @@ function Ktl($, appInfo) {
                 }
             },
 
-            addTimeStampToHeader: function (viewId, keywords) {
+            addTimeStampToHeader: function (viewId, keywords, fontStyle = 'color: gray; font-weight: bold; font-size:x-large') {
                 if (!viewId) return;
 
                 const kw = '_ts';
