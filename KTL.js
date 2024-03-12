@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.3';
+    const KTL_VERSION = '0.24.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5910,30 +5910,29 @@ function Ktl($, appInfo) {
             }
         }
 
-        // Object to hold render counts for each viewId that has a summary and groups.
+        //Object that keeps a render count for each viewId that has a summary and groups.
         const viewWithSummaryRenderCounts = {};
-
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
-            viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
+            if (ktl.views.viewHasSummary(viewId) && Knack.models[viewId].results_model) {
+                if (ktl.views.viewHasGroups(viewId)) {
+                    viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
 
-            const resultsLength = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
-            const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
+                    const numberOfSummaryLines = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
+                    const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
 
-            if (ktl.views.viewHasSummary(viewId) && ktl.views.viewHasGroups(viewId)) {
-                if (viewWithSummaryRenderCounts[viewId] === 2) {
-                    viewWithSummaryRenderCounts[viewId] = 0;
-                } else {
-                    if (resultsLength === 1 && !noData) {
-                        Knack.models[viewId].results_model.fetch();
-                        Knack.models[viewId].results_model.once("fetch", function () {
-                            if (resultsLength === 1 && !noData)
-                                viewWithSummaryRenderCounts[viewId] = 0;
-                        });
-
-                        return;
+                    if (viewWithSummaryRenderCounts[viewId] === 2) {
+                        viewWithSummaryRenderCounts[viewId] = 0;
+                    } else {
+                        if (numberOfSummaryLines === 1 && !noData) {
+                            Knack.models[viewId].results_model.fetch();
+                            return;
+                        }
                     }
+
+                    if (viewWithSummaryRenderCounts[viewId] > 2 || !(numberOfSummaryLines === 1 && !noData))
+                        viewWithSummaryRenderCounts[viewId] = 0;
                 }
 
                 /* This code is needed for keywords that may require summary data to achieve their task.
@@ -5969,10 +5968,6 @@ function Ktl($, appInfo) {
                 }
             } else
                 ktlProcessKeywords(view, data);
-
-            if (viewWithSummaryRenderCounts[viewId] > 2 || !(resultsLength === 1 && !noData)) {
-                viewWithSummaryRenderCounts[viewId] = 0;
-            }
 
             ktl.views.addViewId(view);
 
@@ -16529,7 +16524,7 @@ function Ktl($, appInfo) {
         $(document).on('KTL.StatusMonitoring.Updated', (event, statusMonitoring) => {
             //console.log('statusMonitoring =', statusMonitoring);
         });
-        
+
         $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, function (event, view, data) {
             if (readyToProcessRecords)
                 processRecordsUpdate(view.key);
