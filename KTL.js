@@ -480,11 +480,6 @@ function Ktl($, appInfo) {
                 });
             },
 
-            isKiosk: function () {
-                var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
-                return sessionKiosk || (isKiosk ? isKiosk() : false);
-            },
-
             //Param is selector string and optionally if we want to put back a hidden element as it was.
             hideSelector: function (sel = '', show = false) {
                 sel && ktl.core.waitSelector(sel)
@@ -1114,6 +1109,20 @@ function Ktl($, appInfo) {
                     else
                         location.reload(true);
                 }, 500);
+            },
+
+            isKiosk: function () {
+                var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
+                return sessionKiosk || (isKiosk ? isKiosk() : false);
+            },
+
+            //Will first check if we should enter kiosk mode, then do it.
+            setKioskMode: function () {
+                if (ktl.core.isKiosk()) {
+                    if (!document.querySelector('.ktlKioskMode'))
+                        ktl.core.kioskMode(true);
+                } else
+                    ktl.core.kioskMode(false);
             },
 
             //If mode is undefined, it will toggle.  If true, Kiosk is enabled, if false, Normal mode is enabled.
@@ -12306,11 +12315,7 @@ function Ktl($, appInfo) {
         //Inspired from David Roizenman's code on Slack: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
         Knack.router.on('route:viewScene', function (slug, search) {
             if (!ktl.scenes.isiFrameWnd()) {
-                if (ktl.core.isKiosk()) {
-                    if (!document.querySelector('.ktlKioskMode'))
-                        ktl.core.kioskMode(true);
-                } else
-                    ktl.core.kioskMode(false);
+                ktl.core.setKioskMode();
 
                 for (const view of Knack.router.scene_view.model.attributes.views) {
                     $(document).on('knack-view-init.' + view.key, function (event, view) {
@@ -13978,6 +13983,7 @@ function Ktl($, appInfo) {
                                         if (localStorage.length > 500)
                                             ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 
+                                        ktl.core.setKioskMode();
                                         ktl.iFrameWnd.create();
                                     })
                                     .catch(err => {
