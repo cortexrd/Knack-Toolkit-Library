@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.5';
+    const KTL_VERSION = '0.24.6';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5914,7 +5914,6 @@ function Ktl($, appInfo) {
         const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
-
             if (ktl.views.viewHasSummary(viewId) && Knack.models[viewId].results_model) {
                 if (ktl.views.viewHasGroups(viewId)) {
                     viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
@@ -5924,6 +5923,7 @@ function Ktl($, appInfo) {
 
                     if (viewWithSummaryRenderCounts[viewId] === 2) {
                         viewWithSummaryRenderCounts[viewId] = 0;
+                        ktlProcessKeywords(view, data);
                     } else {
                         if (numberOfSummaryLines === 1 && !noData) {
                             Knack.models[viewId].results_model.fetch();
@@ -7505,8 +7505,10 @@ function Ktl($, appInfo) {
                 data.forEach(row => {
                     const keys = Object.keys(fieldsColor);
                     keys.forEach(fieldId => {
-                        var style = 'background-color:' + ((row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
-                        $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).attr('style', style);
+                        //Merge new style with existing one.
+                        const currentStyle = $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).attr('style');
+                        const style = 'background-color:' + ((row[fieldId + '_raw'] === true) ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse);
+                        $('#' + viewId + ' tbody tr[id="' + row.id + '"] .' + fieldId).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
                     })
                 })
             }
