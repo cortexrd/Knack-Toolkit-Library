@@ -6182,6 +6182,7 @@ function Ktl($, appInfo) {
                     keywords._afs && autoFillAndSubmit(view, keywords);
                     keywords._afsg && autoFillAndSubmitQRGenerator(view, keywords);
                     keywords._vk && virtualKeyboard(viewId, keywords);
+                    keywords._asf && autoSubmitForm(viewId, keywords);
                 }
 
                 //This section is for keywords that are supported by views and fields.
@@ -9189,6 +9190,21 @@ function Ktl($, appInfo) {
             });
 
             ktl.virtualKeyboard.load();
+        }
+
+        function autoSubmitForm(viewId, keywords) {
+            const kw = '_asf';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            let delayBeforeSubmit = 0;
+            if (keywords._asf.length && keywords._asf[0].params[0].length && keywords._asf[0].params[0][0])
+                delayBeforeSubmit = Number(keywords._asf[0].params[0][0]);
+
+            delayBeforeSubmit = isNaN(delayBeforeSubmit) ? 0 : Math.min(Math.max(delayBeforeSubmit, 0), 172800 /*2 days*/);
+
+            setTimeout(() => {
+                $(`#${viewId} .is-primary`).click();
+            }, delayBeforeSubmit * 1000);
         }
 
         //Views
