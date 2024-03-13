@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.6';
+    const KTL_VERSION = '0.24.7';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -4346,20 +4346,6 @@ function Ktl($, appInfo) {
             }
         }
 
-        $(document).on('knack-scene-render.any', function (event, scene) {
-            if (ktl.scenes.isiFrameWnd()) return;
-
-            //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
-            ktl.core.waitSelector('.view-column', 5000) //Needed otherwise we miss them once in a while.
-                .then(function () {
-                    document.querySelectorAll('.view-column').forEach(column => {
-                        if (!column.childElementCount)
-                            column.remove();
-                    })
-                })
-                .catch(() => { })
-        });
-
         function linkFilters(viewTitles, masterView) {
             const masterViewId = masterView.key;
             const linkedViewIds = ktl.views.convertViewTitlesToViewIds(viewTitles, masterViewId);
@@ -5314,8 +5300,10 @@ function Ktl($, appInfo) {
                     type = filter.type;
 
                     //If it's a public filter, exit if the unlocked icon is not present.  This covers all cases, i.e. when you don't have the right to modify it, or if you do but PFs are locked.
-                    if (type === LS_UFP && !document.querySelector('#' + filterDivId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX + ' .fa-unlock-alt'))
+                    if (type === LS_UFP && !document.querySelector('#' + filterDivId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX + ' .fa-unlock-alt')) {
+                        ktl.userFilters.removeActiveFilter(filterDivId);
                         return;
+                    }
 
                     if (filter.index >= 0)
                         filterName = filterObject.filterName;
@@ -12271,6 +12259,18 @@ function Ktl($, appInfo) {
             if (Knack.router.current_scene_key !== scene.key) {
                 alert('ERROR - Scene keys do not match!');
                 return;
+            }
+
+            //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
+            if (!ktl.scenes.isiFrameWnd()) {
+                ktl.core.waitSelector('.view-column', 5000) //Needed otherwise we miss them once in a while.
+                    .then(function () {
+                        document.querySelectorAll('.view-column').forEach(column => {
+                            if (!column.childElementCount)
+                                column.remove();
+                        })
+                    })
+                    .catch(() => { })
             }
 
             //Leaving more time to iFrameWnd has proven to reduce errors and improve stability.
