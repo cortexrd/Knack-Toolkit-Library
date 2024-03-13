@@ -7213,19 +7213,21 @@ function Ktl($, appInfo) {
 
                     if (!ktlCompare(cellText, operator, value)) return;
 
-                    var fgColor = parameter[3];
+                    let fgColor = parameter[3];
 
+                    let bgColor;
                     if (parameter.length >= 5)
-                        var bgColor = parameter[4];
+                        bgColor = parameter[4];
 
-                    var span = '';
-                    var propagate = false; //Propagate style to whole row.
-                    var hide = false;
-                    var remove = false;
-                    var flash = false;
-                    var flashFade = false;
+                    let span = '';
+                    let propagate = false; //Propagate style to whole row.
+                    let hide = false;
+                    let remove = false;
+                    let suppress = false;
+                    let flash = false;
+                    let flashFade = false;
 
-                    var style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
+                    let style = (fgColor ? 'color: ' + fgColor + '!important; ' : '') + (bgColor ? 'background-color: ' + bgColor + '!important; ' : '');
 
                     if (parameter.length >= 6 && parameter[5])
                         style += ('font-weight: ' + parameter[5] + '!important; ');
@@ -7240,6 +7242,8 @@ function Ktl($, appInfo) {
                         if (parameter[6].includes('r')) {
                             span = ' span';
                             remove = true;
+                        } else if (parameter[6].includes('s')) {
+                            suppress = true;
                         } else if (parameter[6].includes('h')) {
                             span = ' span';
                             hide = true;
@@ -7261,12 +7265,12 @@ function Ktl($, appInfo) {
                     }
 
                     //Target selector.
-                    var targetFieldId = fieldId;
-                    var targetViewId;
-                    var targetSel;
+                    let targetFieldId = fieldId;
+                    let targetViewId;
+                    let targetSel;
 
                     if (options && options.ktlTarget) {
-                        var colNb;
+                        let colNb;
                         const isJQueryTarget = ktl.core.extractJQuerySelector(options.ktlTarget);
                         if (isJQueryTarget)
                             targetSel = isJQueryTarget;
@@ -7274,7 +7278,7 @@ function Ktl($, appInfo) {
                             const ktlTarget = ktl.core.splitAndTrimToArray(options.ktlTarget);
 
                             //Search parameters to see if we can find a targetViewId.
-                            for (var i = 0; i < ktlTarget.length; i++) {
+                            for (let i = 0; i < ktlTarget.length; i++) {
                                 if (ktlTarget[i].startsWith('view_')) {
                                     targetViewId = ktlTarget[i];
                                     break;
@@ -7282,7 +7286,7 @@ function Ktl($, appInfo) {
                             }
 
                             //No direct view_id, let's try last param and search by view title.
-                            var tryViewId;
+                            let tryViewId;
                             if (!targetViewId) {
                                 const lastItem = ktlTarget[ktlTarget.length - 1];
                                 tryViewId = ktl.scenes.findViewWithTitle(lastItem);
@@ -7354,7 +7358,13 @@ function Ktl($, appInfo) {
                         .then(function () {
                             if (remove)
                                 $(targetSel).remove();
-                            else if (hide) {
+                            else if (suppress) {
+                                $(targetSel).closest('tr').remove();
+                                const newCount = document.querySelectorAll('#' + targetViewId + ' tbody tr').length;
+                                var div = document.querySelector('#' + targetViewId + ' .kn-entries-summary');
+                                if (div && div.childNodes.length >= 3)
+                                    div.childNodes[2].nodeValue = ` 1-${newCount} `;
+                            } else if (hide) {
                                 $(targetSel).addClass('ktlDisplayNone');
                             } else {
                                 //Merge current and new styles.
