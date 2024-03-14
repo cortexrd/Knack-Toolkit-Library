@@ -1117,7 +1117,7 @@ function Ktl($, appInfo) {
             },
 
             //Will first check if we should enter kiosk mode, then do it.
-            setKioskMode: function () {
+            applyKioskMode: function () {
                 if (ktl.core.isKiosk()) {
                     if (!document.querySelector('.ktlKioskMode'))
                         ktl.core.kioskMode(true);
@@ -1137,22 +1137,27 @@ function Ktl($, appInfo) {
                 else
                     ktl.storage.lsRemoveItem('KIOSK', false, true);
 
-                if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
-                    $('#kn-app-header,.knHeader,.kn-info-bar').addClass('ktlDisplayNone');
-                    $('body').addClass('ktlKioskMode');
+                const headerSelector = '#kn-app-header,.knHeader,.kn-info-bar';
+                ktl.core.waitSelector(headerSelector, 30000)
+                    .then(() => {
+                        if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
+                            $(headerSelector).addClass('ktlDisplayNone');
+                            $('body').addClass('ktlKioskMode');
 
-                    //Add extra space at bottom of screen in kiosk mode, to allow editing
-                    //with the virtual keyboard without blocking the input field.
-                    if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
-                        $('body').removeClass('ktlBottomExtraSpaces');
-                    else
-                        $('body').addClass('ktlBottomExtraSpaces');
-                } else {
-                    $('.ktlFormKioskButtons').removeClass('ktlFormKioskButtons');
-                    $('.ktlKioskButtons').removeClass('ktlKioskButtons');
-                    $('#kn-app-header,.knHeader,.kn-info-bar').removeClass('ktlDisplayNone');
-                    $('body').removeClass('ktlKioskMode');
-                }
+                            //Add extra space at bottom of screen in kiosk mode, to allow editing
+                            //with the virtual keyboard without blocking the input field.
+                            if (ktl.userPrefs.getUserPrefs().showIframeWnd || ktl.scenes.isiFrameWnd())
+                                $('body').removeClass('ktlBottomExtraSpaces');
+                            else
+                                $('body').addClass('ktlBottomExtraSpaces');
+                        } else {
+                            $('.ktlFormKioskButtons').removeClass('ktlFormKioskButtons');
+                            $('.ktlKioskButtons').removeClass('ktlKioskButtons');
+                            $(headerSelector).removeClass('ktlDisplayNone');
+                            $('body').removeClass('ktlKioskMode');
+                        }
+                    })
+                    .catch((err) => { console.log('Timeout waiting for header while setting kiosk mode.', err); });
             },
 
             loadLib: function (libName = '') {
@@ -12331,7 +12336,12 @@ function Ktl($, appInfo) {
         //Inspired from David Roizenman's code on Slack: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
         Knack.router.on('route:viewScene', function (slug, search) {
             if (!ktl.scenes.isiFrameWnd()) {
-                ktl.core.setKioskMode();
+                waitUserId()
+                    .then(() => {
+                        ktl.debugWnd.lsLog('Router - applyKioskMode');
+                        ktl.core.applyKioskMode();
+                    })
+                    .catch(() => { })
 
                 for (const view of Knack.router.scene_view.model.attributes.views) {
                     $(document).on('knack-view-init.' + view.key, function (event, view) {
@@ -13999,7 +14009,9 @@ function Ktl($, appInfo) {
                                         if (localStorage.length > 500)
                                             ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 
-                                        ktl.core.setKioskMode();
+                                        ktl.debugWnd.lsLog('Logging in - applyKioskMode');
+                                        ktl.core.applyKioskMode();
+
                                         ktl.iFrameWnd.create();
                                     })
                                     .catch(err => {
@@ -14063,7 +14075,7 @@ function Ktl($, appInfo) {
             })
         }
 
-        if (!window.logout) { //Emergency logout
+        if (!window.logout) { //Emergency manual logout from console.
             window.logout = function () {
                 ktl.account.logout();
             }
@@ -14976,12 +14988,20 @@ function Ktl($, appInfo) {
                 if ([401, 403, 500].includes(msg.status)) {
                     if (msg.status === 401 || msg.status === 403) {
                         if (typeof Android === 'object') {
-                            if (confirm(`A reboot is needed, do you want to do it now? (code ${msg.status})`)) {
+                            ktl.debugWnd.lsLog('Error ' + msg.status);
+                            setTimeout(() => {
                                 ktl.account.logout(); //Login has expired, force logout.
                                 setTimeout(() => {
                                     Android.restartApplication();
-                                }, 500);
-                            }
+                                }, 1000);
+                            }, 1000);
+
+                            //    if (true || confirm(`A reboot is needed, do you want to do it now? (code ${msg.status})`)) {
+                            //        ktl.account.logout(); //Login has expired, force logout.
+                            //        setTimeout(() => {
+                            //            Android.restartApplication();
+                            //        }, 1500);
+                            //    }
                         } else {
                             ktl.core.timedPopup('Your log-in has expired. Please log back in to continue.', 'warning', 4000);
                             ktl.account.logout(); //Login has expired, force logout.
@@ -16021,13 +16041,12 @@ function Ktl($, appInfo) {
                 } else if ((sysInfo.os === 'Linux' /*&& sysInfo.processor.includes('arm')*/))
                     deviceIsCompatibleWithRecoveryWd = true;
 
-                if (deviceIsCompatibleWithRecoveryWd) {
-                    if (!cfg.recoveryWatchdogEnabled) {
-                        ktl.sysInfo.sendRecoveryWdHeartbeat(0); //Zero means "Disable Recovery WD".
-                        return;
-                    }
-                } else
+                if (!deviceIsCompatibleWithRecoveryWd) return;
+
+                if (!cfg.recoveryWatchdogEnabled) {
+                    ktl.sysInfo.sendRecoveryWdHeartbeat(0); //Zero means "Disable Recovery WD".
                     return;
+                }
 
                 var wdLoopTimeout;
                 var maxMemUsage = 0;
@@ -16305,9 +16324,9 @@ function Ktl($, appInfo) {
             sendRecoveryWdHeartbeat: function (wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
                 return new Promise(function (resolve, reject) {
                     if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
-                        //ktl.core.timedPopup('WD: ' + wdTimeoutDelay, 'success');
-                        Android.resetWatchdog(wdTimeoutDelay);
-                        //Android.resetWatchdog(60);
+                        setTimeout(() => { //This delay fixes the problem with Kiosk Browser crashing intermittently.
+                            Android.resetWatchdog(wdTimeoutDelay);
+                        }, 500);
                         resolve({ message: 'Android.resetWatchdog: ' + wdTimeoutDelay });
                     } else if (sysInfo.os === 'Linux' /*&& sysInfo.processor.includes('arm')*/) {
                         const timeoutNoSvr = setTimeout(() => {
