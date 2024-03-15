@@ -12337,10 +12337,7 @@ function Ktl($, appInfo) {
         Knack.router.on('route:viewScene', function (slug, search) {
             if (!ktl.scenes.isiFrameWnd()) {
                 waitUserId()
-                    .then(() => {
-                        ktl.debugWnd.lsLog('Router - applyKioskMode');
-                        ktl.core.applyKioskMode();
-                    })
+                    .then(() => { ktl.core.applyKioskMode(); })
                     .catch(() => { })
 
                 for (const view of Knack.router.scene_view.model.attributes.views) {
@@ -14009,7 +14006,6 @@ function Ktl($, appInfo) {
                                         if (localStorage.length > 500)
                                             ktl.log.addLog(ktl.const.LS_WRN, 'KEC_1019 - Local Storage size: ' + localStorage.length);
 
-                                        ktl.debugWnd.lsLog('Logging in - applyKioskMode');
                                         ktl.core.applyKioskMode();
 
                                         ktl.iFrameWnd.create();
