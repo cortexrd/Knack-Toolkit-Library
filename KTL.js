@@ -11770,8 +11770,6 @@ function Ktl($, appInfo) {
 
                 const icon = `<i class="fa ${tooltipIcon} ktlTooltipIcon ktlTtipIcon-${viewType}-view"> </i>`;
 
-                // Add the tooltip icon to the DOM
-
                 //If view ttip found remove it.  Field has precedence.
                 if ($(`${tooltipIconPosition} .ktlTooltipIcon`).length)
                     $(`${tooltipIconPosition} .ktlTooltipIcon`).remove();
@@ -11792,14 +11790,14 @@ function Ktl($, appInfo) {
                 // Add event listeners to show and hide the tooltip
                 $(document).on('mouseenter', `${tooltipIconPosition} i.${tooltipIcon}`, function (e) {
                     if (!$(".ktlTooltip").length) {
-                        const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`)
+                        const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`);
                         const icon = $(this);
                         const iconWidth = icon.width();
                         const iconHeight = icon.height();
                         let iconPosition;
 
                         // Add the tooltip to the DOM
-                        if (viewType === 'table' || viewType === 'search') {
+                        if (viewType === 'table') {
                             tooltipElement.appendTo(`#${viewId} .kn-table-wrapper`);
                             iconPosition = icon.offset();
                         } else {
@@ -11815,12 +11813,11 @@ function Ktl($, appInfo) {
 
                         let tooltipLeft = iconPosition.left + (iconWidth / 2) - (tooltipWidth / 2);
                         // Adjust tooltipLeft if it's off the left or right side of the page
-                        const pageWidth = $(window).width();
+                        const pageWidth = viewType === 'table' ? $(`#${viewId} .kn-table-wrapper`).width() : $(window).width();
                         if (tooltipLeft < 0) {
                             tooltipLeft = 0;
-                        }
-                        else if (tooltipLeft + tooltipWidth > pageWidth) {
-                            tooltipLeft = pageWidth - tooltipWidth;
+                        } else if (tooltipLeft + tooltipWidth > pageWidth) {
+                            tooltipLeft = pageWidth - tooltipWidth - 20; // Add a 20px buffer
                         }
                         tooltipElement.css({ top: tooltipTop, left: tooltipLeft }); // Set position to 'absolute'
                     }
