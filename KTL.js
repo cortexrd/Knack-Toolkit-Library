@@ -9613,56 +9613,46 @@ function Ktl($, appInfo) {
             addViewId: function (view, fontStyle = 'color: red; font-weight: bold; font-size:small') {
                 if (!view) return;
                 const viewId = view.key;
+                const userPrefs = ktl.userPrefs.getUserPrefs();
 
-                if (ktl.userPrefs.getUserPrefs().showViewId && $('#' + viewId + '-label-id').length === 0/*Add once only*/) {
-                    var label = document.createElement('label');
-                    label.setAttribute('id', viewId + '-label-id');
-                    label.appendChild(document.createTextNode('    ' + viewId));
-                    label.setAttribute('style', 'margin-left: 10px; margin-top: 8px;' + fontStyle);
-
-                    var submitBtn = $('#' + viewId + ' .kn-submit');
-                    var divHdr = document.querySelector('#' + viewId + ' h1:not(#knack-logo), #' + viewId + ' h2, #' + viewId + ' h3, #' + viewId + ' h4');
-                    if (divHdr) {
-                        //console.log(viewId, 'divHdr =', divHdr, divHdr.innerText);
-
-                        //If there's no title or no title text, let's try our best to get an elegant layout.
-                        var divTitle = document.querySelector('#' + viewId + ' .kn-title')
-                        if (divTitle) {
-                            var display = window.getComputedStyle(divTitle).display;
-                            //console.log(viewId, 'display =', display);
-                            if (display && (display === 'none' || !divHdr.innerText)) {
-                                if (submitBtn.length)
-                                    submitBtn.append(label);
-                                else
-                                    $('#' + viewId + ' .view-header').append(label);
-                            } else {
-                                if (ktlKeywords[viewId] && ktlKeywords[viewId]._ht)
-                                    $('#' + viewId).prepend(label);
-                                else
-                                    $('#' + viewId + ' .kn-title').append(label);
-                            }
-                        } else {
-                            //Why Search views don't show it the first render?
-                            $('#' + viewId).append(label);
+                if (userPrefs.showViewId && !$(`#${viewId}-label-id`).length) {
+                    const label = $('<label>', {
+                        id: `${viewId}-label-id`,
+                        text: `    ${viewId}`,
+                        css: {
+                            marginLeft: '10px',
+                            marginTop: '8px',
+                            cssText: fontStyle
                         }
-                    } else {
-                        if (submitBtn.length) {
-                            submitBtn.append(label);
-                        } else if ($('.kn-form.kn-view' + '.' + viewId).length) {
-                            $('.kn-form.kn-view' + '.' + viewId).append(label);
-                        } else if ($('#' + viewId + ' .control').length) {
-                            $('#' + viewId + ' .control').append(label);
-                        } else if ($('.kn-details.kn-view' + '.' + viewId).length) {
-                            $('.kn-details.kn-view' + '.' + viewId).append(label);
+                    });
+
+                    const viewElement = $(`#${viewId}`);
+                    const submitBtn = $(`.kn-submit:has(input[value="${viewId}"])`);
+                    const divHdr = viewElement.find('h1:not(#knack-logo), h2, h3, h4').first();
+                    const divTitle = viewElement.find('.kn-title').first();
+
+                    //If there's no title or no title text, let's try our best to get an elegant layout.
+                    if (divHdr.length && divTitle.length && divTitle.css('display') !== 'none' && divHdr.text()) {
+                        if (ktlKeywords[viewId] && ktlKeywords[viewId]._ht) {
+                            viewElement.prepend(label);
                         } else {
-                            label.setAttribute('style', 'margin-top: 8px;' + fontStyle);
-                            $('#' + viewId).prepend(label);
+                            divTitle.append(label);
                         }
                     }
-                } else {
-                    if (!ktl.userPrefs.getUserPrefs().showViewId) {
-                        $('#' + viewId + '-label-id').remove();
+                    else if (submitBtn.length) {
+                        submitBtn.append(label);
                     }
+                    else {
+                        const targetElement = viewElement.find('.kn-form.kn-view, .control, .kn-details.kn-view').first();
+                        if (targetElement.length) {
+                            targetElement.append(label);
+                        } else {
+                            label.css('marginTop', '8px');
+                            viewElement.prepend(label);
+                        }
+                    }
+                } else if (!userPrefs.showViewId) {
+                    $(`#${viewId}-label-id`).remove();
                 }
             },
 
