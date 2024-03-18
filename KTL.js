@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.7';
+    const KTL_VERSION = '0.24.8';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -8193,6 +8193,11 @@ function Ktl($, appInfo) {
 
             const viewType = ktl.views.getViewType(viewId);
             if (!(viewId && keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+
+            if (!ktl.views.viewHasInlineEdit(viewId)) {
+                ktl.log.clog('purple', `_dnd keyword used in a grid or search without inline edit: ${viewId}`);
+                return;
+            }
 
             if (keywords[kw].length && keywords[kw][0].options) {
                 const options = keywords[kw][0].options;
