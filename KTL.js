@@ -1633,7 +1633,7 @@ function Ktl($, appInfo) {
             },
 
             //To enable several Developer only features, and remember/apply the setting to any logged-in account.
-            //Mostly useful to access the KTL Developer Tools popup and the Ctrl+Shift developperPopupTool.
+            //Mostly useful to access the KTL Developer Tools popup and the Ctrl+Shift developerPopupTool.
             forceDevRole: function (force = true) {
                 if (force)
                     ktl.storage.lsSetItem('forceDevRole', true, true);
@@ -8476,7 +8476,8 @@ function Ktl($, appInfo) {
                     }
 
                     if (mode === 'add' && data.length) {
-                        ktl.log.clog('purple', 'Destination view must be empty in _cpyfrom:', dstViewId);
+                        if (ktl.account.isDeveloper())
+                            ktl.log.clog('purple', 'WARNING - Destination view must be empty in _cpyfrom:', dstViewId);
                         return;
                     }
 
@@ -14069,7 +14070,7 @@ function Ktl($, appInfo) {
         //Show logged-in user ID when double-clicking on First name.
         //Useful to copy/pase in the localStorage filtering field to see only those entries.
         $(document).on('knack-scene-render.any', function (event, scene) {
-            ktl.developperPopupTool();
+            ktl.developerPopupTool();
 
             $('.kn-current_user > span.first').on('dblclick', (e) => {
                 var userId = $('.kn-current_user').attr('id');
@@ -16810,8 +16811,8 @@ function Ktl($, appInfo) {
     })(); //Status Monitoring feature
 
     //===================================================
-    //Developper Popup Tool feature
-    this.developperPopupTool = function () {
+    //Developer Popup Tool feature
+    this.developerPopupTool = function () {
         if (!ktl.account.isDeveloper()) return;
 
         const baseURL = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}`;
@@ -17199,7 +17200,7 @@ function Ktl($, appInfo) {
                 closePopOver(openedPopOverTarget);
             }
         });
-    };//developperPopupTool
+    };//developerPopupTool
 
     //===================================================
     //Virtual Keyboard feature
