@@ -8477,7 +8477,7 @@ function Ktl($, appInfo) {
 
                     if (mode === 'add' && data.length) {
                         if (ktl.account.isDeveloper())
-                            ktl.log.clog('purple', 'WARNING - Destination view must be empty in _cpyfrom:', dstViewId);
+                            ktl.log.clog('purple', 'Developer warning: Destination view must be empty in _cpyfrom:', dstViewId);
                         return;
                     }
 
