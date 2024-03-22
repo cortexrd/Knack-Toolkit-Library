@@ -8763,15 +8763,17 @@ function Ktl($, appInfo) {
                 else {
                     for (const viewToRefresh of keywords[kw][0].params[0]) {
                         const viewIdToRefresh = (viewToRefresh.startsWith('view_')) ? viewToRefresh : ktl.core.getViewIdByTitle(viewToRefresh, Knack.router.scene_view.model.attributes.parent, true);
-                        viewsToRefreshArray.push(viewIdToRefresh);
+                        $(`#${viewIdToRefresh}`).length > 0 && viewsToRefreshArray.push(viewIdToRefresh);
                     }
                 }
             } else {
                 //All parent views.
                 const viewsInScene = Knack.scenes._byId[sceneSlug].views.models;
-                for (const viewToRefresh of viewsInScene) {
-                    if (ktl.views.getViewType(viewToRefresh.attributes.key) !== 'calendar') //These don't need a refresh since it's done automatically.
-                        viewsToRefreshArray.push(viewToRefresh.attributes.key);
+                for (const { attributes: { key: viewIdToRefresh } } of viewsInScene) {
+                    //Calendars don't need a refresh since it's done automatically.
+                    if (ktl.views.getViewType(viewIdToRefresh) !== 'calendar' && $(`#${viewIdToRefresh}`).length) {
+                        viewsToRefreshArray.push(viewIdToRefresh);
+                    }
                 }
             }
 
