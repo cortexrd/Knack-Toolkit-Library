@@ -45,6 +45,38 @@
                 margin-right: 5px;
                 margin-bottom: 0; /* Override Bootstrap's default bottom margin for labels */
             }
+
+        /* Additional CSS for background colors */
+        .fieldset-color-1 {
+            background-color: #f0f8ff;
+        } /* AliceBlue */
+        .fieldset-color-2 {
+            background-color: #e6e6fa;
+        } /* Lavender */
+        .fieldset-color-3 {
+            background-color: #f5f5dc;
+        } /* Beige */
+        .fieldset-color-4 {
+            background-color: #fffacd;
+        } /* LemonChiffon */
+        .fieldset-color-5 {
+            background-color: #e0ffff;
+        } /* LightCyan */
+        .fieldset-color-6 {
+            background-color: #fafad2;
+        } /* LightGoldenRodYellow */
+        .fieldset-color-7 {
+            background-color: #d3d3d3;
+        } /* LightGrey */
+
+        /* Adjust the positioning of legends */
+        fieldset legend {
+            position: relative;
+            top: 20px;
+            background: unset;
+            padding: 0 5px;
+            width: auto;
+        }
     </style>
 </head>
 <body>
@@ -530,6 +562,21 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var colorClasses = [
+                'fieldset-color-1', 'fieldset-color-2', 'fieldset-color-3',
+                'fieldset-color-4', 'fieldset-color-5', 'fieldset-color-6', 'fieldset-color-7'
+            ];
+            var fieldsets = document.querySelectorAll('fieldset');
+            var colorIndex = 0;
+
+            fieldsets.forEach(function (fieldset) {
+                // Apply a color class from the array and increment the index
+                fieldset.classList.add(colorClasses[colorIndex]);
+                colorIndex = (colorIndex + 1) % colorClasses.length; // Cycle back to the start if we reach the end
+            });
+        });
+
         document.getElementById('generateConfigBtn').addEventListener('click', function () {
             const developerNamesInput = document.getElementById('developerNames').value;
             const developerNames = developerNamesInput.split(',').map(name => name.trim()).map(name => `'${name}'`);
@@ -1027,7 +1074,6 @@ window.ktlReady = function (appInfo = {}) {
                 reader.readAsText(file);
             }
         });
-
     </script>
 
 
