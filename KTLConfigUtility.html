@@ -744,7 +744,129 @@ window.ktlReady = function (appInfo = {}) {
                         viOpacity: parseInt(document.getElementById('viOpacity').value, 10),
                         viOpacityHover: parseInt(document.getElementById('viOpacityHover').value, 10),
                     },
-                    // Include additional configurations as needed...
+                    // Feature Switches
+                    featureSwitches: {
+                        showMenuInTitle: document.getElementById('showMenuInTitle').checked,
+                        selTextOnFocus: document.getElementById('selTextOnFocus').checked,
+                        inlineEditColor: document.getElementById('inlineEditColor').checked,
+                        rowHoverHighlight: document.getElementById('rowHoverHighlight').checked,
+                        chznBetter: document.getElementById('chznBetter').checked,
+                        autoFocus: document.getElementById('autoFocus').checked,
+                        sortedMenus: document.getElementById('sortedMenus').checked,
+                        userFilters: document.getElementById('userFilters').checked,
+                        persistentForm: document.getElementById('persistentForm').checked,
+                        calendarGotoDate: document.getElementById('calendarGotoDate').checked,
+                        rememberMe: document.getElementById('rememberMe').checked,
+                        formPreValidation: document.getElementById('formPreValidation').checked,
+                        spinnerWatchDog: document.getElementById('spinnerWatchDog').checked,
+                        idleWatchDog: document.getElementById('idleWatchDog').checked,
+                        debugWnd: document.getElementById('debugWnd').checked,
+                        devInfoPopup: document.getElementById('devInfoPopup').checked,
+                        devPauseAutoRefresh: document.getElementById('devPauseAutoRefresh').checked,
+                        virtualKeyboard: document.getElementById('virtualKeyboard').checked,
+                        iFrameWnd: document.getElementById('iFrameWnd').checked
+                    },
+                    // Bulk Operations
+                    bulkOps: {
+                        bulkEdit: document.getElementById('bulkEdit').checked,
+                        bulkCopy: document.getElementById('bulkCopy').checked,
+                        bulkDelete: document.getElementById('bulkDelete').checked
+                    },
+                    // Popup Style Settings
+                    popupStyle: {
+                        success: document.getElementById('popupStyleSuccess').value,
+                        warning: document.getElementById('popupStyleWarning').value,
+                        error: document.getElementById('popupStyleError').value
+                    },
+                    // Tooltip Styles Settings
+                    tooltipStyles: {
+                        ktlTtipFormViewBgColor: document.getElementById('ktlTtipFormViewBgColor').value,
+                        ktlTtipFormViewTxtColor: document.getElementById('ktlTtipFormViewTxtColor').value,
+                        ktlTtipIconFormViewColor: document.getElementById('ktlTtipIconFormViewColor').value,
+                        ktlTtipDetailsViewBgColor: document.getElementById('ktlTtipDetailsViewBgColor').value,
+                        ktlTtipDetailsViewTxtColor: document.getElementById('ktlTtipDetailsViewTxtColor').value,
+                        ktlTtipIconDetailsViewColor: document.getElementById('ktlTtipIconDetailsViewColor').value,
+                        ktlTtipTableViewBgColor: document.getElementById('ktlTtipTableViewBgColor').value,
+                        ktlTtipTableViewTxtColor: document.getElementById('ktlTtipTableViewTxtColor').value,
+                        ktlTtipIconTableViewColor: document.getElementById('ktlTtipIconTableViewColor').value
+                    },
+                    // Scenes Settings
+                    scenesSettings: {
+                        versionDisplayName: document.getElementById('versionDisplayName').value,
+                        idleWatchDogDelay: parseInt(document.getElementById('idleWatchDogDelay').value),
+                        spinnerCtrDelay: parseInt(document.getElementById('spinnerCtrDelay').value),
+                        spinnerWdExcludeScn: document.getElementById('spinnerWdExcludeScn').value.split(',').map(scn => scn.trim())
+                    },
+                    // Views Settings
+                    viewsSettings: {
+                        quickToggleParams: {
+                            bgColorTrue: document.getElementById('bgColorTrue').value,
+                            bgColorFalse: document.getElementById('bgColorFalse').value,
+                            bgColorPending: document.getElementById('bgColorPending').value,
+                            showSpinner: document.getElementById('showSpinner').checked,
+                            showNotification: document.getElementById('showNotification').checked
+                        },
+                        headerAlignment: document.getElementById('headerAlignment').checked,
+                        ktlFlashRate: document.getElementById('ktlFlashRate').value,
+                        ktlOutlineColor: document.getElementById('ktlOutlineColor').value,
+                        hscCollapsedColumnsWidth: document.getElementById('hscCollapsedColumnsWidth').value,
+                        hscGlobal: document.getElementById('hscGlobal').checked
+                    },
+                    // Fields Settings
+                    fieldsSettings: {
+                        textAsNumeric: document.getElementById('textAsNumeric').value.split(',').map(id => id.trim()),
+                        textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(',').map(id => id.trim()),
+                        horizontalRadioButtons: document.getElementById('horizontalRadioButtons').checked,
+                        horizontalCheckboxes: document.getElementById('horizontalCheckboxes').checked,
+                        barcodeTimeout: parseInt(document.getElementById('barcodeTimeout').value),
+                        barcodeMinLength: parseInt(document.getElementById('barcodeMinLength').value),
+                        convertNumToTel: document.getElementById('convertNumToTel').checked
+                    },
+                    // Persistent Forms Settings
+                    persistentFormsSettings: {
+                        scenesToExclude: document.getElementById('persistentFormsScenesToExclude').value.split(',').map(id => id.trim()),
+                        fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(',').map(id => id.trim())
+                    },
+                    // System Colors Settings
+                    systemColorsSettings: {
+                        inlineEditBkgColor: document.getElementById('inlineEditBkgColor').value,
+                        inlineEditFontWeight: document.getElementById('inlineEditFontWeight').value,
+                        tableRowHoverBkgColor: document.getElementById('tableRowHoverBkgColor').value
+                    },
+                    // Advanced Settings: Kiosk Settings
+                    kioskSettings: {
+                        ADD_REFRESH: {
+                            html: document.getElementById('addRefreshHtml').value,
+                            id: document.getElementById('addRefreshId').value,
+                            href: document.getElementById('addRefreshHref').value
+                        },
+                        ADD_BACK: {
+                            html: document.getElementById('addBackHtml').value,
+                            id: document.getElementById('addBackId').value,
+                            href: document.getElementById('addBackHref').value
+                        },
+                        ADD_DONE: {
+                            html: document.getElementById('addDoneHtml').value,
+                            id: document.getElementById('addDoneId').value,
+                            href: document.getElementById('addDoneHref').value
+                        }
+                    },
+                    // Logging Settings
+                    loggingSettings: {
+                        critical: document.getElementById('logCritical').checked,
+                        error: document.getElementById('logError').checked,
+                        serverErr: document.getElementById('logServerErr').checked,
+                        warning: document.getElementById('logWarning').checked,
+                        info: document.getElementById('logInfo').checked,
+                        debug: document.getElementById('logDebug').checked,
+                        login: document.getElementById('logLogin').checked,
+                        activity: document.getElementById('logActivity').checked,
+                        navigation: document.getElementById('logNavigation').checked
+                    },
+                    // iFrameWnd Settings
+                    iFrameWndSettings: {
+                        sendHeartbeat: document.getElementById('sendHeartbeat').checked
+                    }
                 };
 
                 // Convert form data to a JSON string
