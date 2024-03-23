@@ -8475,11 +8475,7 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    if (mode === 'add' && data.length) {
-                        if (ktl.account.isDeveloper())
-                            ktl.log.clog('purple', 'Developer warning: Destination view must be empty in _cpyfrom:', dstViewId);
-                        return;
-                    }
+                    if (mode === 'add' && data.length) return;
 
                     let bulkApiDataArray = [];
                     let fieldsToCopy = ['']; //All fields by default
@@ -15877,13 +15873,13 @@ function Ktl($, appInfo) {
             if (nbo !== undefined) {
                 if (nbo.length && nbo[0].options) {
                     const options = nbo[0].options;
-                    if (!ktl.core.hasRoleAccess(options)) return false;
+                    if (!ktl.core.hasRoleAccess(options)) return true;
                 }
 
                 if (nbo.length === 0)
                     bulkOpDisabled = true;
                 else {
-                    if (!nbo[0].params[0].length || nbo[0].params[0].includes(bulkOp))
+                    if (nbo[0].params.length && (!nbo[0].params[0].length || nbo[0].params[0].includes(bulkOp)))
                         bulkOpDisabled = true;
                 }
             }
