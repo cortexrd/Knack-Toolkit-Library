@@ -14,8 +14,8 @@
             margin-bottom: 20px;
         }
 
-        .form-control{
-            width: 30em!important;
+        .form-control {
+            width: 30em !important;
         }
 
         /* Style adjustments for inline label-input pairs */
@@ -445,29 +445,12 @@
             <fieldset class="form-group border p-3">
                 <legend>Advanced Settings</legend>
 
-                <!-- Advanced Settings' Sub-Group: Kiosk Settings -->
+                <!-- Sub-Group: iFrameWnd Settings -->
                 <fieldset class="form-group border p-3">
-                    <legend>Kiosk Settings</legend>
-
-                    <div class="form-group">
-                        <label>ADD_REFRESH Button Config</label>
-                        <input type="text" class="form-control" id="addRefreshHtml" placeholder="HTML">
-                        <input type="text" class="form-control" id="addRefreshId" placeholder="ID">
-                        <input type="text" class="form-control" id="addRefreshHref" placeholder="Href Function">
-                    </div>
-
-                    <div class="form-group">
-                        <label>ADD_BACK Button Config</label>
-                        <input type="text" class="form-control" id="addBackHtml" placeholder="HTML">
-                        <input type="text" class="form-control" id="addBackId" placeholder="ID">
-                        <input type="text" class="form-control" id="addBackHref" placeholder="Href Function">
-                    </div>
-
-                    <div class="form-group">
-                        <label>ADD_DONE Button Config</label>
-                        <input type="text" class="form-control" id="addDoneHtml" placeholder="HTML">
-                        <input type="text" class="form-control" id="addDoneId" placeholder="ID">
-                        <input type="text" class="form-control" id="addDoneHref" placeholder="Href Function">
+                    <legend>iFrameWnd Settings</legend>
+                    <div class="checkbox-inline">
+                        <label for="sendHeartbeat">Send Heartbeat</label>
+                        <input type="checkbox" id="sendHeartbeat" checked>
                     </div>
                 </fieldset>
 
@@ -512,12 +495,29 @@
                     </div>
                 </fieldset>
 
-                <!-- Sub-Group: iFrameWnd Settings -->
+                <!-- Advanced Settings' Sub-Group: Kiosk Settings -->
                 <fieldset class="form-group border p-3">
-                    <legend>iFrameWnd Settings</legend>
-                    <div class="checkbox-inline">
-                        <label for="sendHeartbeat">Send Heartbeat</label>
-                        <input type="checkbox" id="sendHeartbeat" checked>
+                    <legend>Kiosk Settings</legend>
+
+                    <div class="form-group">
+                        <label>ADD_REFRESH Button Config</label>
+                        <input type="text" class="form-control" id="addRefreshHtml" placeholder="HTML">
+                        <input type="text" class="form-control" id="addRefreshId" placeholder="ID">
+                        <input type="text" class="form-control" id="addRefreshHref" placeholder="Href Function">
+                    </div>
+
+                    <div class="form-group">
+                        <label>ADD_BACK Button Config</label>
+                        <input type="text" class="form-control" id="addBackHtml" placeholder="HTML">
+                        <input type="text" class="form-control" id="addBackId" placeholder="ID">
+                        <input type="text" class="form-control" id="addBackHref" placeholder="Href Function">
+                    </div>
+
+                    <div class="form-group">
+                        <label>ADD_DONE Button Config</label>
+                        <input type="text" class="form-control" id="addDoneHtml" placeholder="HTML">
+                        <input type="text" class="form-control" id="addDoneId" placeholder="ID">
+                        <input type="text" class="form-control" id="addDoneHref" placeholder="Href Function">
                     </div>
                 </fieldset>
 
@@ -611,107 +611,107 @@
 window.APP_VERSION = '1.0.0';
 
 window.ktlReady = function (appInfo = {}) {
-    var ktl = new Ktl($, appInfo);
+        var ktl = new Ktl($, appInfo);
 
-    ktl.core.setCfg({
-        developerNames: [${developerNames.join(', ')}],
-        developerEmail: '${developerEmail}',
-        devOptionsPin: '${devOptionsPin}',
-        enabled: {
-            versionInfo: {
-                viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
-                viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
-                viShowToRoles: ['Developer'],
-                viPosX: '${enabled.versionInfo.viPosX}',
-                viPosY: '${enabled.versionInfo.viPosY}',
-                viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
-                viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
-                viOpacity: ${enabled.versionInfo.viOpacity},
-                viOpacityHover: ${enabled.versionInfo.viOpacityHover}
-            },
-            showMenuInTitle: ${enabled.showMenuInTitle},
-            selTextOnFocus: ${enabled.selTextOnFocus},
-            // Include the rest of the enabled configurations...
-        }
-    });
-
-    ktl.scenes.setCfg({
-            versionDisplayName: '${versionDisplayName}',
-            idleWatchDogDelay: ${idleWatchDogDelay},
-            spinnerCtrDelay: ${spinnerCtrDelay},
-            spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
-        });
-
-    ktl.views.setCfg({
-            quickToggleParams: {
-                bgColorTrue: '${quickToggleParams.bgColorTrue}',
-                bgColorFalse: '${quickToggleParams.bgColorFalse}',
-                bgColorPending: '${quickToggleParams.bgColorPending}',
-                showSpinner: ${quickToggleParams.showSpinner},
-                showNotification: ${quickToggleParams.showNotification},
-            },
-            headerAlignment: ${document.getElementById('headerAlignment').checked},
-            ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
-            ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
-            hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
-            hscGlobal: ${document.getElementById('hscGlobal').checked},
-        });
-
-    ktl.fields.setCfg({
-            textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
-            textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
-            horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
-            horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
-            barcodeTimeout: ${fieldsSettings.barcodeTimeout},
-            barcodeMinLength: ${fieldsSettings.barcodeMinLength},
-            convertNumToTel: ${fieldsSettings.convertNumToTel},
-        });
-
-    ktl.persistentForm.setCfg({
-            scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
-            fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
-        });
-
-    ktl.systemColors.setCfg({
-            inlineEditBkgColor: document.getElementById("inlineEditBkgColor").value,
-            inlineEditFontWeight: document.getElementById("inlineEditFontWeight").value,
-            tableRowHoverBkgColor: document.getElementById("tableRowHoverBkgColor").value,
-        });
-
-    if (!window.self.frameElement) { //Features that do not apply to the iFrameWnd.
-            ktl.scenes.setCfg({
-                ktlKioskButtons: {
-                    ADD_REFRESH: {
-                        html: \`${addRefreshHtml}\`,
-                        id: '${addRefreshId}',
-                        href: ${addRefreshHref},
-                        scenesToExclude: [],
-                    },
-                    ADD_BACK: {
-                        // Repeat structure for ADD_BACK
-                    },
-                    ADD_DONE: {
-                        // Repeat structure for ADD_DONE
-                    },
+        ktl.core.setCfg({
+            developerNames: [${developerNames.join(', ')}],
+            developerEmail: '${developerEmail}',
+            devOptionsPin: '${devOptionsPin}',
+            enabled: {
+                versionInfo: {
+                    viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
+                    viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
+                    viShowToRoles: ['Developer'],
+                    viPosX: '${enabled.versionInfo.viPosX}',
+                    viPosY: '${enabled.versionInfo.viPosY}',
+                    viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
+                    viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
+                    viOpacity: ${enabled.versionInfo.viOpacity},
+                    viOpacityHover: ${enabled.versionInfo.viOpacityHover}
                 },
-            });
-        }
-
-    ktl.log.setCfg({
-            logEnabled: {
-                critical: ${logEnabled.critical},
-                error: ${logEnabled.error},
-                serverErr: ${logEnabled.serverErr},
-                warning: ${logEnabled.warning},
-                info: ${logEnabled.info},
-                debug: ${logEnabled.debug},
-                login: ${logEnabled.login},
-                activity: ${logEnabled.activity},
-                navigation: ${logEnabled.navigation},
+                showMenuInTitle: ${enabled.showMenuInTitle},
+                selTextOnFocus: ${enabled.selTextOnFocus},
+                // Include the rest of the enabled configurations...
             }
         });
 
-    // KTL Setup - END
+        ktl.scenes.setCfg({
+                versionDisplayName: '${versionDisplayName}',
+                idleWatchDogDelay: ${idleWatchDogDelay},
+                spinnerCtrDelay: ${spinnerCtrDelay},
+                spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
+            });
+
+        ktl.views.setCfg({
+                quickToggleParams: {
+                    bgColorTrue: '${quickToggleParams.bgColorTrue}',
+                    bgColorFalse: '${quickToggleParams.bgColorFalse}',
+                    bgColorPending: '${quickToggleParams.bgColorPending}',
+                    showSpinner: ${quickToggleParams.showSpinner},
+                    showNotification: ${quickToggleParams.showNotification},
+                },
+                headerAlignment: ${document.getElementById('headerAlignment').checked},
+                ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
+                ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
+                hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
+                hscGlobal: ${document.getElementById('hscGlobal').checked},
+            });
+
+        ktl.fields.setCfg({
+                textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
+                textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
+                horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
+                horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
+                barcodeTimeout: ${fieldsSettings.barcodeTimeout},
+                barcodeMinLength: ${fieldsSettings.barcodeMinLength},
+                convertNumToTel: ${fieldsSettings.convertNumToTel},
+            });
+
+        ktl.persistentForm.setCfg({
+                scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
+                fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
+            });
+
+        ktl.systemColors.setCfg({
+                inlineEditBkgColor: document.getElementById("inlineEditBkgColor").value,
+                inlineEditFontWeight: document.getElementById("inlineEditFontWeight").value,
+                tableRowHoverBkgColor: document.getElementById("tableRowHoverBkgColor").value,
+            });
+
+        if (!window.self.frameElement) { //Features that do not apply to the iFrameWnd.
+                ktl.scenes.setCfg({
+                    ktlKioskButtons: {
+                        ADD_REFRESH: {
+                            html: \`${addRefreshHtml}\`,
+                            id: '${addRefreshId}',
+                            href: ${addRefreshHref},
+                            scenesToExclude: [],
+                        },
+                        ADD_BACK: {
+                            // Repeat structure for ADD_BACK
+                        },
+                        ADD_DONE: {
+                            // Repeat structure for ADD_DONE
+                        },
+                    },
+                });
+            }
+
+        ktl.log.setCfg({
+                logEnabled: {
+                    critical: ${logEnabled.critical},
+                    error: ${logEnabled.error},
+                    serverErr: ${logEnabled.serverErr},
+                    warning: ${logEnabled.warning},
+                    info: ${logEnabled.info},
+                    debug: ${logEnabled.debug},
+                    login: ${logEnabled.login},
+                    activity: ${logEnabled.activity},
+                    navigation: ${logEnabled.navigation},
+                }
+            });
+
+        // KTL Setup - END
 };
 `;
 
