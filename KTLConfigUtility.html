@@ -331,25 +331,114 @@
             <!-- Group: Views Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Views Settings</legend>
-                <!-- Inputs for views settings -->
+
+                <fieldset class="form-group border p-3">
+                    <legend>Quick Toggle Params</legend>
+                    <div class="form-inline">
+                        <label for="bgColorTrue">Background Color (True)</label>
+                        <input type="text" class="form-control" id="bgColorTrue" value="#39d91f">
+                    </div>
+                    <div class="form-inline">
+                        <label for="bgColorFalse">Background Color (False)</label>
+                        <input type="text" class="form-control" id="bgColorFalse" value="#f04a3b">
+                    </div>
+                    <div class="form-inline">
+                        <label for="bgColorPending">Background Color (Pending)</label>
+                        <input type="text" class="form-control" id="bgColorPending" value="#dd08">
+                    </div>
+                    <div class="checkbox-inline">
+                        <label for="showSpinner">Show Spinner</label>
+                        <input type="checkbox" id="showSpinner" checked>
+                    </div>
+                    <div class="checkbox-inline">
+                        <label for="showNotification">Show Notification</label>
+                        <input type="checkbox" id="showNotification" checked>
+                    </div>
+                </fieldset>
+
+                <div class="checkbox-inline">
+                    <label for="headerAlignment">Header Alignment</label>
+                    <input type="checkbox" id="headerAlignment" checked>
+                </div>
+                <div class="form-inline">
+                    <label for="ktlFlashRate">KTL Flash Rate</label>
+                    <input type="text" class="form-control" id="ktlFlashRate" value="1s">
+                </div>
+                <div class="form-inline">
+                    <label for="ktlOutlineColor">KTL Outline Color</label>
+                    <input type="text" class="form-control" id="ktlOutlineColor" value="green">
+                </div>
+                <div class="form-inline">
+                    <label for="hscCollapsedColumnsWidth">HSC Collapsed Columns Width (in pixels)</label>
+                    <input type="number" class="form-control" id="hscCollapsedColumnsWidth" value="5">
+                </div>
+                <div class="checkbox-inline">
+                    <label for="hscGlobal">HSC Global</label>
+                    <input type="checkbox" id="hscGlobal" checked>
+                </div>
             </fieldset>
 
             <!-- Group: Fields Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Fields Settings</legend>
-                <!-- Inputs for fields settings -->
+                <div class="form-inline">
+                    <label for="textAsNumeric">Text As Numeric (comma-separated field IDs)</label>
+                    <input type="text" class="form-control" id="textAsNumeric" placeholder="Field IDs">
+                </div>
+                <div class="form-inline">
+                    <label for="textAsNumericExcludeScenes">Exclude Scenes (comma-separated scene IDs)</label>
+                    <input type="text" class="form-control" id="textAsNumericExcludeScenes" placeholder="Scene IDs">
+                </div>
+                <div class="checkbox-inline">
+                    <label for="horizontalRadioButtons">Horizontal Radio Buttons</label>
+                    <input type="checkbox" id="horizontalRadioButtons">
+                </div>
+                <div class="checkbox-inline">
+                    <label for="horizontalCheckboxes">Horizontal Checkboxes</label>
+                    <input type="checkbox" id="horizontalCheckboxes">
+                </div>
+                <div class="form-inline">
+                    <label for="barcodeTimeout">Barcode Timeout (seconds)</label>
+                    <input type="number" class="form-control" id="barcodeTimeout" value="20">
+                </div>
+                <div class="form-inline">
+                    <label for="barcodeMinLength">Barcode Minimum Length</label>
+                    <input type="number" class="form-control" id="barcodeMinLength" value="3">
+                </div>
+                <div class="checkbox-inline">
+                    <label for="convertNumToTel">Convert Number to Tel</label>
+                    <input type="checkbox" id="convertNumToTel" checked>
+                </div>
             </fieldset>
 
             <!-- Group: Persistent Forms Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Persistent Forms Settings</legend>
-                <!-- Inputs for persistent forms settings -->
+                <div class="form-inline">
+                    <label for="persistentFormsScenesToExclude">Scenes to Exclude (comma-separated IDs)</label>
+                    <input type="text" class="form-control" id="persistentFormsScenesToExclude" placeholder="1,2,3">
+                </div>
+                <div class="form-inline">
+                    <label for="persistentFormsFieldsToExclude">Fields to Exclude (comma-separated IDs)</label>
+                    <input type="text" class="form-control" id="persistentFormsFieldsToExclude" placeholder="field_1,field_2">
+                </div>
             </fieldset>
 
             <!-- Group: System Colors Settings -->
             <fieldset class="form-group border p-3">
                 <legend>System Colors Settings</legend>
-                <!-- Inputs for system colors settings -->
+                <div class="form-inline">
+                    <label for="inlineEditBkgColor">Inline Edit Background Color</label>
+                    <input type="text" class="form-control" id="inlineEditBkgColor" placeholder="e.g., #ffffff or paleLowSatClrTransparent">
+                </div>
+                <div class="form-inline">
+                    <label for="inlineEditFontWeight">Inline Edit Font Weight</label>
+                    <input type="text" class="form-control" id="inlineEditFontWeight" placeholder="e.g., bold or 600">
+                </div>
+                <div class="form-inline">
+                    <label for="tableRowHoverBkgColor">Table Row Hover Background Color</label>
+                    <input type="text" class="form-control" id="tableRowHoverBkgColor" placeholder="e.g., #a0454b75 or mistyrose">
+                </div>
             </fieldset>
 
             <!-- Group: Advanced Settings -->
@@ -404,6 +493,31 @@
             let spinnerCtrDelay = document.getElementById('spinnerCtrDelay').value;
             let spinnerWdExcludeScn = document.getElementById('spinnerWdExcludeScn').value.split(',').map(scn => scn.trim());
 
+            const quickToggleParams = {
+                bgColorTrue: document.getElementById('bgColorTrue').value,
+                bgColorFalse: document.getElementById('bgColorFalse').value,
+                bgColorPending: document.getElementById('bgColorPending').value,
+                showSpinner: document.getElementById('showSpinner').checked,
+                showNotification: document.getElementById('showNotification').checked,
+            };
+
+            const fieldsSettings = {
+                textAsNumeric: document.getElementById('textAsNumeric').value.split(',').map(id => id.trim()),
+                textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(',').map(id => id.trim()),
+                horizontalRadioButtons: document.getElementById('horizontalRadioButtons').checked,
+                horizontalCheckboxes: document.getElementById('horizontalCheckboxes').checked,
+                barcodeTimeout: parseInt(document.getElementById('barcodeTimeout').value, 10),
+                barcodeMinLength: parseInt(document.getElementById('barcodeMinLength').value, 10),
+                convertNumToTel: document.getElementById('convertNumToTel').checked,
+            };
+
+            const persistentFormsSettings = {
+                scenesToExclude: document.getElementById('persistentFormsScenesToExclude').value.split(',').map(id => id.trim()),
+                fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(',').map(id => id.trim()),
+            };
+
+
+
             // Generating the configuration script
             let configScript = `
 window.APP_VERSION = '1.0.0';
@@ -439,6 +553,43 @@ window.ktlReady = function (appInfo = {}) {
                                     spinnerCtrDelay: ${spinnerCtrDelay},
                                     spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
                                 });
+
+                            ktl.views.setCfg({
+                                    quickToggleParams: {
+                                        bgColorTrue: '${quickToggleParams.bgColorTrue}',
+                                        bgColorFalse: '${quickToggleParams.bgColorFalse}',
+                                        bgColorPending: '${quickToggleParams.bgColorPending}',
+                                        showSpinner: ${quickToggleParams.showSpinner},
+                                        showNotification: ${quickToggleParams.showNotification},
+                                    },
+                                    headerAlignment: ${document.getElementById('headerAlignment').checked},
+                                    ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
+                                    ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
+                                    hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
+                                    hscGlobal: ${document.getElementById('hscGlobal').checked},
+                                });
+
+                            ktl.fields.setCfg({
+                                    textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
+                                    textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
+                                    horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
+                                    horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
+                                    barcodeTimeout: ${fieldsSettings.barcodeTimeout},
+                                    barcodeMinLength: ${fieldsSettings.barcodeMinLength},
+                                    convertNumToTel: ${fieldsSettings.convertNumToTel},
+                                });
+
+                            ktl.persistentForm.setCfg({
+                                    scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
+                                    fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
+                                });
+
+                            ktl.systemColors.setCfg({
+                                    inlineEditBkgColor: document.getElementById("inlineEditBkgColor").value,
+                                    inlineEditFontWeight: document.getElementById("inlineEditFontWeight").value,
+                                    tableRowHoverBkgColor: document.getElementById("tableRowHoverBkgColor").value,
+                                });
+
 
                             // KTL Setup - END                            
 };
