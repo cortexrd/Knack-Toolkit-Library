@@ -74,46 +74,55 @@
 
                 <!-- Sub-Group: Feature Switches -->
                 <fieldset class="form-group border p-3">
-                    <legend>Version Info Bar (VIB) Settings</legend>
-                    <div class="checkbox-group">
+                    <legend>Version Info Bar Settings</legend>
+                    <div class="checkbox-inline">
                         <label for="viShowAppInfo">Show App Info</label>
                         <input type="checkbox" id="viShowAppInfo" checked><br>
-
+                    </div>
+                    <div class="checkbox-inline">
                         <label for="viShowKtlInfo">Show KTL Info</label>
                         <input type="checkbox" id="viShowKtlInfo" checked><br>
-
-                        <label for="viShowToRoles">Show VIB to these roles only</label>
+                    </div>
+                    <div class="form-inline">
+                        <label for="viShowToRoles">Show to these roles only</label>
                         <input type="text" class="form-control" id="viShowToRoles" placeholder="Developer" value="Developer">
-
+                    </div>
+                    <div class="form-inline">
                         <label for="viPosX">Default Horizontal Pos</label>
                         <select class="form-control" id="viPosX">
                             <option value="right">Right</option>
                             <option value="center">Center</option>
                             <option value="left">Left</option>
                         </select>
-
+                    </div>
+                    <div class="form-inline">
                         <label for="viPosY">Default Vertical Position</label>
                         <select class="form-control" id="viPosY">
                             <option value="top">Top</option>
                             <option value="bottom">Bottom</option>
                         </select>
-
+                    </div>
+                    <div class="form-inline">
                         <label for="viPosXMobile">Mobile Horizontal Pos</label>
                         <select class="form-control" id="viPosXMobile">
                             <option value="center">Center</option>
                             <option value="left">Left</option>
                             <option value="right">Right</option>
                         </select>
-
+                    </div>
+                    <div class="form-inline">
                         <label for="viPosYMobile">Mobile Vertical Position</label>
                         <select class="form-control" id="viPosYMobile">
                             <option value="bottom">Bottom</option>
                             <option value="top">Top</option>
                         </select>
+                    </div>
 
+                    <div class="form-inline">
                         <label for="viOpacity">Default Opacity</label>
                         <input type="number" class="form-control" id="viOpacity" placeholder="50" value="50">
-
+                    </div>
+                    <div class="form-inline">
                         <label for="viOpacityHover">Opacity on Hover</label>
                         <input type="number" class="form-control" id="viOpacityHover" placeholder="100" value="100">
                     </div>
@@ -122,9 +131,14 @@
                 <!-- Sub-Group: Feature Switches -->
                 <fieldset class="form-group border p-3">
                     <legend>Feature Switches</legend>
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="showMenuInTitle" checked> Show Menu in Title<br>
-                        <input type="checkbox" id="selTextOnFocus" checked> Select Text on Focus<br>
+                    <div class="checkbox-inline">
+                        <label for="showMenuInTitle">Show Menu in Title</label>
+                        <input type="checkbox" id="showMenuInTitle" checked><br>
+                    </div>
+                    <div class="checkbox-inline">
+                        <label for="selTextOnFocus">Select Text on Focus</label>
+                        <input type="checkbox" id="selTextOnFocus" checked><br>
+                    </div>
                         <!-- Additional feature switches here -->
                     </div>
                 </fieldset>
@@ -224,34 +238,34 @@
 window.APP_VERSION = '1.0.0';
 
 window.ktlReady = function (appInfo = {}) {
-                        var ktl = new Ktl($, appInfo);
+                            var ktl = new Ktl($, appInfo);
 
-                        ktl.core.setCfg({
-                            developerNames: [${developerNames.join(', ')}],
-                            developerEmail: '${developerEmail}',
-                            devOptionsPin: '${devOptionsPin}',
-                            enabled: {
-                                versionInfo: {
-                                    viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
-                                    viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
-                                    viShowToRoles: ['Developer'],
-                                    viPosX: '${enabled.versionInfo.viPosX}',
-                                    viPosY: '${enabled.versionInfo.viPosY}',
-                                    viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
-                                    viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
-                                    viOpacity: ${enabled.versionInfo.viOpacity},
-                                    viOpacityHover: ${enabled.versionInfo.viOpacityHover}
-                                },
-                                showMenuInTitle: ${enabled.showMenuInTitle},
-                                selTextOnFocus: ${enabled.selTextOnFocus},
-                                // Include the rest of the enabled configurations...
-                            }
-                        });
+                            ktl.core.setCfg({
+                                developerNames: [${developerNames.join(', ')}],
+                                developerEmail: '${developerEmail}',
+                                devOptionsPin: '${devOptionsPin}',
+                                enabled: {
+                                    versionInfo: {
+                                        viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
+                                        viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
+                                        viShowToRoles: ['Developer'],
+                                        viPosX: '${enabled.versionInfo.viPosX}',
+                                        viPosY: '${enabled.versionInfo.viPosY}',
+                                        viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
+                                        viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
+                                        viOpacity: ${enabled.versionInfo.viOpacity},
+                                        viOpacityHover: ${enabled.versionInfo.viOpacityHover}
+                                    },
+                                    showMenuInTitle: ${enabled.showMenuInTitle},
+                                    selTextOnFocus: ${enabled.selTextOnFocus},
+                                    // Include the rest of the enabled configurations...
+                                }
+                            });
 
-                        // KTL Setup - END
-                        // Additional JavaScript based on user inputs goes here...
+                            // KTL Setup - END
+                            // Additional JavaScript based on user inputs goes here...
 };
-                        `;
+                            `;
 
             // Display the generated configuration script
             document.getElementById('generatedConfig').value = configScript;
