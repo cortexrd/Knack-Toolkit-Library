@@ -17,7 +17,7 @@
 </head>
 <body>
     <div class="container">
-        <h2>KTL Configuration Form</h2>
+        <h2>KTL Configuration Utility</h2>
         <button type="button" id="saveToFileBtn" class="btn btn-primary">Save to File</button>
         <button type="button" id="loadFromFileBtn" class="btn btn-primary">Load from File</button>
         <input type="file" id="fileInput" accept=".ktlcfg" style="display:none;">
@@ -42,15 +42,35 @@
 
             <!-- Group: Main KTL Feature Switches -->
             <fieldset class="form-group border p-3">
-                <legend>Main KTL Feature Switches</legend>
+                <legend>General Feature Settings</legend>
 
-                <!-- Sub-Group: Version Info Settings -->
+                <!-- Sub-Group: Feature Switches -->
                 <fieldset class="form-group border p-3">
                     <legend>Version Info Settings</legend>
                     <div class="checkbox-group">
                         <input type="checkbox" id="viShowAppInfo" checked> Show App Info<br>
                         <input type="checkbox" id="viShowKtlInfo" checked> Show KTL Info<br>
-                        <!-- Additional versionInfo settings here -->
+                        <input type="text" class="form-control" id="viShowToRoles" placeholder="Developer" value="Developer">
+                        <select class="form-control" id="viPosX">
+                            <option value="right">Right</option>
+                            <option value="center">Center</option>
+                            <option value="left">Left</option>
+                        </select>
+                        <select class="form-control" id="viPosY">
+                            <option value="top">Top</option>
+                            <option value="bottom">Bottom</option>
+                        </select>
+                        <select class="form-control" id="viPosXMobile">
+                            <option value="center">Center</option>
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                        </select>
+                        <select class="form-control" id="viPosYMobile">
+                            <option value="bottom">Bottom</option>
+                            <option value="top">Top</option>
+                        </select>
+                        <input type="number" class="form-control" id="viOpacity" placeholder="50" value="50">
+                        <input type="number" class="form-control" id="viOpacityHover" placeholder="100" value="100">
                     </div>
                 </fieldset>
 
@@ -118,7 +138,7 @@
             <button type="button" class="btn btn-primary" id="generateConfigBtn">Generate Configuration</button>
         </form>
 
-        <textarea id="generatedConfig" rows="10" class="form-control" style="margin-top: 20px;"></textarea>
+        <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px;"></textarea>
     </div>
 
     <script>
@@ -141,8 +161,10 @@
                     viOpacity: 50, // Example, make dynamic as needed
                     viOpacityHover: 100 // Example, make dynamic as needed
                 },
+
                 showMenuInTitle: document.getElementById('showMenuInTitle').checked,
                 selTextOnFocus: document.getElementById('selTextOnFocus').checked,
+
                 // Continue collecting other flat feature switches
                 bulkOps: {
                     bulkEdit: true, // Assuming static for this example
@@ -198,11 +220,24 @@ window.ktlReady = function (appInfo = {}) {
                     filename += '.ktlcfg'; // Ensure the file has the correct extension
                 }
 
+                // Collect all form inputs here
                 const formInputs = {
                     developerNames: document.getElementById('developerNames').value.split(',').map(name => name.trim()),
                     developerEmail: document.getElementById('developerEmail').value,
                     devOptionsPin: document.getElementById('devOptionsPin').value,
-                    // Add all other form fields here...
+                    // Version Info
+                    versionInfo: {
+                        viShowAppInfo: document.getElementById('viShowAppInfo').checked,
+                        viShowKtlInfo: document.getElementById('viShowKtlInfo').checked,
+                        viShowToRoles: document.getElementById('viShowToRoles').value.split(',').map(role => role.trim()),
+                        viPosX: document.getElementById('viPosX').value,
+                        viPosY: document.getElementById('viPosY').value,
+                        viPosXMobile: document.getElementById('viPosXMobile').value,
+                        viPosYMobile: document.getElementById('viPosYMobile').value,
+                        viOpacity: parseInt(document.getElementById('viOpacity').value, 10),
+                        viOpacityHover: parseInt(document.getElementById('viOpacityHover').value, 10),
+                    },
+                    // Include additional configurations as needed...
                 };
 
                 // Convert form data to a JSON string
@@ -240,16 +275,33 @@ window.ktlReady = function (appInfo = {}) {
                     try {
                         const config = JSON.parse(contents);
                         if (config) {
+                            // Populate the form with loaded configuration
+                            document.getElementById('developerNames').value = config.developerNames.join(', ');
+                            document.getElementById('developerEmail').value = config.developerEmail;
+                            document.getElementById('devOptionsPin').value = config.devOptionsPin;
+                            // Version Info
+                            document.getElementById('viShowAppInfo').checked = config.versionInfo.viShowAppInfo;
+                            document.getElementById('viShowKtlInfo').checked = config.versionInfo.viShowKtlInfo;
+                            document.getElementById('viShowToRoles').value = config.versionInfo.viShowToRoles.join(', ');
+                            document.getElementById('viPosX').value = config.versionInfo.viPosX;
+                            document.getElementById('viPosY').value = config.versionInfo.viPosY;
+                            document.getElementById('viPosXMobile').value = config.versionInfo.viPosXMobile;
+                            document.getElementById('viPosYMobile').value = config.versionInfo.viPosYMobile;
+                            document.getElementById('viOpacity').value = config.versionInfo.viOpacity;
+                            document.getElementById('viOpacityHover').value = config.versionInfo.viOpacityHover;
+                            // Handle additional configurations as necessary...
+
+                            // Feature Switches
+                            document.getElementById('showMenuInTitle').checked = config.showMenuInTitle ?? false;
+                            document.getElementById('selTextOnFocus').checked = config.selTextOnFocus ?? false;
+
+
+
                             // Handle developerNames differently based on its type
                             if (Array.isArray(config.developerNames)) {
-                                // If developerNames is an array, join it into a string
                                 document.getElementById('developerNames').value = config.developerNames.join(', ');
-                            } else if (typeof config.developerNames === 'string') {
-                                // If developerNames is a string, use it directly
-                                document.getElementById('developerNames').value = config.developerNames;
                             } else {
-                                // Handle other cases or set a default value
-                                document.getElementById('developerNames').value = '';
+                                alert('Error - developerNames not an array.');
                             }
 
                             // Populate other form fields
