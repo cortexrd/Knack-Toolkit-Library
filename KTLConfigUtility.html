@@ -13,6 +13,34 @@
         h2 {
             margin-bottom: 20px;
         }
+
+        /* Style adjustments for inline label-input pairs */
+        .form-inline {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px; /* Spacing between each form group */
+        }
+
+            .form-inline label {
+                margin-right: 10px; /* Spacing between label and input */
+            }
+
+        /* Adjustments for checkbox groups to align items */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .checkbox-inline {
+            display: flex;
+            align-items: center; /* Align checkbox and its label */
+            margin-bottom: 5px; /* Spacing between each checkbox */
+        }
+
+            .checkbox-inline label {
+                margin-right: 5px;
+                margin-bottom: 0; /* Override Bootstrap's default bottom margin for labels */
+            }
     </style>
 </head>
 <body>
@@ -46,30 +74,47 @@
 
                 <!-- Sub-Group: Feature Switches -->
                 <fieldset class="form-group border p-3">
-                    <legend>Version Info Settings</legend>
+                    <legend>Version Info Bar (VIB) Settings</legend>
                     <div class="checkbox-group">
-                        <input type="checkbox" id="viShowAppInfo" checked> Show App Info<br>
-                        <input type="checkbox" id="viShowKtlInfo" checked> Show KTL Info<br>
+                        <label for="viShowAppInfo">Show App Info</label>
+                        <input type="checkbox" id="viShowAppInfo" checked><br>
+
+                        <label for="viShowKtlInfo">Show KTL Info</label>
+                        <input type="checkbox" id="viShowKtlInfo" checked><br>
+
+                        <label for="viShowToRoles">Show VIB to these roles only</label>
                         <input type="text" class="form-control" id="viShowToRoles" placeholder="Developer" value="Developer">
+
+                        <label for="viPosX">Default Horizontal Pos</label>
                         <select class="form-control" id="viPosX">
                             <option value="right">Right</option>
                             <option value="center">Center</option>
                             <option value="left">Left</option>
                         </select>
+
+                        <label for="viPosY">Default Vertical Position</label>
                         <select class="form-control" id="viPosY">
                             <option value="top">Top</option>
                             <option value="bottom">Bottom</option>
                         </select>
+
+                        <label for="viPosXMobile">Mobile Horizontal Pos</label>
                         <select class="form-control" id="viPosXMobile">
                             <option value="center">Center</option>
                             <option value="left">Left</option>
                             <option value="right">Right</option>
                         </select>
+
+                        <label for="viPosYMobile">Mobile Vertical Position</label>
                         <select class="form-control" id="viPosYMobile">
                             <option value="bottom">Bottom</option>
                             <option value="top">Top</option>
                         </select>
+
+                        <label for="viOpacity">Default Opacity</label>
                         <input type="number" class="form-control" id="viOpacity" placeholder="50" value="50">
+
+                        <label for="viOpacityHover">Opacity on Hover</label>
                         <input type="number" class="form-control" id="viOpacityHover" placeholder="100" value="100">
                     </div>
                 </fieldset>
@@ -153,13 +198,13 @@
                 versionInfo: {
                     viShowAppInfo: document.getElementById('viShowAppInfo').checked,
                     viShowKtlInfo: document.getElementById('viShowKtlInfo').checked,
-                    viShowToRoles: ['Developer'], // Example, modify as needed
-                    viPosX: 'right', // Example, make dynamic as needed
-                    viPosY: 'top', // Example, make dynamic as needed
-                    viPosXMobile: 'center', // Example, make dynamic as needed
-                    viPosYMobile: 'bottom', // Example, make dynamic as needed
-                    viOpacity: 50, // Example, make dynamic as needed
-                    viOpacityHover: 100 // Example, make dynamic as needed
+                    viShowToRoles: ['Developer'],
+                    viPosX: 'right',
+                    viPosY: 'top',
+                    viPosXMobile: 'center',
+                    viPosYMobile: 'bottom',
+                    viOpacity: 50,
+                    viOpacityHover: 100
                 },
 
                 showMenuInTitle: document.getElementById('showMenuInTitle').checked,
@@ -179,34 +224,34 @@
 window.APP_VERSION = '1.0.0';
 
 window.ktlReady = function (appInfo = {}) {
-                    var ktl = new Ktl($, appInfo);
+                        var ktl = new Ktl($, appInfo);
 
-                    ktl.core.setCfg({
-                        developerNames: [${developerNames.join(', ')}],
-                        developerEmail: '${developerEmail}',
-                        devOptionsPin: '${devOptionsPin}',
-                        enabled: {
-                            versionInfo: {
-                                viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
-                                viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
-                                viShowToRoles: ['Developer'],
-                                viPosX: '${enabled.versionInfo.viPosX}',
-                                viPosY: '${enabled.versionInfo.viPosY}',
-                                viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
-                                viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
-                                viOpacity: ${enabled.versionInfo.viOpacity},
-                                viOpacityHover: ${enabled.versionInfo.viOpacityHover}
-                            },
-                            showMenuInTitle: ${enabled.showMenuInTitle},
-                            selTextOnFocus: ${enabled.selTextOnFocus},
-                            // Include the rest of the enabled configurations...
-                        }
-                    });
+                        ktl.core.setCfg({
+                            developerNames: [${developerNames.join(', ')}],
+                            developerEmail: '${developerEmail}',
+                            devOptionsPin: '${devOptionsPin}',
+                            enabled: {
+                                versionInfo: {
+                                    viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
+                                    viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
+                                    viShowToRoles: ['Developer'],
+                                    viPosX: '${enabled.versionInfo.viPosX}',
+                                    viPosY: '${enabled.versionInfo.viPosY}',
+                                    viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
+                                    viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
+                                    viOpacity: ${enabled.versionInfo.viOpacity},
+                                    viOpacityHover: ${enabled.versionInfo.viOpacityHover}
+                                },
+                                showMenuInTitle: ${enabled.showMenuInTitle},
+                                selTextOnFocus: ${enabled.selTextOnFocus},
+                                // Include the rest of the enabled configurations...
+                            }
+                        });
 
-                    // KTL Setup - END
-                    // Additional JavaScript based on user inputs goes here...
+                        // KTL Setup - END
+                        // Additional JavaScript based on user inputs goes here...
 };
-                    `;
+                        `;
 
             // Display the generated configuration script
             document.getElementById('generatedConfig').value = configScript;
