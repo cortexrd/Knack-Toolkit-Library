@@ -8554,8 +8554,11 @@ function Ktl($, appInfo) {
                                             apiData[dstFieldId] = [srcRecId];
                                         else {
                                             const data = srcRecord.attributes[`${srcFieldId}_raw`];
-                                            if (data && data.length) {
-                                                apiData[dstFieldId] = data;
+                                            if (data) {
+                                                if (Array.isArray(data) && data.length)
+                                                    apiData[dstFieldId] = data;
+                                                else
+                                                    apiData[dstFieldId] = data;
                                             }
                                         }
                                     }
