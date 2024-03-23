@@ -920,10 +920,92 @@ window.ktlReady = function (appInfo = {}) {
                             document.getElementById('viOpacityHover').value = config.versionInfo.viOpacityHover;
                             // Handle additional configurations as necessary...
 
-                            // Feature Switches
-                            document.getElementById('showMenuInTitle').checked = config.showMenuInTitle ?? false;
-                            document.getElementById('selTextOnFocus').checked = config.selTextOnFocus ?? false;
+                            // Feature Switches and other settings
+                            Object.keys(config.featureSwitches).forEach(key => {
+                                const checkbox = document.getElementById(key);
+                                if (checkbox) checkbox.checked = config.featureSwitches[key];
+                            });
 
+                            // Bulk Operations
+                            Object.keys(config.bulkOps).forEach(key => {
+                                const checkbox = document.getElementById(key);
+                                if (checkbox) checkbox.checked = config.bulkOps[key];
+                            });
+
+                            // Popup Style
+                            document.getElementById('popupStyleSuccess').value = config.popupStyle.success;
+                            document.getElementById('popupStyleWarning').value = config.popupStyle.warning;
+                            document.getElementById('popupStyleError').value = config.popupStyle.error;
+
+                            // Tooltip Styles
+                            Object.keys(config.tooltipStyles).forEach(key => {
+                                document.getElementById(key).value = config.tooltipStyles[key];
+                            });
+
+                            // Scenes Settings
+                            document.getElementById('versionDisplayName').value = config.scenesSettings.versionDisplayName;
+                            document.getElementById('idleWatchDogDelay').value = config.scenesSettings.idleWatchDogDelay;
+                            document.getElementById('spinnerCtrDelay').value = config.scenesSettings.spinnerCtrDelay;
+                            document.getElementById('spinnerWdExcludeScn').value = config.scenesSettings.spinnerWdExcludeScn.join(', ');
+
+                            // Views Settings
+                            const qtParams = config.viewsSettings.quickToggleParams;
+                            document.getElementById('bgColorTrue').value = qtParams.bgColorTrue;
+                            document.getElementById('bgColorFalse').value = qtParams.bgColorFalse;
+                            document.getElementById('bgColorPending').value = qtParams.bgColorPending;
+                            document.getElementById('showSpinner').checked = qtParams.showSpinner;
+                            document.getElementById('showNotification').checked = qtParams.showNotification;
+                            document.getElementById('headerAlignment').checked = config.viewsSettings.headerAlignment;
+                            document.getElementById('ktlFlashRate').value = config.viewsSettings.ktlFlashRate;
+                            document.getElementById('ktlOutlineColor').value = config.viewsSettings.ktlOutlineColor;
+                            document.getElementById('hscCollapsedColumnsWidth').value = config.viewsSettings.hscCollapsedColumnsWidth;
+                            document.getElementById('hscGlobal').checked = config.viewsSettings.hscGlobal;
+
+                            // Fields Settings
+                            document.getElementById('textAsNumeric').value = config.fieldsSettings.textAsNumeric.join(', ');
+                            document.getElementById('textAsNumericExcludeScenes').value = config.fieldsSettings.textAsNumericExcludeScenes.join(', ');
+                            document.getElementById('horizontalRadioButtons').checked = config.fieldsSettings.horizontalRadioButtons;
+                            document.getElementById('horizontalCheckboxes').checked = config.fieldsSettings.horizontalCheckboxes;
+                            document.getElementById('barcodeTimeout').value = config.fieldsSettings.barcodeTimeout;
+                            document.getElementById('barcodeMinLength').value = config.fieldsSettings.barcodeMinLength;
+                            document.getElementById('convertNumToTel').checked = config.fieldsSettings.convertNumToTel;
+
+                            // Persistent Forms Settings
+                            document.getElementById('persistentFormsScenesToExclude').value = config.persistentFormsSettings.scenesToExclude.join(', ');
+                            document.getElementById('persistentFormsFieldsToExclude').value = config.persistentFormsSettings.fieldsToExclude.join(', ');
+
+                            // System Colors Settings
+                            document.getElementById('inlineEditBkgColor').value = config.systemColorsSettings.inlineEditBkgColor;
+                            document.getElementById('inlineEditFontWeight').value = config.systemColorsSettings.inlineEditFontWeight;
+                            document.getElementById('tableRowHoverBkgColor').value = config.systemColorsSettings.tableRowHoverBkgColor;
+
+                            // Advanced Settings: Kiosk
+                            if (config.advancedSettings && config.advancedSettings.kioskSettings) {
+                                document.getElementById('addRefreshHtml').value = config.advancedSettings.kioskSettings.ADD_REFRESH.html;
+                                document.getElementById('addRefreshId').value = config.advancedSettings.kioskSettings.ADD_REFRESH.id;
+                                document.getElementById('addRefreshHref').value = config.advancedSettings.kioskSettings.ADD_REFRESH.href;
+
+                                document.getElementById('addBackHtml').value = config.advancedSettings.kioskSettings.ADD_BACK.html;
+                                document.getElementById('addBackId').value = config.advancedSettings.kioskSettings.ADD_BACK.id;
+                                document.getElementById('addBackHref').value = config.advancedSettings.kioskSettings.ADD_BACK.href;
+
+                                document.getElementById('addDoneHtml').value = config.advancedSettings.kioskSettings.ADD_DONE.html;
+                                document.getElementById('addDoneId').value = config.advancedSettings.kioskSettings.ADD_DONE.id;
+                                document.getElementById('addDoneHref').value = config.advancedSettings.kioskSettings.ADD_DONE.href;
+                            }
+
+                            // Advanced Settings: Logging
+                            if (config.advancedSettings && config.advancedSettings.loggingSettings) {
+                                Object.keys(config.advancedSettings.loggingSettings.logEnabled).forEach(key => {
+                                    const checkbox = document.getElementById(key);
+                                    if (checkbox) checkbox.checked = config.advancedSettings.loggingSettings.logEnabled[key];
+                                });
+                            }
+
+                            // Advanced Settings: iFrameWnd
+                            if (config.advancedSettings && config.advancedSettings.iFrameWndSettings) {
+                                document.getElementById('sendHeartbeat').checked = config.advancedSettings.iFrameWndSettings.sendHeartbeat;
+                            }
 
 
                             // Handle developerNames differently based on its type
