@@ -14,6 +14,10 @@
             margin-bottom: 20px;
         }
 
+        .form-control{
+            width: 30em!important;
+        }
+
         /* Style adjustments for inline label-input pairs */
         .form-inline {
             display: flex;
@@ -133,32 +137,195 @@
                     <legend>Feature Switches</legend>
                     <div class="checkbox-inline">
                         <label for="showMenuInTitle">Show Menu in Title</label>
-                        <input type="checkbox" id="showMenuInTitle" checked><br>
+                        <input type="checkbox" id="showMenuInTitle" checked>
                     </div>
                     <div class="checkbox-inline">
                         <label for="selTextOnFocus">Select Text on Focus</label>
-                        <input type="checkbox" id="selTextOnFocus" checked><br>
+                        <input type="checkbox" id="selTextOnFocus" checked>
                     </div>
-                        <!-- Additional feature switches here -->
+                    <!-- Inline Edit Color -->
+                    <div class="checkbox-inline">
+                        <label for="inlineEditColor">Inline Edit Color</label>
+                        <input type="checkbox" id="inlineEditColor" checked>
+                    </div>
+                    <!-- Row Hover Highlight -->
+                    <div class="checkbox-inline">
+                        <label for="rowHoverHighlight">Row Hover Highlight</label>
+                        <input type="checkbox" id="rowHoverHighlight" checked>
+                    </div>
+                    <!-- ChznBetter -->
+                    <div class="checkbox-inline">
+                        <label for="chznBetter">Chzn Better</label>
+                        <input type="checkbox" id="chznBetter" checked>
+                    </div>
+                    <!-- Auto Focus -->
+                    <div class="checkbox-inline">
+                        <label for="autoFocus">Auto Focus</label>
+                        <input type="checkbox" id="autoFocus" checked>
+                    </div>
+                    <!-- Sorted Menus -->
+                    <div class="checkbox-inline">
+                        <label for="sortedMenus">Sorted Menus</label>
+                        <input type="checkbox" id="sortedMenus" checked>
+                    </div>
+                    <!-- User Filters -->
+                    <div class="checkbox-inline">
+                        <label for="userFilters">User Filters</label>
+                        <input type="checkbox" id="userFilters" checked>
+                    </div>
+                    <!-- Persistent Form -->
+                    <div class="checkbox-inline">
+                        <label for="persistentForm">Persistent Form</label>
+                        <input type="checkbox" id="persistentForm" checked>
+                    </div>
+                    <!-- Calendar Go To Date -->
+                    <div class="checkbox-inline">
+                        <label for="calendarGotoDate">Calendar Go To Date</label>
+                        <input type="checkbox" id="calendarGotoDate" checked>
+                    </div>
+                    <!-- Remember Me -->
+                    <div class="checkbox-inline">
+                        <label for="rememberMe">Remember Me</label>
+                        <input type="checkbox" id="rememberMe" checked>
+                    </div>
+                    <!-- Form Pre Validation -->
+                    <div class="checkbox-inline">
+                        <label for="formPreValidation">Form Pre Validation</label>
+                        <input type="checkbox" id="formPreValidation" checked>
+                    </div>
+                    <!-- Spinner Watch Dog -->
+                    <div class="checkbox-inline">
+                        <label for="spinnerWatchDog">Spinner Watch Dog</label>
+                        <input type="checkbox" id="spinnerWatchDog" checked>
+                    </div>
+                    <!-- Idle Watch Dog -->
+                    <div class="checkbox-inline">
+                        <label for="idleWatchDog">Idle Watch Dog</label>
+                        <input type="checkbox" id="idleWatchDog" checked>
+                    </div>
+                    <!-- Debug Window -->
+                    <div class="checkbox-inline">
+                        <label for="debugWnd">Debug Window</label>
+                        <input type="checkbox" id="debugWnd" checked>
+                    </div>
+                    <!-- Dev Info Popup -->
+                    <div class="checkbox-inline">
+                        <label for="devInfoPopup">Dev Info Popup</label>
+                        <input type="checkbox" id="devInfoPopup" checked>
+                    </div>
+                    <!-- Dev Pause Auto Refresh -->
+                    <div class="checkbox-inline">
+                        <label for="devPauseAutoRefresh">Dev Pause Auto Refresh</label>
+                        <input type="checkbox" id="devPauseAutoRefresh" checked>
+                    </div>
+                    <!-- Virtual Keyboard -->
+                    <div class="checkbox-inline">
+                        <label for="virtualKeyboard">Virtual Keyboard</label>
+                        <input type="checkbox" id="virtualKeyboard">
+                    </div>
+                    <!-- iFrameWnd -->
+                    <div class="checkbox-inline">
+                        <label for="iFrameWnd">iFrameWnd</label>
+                        <input type="checkbox" id="iFrameWnd">
+                    </div>
                 </fieldset>
+
+                <!-- Bulk Operations -->
+                <fieldset class="form-group border p-3">
+                    <legend>Bulk Operations</legend>
+                    <div class="checkbox-inline">
+                        <label for="bulkEdit">Bulk Edit</label>
+                        <input type="checkbox" id="bulkEdit" checked>
+                    </div>
+                    <div class="checkbox-inline">
+                        <label for="bulkCopy">Bulk Copy</label>
+                        <input type="checkbox" id="bulkCopy" checked>
+                    </div>
+                    <div class="checkbox-inline">
+                        <label for="bulkDelete">Bulk Delete</label>
+                        <input type="checkbox" id="bulkDelete" checked>
+                    </div>
+                </fieldset>
+
 
                 <!-- Sub-Group: Popup Style Settings -->
                 <fieldset class="form-group border p-3">
                     <legend>Popup Style Settings</legend>
-                    <!-- Inputs for popupStyle settings -->
+                    <div class="form-inline">
+                        <label for="popupStyleSuccess">Success Style</label>
+                        <input type="text" class="form-control" id="popupStyleSuccess" value=";background-color:#81b378;border:5px solid #294125">
+                    </div>
+                    <div class="form-inline">
+                        <label for="popupStyleWarning">Warning Style</label>
+                        <input type="text" class="form-control" id="popupStyleWarning" value=";background-color:#fffa5e;border:2px solid #7e8060">
+                    </div>
+                    <div class="form-inline">
+                        <label for="popupStyleError">Error Style</label>
+                        <input type="text" class="form-control" id="popupStyleError" value=";background-color:#FFB0B0;border:5px solid #660000">
+                    </div>
                 </fieldset>
 
                 <!-- Sub-Group: Tooltip Styles Settings -->
                 <fieldset class="form-group border p-3">
                     <legend>Tooltip Styles Settings</legend>
-                    <!-- Inputs for tooltipStyles settings -->
+                    <div class="form-inline">
+                        <label for="ktlTtipFormViewBgColor">Form View Background Color</label>
+                        <input type="text" class="form-control" id="ktlTtipFormViewBgColor" value="#222222">
+                    </div>
+                    <div class="form-inline">
+                        <label for="ktlTtipFormViewTxtColor">Form View Text Color</label>
+                        <input type="text" class="form-control" id="ktlTtipFormViewTxtColor" value="#ffffff">
+                    </div>
+                    <div class="form-inline">
+                        <label for="ktlTtipIconFormViewColor">Form View Icon Color</label>
+                        <input type="text" class="form-control" id="ktlTtipIconFormViewColor" value="#222222">
+                    </div>
+                    <div class="form-inline">
+                        <label for="ktlTtipDetailsViewBgColor">Details/List View Background Color</label>
+                        <input type="text" class="form-control" id="ktlTtipDetailsViewBgColor" value="#222222">
+                    </div>
+                    <div class="form-inline">
+                        <label for="ktlTtipDetailsViewTxtColor">Details/List View Text Color</label>
+                        <input type="text" class="form-control" id="ktlTtipDetailsViewTxtColor" value="#ffffff">
+                    </div>
+                    <div class="form-inline">
+                        <label for="ktlTtipIconDetailsViewColor">Details/List View Icon Color</label>
+                        <input type="text" class="form-control" id="ktlTtipIconDetailsViewColor" value="#222222">
+                    </div>
+                    <div class="form-inline">
+                        <label for="ktlTtipTableViewBgColor">Table View Background Color</label>
+                        <input type="text" class="form-control" id="ktlTtipTableViewBgColor" value="#222222">
+                    </div>
+                    <div class="form-inline">
+                        <label for="ktlTtipTableViewTxtColor">Table View Text Color</label>
+                        <input type="text" class="form-control" id="ktlTtipTableViewTxtColor" value="#ffffff">
+                    </div>
+                    <div class="form-inline">
+                        <label for="ktlTtipIconTableViewColor">Table View Icon Color</label>
+                        <input type="text" class="form-control" id="ktlTtipIconTableViewColor" value="#222222">
+                    </div>
                 </fieldset>
             </fieldset>
 
             <!-- Group: Scenes Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Scenes Settings</legend>
-                <!-- Inputs for scenes settings -->
+                <div class="form-inline">
+                    <label for="versionDisplayName">Version Display Name</label>
+                    <input type="text" class="form-control" id="versionDisplayName" placeholder="CTRND">
+                </div>
+                <div class="form-inline">
+                    <label for="idleWatchDogDelay">Idle WatchDog Delay (ms)</label>
+                    <input type="number" class="form-control" id="idleWatchDogDelay" value="7200000" placeholder="120 * 60000">
+                </div>
+                <div class="form-inline">
+                    <label for="spinnerCtrDelay">Spinner Control Delay (seconds)</label>
+                    <input type="number" class="form-control" id="spinnerCtrDelay" value="60" placeholder="60">
+                </div>
+                <div class="form-inline">
+                    <label for="spinnerWdExcludeScn">Spinner WatchDog Exclude Scenes (comma-separated IDs)</label>
+                    <input type="text" class="form-control" id="spinnerWdExcludeScn" placeholder="1,2,3">
+                </div>
             </fieldset>
 
             <!-- Group: Views Settings -->
@@ -196,7 +363,7 @@
             <button type="button" class="btn btn-primary" id="generateConfigBtn">Generate Configuration</button>
         </form>
 
-        <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px;"></textarea>
+        <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; width: 60em !important;"></textarea>
     </div>
 
     <script>
@@ -232,6 +399,11 @@
                 // Add the rest as per the checkboxes and inputs you've defined
             };
 
+            let versionDisplayName = document.getElementById('versionDisplayName').value;
+            let idleWatchDogDelay = document.getElementById('idleWatchDogDelay').value;
+            let spinnerCtrDelay = document.getElementById('spinnerCtrDelay').value;
+            let spinnerWdExcludeScn = document.getElementById('spinnerWdExcludeScn').value.split(',').map(scn => scn.trim());
+
             // Generating the configuration script
             let configScript = `
 window.APP_VERSION = '1.0.0';
@@ -261,8 +433,14 @@ window.ktlReady = function (appInfo = {}) {
                                 }
                             });
 
-                            // KTL Setup - END
-                            // Additional JavaScript based on user inputs goes here...
+                            ktl.scenes.setCfg({
+                                    versionDisplayName: '${versionDisplayName}',
+                                    idleWatchDogDelay: ${idleWatchDogDelay},
+                                    spinnerCtrDelay: ${spinnerCtrDelay},
+                                    spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
+                                });
+
+                            // KTL Setup - END                            
 };
                             `;
 
