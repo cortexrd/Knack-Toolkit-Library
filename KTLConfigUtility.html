@@ -97,6 +97,7 @@
             padding: 0 5px;
             width: auto;
             font-size: 1.2rem;
+            font-weight: 600;
         }
 
         #grabber {
@@ -140,7 +141,6 @@
         <input type="file" id="fileInput" accept=".ktlcfg" style="display:none;">
 
         <form id="ktlConfigForm">
-            <!-- Group: Core Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Core Settings</legend>
                 <div>
@@ -157,11 +157,9 @@
                 </div>
             </fieldset>
 
-            <!-- Group: Main KTL Feature Switches -->
             <fieldset class="form-group border p-3">
                 <legend>General Feature Settings</legend>
 
-                <!-- Sub-Group: Feature Switches -->
                 <fieldset class="form-group border p-3">
                     <legend>Version Info Bar</legend>
                     <div class="checkbox-inline">
@@ -217,9 +215,8 @@
                     </div>
                 </fieldset>
 
-                <!-- Sub-Group: Feature Switches -->
                 <fieldset class="form-group border p-3">
-                    <legend>Feature Switches</legend>
+                    <legend>Main Feature Switches</legend>
                     <div class="checkbox-inline">
                         <label for="showMenuInTitle">Show Menu in Title</label>
                         <input type="checkbox" id="showMenuInTitle" checked>
@@ -228,89 +225,72 @@
                         <label for="selTextOnFocus">Select Text on Focus</label>
                         <input type="checkbox" id="selTextOnFocus" checked>
                     </div>
-                    <!-- Inline Edit Color -->
                     <div class="checkbox-inline">
                         <label for="inlineEditColor">Inline Edit Color</label>
                         <input type="checkbox" id="inlineEditColor" checked>
                     </div>
-                    <!-- Row Hover Highlight -->
                     <div class="checkbox-inline">
                         <label for="rowHoverHighlight">Row Hover Highlight</label>
                         <input type="checkbox" id="rowHoverHighlight" checked>
                     </div>
-                    <!-- Auto Focus -->
                     <div class="checkbox-inline">
                         <label for="autoFocus">Auto Focus</label>
                         <input type="checkbox" id="autoFocus" checked>
                     </div>
-                    <!-- Sorted Menus -->
                     <div class="checkbox-inline">
                         <label for="sortedMenus">Sorted Menus</label>
                         <input type="checkbox" id="sortedMenus" checked>
                     </div>
-                    <!-- User Filters -->
                     <div class="checkbox-inline">
                         <label for="userFilters">User Filters</label>
                         <input type="checkbox" id="userFilters" checked>
                     </div>
-                    <!-- Persistent Form -->
                     <div class="checkbox-inline">
                         <label for="persistentForm">Persistent Form</label>
                         <input type="checkbox" id="persistentForm" checked>
                     </div>
-                    <!-- Calendar Go To Date -->
                     <div class="checkbox-inline">
                         <label for="calendarGotoDate">Calendar Go To Date</label>
                         <input type="checkbox" id="calendarGotoDate" checked>
                     </div>
-                    <!-- Remember Me -->
                     <div class="checkbox-inline">
                         <label for="rememberMe">Remember Me</label>
                         <input type="checkbox" id="rememberMe" checked>
                     </div>
-                    <!-- Form Pre Validation -->
                     <div class="checkbox-inline">
                         <label for="formPreValidation">Form Pre Validation</label>
                         <input type="checkbox" id="formPreValidation" checked>
                     </div>
-                    <!-- Spinner Watch Dog -->
                     <div class="checkbox-inline">
                         <label for="spinnerWatchDog">Spinner Watch Dog</label>
                         <input type="checkbox" id="spinnerWatchDog" checked>
                     </div>
-                    <!-- Idle Watch Dog -->
                     <div class="checkbox-inline">
                         <label for="idleWatchDog">Idle Watch Dog</label>
                         <input type="checkbox" id="idleWatchDog" checked>
                     </div>
-                    <!-- Debug Window -->
                     <div class="checkbox-inline">
                         <label for="debugWnd">Debug Window</label>
                         <input type="checkbox" id="debugWnd" checked>
                     </div>
-                    <!-- Dev Info Popup -->
                     <div class="checkbox-inline">
                         <label for="devInfoPopup">Dev Info Popup</label>
                         <input type="checkbox" id="devInfoPopup" checked>
                     </div>
-                    <!-- Dev Pause Auto Refresh -->
                     <div class="checkbox-inline">
                         <label for="devPauseAutoRefresh">Dev Pause Auto Refresh</label>
                         <input type="checkbox" id="devPauseAutoRefresh" checked>
                     </div>
-                    <!-- Virtual Keyboard -->
                     <div class="checkbox-inline">
                         <label for="virtualKeyboard">Virtual Keyboard</label>
                         <input type="checkbox" id="virtualKeyboard">
                     </div>
-                    <!-- iFrameWnd -->
                     <div class="checkbox-inline">
                         <label for="iFrameWnd">iFrameWnd</label>
                         <input type="checkbox" id="iFrameWnd">
                     </div>
                 </fieldset>
 
-                <!-- Bulk Operations -->
                 <fieldset class="form-group border p-3">
                     <legend>Bulk Operations</legend>
                     <div class="checkbox-inline">
@@ -328,7 +308,6 @@
                 </fieldset>
 
 
-                <!-- Sub-Group: Popup Style Settings -->
                 <fieldset class="form-group border p-3">
                     <legend>Popup Style</legend>
                     <div class="form-inline">
@@ -345,7 +324,6 @@
                     </div>
                 </fieldset>
 
-                <!-- Sub-Group: Tooltip Styles Settings -->
                 <fieldset class="form-group border p-3">
                     <legend>Tooltip Styles</legend>
                     <div class="form-inline">
@@ -387,7 +365,6 @@
                 </fieldset>
             </fieldset>
 
-            <!-- Group: Scenes Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Scenes</legend>
                 <div class="form-inline">
@@ -408,7 +385,6 @@
                 </div>
             </fieldset>
 
-            <!-- Group: Views Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Views</legend>
 
@@ -458,7 +434,6 @@
                 </div>
             </fieldset>
 
-            <!-- Group: Fields Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Fields</legend>
                 <div class="form-inline">
@@ -491,7 +466,6 @@
                 </div>
             </fieldset>
 
-            <!-- Group: Persistent Forms Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Persistent Forms</legend>
                 <div class="form-inline">
@@ -504,7 +478,6 @@
                 </div>
             </fieldset>
 
-            <!-- Group: System Colors Settings -->
             <fieldset class="form-group border p-3">
                 <legend>System Colors</legend>
                 <div class="form-inline">
@@ -521,11 +494,9 @@
                 </div>
             </fieldset>
 
-            <!-- Group: Advanced Settings -->
             <fieldset class="form-group border p-3">
                 <legend>Advanced Settings</legend>
 
-                <!-- Sub-Group: iFrameWnd Settings -->
                 <fieldset class="form-group border p-3">
                     <legend>iFrameWnd</legend>
                     <div class="checkbox-inline">
@@ -534,7 +505,6 @@
                     </div>
                 </fieldset>
 
-                <!-- Advanced Settings' Sub-Group: Logging Settings -->
                 <fieldset class="form-group border p-3">
                     <legend>Logging</legend>
                     <div class="checkbox-inline">
@@ -575,35 +545,35 @@
                     </div>
                 </fieldset>
 
-                <!-- Advanced Settings' Sub-Group: Kiosk Settings -->
                 <fieldset class="form-group border p-3">
                     <legend>Kiosk</legend>
 
                     <div class="form-group">
                         <label>ADD_REFRESH Button Config</label>
-                        <input type="text" class="form-control" id="addRefreshHtml" placeholder="HTML">
-                        <input type="text" class="form-control" id="addRefreshId" placeholder="ID">
-                        <input type="text" class="form-control" id="addRefreshHref" placeholder="Href Function">
+                        <input type="text" class="form-control" id="addRefreshHtml" value="&lt;i class=&quot;fa fa-refresh&quot;&gt;&lt;/i&gt;">
+                        <input type="text" class="form-control" id="addRefreshId" value="kn-button-refresh">
+                        <input type="text" class="form-control" id="addRefreshHref" value="function () { location.reload(); }">
                     </div>
 
                     <div class="form-group">
                         <label>ADD_BACK Button Config</label>
-                        <input type="text" class="form-control" id="addBackHtml" placeholder="HTML">
-                        <input type="text" class="form-control" id="addBackId" placeholder="ID">
-                        <input type="text" class="form-control" id="addBackHref" placeholder="Href Function">
+                        <input type="text" class="form-control" id="addBackHtml" value="&lt;i class=&quot;fa fa-arrow-left&quot;&gt;&lt;/i&gt;">
+                        <input type="text" class="form-control" id="addBackId" value="kn-button-back">
+                        <input type="text" class="form-control" id="addBackHref" value="function () { window.history.back(); }">
                     </div>
 
                     <div class="form-group">
                         <label>ADD_DONE Button Config</label>
-                        <input type="text" class="form-control" id="addDoneHtml" placeholder="HTML">
-                        <input type="text" class="form-control" id="addDoneId" placeholder="ID">
-                        <input type="text" class="form-control" id="addDoneHref" placeholder="Href Function">
+                        <input type="text" class="form-control" id="addDoneHtml" value="&lt;i class=&quot;fa fa-check-square-o&quot;&gt;&lt;/i&gt;">
+                        <input type="text" class="form-control" id="addDoneId" value="kn-button-back">
+                        <input type="text" class="form-control" id="addDoneHref" value="function () { window.history.back(); }">
                     </div>
                 </fieldset>
 
             </fieldset>
 
             <button type="button" class="btn btn-primary" id="generateConfigBtn">Generate Configuration</button>
+            <button type="button" class="btn btn-secondary" id="copyToClipboardBtn">Copy to Clipboard</button>
         </form>
 
         <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; <!--width: 60em !important;-->"></textarea>
@@ -645,12 +615,10 @@
             var xOffset = 0;
             var yOffset = 0;
 
-            // Mouse events
             dragItem.addEventListener("mousedown", dragStart, false);
             document.addEventListener("mouseup", dragEnd, false);
             document.addEventListener("mousemove", drag, false);
 
-            // Touch events
             dragItem.addEventListener("touchstart", dragStart, false);
             document.addEventListener("touchend", dragEnd, false);
             document.addEventListener("touchmove", drag, false);
@@ -714,9 +682,8 @@
             var colorIndex = 0;
 
             fieldsets.forEach(function (fieldset) {
-                // Apply a color class from the array and increment the index
                 fieldset.classList.add(colorClasses[colorIndex]);
-                colorIndex = (colorIndex + 1) % colorClasses.length; // Cycle back to the start if we reach the end
+                colorIndex = (colorIndex + 1) % colorClasses.length;
             });
         });
 
@@ -726,7 +693,6 @@
             const developerEmail = document.getElementById('developerEmail').value;
             const devOptionsPin = document.getElementById('devOptionsPin').value;
 
-            // Collecting values for the enabled section
             const enabled = {
                 versionInfo: {
                     viShowAppInfo: document.getElementById('viShowAppInfo').checked,
@@ -742,14 +708,46 @@
 
                 showMenuInTitle: document.getElementById('showMenuInTitle').checked,
                 selTextOnFocus: document.getElementById('selTextOnFocus').checked,
+                inlineEditColor: document.getElementById('inlineEditColor').checked,
+                rowHoverHighlight: document.getElementById('rowHoverHighlight').checked,
+                autoFocus: document.getElementById('autoFocus').checked,
+                sortedMenus: document.getElementById('sortedMenus').checked,
+                userFilters: document.getElementById('userFilters').checked,
+                persistentForm: document.getElementById('persistentForm').checked,
+                calendarGotoDate: document.getElementById('calendarGotoDate').checked,
+                rememberMe: document.getElementById('rememberMe').checked,
+                formPreValidation: document.getElementById('formPreValidation').checked,
+                spinnerWatchDog: document.getElementById('spinnerWatchDog').checked,
+                idleWatchDog: document.getElementById('idleWatchDog').checked,
+                debugWnd: document.getElementById('debugWnd').checked,
+                devInfoPopup: document.getElementById('devInfoPopup').checked,
+                devPauseAutoRefresh: document.getElementById('devPauseAutoRefresh').checked,
+                virtualKeyboard: document.getElementById('virtualKeyboard').checked,
+                iFrameWnd: document.getElementById('iFrameWnd').checked,
 
-                // Continue collecting other flat feature switches
                 bulkOps: {
-                    bulkEdit: true, // Assuming static for this example
-                    bulkCopy: true,
-                    bulkDelete: true,
+                    bulkEdit: document.getElementById('bulkEdit').checked,
+                    bulkCopy: document.getElementById('bulkCopy').checked,
+                    bulkDelete: document.getElementById('bulkDelete').checked,
                 },
-                // Add the rest as per the checkboxes and inputs you've defined
+            };
+
+            const popupStyle = {
+                success: document.getElementById('popupStyleSuccess').value,
+                warning: document.getElementById('popupStyleWarning').value,
+                error: document.getElementById('popupStyleError').value,
+            };
+
+            const tooltipStyles = {
+                ktlTtipFormViewBgColor: document.getElementById('ktlTtipFormViewBgColor').value,
+                ktlTtipFormViewTxtColor: document.getElementById('ktlTtipFormViewTxtColor').value,
+                ktlTtipIconFormViewColor: document.getElementById('ktlTtipIconFormViewColor').value,
+                ktlTtipDetailsViewBgColor: document.getElementById('ktlTtipDetailsViewBgColor').value,
+                ktlTtipDetailsViewTxtColor: document.getElementById('ktlTtipDetailsViewTxtColor').value,
+                ktlTtipIconDetailsViewColor: document.getElementById('ktlTtipIconDetailsViewColor').value,
+                ktlTtipTableViewBgColor: document.getElementById('ktlTtipTableViewBgColor').value,
+                ktlTtipTableViewTxtColor: document.getElementById('ktlTtipTableViewTxtColor').value,
+                ktlTtipIconTableViewColor: document.getElementById('ktlTtipIconTableViewColor').value,
             };
 
             let versionDisplayName = document.getElementById('versionDisplayName').value;
@@ -784,6 +782,14 @@
             const addRefreshId = document.getElementById('addRefreshId').value;
             const addRefreshHref = document.getElementById('addRefreshHref').value;
 
+            const addBackHtml = document.getElementById('addBackHtml').value;
+            const addBackId = document.getElementById('addBackId').value;
+            const addBackHref = document.getElementById('addBackHref').value;
+
+            const addDoneHtml = document.getElementById('addDoneHtml').value;
+            const addDoneId = document.getElementById('addDoneId').value;
+            const addDoneHref = document.getElementById('addDoneHref').value;
+
             const logEnabled = {
                 critical: document.getElementById('logCritical').checked,
                 error: document.getElementById('logError').checked,
@@ -796,133 +802,200 @@
                 navigation: document.getElementById('logNavigation').checked,
             };
 
-            // Generating the configuration script
             let configScript = `
-                                window.APP_VERSION = '1.0.0';
+window.APP_VERSION = '1.0.0';
 
-                                window.ktlReady = function (appInfo = {}) {
-                                var ktl = new Ktl($, appInfo);
+window.ktlReady = function (appInfo = {}) {
+        var ktl = new Ktl($, appInfo);
 
-                                ktl.core.setCfg({
-                                developerNames: [${developerNames.join(', ')}],
-                                developerEmail: '${developerEmail}',
-                                devOptionsPin: '${devOptionsPin}',
-                                enabled: {
-                                versionInfo: {
-                                viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
-                                viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
-                                viShowToRoles: ['Developer'],
-                                viPosX: '${enabled.versionInfo.viPosX}',
-                                viPosY: '${enabled.versionInfo.viPosY}',
-                                viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
-                                viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
-                                viOpacity: ${enabled.versionInfo.viOpacity},
-                                viOpacityHover: ${enabled.versionInfo.viOpacityHover}
-                                },
-                                showMenuInTitle: ${enabled.showMenuInTitle},
-                                selTextOnFocus: ${enabled.selTextOnFocus},
-                                // Include the rest of the enabled configurations...
-                                }
-                                });
+        ktl.core.setCfg({
+            developerNames: [${developerNames.join(', ')}],
+            developerEmail: '${developerEmail}',
+            devOptionsPin: '${devOptionsPin}',
 
-                                ktl.scenes.setCfg({
-                                versionDisplayName: '${versionDisplayName}',
-                                idleWatchDogDelay: ${idleWatchDogDelay},
-                                spinnerCtrDelay: ${spinnerCtrDelay},
-                                spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
-                                });
+            //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
+            enabled: {
+                versionInfo: {
+                    viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
+                    viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
+                    viShowToRoles: ['Developer'],
+                    viPosX: '${enabled.versionInfo.viPosX}',
+                    viPosY: '${enabled.versionInfo.viPosY}',
+                    viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
+                    viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
+                    viOpacity: ${enabled.versionInfo.viOpacity},
+                    viOpacityHover: ${enabled.versionInfo.viOpacityHover}
+                },
 
-                                ktl.views.setCfg({
-                                quickToggleParams: {
-                                bgColorTrue: '${quickToggleParams.bgColorTrue}',
-                                bgColorFalse: '${quickToggleParams.bgColorFalse}',
-                                bgColorPending: '${quickToggleParams.bgColorPending}',
-                                showSpinner: ${quickToggleParams.showSpinner},
-                                showNotification: ${quickToggleParams.showNotification},
-                                },
-                                headerAlignment: ${document.getElementById('headerAlignment').checked},
-                                ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
-                                ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
-                                hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
-                                hscGlobal: ${document.getElementById('hscGlobal').checked},
-                                });
+                showMenuInTitle: ${enabled.showMenuInTitle},
+                selTextOnFocus: ${enabled.selTextOnFocus},
+                inlineEditColor: ${enabled.inlineEditColor},
+                rowHoverHighlight: ${enabled.rowHoverHighlight},
+                autoFocus: ${enabled.autoFocus},
+                sortedMenus: ${enabled.sortedMenus},
+                userFilters: ${enabled.userFilters},
+                persistentForm: ${enabled.persistentForm},
+                calendarGotoDate: ${enabled.calendarGotoDate},
+                rememberMe: ${enabled.rememberMe},
+                formPreValidation: ${enabled.formPreValidation},
+                spinnerWatchDog: ${enabled.spinnerWatchDog},
+                idleWatchDog: ${enabled.idleWatchDog},
+                debugWnd: ${enabled.debugWnd},
+                devInfoPopup: ${enabled.devInfoPopup},
+                devPauseAutoRefresh: ${enabled.devPauseAutoRefresh},
+                virtualKeyboard: ${enabled.virtualKeyboard},
 
-                                ktl.fields.setCfg({
-                                textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
-                                textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
-                                horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
-                                horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
-                                barcodeTimeout: ${fieldsSettings.barcodeTimeout},
-                                barcodeMinLength: ${fieldsSettings.barcodeMinLength},
-                                convertNumToTel: ${fieldsSettings.convertNumToTel},
-                                });
+                //Those below must also be set up properly to have any effect.  See documentation.
+                iFrameWnd: ${enabled.iFrameWnd}
 
-                                ktl.persistentForm.setCfg({
-                                scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
-                                fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
-                                });
+                bulkOps: {
+                    bulkEdit: ${enabled.bulkOps.bulkEdit},
+                    bulkCopy: ${enabled.bulkOps.bulkCopy},
+                    bulkDelete: ${enabled.bulkOps.bulkDelete}
+                },
+            },
 
-                                ktl.systemColors.setCfg({
-                                inlineEditBkgColor: document.getElementById("inlineEditBkgColor").value,
-                                inlineEditFontWeight: document.getElementById("inlineEditFontWeight").value,
-                                tableRowHoverBkgColor: document.getElementById("tableRowHoverBkgColor").value,
-                                });
+            popupStyle: {
+                success: '${popupStyle.success}',
+                warning: '${popupStyle.warning}',
+                error: '${popupStyle.error}'
+            },
 
-                                if (!window.self.frameElement) { //Features that do not apply to the iFrameWnd.
-                                ktl.scenes.setCfg({
-                                ktlKioskButtons: {
-                                ADD_REFRESH: {
-                                html: \`${addRefreshHtml}\`,
-                                id: '${addRefreshId}',
-                                href: ${addRefreshHref},
-                                scenesToExclude: [],
-                                },
-                                ADD_BACK: {
-                                // Repeat structure for ADD_BACK
-                                },
-                                ADD_DONE: {
-                                // Repeat structure for ADD_DONE
-                                },
-                                },
-                                });
-                                }
+            tooltipStyles: {
+                ktlTtipFormViewBgColor: '${tooltipStyles.ktlTtipFormViewBgColor}',
+                ktlTtipFormViewTxtColor: '${tooltipStyles.ktlTtipFormViewTxtColor}',
+                ktlTtipIconFormViewColor: '${tooltipStyles.ktlTtipIconFormViewColor}',
+                ktlTtipDetailsViewBgColor: '${tooltipStyles.ktlTtipDetailsViewBgColor}',
+                ktlTtipDetailsViewTxtColor: '${tooltipStyles.ktlTtipDetailsViewTxtColor}',
+                ktlTtipIconDetailsViewColor: '${tooltipStyles.ktlTtipIconDetailsViewColor}',
+                ktlTtipTableViewBgColor: '${tooltipStyles.ktlTtipTableViewBgColor}',
+                ktlTtipTableViewTxtColor: '${tooltipStyles.ktlTtipTableViewTxtColor}',
+                ktlTtipIconTableViewColor: '${tooltipStyles.ktlTtipIconTableViewColor}'
+            },
 
-                                ktl.log.setCfg({
-                                logEnabled: {
-                                critical: ${logEnabled.critical},
-                                error: ${logEnabled.error},
-                                serverErr: ${logEnabled.serverErr},
-                                warning: ${logEnabled.warning},
-                                info: ${logEnabled.info},
-                                debug: ${logEnabled.debug},
-                                login: ${logEnabled.login},
-                                activity: ${logEnabled.activity},
-                                navigation: ${logEnabled.navigation},
-                                }
-                                });
+        });
 
-                                // KTL Setup - END
-                                };
-                                `;
+        ktl.scenes.setCfg({
+            versionDisplayName: '${versionDisplayName}',
+            idleWatchDogDelay: ${idleWatchDogDelay},
+            spinnerCtrDelay: ${spinnerCtrDelay},
+            spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
+        });
 
-            // Display the generated configuration script
+        ktl.views.setCfg({
+            quickToggleParams: {
+                bgColorTrue: '${quickToggleParams.bgColorTrue}',
+                bgColorFalse: '${quickToggleParams.bgColorFalse}',
+                bgColorPending: '${quickToggleParams.bgColorPending}',
+                showSpinner: ${quickToggleParams.showSpinner},
+                showNotification: ${quickToggleParams.showNotification},
+            },
+
+            headerAlignment: ${document.getElementById('headerAlignment').checked},
+            ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
+            ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
+            hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
+            hscGlobal: ${document.getElementById('hscGlobal').checked},
+        });
+
+        ktl.fields.setCfg({
+            textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
+            textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
+            horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
+            horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
+            barcodeTimeout: ${fieldsSettings.barcodeTimeout},
+            barcodeMinLength: ${fieldsSettings.barcodeMinLength},
+            convertNumToTel: ${fieldsSettings.convertNumToTel},
+        });
+
+        ktl.persistentForm.setCfg({
+            scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
+            fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
+        });
+
+        ktl.systemColors.setCfg({
+            inlineEditBkgColor: ${document.getElementById('inlineEditBkgColor').value},
+            inlineEditFontWeight: ${document.getElementById('inlineEditFontWeight').value},
+            tableRowHoverBkgColor: ${document.getElementById('tableRowHoverBkgColor').value},
+        });
+
+        //Features that do not apply to the iFrameWnd.
+        if (!window.self.frameElement) {
+            ktl.scenes.setCfg({
+                ktlKioskButtons: {
+                    ADD_REFRESH: {
+                        html: \`${addRefreshHtml}\`,
+                        id: '${addRefreshId}',
+                        href: ${addRefreshHref},
+                        scenesToExclude: [],
+                    },
+                    ADD_BACK: {
+                        html: \`${addBackHtml}\`,
+                        id: '${addBackId}',
+                        href: ${addBackHref},
+                        scenesToExclude: [],
+                    },
+                    ADD_DONE: {
+                        html: \`${addDoneHtml}\`,
+                        id: '${addDoneId}',
+                        href: ${addDoneHref},
+                        scenesToExclude: [],
+                    },
+                },
+            });
+        }
+
+        ktl.log.setCfg({
+            logEnabled: {
+                critical: ${logEnabled.critical},
+                error: ${logEnabled.error},
+                serverErr: ${logEnabled.serverErr},
+                warning: ${logEnabled.warning},
+                info: ${logEnabled.info},
+                debug: ${logEnabled.debug},
+                login: ${logEnabled.login},
+                activity: ${logEnabled.activity},
+                navigation: ${logEnabled.navigation},
+            }
+        });
+
+        //KTL Setup - END
+
+
+        //KTL callbacks to your App - BEGIN
+        //KTL callbacks to your App - END
+
+        /////////////////////////////////////////////////
+        //Your App-specific code goes here...
+
+};
+`;
+
             document.getElementById('generatedConfig').value = configScript;
         });
 
+        document.getElementById('copyToClipboardBtn').addEventListener('click', function () {
+            const configText = document.getElementById('generatedConfig');
+            configText.select();
+            document.execCommand('copy');
+
+            const originalButtonText = this.innerText;
+            this.innerText = 'Copied!';
+            setTimeout(() => this.innerText = originalButtonText, 2000);
+        });
+
         document.getElementById('saveToFileBtn').addEventListener('click', function () {
-            // Prompt the user for a filename, providing a default
             let filename = prompt("Enter a filename for your configuration:", "MySetup.ktlcfg");
             if (filename) {
                 if (!filename.endsWith('.ktlcfg')) {
-                    filename += '.ktlcfg'; // Ensure the file has the correct extension
+                    filename += '.ktlcfg';
                 }
 
-                // Collect all form inputs here
                 const formInputs = {
                     developerNames: document.getElementById('developerNames').value.split(',').map(name => name.trim()),
                     developerEmail: document.getElementById('developerEmail').value,
                     devOptionsPin: document.getElementById('devOptionsPin').value,
-                    // Version Info
+
                     versionInfo: {
                         viShowAppInfo: document.getElementById('viShowAppInfo').checked,
                         viShowKtlInfo: document.getElementById('viShowKtlInfo').checked,
@@ -934,7 +1007,7 @@
                         viOpacity: parseInt(document.getElementById('viOpacity').value, 10),
                         viOpacityHover: parseInt(document.getElementById('viOpacityHover').value, 10),
                     },
-                    // Feature Switches
+
                     featureSwitches: {
                         showMenuInTitle: document.getElementById('showMenuInTitle').checked,
                         selTextOnFocus: document.getElementById('selTextOnFocus').checked,
@@ -955,19 +1028,19 @@
                         virtualKeyboard: document.getElementById('virtualKeyboard').checked,
                         iFrameWnd: document.getElementById('iFrameWnd').checked
                     },
-                    // Bulk Operations
+
                     bulkOps: {
                         bulkEdit: document.getElementById('bulkEdit').checked,
                         bulkCopy: document.getElementById('bulkCopy').checked,
                         bulkDelete: document.getElementById('bulkDelete').checked
                     },
-                    // Popup Style Settings
+
                     popupStyle: {
                         success: document.getElementById('popupStyleSuccess').value,
                         warning: document.getElementById('popupStyleWarning').value,
                         error: document.getElementById('popupStyleError').value
                     },
-                    // Tooltip Styles Settings
+
                     tooltipStyles: {
                         ktlTtipFormViewBgColor: document.getElementById('ktlTtipFormViewBgColor').value,
                         ktlTtipFormViewTxtColor: document.getElementById('ktlTtipFormViewTxtColor').value,
@@ -979,14 +1052,14 @@
                         ktlTtipTableViewTxtColor: document.getElementById('ktlTtipTableViewTxtColor').value,
                         ktlTtipIconTableViewColor: document.getElementById('ktlTtipIconTableViewColor').value
                     },
-                    // Scenes Settings
+
                     scenesSettings: {
                         versionDisplayName: document.getElementById('versionDisplayName').value,
                         idleWatchDogDelay: parseInt(document.getElementById('idleWatchDogDelay').value),
                         spinnerCtrDelay: parseInt(document.getElementById('spinnerCtrDelay').value),
                         spinnerWdExcludeScn: document.getElementById('spinnerWdExcludeScn').value.split(',').map(scn => scn.trim())
                     },
-                    // Views Settings
+
                     viewsSettings: {
                         quickToggleParams: {
                             bgColorTrue: document.getElementById('bgColorTrue').value,
@@ -1001,7 +1074,7 @@
                         hscCollapsedColumnsWidth: document.getElementById('hscCollapsedColumnsWidth').value,
                         hscGlobal: document.getElementById('hscGlobal').checked
                     },
-                    // Fields Settings
+
                     fieldsSettings: {
                         textAsNumeric: document.getElementById('textAsNumeric').value.split(',').map(id => id.trim()),
                         textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(',').map(id => id.trim()),
@@ -1011,18 +1084,18 @@
                         barcodeMinLength: parseInt(document.getElementById('barcodeMinLength').value),
                         convertNumToTel: document.getElementById('convertNumToTel').checked
                     },
-                    // Persistent Forms Settings
+
                     persistentFormsSettings: {
                         scenesToExclude: document.getElementById('persistentFormsScenesToExclude').value.split(',').map(id => id.trim()),
                         fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(',').map(id => id.trim())
                     },
-                    // System Colors Settings
+
                     systemColorsSettings: {
                         inlineEditBkgColor: document.getElementById('inlineEditBkgColor').value,
                         inlineEditFontWeight: document.getElementById('inlineEditFontWeight').value,
                         tableRowHoverBkgColor: document.getElementById('tableRowHoverBkgColor').value
                     },
-                    // Advanced Settings: Kiosk Settings
+
                     kioskSettings: {
                         ADD_REFRESH: {
                             html: document.getElementById('addRefreshHtml').value,
@@ -1040,29 +1113,27 @@
                             href: document.getElementById('addDoneHref').value
                         }
                     },
-                    // Logging Settings
+
                     loggingSettings: {
-                        critical: document.getElementById('logCritical').checked,
-                        error: document.getElementById('logError').checked,
-                        serverErr: document.getElementById('logServerErr').checked,
-                        warning: document.getElementById('logWarning').checked,
-                        info: document.getElementById('logInfo').checked,
-                        debug: document.getElementById('logDebug').checked,
-                        login: document.getElementById('logLogin').checked,
-                        activity: document.getElementById('logActivity').checked,
-                        navigation: document.getElementById('logNavigation').checked
+                        logCritical: document.getElementById('logCritical').checked,
+                        logError: document.getElementById('logError').checked,
+                        logServerErr: document.getElementById('logServerErr').checked,
+                        logWarning: document.getElementById('logWarning').checked,
+                        logInfo: document.getElementById('logInfo').checked,
+                        logDebug: document.getElementById('logDebug').checked,
+                        logLogin: document.getElementById('logLogin').checked,
+                        logActivity: document.getElementById('logActivity').checked,
+                        logNavigation: document.getElementById('logNavigation').checked
                     },
-                    // iFrameWnd Settings
+
                     iFrameWndSettings: {
                         sendHeartbeat: document.getElementById('sendHeartbeat').checked
                     }
                 }; //Save File
 
-                // Convert form data to a JSON string
                 const dataStr = JSON.stringify(formInputs, null, 4);
                 const blob = new Blob([dataStr], { type: "application/json" });
 
-                // Create a link and trigger download
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
@@ -1077,27 +1148,23 @@
         });
 
         document.getElementById('loadFromFileBtn').addEventListener('click', function () {
-            // Programmatically click the hidden file input
             document.getElementById('fileInput').click();
         });
 
         document.getElementById('fileInput').addEventListener('change', function (event) {
             const file = event.target.files[0];
             if (file) {
-                // Create a FileReader to read the selected file
                 const reader = new FileReader();
                 reader.onload = function (fileLoadEvent) {
                     const contents = fileLoadEvent.target.result;
 
-                    // Try parsing the JSON contents and populating the form
                     try {
                         const config = JSON.parse(contents);
                         if (config) {
-                            // Populate the form with loaded configuration
                             document.getElementById('developerNames').value = config.developerNames.join(', ');
                             document.getElementById('developerEmail').value = config.developerEmail;
                             document.getElementById('devOptionsPin').value = config.devOptionsPin;
-                            // Version Info
+
                             document.getElementById('viShowAppInfo').checked = config.versionInfo.viShowAppInfo;
                             document.getElementById('viShowKtlInfo').checked = config.versionInfo.viShowKtlInfo;
                             document.getElementById('viShowToRoles').value = config.versionInfo.viShowToRoles.join(', ');
@@ -1107,37 +1174,30 @@
                             document.getElementById('viPosYMobile').value = config.versionInfo.viPosYMobile;
                             document.getElementById('viOpacity').value = config.versionInfo.viOpacity;
                             document.getElementById('viOpacityHover').value = config.versionInfo.viOpacityHover;
-                            // Handle additional configurations as necessary...
 
-                            // Feature Switches and other settings
                             Object.keys(config.featureSwitches).forEach(key => {
                                 const checkbox = document.getElementById(key);
                                 if (checkbox) checkbox.checked = config.featureSwitches[key];
                             });
 
-                            // Bulk Operations
                             Object.keys(config.bulkOps).forEach(key => {
                                 const checkbox = document.getElementById(key);
                                 if (checkbox) checkbox.checked = config.bulkOps[key];
                             });
 
-                            // Popup Style
                             document.getElementById('popupStyleSuccess').value = config.popupStyle.success;
                             document.getElementById('popupStyleWarning').value = config.popupStyle.warning;
                             document.getElementById('popupStyleError').value = config.popupStyle.error;
 
-                            // Tooltip Styles
                             Object.keys(config.tooltipStyles).forEach(key => {
                                 document.getElementById(key).value = config.tooltipStyles[key];
                             });
 
-                            // Scenes Settings
                             document.getElementById('versionDisplayName').value = config.scenesSettings.versionDisplayName;
                             document.getElementById('idleWatchDogDelay').value = config.scenesSettings.idleWatchDogDelay;
                             document.getElementById('spinnerCtrDelay').value = config.scenesSettings.spinnerCtrDelay;
                             document.getElementById('spinnerWdExcludeScn').value = config.scenesSettings.spinnerWdExcludeScn.join(', ');
 
-                            // Views Settings
                             const qtParams = config.viewsSettings.quickToggleParams;
                             document.getElementById('bgColorTrue').value = qtParams.bgColorTrue;
                             document.getElementById('bgColorFalse').value = qtParams.bgColorFalse;
@@ -1150,7 +1210,6 @@
                             document.getElementById('hscCollapsedColumnsWidth').value = config.viewsSettings.hscCollapsedColumnsWidth;
                             document.getElementById('hscGlobal').checked = config.viewsSettings.hscGlobal;
 
-                            // Fields Settings
                             document.getElementById('textAsNumeric').value = config.fieldsSettings.textAsNumeric.join(', ');
                             document.getElementById('textAsNumericExcludeScenes').value = config.fieldsSettings.textAsNumericExcludeScenes.join(', ');
                             document.getElementById('horizontalRadioButtons').checked = config.fieldsSettings.horizontalRadioButtons;
@@ -1159,55 +1218,44 @@
                             document.getElementById('barcodeMinLength').value = config.fieldsSettings.barcodeMinLength;
                             document.getElementById('convertNumToTel').checked = config.fieldsSettings.convertNumToTel;
 
-                            // Persistent Forms Settings
                             document.getElementById('persistentFormsScenesToExclude').value = config.persistentFormsSettings.scenesToExclude.join(', ');
                             document.getElementById('persistentFormsFieldsToExclude').value = config.persistentFormsSettings.fieldsToExclude.join(', ');
 
-                            // System Colors Settings
                             document.getElementById('inlineEditBkgColor').value = config.systemColorsSettings.inlineEditBkgColor;
                             document.getElementById('inlineEditFontWeight').value = config.systemColorsSettings.inlineEditFontWeight;
                             document.getElementById('tableRowHoverBkgColor').value = config.systemColorsSettings.tableRowHoverBkgColor;
 
-                            // Advanced Settings: Kiosk
-                            if (config.advancedSettings && config.advancedSettings.kioskSettings) {
-                                document.getElementById('addRefreshHtml').value = config.advancedSettings.kioskSettings.ADD_REFRESH.html;
-                                document.getElementById('addRefreshId').value = config.advancedSettings.kioskSettings.ADD_REFRESH.id;
-                                document.getElementById('addRefreshHref').value = config.advancedSettings.kioskSettings.ADD_REFRESH.href;
+                            if (config.kioskSettings) {
+                                document.getElementById('addRefreshHtml').value = config.kioskSettings.ADD_REFRESH.html;
+                                document.getElementById('addRefreshId').value = config.kioskSettings.ADD_REFRESH.id;
+                                document.getElementById('addRefreshHref').value = config.kioskSettings.ADD_REFRESH.href;
 
-                                document.getElementById('addBackHtml').value = config.advancedSettings.kioskSettings.ADD_BACK.html;
-                                document.getElementById('addBackId').value = config.advancedSettings.kioskSettings.ADD_BACK.id;
-                                document.getElementById('addBackHref').value = config.advancedSettings.kioskSettings.ADD_BACK.href;
+                                document.getElementById('addBackHtml').value = config.kioskSettings.ADD_BACK.html;
+                                document.getElementById('addBackId').value = config.kioskSettings.ADD_BACK.id;
+                                document.getElementById('addBackHref').value = config.kioskSettings.ADD_BACK.href;
 
-                                document.getElementById('addDoneHtml').value = config.advancedSettings.kioskSettings.ADD_DONE.html;
-                                document.getElementById('addDoneId').value = config.advancedSettings.kioskSettings.ADD_DONE.id;
-                                document.getElementById('addDoneHref').value = config.advancedSettings.kioskSettings.ADD_DONE.href;
+                                document.getElementById('addDoneHtml').value = config.kioskSettings.ADD_DONE.html;
+                                document.getElementById('addDoneId').value = config.kioskSettings.ADD_DONE.id;
+                                document.getElementById('addDoneHref').value = config.kioskSettings.ADD_DONE.href;
                             }
 
-                            // Advanced Settings: Logging
-                            if (config.advancedSettings && config.advancedSettings.loggingSettings) {
-                                Object.keys(config.advancedSettings.loggingSettings.logEnabled).forEach(key => {
+                            if (config.loggingSettings) {
+                                Object.keys(config.loggingSettings).forEach(key => {
                                     const checkbox = document.getElementById(key);
-                                    if (checkbox) checkbox.checked = config.advancedSettings.loggingSettings.logEnabled[key];
+                                    if (checkbox) checkbox.checked = config.loggingSettings[key];
                                 });
                             }
 
-                            // Advanced Settings: iFrameWnd
-                            if (config.advancedSettings && config.advancedSettings.iFrameWndSettings) {
-                                document.getElementById('sendHeartbeat').checked = config.advancedSettings.iFrameWndSettings.sendHeartbeat;
+                            if (config.iFrameWndSettings) {
+                                document.getElementById('sendHeartbeat').checked = config.iFrameWndSettings.sendHeartbeat;
                             }
 
-
-                            // Handle developerNames differently based on its type
                             if (Array.isArray(config.developerNames)) {
                                 document.getElementById('developerNames').value = config.developerNames.join(', ');
                             } else {
                                 alert('Error - developerNames not an array.');
                             }
 
-                            // Populate other form fields
-                            document.getElementById('developerEmail').value = config.developerEmail || '';
-                            document.getElementById('devOptionsPin').value = config.devOptionsPin || '';
-                            // Repeat for other fields as necessary
                         } //Load File
                     } catch (error) {
                         alert('Error reading file: ' + error.message);
@@ -1220,7 +1268,6 @@
         document.getElementById('copyColor').addEventListener('click', function () {
             var color = document.getElementById('colorPicker').value;
             navigator.clipboard.writeText(color).then(function () {
-                // Create a confirmation message
                 var confirmationMsg = document.createElement("div");
                 confirmationMsg.textContent = 'Copied to clipboard: ' + color;
                 confirmationMsg.style.position = "absolute";
@@ -1231,13 +1278,11 @@
                 confirmationMsg.style.borderRadius = "5px";
                 confirmationMsg.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
                 confirmationMsg.style.fontSize = "0.8rem";
-                confirmationMsg.style.zIndex = 1000; // Ensure it's above other elements
+                confirmationMsg.style.zIndex = 1000;
 
-                // Append the message to the color picker container
                 var container = document.getElementById('colorPickerContainer');
                 container.appendChild(confirmationMsg);
 
-                // Remove the message after 2 seconds
                 setTimeout(function () {
                     container.removeChild(confirmationMsg);
                 }, 2000);
