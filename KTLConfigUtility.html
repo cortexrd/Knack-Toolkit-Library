@@ -15,7 +15,7 @@
         }
 
         .form-control {
-            width: 30em !important;
+            /*width: auto !important;*/
         }
 
         /* Style adjustments for inline label-input pairs */
@@ -27,6 +27,14 @@
 
             .form-inline label {
                 margin-right: 10px; /* Spacing between label and input */
+                justify-content: left;
+                min-width: 16em;
+            }
+
+            .form-inline .form-control {
+                display: inline-block;
+                width: unset !important;
+                vertical-align: middle;
             }
 
         /* Adjustments for checkbox groups to align items */
@@ -49,25 +57,32 @@
         /* Additional CSS for background colors */
         .fieldset-color-1 {
             background-color: #f0f8ff;
-        } /* AliceBlue */
+        }
+        /* AliceBlue */
         .fieldset-color-2 {
             background-color: #e6e6fa;
-        } /* Lavender */
+        }
+        /* Lavender */
         .fieldset-color-3 {
             background-color: #f5f5dc;
-        } /* Beige */
+        }
+        /* Beige */
         .fieldset-color-4 {
             background-color: #fffacd;
-        } /* LemonChiffon */
+        }
+        /* LemonChiffon */
         .fieldset-color-5 {
             background-color: #e0ffff;
-        } /* LightCyan */
+        }
+        /* LightCyan */
         .fieldset-color-6 {
             background-color: #fafad2;
-        } /* LightGoldenRodYellow */
+        }
+        /* LightGoldenRodYellow */
         .fieldset-color-7 {
             background-color: #d3d3d3;
-        } /* LightGrey */
+        }
+        /* LightGrey */
 
         /* Adjust the positioning of legends */
         fieldset legend {
@@ -76,6 +91,26 @@
             background: unset;
             padding: 0 5px;
             width: auto;
+        }
+
+        #copyPopup {
+            display: none;
+            position: fixed;
+            bottom: 20px; /* Adjusted for better visibility */
+            right: 20px; /* Keeps it within the visible area */
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 1000; /* Ensure it's above other content */
+        }
+
+        /* Adjusting for mobile devices */
+        @media (max-width: 600px) {
+            #copyPopup {
+                right: 10px; /* Closer to the edge for smaller screens */
+                bottom: 10px; /* Adjust as needed for visibility */
+            }
         }
     </style>
 </head>
@@ -561,6 +596,19 @@
         <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; width: 60em !important;"></textarea>
     </div>
 
+    <div style="position: fixed; bottom: 20px; right: 20px; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        <input type="color" id="colorPicker">
+        <button id="copyColor">Copy Color</button>
+    </div>
+
+    <!-- Example placeholder for the color picker widget -->
+    <div id="copyColorWidget">
+        <!-- Color picker and related controls go here -->
+        <div id="copyPopup" style="display: none; position: fixed; bottom: 80px; right: 20px; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+    </div>
+
+
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             var colorClasses = [
@@ -575,6 +623,37 @@
                 fieldset.classList.add(colorClasses[colorIndex]);
                 colorIndex = (colorIndex + 1) % colorClasses.length; // Cycle back to the start if we reach the end
             });
+        });
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const updateWidgetPosition = () => {
+                const popup = document.getElementById('copyPopup');
+                if (!popup) return; // Exit if popup doesn't exist
+
+                const viewportWidth = window.innerWidth;
+
+                // Define offsets from the edges of the viewport
+                const bottomOffset = 20; // Distance from the bottom of the viewport for mobile
+                const rightOffset = 20; // Distance from the right of the viewport for desktop
+
+                // Mobile-friendly adjustments
+                if (viewportWidth < 768) { // Example breakpoint for mobile devices
+                    popup.style.bottom = `${bottomOffset}px`;
+                    popup.style.right = `50%`; // Center horizontally on smaller screens
+                    popup.style.transform = 'translateX(50%)'; // Adjust for centering
+                } else {
+                    // For larger screens, position as initially intended
+                    popup.style.bottom = `80px`; // Original bottom offset
+                    popup.style.right = `${rightOffset}px`;
+                    popup.style.transform = ''; // Reset transform for non-mobile views
+                }
+            };
+
+            // Update the widget position when the page loads
+            updateWidgetPosition();
+
+            // Optional: Update the position on window resize to maintain visibility
+            window.addEventListener('resize', updateWidgetPosition);
         });
 
         document.getElementById('generateConfigBtn').addEventListener('click', function () {
@@ -655,112 +734,112 @@
 
             // Generating the configuration script
             let configScript = `
-window.APP_VERSION = '1.0.0';
+            window.APP_VERSION = '1.0.0';
 
-window.ktlReady = function (appInfo = {}) {
-        var ktl = new Ktl($, appInfo);
+            window.ktlReady = function (appInfo = {}) {
+            var ktl = new Ktl($, appInfo);
 
-        ktl.core.setCfg({
+            ktl.core.setCfg({
             developerNames: [${developerNames.join(', ')}],
             developerEmail: '${developerEmail}',
             devOptionsPin: '${devOptionsPin}',
             enabled: {
-                versionInfo: {
-                    viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
-                    viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
-                    viShowToRoles: ['Developer'],
-                    viPosX: '${enabled.versionInfo.viPosX}',
-                    viPosY: '${enabled.versionInfo.viPosY}',
-                    viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
-                    viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
-                    viOpacity: ${enabled.versionInfo.viOpacity},
-                    viOpacityHover: ${enabled.versionInfo.viOpacityHover}
-                },
-                showMenuInTitle: ${enabled.showMenuInTitle},
-                selTextOnFocus: ${enabled.selTextOnFocus},
-                // Include the rest of the enabled configurations...
+            versionInfo: {
+            viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
+            viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
+            viShowToRoles: ['Developer'],
+            viPosX: '${enabled.versionInfo.viPosX}',
+            viPosY: '${enabled.versionInfo.viPosY}',
+            viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
+            viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
+            viOpacity: ${enabled.versionInfo.viOpacity},
+            viOpacityHover: ${enabled.versionInfo.viOpacityHover}
+            },
+            showMenuInTitle: ${enabled.showMenuInTitle},
+            selTextOnFocus: ${enabled.selTextOnFocus},
+            // Include the rest of the enabled configurations...
             }
-        });
-
-        ktl.scenes.setCfg({
-                versionDisplayName: '${versionDisplayName}',
-                idleWatchDogDelay: ${idleWatchDogDelay},
-                spinnerCtrDelay: ${spinnerCtrDelay},
-                spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
             });
 
-        ktl.views.setCfg({
-                quickToggleParams: {
-                    bgColorTrue: '${quickToggleParams.bgColorTrue}',
-                    bgColorFalse: '${quickToggleParams.bgColorFalse}',
-                    bgColorPending: '${quickToggleParams.bgColorPending}',
-                    showSpinner: ${quickToggleParams.showSpinner},
-                    showNotification: ${quickToggleParams.showNotification},
-                },
-                headerAlignment: ${document.getElementById('headerAlignment').checked},
-                ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
-                ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
-                hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
-                hscGlobal: ${document.getElementById('hscGlobal').checked},
+            ktl.scenes.setCfg({
+            versionDisplayName: '${versionDisplayName}',
+            idleWatchDogDelay: ${idleWatchDogDelay},
+            spinnerCtrDelay: ${spinnerCtrDelay},
+            spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
             });
 
-        ktl.fields.setCfg({
-                textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
-                textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
-                horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
-                horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
-                barcodeTimeout: ${fieldsSettings.barcodeTimeout},
-                barcodeMinLength: ${fieldsSettings.barcodeMinLength},
-                convertNumToTel: ${fieldsSettings.convertNumToTel},
+            ktl.views.setCfg({
+            quickToggleParams: {
+            bgColorTrue: '${quickToggleParams.bgColorTrue}',
+            bgColorFalse: '${quickToggleParams.bgColorFalse}',
+            bgColorPending: '${quickToggleParams.bgColorPending}',
+            showSpinner: ${quickToggleParams.showSpinner},
+            showNotification: ${quickToggleParams.showNotification},
+            },
+            headerAlignment: ${document.getElementById('headerAlignment').checked},
+            ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
+            ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
+            hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
+            hscGlobal: ${document.getElementById('hscGlobal').checked},
             });
 
-        ktl.persistentForm.setCfg({
-                scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
-                fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
+            ktl.fields.setCfg({
+            textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
+            textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
+            horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
+            horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
+            barcodeTimeout: ${fieldsSettings.barcodeTimeout},
+            barcodeMinLength: ${fieldsSettings.barcodeMinLength},
+            convertNumToTel: ${fieldsSettings.convertNumToTel},
             });
 
-        ktl.systemColors.setCfg({
-                inlineEditBkgColor: document.getElementById("inlineEditBkgColor").value,
-                inlineEditFontWeight: document.getElementById("inlineEditFontWeight").value,
-                tableRowHoverBkgColor: document.getElementById("tableRowHoverBkgColor").value,
+            ktl.persistentForm.setCfg({
+            scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
+            fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
             });
 
-        if (!window.self.frameElement) { //Features that do not apply to the iFrameWnd.
-                ktl.scenes.setCfg({
-                    ktlKioskButtons: {
-                        ADD_REFRESH: {
-                            html: \`${addRefreshHtml}\`,
-                            id: '${addRefreshId}',
-                            href: ${addRefreshHref},
-                            scenesToExclude: [],
-                        },
-                        ADD_BACK: {
-                            // Repeat structure for ADD_BACK
-                        },
-                        ADD_DONE: {
-                            // Repeat structure for ADD_DONE
-                        },
-                    },
-                });
+            ktl.systemColors.setCfg({
+            inlineEditBkgColor: document.getElementById("inlineEditBkgColor").value,
+            inlineEditFontWeight: document.getElementById("inlineEditFontWeight").value,
+            tableRowHoverBkgColor: document.getElementById("tableRowHoverBkgColor").value,
+            });
+
+            if (!window.self.frameElement) { //Features that do not apply to the iFrameWnd.
+            ktl.scenes.setCfg({
+            ktlKioskButtons: {
+            ADD_REFRESH: {
+            html: \`${addRefreshHtml}\`,
+            id: '${addRefreshId}',
+            href: ${addRefreshHref},
+            scenesToExclude: [],
+            },
+            ADD_BACK: {
+            // Repeat structure for ADD_BACK
+            },
+            ADD_DONE: {
+            // Repeat structure for ADD_DONE
+            },
+            },
+            });
             }
 
-        ktl.log.setCfg({
-                logEnabled: {
-                    critical: ${logEnabled.critical},
-                    error: ${logEnabled.error},
-                    serverErr: ${logEnabled.serverErr},
-                    warning: ${logEnabled.warning},
-                    info: ${logEnabled.info},
-                    debug: ${logEnabled.debug},
-                    login: ${logEnabled.login},
-                    activity: ${logEnabled.activity},
-                    navigation: ${logEnabled.navigation},
-                }
+            ktl.log.setCfg({
+            logEnabled: {
+            critical: ${logEnabled.critical},
+            error: ${logEnabled.error},
+            serverErr: ${logEnabled.serverErr},
+            warning: ${logEnabled.warning},
+            info: ${logEnabled.info},
+            debug: ${logEnabled.debug},
+            login: ${logEnabled.login},
+            activity: ${logEnabled.activity},
+            navigation: ${logEnabled.navigation},
+            }
             });
 
-        // KTL Setup - END
-};
-`;
+            // KTL Setup - END
+            };
+            `;
 
             // Display the generated configuration script
             document.getElementById('generatedConfig').value = configScript;
@@ -1074,6 +1153,26 @@ window.ktlReady = function (appInfo = {}) {
                 reader.readAsText(file);
             }
         });
+
+        document.getElementById('copyColor').addEventListener('click', function () {
+            var color = document.getElementById('colorPicker').value;
+            navigator.clipboard.writeText(color).then(function () {
+                // Show the popup and set the message
+                var popup = document.getElementById('copyPopup');
+                popup.textContent = 'Copied to clipboard: ' + color;
+                popup.style.display = 'block';
+
+                // Hide the popup after 2 seconds
+                setTimeout(function () {
+                    popup.style.display = 'none';
+                }, 2000);
+            }, function (err) {
+                console.error('Could not copy color: ', err);
+            });
+        });
+
+
+
     </script>
 
 
