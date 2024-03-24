@@ -29,7 +29,7 @@
             .form-inline label {
                 margin-right: 10px; /* Spacing between label and input */
                 justify-content: left;
-                min-width: 16em;
+                /*min-width: 16em;*/
             }
 
             .form-inline .form-control {
@@ -85,9 +85,9 @@
         }
         /* LightGoldenRodYellow */
         .fieldset-color-7 {
-            background-color: #d3d3d3;
+            background-color: #d6e5e0;
         }
-        /* LightGrey */
+        /* Light Green */
 
         /* Adjust the positioning of legends */
         fieldset legend {
@@ -97,26 +97,6 @@
             padding: 0 5px;
             width: auto;
             font-size: 1.2rem;
-        }
-
-        #copyPopup {
-            display: none;
-            position: fixed;
-            bottom: 20px; /* Adjusted for better visibility */
-            right: 20px; /* Keeps it within the visible area */
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            z-index: 1000; /* Ensure it's above other content */
-        }
-
-        /* Adjusting for mobile devices */
-        @media (max-width: 600px) {
-            #copyPopup {
-                right: 10px; /* Closer to the edge for smaller screens */
-                bottom: 10px; /* Adjust as needed for visibility */
-            }
         }
     </style>
 </head>
@@ -599,21 +579,17 @@
             <button type="button" class="btn btn-primary" id="generateConfigBtn">Generate Configuration</button>
         </form>
 
-        <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; width: 60em !important;"></textarea>
+        <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; <!--width: 60em !important;-->"></textarea>
     </div>
 
-    <div style="position: fixed; top: 5%; right: 50%; background: gray; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+    <div style="position: fixed; top: 70px; right: 5%; background: gray; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
         <input type="color" id="colorPicker">
         <button id="copyColor">Copy Color</button>
     </div>
 
-    <!-- Example placeholder for the color picker widget -->
     <div id="copyColorWidget">
-        <!-- Color picker and related controls go here -->
-        <div id="copyPopup" style="display: none; position: fixed; bottom: 80px; right: 20px; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+        <div id="copyPopup" style="display: none; position: fixed; height: fit-content; top: 130px; right: 5%; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
     </div>
-
-
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -629,37 +605,6 @@
                 fieldset.classList.add(colorClasses[colorIndex]);
                 colorIndex = (colorIndex + 1) % colorClasses.length; // Cycle back to the start if we reach the end
             });
-        });
-
-        document.addEventListener('DOMContentLoaded', (event) => {
-            const updateWidgetPosition = () => {
-                const popup = document.getElementById('copyPopup');
-                if (!popup) return; // Exit if popup doesn't exist
-
-                const viewportWidth = window.innerWidth;
-
-                // Define offsets from the edges of the viewport
-                const bottomOffset = 20; // Distance from the bottom of the viewport for mobile
-                const rightOffset = 20; // Distance from the right of the viewport for desktop
-
-                // Mobile-friendly adjustments
-                if (viewportWidth < 768) { // Example breakpoint for mobile devices
-                    popup.style.bottom = `${bottomOffset}px`;
-                    popup.style.right = `50%`; // Center horizontally on smaller screens
-                    popup.style.transform = 'translateX(50%)'; // Adjust for centering
-                } else {
-                    // For larger screens, position as initially intended
-                    popup.style.bottom = `80px`; // Original bottom offset
-                    popup.style.right = `${rightOffset}px`;
-                    popup.style.transform = ''; // Reset transform for non-mobile views
-                }
-            };
-
-            // Update the widget position when the page loads
-            updateWidgetPosition();
-
-            // Optional: Update the position on window resize to maintain visibility
-            window.addEventListener('resize', updateWidgetPosition);
         });
 
         document.getElementById('generateConfigBtn').addEventListener('click', function () {
@@ -1176,8 +1121,6 @@
                 console.error('Could not copy color: ', err);
             });
         });
-
-
 
     </script>
 
