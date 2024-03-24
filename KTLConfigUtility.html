@@ -98,6 +98,38 @@
             width: auto;
             font-size: 1.2rem;
         }
+
+        #grabber {
+            width: 25px;
+            height: 100%;
+            background-color: #ccc;
+            border-top-left-radius: 5px;
+            border-bottom-left-radius: 5px;
+            position: absolute;
+            left: 0px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: grab;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4px; /* Adjust the padding to center the dots correctly */
+        }
+
+        .dot-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin: 2px 0; /* Adjust the margin to set the vertical spacing between the dots */
+        }
+
+        .dot {
+            width: 6px; /* Adjust size as needed */
+            height: 6px; /* Adjust size as needed */
+            background-color: #666;
+            border-radius: 50%;
+        }
     </style>
 </head>
 <body>
@@ -582,16 +614,102 @@
         <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; <!--width: 60em !important;-->"></textarea>
     </div>
 
-    <div style="position: fixed; top: 70px; right: 5%; background: gray; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-        <input type="color" id="colorPicker">
+    <div id="colorPickerContainer" style="cursor: move; position: fixed; top: 70px; right: 5%; background: gray; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+
+        <div id="grabber">
+            <div class="dot-container">
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+            <div class="dot-container">
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+            <div class="dot-container">
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+
+        <div style="width: 20px; height: 100%; position: absolute; left: 20px; top: 50%; transform: translateY(-50%); cursor: grab; border-top-left-radius: 5px; border-bottom-left-radius: 5px;">
+        </div>
+
+
+        <input type="color" id="colorPicker" style="margin-left: 20px;">
         <button id="copyColor">Copy Color</button>
     </div>
 
-    <div id="copyColorWidget">
-        <div id="copyPopup" style="display: none; position: fixed; height: fit-content; top: 130px; right: 5%; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
-    </div>
-
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var dragItem = document.querySelector("#grabber");
+            var active = false;
+            var currentX;
+            var currentY;
+            var initialX;
+            var initialY;
+            var xOffset = 0;
+            var yOffset = 0;
+
+            // Mouse events
+            dragItem.addEventListener("mousedown", dragStart, false);
+            document.addEventListener("mouseup", dragEnd, false);
+            document.addEventListener("mousemove", drag, false);
+
+            // Touch events
+            dragItem.addEventListener("touchstart", dragStart, false);
+            document.addEventListener("touchend", dragEnd, false);
+            document.addEventListener("touchmove", drag, false);
+
+            function dragStart(e) {
+                if (e.type === "touchstart") {
+                    // Prevent the default touch action (scroll / zoom)
+                    e.preventDefault();
+
+                    // Use the first touch point for the initial position
+                    initialX = e.touches[0].clientX - xOffset;
+                    initialY = e.touches[0].clientY - yOffset;
+                } else {
+                    initialX = e.clientX - xOffset;
+                    initialY = e.clientY - yOffset;
+                }
+
+                const hasGrabber = e.target.closest('#grabber');
+                if (hasGrabber) {
+                    active = true;
+                }
+            }
+
+            function dragEnd(e) {
+                initialX = currentX;
+                initialY = currentY;
+                active = false;
+            }
+
+            function drag(e) {
+                if (active) {
+                    e.preventDefault();
+
+                    if (e.type === "touchmove") {
+                        currentX = e.touches[0].clientX - initialX;
+                        currentY = e.touches[0].clientY - initialY;
+                    } else {
+                        currentX = e.clientX - initialX;
+                        currentY = e.clientY - initialY;
+                    }
+
+                    xOffset = currentX;
+                    yOffset = currentY;
+
+                    setTranslate(currentX, currentY, dragItem);
+                }
+            }
+
+            function setTranslate(xPos, yPos, el) {
+                const dndContainer = el.closest('#colorPickerContainer');
+                dndContainer.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', function () {
             var colorClasses = [
                 'fieldset-color-1', 'fieldset-color-2', 'fieldset-color-3',
@@ -685,112 +803,112 @@
 
             // Generating the configuration script
             let configScript = `
-                window.APP_VERSION = '1.0.0';
+                                window.APP_VERSION = '1.0.0';
 
-                window.ktlReady = function (appInfo = {}) {
-                var ktl = new Ktl($, appInfo);
+                                window.ktlReady = function (appInfo = {}) {
+                                var ktl = new Ktl($, appInfo);
 
-                ktl.core.setCfg({
-                developerNames: [${developerNames.join(', ')}],
-                developerEmail: '${developerEmail}',
-                devOptionsPin: '${devOptionsPin}',
-                enabled: {
-                versionInfo: {
-                viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
-                viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
-                viShowToRoles: ['Developer'],
-                viPosX: '${enabled.versionInfo.viPosX}',
-                viPosY: '${enabled.versionInfo.viPosY}',
-                viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
-                viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
-                viOpacity: ${enabled.versionInfo.viOpacity},
-                viOpacityHover: ${enabled.versionInfo.viOpacityHover}
-                },
-                showMenuInTitle: ${enabled.showMenuInTitle},
-                selTextOnFocus: ${enabled.selTextOnFocus},
-                // Include the rest of the enabled configurations...
-                }
-                });
+                                ktl.core.setCfg({
+                                developerNames: [${developerNames.join(', ')}],
+                                developerEmail: '${developerEmail}',
+                                devOptionsPin: '${devOptionsPin}',
+                                enabled: {
+                                versionInfo: {
+                                viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
+                                viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
+                                viShowToRoles: ['Developer'],
+                                viPosX: '${enabled.versionInfo.viPosX}',
+                                viPosY: '${enabled.versionInfo.viPosY}',
+                                viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
+                                viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
+                                viOpacity: ${enabled.versionInfo.viOpacity},
+                                viOpacityHover: ${enabled.versionInfo.viOpacityHover}
+                                },
+                                showMenuInTitle: ${enabled.showMenuInTitle},
+                                selTextOnFocus: ${enabled.selTextOnFocus},
+                                // Include the rest of the enabled configurations...
+                                }
+                                });
 
-                ktl.scenes.setCfg({
-                versionDisplayName: '${versionDisplayName}',
-                idleWatchDogDelay: ${idleWatchDogDelay},
-                spinnerCtrDelay: ${spinnerCtrDelay},
-                spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
-                });
+                                ktl.scenes.setCfg({
+                                versionDisplayName: '${versionDisplayName}',
+                                idleWatchDogDelay: ${idleWatchDogDelay},
+                                spinnerCtrDelay: ${spinnerCtrDelay},
+                                spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(',')}],
+                                });
 
-                ktl.views.setCfg({
-                quickToggleParams: {
-                bgColorTrue: '${quickToggleParams.bgColorTrue}',
-                bgColorFalse: '${quickToggleParams.bgColorFalse}',
-                bgColorPending: '${quickToggleParams.bgColorPending}',
-                showSpinner: ${quickToggleParams.showSpinner},
-                showNotification: ${quickToggleParams.showNotification},
-                },
-                headerAlignment: ${document.getElementById('headerAlignment').checked},
-                ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
-                ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
-                hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
-                hscGlobal: ${document.getElementById('hscGlobal').checked},
-                });
+                                ktl.views.setCfg({
+                                quickToggleParams: {
+                                bgColorTrue: '${quickToggleParams.bgColorTrue}',
+                                bgColorFalse: '${quickToggleParams.bgColorFalse}',
+                                bgColorPending: '${quickToggleParams.bgColorPending}',
+                                showSpinner: ${quickToggleParams.showSpinner},
+                                showNotification: ${quickToggleParams.showNotification},
+                                },
+                                headerAlignment: ${document.getElementById('headerAlignment').checked},
+                                ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
+                                ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
+                                hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
+                                hscGlobal: ${document.getElementById('hscGlobal').checked},
+                                });
 
-                ktl.fields.setCfg({
-                textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
-                textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
-                horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
-                horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
-                barcodeTimeout: ${fieldsSettings.barcodeTimeout},
-                barcodeMinLength: ${fieldsSettings.barcodeMinLength},
-                convertNumToTel: ${fieldsSettings.convertNumToTel},
-                });
+                                ktl.fields.setCfg({
+                                textAsNumeric: [${fieldsSettings.textAsNumeric.join(',')}],
+                                textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(',')}],
+                                horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
+                                horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
+                                barcodeTimeout: ${fieldsSettings.barcodeTimeout},
+                                barcodeMinLength: ${fieldsSettings.barcodeMinLength},
+                                convertNumToTel: ${fieldsSettings.convertNumToTel},
+                                });
 
-                ktl.persistentForm.setCfg({
-                scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
-                fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
-                });
+                                ktl.persistentForm.setCfg({
+                                scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(',')}],
+                                fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(',')}],
+                                });
 
-                ktl.systemColors.setCfg({
-                inlineEditBkgColor: document.getElementById("inlineEditBkgColor").value,
-                inlineEditFontWeight: document.getElementById("inlineEditFontWeight").value,
-                tableRowHoverBkgColor: document.getElementById("tableRowHoverBkgColor").value,
-                });
+                                ktl.systemColors.setCfg({
+                                inlineEditBkgColor: document.getElementById("inlineEditBkgColor").value,
+                                inlineEditFontWeight: document.getElementById("inlineEditFontWeight").value,
+                                tableRowHoverBkgColor: document.getElementById("tableRowHoverBkgColor").value,
+                                });
 
-                if (!window.self.frameElement) { //Features that do not apply to the iFrameWnd.
-                ktl.scenes.setCfg({
-                ktlKioskButtons: {
-                ADD_REFRESH: {
-                html: \`${addRefreshHtml}\`,
-                id: '${addRefreshId}',
-                href: ${addRefreshHref},
-                scenesToExclude: [],
-                },
-                ADD_BACK: {
-                // Repeat structure for ADD_BACK
-                },
-                ADD_DONE: {
-                // Repeat structure for ADD_DONE
-                },
-                },
-                });
-                }
+                                if (!window.self.frameElement) { //Features that do not apply to the iFrameWnd.
+                                ktl.scenes.setCfg({
+                                ktlKioskButtons: {
+                                ADD_REFRESH: {
+                                html: \`${addRefreshHtml}\`,
+                                id: '${addRefreshId}',
+                                href: ${addRefreshHref},
+                                scenesToExclude: [],
+                                },
+                                ADD_BACK: {
+                                // Repeat structure for ADD_BACK
+                                },
+                                ADD_DONE: {
+                                // Repeat structure for ADD_DONE
+                                },
+                                },
+                                });
+                                }
 
-                ktl.log.setCfg({
-                logEnabled: {
-                critical: ${logEnabled.critical},
-                error: ${logEnabled.error},
-                serverErr: ${logEnabled.serverErr},
-                warning: ${logEnabled.warning},
-                info: ${logEnabled.info},
-                debug: ${logEnabled.debug},
-                login: ${logEnabled.login},
-                activity: ${logEnabled.activity},
-                navigation: ${logEnabled.navigation},
-                }
-                });
+                                ktl.log.setCfg({
+                                logEnabled: {
+                                critical: ${logEnabled.critical},
+                                error: ${logEnabled.error},
+                                serverErr: ${logEnabled.serverErr},
+                                warning: ${logEnabled.warning},
+                                info: ${logEnabled.info},
+                                debug: ${logEnabled.debug},
+                                login: ${logEnabled.login},
+                                activity: ${logEnabled.activity},
+                                navigation: ${logEnabled.navigation},
+                                }
+                                });
 
-                // KTL Setup - END
-                };
-                `;
+                                // KTL Setup - END
+                                };
+                                `;
 
             // Display the generated configuration script
             document.getElementById('generatedConfig').value = configScript;
@@ -1108,14 +1226,26 @@
         document.getElementById('copyColor').addEventListener('click', function () {
             var color = document.getElementById('colorPicker').value;
             navigator.clipboard.writeText(color).then(function () {
-                // Show the popup and set the message
-                var popup = document.getElementById('copyPopup');
-                popup.textContent = 'Copied to clipboard: ' + color;
-                popup.style.display = 'block';
+                // Create a confirmation message
+                var confirmationMsg = document.createElement("div");
+                confirmationMsg.textContent = 'Copied to clipboard: ' + color;
+                confirmationMsg.style.position = "absolute";
+                confirmationMsg.style.left = 0;
+                confirmationMsg.style.bottom = "60px";
+                confirmationMsg.style.backgroundColor = "#f0f0f0";
+                confirmationMsg.style.padding = "5px";
+                confirmationMsg.style.borderRadius = "5px";
+                confirmationMsg.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+                confirmationMsg.style.fontSize = "0.8rem";
+                confirmationMsg.style.zIndex = 1000; // Ensure it's above other elements
 
-                // Hide the popup after 2 seconds
+                // Append the message to the color picker container
+                var container = document.getElementById('colorPickerContainer');
+                container.appendChild(confirmationMsg);
+
+                // Remove the message after 2 seconds
                 setTimeout(function () {
-                    popup.style.display = 'none';
+                    container.removeChild(confirmationMsg);
                 }, 2000);
             }, function (err) {
                 console.error('Could not copy color: ', err);
