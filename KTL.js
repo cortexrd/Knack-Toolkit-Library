@@ -8778,7 +8778,7 @@ function Ktl($, appInfo) {
 
             const viewType = ktl.views.getViewType(viewId);
             if (viewType === 'form') {
-                $(document).off(`knack-form-submit.${viewId}`).one(`knack-form-submit.${viewId}`, function (event, view, record) {
+                $(document).off(`knack-form-submit.${viewId}.ktl_cmr`).one(`knack-form-submit.${viewId}.ktl_cmr`, function (event, view, record) {
                     Knack.closeModal();
                     refreshViews();
                 });
