@@ -15,8 +15,8 @@
             font-size: 1.6rem;
         }
 
-        .form-control {
-            /*width: unset !important;*/
+        .form-group {
+            margin-top: 1rem;
         }
 
         /* Style adjustments for inline label-input pairs */
@@ -548,27 +548,56 @@
                 <fieldset class="form-group border p-3">
                     <legend>Kiosk</legend>
 
-                    <div class="form-group">
-                        <label>ADD_REFRESH Button Config</label>
-                        <input type="text" class="form-control" id="addRefreshHtml" value="&lt;i class=&quot;fa fa-refresh&quot;&gt;&lt;/i&gt;">
-                        <input type="text" class="form-control" id="addRefreshId" value="kn-button-refresh">
-                        <input type="text" class="form-control" id="addRefreshHref" value="function () { location.reload(); }">
-                    </div>
+                    <fieldset class="form-group">
+                        <legend>Refresh Button</legend>
+                        <div class="form-group">
+                            <label for="addRefreshHtml">HTML</label>
+                            <input type="text" class="form-control" id="addRefreshHtml" value="&lt;i class=&quot;fa fa-refresh&quot;&gt;&lt;/i&gt;">
+                        </div>
+                        <div class="form-group">
+                            <label for="addRefreshId">ID</label>
+                            <input type="text" class="form-control" id="addRefreshId" value="kn-button-refresh">
+                        </div>
+                        <div class="form-group">
+                            <label for="addRefreshHref">href</label>
+                            <input type="text" class="form-control" id="addRefreshHref" value="function () { location.reload(); }">
+                        </div>
+                    </fieldset>
 
-                    <div class="form-group">
-                        <label>ADD_BACK Button Config</label>
-                        <input type="text" class="form-control" id="addBackHtml" value="&lt;i class=&quot;fa fa-arrow-left&quot;&gt;&lt;/i&gt;">
-                        <input type="text" class="form-control" id="addBackId" value="kn-button-back">
-                        <input type="text" class="form-control" id="addBackHref" value="function () { window.history.back(); }">
-                    </div>
+                    <fieldset class="form-group">
+                        <legend>Back Button</legend>
+                        <div class="form-group">
+                            <label for="addBackHtml">HTML</label>
+                            <input type="text" class="form-control" id="addBackHtml" value="&lt;i class=&quot;fa fa-arrow-left&quot;&gt;&lt;/i&gt;">
+                        </div>
+                        <div class="form-group">
+                            <label for="addBackId">ID</label>
+                            <input type="text" class="form-control" id="addBackId" value="kn-button-back">
+                        </div>
+                        <div class="form-group">
+                            <label for="addBackHref">href</label>
+                            <input type="text" class="form-control" id="addBackHref" value="function () { window.history.back(); }">
+                        </div>
+                    </fieldset>
 
-                    <div class="form-group">
-                        <label>ADD_DONE Button Config</label>
-                        <input type="text" class="form-control" id="addDoneHtml" value="&lt;i class=&quot;fa fa-check-square-o&quot;&gt;&lt;/i&gt;">
-                        <input type="text" class="form-control" id="addDoneId" value="kn-button-back">
-                        <input type="text" class="form-control" id="addDoneHref" value="function () { window.history.back(); }">
-                    </div>
+                    <fieldset class="form-group">
+                        <legend>Done Button</legend>
+                        <div class="form-group">
+                            <label for="addDoneHtml">HTML</label>
+                            <input type="text" class="form-control" id="addDoneHtml" value="&lt;i class=&quot;fa fa-check-square-o&quot;&gt;&lt;/i&gt;">
+                        </div>
+                        <div class="form-group">
+                            <label for="addDoneId">ID</label>
+                            <input type="text" class="form-control" id="addDoneId" value="kn-button-done">
+                        </div>
+                        <div class="form-group">
+                            <label for="addDoneHref">href</label>
+                            <input type="text" class="form-control" id="addDoneHref" value="function () { /* Your done function here */ }">
+                        </div>
+                    </fieldset>
+
                 </fieldset>
+
 
             </fieldset>
 
@@ -824,7 +853,7 @@ window.ktlReady = function (appInfo = {}) {
                     viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
                     viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
                     viOpacity: ${enabled.versionInfo.viOpacity},
-                    viOpacityHover: ${enabled.versionInfo.viOpacityHover}
+                    viOpacityHover: ${enabled.versionInfo.viOpacityHover},
                 },
 
                 showMenuInTitle: ${enabled.showMenuInTitle},
@@ -846,19 +875,19 @@ window.ktlReady = function (appInfo = {}) {
                 virtualKeyboard: ${enabled.virtualKeyboard},
 
                 //Those below must also be set up properly to have any effect.  See documentation.
-                iFrameWnd: ${enabled.iFrameWnd}
+                iFrameWnd: ${enabled.iFrameWnd},
 
                 bulkOps: {
                     bulkEdit: ${enabled.bulkOps.bulkEdit},
                     bulkCopy: ${enabled.bulkOps.bulkCopy},
-                    bulkDelete: ${enabled.bulkOps.bulkDelete}
+                    bulkDelete: ${enabled.bulkOps.bulkDelete},
                 },
             },
 
             popupStyle: {
                 success: '${popupStyle.success}',
                 warning: '${popupStyle.warning}',
-                error: '${popupStyle.error}'
+                error: '${popupStyle.error}',
             },
 
             tooltipStyles: {
@@ -870,7 +899,7 @@ window.ktlReady = function (appInfo = {}) {
                 ktlTtipIconDetailsViewColor: '${tooltipStyles.ktlTtipIconDetailsViewColor}',
                 ktlTtipTableViewBgColor: '${tooltipStyles.ktlTtipTableViewBgColor}',
                 ktlTtipTableViewTxtColor: '${tooltipStyles.ktlTtipTableViewTxtColor}',
-                ktlTtipIconTableViewColor: '${tooltipStyles.ktlTtipIconTableViewColor}'
+                ktlTtipIconTableViewColor: '${tooltipStyles.ktlTtipIconTableViewColor}',
             },
 
         });
@@ -914,9 +943,9 @@ window.ktlReady = function (appInfo = {}) {
         });
 
         ktl.systemColors.setCfg({
-            inlineEditBkgColor: ${document.getElementById('inlineEditBkgColor').value},
-            inlineEditFontWeight: ${document.getElementById('inlineEditFontWeight').value},
-            tableRowHoverBkgColor: ${document.getElementById('tableRowHoverBkgColor').value},
+            inlineEditBkgColor: '${document.getElementById('inlineEditBkgColor').value}',
+            inlineEditFontWeight: '${document.getElementById('inlineEditFontWeight').value}',
+            tableRowHoverBkgColor: '${document.getElementById('tableRowHoverBkgColor').value}',
         });
 
         //Features that do not apply to the iFrameWnd.
