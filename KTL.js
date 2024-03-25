@@ -13542,6 +13542,8 @@ function Ktl($, appInfo) {
                 $(document).on('click', function (e) {
                     if (e.target.closest('.kn-content') || (e.target && e.target.id && e.target.id === 'knack-body')) {
                         $('#popupDivId').remove();
+                        $('#popupFormId').remove();
+
                         if ($('#dbgWndId').length)
                             ktl.debugWnd.showDebugWnd(false);
                         else if ($('#resultWndId').length)
