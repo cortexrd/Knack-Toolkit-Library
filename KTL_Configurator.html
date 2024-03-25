@@ -164,473 +164,489 @@
             </div>
         </div>
 
-        <form id="ktlConfigForm">
-            <fieldset class="form-group border p-3">
-                <legend>Core Settings</legend>
-                <div>
-                    <label>Developer Names (comma-separated):</label>
-                    <input type="text" class="form-control" id="developerNames" placeholder="Firstname Lastname">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-6">
+                    <form id="ktlConfigForm">
+                        <fieldset class="form-group border p-3">
+                            <legend data-section-id="core-settings">Core Settings</legend>
+                            <div>
+                                <label>Developer Names (comma-separated):</label>
+                                <input type="text" class="form-control" id="developerNames" placeholder="Firstname Lastname">
+                            </div>
+                            <div>
+                                <label>Developer Email:</label>
+                                <input type="email" class="form-control" id="developerEmail" placeholder="yourmail@provider.com">
+                            </div>
+                            <div>
+                                <label>Developer Options PIN:</label>
+                                <input type="text" class="form-control" id="devOptionsPin" placeholder="0000">
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="form-group border p-3">
+                            <legend data-section-id="general-features"> General Feature Settings</legend>
+
+                            <fieldset class="form-group border p-3">
+                                <legend data-section-id="version-info-bar"> Version Info Bar</legend>
+                                <div class="checkbox-inline">
+                                    <label for="viShowAppInfo">Show App Info</label>
+                                    <input type="checkbox" id="viShowAppInfo" checked><br>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="viShowKtlInfo">Show KTL Info</label>
+                                    <input type="checkbox" id="viShowKtlInfo" checked><br>
+                                </div>
+                                <div class="form-inline">
+                                    <label for="viShowToRoles">Show to these roles only</label>
+                                    <input type="text" class="form-control" id="viShowToRoles" placeholder="Developer" value="Developer">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="viPosX">Default Horizontal Pos</label>
+                                    <select class="form-control" id="viPosX">
+                                        <option value="right">Right</option>
+                                        <option value="center">Center</option>
+                                        <option value="left">Left</option>
+                                    </select>
+                                </div>
+                                <div class="form-inline">
+                                    <label for="viPosY">Default Vertical Position</label>
+                                    <select class="form-control" id="viPosY">
+                                        <option value="top">Top</option>
+                                        <option value="bottom">Bottom</option>
+                                    </select>
+                                </div>
+                                <div class="form-inline">
+                                    <label for="viPosXMobile">Mobile Horizontal Pos</label>
+                                    <select class="form-control" id="viPosXMobile">
+                                        <option value="center">Center</option>
+                                        <option value="left">Left</option>
+                                        <option value="right">Right</option>
+                                    </select>
+                                </div>
+                                <div class="form-inline">
+                                    <label for="viPosYMobile">Mobile Vertical Position</label>
+                                    <select class="form-control" id="viPosYMobile">
+                                        <option value="bottom">Bottom</option>
+                                        <option value="top">Top</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-inline">
+                                    <label for="viOpacity">Default Opacity</label>
+                                    <input type="number" class="form-control" id="viOpacity" placeholder="50" value="50">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="viOpacityHover">Opacity on Hover</label>
+                                    <input type="number" class="form-control" id="viOpacityHover" placeholder="100" value="100">
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="form-group border p-3">
+                                <legend data-section-id="main-feature-switches">Main Feature Switches</legend>
+                                <div class="checkbox-inline">
+                                    <label for="showMenuInTitle">Show Menu in Title</label>
+                                    <input type="checkbox" id="showMenuInTitle" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="selTextOnFocus">Select Text on Focus</label>
+                                    <input type="checkbox" id="selTextOnFocus" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="inlineEditColor">Inline Edit Color</label>
+                                    <input type="checkbox" id="inlineEditColor" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="rowHoverHighlight">Row Hover Highlight</label>
+                                    <input type="checkbox" id="rowHoverHighlight" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="autoFocus">Auto Focus</label>
+                                    <input type="checkbox" id="autoFocus" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="sortedMenus">Sorted Menus</label>
+                                    <input type="checkbox" id="sortedMenus" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="userFilters">User Filters</label>
+                                    <input type="checkbox" id="userFilters" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="persistentForm">Persistent Form</label>
+                                    <input type="checkbox" id="persistentForm" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="calendarGotoDate">Calendar Go To Date</label>
+                                    <input type="checkbox" id="calendarGotoDate" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="rememberMe">Remember Me</label>
+                                    <input type="checkbox" id="rememberMe" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="formPreValidation">Form Pre Validation</label>
+                                    <input type="checkbox" id="formPreValidation" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="spinnerWatchDog">Spinner Watchdog</label>
+                                    <input type="checkbox" id="spinnerWatchDog" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="idleWatchDog">Idle Watchdog</label>
+                                    <input type="checkbox" id="idleWatchDog" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="debugWnd">Debug Window</label>
+                                    <input type="checkbox" id="debugWnd" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="devInfoPopup">Dev Info Popup</label>
+                                    <input type="checkbox" id="devInfoPopup" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="devPauseAutoRefresh">Dev Pause Auto Refresh</label>
+                                    <input type="checkbox" id="devPauseAutoRefresh" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="virtualKeyboard">Virtual Keyboard</label>
+                                    <input type="checkbox" id="virtualKeyboard">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="iFrameWnd">iFrameWnd</label>
+                                    <input type="checkbox" id="iFrameWnd">
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="form-group border p-3">
+                                <legend>Bulk Operations</legend>
+                                <div class="checkbox-inline">
+                                    <label for="bulkEdit">Bulk Edit</label>
+                                    <input type="checkbox" id="bulkEdit" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="bulkCopy">Bulk Copy</label>
+                                    <input type="checkbox" id="bulkCopy" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="bulkDelete">Bulk Delete</label>
+                                    <input type="checkbox" id="bulkDelete" checked>
+                                </div>
+                            </fieldset>
+
+
+                            <fieldset class="form-group border p-3">
+                                <legend>Popup Style</legend>
+                                <div class="form-inline">
+                                    <label for="popupStyleSuccess">Success Style</label>
+                                    <input type="text" class="form-control" id="popupStyleSuccess" value=";background-color:#81b378;border:5px solid #294125">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="popupStyleWarning">Warning Style</label>
+                                    <input type="text" class="form-control" id="popupStyleWarning" value=";background-color:#fffa5e;border:2px solid #7e8060">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="popupStyleError">Error Style</label>
+                                    <input type="text" class="form-control" id="popupStyleError" value=";background-color:#FFB0B0;border:5px solid #660000">
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="form-group border p-3">
+                                <legend>Tooltip Styles</legend>
+                                <div class="form-inline">
+                                    <label for="ktlTtipFormViewBgColor">Form View Background Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipFormViewBgColor" value="#222222">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="ktlTtipFormViewTxtColor">Form View Text Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipFormViewTxtColor" value="#ffffff">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="ktlTtipIconFormViewColor">Form View Icon Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipIconFormViewColor" value="#222222">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="ktlTtipDetailsViewBgColor">Details/List View Background Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipDetailsViewBgColor" value="#222222">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="ktlTtipDetailsViewTxtColor">Details/List View Text Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipDetailsViewTxtColor" value="#ffffff">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="ktlTtipIconDetailsViewColor">Details/List View Icon Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipIconDetailsViewColor" value="#222222">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="ktlTtipTableViewBgColor">Table View Background Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipTableViewBgColor" value="#222222">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="ktlTtipTableViewTxtColor">Table View Text Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipTableViewTxtColor" value="#ffffff">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="ktlTtipIconTableViewColor">Table View Icon Color</label>
+                                    <input type="text" class="form-control" id="ktlTtipIconTableViewColor" value="#222222">
+                                </div>
+                            </fieldset>
+                        </fieldset>
+
+                        <fieldset class="form-group border p-3">
+                            <legend>Scenes</legend>
+                            <div class="form-inline">
+                                <label for="versionDisplayName">Version Display Name</label>
+                                <input type="text" class="form-control" id="versionDisplayName" placeholder="My App Name">
+                            </div>
+                            <div class="form-inline">
+                                <label for="idleWatchDogDelay">Idle Watchdog Delay (ms)</label>
+                                <input type="number" class="form-control" id="idleWatchDogDelay" value="7200000" placeholder="120 * 60000">
+                            </div>
+                            <div class="form-inline">
+                                <label for="spinnerCtrDelay">Spinner Watchdog Delay (seconds)</label>
+                                <input type="number" class="form-control" id="spinnerCtrDelay" value="60" placeholder="60">
+                            </div>
+                            <div class="form-inline">
+                                <label for="spinnerWdExcludeScn">Spinner WatchDog Exclude Scenes (comma-separated IDs)</label>
+                                <input type="text" class="form-control" id="spinnerWdExcludeScn" placeholder="1,2,3">
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="form-group border p-3">
+                            <legend>Views</legend>
+
+                            <fieldset class="form-group border p-3">
+                                <legend>Quick Toggle Params</legend>
+                                <div class="form-inline">
+                                    <label for="bgColorTrue">Background Color (True)</label>
+                                    <input type="text" class="form-control" id="bgColorTrue" value="#39d91f">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="bgColorFalse">Background Color (False)</label>
+                                    <input type="text" class="form-control" id="bgColorFalse" value="#f04a3b">
+                                </div>
+                                <div class="form-inline">
+                                    <label for="bgColorPending">Background Color (Pending)</label>
+                                    <input type="text" class="form-control" id="bgColorPending" value="#dd08">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="showSpinner">Show Spinner</label>
+                                    <input type="checkbox" id="showSpinner" checked>
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="showNotification">Show Notification</label>
+                                    <input type="checkbox" id="showNotification" checked>
+                                </div>
+                            </fieldset>
+
+                            <div class="checkbox-inline">
+                                <label for="headerAlignment">Header Alignment</label>
+                                <input type="checkbox" id="headerAlignment" checked>
+                            </div>
+                            <div class="form-inline">
+                                <label for="ktlFlashRate">KTL Flash Rate</label>
+                                <input type="text" class="form-control" id="ktlFlashRate" value="1">
+                            </div>
+                            <div class="form-inline">
+                                <label for="ktlOutlineColor">KTL Outline Color</label>
+                                <input type="text" class="form-control" id="ktlOutlineColor" value="green">
+                            </div>
+                            <div class="form-inline">
+                                <label for="hscCollapsedColumnsWidth">HSC Collapsed Columns Width (in pixels)</label>
+                                <input type="number" class="form-control" id="hscCollapsedColumnsWidth" value="5">
+                            </div>
+                            <div class="checkbox-inline">
+                                <label for="hscGlobal">HSC Global</label>
+                                <input type="checkbox" id="hscGlobal" checked>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="form-group border p-3">
+                            <legend>Fields</legend>
+                            <div class="form-inline">
+                                <label for="textAsNumeric">Text As Numeric (comma-separated field IDs)</label>
+                                <input type="text" class="form-control" id="textAsNumeric" placeholder="field_1, field_2, ...">
+                            </div>
+                            <div class="form-inline">
+                                <label for="textAsNumericExcludeScenes">Exclude Scenes (comma-separated scene IDs)</label>
+                                <input type="text" class="form-control" id="textAsNumericExcludeScenes" placeholder="scene_1, scene_2, ...">
+                            </div>
+                            <div class="checkbox-inline">
+                                <label for="horizontalRadioButtons">Horizontal Radio Buttons</label>
+                                <input type="checkbox" id="horizontalRadioButtons">
+                            </div>
+                            <div class="checkbox-inline">
+                                <label for="horizontalCheckboxes">Horizontal Checkboxes</label>
+                                <input type="checkbox" id="horizontalCheckboxes">
+                            </div>
+                            <div class="form-inline">
+                                <label for="barcodeTimeout">Barcode Timeout (seconds)</label>
+                                <input type="number" class="form-control" id="barcodeTimeout" value="20">
+                            </div>
+                            <div class="form-inline">
+                                <label for="barcodeMinLength">Barcode Minimum Length</label>
+                                <input type="number" class="form-control" id="barcodeMinLength" value="3">
+                            </div>
+                            <div class="checkbox-inline">
+                                <label for="convertNumToTel">Convert Number to Tel</label>
+                                <input type="checkbox" id="convertNumToTel" checked>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="form-group border p-3">
+                            <legend>Persistent Forms</legend>
+                            <div class="form-inline">
+                                <label for="persistentFormsScenesToExclude">Scenes to Exclude (comma-separated IDs)</label>
+                                <input type="text" class="form-control" id="persistentFormsScenesToExclude" placeholder="scene_1, scene_2, ...">
+                            </div>
+                            <div class="form-inline">
+                                <label for="persistentFormsFieldsToExclude">Fields to Exclude (comma-separated IDs)</label>
+                                <input type="text" class="form-control" id="persistentFormsFieldsToExclude" placeholder="field_1, field_2, ...">
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="form-group border p-3">
+                            <legend>System Colors</legend>
+                            <div class="form-inline">
+                                <label for="inlineEditBkgColor">Inline Edit Background Color</label>
+                                <input type="text" class="form-control" id="inlineEditBkgColor" placeholder="e.g., #ffffff or paleLowSatClrTransparent">
+                            </div>
+                            <div class="form-inline">
+                                <label for="inlineEditFontWeight">Inline Edit Font Weight</label>
+                                <input type="text" class="form-control" id="inlineEditFontWeight" placeholder="e.g., bold or 600">
+                            </div>
+                            <div class="form-inline">
+                                <label for="tableRowHoverBkgColor">Table Row Hover Background Color</label>
+                                <input type="text" class="form-control" id="tableRowHoverBkgColor" placeholder="e.g., #a0454b75 or mistyrose">
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="form-group border p-3">
+                            <legend>Advanced Settings</legend>
+
+                            <fieldset class="form-group border p-3">
+                                <legend>iFrameWnd</legend>
+                                <div class="checkbox-inline">
+                                    <label for="sendHeartbeat">Send Heartbeat</label>
+                                    <input type="checkbox" id="sendHeartbeat" checked>
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="form-group border p-3">
+                                <legend>Logging</legend>
+                                <div class="checkbox-inline">
+                                    <label for="logCritical">Critical</label>
+                                    <input type="checkbox" id="logCritical">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="logError">Error</label>
+                                    <input type="checkbox" id="logError">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="logServerErr">Server Error</label>
+                                    <input type="checkbox" id="logServerErr">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="logWarning">Warning</label>
+                                    <input type="checkbox" id="logWarning">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="logInfo">Info</label>
+                                    <input type="checkbox" id="logInfo">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="logDebug">Debug</label>
+                                    <input type="checkbox" id="logDebug">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="logLogin">Login</label>
+                                    <input type="checkbox" id="logLogin">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="logActivity">Activity</label>
+                                    <input type="checkbox" id="logActivity">
+                                </div>
+                                <div class="checkbox-inline">
+                                    <label for="logNavigation">Navigation</label>
+                                    <input type="checkbox" id="logNavigation">
+                                </div>
+                            </fieldset>
+
+                            <fieldset class="form-group border p-3">
+                                <legend>Kiosk</legend>
+
+                                <fieldset class="form-group">
+                                    <legend>Refresh Button</legend>
+                                    <div class="form-group">
+                                        <label for="addRefreshHtml">HTML</label>
+                                        <input type="text" class="form-control" id="addRefreshHtml" value="&lt;i class=&quot;fa fa-refresh&quot;&gt;&lt;/i&gt;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="addRefreshId">ID</label>
+                                        <input type="text" class="form-control" id="addRefreshId" value="kn-button-refresh">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="addRefreshHref">href</label>
+                                        <input type="text" class="form-control" id="addRefreshHref" value="function () { location.reload(); }">
+                                    </div>
+                                </fieldset>
+
+                                <fieldset class="form-group">
+                                    <legend>Back Button</legend>
+                                    <div class="form-group">
+                                        <label for="addBackHtml">HTML</label>
+                                        <input type="text" class="form-control" id="addBackHtml" value="&lt;i class=&quot;fa fa-arrow-left&quot;&gt;&lt;/i&gt;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="addBackId">ID</label>
+                                        <input type="text" class="form-control" id="addBackId" value="kn-button-back">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="addBackHref">href</label>
+                                        <input type="text" class="form-control" id="addBackHref" value="function () { window.history.back(); }">
+                                    </div>
+                                </fieldset>
+
+                                <fieldset class="form-group">
+                                    <legend>Done Button</legend>
+                                    <div class="form-group">
+                                        <label for="addDoneHtml">HTML</label>
+                                        <input type="text" class="form-control" id="addDoneHtml" value="&lt;i class=&quot;fa fa-check-square-o&quot;&gt;&lt;/i&gt;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="addDoneId">ID</label>
+                                        <input type="text" class="form-control" id="addDoneId" value="kn-button-done">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="addDoneHref">href</label>
+                                        <input type="text" class="form-control" id="addDoneHref" value="function () { /* Your done function here */ }">
+                                    </div>
+                                </fieldset>
+
+                            </fieldset>
+
+
+                        </fieldset>
+
+                        <button type="button" class="btn btn-primary" id="generateConfigBtn">Generate Configuration</button>
+                        <button type="button" class="btn btn-secondary" id="copyToClipboardBtn">Copy to Clipboard</button>
+                    </form>
                 </div>
-                <div>
-                    <label>Developer Email:</label>
-                    <input type="email" class="form-control" id="developerEmail" placeholder="yourmail@provider.com">
+
+                <div class="col-lg-6">
+                    <!-- This gives the iframe the remaining half of the page width -->
+                    <iframe id="documentationIframe" src="https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features#default" style="position:sticky; top:20px; height:80vh; width:100%;"></iframe>
                 </div>
-                <div>
-                    <label>Developer Options PIN:</label>
-                    <input type="text" class="form-control" id="devOptionsPin" placeholder="0000">
-                </div>
-            </fieldset>
-
-            <fieldset class="form-group border p-3">
-                <legend>General Feature Settings</legend>
-
-                <fieldset class="form-group border p-3">
-                    <legend>Version Info Bar</legend>
-                    <div class="checkbox-inline">
-                        <label for="viShowAppInfo">Show App Info</label>
-                        <input type="checkbox" id="viShowAppInfo" checked><br>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="viShowKtlInfo">Show KTL Info</label>
-                        <input type="checkbox" id="viShowKtlInfo" checked><br>
-                    </div>
-                    <div class="form-inline">
-                        <label for="viShowToRoles">Show to these roles only</label>
-                        <input type="text" class="form-control" id="viShowToRoles" placeholder="Developer" value="Developer">
-                    </div>
-                    <div class="form-inline">
-                        <label for="viPosX">Default Horizontal Pos</label>
-                        <select class="form-control" id="viPosX">
-                            <option value="right">Right</option>
-                            <option value="center">Center</option>
-                            <option value="left">Left</option>
-                        </select>
-                    </div>
-                    <div class="form-inline">
-                        <label for="viPosY">Default Vertical Position</label>
-                        <select class="form-control" id="viPosY">
-                            <option value="top">Top</option>
-                            <option value="bottom">Bottom</option>
-                        </select>
-                    </div>
-                    <div class="form-inline">
-                        <label for="viPosXMobile">Mobile Horizontal Pos</label>
-                        <select class="form-control" id="viPosXMobile">
-                            <option value="center">Center</option>
-                            <option value="left">Left</option>
-                            <option value="right">Right</option>
-                        </select>
-                    </div>
-                    <div class="form-inline">
-                        <label for="viPosYMobile">Mobile Vertical Position</label>
-                        <select class="form-control" id="viPosYMobile">
-                            <option value="bottom">Bottom</option>
-                            <option value="top">Top</option>
-                        </select>
-                    </div>
-
-                    <div class="form-inline">
-                        <label for="viOpacity">Default Opacity</label>
-                        <input type="number" class="form-control" id="viOpacity" placeholder="50" value="50">
-                    </div>
-                    <div class="form-inline">
-                        <label for="viOpacityHover">Opacity on Hover</label>
-                        <input type="number" class="form-control" id="viOpacityHover" placeholder="100" value="100">
-                    </div>
-                </fieldset>
-
-                <fieldset class="form-group border p-3">
-                    <legend>Main Feature Switches</legend>
-                    <div class="checkbox-inline">
-                        <label for="showMenuInTitle">Show Menu in Title</label>
-                        <input type="checkbox" id="showMenuInTitle" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="selTextOnFocus">Select Text on Focus</label>
-                        <input type="checkbox" id="selTextOnFocus" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="inlineEditColor">Inline Edit Color</label>
-                        <input type="checkbox" id="inlineEditColor" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="rowHoverHighlight">Row Hover Highlight</label>
-                        <input type="checkbox" id="rowHoverHighlight" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="autoFocus">Auto Focus</label>
-                        <input type="checkbox" id="autoFocus" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="sortedMenus">Sorted Menus</label>
-                        <input type="checkbox" id="sortedMenus" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="userFilters">User Filters</label>
-                        <input type="checkbox" id="userFilters" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="persistentForm">Persistent Form</label>
-                        <input type="checkbox" id="persistentForm" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="calendarGotoDate">Calendar Go To Date</label>
-                        <input type="checkbox" id="calendarGotoDate" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="rememberMe">Remember Me</label>
-                        <input type="checkbox" id="rememberMe" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="formPreValidation">Form Pre Validation</label>
-                        <input type="checkbox" id="formPreValidation" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="spinnerWatchDog">Spinner Watch Dog</label>
-                        <input type="checkbox" id="spinnerWatchDog" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="idleWatchDog">Idle Watch Dog</label>
-                        <input type="checkbox" id="idleWatchDog" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="debugWnd">Debug Window</label>
-                        <input type="checkbox" id="debugWnd" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="devInfoPopup">Dev Info Popup</label>
-                        <input type="checkbox" id="devInfoPopup" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="devPauseAutoRefresh">Dev Pause Auto Refresh</label>
-                        <input type="checkbox" id="devPauseAutoRefresh" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="virtualKeyboard">Virtual Keyboard</label>
-                        <input type="checkbox" id="virtualKeyboard">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="iFrameWnd">iFrameWnd</label>
-                        <input type="checkbox" id="iFrameWnd">
-                    </div>
-                </fieldset>
-
-                <fieldset class="form-group border p-3">
-                    <legend>Bulk Operations</legend>
-                    <div class="checkbox-inline">
-                        <label for="bulkEdit">Bulk Edit</label>
-                        <input type="checkbox" id="bulkEdit" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="bulkCopy">Bulk Copy</label>
-                        <input type="checkbox" id="bulkCopy" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="bulkDelete">Bulk Delete</label>
-                        <input type="checkbox" id="bulkDelete" checked>
-                    </div>
-                </fieldset>
+            </div>
+        </div>
 
 
-                <fieldset class="form-group border p-3">
-                    <legend>Popup Style</legend>
-                    <div class="form-inline">
-                        <label for="popupStyleSuccess">Success Style</label>
-                        <input type="text" class="form-control" id="popupStyleSuccess" value=";background-color:#81b378;border:5px solid #294125">
-                    </div>
-                    <div class="form-inline">
-                        <label for="popupStyleWarning">Warning Style</label>
-                        <input type="text" class="form-control" id="popupStyleWarning" value=";background-color:#fffa5e;border:2px solid #7e8060">
-                    </div>
-                    <div class="form-inline">
-                        <label for="popupStyleError">Error Style</label>
-                        <input type="text" class="form-control" id="popupStyleError" value=";background-color:#FFB0B0;border:5px solid #660000">
-                    </div>
-                </fieldset>
-
-                <fieldset class="form-group border p-3">
-                    <legend>Tooltip Styles</legend>
-                    <div class="form-inline">
-                        <label for="ktlTtipFormViewBgColor">Form View Background Color</label>
-                        <input type="text" class="form-control" id="ktlTtipFormViewBgColor" value="#222222">
-                    </div>
-                    <div class="form-inline">
-                        <label for="ktlTtipFormViewTxtColor">Form View Text Color</label>
-                        <input type="text" class="form-control" id="ktlTtipFormViewTxtColor" value="#ffffff">
-                    </div>
-                    <div class="form-inline">
-                        <label for="ktlTtipIconFormViewColor">Form View Icon Color</label>
-                        <input type="text" class="form-control" id="ktlTtipIconFormViewColor" value="#222222">
-                    </div>
-                    <div class="form-inline">
-                        <label for="ktlTtipDetailsViewBgColor">Details/List View Background Color</label>
-                        <input type="text" class="form-control" id="ktlTtipDetailsViewBgColor" value="#222222">
-                    </div>
-                    <div class="form-inline">
-                        <label for="ktlTtipDetailsViewTxtColor">Details/List View Text Color</label>
-                        <input type="text" class="form-control" id="ktlTtipDetailsViewTxtColor" value="#ffffff">
-                    </div>
-                    <div class="form-inline">
-                        <label for="ktlTtipIconDetailsViewColor">Details/List View Icon Color</label>
-                        <input type="text" class="form-control" id="ktlTtipIconDetailsViewColor" value="#222222">
-                    </div>
-                    <div class="form-inline">
-                        <label for="ktlTtipTableViewBgColor">Table View Background Color</label>
-                        <input type="text" class="form-control" id="ktlTtipTableViewBgColor" value="#222222">
-                    </div>
-                    <div class="form-inline">
-                        <label for="ktlTtipTableViewTxtColor">Table View Text Color</label>
-                        <input type="text" class="form-control" id="ktlTtipTableViewTxtColor" value="#ffffff">
-                    </div>
-                    <div class="form-inline">
-                        <label for="ktlTtipIconTableViewColor">Table View Icon Color</label>
-                        <input type="text" class="form-control" id="ktlTtipIconTableViewColor" value="#222222">
-                    </div>
-                </fieldset>
-            </fieldset>
-
-            <fieldset class="form-group border p-3">
-                <legend>Scenes</legend>
-                <div class="form-inline">
-                    <label for="versionDisplayName">Version Display Name</label>
-                    <input type="text" class="form-control" id="versionDisplayName" placeholder="My App Name">
-                </div>
-                <div class="form-inline">
-                    <label for="idleWatchDogDelay">Idle WatchDog Delay (ms)</label>
-                    <input type="number" class="form-control" id="idleWatchDogDelay" value="7200000" placeholder="120 * 60000">
-                </div>
-                <div class="form-inline">
-                    <label for="spinnerCtrDelay">Spinner Control Delay (seconds)</label>
-                    <input type="number" class="form-control" id="spinnerCtrDelay" value="60" placeholder="60">
-                </div>
-                <div class="form-inline">
-                    <label for="spinnerWdExcludeScn">Spinner WatchDog Exclude Scenes (comma-separated IDs)</label>
-                    <input type="text" class="form-control" id="spinnerWdExcludeScn" placeholder="1,2,3">
-                </div>
-            </fieldset>
-
-            <fieldset class="form-group border p-3">
-                <legend>Views</legend>
-
-                <fieldset class="form-group border p-3">
-                    <legend>Quick Toggle Params</legend>
-                    <div class="form-inline">
-                        <label for="bgColorTrue">Background Color (True)</label>
-                        <input type="text" class="form-control" id="bgColorTrue" value="#39d91f">
-                    </div>
-                    <div class="form-inline">
-                        <label for="bgColorFalse">Background Color (False)</label>
-                        <input type="text" class="form-control" id="bgColorFalse" value="#f04a3b">
-                    </div>
-                    <div class="form-inline">
-                        <label for="bgColorPending">Background Color (Pending)</label>
-                        <input type="text" class="form-control" id="bgColorPending" value="#dd08">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="showSpinner">Show Spinner</label>
-                        <input type="checkbox" id="showSpinner" checked>
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="showNotification">Show Notification</label>
-                        <input type="checkbox" id="showNotification" checked>
-                    </div>
-                </fieldset>
-
-                <div class="checkbox-inline">
-                    <label for="headerAlignment">Header Alignment</label>
-                    <input type="checkbox" id="headerAlignment" checked>
-                </div>
-                <div class="form-inline">
-                    <label for="ktlFlashRate">KTL Flash Rate</label>
-                    <input type="text" class="form-control" id="ktlFlashRate" value="1">
-                </div>
-                <div class="form-inline">
-                    <label for="ktlOutlineColor">KTL Outline Color</label>
-                    <input type="text" class="form-control" id="ktlOutlineColor" value="green">
-                </div>
-                <div class="form-inline">
-                    <label for="hscCollapsedColumnsWidth">HSC Collapsed Columns Width (in pixels)</label>
-                    <input type="number" class="form-control" id="hscCollapsedColumnsWidth" value="5">
-                </div>
-                <div class="checkbox-inline">
-                    <label for="hscGlobal">HSC Global</label>
-                    <input type="checkbox" id="hscGlobal" checked>
-                </div>
-            </fieldset>
-
-            <fieldset class="form-group border p-3">
-                <legend>Fields</legend>
-                <div class="form-inline">
-                    <label for="textAsNumeric">Text As Numeric (comma-separated field IDs)</label>
-                    <input type="text" class="form-control" id="textAsNumeric" placeholder="field_1, field_2, ...">
-                </div>
-                <div class="form-inline">
-                    <label for="textAsNumericExcludeScenes">Exclude Scenes (comma-separated scene IDs)</label>
-                    <input type="text" class="form-control" id="textAsNumericExcludeScenes" placeholder="scene_1, scene_2, ...">
-                </div>
-                <div class="checkbox-inline">
-                    <label for="horizontalRadioButtons">Horizontal Radio Buttons</label>
-                    <input type="checkbox" id="horizontalRadioButtons">
-                </div>
-                <div class="checkbox-inline">
-                    <label for="horizontalCheckboxes">Horizontal Checkboxes</label>
-                    <input type="checkbox" id="horizontalCheckboxes">
-                </div>
-                <div class="form-inline">
-                    <label for="barcodeTimeout">Barcode Timeout (seconds)</label>
-                    <input type="number" class="form-control" id="barcodeTimeout" value="20">
-                </div>
-                <div class="form-inline">
-                    <label for="barcodeMinLength">Barcode Minimum Length</label>
-                    <input type="number" class="form-control" id="barcodeMinLength" value="3">
-                </div>
-                <div class="checkbox-inline">
-                    <label for="convertNumToTel">Convert Number to Tel</label>
-                    <input type="checkbox" id="convertNumToTel" checked>
-                </div>
-            </fieldset>
-
-            <fieldset class="form-group border p-3">
-                <legend>Persistent Forms</legend>
-                <div class="form-inline">
-                    <label for="persistentFormsScenesToExclude">Scenes to Exclude (comma-separated IDs)</label>
-                    <input type="text" class="form-control" id="persistentFormsScenesToExclude" placeholder="scene_1, scene_2, ...">
-                </div>
-                <div class="form-inline">
-                    <label for="persistentFormsFieldsToExclude">Fields to Exclude (comma-separated IDs)</label>
-                    <input type="text" class="form-control" id="persistentFormsFieldsToExclude" placeholder="field_1, field_2, ...">
-                </div>
-            </fieldset>
-
-            <fieldset class="form-group border p-3">
-                <legend>System Colors</legend>
-                <div class="form-inline">
-                    <label for="inlineEditBkgColor">Inline Edit Background Color</label>
-                    <input type="text" class="form-control" id="inlineEditBkgColor" placeholder="e.g., #ffffff or paleLowSatClrTransparent">
-                </div>
-                <div class="form-inline">
-                    <label for="inlineEditFontWeight">Inline Edit Font Weight</label>
-                    <input type="text" class="form-control" id="inlineEditFontWeight" placeholder="e.g., bold or 600">
-                </div>
-                <div class="form-inline">
-                    <label for="tableRowHoverBkgColor">Table Row Hover Background Color</label>
-                    <input type="text" class="form-control" id="tableRowHoverBkgColor" placeholder="e.g., #a0454b75 or mistyrose">
-                </div>
-            </fieldset>
-
-            <fieldset class="form-group border p-3">
-                <legend>Advanced Settings</legend>
-
-                <fieldset class="form-group border p-3">
-                    <legend>iFrameWnd</legend>
-                    <div class="checkbox-inline">
-                        <label for="sendHeartbeat">Send Heartbeat</label>
-                        <input type="checkbox" id="sendHeartbeat" checked>
-                    </div>
-                </fieldset>
-
-                <fieldset class="form-group border p-3">
-                    <legend>Logging</legend>
-                    <div class="checkbox-inline">
-                        <label for="logCritical">Critical</label>
-                        <input type="checkbox" id="logCritical">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="logError">Error</label>
-                        <input type="checkbox" id="logError">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="logServerErr">Server Error</label>
-                        <input type="checkbox" id="logServerErr">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="logWarning">Warning</label>
-                        <input type="checkbox" id="logWarning">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="logInfo">Info</label>
-                        <input type="checkbox" id="logInfo">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="logDebug">Debug</label>
-                        <input type="checkbox" id="logDebug">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="logLogin">Login</label>
-                        <input type="checkbox" id="logLogin">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="logActivity">Activity</label>
-                        <input type="checkbox" id="logActivity">
-                    </div>
-                    <div class="checkbox-inline">
-                        <label for="logNavigation">Navigation</label>
-                        <input type="checkbox" id="logNavigation">
-                    </div>
-                </fieldset>
-
-                <fieldset class="form-group border p-3">
-                    <legend>Kiosk</legend>
-
-                    <fieldset class="form-group">
-                        <legend>Refresh Button</legend>
-                        <div class="form-group">
-                            <label for="addRefreshHtml">HTML</label>
-                            <input type="text" class="form-control" id="addRefreshHtml" value="&lt;i class=&quot;fa fa-refresh&quot;&gt;&lt;/i&gt;">
-                        </div>
-                        <div class="form-group">
-                            <label for="addRefreshId">ID</label>
-                            <input type="text" class="form-control" id="addRefreshId" value="kn-button-refresh">
-                        </div>
-                        <div class="form-group">
-                            <label for="addRefreshHref">href</label>
-                            <input type="text" class="form-control" id="addRefreshHref" value="function () { location.reload(); }">
-                        </div>
-                    </fieldset>
-
-                    <fieldset class="form-group">
-                        <legend>Back Button</legend>
-                        <div class="form-group">
-                            <label for="addBackHtml">HTML</label>
-                            <input type="text" class="form-control" id="addBackHtml" value="&lt;i class=&quot;fa fa-arrow-left&quot;&gt;&lt;/i&gt;">
-                        </div>
-                        <div class="form-group">
-                            <label for="addBackId">ID</label>
-                            <input type="text" class="form-control" id="addBackId" value="kn-button-back">
-                        </div>
-                        <div class="form-group">
-                            <label for="addBackHref">href</label>
-                            <input type="text" class="form-control" id="addBackHref" value="function () { window.history.back(); }">
-                        </div>
-                    </fieldset>
-
-                    <fieldset class="form-group">
-                        <legend>Done Button</legend>
-                        <div class="form-group">
-                            <label for="addDoneHtml">HTML</label>
-                            <input type="text" class="form-control" id="addDoneHtml" value="&lt;i class=&quot;fa fa-check-square-o&quot;&gt;&lt;/i&gt;">
-                        </div>
-                        <div class="form-group">
-                            <label for="addDoneId">ID</label>
-                            <input type="text" class="form-control" id="addDoneId" value="kn-button-done">
-                        </div>
-                        <div class="form-group">
-                            <label for="addDoneHref">href</label>
-                            <input type="text" class="form-control" id="addDoneHref" value="function () { /* Your done function here */ }">
-                        </div>
-                    </fieldset>
-
-                </fieldset>
 
 
-            </fieldset>
 
-            <button type="button" class="btn btn-primary" id="generateConfigBtn">Generate Configuration</button>
-            <button type="button" class="btn btn-secondary" id="copyToClipboardBtn">Copy to Clipboard</button>
-        </form>
 
-        <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; <!--width: 60em !important;-->"></textarea>
-    </div>
+            <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; <!--width: 60em !important;-->"></textarea>
+        </div>
 
     <div id="colorPickerContainer" style="cursor: move; position: fixed; top: 70px; right: 5%; background: gray; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
 
@@ -745,6 +761,20 @@
             if (latestAppName && existingConfigs.configs[latestAppName]) {
                 applyConfiguration(existingConfigs.configs[latestAppName]);
             }
+
+            document.querySelectorAll('input, select, textarea').forEach(function (input) {
+                input.addEventListener('focus', function () {
+                    // Find the closest fieldset's legend
+                    var legend = input.closest('fieldset').querySelector('legend');
+                    // Get the data-section-id
+                    var sectionId = legend.getAttribute('data-section-id');
+                    // Assuming you have an iframe with id "documentationIframe"
+                    var iframe = document.getElementById('documentationIframe');
+                    // Change the iframe's URL to navigate to the specific section
+                    // Adjust the URL to match your actual documentation structure
+                    iframe.src = 'https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features#' + sectionId;
+                });
+            });
         });
 
         document.getElementById('generateConfigBtn').addEventListener('click', function () {
