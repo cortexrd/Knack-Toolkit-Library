@@ -1317,7 +1317,7 @@ window.ktlReady = function (appInfo = {}) {
                 return;
             }
 
-            let filename = prompt("Enter a filename for your configuration:", `${appName}_KTL_Config.ktlcfg`);
+            let filename = prompt("Enter a filename for your configuration:", `${appName}.ktlcfg`);
             if (filename) {
                 if (!filename.endsWith('.ktlcfg')) {
                     filename += '.ktlcfg';
