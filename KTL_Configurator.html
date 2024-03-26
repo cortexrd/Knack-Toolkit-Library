@@ -156,7 +156,7 @@
         <button type="button" id="loadBtn" class="btn btn-secondary">Load</button>
         <button type="button" id="exportToFileBtn" class="btn btn-info">Export to File</button>
         <button type="button" id="importFromFileBtn" class="btn btn-info">Import from File</button>
-        <!-- Documentation Help Icon -->
+
         <span id="buttonsHelpIcon" class="legend-help-icon" data-section-id="getting-started-with-configuration"><i class="fas fa-question-circle"></i></span>
 
         <input type="file" id="fileInput" accept=".ktlcfg" style="display:none;">
@@ -746,6 +746,7 @@
         const documentationBaseURL = 'https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features';
 
         document.addEventListener('DOMContentLoaded', function () {
+            console.log('DOMContentLoaded');
             const numberOfColors = 6;
 
             const colorClasses = Array.from({ length: numberOfColors }, (_, i) => `fieldset-color-${i + 1}`);
@@ -831,38 +832,6 @@
                 applyConfiguration(existingConfigs.configs[latestAppName]);
             }
 
-            //Removed this code until a solution is found.
-            //The intention was cool: click on a field and the docs updates itself.
-            //But the annoying side-effect is the slight vertical shift on each section change.
-            //document.querySelectorAll('fieldset input').forEach(function (input) {
-            //    input.addEventListener('focus', function () {
-            //        // Delay the update of the documentation section to allow checkbox state change
-            //        setTimeout(function () {
-            //            updateDocumentationSection(input);
-            //        }, 100);
-            //    });
-
-            //    if (input.type === 'checkbox') {
-            //        input.addEventListener('click', function (event) {
-            //            // Immediate action for checkbox to ensure default behavior, then update documentation
-            //            setTimeout(function () {
-            //                updateDocumentationSection(input);
-            //            }, 100); // Delay allows checkbox toggle before updating documentation
-            //        });
-            //    }
-            //});
-            //function updateDocumentationSection(input) {
-            //    var legend = input.closest('fieldset').querySelector('legend');
-            //    var sectionId = legend.getAttribute('data-section-id');
-            //    var iframe = document.getElementById('documentationIframe');
-            //    // Ensure the iframe attempts to scroll to the anchor even if the src hasn't changed
-            //    if (iframe.src.includes(sectionId)) {
-            //        iframe.contentWindow.location.hash = sectionId; // Attempt to navigate to the hash again
-            //    } else {
-            //        iframe.src = `${documentationBaseURL}#${sectionId}`;
-            //    }
-            //}
-
             document.querySelectorAll('.legend-help-icon').forEach(function (icon) {
                 icon.addEventListener('click', function () {
                     const sectionId = icon.getAttribute('data-section-id');
@@ -878,6 +847,16 @@
                     window.scrollTo(0, 0);
                 }, 100);
             });
+
+            function scrollToTopOnce() {
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    // Remove the listener to ensure this happens only once
+                    document.getElementById('documentationIframe').removeEventListener('load', scrollToTopOnce);
+                }, 100);
+            }
+
+            document.getElementById('documentationIframe').addEventListener('load', scrollToTopOnce);
         });
 
         document.getElementById('generateConfigBtn').addEventListener('click', function () {
