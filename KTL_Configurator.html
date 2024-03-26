@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KTL Configuration Generator</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
     <style>
         .container {
             margin-top: 20px;
@@ -169,7 +170,10 @@
                 <div class="col-lg-6">
                     <form id="ktlConfigForm">
                         <fieldset class="form-group border p-3">
-                            <legend data-section-id="core-settings">Core Settings</legend>
+                            <legend data-section-id="core-settings">
+                                Core Settings
+                                <span class="legend-help-icon" data-section-id="core-settings"><i class="fas fa-question-circle"></i></span>
+                            </legend>
                             <div>
                                 <label>Developer Names (comma-separated):</label>
                                 <input type="text" class="form-control" id="developerNames" placeholder="Firstname Lastname">
@@ -185,10 +189,16 @@
                         </fieldset>
 
                         <fieldset class="form-group border p-3">
-                            <legend data-section-id="general-features"> General Feature Settings</legend>
+                            <legend data-section-id="general-features">
+                                General Feature Settings
+                                <span class="legend-help-icon" data-section-id="general-features"><i class="fas fa-question-circle"></i></span>
+                            </legend>
 
                             <fieldset class="form-group border p-3">
-                                <legend data-section-id="version-info-bar"> Version Info Bar</legend>
+                                <legend data-section-id="version-info-bar">
+                                    Version Info Bar
+                                    <span class="legend-help-icon" data-section-id="version-info-bar"><i class="fas fa-question-circle"></i></span>
+                                </legend>
                                 <div class="checkbox-inline">
                                     <label for="viShowAppInfo">Show App Info</label>
                                     <input type="checkbox" id="viShowAppInfo" checked><br>
@@ -243,7 +253,10 @@
                             </fieldset>
 
                             <fieldset class="form-group border p-3">
-                                <legend data-section-id="main-feature-switches">Main Feature Switches</legend>
+                                <legend data-section-id="main-feature-switches">
+                                    Main Feature Switches
+                                    <span class="legend-help-icon" data-section-id="main-feature-switches"><i class="fas fa-question-circle"></i></span>
+                                </legend>
                                 <div class="checkbox-inline">
                                     <label for="showMenuInTitle">Show Menu in Title</label>
                                     <input type="checkbox" id="showMenuInTitle" checked>
@@ -319,7 +332,10 @@
                             </fieldset>
 
                             <fieldset class="form-group border p-3">
-                                <legend>Bulk Operations</legend>
+                                <legend data-section-id="bulk-operations">
+                                    Bulk Operations
+                                    <span class="legend-help-icon" data-section-id="bulk-operations"><i class="fas fa-question-circle"></i></span>
+                                </legend>
                                 <div class="checkbox-inline">
                                     <label for="bulkEdit">Bulk Edit</label>
                                     <input type="checkbox" id="bulkEdit" checked>
@@ -336,23 +352,29 @@
 
 
                             <fieldset class="form-group border p-3">
-                                <legend>Popup Style</legend>
+                                <legend data-section-id="popup-style">
+                                    Popup Style
+                                    <span class="legend-help-icon" data-section-id="popup-style"><i class="fas fa-question-circle"></i></span>
+                                </legend>
                                 <div class="form-inline">
-                                    <label for="popupStyleSuccess">Success Style</label>
+                                    <label for="popupStyleSuccess">Success</label>
                                     <input type="text" class="form-control" id="popupStyleSuccess" value=";background-color:#81b378;border:5px solid #294125">
                                 </div>
                                 <div class="form-inline">
-                                    <label for="popupStyleWarning">Warning Style</label>
+                                    <label for="popupStyleWarning">Warning</label>
                                     <input type="text" class="form-control" id="popupStyleWarning" value=";background-color:#fffa5e;border:2px solid #7e8060">
                                 </div>
                                 <div class="form-inline">
-                                    <label for="popupStyleError">Error Style</label>
+                                    <label for="popupStyleError">Error</label>
                                     <input type="text" class="form-control" id="popupStyleError" value=";background-color:#FFB0B0;border:5px solid #660000">
                                 </div>
                             </fieldset>
 
                             <fieldset class="form-group border p-3">
-                                <legend>Tooltip Styles</legend>
+                                <legend data-section-id="tooltip-styles">
+                                    Tooltip Styles
+                                    <span class="legend-help-icon" data-section-id="tooltip-styles"><i class="fas fa-question-circle"></i></span>
+                                </legend>
                                 <div class="form-inline">
                                     <label for="ktlTtipFormViewBgColor">Form View Background Color</label>
                                     <input type="text" class="form-control" id="ktlTtipFormViewBgColor" value="#222222">
@@ -773,6 +795,15 @@
                     // Change the iframe's URL to navigate to the specific section
                     // Adjust the URL to match your actual documentation structure
                     iframe.src = 'https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features#' + sectionId;
+                });
+            });
+
+            document.querySelectorAll('.legend-help-icon').forEach(function (icon) {
+                icon.addEventListener('click', function () {
+                    const sectionId = icon.getAttribute('data-section-id');
+                    const iframeSrcBase = 'https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features#'; // Base URL of your documentation
+                    const newIframeSrc = `${iframeSrcBase}${sectionId}`;
+                    document.getElementById('documentationIframe').src = newIframeSrc;
                 });
             });
         });
