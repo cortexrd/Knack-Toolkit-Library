@@ -7,6 +7,27 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300&display=swap'); /* Placeholder for demonstration */
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @font-face {
+            font-family: 'Harabara';
+            src: url('./fonts/harabara.ttf') format('truetype');
+        }
+
+        #slogan {
+            font-family: 'Harabara', sans-serif;
+            font-size: 1.4rem;
+            margin-top: 10px;
+            text-align: center;
+        }
+
         .header {
             display: flex;
             justify-content: space-between;
@@ -16,6 +37,17 @@
 
         .title-container h2, .title-container #appVersion {
             margin: 0; /* Remove default margins */
+        }
+
+        /*.title-container h2, .title-container #appVersion, .title-container #companyName {*/
+        .title-container #companyName {
+            font-family: 'Harabara', sans-serif;
+            /* Other styles remain unchanged */
+        }
+
+        #slogan, #companyName {
+            font-size: 1.4rem; /* Adjusted font size */
+            /* Other styles remain unchanged */
         }
 
         #appVersion {
@@ -31,7 +63,9 @@
             margin-top: 20px;
         }
 
-
+        #documentationIframe {
+            visibility: collapse; /*This is to stop the jitter caused by the iframe.*/
+        }
 
         h2 {
             margin-bottom: 20px;
@@ -170,10 +204,11 @@
         <div class="header">
             <div class="title-container">
                 <h1>KTL Configurator <small id="appVersion">v1.0.0</small></h1>
-                <h2>by Cortex R&D Inc.</h2>
+                <h2>by <span id="companyName">Cortex R&D Inc.</span></h2>
             </div>
             <div class="logo-container">
-                <img src="KTL.png" alt="Logo" id="appLogo" style="height: 120px;">
+                <img src="./media/KTL.png" alt="Logo" id="appLogo" style="height: 120px;">
+                <span id="slogan">Where Simplicity meets Magic!</span>
             </div>
         </div>
 
@@ -874,17 +909,20 @@
 
             document.getElementById('buttonsHelpIcon').addEventListener('click', function () {
                 const iframe = document.getElementById('documentationIframe');
-                iframe.src = `${documentationBaseURL}#getting-started-with-configuration`;
+                iframe.style.visibility = 'collapse';
                 setTimeout(() => {
                     window.scrollTo(0, 0);
+                    iframe.style.visibility = 'visible';
                 }, 100);
             });
 
             function scrollToTopOnce() {
+                const iframe = document.getElementById('documentationIframe');
                 setTimeout(() => {
-                    window.scrollTo(0, 0);
                     // Remove the listener to ensure this happens only once
-                    document.getElementById('documentationIframe').removeEventListener('load', scrollToTopOnce);
+                    iframe.removeEventListener('load', scrollToTopOnce);
+                    iframe.style.visibility = 'visible';
+                    window.scrollTo(0, 0);
                 }, 100);
             }
 
