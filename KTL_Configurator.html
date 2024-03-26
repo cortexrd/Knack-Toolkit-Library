@@ -3,13 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KTL Configuration Generator</title>
+    <title>KTL Configurator</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
     <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .title-container h2, .title-container #appVersion {
+            margin: 0; /* Remove default margins */
+        }
+
+        #appVersion {
+            font-size: 0.8em; /* Smaller font size for version */
+            color: #666; /* Lighter color for version */
+        }
+
+        .logo-container img {
+            max-height: 120px; /* Adjust based on your logo's size */
+        }
+
         .container {
             margin-top: 20px;
         }
+
+
 
         h2 {
             margin-bottom: 20px;
@@ -145,8 +167,16 @@
 </head>
 <body>
     <div class="container">
-        <h2>KTL Configurator</h2>
-        <h5>by Cortex R&D Inc.</h5>
+        <div class="header">
+            <div class="title-container">
+                <h1>KTL Configurator <small id="appVersion">v1.0.0</small></h1>
+                <h2>by Cortex R&D Inc.</h2>
+            </div>
+            <div class="logo-container">
+                <img src="KTL.png" alt="Logo" id="appLogo" style="height: 120px;">
+            </div>
+        </div>
+
         <div class="form-group">
             <label for="appNameInput">App Name:</label>
             <input type="text" id="appNameInput" class="form-control" placeholder="Enter your app name">
@@ -743,10 +773,12 @@
     <div id="popupContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
 
     <script>
+        const KTL_CONGURATOR_VERSION = '1.0.0';
         const documentationBaseURL = 'https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features';
 
         document.addEventListener('DOMContentLoaded', function () {
-            console.log('DOMContentLoaded');
+            document.getElementById('appVersion').textContent = 'v' + KTL_CONGURATOR_VERSION;
+
             const numberOfColors = 6;
 
             const colorClasses = Array.from({ length: numberOfColors }, (_, i) => `fieldset-color-${i + 1}`);
