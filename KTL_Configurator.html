@@ -199,6 +199,37 @@
             font-size: 1.2rem;
             margin-left: 20px;
         }
+
+
+
+
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .title-container h2, .title-container #appVersion {
+            margin: 0; /* Remove default margins */
+        }
+
+        #appVersion {
+            font-size: 0.8em; /* Smaller font size for version */
+            color: #666; /* Lighter color for version */
+        }
+
+        .company-logo-container img {
+            max-height: 80px; /* Adjust based on your logo's size */
+            padding: 0 15px; /* Add some padding around the logo */
+        }
+
+        .logo-container img {
+            max-height: 120px; /* Adjust based on your logo's size */
+        }
+
+
     </style>
 </head>
 <body>
@@ -208,8 +239,11 @@
                 <h1>KTL Configurator <small id="appVersion">v1.0.0</small></h1>
                 <h2>by <span id="companyName">Cortex R&D Inc.</span></h2>
             </div>
+            <div class="company-logo-container">
+                <img src="https://ctrnd.s3.amazonaws.com/media/Cortex-logo+RGB+horizontal.png" alt="Cortex Logo" id="companyLogo">
+            </div>
             <div class="logo-container">
-                <img src="./media/KTL.png" alt="Logo" id="appLogo" style="height: 120px;">
+                <img src="https://ctrnd.s3.amazonaws.com/media/KTL.png" alt="KTL Logo" id="appLogo">
                 <span id="slogan">Where Simplicity meets Magic!</span>
             </div>
         </div>
@@ -1426,105 +1460,109 @@ window.ktlReady = function (appInfo = {}) {
         });
 
         function applyConfiguration(config) {
-            if (config) {
-                document.getElementById('developerNames').value = config.developerNames.join(', ');
-                document.getElementById('developerEmail').value = config.developerEmail;
-                document.getElementById('devOptionsPin').value = config.devOptionsPin;
-
-                document.getElementById('viShowAppInfo').checked = config.versionInfo.viShowAppInfo;
-                document.getElementById('viShowKtlInfo').checked = config.versionInfo.viShowKtlInfo;
-                document.getElementById('viShowToRoles').value = config.versionInfo.viShowToRoles.join(', ');
-                document.getElementById('viPosX').value = config.versionInfo.viPosX;
-                document.getElementById('viPosY').value = config.versionInfo.viPosY;
-                document.getElementById('viPosXMobile').value = config.versionInfo.viPosXMobile;
-                document.getElementById('viPosYMobile').value = config.versionInfo.viPosYMobile;
-                document.getElementById('viOpacity').value = config.versionInfo.viOpacity;
-                document.getElementById('viOpacityHover').value = config.versionInfo.viOpacityHover;
-
-                Object.keys(config.featureSwitches).forEach(key => {
-                    const checkbox = document.getElementById(key);
-                    if (checkbox) checkbox.checked = config.featureSwitches[key];
-                });
-
-                Object.keys(config.bulkOps).forEach(key => {
-                    const checkbox = document.getElementById(key);
-                    if (checkbox) checkbox.checked = config.bulkOps[key];
-                });
-
-                document.getElementById('popupStyleSuccess').value = config.popupStyle.success;
-                document.getElementById('popupStyleWarning').value = config.popupStyle.warning;
-                document.getElementById('popupStyleError').value = config.popupStyle.error;
-
-                Object.keys(config.tooltipStyles).forEach(key => {
-                    document.getElementById(key).value = config.tooltipStyles[key];
-                });
-
-                document.getElementById('versionDisplayName').value = config.scenesSettings.versionDisplayName;
-                document.getElementById('idleWatchDogDelay').value = config.scenesSettings.idleWatchDogDelay;
-                document.getElementById('spinnerCtrDelay').value = config.scenesSettings.spinnerCtrDelay;
-                document.getElementById('spinnerWdExcludeScn').value = config.scenesSettings.spinnerWdExcludeScn.join(', ');
-
-                const qtParams = config.viewsSettings.quickToggleParams;
-                document.getElementById('bgColorTrue').value = qtParams.bgColorTrue;
-                document.getElementById('bgColorFalse').value = qtParams.bgColorFalse;
-                document.getElementById('bgColorPending').value = qtParams.bgColorPending;
-                document.getElementById('showSpinner').checked = qtParams.showSpinner;
-                document.getElementById('showNotification').checked = qtParams.showNotification;
-                document.getElementById('headerAlignment').checked = config.viewsSettings.headerAlignment;
-                document.getElementById('ktlFlashRate').value = config.viewsSettings.ktlFlashRate;
-                document.getElementById('ktlOutlineColor').value = config.viewsSettings.ktlOutlineColor;
-                document.getElementById('hscCollapsedColumnsWidth').value = config.viewsSettings.hscCollapsedColumnsWidth;
-                document.getElementById('hscGlobal').checked = config.viewsSettings.hscGlobal;
-
-                document.getElementById('textAsNumeric').value = config.fieldsSettings.textAsNumeric.join(', ');
-                document.getElementById('textAsNumericExcludeScenes').value = config.fieldsSettings.textAsNumericExcludeScenes.join(', ');
-                document.getElementById('horizontalRadioButtons').checked = config.fieldsSettings.horizontalRadioButtons;
-                document.getElementById('horizontalCheckboxes').checked = config.fieldsSettings.horizontalCheckboxes;
-                document.getElementById('barcodeTimeout').value = config.fieldsSettings.barcodeTimeout;
-                document.getElementById('barcodeMinLength').value = config.fieldsSettings.barcodeMinLength;
-                document.getElementById('convertNumToTel').checked = config.fieldsSettings.convertNumToTel;
-
-                document.getElementById('persistentFormsScenesToExclude').value = config.persistentFormsSettings.scenesToExclude.join(', ');
-                document.getElementById('persistentFormsFieldsToExclude').value = config.persistentFormsSettings.fieldsToExclude.join(', ');
-
-                document.getElementById('inlineEditBkgColor').value = config.systemColorsSettings.inlineEditBkgColor;
-                document.getElementById('inlineEditFontWeight').value = config.systemColorsSettings.inlineEditFontWeight;
-                document.getElementById('tableRowHoverBkgColor').value = config.systemColorsSettings.tableRowHoverBkgColor;
-
-                if (config.kioskSettings) {
-                    document.getElementById('addRefreshHtml').value = config.kioskSettings.ADD_REFRESH.html;
-                    document.getElementById('addRefreshId').value = config.kioskSettings.ADD_REFRESH.id;
-                    document.getElementById('addRefreshHref').value = config.kioskSettings.ADD_REFRESH.href;
-                    document.getElementById('addRefreshScenesToExclude').value = config.kioskSettings.ADD_REFRESH.scenesToExclude.join(', ');
-
-                    document.getElementById('addBackHtml').value = config.kioskSettings.ADD_BACK.html;
-                    document.getElementById('addBackId').value = config.kioskSettings.ADD_BACK.id;
-                    document.getElementById('addBackHref').value = config.kioskSettings.ADD_BACK.href;
-                    document.getElementById('addBackScenesToExclude').value = config.kioskSettings.ADD_BACK.scenesToExclude.join(', ');
-
-                    document.getElementById('addDoneHtml').value = config.kioskSettings.ADD_DONE.html;
-                    document.getElementById('addDoneId').value = config.kioskSettings.ADD_DONE.id;
-                    document.getElementById('addDoneHref').value = config.kioskSettings.ADD_DONE.href;
-                    document.getElementById('addDoneScenesToExclude').value = config.kioskSettings.ADD_DONE.scenesToExclude.join(', ');
-                }
-
-                if (config.loggingSettings) {
-                    Object.keys(config.loggingSettings).forEach(key => {
-                        const checkbox = document.getElementById(key);
-                        if (checkbox) checkbox.checked = config.loggingSettings[key];
-                    });
-                }
-
-                if (config.iFrameWndSettings) {
-                    document.getElementById('sendHeartbeat').checked = config.iFrameWndSettings.sendHeartbeat;
-                }
-
-                if (Array.isArray(config.developerNames)) {
+            try {
+                if (config) {
                     document.getElementById('developerNames').value = config.developerNames.join(', ');
-                } else {
-                    alert('Error - developerNames not an array.');
-                }
+                    document.getElementById('developerEmail').value = config.developerEmail;
+                    document.getElementById('devOptionsPin').value = config.devOptionsPin;
 
+                    document.getElementById('viShowAppInfo').checked = config.versionInfo.viShowAppInfo;
+                    document.getElementById('viShowKtlInfo').checked = config.versionInfo.viShowKtlInfo;
+                    document.getElementById('viShowToRoles').value = config.versionInfo.viShowToRoles.join(', ');
+                    document.getElementById('viPosX').value = config.versionInfo.viPosX;
+                    document.getElementById('viPosY').value = config.versionInfo.viPosY;
+                    document.getElementById('viPosXMobile').value = config.versionInfo.viPosXMobile;
+                    document.getElementById('viPosYMobile').value = config.versionInfo.viPosYMobile;
+                    document.getElementById('viOpacity').value = config.versionInfo.viOpacity;
+                    document.getElementById('viOpacityHover').value = config.versionInfo.viOpacityHover;
+
+                    Object.keys(config.featureSwitches).forEach(key => {
+                        const checkbox = document.getElementById(key);
+                        if (checkbox) checkbox.checked = config.featureSwitches[key];
+                    });
+
+                    Object.keys(config.bulkOps).forEach(key => {
+                        const checkbox = document.getElementById(key);
+                        if (checkbox) checkbox.checked = config.bulkOps[key];
+                    });
+
+                    document.getElementById('popupStyleSuccess').value = config.popupStyle.success;
+                    document.getElementById('popupStyleWarning').value = config.popupStyle.warning;
+                    document.getElementById('popupStyleError').value = config.popupStyle.error;
+
+                    Object.keys(config.tooltipStyles).forEach(key => {
+                        document.getElementById(key).value = config.tooltipStyles[key];
+                    });
+
+                    document.getElementById('versionDisplayName').value = config.scenesSettings.versionDisplayName;
+                    document.getElementById('idleWatchDogDelay').value = config.scenesSettings.idleWatchDogDelay;
+                    document.getElementById('spinnerCtrDelay').value = config.scenesSettings.spinnerCtrDelay;
+                    document.getElementById('spinnerWdExcludeScn').value = config.scenesSettings.spinnerWdExcludeScn.join(', ');
+
+                    const qtParams = config.viewsSettings.quickToggleParams;
+                    document.getElementById('bgColorTrue').value = qtParams.bgColorTrue;
+                    document.getElementById('bgColorFalse').value = qtParams.bgColorFalse;
+                    document.getElementById('bgColorPending').value = qtParams.bgColorPending;
+                    document.getElementById('showSpinner').checked = qtParams.showSpinner;
+                    document.getElementById('showNotification').checked = qtParams.showNotification;
+                    document.getElementById('headerAlignment').checked = config.viewsSettings.headerAlignment;
+                    document.getElementById('ktlFlashRate').value = config.viewsSettings.ktlFlashRate;
+                    document.getElementById('ktlOutlineColor').value = config.viewsSettings.ktlOutlineColor;
+                    document.getElementById('hscCollapsedColumnsWidth').value = config.viewsSettings.hscCollapsedColumnsWidth;
+                    document.getElementById('hscGlobal').checked = config.viewsSettings.hscGlobal;
+
+                    document.getElementById('textAsNumeric').value = config.fieldsSettings.textAsNumeric.join(', ');
+                    document.getElementById('textAsNumericExcludeScenes').value = config.fieldsSettings.textAsNumericExcludeScenes.join(', ');
+                    document.getElementById('horizontalRadioButtons').checked = config.fieldsSettings.horizontalRadioButtons;
+                    document.getElementById('horizontalCheckboxes').checked = config.fieldsSettings.horizontalCheckboxes;
+                    document.getElementById('barcodeTimeout').value = config.fieldsSettings.barcodeTimeout;
+                    document.getElementById('barcodeMinLength').value = config.fieldsSettings.barcodeMinLength;
+                    document.getElementById('convertNumToTel').checked = config.fieldsSettings.convertNumToTel;
+
+                    document.getElementById('persistentFormsScenesToExclude').value = config.persistentFormsSettings.scenesToExclude.join(', ');
+                    document.getElementById('persistentFormsFieldsToExclude').value = config.persistentFormsSettings.fieldsToExclude.join(', ');
+
+                    document.getElementById('inlineEditBkgColor').value = config.systemColorsSettings.inlineEditBkgColor;
+                    document.getElementById('inlineEditFontWeight').value = config.systemColorsSettings.inlineEditFontWeight;
+                    document.getElementById('tableRowHoverBkgColor').value = config.systemColorsSettings.tableRowHoverBkgColor;
+
+                    if (config.kioskSettings) {
+                        document.getElementById('addRefreshHtml').value = config.kioskSettings.ADD_REFRESH.html;
+                        document.getElementById('addRefreshId').value = config.kioskSettings.ADD_REFRESH.id;
+                        document.getElementById('addRefreshHref').value = config.kioskSettings.ADD_REFRESH.href;
+                        document.getElementById('addRefreshScenesToExclude').value = config.kioskSettings.ADD_REFRESH.scenesToExclude.join(', ');
+
+                        document.getElementById('addBackHtml').value = config.kioskSettings.ADD_BACK.html;
+                        document.getElementById('addBackId').value = config.kioskSettings.ADD_BACK.id;
+                        document.getElementById('addBackHref').value = config.kioskSettings.ADD_BACK.href;
+                        document.getElementById('addBackScenesToExclude').value = config.kioskSettings.ADD_BACK.scenesToExclude.join(', ');
+
+                        document.getElementById('addDoneHtml').value = config.kioskSettings.ADD_DONE.html;
+                        document.getElementById('addDoneId').value = config.kioskSettings.ADD_DONE.id;
+                        document.getElementById('addDoneHref').value = config.kioskSettings.ADD_DONE.href;
+                        document.getElementById('addDoneScenesToExclude').value = config.kioskSettings.ADD_DONE.scenesToExclude.join(', ');
+                    }
+
+                    if (config.loggingSettings) {
+                        Object.keys(config.loggingSettings).forEach(key => {
+                            const checkbox = document.getElementById(key);
+                            if (checkbox) checkbox.checked = config.loggingSettings[key];
+                        });
+                    }
+
+                    if (config.iFrameWndSettings) {
+                        document.getElementById('sendHeartbeat').checked = config.iFrameWndSettings.sendHeartbeat;
+                    }
+
+                    if (Array.isArray(config.developerNames)) {
+                        document.getElementById('developerNames').value = config.developerNames.join(', ');
+                    } else {
+                        alert('Error - developerNames not an array.');
+                    }
+
+                }
+            } catch (error) {
+                console.log('applyConfiguration - Error reading config:\n', error);
             }
         }
 
