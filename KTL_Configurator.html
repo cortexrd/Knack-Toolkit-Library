@@ -86,6 +86,16 @@
             visibility: collapse;
         }
 
+        .iframe-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10; /* Adjust if necessary to ensure it covers the iframe */
+            background: transparent; /* Keeps the overlay invisible */
+        }
+
         h2 {
             margin-bottom: 20px;
             font-size: 1.6rem;
@@ -882,12 +892,25 @@
                 if (hasGrabber) {
                     active = true;
                 }
+
+                // Create and append the overlay to the iframe
+                var iframe = document.getElementById('documentationIframe');
+                var overlay = document.createElement('div');
+                overlay.className = 'iframe-overlay';
+                overlay.id = 'iframeOverlay'; // Easy identification for removal
+                iframe.parentElement.insertBefore(overlay, iframe);
             }
 
             function dragEnd(e) {
                 initialX = currentX;
                 initialY = currentY;
                 active = false;
+
+                // Remove the overlay from the iframe
+                var overlay = document.getElementById('iframeOverlay');
+                if (overlay) {
+                    overlay.parentElement.removeChild(overlay);
+                }
             }
 
             function drag(e) {
