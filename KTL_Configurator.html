@@ -34,26 +34,12 @@
             font-size: 1.4rem;
         }
 
-        .logo {
-            max-height: 120px;
-            padding: 0 15px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-        }
-
         .title-container h2, .title-container #appVersion {
-            margin: 0; /* Remove default margins */
+            margin: 0;
         }
 
-        /*.title-container h2, .title-container #appVersion, .title-container #companyName {*/
         .title-container #companyName {
             font-family: 'Harabara', sans-serif;
-            /* Other styles remain unchanged */
         }
 
         #slogan, #companyName {
@@ -61,13 +47,52 @@
         }
 
         #appVersion {
-            font-size: 0.8em; /* Smaller font size for version */
-            color: #666; /* Lighter color for version */
+            font-size: 0.8em;
+            color: #666;
         }
 
         .logo-container img {
             max-height: 120px; /* Adjust based on your logo's size */
         }
+
+        .ktl-logo-container {
+            text-align: center;
+        }
+
+            .ktl-logo-container img {
+                max-width: 100%; /* ensures image is responsive */
+                height: auto; /* maintains aspect ratio */
+            }
+
+        #slogan {
+            font-family: 'Harabara', sans-serif;
+            font-size: 1.4rem;
+            margin-top: 10px; /* Adjust as needed */
+        }
+
+        .company-logo-container img {
+            max-height: 80px; /* Adjust the size of the Cortex logo as needed */
+            padding: 0 15px; /* Add some padding around the logo if needed */
+        }
+
+        .ktl-logo-container img {
+            max-height: 120px; /* Adjust the size of the KTL logo as needed */
+        }
+
+        .ktl-logo-container #slogan {
+            font-family: 'Harabara', sans-serif;
+            font-size: 1.4rem; /* Adjust the size of the slogan as needed */
+            text-align: center; /* Center align the slogan text */
+            display: block;
+        }
+
+
+
+
+
+
+
+
 
         .container {
             margin-top: 20px;
@@ -207,42 +232,6 @@
             font-size: 1.2rem;
             margin-left: 20px;
         }
-
-
-
-
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-        }
-
-        .title-container h2, .title-container #appVersion {
-            margin: 0; /* Remove default margins */
-        }
-
-        #appVersion {
-            font-size: 0.8em; /* Smaller font size for version */
-            color: #666; /* Lighter color for version */
-        }
-
-        .company-logo-container img {
-            max-height: 80px; /* Adjust the size of the Cortex logo as needed */
-            padding: 0 15px; /* Add some padding around the logo if needed */
-        }
-
-        .ktl-logo-container img {
-            max-height: 120px; /* Adjust the size of the KTL logo as needed */
-        }
-
-        .ktl-logo-container #slogan {
-            font-family: 'Harabara', sans-serif;
-            font-size: 1.4rem; /* Adjust the size of the slogan as needed */
-            text-align: center; /* Center align the slogan text */
-            display: block;
-        }
     </style>
 </head>
 <body>
@@ -257,7 +246,7 @@
             </div>
             <div class="ktl-logo-container">
                 <img src="https://ctrnd.s3.amazonaws.com/media/KTL.png" alt="KTL Logo">
-                <span id="slogan"><br />Where Simplicity<br />meets Magic!</span>
+                <span id="slogan">Where Simplicity Meets Magic!</span>
             </div>
         </div>
 
@@ -565,7 +554,7 @@
                             </div>
                             <div class="form-inline">
                                 <label for="spinnerWdExcludeScn">Spinner WatchDog Exclude Scenes (comma-separated IDs)</label>
-                                <input type="text" class="form-control" id="spinnerWdExcludeScn" placeholder="1,2,3">
+                                <input type="text" class="form-control" id="spinnerWdExcludeScn" placeholder="scene_1, scene_2, ...">
                             </div>
                         </fieldset>
 
@@ -1047,7 +1036,7 @@
             let versionDisplayName = document.getElementById('versionDisplayName').value;
             let idleWatchDogDelay = document.getElementById('idleWatchDogDelay').value;
             let spinnerCtrDelay = document.getElementById('spinnerCtrDelay').value;
-            let spinnerWdExcludeScn = document.getElementById('spinnerWdExcludeScn').value.split(', ').map(scn => scn.trim());
+            let spinnerWdExcludeScn = document.getElementById('spinnerWdExcludeScn').value.split(', ').map(scn => `'${scn.trim()}'`);
 
             const quickToggleParams = {
                 bgColorTrue: document.getElementById('bgColorTrue').value,
@@ -1058,8 +1047,8 @@
             };
 
             const fieldsSettings = {
-                textAsNumeric: document.getElementById('textAsNumeric').value.split(', ').map(id => id.trim()),
-                textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(', ').map(id => id.trim()),
+                textAsNumeric: document.getElementById('textAsNumeric').value.split(', ').map(id => `'${id.trim()}'`),
+                    textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(', ').map(id => `'${id.trim()}'`),
                 horizontalRadioButtons: document.getElementById('horizontalRadioButtons').checked,
                 horizontalCheckboxes: document.getElementById('horizontalCheckboxes').checked,
                 barcodeTimeout: parseInt(document.getElementById('barcodeTimeout').value, 10),
@@ -1068,27 +1057,27 @@
             };
 
             const persistentFormsSettings = {
-                scenesToExclude: document.getElementById('persistentFormsScenesToExclude').value.split(', ').map(id => id.trim()),
-                fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(', ').map(id => id.trim()),
+                scenesToExclude: document.getElementById('persistentFormsScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`),
+                fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(', ').map(id => `'${id.trim()}'`),
             };
 
             const addRefreshHtml = document.getElementById('addRefreshHtml').value;
             const addRefreshId = document.getElementById('addRefreshId').value;
             const addRefreshHref = document.getElementById('addRefreshHref').value;
             const addRefreshInput = document.getElementById('addRefreshScenesToExclude').value;
-            const addRefreshScenesToExclude = addRefreshInput.split(', ').map(excl => excl.trim()).map(excl => `'${excl.trim()}'`);
+            const addRefreshScenesToExclude = addRefreshInput.split(', ').map(id => `'${id.trim()}'`);
 
             const addBackHtml = document.getElementById('addBackHtml').value;
             const addBackId = document.getElementById('addBackId').value;
             const addBackHref = document.getElementById('addBackHref').value;
             const addBackInput = document.getElementById('addRefreshScenesToExclude').value;
-            const addBackScenesToExclude = addBackInput.split(', ').map(excl => excl.trim()).map(excl => `'${excl.trim()}'`);
+            const addBackScenesToExclude = addBackInput.split(', ').map(id => `'${id.trim()}'`);
 
             const addDoneHtml = document.getElementById('addDoneHtml').value;
             const addDoneId = document.getElementById('addDoneId').value;
             const addDoneHref = document.getElementById('addDoneHref').value;
             const addDoneInput = document.getElementById('addRefreshScenesToExclude').value;
-            const addDoneScenesToExclude = addDoneInput.split(', ').map(excl => excl.trim()).map(excl => `'${excl.trim()}'`);
+            const addDoneScenesToExclude = addDoneInput.split(', ').map(id => `'${id.trim()}'`);
 
             const logEnabled = {
                 critical: document.getElementById('logCritical').checked,
@@ -1286,14 +1275,14 @@ window.ktlReady = function (appInfo = {}) {
 
         function collectFormData() {
             return {
-                developerNames: document.getElementById('developerNames').value.split(', ').map(name => name.trim()),
+                developerNames: document.getElementById('developerNames').value.split(', ').map(names => `'${names.trim()}'`),
                 developerEmail: document.getElementById('developerEmail').value,
                 devOptionsPin: document.getElementById('devOptionsPin').value,
 
                 versionInfo: {
                     viShowAppInfo: document.getElementById('viShowAppInfo').checked,
                     viShowKtlInfo: document.getElementById('viShowKtlInfo').checked,
-                    viShowToRoles: document.getElementById('viShowToRoles').value.split(', ').map(role => role.trim()),
+                    viShowToRoles: document.getElementById('viShowToRoles').value.split(', ').map(roles => `'${roles.trim()}'`),
                     viPosX: document.getElementById('viPosX').value,
                     viPosY: document.getElementById('viPosY').value,
                     viPosXMobile: document.getElementById('viPosXMobile').value,
@@ -1351,7 +1340,7 @@ window.ktlReady = function (appInfo = {}) {
                     versionDisplayName: document.getElementById('versionDisplayName').value,
                     idleWatchDogDelay: parseInt(document.getElementById('idleWatchDogDelay').value),
                     spinnerCtrDelay: parseInt(document.getElementById('spinnerCtrDelay').value),
-                    spinnerWdExcludeScn: document.getElementById('spinnerWdExcludeScn').value.split(', ').map(scn => scn.trim())
+                    spinnerWdExcludeScn: document.getElementById('spinnerWdExcludeScn').value.split(', ').map(id => `'${id.trim()}'`),
                 },
 
                 viewsSettings: {
@@ -1370,8 +1359,8 @@ window.ktlReady = function (appInfo = {}) {
                 },
 
                 fieldsSettings: {
-                    textAsNumeric: document.getElementById('textAsNumeric').value.split(', ').map(id => id.trim()),
-                    textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(', ').map(id => id.trim()),
+                    textAsNumeric: document.getElementById('textAsNumeric').value.split(', ').map(id => `'${id.trim()}'`),
+                    textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(', ').map(id => `'${id.trim()}'`),
                     horizontalRadioButtons: document.getElementById('horizontalRadioButtons').checked,
                     horizontalCheckboxes: document.getElementById('horizontalCheckboxes').checked,
                     barcodeTimeout: parseInt(document.getElementById('barcodeTimeout').value),
@@ -1380,8 +1369,8 @@ window.ktlReady = function (appInfo = {}) {
                 },
 
                 persistentFormsSettings: {
-                    scenesToExclude: document.getElementById('persistentFormsScenesToExclude').value.split(', ').map(id => id.trim()),
-                    fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(', ').map(id => id.trim())
+                    scenesToExclude: document.getElementById('persistentFormsScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`),
+                    fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(', ').map(id => `'${id.trim()}'`)
                 },
 
                 systemColorsSettings: {
@@ -1395,19 +1384,19 @@ window.ktlReady = function (appInfo = {}) {
                         html: document.getElementById('addRefreshHtml').value,
                         id: document.getElementById('addRefreshId').value,
                         href: document.getElementById('addRefreshHref').value,
-                        scenesToExclude: document.getElementById('addRefreshScenesToExclude').value.split(', ').map(id => id.trim())
+                        scenesToExclude: document.getElementById('addRefreshScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`)
                     },
                     ADD_BACK: {
                         html: document.getElementById('addBackHtml').value,
                         id: document.getElementById('addBackId').value,
                         href: document.getElementById('addBackHref').value,
-                        scenesToExclude: document.getElementById('addBackScenesToExclude').value.split(', ').map(id => id.trim())
+                        scenesToExclude: document.getElementById('addBackScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`)
                     },
                     ADD_DONE: {
                         html: document.getElementById('addDoneHtml').value,
                         id: document.getElementById('addDoneId').value,
                         href: document.getElementById('addDoneHref').value,
-                        scenesToExclude: document.getElementById('addDoneScenesToExclude').value.split(', ').map(id => id.trim())
+                        scenesToExclude: document.getElementById('addDoneScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`)
                     }
                 },
 
