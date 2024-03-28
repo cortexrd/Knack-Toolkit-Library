@@ -236,11 +236,15 @@
                 <h2><span style="color: gray;font-size: 0.8em;font-weight: 400;">by</span> <span id="companyName">Cortex R&amp;D Inc.</span></h2>
             </div>
             <div class="company-logo-container">
-                <img src="https://ctrnd.s3.amazonaws.com/media/Cortex-logo+RGB+horizontal.png" alt="Cortex Logo">
+                <a href="https://ctrnd.com" target="_blank">
+                    <img src="https://ctrnd.s3.amazonaws.com/media/Cortex-logo+RGB+horizontal.png" alt="Cortex Logo" id="companyLogo">
+                </a>
             </div>
             <div class="ktl-logo-container">
-                <img src="https://ctrnd.s3.amazonaws.com/media/KTL.png" alt="KTL Logo">
-                <span id="slogan">Where Simplicity Meets Magic!</span>
+                <a href="https://github.com/cortexrd/Knack-Toolkit-Library" target="_blank">
+                    <img src="https://ctrnd.s3.amazonaws.com/media/KTL.png" alt="KTL Logo" id="appLogo">
+                </a>
+                <span id="slogan">Where Simplicity meets Magic!</span>
             </div>
         </div>
 
@@ -282,7 +286,8 @@
 
         <div class="container-fluid">
             <div class="row">
-                <div class="col-lg-6">
+                <!--<div class="col-lg-6">-->
+                <div class="col-lg-12">
                     <form id="ktlConfigForm">
                         <fieldset class="form-group border p-3">
                             <legend data-section-id="core-settings">
@@ -805,9 +810,9 @@
                     </form>
                 </div>
 
-                <div class="col-lg-6">
+                <!--<div class="col-lg-6">
                     <iframe id="documentationIframe" src="https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features#the-ktl-configurator-app" style="position:sticky; top:20px; height:80vh; width:100%;"></iframe>
-                </div>
+                </div>-->
             </div>
         </div>
         <textarea id="generatedConfig" rows="100" class="form-control" style="margin-top: 20px; <!--width: 60em !important;-->"></textarea>
@@ -946,9 +951,13 @@
 
             document.querySelectorAll('.legend-help-icon').forEach(function (icon) {
                 icon.addEventListener('click', function () {
+                //    const sectionId = icon.getAttribute('data-section-id');
+                //    const newIframeSrc = `${documentationBaseURL}#${sectionId}`;
+                //    document.getElementById('documentationIframe').src = newIframeSrc;
+
                     const sectionId = icon.getAttribute('data-section-id');
-                    const newIframeSrc = `${documentationBaseURL}#${sectionId}`;
-                    document.getElementById('documentationIframe').src = newIframeSrc;
+                    const documentationURL = `https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features#${sectionId}`;
+                    window.open(documentationURL, 'documentationTab');
                 });
             });
 
