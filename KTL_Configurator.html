@@ -13,6 +13,15 @@
             src: url('https://ctrnd.s3.amazonaws.com/fonts/Harabara.ttf') format('truetype');
         }
 
+        @font-face {
+            font-family: 'Audiowide';
+            src: url('https://ctrnd.s3.amazonaws.com/fonts/Audiowide-Regular.ttf') format('truetype');
+        }
+
+        .container {
+            margin-top: 20px;
+        }
+
         .header {
             display: flex;
             justify-content: space-between;
@@ -20,8 +29,19 @@
             padding: 10px;
         }
 
-        .title-container h1, .title-container #appVersion {
+        #appTitle {
+            font-family: 'Audiowide', sans-serif;
+        }
+
+        #appVersion {
+            font-family: sans-serif; /* Reset to default font for version number */
+            font-size: 0.8em; /* Adjust size as needed */
+            color: #666; /* Adjust color as needed */
+        }
+
+        .title-container h1 {
             margin: 0;
+            font-family: 'Audiowide', sans-serif; /* Using Audiowide */
         }
 
         .title-container #appVersion {
@@ -34,10 +54,6 @@
             font-size: 1.4rem;
         }
 
-        .title-container h2, .title-container #appVersion {
-            margin: 0;
-        }
-
         .title-container #companyName {
             font-family: 'Harabara', sans-serif;
         }
@@ -46,56 +62,32 @@
             font-size: 1.4rem;
         }
 
-        #appVersion {
-            font-size: 0.8em;
-            color: #666;
-        }
-
-        .logo-container img {
-            max-height: 120px; /* Adjust based on your logo's size */
+        .company-logo-container img, .ktl-logo-container img {
+            max-height: 80px; /* Adjusted for consistency */
+            padding: 0 15px; /* Added padding for alignment */
         }
 
         .ktl-logo-container {
             text-align: center;
         }
 
-            .ktl-logo-container img {
-                max-width: 100%; /* ensures image is responsive */
-                height: auto; /* maintains aspect ratio */
-            }
-
         #slogan {
             font-family: 'Harabara', sans-serif;
             font-size: 1.4rem;
-            margin-top: 10px; /* Adjust as needed */
-        }
-
-        .company-logo-container img {
-            max-height: 80px; /* Adjust the size of the Cortex logo as needed */
-            padding: 0 15px; /* Add some padding around the logo if needed */
+            margin-top: 10px;
+            text-align: center; /* Ensuring slogan is centered */
+            display: block;
         }
 
         .ktl-logo-container img {
-            max-height: 120px; /* Adjust the size of the KTL logo as needed */
+            max-height: 120px;
         }
 
         .ktl-logo-container #slogan {
             font-family: 'Harabara', sans-serif;
-            font-size: 1.4rem; /* Adjust the size of the slogan as needed */
-            text-align: center; /* Center align the slogan text */
+            font-size: 1.4rem;
+            text-align: center;
             display: block;
-        }
-
-
-
-
-
-
-
-
-
-        .container {
-            margin-top: 20px;
         }
 
         #documentationIframe {
@@ -224,7 +216,7 @@
         }
 
         .legend-help-icon {
-            cursor: pointer; /* Changes cursor to a pointer to indicate it's clickable */
+            cursor: pointer;
         }
 
         .fa, .fas {
@@ -238,7 +230,7 @@
     <div class="container">
         <div class="header">
             <div class="title-container">
-                <h1>KTL Configurator <small id="appVersion">v1.0.0</small></h1>
+                <h1 id="appTitle">KTL Configurator <small id="appVersion">v1.0.0</small></h1>
                 <h2>by <span id="companyName">Cortex R&D Inc.</span></h2>
             </div>
             <div class="company-logo-container">
@@ -981,12 +973,12 @@
                     viShowAppInfo: document.getElementById('viShowAppInfo').checked,
                     viShowKtlInfo: document.getElementById('viShowKtlInfo').checked,
                     viShowToRoles: `[${roles}]`,
-                    viPosX: 'right',
-                    viPosY: 'top',
-                    viPosXMobile: 'center',
-                    viPosYMobile: 'bottom',
-                    viOpacity: 50,
-                    viOpacityHover: 100
+                    viPosX: document.getElementById('viPosX').value,
+                    viPosY: document.getElementById('viPosY').value,
+                    viPosXMobile: document.getElementById('viPosXMobile').value,
+                    viPosYMobile: document.getElementById('viPosYMobile').value,
+                    viOpacity: document.getElementById('viOpacity').value,
+                    viOpacityHover: document.getElementById('viOpacityHover').value,
                 },
 
                 showMenuInTitle: document.getElementById('showMenuInTitle').checked,
@@ -1048,7 +1040,7 @@
 
             const fieldsSettings = {
                 textAsNumeric: document.getElementById('textAsNumeric').value.split(', ').map(id => `'${id.trim()}'`),
-                    textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(', ').map(id => `'${id.trim()}'`),
+                textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(', ').map(id => `'${id.trim()}'`),
                 horizontalRadioButtons: document.getElementById('horizontalRadioButtons').checked,
                 horizontalCheckboxes: document.getElementById('horizontalCheckboxes').checked,
                 barcodeTimeout: parseInt(document.getElementById('barcodeTimeout').value, 10),
@@ -1095,167 +1087,167 @@
 window.APP_VERSION = '1.0.0';
 
 window.ktlReady = function (appInfo = {}) {
-                            var ktl = new Ktl($, appInfo);
+    var ktl = new Ktl($, appInfo);
 
-                            ktl.core.setCfg({
-                                developerNames: [${developerNames.join(', ')}],
-                                developerEmail: '${developerEmail}',
-                                devOptionsPin: '${devOptionsPin}',
+    ktl.core.setCfg({
+        developerNames: [${developerNames.join(', ')}],
+        developerEmail: '${developerEmail}',
+        devOptionsPin: '${devOptionsPin}',
 
-                                //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
-                                enabled: {
-                                    versionInfo: {
-                                        viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
-                                        viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
-                                        viShowToRoles: ${enabled.versionInfo.viShowToRoles},
-                                        viPosX: '${enabled.versionInfo.viPosX}',
-                                        viPosY: '${enabled.versionInfo.viPosY}',
-                                        viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
-                                        viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
-                                        viOpacity: ${enabled.versionInfo.viOpacity},
-                                        viOpacityHover: ${enabled.versionInfo.viOpacityHover},
-                                    },
+        //Main KTL feature switches.  Here is where your App can override the defaults and enable/disable the features.
+        enabled: {
+            versionInfo: {
+                viShowAppInfo: ${enabled.versionInfo.viShowAppInfo},
+                viShowKtlInfo: ${enabled.versionInfo.viShowKtlInfo},
+                viShowToRoles: ${enabled.versionInfo.viShowToRoles},
+                viPosX: '${enabled.versionInfo.viPosX}',
+                viPosY: '${enabled.versionInfo.viPosY}',
+                viPosXMobile: '${enabled.versionInfo.viPosXMobile}',
+                viPosYMobile: '${enabled.versionInfo.viPosYMobile}',
+                viOpacity: ${enabled.versionInfo.viOpacity},
+                viOpacityHover: ${enabled.versionInfo.viOpacityHover},
+            },
 
-                                    showMenuInTitle: ${enabled.showMenuInTitle},
-                                    selTextOnFocus: ${enabled.selTextOnFocus},
-                                    inlineEditColor: ${enabled.inlineEditColor},
-                                    rowHoverHighlight: ${enabled.rowHoverHighlight},
-                                    autoFocus: ${enabled.autoFocus},
-                                    sortedMenus: ${enabled.sortedMenus},
-                                    userFilters: ${enabled.userFilters},
-                                    persistentForm: ${enabled.persistentForm},
-                                    calendarGotoDate: ${enabled.calendarGotoDate},
-                                    rememberMe: ${enabled.rememberMe},
-                                    formPreValidation: ${enabled.formPreValidation},
-                                    spinnerWatchDog: ${enabled.spinnerWatchDog},
-                                    idleWatchDog: ${enabled.idleWatchDog},
-                                    debugWnd: ${enabled.debugWnd},
-                                    devInfoPopup: ${enabled.devInfoPopup},
-                                    devPauseAutoRefresh: ${enabled.devPauseAutoRefresh},
-                                    virtualKeyboard: ${enabled.virtualKeyboard},
+            showMenuInTitle: ${enabled.showMenuInTitle},
+            selTextOnFocus: ${enabled.selTextOnFocus},
+            inlineEditColor: ${enabled.inlineEditColor},
+            rowHoverHighlight: ${enabled.rowHoverHighlight},
+            autoFocus: ${enabled.autoFocus},
+            sortedMenus: ${enabled.sortedMenus},
+            userFilters: ${enabled.userFilters},
+            persistentForm: ${enabled.persistentForm},
+            calendarGotoDate: ${enabled.calendarGotoDate},
+            rememberMe: ${enabled.rememberMe},
+            formPreValidation: ${enabled.formPreValidation},
+            spinnerWatchDog: ${enabled.spinnerWatchDog},
+            idleWatchDog: ${enabled.idleWatchDog},
+            debugWnd: ${enabled.debugWnd},
+            devInfoPopup: ${enabled.devInfoPopup},
+            devPauseAutoRefresh: ${enabled.devPauseAutoRefresh},
+            virtualKeyboard: ${enabled.virtualKeyboard},
 
-                                    //Those below must also be set up properly to have any effect.  See documentation.
-                                    iFrameWnd: ${enabled.iFrameWnd},
+            //Those below must also be set up properly to have any effect.  See documentation.
+            iFrameWnd: ${enabled.iFrameWnd},
 
-                                    bulkOps: {
-                                        bulkEdit: ${enabled.bulkOps.bulkEdit},
-                                        bulkCopy: ${enabled.bulkOps.bulkCopy},
-                                        bulkDelete: ${enabled.bulkOps.bulkDelete},
-                                    },
-                                },
+            bulkOps: {
+                bulkEdit: ${enabled.bulkOps.bulkEdit},
+                bulkCopy: ${enabled.bulkOps.bulkCopy},
+                bulkDelete: ${enabled.bulkOps.bulkDelete},
+            },
+        },
 
-                                popupStyle: {
-                                    success: '${popupStyle.success}',
-                                    warning: '${popupStyle.warning}',
-                                    error: '${popupStyle.error}',
-                                },
+        popupStyle: {
+            success: '${popupStyle.success}',
+            warning: '${popupStyle.warning}',
+            error: '${popupStyle.error}',
+        },
 
-                                tooltipStyles: {
-                                    ktlTtipFormViewBgColor: '${tooltipStyles.ktlTtipFormViewBgColor}',
-                                    ktlTtipFormViewTxtColor: '${tooltipStyles.ktlTtipFormViewTxtColor}',
-                                    ktlTtipIconFormViewColor: '${tooltipStyles.ktlTtipIconFormViewColor}',
-                                    ktlTtipDetailsViewBgColor: '${tooltipStyles.ktlTtipDetailsViewBgColor}',
-                                    ktlTtipDetailsViewTxtColor: '${tooltipStyles.ktlTtipDetailsViewTxtColor}',
-                                    ktlTtipIconDetailsViewColor: '${tooltipStyles.ktlTtipIconDetailsViewColor}',
-                                    ktlTtipTableViewBgColor: '${tooltipStyles.ktlTtipTableViewBgColor}',
-                                    ktlTtipTableViewTxtColor: '${tooltipStyles.ktlTtipTableViewTxtColor}',
-                                    ktlTtipIconTableViewColor: '${tooltipStyles.ktlTtipIconTableViewColor}',
-                                },
+        tooltipStyles: {
+            ktlTtipFormViewBgColor: '${tooltipStyles.ktlTtipFormViewBgColor}',
+            ktlTtipFormViewTxtColor: '${tooltipStyles.ktlTtipFormViewTxtColor}',
+            ktlTtipIconFormViewColor: '${tooltipStyles.ktlTtipIconFormViewColor}',
+            ktlTtipDetailsViewBgColor: '${tooltipStyles.ktlTtipDetailsViewBgColor}',
+            ktlTtipDetailsViewTxtColor: '${tooltipStyles.ktlTtipDetailsViewTxtColor}',
+            ktlTtipIconDetailsViewColor: '${tooltipStyles.ktlTtipIconDetailsViewColor}',
+            ktlTtipTableViewBgColor: '${tooltipStyles.ktlTtipTableViewBgColor}',
+            ktlTtipTableViewTxtColor: '${tooltipStyles.ktlTtipTableViewTxtColor}',
+            ktlTtipIconTableViewColor: '${tooltipStyles.ktlTtipIconTableViewColor}',
+        },
 
-                            });
+    });
 
-                            ktl.scenes.setCfg({
-                                versionDisplayName: '${versionDisplayName}',
-                                idleWatchDogDelay: ${idleWatchDogDelay},
-                                spinnerCtrDelay: ${spinnerCtrDelay},
-                                spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(', ')}],
-                            });
+    ktl.scenes.setCfg({
+        versionDisplayName: '${versionDisplayName}',
+        idleWatchDogDelay: ${idleWatchDogDelay},
+        spinnerCtrDelay: ${spinnerCtrDelay},
+        spinnerWdExcludeScn: [${spinnerWdExcludeScn.join(', ')}],
+    });
 
-                            ktl.views.setCfg({
-                                quickToggleParams: {
-                                    bgColorTrue: '${quickToggleParams.bgColorTrue}',
-                                    bgColorFalse: '${quickToggleParams.bgColorFalse}',
-                                    bgColorPending: '${quickToggleParams.bgColorPending}',
-                                    showSpinner: ${quickToggleParams.showSpinner},
-                                    showNotification: ${quickToggleParams.showNotification},
-                                },
+    ktl.views.setCfg({
+        quickToggleParams: {
+            bgColorTrue: '${quickToggleParams.bgColorTrue}',
+            bgColorFalse: '${quickToggleParams.bgColorFalse}',
+            bgColorPending: '${quickToggleParams.bgColorPending}',
+            showSpinner: ${quickToggleParams.showSpinner},
+            showNotification: ${quickToggleParams.showNotification},
+        },
 
-                                headerAlignment: ${document.getElementById('headerAlignment').checked},
-                                ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
-                                ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
-                                hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
-                                hscGlobal: ${document.getElementById('hscGlobal').checked},
-                            });
+        headerAlignment: ${document.getElementById('headerAlignment').checked},
+        ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
+        ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
+        hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
+        hscGlobal: ${document.getElementById('hscGlobal').checked},
+    });
 
-                            ktl.fields.setCfg({
-                                textAsNumeric: [${fieldsSettings.textAsNumeric.join(', ')}],
-                                textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(', ')}],
-                                horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
-                                horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
-                                barcodeTimeout: ${fieldsSettings.barcodeTimeout},
-                                barcodeMinLength: ${fieldsSettings.barcodeMinLength},
-                                convertNumToTel: ${fieldsSettings.convertNumToTel},
-                            });
+    ktl.fields.setCfg({
+        textAsNumeric: [${fieldsSettings.textAsNumeric.join(', ')}],
+        textAsNumericExcludeScenes: [${fieldsSettings.textAsNumericExcludeScenes.join(', ')}],
+        horizontalRadioButtons: ${fieldsSettings.horizontalRadioButtons},
+        horizontalCheckboxes: ${fieldsSettings.horizontalCheckboxes},
+        barcodeTimeout: ${fieldsSettings.barcodeTimeout},
+        barcodeMinLength: ${fieldsSettings.barcodeMinLength},
+        convertNumToTel: ${fieldsSettings.convertNumToTel},
+    });
 
-                            ktl.persistentForm.setCfg({
-                                scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(', ')}],
-                                fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(', ')}],
-                            });
+    ktl.persistentForm.setCfg({
+        scenesToExclude: [${persistentFormsSettings.scenesToExclude.join(', ')}],
+        fieldsToExclude: [${persistentFormsSettings.fieldsToExclude.join(', ')}],
+    });
 
-                            ktl.systemColors.setCfg({
-                                inlineEditBkgColor: '${document.getElementById('inlineEditBkgColor').value}',
-                                inlineEditFontWeight: '${document.getElementById('inlineEditFontWeight').value}',
-                                tableRowHoverBkgColor: '${document.getElementById('tableRowHoverBkgColor').value}',
-                            });
+    ktl.systemColors.setCfg({
+        inlineEditBkgColor: '${document.getElementById('inlineEditBkgColor').value}',
+        inlineEditFontWeight: '${document.getElementById('inlineEditFontWeight').value}',
+        tableRowHoverBkgColor: '${document.getElementById('tableRowHoverBkgColor').value}',
+    });
 
-                            //Features that do not apply to the iFrameWnd.
-                            if (!window.self.frameElement) {
-                                ktl.scenes.setCfg({
-                                    ktlKioskButtons: {
-                                        ADD_REFRESH: {
-                                            html: '${addRefreshHtml}',
-                                            id: '${addRefreshId}',
-                                            href: ${addRefreshHref},
-                                            scenesToExclude: [${addRefreshScenesToExclude.join(', ')}],
-                                        },
-                                        ADD_BACK: {
-                                            html: '${addBackHtml}',
-                                            id: '${addBackId}',
-                                            href: ${addBackHref},
-                                            scenesToExclude: [${addBackScenesToExclude.join(', ')}],
-                                        },
-                                        ADD_DONE: {
-                                            html: '${addDoneHtml}',
-                                            id: '${addDoneId}',
-                                            href: ${addDoneHref},
-                                            scenesToExclude: [${addDoneScenesToExclude.join(', ')}],
-                                        },
-                                    },
-                                });
-                            }
+    //Features that do not apply to the iFrameWnd.
+    if (!window.self.frameElement) {
+        ktl.scenes.setCfg({
+            ktlKioskButtons: {
+                ADD_REFRESH: {
+                    html: '${addRefreshHtml}',
+                    id: '${addRefreshId}',
+                    href: ${addRefreshHref},
+                    scenesToExclude: [${addRefreshScenesToExclude.join(', ')}],
+                },
+                ADD_BACK: {
+                    html: '${addBackHtml}',
+                    id: '${addBackId}',
+                    href: ${addBackHref},
+                    scenesToExclude: [${addBackScenesToExclude.join(', ')}],
+                },
+                ADD_DONE: {
+                    html: '${addDoneHtml}',
+                    id: '${addDoneId}',
+                    href: ${addDoneHref},
+                    scenesToExclude: [${addDoneScenesToExclude.join(', ')}],
+                },
+            },
+        });
+    }
 
-                            ktl.log.setCfg({
-                                logEnabled: {
-                                    critical: ${logEnabled.critical},
-                                    error: ${logEnabled.error},
-                                    serverErr: ${logEnabled.serverErr},
-                                    warning: ${logEnabled.warning},
-                                    info: ${logEnabled.info},
-                                    debug: ${logEnabled.debug},
-                                    login: ${logEnabled.login},
-                                    activity: ${logEnabled.activity},
-                                    navigation: ${logEnabled.navigation},
-                                }
-                            });
+    ktl.log.setCfg({
+        logEnabled: {
+            critical: ${logEnabled.critical},
+            error: ${logEnabled.error},
+            serverErr: ${logEnabled.serverErr},
+            warning: ${logEnabled.warning},
+            info: ${logEnabled.info},
+            debug: ${logEnabled.debug},
+            login: ${logEnabled.login},
+            activity: ${logEnabled.activity},
+            navigation: ${logEnabled.navigation},
+        }
+    });
 
-                            //KTL Setup - END
+    //KTL Setup - END
 
 
-                            //KTL callbacks to your App - BEGIN
-                            //KTL callbacks to your App - END
+    //KTL callbacks to your App - BEGIN
+    //KTL callbacks to your App - END
 
-                            /////////////////////////////////////////////////
-                            //Your App-specific code goes here...
+    /////////////////////////////////////////////////
+    //Your App-specific code goes here...
 
 };
 `;
