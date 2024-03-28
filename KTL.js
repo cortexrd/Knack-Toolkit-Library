@@ -6160,7 +6160,6 @@ function Ktl($, appInfo) {
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(viewId, keywords);
-                    keywords._ha && headerAlignment(view, keywords);
                     keywords._da && dataAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
@@ -6182,6 +6181,9 @@ function Ktl($, appInfo) {
                     keywords._vk && virtualKeyboard(viewId, keywords);
                     keywords._asf && autoSubmitForm(viewId, keywords);
                 }
+
+                //This section is for features that can be applied even without a keyword.
+                headerAlignment(view, keywords);
 
                 //This section is for keywords that are supported by views and fields.
                 ktl.fields.hideFields(viewId, keywords);
@@ -7688,12 +7690,17 @@ function Ktl($, appInfo) {
 
         //Adjust header alignment of Grids and Pivot Tables
         function headerAlignment(view, keywords) {
-            const kw = '_ha';
-            if (!view || !cfg.headerAlignment || !keywords || (keywords && !keywords[kw])) return;
+            if (!view) return;
 
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
-                if (!ktl.core.hasRoleAccess(options)) return;
+            const kw = '_ha';
+
+            if (!cfg.headerAlignment) {
+                if (!keywords || (keywords && !keywords[kw])) return;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
             }
 
             const viewType = view.type;
@@ -12861,10 +12868,14 @@ function Ktl($, appInfo) {
                 if (ktl.scenes.isiFrameWnd() || !ktl.core.getCfg().enabled.idleWatchDog) return;
 
                 clearTimeout(idleWatchDogTimer);
-                if (ktl.scenes.getCfg().idleWatchDogDelay > 0) {
+                let idleWatchDogDelay = ktl.scenes.getCfg().idleWatchDogDelay;
+                if (idleWatchDogDelay > 0) {
+                    if (idleWatchDogDelay > 1440) //For backwards compatibility, when value was in milliseconds.  Now in minutes.
+                        idleWatchDogDelay /= 60000;
+
                     idleWatchDogTimer = setTimeout(function () {
                         ktl.scenes.idleWatchDogTimeout();
-                    }, ktl.scenes.getCfg().idleWatchDogDelay);
+                    }, idleWatchDogDelay * 60000);
                 }
             },
 

@@ -85,10 +85,10 @@ window.KnackApp = function ($, appInfo = {}) {
                 isKiosk: isKiosk,
             })
 
-            //For Idle timeout delay in milliseconds, you can use a fixed value, or change it depending on the use case.
+            //For Idle timeout delay in minutes, you can use a fixed value, or change it depending on the use case.
             //As an example, below I change it if it's a kiosk device.
             //Zero means disabled, so idleWatchDogTimeout() will never be called.
-            var idleWatchDogDelay = 120 * 60000; //120 minutes (2 hours) by default.
+            var idleWatchDogDelay = 120; //120 minutes (2 hours) by default.
             var spinnerCtrDelay = 60; //60 seconds of waiting is a good starting point.
             if (isKiosk()) {
                 idleWatchDogDelay = 0; //Inactivity timeout is disabled by default for kiosks.
