@@ -1045,6 +1045,12 @@
                 fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(', ').map(id => `'${id.trim()}'`),
             };
 
+            const systemColorsSettings = {
+                inlineEditBkgColor: document.getElementById('inlineEditBkgColor').value,
+                inlineEditFontWeight: document.getElementById('inlineEditFontWeight').value,
+                tableRowHoverBkgColor: document.getElementById('tableRowHoverBkgColor').value
+            };
+
             const addRefreshHtml = document.getElementById('addRefreshHtml').value;
             const addRefreshId = document.getElementById('addRefreshId').value;
             const addRefreshHref = document.getElementById('addRefreshHref').value;
@@ -1187,9 +1193,9 @@ window.ktlReady = function (appInfo = {}) {
     });
 
     ktl.systemColors.setCfg({
-        inlineEditBkgColor: '${document.getElementById('inlineEditBkgColor').value}',
-        inlineEditFontWeight: '${document.getElementById('inlineEditFontWeight').value}',
-        tableRowHoverBkgColor: '${document.getElementById('tableRowHoverBkgColor').value}',
+        inlineEditBkgColor: '${systemColorsSettings.inlineEditBkgColor}',
+        inlineEditFontWeight: '${systemColorsSettings.inlineEditFontWeight}',
+        tableRowHoverBkgColor: '${systemColorsSettings.tableRowHoverBkgColor}',
     });
 
     //Features that do not apply to the iFrameWnd.
@@ -1258,15 +1264,26 @@ window.ktlReady = function (appInfo = {}) {
         });
 
         function collectFormData() {
+            const developerNames = document.getElementById('developerNames').value ? document.getElementById('developerNames').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const viShowToRoles = document.getElementById('viShowToRoles').value ? document.getElementById('viShowToRoles').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const spinnerWdExcludeScn = document.getElementById('spinnerWdExcludeScn').value ? document.getElementById('spinnerWdExcludeScn').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const textAsNumeric = document.getElementById('textAsNumeric').value ? document.getElementById('textAsNumeric').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const textAsNumericExcludeScenes = document.getElementById('textAsNumericExcludeScenes').value ? document.getElementById('textAsNumericExcludeScenes').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const persistentFormsScenesToExclude = document.getElementById('persistentFormsScenesToExclude').value ? document.getElementById('persistentFormsScenesToExclude').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const persistentFormsFieldsToExclude = document.getElementById('persistentFormsFieldsToExclude').value ? document.getElementById('persistentFormsFieldsToExclude').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const addRefreshScenesToExclude = document.getElementById('addRefreshScenesToExclude').value ? document.getElementById('addRefreshScenesToExclude').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const addBackScenesToExclude = document.getElementById('addBackScenesToExclude').value ? document.getElementById('addBackScenesToExclude').value.split(',').map(item => item.trim()).filter(item => item) : [];
+            const addDoneScenesToExclude = document.getElementById('addDoneScenesToExclude').value ? document.getElementById('addDoneScenesToExclude').value.split(',').map(item => item.trim()).filter(item => item) : [];
+
             return {
-                developerNames: document.getElementById('developerNames').value.split(', ').map(names => `'${names.trim()}'`),
+                developerNames: developerNames,
                 developerEmail: document.getElementById('developerEmail').value,
                 devOptionsPin: document.getElementById('devOptionsPin').value,
 
                 versionInfo: {
                     viShowAppInfo: document.getElementById('viShowAppInfo').checked,
                     viShowKtlInfo: document.getElementById('viShowKtlInfo').checked,
-                    viShowToRoles: document.getElementById('viShowToRoles').value.split(', ').map(roles => `'${roles.trim()}'`),
+                    viShowToRoles: viShowToRoles,
                     viPosX: document.getElementById('viPosX').value,
                     viPosY: document.getElementById('viPosY').value,
                     viPosXMobile: document.getElementById('viPosXMobile').value,
@@ -1324,7 +1341,7 @@ window.ktlReady = function (appInfo = {}) {
                     versionDisplayName: document.getElementById('versionDisplayName').value,
                     idleWatchDogDelay: parseInt(document.getElementById('idleWatchDogDelay').value),
                     spinnerCtrDelay: parseInt(document.getElementById('spinnerCtrDelay').value),
-                    spinnerWdExcludeScn: document.getElementById('spinnerWdExcludeScn').value.split(', ').map(id => `'${id.trim()}'`),
+                    spinnerWdExcludeScn: spinnerWdExcludeScn,
                 },
 
                 viewsSettings: {
@@ -1343,8 +1360,8 @@ window.ktlReady = function (appInfo = {}) {
                 },
 
                 fieldsSettings: {
-                    textAsNumeric: document.getElementById('textAsNumeric').value.split(', ').map(id => `'${id.trim()}'`),
-                    textAsNumericExcludeScenes: document.getElementById('textAsNumericExcludeScenes').value.split(', ').map(id => `'${id.trim()}'`),
+                    textAsNumeric: textAsNumeric,
+                    textAsNumericExcludeScenes: textAsNumericExcludeScenes,
                     horizontalRadioButtons: document.getElementById('horizontalRadioButtons').checked,
                     horizontalCheckboxes: document.getElementById('horizontalCheckboxes').checked,
                     barcodeTimeout: parseInt(document.getElementById('barcodeTimeout').value),
@@ -1353,8 +1370,8 @@ window.ktlReady = function (appInfo = {}) {
                 },
 
                 persistentFormsSettings: {
-                    scenesToExclude: document.getElementById('persistentFormsScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`),
-                    fieldsToExclude: document.getElementById('persistentFormsFieldsToExclude').value.split(', ').map(id => `'${id.trim()}'`)
+                    scenesToExclude: persistentFormsScenesToExclude,
+                    fieldsToExclude: persistentFormsFieldsToExclude,
                 },
 
                 systemColorsSettings: {
@@ -1368,19 +1385,19 @@ window.ktlReady = function (appInfo = {}) {
                         html: document.getElementById('addRefreshHtml').value,
                         id: document.getElementById('addRefreshId').value,
                         href: document.getElementById('addRefreshHref').value,
-                        scenesToExclude: document.getElementById('addRefreshScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`)
+                        scenesToExclude: addRefreshScenesToExclude,
                     },
                     ADD_BACK: {
                         html: document.getElementById('addBackHtml').value,
                         id: document.getElementById('addBackId').value,
                         href: document.getElementById('addBackHref').value,
-                        scenesToExclude: document.getElementById('addBackScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`)
+                        scenesToExclude: addBackScenesToExclude,
                     },
                     ADD_DONE: {
                         html: document.getElementById('addDoneHtml').value,
                         id: document.getElementById('addDoneId').value,
                         href: document.getElementById('addDoneHref').value,
-                        scenesToExclude: document.getElementById('addDoneScenesToExclude').value.split(', ').map(id => `'${id.trim()}'`)
+                        scenesToExclude: addDoneScenesToExclude,
                     }
                 },
 
