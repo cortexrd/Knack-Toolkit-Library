@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.8';
+    const KTL_VERSION = '0.24.9';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -7981,6 +7981,7 @@ function Ktl($, appInfo) {
         //Example: _click=Link Label, auto (or blank), Button Label
         let clickCurrentlyRunning = null;
         let clickLastRecIdProcessed = null;
+        let clickStartButtons = {};
         function performClick(viewId, keywords, data) {
             const kw = '_click';
             if (!(viewId && keywords && keywords[kw])) return;
@@ -8016,9 +8017,11 @@ function Ktl($, appInfo) {
                     buttonLabel = params[2];
                     let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
                     const buttonId = ktl.core.getCleanId(buttonLabel);
-                    startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonId}-${viewId}`);
+                    startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `ktlAutoCLick_${buttonId}-${viewId}`);
 
-                    if (!data.length)
+                    if (data.length)
+                        startButton.disabled = false;
+                    else
                         startButton.disabled = true;
 
                     if (clickCurrentlyRunning === actionLinkText) {
@@ -8034,6 +8037,8 @@ function Ktl($, appInfo) {
                     } else {
                         if (clickCurrentlyRunning)
                             startButton.disabled = true;
+
+                        //`ktlAutoCLick_${buttonId}-${viewId}`
 
                         startButton.addEventListener('click', function (e) {
                             if (needConfirm) {
@@ -8053,32 +8058,42 @@ function Ktl($, appInfo) {
                             clickCurrentlyRunning = actionLinkText;
                             doClick();
                         }
-                    }
-                    else {
+                    } else {
                         clickCurrentlyRunning = actionLinkText;
                         doClick();
                     }
                 }
 
                 function doClick() {
-                    setTimeout(() => { //Leave some time to apply any other keyword that might hide the link.
-                        //If last clicked record is still there, exit and wait for next refresh.
-                        if (clickLastRecIdProcessed) {
-                            if ($(`#${viewId} tr[id="${clickLastRecIdProcessed}"] .knViewLink__label:textEquals("${clickCurrentlyRunning}")`).length)
-                                return;
-                            else
-                                clickLastRecIdProcessed = null;
-                        }
+                    if (data.length) {
+                        //Pause autoRefresh because this keyword will automatically refresh the view.
+                        //Otherwise, we get conflicting refreshes.
+                        ktl.views.pauseAutoRefreshForView(viewId);
+                    } else {
+                        clickLastRecIdProcessed = null;
+                        clickCurrentlyRunning = null;
 
+                        //No data, exit and let autoRefresh do it's job, until some data is found.
+                        ktl.views.runAutoRefreshForView(viewId);
+                        return;
+                    }
+
+                    setTimeout(() => { //Leave some time to apply any other keyword that might hide the link.
                         let linkSelector;
 
                         if (clickCurrentlyRunning) {
-                            linkSelector = $(`#${viewId} .knViewLink__label:textEquals("${clickCurrentlyRunning}")`);
+                            linkSelector = $(`#${viewId} .kn-action-link:textEquals("${clickCurrentlyRunning}"), #${viewId} .knViewLink__label:textEquals("${clickCurrentlyRunning}")`);
 
                             if (linkSelector.length) {
-                                linkSelector[0].classList.add('ktlOutline');
-                                clickLastRecIdProcessed = linkSelector[0].closest(`tr`).id;
-                                linkSelector[0].click();
+                                const recId = linkSelector[0].closest('tr').id;
+                                if (recId !== clickLastRecIdProcessed) {
+                                    linkSelector[0].classList.add('ktlOutline');
+                                    clickLastRecIdProcessed = recId;
+                                    linkSelector[0].click();
+                                } else {
+                                    ktl.log.clog('purple', 'same record found', clickLastRecIdProcessed);
+                                    return; //If last clicked record is still there, exit and wait for next refresh.
+                                }
                             } else {
                                 if (startButton)
                                     startButton.textContent = buttonLabel;
@@ -8086,7 +8101,7 @@ function Ktl($, appInfo) {
                                 clickCurrentlyRunning = null;
                             }
                         }
-                    }, 1000);
+                    }, 2000);
                 }
             }
         }
@@ -9500,7 +9515,8 @@ function Ktl($, appInfo) {
                             //Add view to auto refresh list.
                             if (!(viewId in autoRefreshViews)) {
                                 var intervalId = setInterval(function () {
-                                    ktl.views.refreshView(viewId).then(function () { });
+                                    if (!autoRefreshViews[viewId].pause)
+                                        ktl.views.refreshView(viewId).then(function () { });
                                 }, intervalDelay * 1000);
 
                                 autoRefreshViews[viewId] = { delay: intervalDelay, intervalId: intervalId };
@@ -9535,6 +9551,16 @@ function Ktl($, appInfo) {
                         }
                     }
                 }
+            },
+
+            pauseAutoRefreshForView: function (viewId) {
+                if (!viewId || !autoRefreshViews[viewId]) return;
+                autoRefreshViews[viewId].pause = true;
+            },
+
+            runAutoRefreshForView: function (viewId) {
+                if (!viewId || !autoRefreshViews[viewId]) return;
+                delete autoRefreshViews[viewId].pause;
             },
 
             //Hide the whole view, typically used when doing background searches, or GET API calls.
@@ -12986,7 +13012,7 @@ function Ktl($, appInfo) {
                         ktlCode = info.ktlVersion;
                     versionStyle += '; color:#0008; background-color:#FFF3;';
                 } else if (ktlCode === 'dev')
-                    versionStyle += '; background-color:red; color:black; font-weight: bold';
+                    versionStyle += '; background-color:pink; color:black; font-weight: bold';
                 else if (ktlCode === 'local')
                     versionStyle += '; background-color:gold; color:red; font-weight: bold';
                 else if (ktlCode === 'beta' || /^\d.*\./.test(ktlCode))
@@ -14725,7 +14751,7 @@ function Ktl($, appInfo) {
                             ktl.iFrameWnd.delete();
                             ktl.iFrameWnd.create();
                         }
-                    }, 60000);
+                    }, ONE_MINUTE_DELAY * 2);
                 }
             },
 
@@ -16026,8 +16052,8 @@ function Ktl($, appInfo) {
     //====================================================
     //System Info feature
     this.sysInfo = (function () {
-        const STARTUP_WD_TIMEOUT_DELAY = 60;
-        const NORMAL_WD_TIMEOUT_DELAY = 20;
+        const STARTUP_WD_TIMEOUT_DELAY = 240;
+        const NORMAL_WD_TIMEOUT_DELAY = 120;
         const WD_SAFETY_MARGIN = 1.5;
 
         var sysInfo = {
@@ -16429,6 +16455,7 @@ function Ktl($, appInfo) {
             */
             sendRecoveryWdHeartbeat: function (wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
                 return new Promise(function (resolve, reject) {
+                    //console.log('entering sendRecoveryWdHeartbeat', wdTimeoutDelay);
                     if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
                         setTimeout(() => { //This delay fixes the problem with Kiosk Browser crashing intermittently.
                             Android.resetWatchdog(wdTimeoutDelay);
@@ -16450,7 +16477,7 @@ function Ktl($, appInfo) {
                                 resolve(responseData);
                             } else if (xhr.status === 0) {
                                 clearTimeout(timeoutNoSvr);
-                                //console.error('Server error', xhr);
+                                console.error('Server error', xhr);
                                 reject('Recovery WD svr response error: ' + xhr.responseText);
                             }
                         };
@@ -16665,6 +16692,8 @@ function Ktl($, appInfo) {
 
         const onlineStatusFieldId = ktl.iFrameWnd.getCfg().acctOnlineFld;
         const localHeartBeatFieldId = ktl.iFrameWnd.getCfg().acctLocHbFld;
+        const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
+        const swVersionFieldId = ktl.iFrameWnd.getCfg().acctSwVersionFld;
 
         const statusMonitoring = {
             online: [],
@@ -16674,20 +16703,17 @@ function Ktl($, appInfo) {
         let readyToProcessRecords = true;
 
         $(document).on('KTL.filterApplied', (event, viewId) => {
-            if (viewId !== SYSOP_DASHBOARD_ACC_STATUS) return;
-
-            //const activeFilter = ktl.userFilters.getActiveFilter(SYSOP_DASHBOARD_ACC_STATUS);
-            Knack.models[viewId].fetch();
+            if (viewId === SYSOP_DASHBOARD_ACC_STATUS) {
+                if (readyToProcessRecords)
+                    processRecordsUpdate(viewId);
+            }
         });
 
         $(document).on('KTL.StatusMonitoring.Updated', (event, statusMonitoring) => {
-            //console.log('statusMonitoring =', statusMonitoring);
+            //console.log('KTL.StatusMonitoring.Updated - statusMonitoring =', statusMonitoring);
         });
 
         $(document).on('knack-view-render.' + SYSOP_DASHBOARD_ACC_STATUS, function (event, view, data) {
-            if (readyToProcessRecords)
-                processRecordsUpdate(view.key);
-
             //Colorize fields - Online and Last Activity.
             $(`#${SYSOP_DASHBOARD_ACC_STATUS} tbody .${localHeartBeatFieldId}`).removeClass('ktlOfflineStatus');
             for (const offline of statusMonitoring.offline) {
@@ -16696,10 +16722,7 @@ function Ktl($, appInfo) {
 
             const nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
             data.forEach(record => {
-                const swVersionFieldId = ktl.iFrameWnd.getCfg().acctSwVersionFld;
-                const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
-                const rowSelector = `#${SYSOP_DASHBOARD_ACC_STATUS} tr[id="${record.id}"]`
-
+                const rowSelector = `#${SYSOP_DASHBOARD_ACC_STATUS} tr[id="${record.id}"]`;
                 const swVersionSelector = $(`${rowSelector} .${swVersionFieldId}`);
                 if (record[swVersionFieldId] !== window.APP_KTL_VERSIONS)
                     swVersionSelector.css({ 'color': 'red', 'font-weight': 'bold' });
@@ -16720,8 +16743,6 @@ function Ktl($, appInfo) {
 
         function processRecordsUpdate(viewId) {
             readyToProcessRecords = false;
-            //console.log('processRecordsUpdate');
-
             const data = Knack.views[viewId].model && Knack.views[viewId].model.data && Knack.views[viewId].model.data.models;
             if (!data || !data.length) return;
 
@@ -16731,26 +16752,27 @@ function Ktl($, appInfo) {
                     $(document).trigger('KTL.StatusMonitoring.Updated', [statusMonitoring]);
 
                     if (updatedCount) {
-                        ktl.log.clog('green', 'Status Monitoring - updated count', updatedCount);
+                        //ktl.log.clog('green', 'Status Monitoring - updated count', updatedCount);
                         ktl.views.refreshView(SYSOP_DASHBOARD_ACC_STATUS);
                     }
 
                     setTimeout(() => {
-                        readyToProcessRecords = true; //Prevent re-entry due to refresh view.
-                    }, 3000);
+                        readyToProcessRecords = true; //Prevent re-entry due to consecutive view refreshes.
+                    }, 15000);
                 })
         }
 
         function refreshRecords(data) {
-            const DEVICE_OFFLINE_DELAY = 60000 * 3;
+            const DEVICE_OFFLINE_DELAY = ONE_MINUTE_DELAY * 3;
             const recordsToUpdate = [];
+            const acctUtcHbFldId = ktl.iFrameWnd.getCfg().acctUtcHbFld;
             const nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
             statusMonitoring.online = [];
             statusMonitoring.offline = [];
 
             data.forEach(rec => {
                 const record = rec.attributes;
-                const utcHeartBeatField = record[ktl.iFrameWnd.getCfg().acctUtcHbFld];
+                const utcHeartBeatField = record[acctUtcHbFldId];
                 const onlineField = record[onlineStatusFieldId];
                 const diff = nowUTC - Date.parse(utcHeartBeatField);
 
