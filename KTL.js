@@ -5939,9 +5939,10 @@ function Ktl($, appInfo) {
                         ktlProcessKeywords(view, data);
                     } else {
                         if (numberOfSummaryLines === 1 && !noData) {
-                            if (Knack.models[viewId].results_model)
+                            if (Knack.models[viewId].results_model) {
                                 Knack.models[viewId].results_model.fetch();
-                            return;
+                                return;
+                            }
                         }
                     }
 
