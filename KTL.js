@@ -330,7 +330,6 @@ function Ktl($, appInfo) {
         var timedPopupEl = null;
         var timedPopupTimer = null;
         var progressWnd = null;
-        const waitSelectors = {};
 
         $(document).on('click', function (e) {
             //Context menu removal.
@@ -8029,8 +8028,7 @@ function Ktl($, appInfo) {
                     const buttonId = ktl.core.getCleanId(buttonLabel);
                     startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `ktlAutoClick_${viewId}-${buttonId}`);
 
-                    //if (data.length) //Do not use!  Will fail with Search views.
-                    if (document.querySelector(`#${viewId} .kn-tr-nodata`))
+                    if (document.querySelector(`#${viewId} .kn-tr-nodata`)) //Do not use !data.length because it will fail with Search views.
                         $(`#${viewId} [id^=ktlAutoClick_]`).attr('disabled', true);
                     else
                         $(`#${viewId} [id^=ktlAutoClick_]`).attr('disabled', false);
@@ -8092,7 +8090,7 @@ function Ktl($, appInfo) {
                 }
 
                 function doClick() {
-                    setTimeout(() => { //Leave some time to apply any other keyword that might hide the link.
+                    setTimeout(() => { //Leave some time to apply any other keyword that might hide the link.  TODO: find better method.
                         ktl.core.waitSelector(`#${viewId} tbody`, 15000) //Needed for Search views, due to delay rendering.
                             .then(function () {
                                 //if (document.querySelectorAll(`#${viewId} tbody tr`).length nodata) { //Do not use data.length!  Will give zero for Searches.
