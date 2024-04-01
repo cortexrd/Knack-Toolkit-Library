@@ -5926,7 +5926,8 @@ function Ktl($, appInfo) {
         const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
-            if (ktl.views.viewHasSummary(viewId) && Knack.models[viewId].results_model) {
+
+            if (ktl.views.viewHasSummary(viewId)) {
                 if (ktl.views.viewHasGroups(viewId)) {
                     viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
 
@@ -5938,7 +5939,8 @@ function Ktl($, appInfo) {
                         ktlProcessKeywords(view, data);
                     } else {
                         if (numberOfSummaryLines === 1 && !noData) {
-                            Knack.models[viewId].results_model.fetch();
+                            if (Knack.models[viewId].results_model)
+                                Knack.models[viewId].results_model.fetch();
                             return;
                         }
                     }
@@ -6198,7 +6200,12 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 disableFilterOnFields(view);
-                labelText(view, keywords);
+
+                //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values. 
+                $(document).off('KTL.' + viewId + '.totalsRendered').on('KTL.' + viewId + '.totalsRendered', () => {
+                    labelText(view, keywords);
+                    ktl.views.fixTableRowsAlignment(view.key);
+                })
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -9762,21 +9769,7 @@ function Ktl($, appInfo) {
                     var viewObj = ktl.views.getViewObj(viewId);
                     if (!viewObj) return;
 
-                    if (ktl.views.viewHasSummary(viewId)) {
-                        var sel = '#' + viewId + ' tr.kn-table-totals';
-                        ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT) //Totals and groups usually need a bit of extra wait time due to delayed server response.
-                            .then(function () {
-                                var totalRows = $('#' + viewId + ' tr.kn-table-totals');
-                                if (!$('#' + viewId + ' tr.kn-table-totals td')[0].classList.contains('blankCell')) {
-                                    for (var i = totalRows.length - 1; i >= 0; i--) {
-                                        var row = totalRows[i];
-                                        $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                                    }
-                                    fixSummaryRows();
-                                }
-                            })
-                            .catch(function (e) { ktl.log.clog('purple', 'fixTableRowsAlignment / hasSummary - failed waiting for table totals.', viewId, e); })
-                    }
+                    checkSummaryFixNeeded();
 
                     //For groups, extend line up to end.
                     var cols = (viewObj.results && viewObj.results.columns) || viewObj.columns;
@@ -9803,6 +9796,26 @@ function Ktl($, appInfo) {
                 } else {
                     if (ktlKeywords[viewId] && (ktlKeywords[viewId]._hc || ktlKeywords[viewId]._rc))
                         fixSummaryRows();
+                    else
+                        checkSummaryFixNeeded();
+                }
+
+                function checkSummaryFixNeeded() {
+                    if (ktl.views.viewHasSummary(viewId)) {
+                        var sel = '#' + viewId + ' tr.kn-table-totals';
+                        ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT) //Totals and groups usually need a bit of extra wait time due to delayed server response.
+                            .then(function () {
+                                var totalRows = $('#' + viewId + ' tr.kn-table-totals');
+                                if (!$('#' + viewId + ' tr.kn-table-totals td')[0].classList.contains('blankCell')) {
+                                    for (var i = totalRows.length - 1; i >= 0; i--) {
+                                        var row = totalRows[i];
+                                        $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                    }
+                                    fixSummaryRows();
+                                }
+                            })
+                            .catch(function (e) { ktl.log.clog('purple', 'fixTableRowsAlignment / hasSummary - failed waiting for table totals.', viewId, e); })
+                    }
                 }
 
                 //Alignment fix for Summary rows (totals).
