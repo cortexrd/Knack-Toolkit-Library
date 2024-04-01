@@ -330,6 +330,7 @@ function Ktl($, appInfo) {
         var timedPopupEl = null;
         var timedPopupTimer = null;
         var progressWnd = null;
+        const waitSelectors = {};
 
         $(document).on('click', function (e) {
             //Context menu removal.
@@ -528,8 +529,13 @@ function Ktl($, appInfo) {
 
                     function selIsValid(sel) {
                         var testSel = $(sel);
-                        if (is !== '')
-                            testSel = $(sel).is(':' + is);
+                        if (is) {
+                            if (is === 'none') //Special case: Checks if selector does not exist.
+                                testSel = !$(sel).length;
+                            else
+                                testSel = $(sel).is(':' + is);
+                        }
+
                         return (testSel === true || testSel.length > 0);
                     }
                 });
@@ -7979,9 +7985,13 @@ function Ktl($, appInfo) {
         }
 
         //Example: _click=Link Label, auto (or blank), Button Label
-        let clickCurrentlyRunning = null;
-        let clickLastRecIdProcessed = null;
-        let clickStartButtons = {};
+        const clickCurrentlyRunning = {
+            actionLinkText:'',
+            buttonId: '',
+            buttonLabel: '',
+            lastRecIdProcessed: '',
+        };
+
         function performClick(viewId, keywords, data) {
             const kw = '_click';
             if (!(viewId && keywords && keywords[kw])) return;
@@ -8017,92 +8027,140 @@ function Ktl($, appInfo) {
                     buttonLabel = params[2];
                     let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
                     const buttonId = ktl.core.getCleanId(buttonLabel);
-                    startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `ktlAutoCLick_${buttonId}-${viewId}`);
+                    startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `ktlAutoClick_${viewId}-${buttonId}`);
 
-                    if (data.length)
-                        startButton.disabled = false;
+                    //if (data.length) //Do not use!  Will fail with Search views.
+                    if (document.querySelector(`#${viewId} .kn-tr-nodata`))
+                        $(`#${viewId} [id^=ktlAutoClick_]`).attr('disabled', true);
                     else
-                        startButton.disabled = true;
+                        $(`#${viewId} [id^=ktlAutoClick_]`).attr('disabled', false);
 
-                    if (clickCurrentlyRunning === actionLinkText) {
-                        startButton.textContent = startButton.textContent + ' - STOP';
-                        startButton.addEventListener('click', function (e) {
-                            if (clickCurrentlyRunning) {
-                                clickCurrentlyRunning = null;
-                                startButton.textContent = buttonLabel;
-                            }
-                        })
+                    if (clickCurrentlyRunning.buttonId === startButton.getAttribute('id')) {
+                        const runningButton = $(`#${viewId} #${clickCurrentlyRunning.buttonId}`);
+                        if (runningButton.length)
+                            runningButton[0].textContent = clickCurrentlyRunning.buttonLabel + ' - STOP';
 
                         doClick();
-                    } else {
-                        if (clickCurrentlyRunning)
-                            startButton.disabled = true;
+                    }
 
-                        //`ktlAutoCLick_${buttonId}-${viewId}`
-
-                        startButton.addEventListener('click', function (e) {
+                    $(startButton).off('click').on('click', e => {
+                        if (!clickCurrentlyRunning.actionLinkText) {
                             if (needConfirm) {
                                 if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
-                                    clickCurrentlyRunning = actionLinkText;
-                                    doClick();
+                                    clickCurrentlyRunning.actionLinkText = actionLinkText;
+                                    clickCurrentlyRunning.buttonId = startButton.id;
+                                    clickCurrentlyRunning.buttonLabel = buttonLabel;
                                 }
                             } else {
-                                clickCurrentlyRunning = actionLinkText;
-                                doClick();
+                                clickCurrentlyRunning.actionLinkText = actionLinkText;
+                                clickCurrentlyRunning.buttonId = startButton.id;
+                                clickCurrentlyRunning.buttonLabel = buttonLabel;
                             }
-                        })
-                    }
+
+                            doClick();
+                        } else {
+                            //A command is already running, user clicked to stop it.
+                            if (clickCurrentlyRunning.buttonId) {
+                                const runningButton = $(`#${viewId} #${clickCurrentlyRunning.buttonId}`);
+                                if (runningButton.length) {
+                                    runningButton[0].textContent = clickCurrentlyRunning.buttonLabel + ' - STOPPING...';
+                                    runningButton[0].disabled = true;
+                                    clickCurrentlyRunning.actionLinkText = '';
+                                    clickCurrentlyRunning.buttonId = '';
+
+                                    ktl.core.waitSelector('#toast-container', 20000, 'none')
+                                        .then(function () { })
+                                        .catch(function () { })
+                                        .finally(() => {
+                                            runningButton[0].textContent = clickCurrentlyRunning.buttonLabel;
+                                            resetState();
+                                        })
+                                }
+                            }
+                        }
+                    })
                 } else { //No button
                     if (needConfirm) {
                         if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
-                            clickCurrentlyRunning = actionLinkText;
+                            clickCurrentlyRunning.actionLinkText = actionLinkText;
                             doClick();
                         }
                     } else {
-                        clickCurrentlyRunning = actionLinkText;
+                        clickCurrentlyRunning.actionLinkText = actionLinkText;
                         doClick();
                     }
                 }
 
                 function doClick() {
-                    if (data.length) {
-                        //Pause autoRefresh because this keyword will automatically refresh the view.
-                        //Otherwise, we get conflicting refreshes.
-                        ktl.views.pauseAutoRefreshForView(viewId);
-                    } else {
-                        clickLastRecIdProcessed = null;
-                        clickCurrentlyRunning = null;
-
-                        //No data, exit and let autoRefresh do it's job, until some data is found.
-                        ktl.views.runAutoRefreshForView(viewId);
-                        return;
-                    }
-
                     setTimeout(() => { //Leave some time to apply any other keyword that might hide the link.
-                        let linkSelector;
+                        ktl.core.waitSelector(`#${viewId} tbody`, 15000) //Needed for Search views, due to delay rendering.
+                            .then(function () {
+                                //if (document.querySelectorAll(`#${viewId} tbody tr`).length nodata) { //Do not use data.length!  Will give zero for Searches.
+                                if (!document.querySelector(`#${viewId} .kn-tr-nodata`)) { //Do not use data.length!  Will give zero for Searches.
+                                    //Pause autoRefresh because this keyword will automatically refresh the view.
+                                    //Otherwise, we get conflicting refreshes.
+                                    ktl.views.pauseAutoRefreshForView(viewId);
 
-                        if (clickCurrentlyRunning) {
-                            linkSelector = $(`#${viewId} .kn-action-link:textEquals("${clickCurrentlyRunning}"), #${viewId} .knViewLink__label:textEquals("${clickCurrentlyRunning}")`);
+                                    //Disable all buttons except the one running.
+                                    if (clickCurrentlyRunning.buttonId) {
+                                        $(`#${viewId} [id^=ktlAutoClick_]`).attr('disabled', true);
+                                        $(`#${viewId} #${clickCurrentlyRunning.buttonId}`).attr('disabled', false);
+                                    }
 
-                            if (linkSelector.length) {
-                                const recId = linkSelector[0].closest('tr').id;
-                                if (recId !== clickLastRecIdProcessed) {
-                                    linkSelector[0].classList.add('ktlOutline');
-                                    clickLastRecIdProcessed = recId;
-                                    linkSelector[0].click();
+                                    let linkSelector;
+
+                                    if (clickCurrentlyRunning.actionLinkText) {
+                                        linkSelector = $(`#${viewId} .kn-action-link:textEquals("${clickCurrentlyRunning.actionLinkText}"), #${viewId} .knViewLink__label:textEquals("${clickCurrentlyRunning.actionLinkText}")`);
+
+                                        if (linkSelector.length) {
+                                            const recId = linkSelector[0].closest('tr').id;
+                                            if (recId !== clickCurrentlyRunning.lastRecIdProcessed) {
+                                                linkSelector[0].classList.add('ktlOutline');
+                                                clickCurrentlyRunning.lastRecIdProcessed = recId;
+                                                linkSelector[0].click();
+                                            } else
+                                                return; //If last clicked record is still there, exit and wait for next refresh.
+                                        } else {
+                                            //Nothing else to click: job completed.
+                                            if (ktl.account.isDeveloper())
+                                                ktl.log.clog('green', 'Auto-click completed!');
+
+                                            if (clickCurrentlyRunning.buttonId) {
+                                                const runningButton = $(`#${viewId} #${clickCurrentlyRunning.buttonId}`);
+                                                if (runningButton.length)
+                                                    runningButton[0].textContent = clickCurrentlyRunning.buttonLabel;
+                                            }
+
+                                            resetState();
+                                        }
+                                    }
                                 } else {
-                                    ktl.log.clog('purple', 'same record found', clickLastRecIdProcessed);
-                                    return; //If last clicked record is still there, exit and wait for next refresh.
+                                    clickCurrentlyRunning.lastRecIdProcessed = '';
+                                    clickCurrentlyRunning.actionLinkText = '';
+
+                                    //No data, exit and let autoRefresh do it's job, until some data is found - applies to auto mode.
+                                    ktl.views.runAutoRefreshForView(viewId);
+                                    return;
                                 }
-                            } else {
-                                if (startButton)
-                                    startButton.textContent = buttonLabel;
-                                clickLastRecIdProcessed = null;
-                                clickCurrentlyRunning = null;
-                            }
-                        }
-                    }, 2000);
+                            })
+                            .catch(function (err) {
+                                ktl.log.clog('purple', 'Timeout waiting for grid in Auto Click', viewId, err);
+                                if (clickCurrentlyRunning.buttonId) {
+                                    const runningButton = $(`#${viewId} #${clickCurrentlyRunning.buttonId}`);
+                                    if (runningButton.length)
+                                        runningButton.click();
+                                }
+                            })
+                    }, 1000);
                 }
+            }
+
+            function resetState() {
+                clickCurrentlyRunning.actionLinkText = '';
+                clickCurrentlyRunning.buttonId = '';
+                clickCurrentlyRunning.buttonLabel = '';
+                clickCurrentlyRunning.lastRecIdProcessed = '';
+                $(`#${viewId} [id^=ktlAutoClick_]`).attr('disabled', false);
             }
         }
 
@@ -12292,7 +12350,7 @@ function Ktl($, appInfo) {
                     var prepend = false;
                     var searchFound = false;
 
-                    var div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`);
+                    var div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`);
                     if (div) {
                         searchFound = true;
                     } else
@@ -12313,8 +12371,10 @@ function Ktl($, appInfo) {
                     if (searchFound) {
                         if (Knack.isMobile())
                             $(ktlAddonsDiv).css('margin-top', '2%');
-                        else
+                        else {
                             ktlAddonsDiv.classList.add('ktlAddonsWithSearchDiv');
+                            document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`).style.display = 'inline-flex'; //Otherwise, we get the buttons on a row below Search bar.
+                        }
                     }
 
                     $(ktlAddonsDiv).css('margin-bottom', '1.1em');
