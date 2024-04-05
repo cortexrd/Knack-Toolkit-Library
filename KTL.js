@@ -6138,12 +6138,10 @@ function Ktl($, appInfo) {
 
             if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key)) {
                 const isLoginPage = document.querySelector('.kn-login');
-                if (isLoginPage && isLoginPage.id && ktlKeywords[isLoginPage.id] && ktlKeywords[isLoginPage.id]._al)
+                if (isLoginPage && isLoginPage.id && ktlKeywords[isLoginPage.id] && ktlKeywords[isLoginPage.id]._al) {
                     ktl.account.autoLogin(view.key);
-                else
-                    ktl.log.clog('purple', `Scene vs View mismatch found: ${view.scene.key}, ${Knack.router.scene_view.model.attributes.key}`);
-
-                return;
+                    return;
+                }
             }
 
             try {
@@ -10535,6 +10533,7 @@ function Ktl($, appInfo) {
                     .then(() => {
                         preprocessViews(viewId, e)
                             .then(() => {
+                                $('#' + viewId + ' .kn-form-confirmation').removeClass('ktlHidden');
                                 $('#' + viewId + ' form').submit();
                                 //$(e.target).click();
                             })
