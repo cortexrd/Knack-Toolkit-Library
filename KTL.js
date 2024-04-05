@@ -936,6 +936,15 @@ function Ktl($, appInfo) {
                 return menuPos;
             },
 
+            getAccountsObjectName: function () {
+                const objects = Knack.objects.models;
+                for (let i = 0; i < objects.length; i++) {
+                    const obj = objects[i];
+                    if (obj.attributes && obj.attributes.profile_key && obj.attributes.profile_key === 'all_users')
+                        return obj.attributes.name;
+                }
+            },
+
             getObjectIdByName: function (objectName = '') {
                 if (!objectName) return;
                 var objects = Knack.objects.models;
@@ -2052,10 +2061,10 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                $('#cell-editor .is-primary').click();
-
                 //Filters: enables using the enter key to select and submit.
-                setTimeout(function () { $('#kn-submit-filters').trigger('click'); }, 200);
+                setTimeout(function () {
+                    $('#kn-submit-filters').trigger('click');
+                }, 200);
             }
 
             readBarcode(e);
@@ -9808,10 +9817,16 @@ function Ktl($, appInfo) {
                             .then(function () {
                                 var totalRows = $('#' + viewId + ' tr.kn-table-totals');
                                 if (!$('#' + viewId + ' tr.kn-table-totals td')[0].classList.contains('blankCell')) {
-                                    for (var i = totalRows.length - 1; i >= 0; i--) {
-                                        var row = totalRows[i];
-                                        $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                    var headers = $('#' + viewId + ' thead tr th:visible').length;
+                                    var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not(.ktlDisplayNone)').length;
+
+                                    if (headers > totals) {
+                                        for (var i = totalRows.length - 1; i >= 0; i--) {
+                                            var row = totalRows[i];
+                                            $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                        }
                                     }
+
                                     fixSummaryRows();
                                 }
                             })
@@ -14193,6 +14208,8 @@ function Ktl($, appInfo) {
 
             if ($('.remember input').length && ktl.core.getCfg().enabled.rememberMe)
                 $('.remember input')[0].checked = true;
+
+            ktl.account.updateLocalIP();
         })
 
         //Handle log-in/out events.
@@ -14389,6 +14406,43 @@ function Ktl($, appInfo) {
                     return userRoles.includes(role);
                 });
             },
+
+            updateLocalIP: function () {
+                if (ktl.scenes.isiFrameWnd()) return;
+
+                const sys = ktl.sysInfo.getSysInfo();
+                if (sys.os !== 'Linux' /*|| !sys.processor.includes('arm')*/) return;
+
+                const foundViews = ktl.scenes.findViewsWithKeywordInAllScenes('_remote_account_update', true);
+                if (foundViews.length === 1) {
+                    const remoteUpdateAccountViewId = foundViews[0];
+
+                    const accountsObj = ktl.core.getObjectIdByName(ktl.core.getAccountsObjectName());
+                    const ipAddressFieldId = ktl.core.getFieldIdByName('IP Address', accountsObj);
+
+                    ktl.sysInfo.getLinuxDeviceInfo()
+                        .then(svrResponse => {
+                            let localIPAddress = svrResponse.deviceInfo.localIP;
+                            if (!ipAddressFieldId) return;
+
+                            const existingIPValue = ktl.storage.lsGetItem('LOCAL_IP', true, true);
+                            if (existingIPValue !== localIPAddress) {
+                                var apiData = {};
+                                apiData[ipAddressFieldId] = localIPAddress;
+                                ktl.core.knAPI(remoteUpdateAccountViewId, Knack.getUserAttributes().id, apiData, 'PUT')
+                                    .then(function () {
+                                        ktl.storage.lsSetItem('LOCAL_IP', localIPAddress, true, true);
+                                    })
+                                    .catch(function (reason) {
+                                        ktl.log.clog('purple', 'Failed updating IP', reason);
+                                    })
+                            }
+                        })
+                        .catch(reason => {
+                            console.log('getDeviceInfo in KIOSK_DEVICES failed, reason:', reason);
+                        })
+                }
+            },
         }
     })(); //account
 
@@ -14400,7 +14454,7 @@ function Ktl($, appInfo) {
         var highPriLoggingInterval = null;
         var lowPriLoggingInterval = null;
 
-        var accountsObj = ktl.core.getObjectIdByName(getAccountsObjectName());
+        var accountsObj = ktl.core.getObjectIdByName(ktl.core.getAccountsObjectName());
         var accountLogsObj = ktl.core.getObjectIdByName('Account Logs');
         var appSettingsObj = ktl.core.getObjectIdByName('App Settings');
         var userFiltersObj = ktl.core.getObjectIdByName('User Filters');
@@ -14769,15 +14823,6 @@ function Ktl($, appInfo) {
 
         $(document).on('mousedown', updateLastActivity);
         $(document).on('keydown', updateLastActivity);
-
-        function getAccountsObjectName() {
-            const objects = Knack.objects.models;
-            for (let i = 0; i < objects.length; i++) {
-                const obj = objects[i];
-                if (obj.attributes && obj.attributes.profile_key && obj.attributes.profile_key === 'all_users')
-                    return obj.attributes.name;
-            }
-        }
 
         return {
             setCfg: function (cfgObj = {}) {
@@ -16286,18 +16331,38 @@ function Ktl($, appInfo) {
                                 clearTimeout(wdLoopTimeout);
                                 ktl.sysInfo.sendRecoveryWdHeartbeat(wdTimeoutDelay)
                                     .then(svrResponse => {
-                                        wdTimeoutDelay = NORMAL_WD_TIMEOUT_DELAY;
-                                        if (svrResponse.memory)
-                                            updateMemoryUsage(svrResponse);
+                                        if (svrResponse.deviceInfo) {
+                                            const deviceInfo = svrResponse.deviceInfo;
+                                            wdTimeoutDelay = NORMAL_WD_TIMEOUT_DELAY;
+                                            if (deviceInfo && !$.isEmptyObject(deviceInfo))
+                                                addToVersionInfoBar(deviceInfo);
+                                        } else {
+                                            //Force a kiosk-app update.
 
-                                        if (ktl.account.isDeveloper()) {
-                                            var svrMsg = svrResponse.message;
-                                            if (svrResponse.memory) {
-                                                svrMsg += ' - ' + svrResponse.memory.usedMemory;
+                                            ktl.sysInfo.restartService()
+                                                .then(svrResponse => {
+                                                    ktl.core.timedPopup(svrResponse.message, 'success', 4000);
+                                                    ktl.account.updateLocalIP();
+                                                })
+                                                .catch(error => { ktl.core.timedPopup(error, 'error', 4000); })
+
+
+                                            if (!$('#verButtonId').length) return;
+
+                                            if (!$('#additionalInfoDiv').length) {
+                                                const vbDiv = document.querySelector('#addVersionInfoDiv');
+                                                var additionalInfoDiv = document.createElement('div');
+                                                additionalInfoDiv.setAttribute('id', 'additionalInfoDiv');
+                                                vbDiv.appendChild(additionalInfoDiv);
+
+                                                var sourceDiv = document.getElementById('verButtonId');
+                                                var targetDiv = document.getElementById('additionalInfoDiv');
+
+                                                targetDiv.style.cssText = sourceDiv.style.cssText;
+                                                $('#addVersionInfoDiv').css('display', 'flex');
                                             }
 
-                                            //console.log('svrMsg =', svrMsg);
-                                            //ktl.core.timedPopup(svrMsg, 'success', 3000);
+                                            document.querySelector('#additionalInfoDiv').textContent = ' WAITING FOR UPDATE... ';
                                         }
                                     })
                                     .catch(reason => {
@@ -16312,7 +16377,7 @@ function Ktl($, appInfo) {
                             }
                         }
 
-                        function updateMemoryUsage(svrResponse) {
+                        function addToVersionInfoBar(deviceInfo) {
                             if (!$('#verButtonId').length) return;
 
                             if (!$('#additionalInfoDiv').length) {
@@ -16328,9 +16393,9 @@ function Ktl($, appInfo) {
                                 $('#addVersionInfoDiv').css('display', 'flex');
                             }
 
-                            maxMemUsage = Math.max(maxMemUsage, svrResponse.memory.usedMemory);
-                            const percentageMem = Math.round(maxMemUsage / svrResponse.memory.totalMemory * 100);
-                            document.querySelector('#additionalInfoDiv').textContent = '  Mem: ' + svrResponse.memory.usedMemory + ' Max: ' + maxMemUsage + ' ' + percentageMem + '% / ' + svrResponse.memory.totalGB;
+                            const percentageMemoryUsed = (!isNaN(deviceInfo.memorySizeMB) && deviceInfo.memorySizeMB > 0) ? `${Math.round((deviceInfo.maxMemory / deviceInfo.memorySizeMB) * 100)}` : 'N/A';
+                            const deviceInfoString = `Kbd:${deviceInfo.keyboardDetected ? 'Y' : 'N'}  Host:${deviceInfo.hostname}  IP:${deviceInfo.localIP}  ${deviceInfo.CPUTemperature}°C / ${deviceInfo.maxCPUTemperature}°C max  Used:${deviceInfo.usedMemory}  Max:${deviceInfo.maxMemory} ${percentageMemoryUsed}%  Tot:${deviceInfo.memorySizeMB} (${deviceInfo.memorySizeGB})`;
+                            document.querySelector('#additionalInfoDiv').textContent = ' ' + deviceInfoString + ' ';
                         }
 
                         recoveryWdLoop();
