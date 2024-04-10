@@ -1533,8 +1533,9 @@ function Ktl($, appInfo) {
             //Ex2: $("li.menu-links__list-item:contains('Prev. Stay Info')")
             //MUST NOT include any backslashes for escaped characters like \' for quotes.
             extractJQuerySelector: function (selector, viewId, fieldId) {
-                if ((selector.startsWith("$('") && selector.endsWith("')")) || (selector.startsWith('$("') && selector.endsWith('")')) ||
-                        (selector.startsWith('$(`') && selector.endsWith('`)'))) {
+                if ((selector.startsWith("$('") && selector.endsWith("')"))
+                    || (selector.startsWith('$("') && selector.endsWith('")'))
+                    || (selector.startsWith('$(`') && selector.endsWith('`)'))) {
                     let extractedSelector = selector.substring(3, selector.length - 2);
                     extractedSelector = extractedSelector.replace('${viewId}', viewId);
                     extractedSelector = extractedSelector.replace('${fieldId}', fieldId);
