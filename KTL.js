@@ -1536,12 +1536,8 @@ function Ktl($, appInfo) {
                 if ((selector.startsWith("$('") && selector.endsWith("')")) || (selector.startsWith('$("') && selector.endsWith('")')) ||
                         (selector.startsWith('$(`') && selector.endsWith('`)'))) {
                     let extractedSelector = selector.substring(3, selector.length - 2);
-                    if (extractedSelector.includes('${viewId}')) {
-                        extractedSelector = extractedSelector.replace('${viewId}', viewId);
-                    }
-                    if (extractedSelector.includes('${fieldId}')) {
-                        extractedSelector = extractedSelector.replace('${fieldId}', fieldId);
-                    }
+                    extractedSelector = extractedSelector.replace('${viewId}', viewId);
+                    extractedSelector = extractedSelector.replace('${fieldId}', fieldId);
 
                     return extractedSelector;
                 }
