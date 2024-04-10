@@ -6209,7 +6209,7 @@ function Ktl($, appInfo) {
                 addTooltips(view, keywords);
                 disableFilterOnFields(view);
 
-                //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values. 
+                //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values.
                 $(document).off('KTL.' + viewId + '.totalsRendered').on('KTL.' + viewId + '.totalsRendered', () => {
                     labelText(view, keywords);
                     ktl.views.fixTableRowsAlignment(view.key);
@@ -8893,7 +8893,7 @@ function Ktl($, appInfo) {
 
             function refreshViews() {
                 if (forcePageRefresh)
-                    //If some page rules exist and must be enforced, the user can use this param 
+                    //If some page rules exist and must be enforced, the user can use this param
                     //to force a full page update instead of individual view refreshes.
                     Knack.router.scene_view.render();
                 else
@@ -14433,12 +14433,12 @@ function Ktl($, appInfo) {
                                         ktl.storage.lsSetItem('LOCAL_IP', localIPAddress, true, true);
                                     })
                                     .catch(function (reason) {
-                                        ktl.log.clog('purple', 'Failed updating IP', reason);
+                                        ktl.log.clog('purple', 'Failed updating IP', JSON.stringify(reason));
                                     })
                             }
                         })
                         .catch(reason => {
-                            console.log('getDeviceInfo in KIOSK_DEVICES failed, reason:', reason);
+                            console.log('getDeviceInfo in KIOSK_DEVICES failed, reason:', JSON.stringify(reason));
                         })
                 }
             },
@@ -16337,7 +16337,6 @@ function Ktl($, appInfo) {
                                                 addToVersionInfoBar(deviceInfo);
                                         } else {
                                             //Force a kiosk-app update.
-
                                             ktl.sysInfo.restartService()
                                                 .then(svrResponse => {
                                                     ktl.core.timedPopup(svrResponse.message, 'success', 4000);
