@@ -2861,7 +2861,7 @@ function Ktl($, appInfo) {
                     if (viewType === 'table' || viewType === 'search') {
                         keyToFind = 'header';
                         keyNameToReturn = 'id';
-                        viewObjToScan = view.results.columns.length ? view.results.columns : view.columns;
+                        viewObjToScan = (view.results && view.results.columns && view.results.columns.length) ? view.results.columns : view.columns;
                     } else if (viewType === 'details' || viewType === 'list') {
                         keyToFind = 'name';
                         keyNameToReturn = 'key';
@@ -10221,7 +10221,7 @@ function Ktl($, appInfo) {
                     return;
 
                 const view = Knack.views[viewId];
-                const columns = view.model.results_model.view.columns.length ? view.model.results_model.view.columns : view.model.view.columns;
+                const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? view.model.results_model.view.columns : view.model.view.columns;
                 columns.forEach(col => {
                     const header = col.header.trim();
                     if (headers.includes(header) || fields.includes(col.id)) {
@@ -11031,7 +11031,7 @@ function Ktl($, appInfo) {
                     || !keywords[KEYWORD_NAME]) return;
 
                 const model = (Knack.views[view.key] && Knack.views[view.key].model);
-                const columns = model.results_model.view.columns.length ? model.results_model.view.columns : model.view.columns;
+                const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? model.results_model.view.columns : model.view.columns;
 
                 ktl.core.getKeywordsByType(view.key, KEYWORD_NAME).forEach(keyword => {
                     if (!ktl.core.hasRoleAccess(keyword.options))
