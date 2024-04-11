@@ -10221,7 +10221,13 @@ function Ktl($, appInfo) {
                     return;
 
                 const view = Knack.views[viewId];
-                const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? view.model.results_model.view.columns : view.model.view.columns;
+                const viewType = view.type;
+                let columns;
+                if (viewType === 'search')
+                    columns = view.model.results_model.view.columns;
+                else
+                    columns = view.model.view.columns;
+
                 columns.forEach(col => {
                     const header = col.header.trim();
                     if (headers.includes(header) || fields.includes(col.id)) {
