@@ -2861,7 +2861,7 @@ function Ktl($, appInfo) {
                     if (viewType === 'table' || viewType === 'search') {
                         keyToFind = 'header';
                         keyNameToReturn = 'id';
-                        viewObjToScan = view.columns;
+                        viewObjToScan = view.results.columns.length ? view.results.columns : view.columns;
                     } else if (viewType === 'details' || viewType === 'list') {
                         keyToFind = 'name';
                         keyNameToReturn = 'key';
@@ -3163,17 +3163,17 @@ function Ktl($, appInfo) {
                             const hide = () => {
                                 elementsArray.forEach(el => {
                                     if (el.classList)
-                                        el.classList.add('ktlHidden');
+                                        el.classList.add('ktlDisplayNone');
                                     else
-                                        el[0].classList.add('ktlHidden');
+                                        el[0].classList.add('ktlDisplayNone');
                                 })
                             }
                             const unhide = () => {
                                 elementsArray.forEach(el => {
                                     if (el.classList)
-                                        el.classList.remove('ktlHidden');
+                                        el.classList.remove('ktlDisplayNone');
                                     else
-                                        el[0].classList.remove('ktlHidden');
+                                        el[0].classList.remove('ktlDisplayNone');
                                 })
                             }
 
@@ -10221,7 +10221,8 @@ function Ktl($, appInfo) {
                     return;
 
                 const view = Knack.views[viewId];
-                view.model.view.columns.forEach(col => {
+                const columns = view.model.results_model.view.columns.length ? view.model.results_model.view.columns : view.model.view.columns;
+                columns.forEach(col => {
                     const header = col.header.trim();
                     if (headers.includes(header) || fields.includes(col.id)) {
                         const thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
@@ -11030,7 +11031,7 @@ function Ktl($, appInfo) {
                     || !keywords[KEYWORD_NAME]) return;
 
                 const model = (Knack.views[view.key] && Knack.views[view.key].model);
-                const columns = model.view.columns;
+                const columns = model.results_model.view.columns.length ? model.results_model.view.columns : model.view.columns;
 
                 ktl.core.getKeywordsByType(view.key, KEYWORD_NAME).forEach(keyword => {
                     if (!ktl.core.hasRoleAccess(keyword.options))
@@ -13624,7 +13625,13 @@ function Ktl($, appInfo) {
                                             window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + 'add-kiosk-device';
                                     })
 
-                                    rebootBtn = ktl.fields.addButton(devBtnsDiv, 'Reboot', '', ['devBtn', 'kn-button']);
+                                    const restartKioskServiceBtn = ktl.fields.addButton(devBtnsDiv, 'Restart Kiosk Service', '', ['devBtn', 'kn-button']);
+                                    restartKioskServiceBtn.addEventListener('click', () => {
+                                        if (confirm('Are you sure you want to restart the kiosk service?'))
+                                            ktl.sysInfo.restartService();
+                                    })
+
+                                    const rebootBtn = ktl.fields.addButton(devBtnsDiv, 'Reboot', '', ['devBtn', 'kn-button']);
                                     rebootBtn.addEventListener('click', () => {
                                         if (confirm('Are you sure you want to reboot device?'))
                                             ktl.sysInfo.rebootDevice();
