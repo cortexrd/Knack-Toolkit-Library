@@ -14347,17 +14347,25 @@ function Ktl($, appInfo) {
                     } else {
                         ktl.storage.initSecureLs()
                             .then(() => {
-                                var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false, true);
-                                if (loginInfo) {
-                                    loginInfo = JSON.parse(loginInfo);
-                                    $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
-                                    $('#email').val(loginInfo.email);
-                                    $('#password').val(loginInfo.pw);
-                                    $('.remember input')[0].checked = true;
+                                try {
+                                    var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false, true);
+                                    if (loginInfo) {
+                                        loginInfo = JSON.parse(loginInfo);
+                                        $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
+                                        $('#email').val(loginInfo.email);
+                                        $('#password').val(loginInfo.pw);
+                                        $('.remember input')[0].checked = true;
 
-                                    //Do not use form submit. Must be click below, otherwise waitLoginOutcome is never called.
-                                    //$('#' + viewId + ' form').submit();
-                                    $('.kn-login-form .kn-button.is-primary').click();
+                                        //Do not use form submit. Must be click below, otherwise waitLoginOutcome is never called.
+                                        //$('#' + viewId + ' form').submit();
+                                        $('.kn-login-form .kn-button.is-primary').click();
+                                    }
+                                }
+                                catch (e) {
+                                    //Data is corrupt, remove all and logout as a last resort.
+                                    console.error('Error parsing autoLogin info.\n', e);
+                                    ktl.storage.lsRemoveItem('AES_LI', true, false, false);
+                                    ktl.account.autoLogin(viewId);
                                 }
                             })
                             .catch(reason => { ktl.log.clog('purple', reason); });
@@ -14423,31 +14431,26 @@ function Ktl($, appInfo) {
             },
 
             updateLocalIP: function () {
-                if (ktl.scenes.isiFrameWnd()) return;
+                if (ktl.scenes.isiFrameWnd() || Knack.getUserAttributes() === 'No user found') return;
 
                 const sys = ktl.sysInfo.getSysInfo();
                 if (sys.os !== 'Linux' /*|| !sys.processor.includes('arm')*/) return;
 
+                const accountsObj = ktl.core.getObjectIdByName(ktl.core.getAccountsObjectName());
+                const ipAddressFieldId = ktl.core.getFieldIdByName('IP Address', accountsObj);
+
+                if (!ipAddressFieldId) return;
+
                 const foundViews = ktl.scenes.findViewsWithKeywordInAllScenes('_remote_account_update', true);
-                if (foundViews.length === 1) {
-                    const remoteUpdateAccountViewId = foundViews[0];
-
-                    const accountsObj = ktl.core.getObjectIdByName(ktl.core.getAccountsObjectName());
-                    const ipAddressFieldId = ktl.core.getFieldIdByName('IP Address', accountsObj);
-
+                if (foundViews.length === 1 && foundViews[0]) {
                     ktl.sysInfo.getLinuxDeviceInfo()
                         .then(svrResponse => {
                             let localIPAddress = svrResponse.deviceInfo.localIP;
-                            if (!ipAddressFieldId) return;
-
-                            const existingIPValue = ktl.storage.lsGetItem('LOCAL_IP', true, true);
-                            if (existingIPValue !== localIPAddress) {
-                                var apiData = {};
+                            if (localIPAddress !== Knack.getUserAttributes().values[ipAddressFieldId]) {
+                                let apiData = {};
                                 apiData[ipAddressFieldId] = localIPAddress;
-                                ktl.core.knAPI(remoteUpdateAccountViewId, Knack.getUserAttributes().id, apiData, 'PUT')
-                                    .then(function () {
-                                        ktl.storage.lsSetItem('LOCAL_IP', localIPAddress, true, true);
-                                    })
+                                ktl.core.knAPI(foundViews[0], Knack.getUserAttributes().id, apiData, 'PUT')
+                                    .then(function () { })
                                     .catch(function (reason) {
                                         ktl.log.clog('purple', 'Failed updating IP', JSON.stringify(reason));
                                     })
