@@ -1977,27 +1977,21 @@ function Ktl($, appInfo) {
                     else {
                         ktl.core.loadLib('SecureLS')
                             .then(() => {
-                                do {
-                                    var key = ktl.storage.lsGetItem('AES_EK', true, false, false);
-                                    if (!key || key === '') {
-                                        key = prompt('Create AES Key:', ktl.core.generateRandomChars(40));
-                                        if (!key)
-                                            ktl.core.timedPopup('You must specify a Key.', 'warning');
-                                    }
-                                } while (!key || key === '');
+                                let encryptionKey = ktl.storage.lsGetItem('AES_EK', true, false, false);
+                                if (!encryptionKey) {
+                                    encryptionKey = ktl.core.generateRandomChars(40);
+                                    ktl.storage.lsSetItem('AES_EK', encryptionKey, true, false, false);
+                                }
 
-                                ktl.storage.lsSetItem('AES_EK', key, true, false, false);
-                                applyAesKey(key);
+                                secureLs = new SecureLS({
+                                    encodingType: 'aes',
+                                    isCompression: false,
+                                    encryptionSecret: encryptionKey,
+                                });
+
+                                resolve();
                             })
                             .catch(reason => { reject('initSecureLs error:', reason); })
-                    }
-                    function applyAesKey(key) {
-                        secureLs = new SecureLS({
-                            encodingType: 'aes',
-                            isCompression: false,
-                            encryptionSecret: key,
-                        });
-                        resolve();
                     }
                 });
             },
@@ -13351,7 +13345,7 @@ function Ktl($, appInfo) {
                                 ktl.fields.addButton(devBtnsDiv, 'Reset Auto-Login', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
                                     ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
                                     var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
-                                    if (loginInfo && loginInfo !== '') {
+                                    if (loginInfo) {
                                         if (loginInfo === 'SkipAutoLogin')
                                             ktl.storage.lsRemoveItem('AES_LI', true, false, false);
                                         else
@@ -14343,10 +14337,10 @@ function Ktl($, appInfo) {
                 }
             },
 
-            autoLogin: function (viewId = '') {
+            autoLogin: function (viewId) {
                 if (!viewId) return;
                 var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
-                if (loginInfo && loginInfo !== '') {
+                if (loginInfo) {
                     if (loginInfo === 'SkipAutoLogin') {
                         console.log('AL not needed:', loginInfo);
                         return;
@@ -14354,7 +14348,7 @@ function Ktl($, appInfo) {
                         ktl.storage.initSecureLs()
                             .then(() => {
                                 var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false, true);
-                                if (loginInfo && loginInfo !== '') {
+                                if (loginInfo) {
                                     loginInfo = JSON.parse(loginInfo);
                                     $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
                                     $('#email').val(loginInfo.email);
