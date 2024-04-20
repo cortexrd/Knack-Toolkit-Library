@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.10';
+    const KTL_VERSION = '0.24.12';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -12012,39 +12012,33 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                // Add event listeners to show and hide the tooltip
                 $(document).on('mouseenter', `${tooltipIconPosition} i.${tooltipIcon}`, function (e) {
-                    if (!$(".ktlTooltip").length) {
+                    if (!$('.ktlTooltip').length) {
                         const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`);
-                        const icon = $(this);
-                        const iconWidth = icon.width();
-                        const iconHeight = icon.height();
-                        let iconPosition;
+                        tooltipElement.appendTo('body');
 
-                        // Add the tooltip to the DOM
-                        if (viewType === 'table') {
-                            tooltipElement.appendTo(`#${viewId} .kn-table-wrapper`);
-                            iconPosition = icon.offset();
-                        } else {
-                            tooltipElement.appendTo(icon.parent());
-                            iconPosition = icon.position();
-                        }
+                        const tooltipWidth = tooltipElement.outerWidth();
+                        const tooltipHeight = tooltipElement.outerHeight();
 
-                        // Position the tooltip
-                        const tooltipWidth = tooltipElement.width();
-                        const tooltipHeight = tooltipElement.height();
-                        let tooltipTop = viewType == 'table' ? $(tooltipIconPosition).position().top - tooltipHeight - 2 * iconHeight :
-                            iconPosition.top - tooltipHeight - 2 * iconHeight;
+                        let tooltipLeft = e.clientX - tooltipWidth / 2;
+                        let tooltipTop = e.clientY - tooltipHeight - 20;
 
-                        let tooltipLeft = iconPosition.left + (iconWidth / 2) - (tooltipWidth / 2);
-                        // Adjust tooltipLeft if it's off the left or right side of the page
-                        const pageWidth = viewType === 'table' ? $(`#${viewId} .kn-table-wrapper`).width() : $(window).width();
                         if (tooltipLeft < 0) {
-                            tooltipLeft = 0;
-                        } else if (tooltipLeft + tooltipWidth > pageWidth) {
-                            tooltipLeft = pageWidth - tooltipWidth - 20; // Add a 20px buffer
+                            tooltipLeft = 10;
+                        } else if (tooltipLeft + tooltipWidth > $(window).width()) {
+                            tooltipLeft = $(window).width() - tooltipWidth - 10;
                         }
-                        tooltipElement.css({ top: tooltipTop, left: tooltipLeft }); // Set position to 'absolute'
+
+                        if (tooltipTop < 0) {
+                            tooltipTop = e.clientY + 20;
+                        }
+
+                        tooltipElement.css({
+                            position: 'fixed',
+                            left: tooltipLeft + 'px',
+                            top: tooltipTop + 'px',
+                            zIndex: 1000
+                        });
                     }
                 });
 
