@@ -3910,100 +3910,56 @@ function Ktl($, appInfo) {
 
         let systemColorsReady = false;
 
-        Object.defineProperty(sysColors, 'systemColorsReady', {
-            get: function () { return systemColorsReady; }
-        });
-
         $(document).on('knack-view-render.any', function (event, view, data) {
-            console.log('render any');
-            //Apply System Colors
-            if (systemColorsReady) {
-                console.log('color ready');
-                ktl.systemColors.getSystemColors().then(sc => {
-                    console.log('111');
-                    if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
-                        $('#' + view.key + ' .kn-table').removeClass('knTable--rowHover');
-                        $('#' + view.key + ' .kn-table').addClass('ktlTable--rowHover');
-                    }
-                })
+            ktl.systemColors.getSystemColors().then(sc => {
+                if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
+                    $('#' + view.key + ' .kn-table').removeClass('knTable--rowHover');
+                    $('#' + view.key + ' .kn-table').addClass('ktlTable--rowHover');
+                }
 
-                console.log('222');
                 if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor && ktl.views.viewHasInlineEdit(view.key)) {
-                    console.log('333');
                     $(`#${view.key} td.cell-edit`).addClass('ktlInlineEditableCellsStyle');
                 }
-            }
+            })
         })
 
-        $(document).on('KTL.systemColorsReady', () => {
-            systemColorsReady = true;
-        })
-        
         return {
-            waitSystemColorsReady: function () {
-                return new Promise(function (resolve, reject) {
-                    if (systemColorsReady) return resolve();
-
-                    $(document).on('KTL.systemColorsReady', () => {
-                        clearTimeout(failsafeTimeout);
-                        return resolve();
-                    })
-
-                    const failsafeTimeout = setTimeout(function () {
-                        reject();
-                    }, 10000);
-                })
-            },
-
             setCfg: function (cfgObj = {}) {
-                var p2 = ktl.core.waitDefaultConfigurationReady()
-                    .then(() => { console.log('cfg ok');})
-                    .catch(() => { console.log('p2 failed'); })
+                ktl.systemColors.getSystemColors().then(() => {
+                    if (cfgObj.inlineEditBkgColor && cfgObj.inlineEditBkgColor !== '')
+                        sysColors.inlineEditBkgColor = cfgObj.inlineEditBkgColor;
 
-                var p1 = ktl.systemColors.waitSystemColorsReady()
-                    .then(() => { console.log('colors ok'); })
-                    .catch(() => { console.log('p1 failed'); })
+                    if (cfgObj.inlineEditFontWeight && cfgObj.inlineEditFontWeight !== '')
+                        sysColors.inlineEditFontWeight = cfgObj.inlineEditFontWeight;
+                    else
+                        sysColors.inlineEditFontWeight = '500';
 
-                Promise.all([p1, p2])
-                    .then(() => {
-                        console.log('all ok');
-                        if (cfgObj.inlineEditBkgColor && cfgObj.inlineEditBkgColor !== '')
-                            sysColors.inlineEditBkgColor = cfgObj.inlineEditBkgColor;
+                    if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor) {
+                        ktl.core.injectCSS(
+                            '.ktlInlineEditableCellsStyle {' +
+                            'background-color: ' + sysColors.inlineEditBkgColor + ';' +
+                            'font-weight: ' + sysColors.inlineEditFontWeight + '}' +
 
-                        if (cfgObj.inlineEditFontWeight && cfgObj.inlineEditFontWeight !== '')
-                            sysColors.inlineEditFontWeight = cfgObj.inlineEditFontWeight;
-                        else
-                            sysColors.inlineEditFontWeight = '500';
+                            '.bulkEditSelectedCol.bulkEditSelectedRow {' +
+                            'background-color: ' + sysColors.header.rgb + '66!important;' +
+                            'border-color: ' + sysColors.header.rgb + ';}' +
 
-                        if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor) {
-                            ktl.core.injectCSS(
-                                '.ktlInlineEditableCellsStyle {' +
-                                'background-color: ' + sysColors.inlineEditBkgColor + ';' +
-                                'font-weight: ' + sysColors.inlineEditFontWeight + '}' +
+                            '.cell-edit.bulkEditSelectedRow {' +
+                            'background-color: ' + sysColors.header.rgb + '44!important;}'
+                        );
+                    }
 
-                                '.bulkEditSelectedCol.bulkEditSelectedRow {' +
-                                'background-color: ' + sysColors.header.rgb + '66!important;' +
-                                'border-color: ' + sysColors.header.rgb + ';}' +
+                    if (cfgObj.tableRowHoverBkgColor && cfgObj.tableRowHoverBkgColor !== '')
+                        sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
 
-                                '.cell-edit.bulkEditSelectedRow {' +
-                                'background-color: ' + sysColors.header.rgb + '44!important;}'
-                            );
-                        }
-
-                        if (cfgObj.tableRowHoverBkgColor && cfgObj.tableRowHoverBkgColor !== '')
-                            sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
-
-                        if (ktl.core.getCfg().enabled.rowHoverHighlight && sysColors.tableRowHoverBkgColor && sysColors.tableRowHoverBkgColor !== '') {
-                            ktl.core.injectCSS(
-                                '.ktlTable--rowHover tbody tr:hover {' +
-                                'background-color: ' + sysColors.tableRowHoverBkgColor + '!important;' +
-                                'transition: background-color .2s ease-out;}'
-                            );
-                        }
-                    })
-                    .catch(function (e) {
-                        console.log('Press 2 - wait p1 to p2 failed', e);//$$$
-                    })
+                    if (ktl.core.getCfg().enabled.rowHoverHighlight && sysColors.tableRowHoverBkgColor && sysColors.tableRowHoverBkgColor !== '') {
+                        ktl.core.injectCSS(
+                            '.ktlTable--rowHover tbody tr:hover {' +
+                            'background-color: ' + sysColors.tableRowHoverBkgColor + '!important;' +
+                            'transition: background-color .2s ease-out;}'
+                        );
+                    }
+                })
             },
 
             //For KTL internal use.
@@ -4077,58 +4033,23 @@ function Ktl($, appInfo) {
                             sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
                             sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
 
-                            $(document).trigger('KTL.systemColorsReady');
-                            //console.log('Init complete, sysColors =', sysColors);
-
-                            clearTimeout(failsafeTimeout);
+                            systemColorsReady = true;
                             return resolve();
                         })
                         .catch(err => {
-                            ktl.log.clog('purple', 'Timeout waiting for #kn-dynamic-styles', err);
-                            clearTimeout(failsafeTimeout);
-                            return reject();
+                            return reject('Timeout waiting for #kn-dynamic-styles:' + err);
                         })
-
-                    const failsafeTimeout = setTimeout(function () {
-                        reject();
-                    }, 10000);
                 })
             },
 
             getSystemColors: function () {
                 return new Promise(function (resolve, reject) {
-                    console.log('getSystemColors 1');
                     if (systemColorsReady) {
-                        console.log('getSystemColors 2');
-                        resolve(sysColors);
-                        return;
+                        return resolve(sysColors);
                     } else {
-                        console.log('getSystemColors 3');
                         ktl.systemColors.initSystemColors()
-                            .then(() => {
-                                return resolve(sysColors);
-                            })
-                            .catch(() => {
-                                return reject('getSystemColors failed with failsafeTimeout.');
-                            })
-
-                        //var intervalId = setInterval(function () {
-                        //    console.log('getSystemColors interval');
-                        //    if (systemColorsReady) {
-                        //        clearInterval(intervalId);
-                        //        intervalId = null;
-                        //        clearTimeout(failsafeTimeout);
-                        //        return resolve(sysColors);
-                        //    }
-                        //}, 100);
-
-                        var failsafeTimeout = setTimeout(function () {
-                            console.log('getSystemColors failed');
-                            if (intervalId !== null) {
-                                clearInterval(intervalId);
-                                return reject('getSystemColors failed with failsafeTimeout.');
-                            }
-                        }, 5000);
+                            .then(() => { return resolve(sysColors); })
+                            .catch((error) => { return reject('getSystemColors failed during initSystemColors: ' + error); })
                     }
                 })
             },
@@ -6004,9 +5925,6 @@ function Ktl($, appInfo) {
             });
         })
 
-
-
-
         // Throttle function that calls the func at the first event and ignores subsequent events for 'limit' milliseconds
         function throttle(func, limit) {
             let lastFunc;
@@ -6144,6 +6062,12 @@ function Ktl($, appInfo) {
             }, 500, true);
 
             $('.kn-table-table th').on('click', ktl.views.handleClickDateTimeSort);
+
+            $('#' + viewId + ' .cell-edit').bindFirst('click', function (e) {
+                if (e.target.closest('.ktlNoInlineEdit')) {
+                    e.stopImmediatePropagation();
+                }
+            });
         })
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
