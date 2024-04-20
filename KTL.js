@@ -318,7 +318,9 @@ function Ktl($, appInfo) {
                 subscriber.callback(...subscriber.additionalParameters);
         }
 
+        let defaultConfigurationReady = false;
         $(document).on('KTL.DefaultConfigReady', () => {
+            defaultConfigurationReady = true;
             ktl.core.addAppResizeSubscriber(ktl.core.sortMenu);
         })
 
@@ -341,6 +343,21 @@ function Ktl($, appInfo) {
         })
 
         return {
+            waitDefaultConfigurationReady: function () {
+                return new Promise(function (resolve, reject) {
+                    if (defaultConfigurationReady) return resolve();
+
+                    $(document).on('KTL.DefaultConfigReady', () => {
+                        clearTimeout(failsafeTimeout);
+                        return resolve();
+                    })
+
+                    const failsafeTimeout = setTimeout(function () {
+                        reject();
+                    }, 10000);
+                })
+            },
+
             setCfg: function (cfgObj = {}) {
                 cfgObj.developerNames && (cfg.developerNames = cfgObj.developerNames);
                 cfgObj.developerEmail && (cfg.developerEmail = cfgObj.developerEmail);
@@ -3869,167 +3886,247 @@ function Ktl($, appInfo) {
     //====================================================
     //System Colors feature
     this.systemColors = (function () {
-        var sysColors = {};
-        var initDone = false;
+        //Colors can be a named color like 'mistyrose' or a hex RGBA value '#a0454b75'
+        //Or some other presets in sysColors like: sc.paleLowSatClrTransparent
+        const sysColors = {
+            header: '',
+            button: '',
+            buttonText: '',
+            text: '',
+            links: '',
+            filterBtnClr: '',
+            activeFilterBtnClr: '',
+            borderClr: '',
+            publicFilterBtnClr: '',
+            activePublicFilterBtnClr: '',
+            paleLowSatClr: '',
+            paleLowSatClrTransparent: '',
+            inlineEditBkgColor: '',
+            tableRowHoverBkgColor: '',
+            tableRowHoverBkgColor: '',
+            inlineEditBkgColor: '',
+            inlineEditFontWeight: '', //Can be 'bold' or a numeric value like 600.
+        };
 
-        Object.defineProperty(sysColors, 'initDone', {
-            get: function () { return initDone; }
+        let systemColorsReady = false;
+
+        Object.defineProperty(sysColors, 'systemColorsReady', {
+            get: function () { return systemColorsReady; }
         });
 
         $(document).on('knack-view-render.any', function (event, view, data) {
+            console.log('render any');
             //Apply System Colors
-            if (initDone) {
+            if (systemColorsReady) {
+                console.log('color ready');
                 ktl.systemColors.getSystemColors().then(sc => {
+                    console.log('111');
                     if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
                         $('#' + view.key + ' .kn-table').removeClass('knTable--rowHover');
                         $('#' + view.key + ' .kn-table').addClass('ktlTable--rowHover');
                     }
                 })
 
-                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor && ktl.views.viewHasInlineEdit(view.key))
+                console.log('222');
+                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor && ktl.views.viewHasInlineEdit(view.key)) {
+                    console.log('333');
                     $(`#${view.key} td.cell-edit`).addClass('ktlInlineEditableCellsStyle');
+                }
             }
         })
 
+        $(document).on('KTL.systemColorsReady', () => {
+            systemColorsReady = true;
+        })
+        
         return {
+            waitSystemColorsReady: function () {
+                return new Promise(function (resolve, reject) {
+                    if (systemColorsReady) return resolve();
+
+                    $(document).on('KTL.systemColorsReady', () => {
+                        clearTimeout(failsafeTimeout);
+                        return resolve();
+                    })
+
+                    const failsafeTimeout = setTimeout(function () {
+                        reject();
+                    }, 10000);
+                })
+            },
+
             setCfg: function (cfgObj = {}) {
-                if (cfgObj.inlineEditBkgColor && cfgObj.inlineEditBkgColor !== '')
-                    sysColors.inlineEditBkgColor = cfgObj.inlineEditBkgColor;
+                var p2 = ktl.core.waitDefaultConfigurationReady()
+                    .then(() => { console.log('cfg ok');})
+                    .catch(() => { console.log('p2 failed'); })
 
-                if (cfgObj.inlineEditFontWeight && cfgObj.inlineEditFontWeight !== '')
-                    sysColors.inlineEditFontWeight = cfgObj.inlineEditFontWeight;
-                else
-                    sysColors.inlineEditFontWeight = '500';
+                var p1 = ktl.systemColors.waitSystemColorsReady()
+                    .then(() => { console.log('colors ok'); })
+                    .catch(() => { console.log('p1 failed'); })
 
-                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor) {
-                    ktl.core.injectCSS(
-                        '.ktlInlineEditableCellsStyle {' +
-                        'background-color: ' + sysColors.inlineEditBkgColor + ';' +
-                        'font-weight: ' + sysColors.inlineEditFontWeight + '}' +
+                Promise.all([p1, p2])
+                    .then(() => {
+                        console.log('all ok');
+                        if (cfgObj.inlineEditBkgColor && cfgObj.inlineEditBkgColor !== '')
+                            sysColors.inlineEditBkgColor = cfgObj.inlineEditBkgColor;
 
-                        '.bulkEditSelectedCol.bulkEditSelectedRow {' +
-                        'background-color: ' + sysColors.header.rgb + '66!important;' +
-                        'border-color: ' + sysColors.header.rgb + ';}' +
+                        if (cfgObj.inlineEditFontWeight && cfgObj.inlineEditFontWeight !== '')
+                            sysColors.inlineEditFontWeight = cfgObj.inlineEditFontWeight;
+                        else
+                            sysColors.inlineEditFontWeight = '500';
 
-                        '.cell-edit.bulkEditSelectedRow {' +
-                        'background-color: ' + sysColors.header.rgb + '44!important;}'
-                    );
-                }
+                        if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor) {
+                            ktl.core.injectCSS(
+                                '.ktlInlineEditableCellsStyle {' +
+                                'background-color: ' + sysColors.inlineEditBkgColor + ';' +
+                                'font-weight: ' + sysColors.inlineEditFontWeight + '}' +
 
-                if (cfgObj.tableRowHoverBkgColor && cfgObj.tableRowHoverBkgColor !== '')
-                    sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
+                                '.bulkEditSelectedCol.bulkEditSelectedRow {' +
+                                'background-color: ' + sysColors.header.rgb + '66!important;' +
+                                'border-color: ' + sysColors.header.rgb + ';}' +
 
-                if (ktl.core.getCfg().enabled.rowHoverHighlight && sysColors.tableRowHoverBkgColor && sysColors.tableRowHoverBkgColor !== '') {
-                    ktl.core.injectCSS(
-                        '.ktlTable--rowHover tbody tr:hover {' +
-                        'background-color: ' + sysColors.tableRowHoverBkgColor + '!important;' +
-                        'transition: background-color .2s ease-out;}'
-                    );
-                }
+                                '.cell-edit.bulkEditSelectedRow {' +
+                                'background-color: ' + sysColors.header.rgb + '44!important;}'
+                            );
+                        }
+
+                        if (cfgObj.tableRowHoverBkgColor && cfgObj.tableRowHoverBkgColor !== '')
+                            sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
+
+                        if (ktl.core.getCfg().enabled.rowHoverHighlight && sysColors.tableRowHoverBkgColor && sysColors.tableRowHoverBkgColor !== '') {
+                            ktl.core.injectCSS(
+                                '.ktlTable--rowHover tbody tr:hover {' +
+                                'background-color: ' + sysColors.tableRowHoverBkgColor + '!important;' +
+                                'transition: background-color .2s ease-out;}'
+                            );
+                        }
+                    })
+                    .catch(function (e) {
+                        console.log('Press 2 - wait p1 to p2 failed', e);//$$$
+                    })
             },
 
             //For KTL internal use.
             initSystemColors: function () {
-                ktl.core.waitSelector('#kn-dynamic-styles')
-                    .then(function () {
-                        var dynStylesCssTxt = document.querySelector('#kn-dynamic-styles').innerText;
+                return new Promise(function (resolve, reject) {
+                    ktl.core.waitSelector('#kn-dynamic-styles')
+                        .then(function () {
+                            function extractSysElClr(cssSearchStr = '') {
+                                var index = 0, clrIdx = 0;
+                                var hsl = [], hsv = [], rgbClr = [];
+                                index = dynStylesCssTxt.search(cssSearchStr);
+                                clrIdx = dynStylesCssTxt.indexOf('#', index + 1);
+                                var color = dynStylesCssTxt.substr(clrIdx, 7); //Format is #rrggbb
+                                rgbClr = ktl.systemColors.hexToRgb(color);
+                                hsl = ktl.systemColors.rgbToHsl(rgbClr[0], rgbClr[1], rgbClr[2]);
+                                hsv = ktl.systemColors.rgbToHsv(rgbClr[0], rgbClr[1], rgbClr[2]);
+                                return { rgb: color, hsl: hsl, hsv: hsv };
+                            }
 
-                        //Basic colors
-                        sysColors.header = extractSysElClr(/#kn-app-header \{\s+background-color: #/gm); //Header background color
-                        sysColors.button = extractSysElClr(/\.is-primary \{\s+background-color: #/gm); //Buttons background color
-                        sysColors.buttonText = extractSysElClr(/\.kn-navigation-bar a \{\s+color: #/gm); //Buttons text color
-                        sysColors.text = extractSysElClr(/\.kn-content a \{\s+color: #/gm); //Text color
-                        sysColors.links = extractSysElClr(/\.knMenuLink.knMenuLink--button \{\s+color: #/gm); //Button Link text color
+                            var dynStylesCssTxt = document.querySelector('#kn-dynamic-styles').innerText;
 
-                        //Additional colors, usually derived from basic colors, or hard-coded.
-                        var newS = 1.0;
-                        var newV = 1.0;
-                        var newRGB = '';
+                            //Basic colors
+                            sysColors.header = extractSysElClr(/#kn-app-header \{\s+background-color: #/gm); //Header background color
+                            sysColors.button = extractSysElClr(/\.is-primary \{\s+background-color: #/gm); //Buttons background color
+                            sysColors.buttonText = extractSysElClr(/\.kn-navigation-bar a \{\s+color: #/gm); //Buttons text color
+                            sysColors.text = extractSysElClr(/\.kn-content a \{\s+color: #/gm); //Text color
+                            sysColors.links = extractSysElClr(/\.knMenuLink.knMenuLink--button \{\s+color: #/gm); //Button Link text color
 
-                        //User Filter buttons
-                        newS = Math.min(1, sysColors.header.hsv[1] * 0.1);
-                        newV = 0.8;
-                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                        sysColors.filterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                            //Additional colors, usually derived from basic colors, or hard-coded.
+                            var newS = 1.0;
+                            var newV = 1.0;
+                            var newRGB = '';
 
-                        newS = Math.min(1, sysColors.header.hsv[1] * 0.2);
-                        newV = 1.0;
-                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                        sysColors.activeFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                            //User Filter buttons
+                            newS = Math.min(1, sysColors.header.hsv[1] * 0.1);
+                            newV = 0.8;
+                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                            sysColors.filterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                        newS = 1.0;
-                        newV = 1.0;
-                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                        sysColors.borderClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                            newS = Math.min(1, sysColors.header.hsv[1] * 0.2);
+                            newV = 1.0;
+                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                            sysColors.activeFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                        //Public Filters
-                        newS = Math.min(1, sysColors.button.hsv[1] * 0.6);
-                        newV = 1.0;
-                        newRGB = ktl.systemColors.hsvToRgb(sysColors.button.hsv[0], newS, newV);
-                        sysColors.publicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                            newS = 1.0;
+                            newV = 1.0;
+                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                            sysColors.borderClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                        newS = Math.min(1, sysColors.button.hsv[1] * 0.4);
-                        newV = 1.0;
-                        newRGB = ktl.systemColors.hsvToRgb(sysColors.button.hsv[0], newS, newV);
-                        sysColors.activePublicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                            //Public Filters
+                            newS = Math.min(1, sysColors.button.hsv[1] * 0.6);
+                            newV = 1.0;
+                            newRGB = ktl.systemColors.hsvToRgb(sysColors.button.hsv[0], newS, newV);
+                            sysColors.publicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                        //Just a generic pale washed-out color for various items.
-                        newS = 0.2;
-                        newV = 0.7;
-                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                        sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-                        sysColors.paleLowSatClrTransparent = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.5)';
+                            newS = Math.min(1, sysColors.button.hsv[1] * 0.4);
+                            newV = 1.0;
+                            newRGB = ktl.systemColors.hsvToRgb(sysColors.button.hsv[0], newS, newV);
+                            sysColors.activePublicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
 
-                        newS = 0.5;
-                        newV = 1.0;
-                        newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                        sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
-                        sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
+                            //Just a generic pale washed-out color for various items.
+                            newS = 0.2;
+                            newV = 0.7;
+                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                            sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                            sysColors.paleLowSatClrTransparent = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.5)';
 
+                            newS = 0.5;
+                            newV = 1.0;
+                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
+                            sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
+                            sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
 
-                        initDone = true;
-                        //console.log('Init complete, sysColors =', sysColors);
+                            $(document).trigger('KTL.systemColorsReady');
+                            //console.log('Init complete, sysColors =', sysColors);
 
-                        function extractSysElClr(cssSearchStr = '') {
-                            var index = 0, clrIdx = 0;
-                            var hsl = [], hsv = [], rgbClr = [];
-                            index = dynStylesCssTxt.search(cssSearchStr);
-                            clrIdx = dynStylesCssTxt.indexOf('#', index + 1);
-                            var color = dynStylesCssTxt.substr(clrIdx, 7); //Format is #rrggbb
-                            rgbClr = ktl.systemColors.hexToRgb(color);
-                            hsl = ktl.systemColors.rgbToHsl(rgbClr[0], rgbClr[1], rgbClr[2]);
-                            hsv = ktl.systemColors.rgbToHsv(rgbClr[0], rgbClr[1], rgbClr[2]);
-                            return { rgb: color, hsl: hsl, hsv: hsv };
-                        }
-                    })
-                    .catch(err => {
-                        ktl.log.clog('purple', 'Timeout waiting for #kn-dynamic-styles');
-                    })
+                            clearTimeout(failsafeTimeout);
+                            return resolve();
+                        })
+                        .catch(err => {
+                            ktl.log.clog('purple', 'Timeout waiting for #kn-dynamic-styles', err);
+                            clearTimeout(failsafeTimeout);
+                            return reject();
+                        })
+
+                    const failsafeTimeout = setTimeout(function () {
+                        reject();
+                    }, 10000);
+                })
             },
 
             getSystemColors: function () {
                 return new Promise(function (resolve, reject) {
-                    if (initDone) {
+                    console.log('getSystemColors 1');
+                    if (systemColorsReady) {
+                        console.log('getSystemColors 2');
                         resolve(sysColors);
                         return;
                     } else {
-                        ktl.systemColors.initSystemColors();
+                        console.log('getSystemColors 3');
+                        ktl.systemColors.initSystemColors()
+                            .then(() => {
+                                return resolve(sysColors);
+                            })
+                            .catch(() => {
+                                return reject('getSystemColors failed with failsafeTimeout.');
+                            })
 
-                        var intervalId = setInterval(function () {
-                            if (initDone) {
-                                clearInterval(intervalId);
-                                intervalId = null;
-                                clearTimeout(failsafeTimeout);
-                                resolve(sysColors);
-                                return;
-                            }
-                        }, 100);
+                        //var intervalId = setInterval(function () {
+                        //    console.log('getSystemColors interval');
+                        //    if (systemColorsReady) {
+                        //        clearInterval(intervalId);
+                        //        intervalId = null;
+                        //        clearTimeout(failsafeTimeout);
+                        //        return resolve(sysColors);
+                        //    }
+                        //}, 100);
 
                         var failsafeTimeout = setTimeout(function () {
+                            console.log('getSystemColors failed');
                             if (intervalId !== null) {
                                 clearInterval(intervalId);
-                                reject('getSystemColors failed with failsafeTimeout.');
-                                return;
+                                return reject('getSystemColors failed with failsafeTimeout.');
                             }
                         }, 5000);
                     }
