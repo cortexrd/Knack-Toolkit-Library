@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.7.6 */
+/* KTL CSS version: 0.7.7 */
 
 /************ General Settings **************/
 :root {
@@ -138,6 +138,11 @@ th .fa-caret-left {
 }
 /* Dynamic Hide/Show Columns feature  - END */
 
+.ktlInlineEditableCellsStyle {
+	background-color: var(--ktlInlineEditableCellsBgColor);
+	font-weight: var(--ktlInlineEditableCellsFontWeight);
+}
+
 .cell-edit.ktlNoInlineEdit {
 	cursor: default !important;
 	font-weight: initial;
@@ -206,8 +211,13 @@ a.ktlSortDisabled {
 	white-space: nowrap;
 }
 
+.ktlTable--rowHover tbody tr:hover {
+	background-color: var(--ktltableRowHoverBkgColor) !important;
+	transition: background-color .2s ease-out;
+}
+
 /* Bulk Operations */
-.bulkOpsControlsDiv {
+	.bulkOpsControlsDiv {
 	display: flex;
 }
 
@@ -254,6 +264,12 @@ a.ktlSortDisabled {
 .bulkEditSelectedCol.bulkEditSelectedRow {
 	border-style: dashed;
 	border-width: medium !important;
+	background-color: var(--bulkEditSelectedColsAndRows) !important;
+	border-color: var(--bulkEditSelectedBorders);
+}
+
+.cell-edit.bulkEditSelectedRow {
+	background-color: var(--bulkEditSelectedRowsCells);
 }
 
 .bulkEditSelectSrc {
@@ -262,7 +278,7 @@ a.ktlSortDisabled {
 }
 
 /************ Tooltips **************/
-.tooltip {
+	.tooltip {
 	position: relative;
 	display: inline-block;
 }

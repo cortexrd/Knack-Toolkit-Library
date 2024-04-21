@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.12';
+    const KTL_VERSION = '0.24.13';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3903,7 +3903,7 @@ function Ktl($, appInfo) {
             paleLowSatClrTransparent: '',
             tableRowHoverBkgColor: '',
             inlineEditBkgColor: '',
-            inlineEditFontWeight: '', //Can be 'bold' or a numeric value like 600.
+            inlineEditFontWeight: '500', //Can be 'bold' or a numeric value like 600.
         };
 
         let systemColorsReady = false;
@@ -3924,38 +3924,19 @@ function Ktl($, appInfo) {
         return {
             setCfg: function (cfgObj = {}) {
                 ktl.systemColors.getSystemColors().then(() => {
-                    if (cfgObj.inlineEditBkgColor && cfgObj.inlineEditBkgColor !== '')
+                    if (typeof cfgObj.inlineEditBkgColor !== 'undefined') {
                         sysColors.inlineEditBkgColor = cfgObj.inlineEditBkgColor;
-
-                    if (cfgObj.inlineEditFontWeight && cfgObj.inlineEditFontWeight !== '')
-                        sysColors.inlineEditFontWeight = cfgObj.inlineEditFontWeight;
-                    else
-                        sysColors.inlineEditFontWeight = '500';
-
-                    if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor) {
-                        ktl.core.injectCSS(
-                            '.ktlInlineEditableCellsStyle {' +
-                            'background-color: ' + sysColors.inlineEditBkgColor + ';' +
-                            'font-weight: ' + sysColors.inlineEditFontWeight + '}' +
-
-                            '.bulkEditSelectedCol.bulkEditSelectedRow {' +
-                            'background-color: ' + sysColors.header.rgb + '66!important;' +
-                            'border-color: ' + sysColors.header.rgb + ';}' +
-
-                            '.cell-edit.bulkEditSelectedRow {' +
-                            'background-color: ' + sysColors.header.rgb + '44!important;}'
-                        );
+                        document.documentElement.style.setProperty('--ktlInlineEditableCellsBgColor', sysColors.inlineEditBkgColor);
                     }
 
-                    if (cfgObj.tableRowHoverBkgColor && cfgObj.tableRowHoverBkgColor !== '')
-                        sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
+                    if (typeof cfgObj.inlineEditFontWeight !== 'undefined') {
+                        sysColors.inlineEditFontWeight = cfgObj.inlineEditFontWeight;
+                        document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
+                    }
 
-                    if (ktl.core.getCfg().enabled.rowHoverHighlight && sysColors.tableRowHoverBkgColor && sysColors.tableRowHoverBkgColor !== '') {
-                        ktl.core.injectCSS(
-                            '.ktlTable--rowHover tbody tr:hover {' +
-                            'background-color: ' + sysColors.tableRowHoverBkgColor + '!important;' +
-                            'transition: background-color .2s ease-out;}'
-                        );
+                    if (typeof cfgObj.tableRowHoverBkgColor !== 'undefined') {
+                        sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
+                        document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
                     }
                 })
             },
@@ -4030,6 +4011,13 @@ function Ktl($, appInfo) {
                             newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
                             sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
                             sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
+
+                            document.documentElement.style.setProperty('--ktlInlineEditableCellsBgColor', sysColors.inlineEditBkgColor);
+                            document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
+                            document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
+                            document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', sysColors.header.rgb + '44');
+                            document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', sysColors.header.rgb + '77');
+                            document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
 
                             systemColorsReady = true;
                             return resolve();
