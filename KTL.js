@@ -3901,8 +3901,6 @@ function Ktl($, appInfo) {
             activePublicFilterBtnClr: '',
             paleLowSatClr: '',
             paleLowSatClrTransparent: '',
-            inlineEditBkgColor: '',
-            tableRowHoverBkgColor: '',
             tableRowHoverBkgColor: '',
             inlineEditBkgColor: '',
             inlineEditFontWeight: '', //Can be 'bold' or a numeric value like 600.
@@ -7411,11 +7409,38 @@ function Ktl($, appInfo) {
                             if (remove)
                                 $(targetSel).remove();
                             else if (suppress) {
-                                $(targetSel).closest('tr').remove();
-                                const newCount = document.querySelectorAll('#' + targetViewId + ' tbody tr').length;
+                                function cleanupGroupAfterRowRemoval(tableRow) {
+                                    var $currentRow = $(tableRow);
+                                    var $group = $currentRow.prevAll('.kn-table-group').first(); // Find the closest preceding group
+                                    var $nextSibling = $currentRow.next('tr'); // Get the next sibling row
+
+                                    $currentRow.remove();
+
+                                    // Check if the next sibling is a group or if the group has no more rows with IDs
+                                    if ($nextSibling.hasClass('kn-table-group') || $group.nextUntil('.kn-table-group', 'tr[id]').length === 0) {
+                                        // Remove the group and its totals row
+                                        $group.next('.kn-table-totals').remove();
+                                        $group.remove();
+                                    }
+                                }
+
+                                cleanupGroupAfterRowRemoval($(targetSel).closest('tr'));
+
+                                const newCount = $(`#${targetViewId} tbody tr:not(.kn-table-group):not(.kn-table-totals)`).length;
+
                                 var div = document.querySelector('#' + targetViewId + ' .kn-entries-summary');
                                 if (div && div.childNodes.length >= 3)
                                     div.childNodes[2].nodeValue = ` 1-${newCount} `;
+
+                                if (div && div.childNodes.length >= 5) {
+                                    if (Knack.views[viewId].model.view.pagination_meta.total_entries < Knack.views[viewId].model.view.pagination_meta.rows_per_page
+                                        && Knack.views[viewId].model.view.pagination_meta.total_entries > newCount)
+                                        div.childNodes[4].nodeValue = ` ${newCount}\n`;
+                                }
+
+                                if (ktl.views.viewHasSummary(viewId)) {
+                                    Knack.views[viewId].renderTotals();
+                                }
                             } else if (hide) {
                                 $(targetSel).addClass('ktlDisplayNone');
                             } else {
