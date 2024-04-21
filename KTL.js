@@ -16226,7 +16226,8 @@ function Ktl($, appInfo) {
             model: 'Unknown',
             processor: 'Unknown',
             mobile: '',
-            hasLocalServer: false,
+            hasLocalServer: false, //TODO
+            keyboardDetected: false,
         };
 
         var cfg = {
@@ -16380,8 +16381,11 @@ function Ktl($, appInfo) {
                                         if (svrResponse.deviceInfo) {
                                             const deviceInfo = svrResponse.deviceInfo;
                                             wdTimeoutDelay = NORMAL_WD_TIMEOUT_DELAY;
-                                            if (deviceInfo && !$.isEmptyObject(deviceInfo))
+                                            if (deviceInfo && !$.isEmptyObject(deviceInfo)) {
                                                 addToVersionInfoBar(deviceInfo);
+                                                let sysInfo = ktl.sysInfo.getSysInfo();
+                                                sysInfo.keyboardDetected = deviceInfo.keyboardDetected;
+                                            }
                                         } else {
                                             //Force a kiosk-app update.
                                             ktl.sysInfo.restartService()
@@ -17659,6 +17663,9 @@ function Ktl($, appInfo) {
                         shiftKeyPressed = false;
 
                         $('#simple-keyboard').show();
+
+                        if (ktl.sysInfo.getSysInfo().keyboardDetected)
+                            $('.simple-keyboard').hide();
 
                         if (($(target).offset().top - $(document).scrollTop()) > ($(window).height() - $('#simple-keyboard').height() - 100)) {
                             $([document.documentElement, document.body]).animate({
