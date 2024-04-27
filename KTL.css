@@ -162,7 +162,10 @@ th .fa-caret-left {
 	cursor: grab !important;
 }
 
-.ktlNotValid {
+
+.ktlNotValid,
+[class^="ktlNotValid_"],
+[class*=" ktlNotValid_"] {
 	background-color: #fdb0b0 !important; /* Same pinkish color as Knack error */
 }
 
