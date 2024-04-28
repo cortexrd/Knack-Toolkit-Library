@@ -2297,15 +2297,10 @@ function Ktl($, appInfo) {
         })
 
         $(document).on('KTL.persistentForm.completed.scene', function (event, viewOrScene) {
-            let chosenUpdateTimeout;
-
             $('.search-choice-close').off('click.ktl_removeoption').bindFirst('click.ktl_removeoption', function (e) {
                 const [viewId, fieldId] = $(e.target).closest('.kn-input-connection').find('.chzn-select').attr('id').split('-');
 
-                clearTimeout(chosenUpdateTimeout);
-                chosenUpdateTimeout = setTimeout(() => {
-                    console.log('click1', e);
-
+                setTimeout(() => {
                     const options = $(e.target).closest('.kn-input-connection').find('.chzn-select [value]').toArray();
                     const records = options.map(option => {
                         return {
@@ -2315,7 +2310,7 @@ function Ktl($, appInfo) {
                     });
 
                     ktl.persistentForm.ktlOnSelectValueChanged({ viewId: viewId, fieldId: fieldId, records: records });
-                }, 500);
+                }, 200);
             })
         });
 
@@ -3273,23 +3268,22 @@ function Ktl($, appInfo) {
                 currentViews = {};
             }
 
-            if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key)) {
-                //Allow other features that depend on this event to run, even if PF is not enabled.
-                $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
-                $(document).trigger('KTL.persistentForm.completed.scene', [scene]);
-                return;
-            }
-
             ktl.fields.sceneConvertNumToTel().then(() => {
-                loadFormData()
-                    .then(() => {
-                        isInitialized = true;
-                        setTimeout(() => {
-                            ktl.fields.enforceNumeric();
-                            $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
-                            $(document).trigger('KTL.persistentForm.completed.scene', [scene]);
-                        }, 1000);
-                    })
+                if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key)) {
+                    //Allow other features that depend on this event to run, even if PF is not enabled.
+                    $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
+                    $(document).trigger('KTL.persistentForm.completed.scene', [scene]);
+                } else {
+                    loadFormData()
+                        .then(() => {
+                            isInitialized = true;
+                            setTimeout(() => {
+                                ktl.fields.enforceNumeric();
+                                $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
+                                $(document).trigger('KTL.persistentForm.completed.scene', [scene]);
+                            }, 1000);
+                        })
+                }
             });
         });
 
@@ -3478,10 +3472,23 @@ function Ktl($, appInfo) {
             //$('#' + viewId + '_' + fieldId + '_chzn .chzn-single').css({ 'background-color': '#fff0d0' });
         }
 
+        $(document).on('KTL.loadFormData', function (event, viewId) {
+            if (!viewId) return;
+
+            loadFormData(viewId)
+                .then(() => {
+                    setTimeout(() => {
+                        ktl.fields.enforceNumeric();
+                        $(`#${viewId}`).addClass('ktlPersistenFormLoadedView');
+                        $(document).trigger('KTL.persistentForm.completed.view', [Knack.router.scene_view.model.attributes]);
+                    }, 1000);
+                })
+        })
+
         //Loads any data previously saved for all fields in all forms.
         //Also adds Change event handlers for dropdowns and calendars.   Eventually, support all object types.
         //After loading, re-validates numeric fields and put errors in pink.
-        function loadFormData() {
+        function loadFormData(viewId) {
             return new Promise(function (resolve) {
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
 
@@ -3495,8 +3502,18 @@ function Ktl($, appInfo) {
                 currentViews = {};
                 var intervalId = null;
 
-                //Reload stored data, but only for Form type of views.
-                Knack.router.scene_view.model.views.models.map(model => model.attributes).forEach(view => {
+                if (viewId) {
+                    const view = Knack.router.scene_view.model.views._byId[viewId];
+                    if (view && view.attributes)
+                        loadDataForView(view.attributes);
+                } else {
+                    //All views in scene.
+                    Knack.router.scene_view.model.views.models.map(model => model.attributes).forEach(view => {
+                        loadDataForView(view);
+                    })
+                }
+
+                function loadDataForView(view) {
                     if (view.action != 'insert' && view.action != 'create')  //Add only, not Edit or any other type
                         return;
 
@@ -3624,7 +3641,7 @@ function Ktl($, appInfo) {
                     });
 
                     delete formDataObj[view.key];
-                });
+                }
 
                 //Wait until all views and fields are processed.
                 intervalId = setInterval(function () {
@@ -6867,7 +6884,6 @@ function Ktl($, appInfo) {
                 elements.find('.rateit').rateit('readonly', true);
                 elements.filter('.kn-input-signature').css('pointer-events', 'none');
 
-
                 if (viewType === 'form') {
                     $(document).one('KTL.persistentForm.completed.scene', () => {
                         // Persistent Form is adding and removing the attribute during its process
@@ -8073,7 +8089,7 @@ function Ktl($, appInfo) {
 
         //Example: _click=Link Label, auto (or blank), Button Label
         const clickCurrentlyRunning = {
-            actionLinkText:'',
+            actionLinkText: '',
             buttonId: '',
             buttonLabel: '',
             lastRecIdProcessed: '',
@@ -9515,9 +9531,7 @@ function Ktl($, appInfo) {
             );
 
             if (ktl.core.getCfg().enabled.persistentForm) {
-                $(document).one('KTL.persistentForm.completed.scene', () => {
-                    applyRequestedFields();
-                });
+                $(document).on('KTL.persistentForm.completed.scene KTL.persistentForm.completed.view', applyRequestedFields);
             } else
                 applyRequestedFields();
 
@@ -9532,53 +9546,60 @@ function Ktl($, appInfo) {
                     const fieldType = ktl.fields.getFieldType(fieldId);
                     if (TEXT_DATA_TYPES.includes(fieldType)) {
                         const inputField = $(`#${viewId} [data-input-id='${fieldId}'] input`);
-                        validateEmptyTextField(inputField[0]);
+                        if (inputField.length) {
+                            validateNonEmptyTextField(inputField[0]);
 
-                        inputField.off('input.ktl_req').on('input.ktl_req', function () {
-                            validateEmptyTextField(this);
-                            //ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
-                        });
+                            inputField.off('input.ktl_req').on('input.ktl_req', function () {
+                                validateNonEmptyTextField(this);
+                            });
+                        }
                     } else if (fieldType === 'connection') {
-                        updateMultiSelectDropdown(viewId, fieldId);
+                        validateNonEmptyDropdown(viewId, fieldId);
                     } else if (fieldType === 'multiple_choice') {
                     } else if (fieldType === 'boolean') {
                     } else if (fieldType === 'rich_text') {
+                    } else if (fieldType === 'date_time') {
                     }
                 }
 
-
                 //Dropdown selectors.
-                console.log('222');
                 $(document).on('KTL.dropDownValueChanged', (event, obj) => {
                     const { viewId: eventViewId, fieldId, records } = obj;
-                    //if (eventViewId === viewId && fieldsAr.includes(fieldId) && records.length && records[0].text !== 'Select' && records[0].text !== 'Select...') {
                     if (eventViewId === viewId && fieldsAr.includes(fieldId)) {
-                        //console.log('records =', records);
-
-                        //Mulit-slection dropdowns
                         $(`#${viewId} .search-choice-close`).off('click.ktl_removeoption').bindFirst('click.ktl_removeoption', function (e) {
-                            console.log('click2', e);
-                            if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-multi`)) {
-                                updateMultiSelectDropdown(viewId, fieldId);
-                            }
+                            validateNonEmptyDropdown(viewId, fieldId);
                         })
 
-                        if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-multi`)) {
-                            updateMultiSelectDropdown(viewId, fieldId);
-                        }
+
+                        validateNonEmptyDropdown(viewId, fieldId);
                     }
                 })
 
-                function updateMultiSelectDropdown(viewId, fieldId) {
+                function validateNonEmptyDropdown(viewId, fieldId) {
                     setTimeout(() => {
-                        if (!document.querySelector(`#${viewId}_${fieldId}_chzn .result-selected`))
-                            $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
-                        else
-                            $((`#${viewId}_${fieldId}_chzn input`)).removeClass('ktlNotValid_empty');
-                    }, 500);
+                        if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-single`)) {
+                            //Single-selection dropdowns
+                            let selectedText = 'Select';
+                            const selector = $(`#${viewId}_${fieldId}_chzn .result-selected`);
+                            if (selector.length)
+                                selectedText = selector[0].textContent;
+                            if (selectedText === 'Select' || selectedText === 'Select...')
+                                $(`#${viewId}_${fieldId}_chzn .chzn-single`).addClass('ktlNotValid_empty');
+                            else
+                                $(`#${viewId}_${fieldId}_chzn .chzn-single`).removeClass('ktlNotValid_empty');
+                        } else if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-multi`)) {
+                            //Multi-selection dropdowns
+                            if (!document.querySelector(`#${viewId}_${fieldId}_chzn .result-selected`))
+                                $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
+                            else
+                                $((`#${viewId}_${fieldId}_chzn input`)).removeClass('ktlNotValid_empty');
+                        }
+
+                        ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+                    }, 200);
                 }
 
-                function validateEmptyTextField(field) {
+                function validateNonEmptyTextField (field) {
                     const fieldName = field.name;
                     if (!fieldName) return;
 
@@ -9643,21 +9664,25 @@ function Ktl($, appInfo) {
                             $(document).trigger('KTL.preprocessView', Knack.views[viewId]);
 
                             if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
-                                if (triggerChange) {
-                                    Knack.views[viewId].model.trigger('change');
-                                    Knack.views[viewId].renderForm && Knack.views[viewId].renderForm();
-                                    Knack.views[viewId].renderView && Knack.views[viewId].renderView();
-                                }
-
-                                //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
-                                if (viewType !== 'search') //Skip here, otherwise will erase the search form section.
-                                    Knack.views[viewId].render();
+                                if (viewType === 'form' && (formAction === 'insert' || formAction === 'create'))
+                                    $(document).trigger('KTL.loadFormData', viewId);
                                 else {
-                                    Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-                                }
+                                    if (triggerChange) {
+                                        Knack.views[viewId].model.trigger('change');
+                                        Knack.views[viewId].renderForm && Knack.views[viewId].renderForm();
+                                        Knack.views[viewId].renderView && Knack.views[viewId].renderView();
+                                    }
 
-                                Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
-                                Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
+                                    //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
+                                    if (viewType !== 'search') //Skip here, otherwise will erase the search form section.
+                                        Knack.views[viewId].render();
+                                    else {
+                                        Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
+                                    }
+
+                                    Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
+                                    Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
+                                }
 
                                 $("#kn-loading-spinner").removeClass('ktlHidden');
                                 return resolve();
