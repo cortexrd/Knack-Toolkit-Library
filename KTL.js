@@ -2278,6 +2278,10 @@ function Ktl($, appInfo) {
             $(`#${viewId} .knack-date`).datepicker().change(function (e) {
                 processFieldChanged({ text: e.target.value, e: e });
             })
+            
+            $(`#${viewId} .kn-time`).timepicker().change(function (e) {
+                processFieldChanged({ text: e.target.value, e: e });
+            })
 
             //More to come...
             //TODO: multiple selection dropdowns
@@ -3705,13 +3709,14 @@ function Ktl($, appInfo) {
             },
 
             //For KTL internal use.  Add Change event handlers for Dropdowns, Calendars, etc.
-            ktlOnFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text }) {
+            ktlOnFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 if (!fieldsToExclude.includes(fieldId)) {
                     let longestWord = ktl.core.findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
 
                     if (recId)
                         longestWord += '-' + recId;
                     saveFormData(longestWord, viewId, fieldId);
+                    $(document).trigger('KTL.fieldValueChanged', { viewId: viewId, fieldId: fieldId, text: text, e: e });
                 }
             },
 
@@ -9563,13 +9568,12 @@ function Ktl($, appInfo) {
                 }
 
                 //Dropdown selectors.
-                $(document).on('KTL.dropDownValueChanged', (event, obj) => {
-                    const { viewId: eventViewId, fieldId, records } = obj;
+                $(document).on('KTL.dropDownValueChanged', (event, params) => {
+                    const { viewId: eventViewId, fieldId, records } = params;
                     if (eventViewId === viewId && fieldsAr.includes(fieldId)) {
                         $(`#${viewId} .search-choice-close`).off('click.ktl_removeoption').bindFirst('click.ktl_removeoption', function (e) {
                             validateNonEmptyDropdown(viewId, fieldId);
                         })
-
 
                         validateNonEmptyDropdown(viewId, fieldId);
                     }
@@ -9610,6 +9614,14 @@ function Ktl($, appInfo) {
 
                     ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
                 }
+
+                $(document).on('KTL.fieldValueChanged', (event, params) => {
+                    const { viewId: eventViewId, fieldId, text, e} = params;
+                    if (eventViewId === viewId && fieldsAr.includes(fieldId)) {
+                        console.log('params =', params);
+                        validateNonEmptyTextField(e.target);
+                    }
+                })
 
                 ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
             }
