@@ -12025,11 +12025,12 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                // Create the tooltip element once and reuse it
-                const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`).appendTo('body');
-
                 // Add event listeners directly to the elements that need them
                 $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
+                    const icon = $(this);
+
+                    // Create the tooltip element once and reuse it
+                    const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`).appendTo('body');
                     const tooltipWidth = tooltipElement.outerWidth();
                     const tooltipHeight = tooltipElement.outerHeight();
 
@@ -12054,11 +12055,15 @@ function Ktl($, appInfo) {
                         zIndex: 2000
                     });
 
-                    // Show the tooltip
+                    icon.data('tooltipElement', tooltipElement);
+
                     tooltipElement.show();
                 }).on('mouseleave.ktlTooltip', function () {
-                    // Hide the tooltip
-                    tooltipElement.hide();
+                    const icon = $(this);
+                    // Retrieve the tooltipElement from the icon
+                    const tooltipElement = icon.data('tooltipElement')
+
+                    tooltipElement.remove();
                 });
             },
 
