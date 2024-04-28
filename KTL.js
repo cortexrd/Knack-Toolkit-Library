@@ -9542,9 +9542,14 @@ function Ktl($, appInfo) {
                                 );
 
                                 if (ktl.core.getCfg().enabled.persistentForm) {
-                                    $(document).on('KTL.persistentForm.completed.scene KTL.persistentForm.completed.view', applyRequestedFields);
+                                    $(document).off('KTL.persistentForm.completed.scene.required KTL.persistentForm.completed.view.required').on('KTL.persistentForm.completed.scene.required KTL.persistentForm.completed.view.required', function (e, params) {
+                                        console.log('apply', e, params);
+                                        applyRequestedFields();
+                                    });
                                 } else
                                     applyRequestedFields();
+                            } else {
+                                console.log('not valid');
                             }
                         })
                 }
@@ -9596,13 +9601,13 @@ function Ktl($, appInfo) {
                             const selector = $(`#${viewId}_${fieldId}_chzn .result-selected`);
                             if (selector.length)
                                 selectedText = selector[0].textContent;
-                            if (selectedText === 'Select' || selectedText === 'Select...')
+                            if (document.querySelector(`#${viewId} #kn-input-${fieldId} .kn-required`) && (selectedText === 'Select' || selectedText === 'Select...'))
                                 $(`#${viewId}_${fieldId}_chzn .chzn-single`).addClass('ktlNotValid_empty');
                             else
                                 $(`#${viewId}_${fieldId}_chzn .chzn-single`).removeClass('ktlNotValid_empty');
                         } else if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-multi`)) {
                             //Multi-selection dropdowns
-                            if (!document.querySelector(`#${viewId}_${fieldId}_chzn .result-selected`)) {
+                            if (document.querySelector(`#${viewId} #kn-input-${fieldId} .kn-required`) && !document.querySelector(`#${viewId}_${fieldId}_chzn .result-selected`)) {
                                 $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
                                 $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).addClass('ktlNotValid_empty');
                             } else {
@@ -9687,9 +9692,13 @@ function Ktl($, appInfo) {
                             $(document).trigger('KTL.preprocessView', Knack.views[viewId]);
 
                             if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
-                                if (viewType === 'form' && (formAction === 'insert' || formAction === 'create'))
-                                    $(document).trigger('KTL.loadFormData', viewId);
-                                else {
+                                if (viewType === 'form' && (formAction === 'insert' || formAction === 'create')) {
+                                    Knack.views[viewId].render();
+                                    setTimeout(() => {
+                                        $(document).trigger('KTL.loadFormData', viewId);
+                                        ktlProcessKeywords(view.attributes);
+                                    }, 1000);
+                                } else {
                                     if (triggerChange) {
                                         Knack.views[viewId].model.trigger('change');
                                         Knack.views[viewId].renderForm && Knack.views[viewId].renderForm();
