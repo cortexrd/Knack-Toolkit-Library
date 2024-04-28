@@ -12025,38 +12025,40 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                $(document).on('mouseenter', `${tooltipIconPosition} i.${tooltipIcon}`, function (e) {
-                    if (!$('.ktlTooltip').length) {
-                        const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`);
-                        tooltipElement.appendTo('body');
+                // Create the tooltip element once and reuse it
+                const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`).appendTo('body');
 
-                        const tooltipWidth = tooltipElement.outerWidth();
-                        const tooltipHeight = tooltipElement.outerHeight();
+                // Add event listeners directly to the elements that need them
+                $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
+                    const tooltipWidth = tooltipElement.outerWidth();
+                    const tooltipHeight = tooltipElement.outerHeight();
 
-                        let tooltipLeft = e.clientX - tooltipWidth / 2;
-                        let tooltipTop = e.clientY - tooltipHeight - 20;
+                    let tooltipLeft = e.clientX - tooltipWidth / 2;
+                    let tooltipTop = e.clientY - tooltipHeight - 20;
 
-                        if (tooltipLeft < 0) {
-                            tooltipLeft = 10;
-                        } else if (tooltipLeft + tooltipWidth > $(window).width()) {
-                            tooltipLeft = $(window).width() - tooltipWidth - 10;
-                        }
-
-                        if (tooltipTop < 0) {
-                            tooltipTop = e.clientY + 20;
-                        }
-
-                        tooltipElement.css({
-                            position: 'fixed',
-                            left: tooltipLeft + 'px',
-                            top: tooltipTop + 'px',
-                            zIndex: 1000
-                        });
+                    if (tooltipLeft < 0) {
+                        tooltipLeft = 10;
+                    } else if (tooltipLeft + tooltipWidth > $(window).width()) {
+                        tooltipLeft = $(window).width() - tooltipWidth - 10;
                     }
-                });
 
-                $(document).on('mouseleave', `${tooltipIconPosition} i.${tooltipIcon}`, function () {
-                    $('.ktlTooltip').remove();
+                    if (tooltipTop < 0) {
+                        tooltipTop = e.clientY + 20;
+                    }
+
+                    // Set the style properties directly on the element's style object
+                    Object.assign(tooltipElement[0].style, {
+                        position: 'fixed',
+                        left: tooltipLeft + 'px',
+                        top: tooltipTop + 'px',
+                        zIndex: 2000
+                    });
+
+                    // Show the tooltip
+                    tooltipElement.show();
+                }).on('mouseleave.ktlTooltip', function () {
+                    // Hide the tooltip
+                    tooltipElement.hide();
                 });
             },
 
