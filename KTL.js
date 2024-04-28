@@ -12025,11 +12025,9 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                // Add event listeners directly to the elements that need them
                 $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
                     const icon = $(this);
 
-                    // Create the tooltip element once and reuse it
                     const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`).appendTo('body');
                     const tooltipWidth = tooltipElement.outerWidth();
                     const tooltipHeight = tooltipElement.outerHeight();
