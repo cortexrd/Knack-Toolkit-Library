@@ -323,8 +323,8 @@ a.ktlSortDisabled {
 
 /* Set the tooltip text styles */
 .ktlTooltip {
+	display: none;
 	font-weight: 400;
-	position: absolute;
 	text-align: left;
 	border: 1px solid #000000;
 	border-radius: 5px;
