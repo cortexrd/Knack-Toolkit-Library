@@ -9542,7 +9542,7 @@ function Ktl($, appInfo) {
                                 );
 
                                 if (ktl.core.getCfg().enabled.persistentForm) {
-                                    $(document).off('KTL.persistentForm.completed.scene.required KTL.persistentForm.completed.view.required').on('KTL.persistentForm.completed.scene.required KTL.persistentForm.completed.view.required', function (e, params) {
+                                    $(document).off('KTL.persistentForm.completed.scene.ktl_req KTL.persistentForm.completed.view.ktl_req').on('KTL.persistentForm.completed.scene.ktl_req KTL.persistentForm.completed.view.ktl_req', function (e, params) {
                                         console.log('apply', e, params);
                                         applyRequestedFields();
                                     });
