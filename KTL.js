@@ -2275,16 +2275,18 @@ function Ktl($, appInfo) {
             })
 
             //Calendars
+            //...Date
             $(`#${viewId} .knack-date`).datepicker().change(function (e) {
                 processFieldChanged({ text: e.target.value, e: e });
             })
-            
+
+            //...Time
             $(`#${viewId} .kn-time`).timepicker().change(function (e) {
                 processFieldChanged({ text: e.target.value, e: e });
             })
 
             //More to come...
-            //TODO: multiple selection dropdowns
+            //TODO: multiple choices, all formats
 
             //For text input changes, see inputHasChanged
             function processFieldChanged({ text: text, recId: recId, e: e }) {
@@ -3153,7 +3155,7 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                //Process views keyword
+                //Process view keyword
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                     const kwList = ktl.core.getKeywordsByType(viewId, kw);
                     for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
@@ -6471,7 +6473,7 @@ function Ktl($, appInfo) {
             let viewId = view.key;
             var fieldsAr = [];
 
-            //Process views keyword
+            //Process view keyword
             const keywords = ktlKeywords[viewId];
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
                 let canBeProcessed = false;
@@ -6691,7 +6693,7 @@ function Ktl($, appInfo) {
                 }
             }
 
-            //Process views keyword
+            //Process view keyword
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const kwList = ktl.core.getKeywordsByType(viewId, kw);
                 for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
@@ -6908,7 +6910,7 @@ function Ktl($, appInfo) {
             const { key: viewId } = view;
             if (!viewId) return;
 
-            //Process views keyword
+            //Process view keyword
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const promises = ktl.core.getKeywordsByType(viewId, kw).map((keyword) => {
                     if (ktl.core.hasRoleAccess(keyword.options)) {
@@ -9487,22 +9489,6 @@ function Ktl($, appInfo) {
             let viewId = view.key;
             var fieldsAr = [];
 
-            //Process views keyword
-            const keywords = ktlKeywords[viewId];
-            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params.length) {
-                let canBeProcessed = false;
-
-                if (keywords[kw][0].options) {
-                    const options = keywords[kw][0].options;
-                    if (ktl.core.hasRoleAccess(options))
-                        canBeProcessed = true;
-                } else
-                    canBeProcessed = true;
-
-                if (canBeProcessed && keywords[kw][0].params && keywords[kw][0].params.length)
-                    fieldsAr = keywords[kw][0].params[0];
-            }
-
             //Process fields keywords
             var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             if (!$.isEmptyObject(fieldsWithKwObj)) {
@@ -9524,21 +9510,45 @@ function Ktl($, appInfo) {
                 }
             }
 
-            //Add other Required fields as set by the Builder.
-            const inputFields = Knack.views[viewId].getInputs();
-            for (inputField of inputFields) {
-                if (inputField.field.required && !fieldsAr.includes(inputField.field.key))
-                    fieldsAr.push(inputField.field.key);
+            //Process view keyword
+            const keywords = ktlKeywords[viewId];
+            if (keywords && keywords[kw] && keywords[kw].length) {
+                const kwList = ktl.core.getKeywordsByType(viewId, kw);
+                for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                    execKw(kwList[kwIdx]);
+                }
+
+                function execKw(kwInstance) {
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+
+                    ktl.views.validateKtlCond(options, {}, viewId)
+                        .then(valid => {
+                            if (valid) {
+                                const params = kwInstance.params[0];
+                                if (params.length < 1) return;
+
+                                fieldsAr.push(...kwInstance.params[0]);
+
+                                //Add other Required fields as set by the Builder.
+                                const inputFields = Knack.views[viewId].getInputs();
+                                for (inputField of inputFields) {
+                                    if (inputField.field.required && !fieldsAr.includes(inputField.field.key))
+                                        fieldsAr.push(inputField.field.key);
+                                }
+
+                                fieldsAr = fieldsAr.map(field =>
+                                    field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+                                );
+
+                                if (ktl.core.getCfg().enabled.persistentForm) {
+                                    $(document).on('KTL.persistentForm.completed.scene KTL.persistentForm.completed.view', applyRequestedFields);
+                                } else
+                                    applyRequestedFields();
+                            }
+                        })
+                }
             }
-
-            fieldsAr = fieldsAr.map(field =>
-                field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
-            );
-
-            if (ktl.core.getCfg().enabled.persistentForm) {
-                $(document).on('KTL.persistentForm.completed.scene KTL.persistentForm.completed.view', applyRequestedFields);
-            } else
-                applyRequestedFields();
 
             function applyRequestedFields() {
                 for (const fieldId of fieldsAr) {
@@ -9563,7 +9573,6 @@ function Ktl($, appInfo) {
                     } else if (fieldType === 'multiple_choice') {
                     } else if (fieldType === 'boolean') {
                     } else if (fieldType === 'rich_text') {
-                    } else if (fieldType === 'date_time') {
                     }
                 }
 
@@ -9593,10 +9602,13 @@ function Ktl($, appInfo) {
                                 $(`#${viewId}_${fieldId}_chzn .chzn-single`).removeClass('ktlNotValid_empty');
                         } else if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-multi`)) {
                             //Multi-selection dropdowns
-                            if (!document.querySelector(`#${viewId}_${fieldId}_chzn .result-selected`))
+                            if (!document.querySelector(`#${viewId}_${fieldId}_chzn .result-selected`)) {
                                 $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
-                            else
+                                $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).addClass('ktlNotValid_empty');
+                            } else {
                                 $((`#${viewId}_${fieldId}_chzn input`)).removeClass('ktlNotValid_empty');
+                                $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).removeClass('ktlNotValid_empty');
+                            }
                         }
 
                         ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
@@ -9618,7 +9630,6 @@ function Ktl($, appInfo) {
                 $(document).on('KTL.fieldValueChanged', (event, params) => {
                     const { viewId: eventViewId, fieldId, text, e} = params;
                     if (eventViewId === viewId && fieldsAr.includes(fieldId)) {
-                        console.log('params =', params);
                         validateNonEmptyTextField(e.target);
                     }
                 })
@@ -11986,7 +11997,7 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                //Process views keyword
+                //Process view keyword
                 if (keywords && !keywords[kw]) return;
 
                 const kwList = ktl.core.getKeywordsByType(viewId, kw);
