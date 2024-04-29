@@ -3500,8 +3500,7 @@ function Ktl($, appInfo) {
 
                 if (!formDataObjStr || $.isEmptyObject(JSON.parse(formDataObjStr))) {
                     ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA); //Wipe out if empty object, JIC.
-                    resolve();
-                    return;
+                    return resolve();
                 }
 
                 let formDataObj = {};
@@ -3520,6 +3519,8 @@ function Ktl($, appInfo) {
                 }
 
                 function loadDataForView(view) {
+                    if (view.type !== 'form') return;
+
                     if (view.action != 'insert' && view.action != 'create')  //Add only, not Edit or any other type
                         return;
 
@@ -3654,15 +3655,13 @@ function Ktl($, appInfo) {
                     if ($.isEmptyObject(formDataObj)) {
                         clearInterval(intervalId);
                         intervalId = null;
-                        resolve();
-                        return;
+                        return resolve();
                     }
                 }, 200);
 
                 setTimeout(function () { //Failsafe
                     clearInterval(intervalId);
-                    resolve();
-                    return;
+                    return resolve();
                 }, 10000);
             })
         }
@@ -9548,8 +9547,6 @@ function Ktl($, appInfo) {
                                     });
                                 } else
                                     applyRequestedFields();
-                            } else {
-                                console.log('not valid');
                             }
                         })
                 }
