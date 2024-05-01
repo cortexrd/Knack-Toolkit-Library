@@ -5944,7 +5944,7 @@ function Ktl($, appInfo) {
             bgColorPending: '#dd08',
             showSpinner: true,
             showNotification: true,
-            optionalClass: '',
+            optionalPendingClass: '',
         };
 
         const automatedBulkOpsQueue = {};
@@ -7679,8 +7679,8 @@ function Ktl($, appInfo) {
                     quickToggleObj[dt] = { viewId, fieldId, value, recId, processed: false };
                     const cell = $(e.target).closest('td');
                     cell.css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
-                    if (quickToggleParams.optionalClass) {
-                        cell.addClass(quickToggleParams.optionalClass);
+                    if (quickToggleParams.optionalPendingClass) {
+                        cell.addClass(quickToggleParams.optionalPendingClass);
                     }
                     clearTimeout(refreshTimer);
 
