@@ -7644,7 +7644,6 @@ function Ktl($, appInfo) {
                 }
             });
 
-
             // Update table colors
             if (!$.isEmptyObject(fieldsColor)) {
                 data.forEach(row => {
