@@ -7564,70 +7564,69 @@ function Ktl($, appInfo) {
             if (!viewId || data.length === 0 || ktl.scenes.isiFrameWnd()) return;
 
             const kw = '_qt';
-            var kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
+            let kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
             if (kwInstance && kwInstance.length) {
+                console.log('kwInstance', kwInstance);
                 kwInstance = kwInstance[0];
-                const options = kwInstance.options;
+                const { options } = kwInstance;
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            var qtScanItv = null;
-            var quickToggleObj = {};
-            var numToProcess = 0;
-            var refreshTimer = null;
-            var viewsToRefresh = [];
-            var viewModel = Knack.router.scene_view.model.views._byId[viewId];
+            let qtScanItv = null;
+            let quickToggleObj = {};
+            let numToProcess = 0;
+            let refreshTimer = null;
+            let viewsToRefresh = [];
+            const viewModel = Knack.router.scene_view.model.views._byId[viewId];
             if (!viewModel) return;
 
-            var viewAttr = viewModel.attributes;
-            const viewType = viewAttr.type;
+            const viewAttr = viewModel.attributes;
+            const { type: viewType } = viewAttr;
             if (!['table', 'search'].includes(viewType)) return;
 
-            var inlineEditing = false;
-            if (viewType === 'table')
-                inlineEditing = (viewAttr.options && viewAttr.options.cell_editor ? viewAttr.options.cell_editor : false);
-            else
-                inlineEditing = (viewAttr.cell_editor ? viewAttr.cell_editor : false);
+            const inlineEditing = viewType === 'table' ? (viewAttr.options && viewAttr.options.cell_editor) : viewAttr.cell_editor;
+            // Start with hard coded default colors.
+            let bgColorTrue = quickToggleParams.bgColorTrue;
+            let bgColorFalse = quickToggleParams.bgColorFalse;
 
-            //Start with hard coded default colors.
-            var bgColorTrue = quickToggleParams.bgColorTrue;
-            var bgColorFalse = quickToggleParams.bgColorFalse;
+            let viewHasQt = false;
+            // Override with view-specific colors, if any.
+            if (kwInstance) {
+                viewHasQt = true; // If view has QT, then all fields inherit also.
 
-            var fieldHasQt = false;
+                if (kwInstance.params && kwInstance.params.length) {
+                    const fldColors = kwInstance.params[0];
+                    if (fldColors.length >= 1 && fldColors[0])
+                        bgColorTrue = fldColors[0];
 
-            //Override with view-specific colors, if any.
-            if (kwInstance && kwInstance.params && kwInstance.params.length) {
-                fieldHasQt = true; //If view has QT, then all fields inherit also.
-                const fldColors = kwInstance.params[0];
-                if (fldColors.length >= 1 && fldColors[0])
-                    bgColorTrue = fldColors[0];
-
-                if (fldColors.length >= 2 && fldColors[1])
-                    bgColorFalse = fldColors[1];
+                    if (fldColors.length >= 2 && fldColors[1])
+                        bgColorFalse = fldColors[1];
+                }
             }
 
-            var fieldKeywords = {};
-            var fieldsColor = {};
-            const cols = (viewType === 'table' ? viewAttr.columns : viewAttr.results.columns);
-            for (var i = 0; i < cols.length; i++) {
-                var col = cols[i];
+            let fieldKeywords = {};
+            let fieldsColor = {};
+            const cols = viewType === 'table' ? viewAttr.columns : viewAttr.results.columns;
+            cols.forEach(col => {
                 if (col.type === 'field' && col.field && col.field.key) {
-                    var field = Knack.objects.getField(col.field.key);
-                    if (field && !col.connection) { //Field must be local to view's object, not a connected field.
+                    const field = Knack.objects.getField(col.field.key);
+                    if (field && !col.connection) { // Field must be local to view's object, not a connected field.
                         if (field.attributes.type === 'boolean') {
-                            const fieldId = col.field.key;
+                            let fieldHasQt = false;
+                            const { key: fieldId } = col.field;
 
-                            //Override with field-specific colors, if any.
-                            var tmpFieldColors = {
+                            // Override with field-specific colors, if any.
+                            let tmpFieldColors = {
                                 bgColorTrue: bgColorTrue,
                                 bgColorFalse: bgColorFalse
                             }
 
                             ktl.fields.getFieldKeywords(fieldId, fieldKeywords);
-                            if (fieldKeywords[fieldId] && fieldKeywords[fieldId]._qt) {
+                            const fieldKeyword = fieldKeywords[fieldId] && fieldKeywords[fieldId][kw];
+                            if (viewHasQt || fieldKeyword) {
                                 fieldHasQt = true;
-                                if (fieldKeywords[fieldId]._qt.length && fieldKeywords[fieldId]._qt[0].params && fieldKeywords[fieldId]._qt[0].params.length > 0) {
-                                    const fldColors = fieldKeywords[fieldId]._qt[0].params[0];
+                                if (fieldKeyword && fieldKeyword.length && fieldKeyword[0].params && fieldKeyword[0].params.length > 0) {
+                                    const fldColors = fieldKeyword[0].params[0];
                                     if (fldColors.length >= 1 && fldColors[0] !== '')
                                         tmpFieldColors.bgColorTrue = fldColors[0];
                                     if (fldColors.length >= 2 && fldColors[1] !== '')
@@ -7638,12 +7637,13 @@ function Ktl($, appInfo) {
                             if (fieldHasQt) {
                                 fieldsColor[fieldId] = tmpFieldColors;
                                 if (inlineEditing && !col.ignore_edit)
-                                    $('#' + viewId + ' td.' + fieldId + '.cell-edit').addClass('qtCellClickable');
+                                    $(`#${viewId} td.${fieldId}.cell-edit`).addClass('qtCellClickable');
                             }
                         }
                     }
                 }
-            }
+            });
+
 
             //Update table colors
             if (!$.isEmptyObject(fieldsColor)) {
