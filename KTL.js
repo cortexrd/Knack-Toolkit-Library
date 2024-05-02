@@ -7567,7 +7567,6 @@ function Ktl($, appInfo) {
             const kw = '_qt';
             let kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
             if (kwInstance && kwInstance.length) {
-                console.log('kwInstance', kwInstance);
                 kwInstance = kwInstance[0];
                 const { options } = kwInstance;
                 if (!ktl.core.hasRoleAccess(options)) return;
