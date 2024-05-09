@@ -16828,6 +16828,39 @@ function Ktl($, appInfo) {
                 }
             },
 
+            countKeywords: function (obj) {
+                const propertyCount = {};
+
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        const subObj = obj[key];
+                        for (const subKey in subObj) {
+                            // Check if the property starts with an underscore followed by at least one letter
+                            if (/^_[a-zA-Z]/.test(subKey)) {
+                                if (!propertyCount[subKey]) {
+                                    propertyCount[subKey] = 0;
+                                }
+                                propertyCount[subKey]++;
+                            }
+                        }
+                    }
+                }
+
+                // Convert to sorted array
+                const sortedProperties = Object.keys(propertyCount).map(key => {
+                    return { key, count: propertyCount[key] };
+                }).sort((a, b) => b.count - a.count);
+
+                // Create a new object with sorted properties
+                const sortedObject = {};
+                sortedProperties.forEach(item => {
+                    sortedObject[item.key] = item.count;
+                });
+
+                return JSON.stringify(sortedObject, null, 2);
+
+            },
+
             getLinuxDeviceInfo: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
@@ -18049,6 +18082,11 @@ window.ktlpause = function () {
 
 window.kw2str = function (depth = 10) {
     ktl.sysInfo.keywordsToString(depth);
+}
+
+window.kwcount = function () {
+    const kwCount = ktl.sysInfo.countKeywords(ktlKeywords);
+    console.log('Count of each KTL Keywords:\n\n', kwCount);
 }
 
 function ktlCompare(a, operator, b) {
