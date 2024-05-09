@@ -587,9 +587,9 @@
                                     <label for="showNotification">Show Notification</label>
                                     <input type="checkbox" id="showNotification" checked>
                                 </div>
-                                <div class="checkbox-inline">
+                                <div class="form-inline">
                                     <label for="pendingClass">Pending Class</label>
-                                    <input type="checkbox" id="pendingClass" checked>
+                                    <input type="text" class="form-control" id="pendingClass" value="">
                                 </div>
                             </fieldset>
 
@@ -1064,7 +1064,7 @@
                 bgColorPending: document.getElementById('bgColorPending').value,
                 showSpinner: document.getElementById('showSpinner').checked,
                 showNotification: document.getElementById('showNotification').checked,
-                pendingClass: document.getElementById('pendingClass').checked,
+                pendingClass: document.getElementById('pendingClass').value,
             };
 
             const fieldsSettings = {
@@ -1389,7 +1389,7 @@ window.ktlReady = function (appInfo = {}) {
                         bgColorPending: document.getElementById('bgColorPending').value,
                         showSpinner: document.getElementById('showSpinner').checked,
                         showNotification: document.getElementById('showNotification').checked,
-                        pendingClass: document.getElementById('pendingClass').checked,
+                        pendingClass: document.getElementById('pendingClass').value,
                     },
                     headerAlignment: document.getElementById('headerAlignment').checked,
                     ktlFlashRate: document.getElementById('ktlFlashRate').value,
@@ -1547,7 +1547,7 @@ window.ktlReady = function (appInfo = {}) {
                     document.getElementById('bgColorPending').value = qtParams.bgColorPending;
                     document.getElementById('showSpinner').checked = qtParams.showSpinner;
                     document.getElementById('showNotification').checked = qtParams.showNotification;
-                    document.getElementById('pendingClass').checked = qtParams.pendingClass;
+                    document.getElementById('pendingClass').value = qtParams.pendingClass;
                     document.getElementById('headerAlignment').checked = config.viewsSettings.headerAlignment;
                     document.getElementById('ktlFlashRate').value = config.viewsSettings.ktlFlashRate;
                     document.getElementById('ktlOutlineColor').value = config.viewsSettings.ktlOutlineColor;
