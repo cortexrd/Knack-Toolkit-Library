@@ -1205,7 +1205,7 @@ window.ktlReady = function (appInfo = {}) {
             bgColorPending: '${quickToggleParams.bgColorPending}',
             showSpinner: ${quickToggleParams.showSpinner},
             showNotification: ${quickToggleParams.showNotification},
-            pendingClass: ${quickToggleParams.pendingClass},
+            pendingClass: '${quickToggleParams.pendingClass}',
         },
 
         headerAlignment: ${document.getElementById('headerAlignment').checked},
@@ -1547,7 +1547,7 @@ window.ktlReady = function (appInfo = {}) {
                     document.getElementById('bgColorPending').value = qtParams.bgColorPending;
                     document.getElementById('showSpinner').checked = qtParams.showSpinner;
                     document.getElementById('showNotification').checked = qtParams.showNotification;
-                    document.getElementById('pendingClass').value = qtParams.pendingClass;
+                    document.getElementById('pendingClass').value = qtParams.pendingClass ? qtParams.pendingClass:'';
                     document.getElementById('headerAlignment').checked = config.viewsSettings.headerAlignment;
                     document.getElementById('ktlFlashRate').value = config.viewsSettings.ktlFlashRate;
                     document.getElementById('ktlOutlineColor').value = config.viewsSettings.ktlOutlineColor;
