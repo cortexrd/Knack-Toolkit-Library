@@ -5938,13 +5938,13 @@ function Ktl($, appInfo) {
         var gotoDateObj = new Date();
         var prevType = '';
         var prevStartDate = '';
-        var quickToggleParams = {
+        let quickToggleParams = {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
             bgColorPending: '#dd08',
             showSpinner: true,
             showNotification: true,
-            optionalPendingClass: '',
+            pendingClass: '',
         };
 
         const automatedBulkOpsQueue = {};
@@ -7678,8 +7678,8 @@ function Ktl($, appInfo) {
                     quickToggleObj[dt] = { viewId, fieldId, value, recId, processed: false };
                     const cell = $(e.target).closest('td');
                     cell.css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
-                    if (quickToggleParams.optionalPendingClass) {
-                        cell.addClass(quickToggleParams.optionalPendingClass);
+                    if (quickToggleParams.pendingClass) {
+                        cell.addClass(quickToggleParams.pendingClass);
                     }
                     clearTimeout(refreshTimer);
 

@@ -116,6 +116,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 //        bgColorPending: '#dd08',
                 //        showSpinner: true,
                 //        showNotification: true,
+                //        pendingClass: '',
                 //    },
                 headerAlignment: true,
                 ktlFlashRate: '1s',
