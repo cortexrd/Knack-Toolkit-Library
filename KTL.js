@@ -2303,6 +2303,7 @@ function Ktl($, appInfo) {
         })
 
         $(document).on('KTL.persistentForm.completed.scene', function (event, viewOrScene) {
+            //This is required because when removing the last option from a multiple selection dropdown, the change event is not fired.
             $('.search-choice-close').off('click.ktl_removeoption').bindFirst('click.ktl_removeoption', function (e) {
                 const [viewId, fieldId] = $(e.target).closest('.kn-input-connection').find('.chzn-select').attr('id').split('-');
 
@@ -3265,7 +3266,9 @@ function Ktl($, appInfo) {
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) return;
 
-            if (previousScene !== scene.key) {
+            if (!previousScene)
+                previousScene = scene.key;
+            else if (previousScene !== scene.key) {
                 previousScene = scene.key;
 
                 for (const viewId in currentViews)
@@ -3326,11 +3329,10 @@ function Ktl($, appInfo) {
                         isInitialized = true;
                         setTimeout(() => {
                             ktl.fields.enforceNumeric();
-                            $(`#${view.key}`).addClass('ktlPersistenFormLoadedView');
-                            $(document).trigger(`KTL.persistentForm.completed.view.${view.key}`, view.key);
                         }, 1000);
                     })
-            }
+            } else
+                $(document).trigger('KTL.loadFormData', view.key);
         });
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
@@ -3488,13 +3490,12 @@ function Ktl($, appInfo) {
                 .then(() => {
                     setTimeout(() => {
                         ktl.fields.enforceNumeric();
-                        $(`#${viewId}`).addClass('ktlPersistenFormLoadedView');
-                        $(document).trigger(`KTL.persistentForm.completed.view.${viewId}`, viewId);
                     }, 1000);
                 })
         })
 
-        //Loads any data previously saved for all fields in all forms.
+        //Loads any data previously saved for all fields in forms.
+        //If a viewId is supplied, only this form will be processed, otherwise all forms in scene.
         //Also adds Change event handlers for dropdowns and calendars.   Eventually, support all object types.
         //After loading, re-validates numeric fields and put errors in pink.
         let allViewsDone = [];
@@ -3505,6 +3506,8 @@ function Ktl($, appInfo) {
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
                 if (!formDataObjStr || $.isEmptyObject(JSON.parse(formDataObjStr))) {
                     ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA); //Wipe out if empty object, JIC.
+                    $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
+                    $(document).trigger('KTL.persistentForm.completed.scene', [Knack.router.scene_view.model]);
                     return resolve();
                 }
 
@@ -3516,12 +3519,24 @@ function Ktl($, appInfo) {
                     if (view && view.attributes)
                         loadDataForView(view.attributes)
                             .then(() => {
-                                return resolve();
+                                if (view.attributes.type === 'form' && (view.attributes.action === 'insert' || view.attributes.action === 'create')) {
+                                    $(`#${view.attributes.key}`).addClass('ktlPersistenFormLoadedView');
+                                    $(document).trigger(`KTL.persistentForm.completed.view.${view.attributes.key}`, view.attributes.key);
+                                    return resolve();
+                                }
                             })
                 } else {
                     //All views in scene.
                     Knack.router.scene_view.model.views.models.map(model => model.attributes).forEach(view => {
-                        allViewsDone.push(loadDataForView(view));
+                        allViewsDone.push(
+                            loadDataForView(view)
+                                .then(() => {
+                                    if (view.type === 'form' && (view.action === 'insert' || view.action === 'create')) {
+                                        $(`#${view.key}`).addClass('ktlPersistenFormLoadedView');
+                                        $(document).trigger(`KTL.persistentForm.completed.view.${view.key}`, view.key);
+                                    }
+                                })
+                        );
                     })
 
                     Promise.all(allViewsDone)
@@ -3536,11 +3551,8 @@ function Ktl($, appInfo) {
                         if (view.type !== 'form') return resolve();
 
                         //Add only, not Edit or any other type
-                        if (view.action != 'insert' && view.action != 'create') {
-                            $(`#${view.key}`).addClass('ktlPersistenFormLoadedView');
-                            $(document).trigger(`KTL.persistentForm.completed.view.${view.key}`, view.key);
+                        if (view.action != 'insert' && view.action != 'create')
                             return resolve();
-                        }
 
                         const viewData = JSON.parse(formDataObjStr)[view.key];
                         if (!viewData) return resolve();
@@ -9552,7 +9564,6 @@ function Ktl($, appInfo) {
                                 );
 
                                 if (ktl.core.getCfg().enabled.persistentForm) {
-                                    //$(document).off('KTL.persistentForm.completed.scene.ktl_req KTL.persistentForm.completed.view.ktl_req').on('KTL.persistentForm.completed.scene.ktl_req KTL.persistentForm.completed.view.ktl_req', function (e, params) {
                                     $(document).off(`KTL.persistentForm.completed.view.${viewId}.ktl_req`).on(`KTL.persistentForm.completed.view.${viewId}.ktl_req`, function (e, params) {
                                         applyRequestedFields();
                                     });
@@ -9701,11 +9712,28 @@ function Ktl($, appInfo) {
 
                             if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
                                 if (viewType === 'form') {
-                                    Knack.views[viewId].render();
-                                    setTimeout(() => {
-                                        $(document).trigger('KTL.loadFormData', viewId);
-                                        ktlProcessKeywords(view.attributes);
-                                    }, 1000);
+                                    if (formAction !== 'insert' && formAction !== 'create') {
+                                        Knack.views[viewId].model.fetch({
+                                            success: function (model, response, options) {
+                                                Knack.views[viewId].render();
+
+                                                setTimeout(() => {
+                                                    $(document).trigger('KTL.loadFormData', viewId);
+                                                    ktlProcessKeywords(view.attributes);
+                                                }, 1000);
+                                            },
+                                            error: function (model, response, options) {
+                                                console.log('tryRefresh error', viewId, response);
+                                            }
+                                        });
+                                    } else {
+                                        Knack.views[viewId].render();
+
+                                        setTimeout(() => {
+                                            $(document).trigger('KTL.loadFormData', viewId);
+                                            ktlProcessKeywords(view.attributes);
+                                        }, 1000);
+                                    }
                                 } else {
                                     if (triggerChange) {
                                         Knack.views[viewId].model.trigger('change');
@@ -9714,11 +9742,10 @@ function Ktl($, appInfo) {
                                     }
 
                                     //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
-                                    if (viewType !== 'search') //Skip here, otherwise will erase the search form section.
-                                        Knack.views[viewId].render();
-                                    else {
+                                    if (viewType === 'search') //Do not call render() in search views because it erases the top form section.
                                         Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-                                    }
+                                    else
+                                        Knack.views[viewId].render();
 
                                     Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
@@ -16627,6 +16654,10 @@ function Ktl($, appInfo) {
                                                 addToVersionInfoBar(deviceInfo);
                                                 let sysInfo = ktl.sysInfo.getSysInfo();
                                                 sysInfo.keyboardDetected = deviceInfo.keyboardDetected;
+
+                                                //TODO: investigate why this doesn't work.  Goal: if service comes back (ex: manual restart), remove classes.
+                                                //if ($('#additionalInfoDiv').length)
+                                                //    $('#additionalInfoDiv').removeClass('ktlFlashingOnOff ktlOfflineStatus');
                                             }
                                         } else {
                                             //Force a kiosk-app update.
@@ -16658,6 +16689,10 @@ function Ktl($, appInfo) {
                                     })
                                     .catch(reason => {
                                         console.error(reason);
+
+                                        if ($('#additionalInfoDiv').length)
+                                            $('#additionalInfoDiv').addClass('ktlFlashingOnOff ktlOfflineStatus');
+
                                         if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name))
                                             ktl.core.timedPopup('Reset WD error: ' + reason, 'error');
                                         wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY;
