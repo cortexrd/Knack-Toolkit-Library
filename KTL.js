@@ -1473,7 +1473,7 @@ function Ktl($, appInfo) {
                     else if (ktlTarget === 'scene')
                         ktlTarget = '$(".kn-scene")';
 
-                    const isJQueryTarget = ktl.core.extractJQuerySelector(ktlTarget, viewId, fieldId);
+                    const isJQueryTarget = ktl.core.extractJQuerySelector(ktlTarget, viewId);
                     if (isJQueryTarget) {
                         targetSel = isJQueryTarget;
                     }
@@ -1550,13 +1550,12 @@ function Ktl($, appInfo) {
             //Ex1: $('#view_100 .field_200')
             //Ex2: $("li.menu-links__list-item:contains('Prev. Stay Info')")
             //MUST NOT include any backslashes for escaped characters like \' for quotes.
-            extractJQuerySelector: function (selector, viewId, fieldId) {
+            extractJQuerySelector: function (selector, viewId) {
                 if ((selector.startsWith("$('") && selector.endsWith("')"))
                     || (selector.startsWith('$("') && selector.endsWith('")'))
                     || (selector.startsWith('$(`') && selector.endsWith('`)'))) {
                     let extractedSelector = selector.substring(3, selector.length - 2);
                     extractedSelector = extractedSelector.replace('${viewId}', viewId);
-                    extractedSelector = extractedSelector.replace('${fieldId}', fieldId);
 
                     return extractedSelector;
                 }
