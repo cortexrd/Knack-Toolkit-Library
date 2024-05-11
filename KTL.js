@@ -1555,7 +1555,7 @@ function Ktl($, appInfo) {
                     || (selector.startsWith('$("') && selector.endsWith('")'))
                     || (selector.startsWith('$(`') && selector.endsWith('`)'))) {
                     let extractedSelector = selector.substring(3, selector.length - 2);
-                    extractedSelector = extractedSelector.replace('${viewId}', viewId);
+                    extractedSelector = extractedSelector.replace(/\$\{viewId\}/g, viewId);
 
                     return extractedSelector;
                 }
