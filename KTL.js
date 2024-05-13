@@ -1280,7 +1280,7 @@ function Ktl($, appInfo) {
                     let viewId = optionalViewId;
                     let fieldId;
 
-                    const isJQueryTarget = ktl.core.extractJQuerySelector(selector);
+                    const isJQueryTarget = ktl.core.extractJQuerySelector(selector, viewId);
                     if (isJQueryTarget) {
                         selector = isJQueryTarget;
                     } else {
@@ -1473,7 +1473,7 @@ function Ktl($, appInfo) {
                     else if (ktlTarget === 'scene')
                         ktlTarget = '$(".kn-scene")';
 
-                    const isJQueryTarget = ktl.core.extractJQuerySelector(ktlTarget, viewId, fieldId);
+                    const isJQueryTarget = ktl.core.extractJQuerySelector(ktlTarget, viewId);
                     if (isJQueryTarget) {
                         targetSel = isJQueryTarget;
                     }
@@ -1550,13 +1550,12 @@ function Ktl($, appInfo) {
             //Ex1: $('#view_100 .field_200')
             //Ex2: $("li.menu-links__list-item:contains('Prev. Stay Info')")
             //MUST NOT include any backslashes for escaped characters like \' for quotes.
-            extractJQuerySelector: function (selector, viewId, fieldId) {
+            extractJQuerySelector: function (selector, viewId) {
                 if ((selector.startsWith("$('") && selector.endsWith("')"))
                     || (selector.startsWith('$("') && selector.endsWith('")'))
                     || (selector.startsWith('$(`') && selector.endsWith('`)'))) {
                     let extractedSelector = selector.substring(3, selector.length - 2);
-                    extractedSelector = extractedSelector.replace('${viewId}', viewId);
-                    extractedSelector = extractedSelector.replace('${fieldId}', fieldId);
+                    extractedSelector = extractedSelector.replace(/\$\{viewId\}/g, viewId);
 
                     return extractedSelector;
                 }
@@ -7392,7 +7391,7 @@ function Ktl($, appInfo) {
 
                     if (options && options.ktlTarget) {
                         let colNb;
-                        const isJQueryTarget = ktl.core.extractJQuerySelector(options.ktlTarget);
+                        const isJQueryTarget = ktl.core.extractJQuerySelector(options.ktlTarget, viewId);
                         if (isJQueryTarget)
                             targetSel = isJQueryTarget;
                         else {
@@ -11380,7 +11379,7 @@ function Ktl($, appInfo) {
                     }
 
                     if (field.startsWith('$(')) {
-                        const selector = ktl.core.extractJQuerySelector(field);
+                        const selector = ktl.core.extractJQuerySelector(field, viewId);
                         ktl.core.waitSelector(selector, 10000).then(() => {
                             const fieldValue = $(selector)[0].textContent.trim();
                             if (!fieldValue || !ktlCompare(fieldValue, operator, value))
@@ -11507,7 +11506,7 @@ function Ktl($, appInfo) {
 
                     function allViewsReady() {
                         if (field.startsWith('$(')) {
-                            const selector = ktl.core.extractJQuerySelector(field);
+                            const selector = ktl.core.extractJQuerySelector(field, viewId);
                             ktl.core.waitSelector(selector, 10000).then(() => {
                                 const fieldValue = $(selector)[0].textContent.trim();
                                 if (!fieldValue || !ktlCompare(fieldValue, operator, value))
@@ -11711,7 +11710,7 @@ function Ktl($, appInfo) {
                     const viewType = ktl.views.getViewType(viewId);
 
                     if (viewType === 'table' || viewType === 'search' || viewType === 'list') {
-                        const isJQueryTarget = kwInstance.options && kwInstance.options.ktlTarget && ktl.core.extractJQuerySelector(kwInstance.options.ktlTarget);
+                        const isJQueryTarget = kwInstance.options && kwInstance.options.ktlTarget && ktl.core.extractJQuerySelector(kwInstance.options.ktlTarget, viewId);
                         if (isJQueryTarget)
                             processClass(options);
                         else {
