@@ -5412,6 +5412,9 @@ function Ktl($, appInfo) {
 
                     if (filter.index >= 0)
                         filterName = filterObject.filterName;
+
+                    if (!collapsed)
+                        collapsed = filterObject.collapsed;
                 } else {
                     const activeFilterName = getActiveFilterName(filterDivId);
 
@@ -12346,7 +12349,7 @@ function Ktl($, appInfo) {
                         return; // Skip Bulk Checkboxes Column
 
                     if (!$(this).find('.ktlHideShowColumnIcon').length) {
-                        $(this).prepend('<i class="ktlHideShowColumnIcon fa fa-caret-left" />');
+                        $(this).prepend(`<i class="ktlHideShowColumnIcon fa fa-caret-left" title="${$(this).text().trim()}"/>`);
                     }
                 });
 
@@ -12392,7 +12395,9 @@ function Ktl($, appInfo) {
                         collapsedColumnClickEvent.stopPropagation();
                         collapsedColumnClickEvent.stopImmediatePropagation();
 
-                        showColumn(viewId, collapsedColumnClickEvent.currentTarget.cellIndex + 1);
+                        const columnIndex = $(collapsedColumnClickEvent.currentTarget).index(); 
+
+                        $(collapsedColumnClickEvent.currentTarget).closest(".kn-table").find("thead th").eq(columnIndex).find("i.ktlHideShowColumnIcon").click();
                     });
                 }
 
