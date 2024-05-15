@@ -60,6 +60,7 @@ window.KnackApp = function ($, appInfo = {}) {
                         bulkEdit: true,
                         bulkCopy: true,
                         bulkDelete: true,
+                        bulkAction: true,
                     },
                 },
 

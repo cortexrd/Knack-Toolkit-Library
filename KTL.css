@@ -400,7 +400,7 @@ a.ktlSortDisabled {
 .menuDiv {
 	background-color: #dfe8ff;
 	position: fixed;
-	z-index: 3;
+	z-index: 6;
 	white-space: nowrap;
 }
 

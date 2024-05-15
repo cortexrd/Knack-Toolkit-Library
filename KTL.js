@@ -5987,89 +5987,42 @@ function Ktl($, appInfo) {
             });
         })
 
-        // Throttle function that calls the func at the first event and ignores subsequent events for 'limit' milliseconds
-        function throttle(func, limit) {
-            let lastFunc;
-            let lastRan;
-            return function () {
-                const context = this;
-                const args = arguments;
-                if (!lastRan) {
-                    func.apply(context, args);
-                    lastRan = Date.now();
-                } else {
-                    clearTimeout(lastFunc);
-                    lastFunc = setTimeout(function () {
-                        if ((Date.now() - lastRan) >= limit) {
-                            func.apply(context, args);
-                            lastRan = Date.now();
-                        }
-                    }, limit - (Date.now() - lastRan));
-                }
+        //To prevent double renderings of views.
+        //This includes the Summary and Group renderings.
+        function throttledViewReady (event, view, data) {
+            const viewId = view.key;
+
+            if (viewsReadyProcessing[viewId])
+                return;
+            else {
+                viewsReadyProcessing[viewId] = true;
+                setTimeout(() => {
+                    delete viewsReadyProcessing[viewId];
+                }, 2000);
+
+                $(document).trigger('KTL.viewRender', [view, data]);
             }
         }
 
+        $(document).on('KTL.viewRender', (event, view, data) => {
+            const viewId = view.key;
+
+            console.log('ready =', viewId);
+            console.log(event, view, data);
+
+            if (ktl.views.viewHasSummary(viewId))
+                readSummaryValues(viewId);
+
+            ktlProcessKeywords(view, data);
+        })
+
         //Object that keeps a render count for each viewId that has a summary and groups.
-        const viewWithSummaryRenderCounts = {};
+        const viewsReadyProcessing = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
-            if (ktl.views.viewHasSummary(viewId)) {
-                if (ktl.views.viewHasGroups(viewId)) {
-                    viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
-
-                    const numberOfSummaryLines = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
-                    const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
-
-                    if (viewWithSummaryRenderCounts[viewId] === 2) {
-                        viewWithSummaryRenderCounts[viewId] = 0;
-                        ktlProcessKeywords(view, data);
-                    } else {
-                        if (numberOfSummaryLines === 1 && !noData) {
-                            if (Knack.models[viewId].results_model) {
-                                Knack.models[viewId].results_model.fetch();
-                                return;
-                            }
-                        }
-                    }
-
-                    if (viewWithSummaryRenderCounts[viewId] > 2 || !(numberOfSummaryLines === 1 && !noData))
-                        viewWithSummaryRenderCounts[viewId] = 0;
-                }
-
-                /* This code is needed for keywords that may require summary data to achieve their task.
-
-                Since the summaries are rendered "a bit later" than the rest of the grid data,
-                we must find a way to capture the summary data BEFORE applying the keywords.
-
-                The function ktlRenderTotals below replaces Knack's original renderTotals.
-                Doing this allows us to gain control over WHEN the summary has completed rendering.
-                At that prceise moment, it's time to capture the summary data in an object for eventual processing.
-
-                *** A big thank you to Charles Brunelle who taught me this amazing technique - Normand D. */
-
-                var ktlRenderTotals = function () {
-                    if (Knack.views[viewId].ktlRenderTotals) {
-                        Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
-
-                        readSummaryValues(viewId);
-                        ktlProcessKeywords(view, data);
-                    }
-                };
-
-                if (!Knack.views[viewId].ktlRenderTotals || Knack.views[viewId].renderTotals !== Knack.views[viewId].ktlRenderTotals.ktlPost) {
-                    Knack.views[viewId].ktlRenderTotals = {
-                        original: Knack.views[viewId].renderTotals,
-                        ktlPost: ktlRenderTotals
-                    }
-
-                    Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
-                } else { //When data has changed, but the functions remain the same.
-                    Knack.views[viewId].ktlRenderTotals.ktlPost = ktlRenderTotals;
-                    Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
-                }
-            } else
-                ktlProcessKeywords(view, data);
+            //This is Knack's event that is triggered afer the view render, AND after the summary and group renderings.
+            $(document).on('knack-view-ready.' + viewId, throttledViewReady(event, view, data));
 
             ktl.views.addViewId(view);
 
@@ -6281,7 +6234,8 @@ function Ktl($, appInfo) {
                     keywords._asf && autoSubmitForm(viewId, keywords);
                 }
 
-                //This section is for features that can be applied even without a keyword.
+                //This section is for features that can be applied with or without a keyword.
+                //When used without a keyword, they are controlled by a global flag.
                 headerAlignment(view, keywords);
 
                 //This section is for keywords that are supported by views and fields.
@@ -6851,6 +6805,7 @@ function Ktl($, appInfo) {
                 { operation: 'bulkEdit', role: 'Bulk Edit' },
                 { operation: 'bulkCopy', role: 'Bulk Copy' },
                 { operation: 'bulkDelete', role: 'Bulk Delete' },
+                { operation: 'bulkAction', role: 'Bulk Action' },
             ];
 
             const userRoles = Knack.getUserRoleNames();
@@ -8213,6 +8168,13 @@ function Ktl($, appInfo) {
                         }
                     })
                 } else { //No button
+                    //Is there a link to click at all?
+                    const firstLink = !!$(`#${viewId} .kn-action-link:textEquals("${actionLinkText}"), #${viewId} .knViewLink__label:textEquals("${actionLinkText}")`).length;
+                    if (!firstLink) {
+                        resetState();
+                        return;
+                    }
+
                     if (needConfirm) {
                         if (confirm(`Proceed with auto-click on ${actionLinkText}?`)) {
                             clickCurrentlyRunning.actionLinkText = actionLinkText;
@@ -8248,7 +8210,8 @@ function Ktl($, appInfo) {
                                         if (linkSelector.length) {
                                             const recId = linkSelector[0].closest('tr').id;
                                             if (recId !== clickCurrentlyRunning.lastRecIdProcessed) {
-                                                linkSelector[0].classList.add('ktlOutline');
+                                                const outlineElement = linkSelector.closest('.kn-table-link');
+                                                outlineElement.addClass('ktlOutline');
                                                 clickCurrentlyRunning.lastRecIdProcessed = recId;
                                                 linkSelector[0].click();
                                             } else
@@ -9760,7 +9723,10 @@ function Ktl($, appInfo) {
                                     success: function (model, response, options) {
                                         if (['details', 'table' /*more types?*/].includes(viewType)) {
                                             //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
-                                            Knack.views[viewId].render();
+
+                                            if (viewType !== 'table')
+                                                Knack.views[viewId].render();
+
                                             Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                             Knack.views[viewId].postRender && Knack.views[viewId].postRender();
                                         }
@@ -12914,7 +12880,7 @@ function Ktl($, appInfo) {
                     sceneChangeObservers = [];
                 }
             }
-        }, 100);
+        }, 250);
 
         function addMenuTitleToTab() {
             var page = ktl.core.getMenuInfo().page;
@@ -15628,6 +15594,12 @@ function Ktl($, appInfo) {
         $(document).on('click', function (e) {
             if (ktl.scenes.isiFrameWnd()) return;
 
+            let viewId;
+            const view = e.target.closest('[class*="view_"][id^="view_"]');
+            if (view)
+                viewId = view.getAttribute('id');
+            if (!viewId) return;
+
             if (e.target.closest('tr')) {
                 if (e.target.getAttribute('type') === 'checkbox') {
                     if (preventClick) {
@@ -15636,28 +15608,24 @@ function Ktl($, appInfo) {
                         return;
                     }
 
-                    var viewId = e.target.closest('[class*="view_"][id^="view_"]');
-                    if (viewId) {
-                        viewId = viewId.getAttribute('id');
-                        if (e.target.closest('td')) //If click in td row, uncheck master checkbox in header.
-                            $('.' + viewId + '.kn-table thead tr input[type=checkbox]').first().prop('checked', false);
+                    if (e.target.closest('td')) //If click in td row, uncheck master checkbox in header.
+                        $('.' + viewId + '.kn-table thead tr input[type=checkbox]').first().prop('checked', false);
 
-                        //If check boxes spread across more than one view, discard all and start again in current target view.
-                        if (bulkOpsViewId !== viewId) {
-                            if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
-                                $('.' + bulkOpsViewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
-                                $('.' + bulkOpsViewId + '.kn-table tbody tr input[type=checkbox]').each(function () {
-                                    $(this).prop('checked', false);
-                                });
+                    //If check boxes spread across more than one view, discard all and start again in current target view.
+                    if (bulkOpsViewId !== viewId) {
+                        if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
+                            $('.' + bulkOpsViewId + '.kn-table thead tr input[type=checkbox]').prop('checked', false);
+                            $('.' + bulkOpsViewId + '.kn-table tbody tr input[type=checkbox]').each(function () {
+                                $(this).prop('checked', false);
+                            });
 
-                                updateBulkOpsGuiElements(bulkOpsViewId);
-                            }
-
-                            bulkOpsViewId = viewId;
+                            updateBulkOpsGuiElements(bulkOpsViewId);
                         }
 
-                        updateBulkOpsGuiElements(viewId);
+                        bulkOpsViewId = viewId;
                     }
+
+                    updateBulkOpsGuiElements(viewId);
                 }
             }
         })
@@ -15697,6 +15665,7 @@ function Ktl($, appInfo) {
 
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
         //Called upon each view rendering.
+        let bulkActionColumnIndex = null;
         function enableBulkOperations(view, data) {
             var viewObj = ktl.views.getViewObj(view.key);
             if (!viewObj) return;
@@ -15710,7 +15679,7 @@ function Ktl($, appInfo) {
                     addBulkOpsGuiElements(view, data);
                 }
 
-                //Tried this also but not better.  We still lose checkboxes one time out of 10.
+                //Tried this also but not better.  We still lose checkboxes once out of 10.
                 //    $(document).off('KTL.' + view.key + '.totalsRendered.').on('KTL.' + view.key + '.totalsRendered.', () => {
                 //        addBulkOpsGuiElements(view, data);
                 //    })
@@ -15723,45 +15692,117 @@ function Ktl($, appInfo) {
                 //there are groups and / or summaries.  Otherwise we get bad layout.
                 ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden')
                     .then(() => {
-                        bulkOpsAddCheckboxesToTable(view.key);
-                        ktl.views.fixTableRowsAlignment(view.key);
+                        const viewId = view.key;
+                        bulkOpsAddCheckboxesToTable(viewId);
+                        ktl.views.fixTableRowsAlignment(viewId);
                         addBulkOpsButtons(view, data);
 
                         //Put back checkboxes that were checked before view refresh.
-                        if (view.key === bulkOpsViewId) {
+                        if (viewId === bulkOpsViewId) {
                             //Rows
                             for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
-                                var cb = $('#' + view.key + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
+                                var cb = $('#' + viewId + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
                                 if (cb.length)
                                     cb[0].checked = true;
                             }
 
                             //Columns
                             for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
-                                var cb = $('#' + view.key + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
+                                var cb = $('#' + viewId + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
                                 if (cb.length)
                                     cb[0].checked = true;
                             }
                         }
 
-                        if (viewCanDoBulkOp(view.key, 'edit')) {
+                        if (viewCanDoBulkOp(viewId, 'edit')) {
                             //When user clicks on a row, to indicate the record source.
-                            $('#' + view.key + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
+                            $('#' + viewId + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
                                 var tableRow = e.target.closest('tr');
                                 if (tableRow) {
                                     if (bulkOpsRecIdArray.length > 0) {
                                         //Prevent Inline Edit.
                                         e.stopImmediatePropagation();
                                         apiData = {};
-                                        processBulkOps(view.key, e);
+                                        processBulkOps(viewId, e);
                                     }
                                 }
                             })
                         }
 
-                        updateBulkOpsGuiElements(view.key);
+                        if (viewCanDoBulkOp(viewId, 'action')) {
+                            //When user clicks on an action link.
+                            if (!bulkActionColumnIndex) {
+                                $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).bindFirst('click.ktl_bulkaction', e => {
+                                    //When process is triggered the first time by a manual click.
+                                    if (bulkOpsRecIdArray.length) {
+                                        const tableLink = e.target.closest('.kn-table-link');
+                                        if (!tableLink) return;
 
-                        $(document).trigger('KTL.BulkOperation.Updated', [view.key]);
+                                        const columnElement = tableLink.querySelector('[class^="col-"]');
+                                        if (!columnElement) return;
+
+                                        e.preventDefault();
+                                        e.stopImmediatePropagation();
+
+                                        bulkActionColumnIndex = columnElement.classList[0];
+
+                                        //Clean array to include only those with an action.
+                                        const bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
+                                        bulkOpsRecIdArray = [];
+                                        for (const recId of bulkOpsRecIdArrayCopy) {
+                                            const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
+                                            if (!actionLink.length)
+                                                $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
+                                            else
+                                                bulkOpsRecIdArray.push(recId);
+                                        }
+
+                                        processBulkAction();
+                                    }
+                                })
+                            } else {
+                                processBulkAction();
+                            }
+
+                            function processBulkAction() {
+                                if (!bulkOpsRecIdArray.length) {
+                                    bulkActionColumnIndex = null;
+                                    ktl.views.refreshView(viewId);
+                                    return;
+                                }
+
+                                //Find a better way to do this without having to wait until toasts are all gone.  Too slow.
+                                //The problem is due to summary renderings that cause a double call of this function and kills a click once in a while.
+                                ktl.core.waitSelector('#toast-container', 20000, 'none')
+                                    .then(function () { })
+                                    .catch(function () { })
+                                    .finally(() => {
+                                        const recId = bulkOpsRecIdArray.shift();
+                                        const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
+
+                                        if (actionLink.length) {
+                                            $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
+
+                                            $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).off('click.ktl_bulkaction');
+
+                                            //Wait until link is enabled
+                                            const intervalId = setInterval(() => {
+                                                const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
+                                                if (!actionLink.hasClass('disabled')) {
+                                                    clearInterval(intervalId);
+                                                    const outlineElement = actionLink.closest('.kn-table-link');
+                                                    outlineElement.addClass('ktlOutline');
+                                                    actionLink.click();
+                                                }
+                                            }, 100);
+                                        }
+                                    })
+                            }
+                        }
+
+                        updateBulkOpsGuiElements(viewId);
+
+                        $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
                     })
                     .catch(() => { })
             }
@@ -16385,6 +16426,13 @@ function Ktl($, appInfo) {
                     return true;
             }
 
+            //Bulk Action
+            if (bulkOp === 'action' && ktl.core.getCfg().enabled.bulkOps.bulkAction) {
+                if ((Knack.getUserRoleNames().includes('Bulk Action') || bulkOpEnabled)
+                    && !bulkOpDisabled)
+                    return true;
+            }
+
             return false;
         }
 
@@ -16450,7 +16498,7 @@ function Ktl($, appInfo) {
                 if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() || !(viewType === 'table' || viewType === 'search'))
                     return;
 
-                if (!viewCanDoBulkOp(view.key, 'edit') && !viewCanDoBulkOp(view.key, 'copy') && !viewCanDoBulkOp(view.key, 'delete'))
+                if (!viewCanDoBulkOp(view.key, 'edit') && !viewCanDoBulkOp(view.key, 'copy') && !viewCanDoBulkOp(view.key, 'delete') && !viewCanDoBulkOp(view.key, 'action'))
                     return;
 
                 //Put code below in a shared function (see _lud in this.log).
@@ -16475,7 +16523,7 @@ function Ktl($, appInfo) {
                 //its effect on the cells' inline editing has an impact on the bulk selection process.
                 ktl.views.noInlineEditing(view);
 
-                if (viewCanDoBulkOp(view.key, 'edit') || viewCanDoBulkOp(view.key, 'copy') || viewCanDoBulkOp(view.key, 'delete')) {
+                if (viewCanDoBulkOp(view.key, 'edit') || viewCanDoBulkOp(view.key, 'copy') || viewCanDoBulkOp(view.key, 'delete') || viewCanDoBulkOp(view.key, 'action')) {
                     bulkOpsActive[view.key] = true;
                     enableBulkOperations(view, data);
                 }
