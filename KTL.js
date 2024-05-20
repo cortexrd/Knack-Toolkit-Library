@@ -6024,15 +6024,91 @@ function Ktl($, appInfo) {
             }, 200);
         })
 
+        //Object that keeps a render count for each viewId that has a summary and groups.
+        const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
             console.log('render view', viewId);
 
-            //This is Knack's event that is triggered afer the view render, AND after the summary and group renderings.
-            $(document).on('knack-view-ready.' + viewId, throttledViewReady(event, view, data));
-
             ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
+
+
+
+
+            if (ktl.views.viewHasSummary(viewId)) {
+                if (ktl.views.viewHasGroups(viewId)) {
+                    viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
+
+                    const numberOfSummaryLines = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
+                    const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
+
+                    if (viewWithSummaryRenderCounts[viewId] === 2) {
+                        viewWithSummaryRenderCounts[viewId] = 0;
+                        //ktlProcessKeywords(view, data);
+                        throttledViewReady(event, view, data);
+                    } else {
+                        if (numberOfSummaryLines === 1 && !noData) {
+                            if (Knack.models[viewId].results_model) {
+                                Knack.models[viewId].results_model.fetch();
+                                return;
+                            }
+                        }
+                    }
+
+                    if (viewWithSummaryRenderCounts[viewId] > 2 || !(numberOfSummaryLines === 1 && !noData))
+                        viewWithSummaryRenderCounts[viewId] = 0;
+                }
+
+                /* This code is needed for keywords that may require summary data to achieve their task.
+
+                Since the summaries are rendered "a bit later" than the rest of the grid data,
+                we must find a way to capture the summary data BEFORE applying the keywords.
+
+                The function ktlRenderTotals below replaces Knack's original renderTotals.
+                Doing this allows us to gain control over WHEN the summary has completed rendering.
+                At that prceise moment, it's time to capture the summary data in an object for eventual processing.
+
+                *** A big thank you to Charles Brunelle who taught me this amazing technique - Normand D. */
+
+                var ktlRenderTotals = function () {
+                    if (Knack.views[viewId].ktlRenderTotals) {
+                        Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
+
+                        readSummaryValues(viewId);
+                        //ktlProcessKeywords(view, data);
+                        throttledViewReady(event, view, data);
+                    }
+                };
+
+                if (!Knack.views[viewId].ktlRenderTotals || Knack.views[viewId].renderTotals !== Knack.views[viewId].ktlRenderTotals.ktlPost) {
+                    Knack.views[viewId].ktlRenderTotals = {
+                        original: Knack.views[viewId].renderTotals,
+                        ktlPost: ktlRenderTotals
+                    }
+
+                    Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
+                } else { //When data has changed, but the functions remain the same.
+                    Knack.views[viewId].ktlRenderTotals.ktlPost = ktlRenderTotals;
+                    Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
+                }
+            } else {
+                //ktlProcessKeywords(view, data);
+                throttledViewReady(event, view, data);
+            }
+
+
+
+            //This is Knack's event that is triggered afer the view render, AND after the summary and group renderings.
+            //$(document).on('knack-view-ready.' + viewId, throttledViewReady(event, view, data));
+
+
+
+
+
+
+
+
 
             ktl.views.addViewId(view);
 
