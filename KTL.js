@@ -5990,10 +5990,13 @@ function Ktl($, appInfo) {
             });
         })
 
-        //To prevent double renderings of views.
-        //This includes the Summary and Group renderings.
+        //This is to trigger a post-render event that includes the Summary and Group renderings.
+        //The intent is to prevent double processing of keywords and solve multiple rendering issues.
+        const viewsReadyProcessing = {};
         function throttledViewReady (event, view, data) {
             const viewId = view.key;
+
+            console.log('view ready', viewId);
 
             if (viewsReadyProcessing[viewId])
                 return;
@@ -6010,8 +6013,7 @@ function Ktl($, appInfo) {
         $(document).on('KTL.viewRender', (event, view, data) => {
             const viewId = view.key;
 
-            console.log('ready =', viewId);
-            console.log(event, view, data);
+            console.log('KTL.viewRender', viewId);
 
             if (ktl.views.viewHasSummary(viewId))
                 readSummaryValues(viewId);
@@ -6019,10 +6021,10 @@ function Ktl($, appInfo) {
             ktlProcessKeywords(view, data);
         })
 
-        //Object that keeps a render count for each viewId that has a summary and groups.
-        const viewsReadyProcessing = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
+
+            console.log('render view', viewId);
 
             //This is Knack's event that is triggered afer the view render, AND after the summary and group renderings.
             $(document).on('knack-view-ready.' + viewId, throttledViewReady(event, view, data));
