@@ -5996,8 +5996,6 @@ function Ktl($, appInfo) {
         function throttledViewReady (event, view, data) {
             const viewId = view.key;
 
-            console.log('view ready', viewId);
-
             if (viewsReadyProcessing[viewId])
                 return;
             else {
@@ -15677,6 +15675,8 @@ function Ktl($, appInfo) {
             var viewObj = ktl.views.getViewObj(view.key);
             if (!viewObj) return;
 
+            console.log('entering enableBulkOperations');
+
             //Wait until summary section is done rendering.
             if (ktl.views.viewHasSummary(view.key)) {
                 //Wait until all the summary rows have finished rendering.
@@ -15685,133 +15685,124 @@ function Ktl($, appInfo) {
                 function enableBulkOperationsPostSummary() {
                     addBulkOpsGuiElements(view, data);
                 }
-
-                //Tried this also but not better.  We still lose checkboxes once out of 10.
-                //    $(document).off('KTL.' + view.key + '.totalsRendered.').on('KTL.' + view.key + '.totalsRendered.', () => {
-                //        addBulkOpsGuiElements(view, data);
-                //    })
             }
 
             addBulkOpsGuiElements(view, data);
 
             function addBulkOpsGuiElements(view, data) {
-                //Waiting for the spinner to disappear is required to prevent issues when
-                //there are groups and / or summaries.  Otherwise we get bad layout.
-                ktl.core.waitSelector(`#kn-loading-spinner`, 20000, 'hidden')
-                    .then(() => {
-                        const viewId = view.key;
-                        bulkOpsAddCheckboxesToTable(viewId);
-                        ktl.views.fixTableRowsAlignment(viewId);
-                        addBulkOpsButtons(view, data);
+                console.log('addBulkOpsGuiElements');
 
-                        //Put back checkboxes that were checked before view refresh.
-                        if (viewId === bulkOpsViewId) {
-                            //Rows
-                            for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
-                                var cb = $('#' + viewId + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
-                                if (cb.length)
-                                    cb[0].checked = true;
-                            }
+                const viewId = view.key;
+                bulkOpsAddCheckboxesToTable(viewId);
+                ktl.views.fixTableRowsAlignment(viewId);
+                addBulkOpsButtons(view, data);
 
-                            //Columns
-                            for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
-                                var cb = $('#' + viewId + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
-                                if (cb.length)
-                                    cb[0].checked = true;
+                //Put back checkboxes that were checked before view refresh.
+                if (viewId === bulkOpsViewId) {
+                    //Rows
+                    for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
+                        var cb = $('#' + viewId + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
+                        if (cb.length)
+                            cb[0].checked = true;
+                    }
+
+                    //Columns
+                    for (var i = 0; i < bulkOpsHeaderArray.length; i++) {
+                        var cb = $('#' + viewId + ' th.' + bulkOpsHeaderArray[i] + ' :checkbox');
+                        if (cb.length)
+                            cb[0].checked = true;
+                    }
+                }
+
+                if (viewCanDoBulkOp(viewId, 'edit')) {
+                    //When user clicks on a row, to indicate the record source.
+                    $('#' + viewId + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
+                        var tableRow = e.target.closest('tr');
+                        if (tableRow) {
+                            if (bulkOpsRecIdArray.length > 0) {
+                                //Prevent Inline Edit.
+                                e.stopImmediatePropagation();
+                                apiData = {};
+                                processBulkOps(viewId, e);
                             }
                         }
+                    })
+                }
 
-                        if (viewCanDoBulkOp(viewId, 'edit')) {
-                            //When user clicks on a row, to indicate the record source.
-                            $('#' + viewId + ' tr td.cell-edit:not(:checkbox):not(.ktlNoInlineEdit)').bindFirst('click', e => {
-                                var tableRow = e.target.closest('tr');
-                                if (tableRow) {
-                                    if (bulkOpsRecIdArray.length > 0) {
-                                        //Prevent Inline Edit.
-                                        e.stopImmediatePropagation();
-                                        apiData = {};
-                                        processBulkOps(viewId, e);
-                                    }
+                if (viewCanDoBulkOp(viewId, 'action')) {
+                    //When user clicks on an action link.
+                    if (!bulkActionColumnIndex) {
+                        $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).bindFirst('click.ktl_bulkaction', e => {
+                            //When process is triggered the first time by a manual click.
+                            if (bulkOpsRecIdArray.length) {
+                                const tableLink = e.target.closest('.kn-table-link');
+                                if (!tableLink) return;
+
+                                const columnElement = tableLink.querySelector('[class^="col-"]');
+                                if (!columnElement) return;
+
+                                e.preventDefault();
+                                e.stopImmediatePropagation();
+
+                                bulkActionColumnIndex = columnElement.classList[0];
+
+                                //Clean array to include only those with an action.
+                                const bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
+                                bulkOpsRecIdArray = [];
+                                for (const recId of bulkOpsRecIdArrayCopy) {
+                                    const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
+                                    if (!actionLink.length)
+                                        $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
+                                    else
+                                        bulkOpsRecIdArray.push(recId);
                                 }
-                            })
-                        }
 
-                        if (viewCanDoBulkOp(viewId, 'action')) {
-                            //When user clicks on an action link.
-                            if (!bulkActionColumnIndex) {
-                                $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).bindFirst('click.ktl_bulkaction', e => {
-                                    //When process is triggered the first time by a manual click.
-                                    if (bulkOpsRecIdArray.length) {
-                                        const tableLink = e.target.closest('.kn-table-link');
-                                        if (!tableLink) return;
-
-                                        const columnElement = tableLink.querySelector('[class^="col-"]');
-                                        if (!columnElement) return;
-
-                                        e.preventDefault();
-                                        e.stopImmediatePropagation();
-
-                                        bulkActionColumnIndex = columnElement.classList[0];
-
-                                        //Clean array to include only those with an action.
-                                        const bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
-                                        bulkOpsRecIdArray = [];
-                                        for (const recId of bulkOpsRecIdArrayCopy) {
-                                            const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
-                                            if (!actionLink.length)
-                                                $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
-                                            else
-                                                bulkOpsRecIdArray.push(recId);
-                                        }
-
-                                        processBulkAction();
-                                    }
-                                })
-                            } else {
                                 processBulkAction();
                             }
+                        })
+                    } else {
+                        processBulkAction();
+                    }
 
-                            function processBulkAction() {
-                                if (!bulkOpsRecIdArray.length) {
-                                    bulkActionColumnIndex = null;
-                                    ktl.views.refreshView(viewId);
-                                    return;
-                                }
-
-                                //Find a better way to do this without having to wait until toasts are all gone.  Too slow.
-                                //The problem is due to summary renderings that cause a double call of this function and kills a click once in a while.
-                                ktl.core.waitSelector('#toast-container', 20000, 'none')
-                                    .then(function () { })
-                                    .catch(function () { })
-                                    .finally(() => {
-                                        const recId = bulkOpsRecIdArray.shift();
-                                        const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
-
-                                        if (actionLink.length) {
-                                            $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
-
-                                            $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).off('click.ktl_bulkaction');
-
-                                            //Wait until link is enabled
-                                            const intervalId = setInterval(() => {
-                                                const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
-                                                if (!actionLink.hasClass('disabled')) {
-                                                    clearInterval(intervalId);
-                                                    const outlineElement = actionLink.closest('.kn-table-link');
-                                                    outlineElement.addClass('ktlOutline');
-                                                    actionLink.click();
-                                                }
-                                            }, 100);
-                                        }
-                                    })
-                            }
+                    function processBulkAction() {
+                        if (!bulkOpsRecIdArray.length) {
+                            bulkActionColumnIndex = null;
+                            ktl.views.refreshView(viewId);
+                            return;
                         }
 
-                        updateBulkOpsGuiElements(viewId);
+                        //Find a better way to do this without having to wait until toasts are all gone.  Too slow.
+                        //The problem is due to summary renderings that cause a double call of this function and kills a click once in a while.
+                        ktl.core.waitSelector('#toast-container', 20000, 'none')
+                            .then(function () { })
+                            .catch(function () { })
+                            .finally(() => {
+                                const recId = bulkOpsRecIdArray.shift();
+                                const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
 
-                        $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
-                    })
-                    .catch(() => { })
+                                if (actionLink.length) {
+                                    $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
+
+                                    $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).off('click.ktl_bulkaction');
+
+                                    //Wait until link is enabled
+                                    const intervalId = setInterval(() => {
+                                        const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
+                                        if (!actionLink.hasClass('disabled')) {
+                                            clearInterval(intervalId);
+                                            const outlineElement = actionLink.closest('.kn-table-link');
+                                            outlineElement.addClass('ktlOutline');
+                                            actionLink.click();
+                                        }
+                                    }, 100);
+                                }
+                            })
+                    }
+                }
+
+                updateBulkOpsGuiElements(viewId);
+
+                $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
             }
         }
 
