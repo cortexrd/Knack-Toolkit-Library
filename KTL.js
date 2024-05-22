@@ -5986,58 +5986,10 @@ function Ktl($, appInfo) {
             });
         })
 
-        //This is to trigger a post-render event that includes the Summary and Group renderings.
-        //The intent is to prevent double processing of keywords and solve multiple rendering issues.
-        //const viewsReadyProcessing = {};
-
-        //function throttledViewReady (event, view, data) {
-        //    const viewId = view.key;
-
-        //    if (viewId === 'view_219')
-        //        console.log('219 - 1');
-
-        //    console.log('throttledViewReady', viewId);
-
-        //    ktl.views.fixTableRowsAlignment(viewId);
-        //    $(document).trigger('KTL.viewRender', [view, data]);
-
-        ////    if (!viewsReadyProcessing[viewId]) {
-        ////        viewsReadyProcessing[viewId] = true;
-        ////        setTimeout(() => {
-        ////            delete viewsReadyProcessing[viewId];
-        ////        }, 500);
-
-        ////        console.log('trigger viewRender', viewId);
-        ////        $(document).trigger('KTL.viewRender', [view, data]);
-        ////    }
-        //}
-
-        $(document).on('KTL.viewRender', (event, view, data) => {
-            const viewId = view.key;
-
-            console.log('KTL.viewRender', viewId);
-
-            if (ktl.views.viewHasSummary(viewId))
-                readSummaryValues(viewId);
-
-            console.log('ktlProcessKeywords', viewId);
-            ktlProcessKeywords(view, data);
-
-            setTimeout(() => {
-                ktl.views.fixTableRowsAlignment(viewId);
-            }, 200);
-        })
-
         //Object that keeps a render count for each viewId that has a summary and groups.
         const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
-
-            console.log('render view', viewId);
-
-            ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
-            ktl.views.fixTableRowsAlignment(viewId);
-
 
             if (ktl.views.viewHasSummary(viewId)) {
                 if (ktl.views.viewHasGroups(viewId)) {
@@ -6049,7 +6001,6 @@ function Ktl($, appInfo) {
                     if (viewWithSummaryRenderCounts[viewId] === 2) {
                         viewWithSummaryRenderCounts[viewId] = 0;
                         ktlProcessKeywords(view, data);
-                        //throttledViewReady(event, view, data);
                     } else {
                         if (numberOfSummaryLines === 1 && !noData) {
                             if (Knack.models[viewId].results_model) {
@@ -6080,7 +6031,6 @@ function Ktl($, appInfo) {
 
                         readSummaryValues(viewId);
                         ktlProcessKeywords(view, data);
-                        //throttledViewReady(event, view, data);
                     }
                 };
 
@@ -6091,17 +6041,14 @@ function Ktl($, appInfo) {
                     }
 
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
+                    ktlProcessKeywords(view, data);
                 } else { //When data has changed, but the functions remain the same.
                     Knack.views[viewId].ktlRenderTotals.ktlPost = ktlRenderTotals;
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
                 }
             } else {
                 ktlProcessKeywords(view, data);
-                //throttledViewReady(event, view, data);
             }
-
-
-
 
             ktl.views.addViewId(view);
 
@@ -6650,9 +6597,6 @@ function Ktl($, appInfo) {
         function readSummaryValues(viewId) {
             if (!viewId) return;
 
-            if (viewId === 'view_219')
-                console.log('219 - 3');
-
             ktl.views.fixTableRowsAlignment(viewId)
                 .then(() => {
                     const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
@@ -6691,7 +6635,6 @@ function Ktl($, appInfo) {
                         observer.callback.apply(null, observer.params);
                     }
 
-                    console.log('trigger totalsRendered', viewId);
                     $(document).trigger('KTL.' + viewId + '.totalsRendered');
                 })
         }
@@ -7140,9 +7083,6 @@ function Ktl($, appInfo) {
             function cfvScanGroups(viewFieldIds, groups, options) {
                 if (!viewFieldIds || !data || !groups.length) return;
 
-                if (viewId === 'view_219')
-                    console.log('219 - 2');
-
                 if (options && !!options.ktlRefVal) {
 
                     if (options.ktlRefVal.endsWith(','))
@@ -7202,7 +7142,6 @@ function Ktl($, appInfo) {
                                             const columnHeader = ktlRefValSplit[2] || '';
 
                                             if (summaryViewId !== viewId) {
-                                                console.log('totalsRendered, viewsummary/viewid', summaryViewId, viewId);
                                                 $(document).off('KTL.' + summaryViewId + '.totalsRendered.' + viewId).on('KTL.' + summaryViewId + '.totalsRendered.' + viewId, () => {
                                                     ktl.views.refreshView(viewId);
                                                 })
@@ -10111,8 +10050,6 @@ function Ktl($, appInfo) {
                 return new Promise(function (resolve) {
                     if (!viewId || document.querySelector('#' + viewId + ' tr.kn-tr-nodata'))
                         return resolve();
-
-                    console.log('fixTableRowsAlignment', viewId);
 
                     if (ktl.bulkOps.getBulkOpsActive(viewId)) {
                         //For summary lines, prepend a space if Bulk Ops are enabled.
@@ -15649,6 +15586,12 @@ function Ktl($, appInfo) {
             }
         })
 
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            const viewId = view.key;
+            ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
+            ktl.views.fixTableRowsAlignment(viewId);
+        })
+
         var preventClick = false;
         $(document).on('mousedown', function (e) {
             //Upon Ctrl+click on a header checkboxes, toggle all on or off.
@@ -15745,8 +15688,6 @@ function Ktl($, appInfo) {
 
             var viewObj = ktl.views.getViewObj(viewId);
             if (!viewObj) return;
-
-            console.log('enableBulkOperations', viewId);
 
             bulkOpsAddCheckboxesToTable(viewId);
             addBulkOpsButtons(view, data);
