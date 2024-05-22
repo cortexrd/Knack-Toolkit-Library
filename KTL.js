@@ -1273,10 +1273,6 @@ function Ktl($, appInfo) {
                     if (!selector)
                         return reject('getTextFromSelector called with empty parameter');
 
-                    const viewtype = ktl.views.getViewType(optionalViewId);
-                    if (viewtype === 'table' || viewtype === 'list')
-                        return resolve();
-
                     let viewId = optionalViewId;
                     let fieldId;
 
@@ -5992,28 +5988,29 @@ function Ktl($, appInfo) {
 
         //This is to trigger a post-render event that includes the Summary and Group renderings.
         //The intent is to prevent double processing of keywords and solve multiple rendering issues.
-        const viewsReadyProcessing = {};
+        //const viewsReadyProcessing = {};
 
-        function throttledViewReady (event, view, data) {
-            const viewId = view.key;
+        //function throttledViewReady (event, view, data) {
+        //    const viewId = view.key;
 
-            if (viewId === 'view_219')
-                console.log('219 - 1');
+        //    if (viewId === 'view_219')
+        //        console.log('219 - 1');
 
-            console.log('throttledViewReady', viewId);
+        //    console.log('throttledViewReady', viewId);
 
-            ktl.views.fixTableRowsAlignment(viewId);
+        //    ktl.views.fixTableRowsAlignment(viewId);
+        //    $(document).trigger('KTL.viewRender', [view, data]);
 
-            if (!viewsReadyProcessing[viewId]) {
-                viewsReadyProcessing[viewId] = true;
-                setTimeout(() => {
-                    delete viewsReadyProcessing[viewId];
-                }, 500);
+        ////    if (!viewsReadyProcessing[viewId]) {
+        ////        viewsReadyProcessing[viewId] = true;
+        ////        setTimeout(() => {
+        ////            delete viewsReadyProcessing[viewId];
+        ////        }, 500);
 
-                console.log('trigger viewRender', viewId);
-                $(document).trigger('KTL.viewRender', [view, data]);
-            }
-        }
+        ////        console.log('trigger viewRender', viewId);
+        ////        $(document).trigger('KTL.viewRender', [view, data]);
+        ////    }
+        //}
 
         $(document).on('KTL.viewRender', (event, view, data) => {
             const viewId = view.key;
@@ -6051,8 +6048,8 @@ function Ktl($, appInfo) {
 
                     if (viewWithSummaryRenderCounts[viewId] === 2) {
                         viewWithSummaryRenderCounts[viewId] = 0;
-                        //ktlProcessKeywords(view, data);
-                        throttledViewReady(event, view, data);
+                        ktlProcessKeywords(view, data);
+                        //throttledViewReady(event, view, data);
                     } else {
                         if (numberOfSummaryLines === 1 && !noData) {
                             if (Knack.models[viewId].results_model) {
@@ -6082,8 +6079,8 @@ function Ktl($, appInfo) {
                         Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
                         readSummaryValues(viewId);
-                        //ktlProcessKeywords(view, data);
-                        throttledViewReady(event, view, data);
+                        ktlProcessKeywords(view, data);
+                        //throttledViewReady(event, view, data);
                     }
                 };
 
@@ -6099,19 +6096,9 @@ function Ktl($, appInfo) {
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
                 }
             } else {
-                //ktlProcessKeywords(view, data);
-                throttledViewReady(event, view, data);
+                ktlProcessKeywords(view, data);
+                //throttledViewReady(event, view, data);
             }
-
-
-
-            //This is Knack's event that is triggered afer the view render, AND after the summary and group renderings.
-            //$(document).on('knack-view-ready.' + viewId, throttledViewReady(event, view, data));
-
-
-
-
-
 
 
 
@@ -6341,7 +6328,7 @@ function Ktl($, appInfo) {
                 fieldIsRequired(view);
 
                 //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values.
-                $(document).off('KTL.' + viewId + '.totalsRendered').on('KTL.' + viewId + '.totalsRendered', () => {
+                $(document).off('KTL.' + viewId + '.totalsRendered.processKeywords').on('KTL.' + viewId + '.totalsRendered.processKeywords', () => {
                     labelText(view, keywords);
                     ktl.views.fixTableRowsAlignment(view.key);
                 })
@@ -6704,6 +6691,7 @@ function Ktl($, appInfo) {
                         observer.callback.apply(null, observer.params);
                     }
 
+                    console.log('trigger totalsRendered', viewId);
                     $(document).trigger('KTL.' + viewId + '.totalsRendered');
                 })
         }
@@ -7214,6 +7202,7 @@ function Ktl($, appInfo) {
                                             const columnHeader = ktlRefValSplit[2] || '';
 
                                             if (summaryViewId !== viewId) {
+                                                console.log('totalsRendered, viewsummary/viewid', summaryViewId, viewId);
                                                 $(document).off('KTL.' + summaryViewId + '.totalsRendered.' + viewId).on('KTL.' + summaryViewId + '.totalsRendered.' + viewId, () => {
                                                     ktl.views.refreshView(viewId);
                                                 })
