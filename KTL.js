@@ -5979,11 +5979,6 @@ function Ktl($, appInfo) {
                     });
                 }
             }
-
-            //Reset summary callbacks upon scene change.
-            ktl.scenes.sceneChangeNotificationSubscribe(function resetSummaryObserverCallbacks() {
-                summaryObserverCallbacks = {};
-            });
         })
 
         //Object that keeps a render count for each viewId that has a summary and groups.
@@ -6593,7 +6588,6 @@ function Ktl($, appInfo) {
             }
         }
 
-        var summaryObserverCallbacks = {};
         function readSummaryValues(viewId) {
             if (!viewId) return;
 
@@ -6628,12 +6622,6 @@ function Ktl($, appInfo) {
                         ktlKeywords[viewId].summary = summaryObj;
                     else
                         ktlKeywords[viewId] = { summary: summaryObj };
-
-                    //TODO: Notify only if a value has changed.
-                    for (var observerViewId in summaryObserverCallbacks) {
-                        var observer = summaryObserverCallbacks[observerViewId];
-                        observer.callback.apply(null, observer.params);
-                    }
 
                     $(document).trigger('KTL.' + viewId + '.totalsRendered');
                 })
