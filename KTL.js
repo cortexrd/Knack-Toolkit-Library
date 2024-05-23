@@ -3501,8 +3501,13 @@ function Ktl($, appInfo) {
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
                 if (!formDataObjStr || $.isEmptyObject(JSON.parse(formDataObjStr))) {
                     ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA); //Wipe out if empty object, JIC.
-                    $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
-                    $(document).trigger('KTL.persistentForm.completed.scene', [Knack.router.scene_view.model]);
+                    if (viewId) {
+                        $(`#${viewId}`).addClass('ktlPersistenFormLoadedView');
+                        $(document).trigger(`KTL.persistentForm.completed.view.${viewId}`, viewId);
+                    } else {
+                        $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
+                        $(document).trigger('KTL.persistentForm.completed.scene', [Knack.router.scene_view.model]);
+                    }
                     return resolve();
                 }
 
@@ -9497,9 +9502,11 @@ function Ktl($, appInfo) {
 
             //Process view keyword            
             if (ktl.core.getCfg().enabled.persistentForm && (view.action === 'insert' || view.action === 'create')) {
-                $(document).off(`KTL.persistentForm.completed.view.${viewId}.ktl_req`).on(`KTL.persistentForm.completed.view.${viewId}.ktl_req`, function (e, params) {
-                    formReady();
-                });
+                ktl.core.waitSelector(`#${viewId}.ktlPersistenFormLoadedView`, 20000)
+                    .then(function () {
+                        formReady();
+                    })
+                    .catch(function () { })
             } else
                 formReady();
 
@@ -10012,6 +10019,7 @@ function Ktl($, appInfo) {
 
             addViewId: function (view, fontStyle = 'color: red; font-weight: bold; font-size:small') {
                 if (!view) return;
+
                 const viewId = view.key;
                 const userPrefs = ktl.userPrefs.getUserPrefs();
 
@@ -10038,16 +10046,16 @@ function Ktl($, appInfo) {
                         } else {
                             divTitle.append(label);
                         }
-                    }
-                    else if (submitBtn.length) {
+                    } else if (divHdr.length) {
+                        divHdr.append(label);
+                    } else if (submitBtn.length) {
                         submitBtn.append(label);
-                    }
-                    else {
+                    } else {
                         const targetElement = viewElement.find('.kn-form.kn-view, .control, .kn-details.kn-view').first();
                         if (targetElement.length) {
                             targetElement.append(label);
                         } else {
-                            label.css('marginTop', '8px');
+                            label.css({ 'margin-top': '8px', 'margin-bottom': '16px', 'display': 'block' });
                             viewElement.prepend(label);
                         }
                     }
@@ -16881,6 +16889,7 @@ function Ktl($, appInfo) {
 
             countKeywords: function (obj) {
                 const propertyCount = {};
+                let totalKeywords = 0;
 
                 for (const key in obj) {
                     if (obj.hasOwnProperty(key)) {
@@ -16892,6 +16901,7 @@ function Ktl($, appInfo) {
                                     propertyCount[subKey] = 0;
                                 }
                                 propertyCount[subKey]++;
+                                totalKeywords++;
                             }
                         }
                     }
@@ -16908,8 +16918,10 @@ function Ktl($, appInfo) {
                     sortedObject[item.key] = item.count;
                 });
 
-                return JSON.stringify(sortedObject, null, 2);
+                // Add the total keyword count
+                sortedObject["Total keywords"] = totalKeywords;
 
+                return JSON.stringify(sortedObject, null, 2);
             },
 
             getLinuxDeviceInfo: function () {
