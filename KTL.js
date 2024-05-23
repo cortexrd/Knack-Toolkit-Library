@@ -9531,7 +9531,7 @@ function Ktl($, appInfo) {
                                     }
 
                                     fieldsAr = fieldsAr.map(field =>
-                                        field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+                                        field && field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
                                     );
 
                                     for (const fieldId of fieldsAr) {
@@ -9545,14 +9545,40 @@ function Ktl($, appInfo) {
                                         if (TEXT_DATA_TYPES.includes(fieldType)) {
                                             const inputField = $(`#${viewId} [data-input-id='${fieldId}'] input`);
                                             if (inputField.length) {
-                                                validateNonEmptyTextField(inputField[0]);
+                                                for (const field of Array.from(inputField)) {
+                                                    if (field.type !== 'hidden' && field.name !== 'street2') {
+                                                        validateNonEmptyTextField(field);
 
-                                                inputField.off('input.ktl_req').on('input.ktl_req', function () {
-                                                    validateNonEmptyTextField(this);
-                                                });
+                                                        inputField.off('input.ktl_req').on('input.ktl_req', function () {
+                                                            if (this.type !== 'hidden' && this.name !== 'street2') {
+                                                                validateNonEmptyTextField(this);
+                                                            }
+                                                        });
+                                                    }
+                                                }
                                             }
                                         } else if (fieldType === 'connection') {
                                             validateNonEmptyDropdown(viewId, fieldId);
+                                        } else if (fieldType === 'signature') {
+                                            //Need to handle mouse moves and check if "Undo last stroke" button is present.
+                                            const signatureSelector = `#${viewId} [data-input-id='${fieldId}'] .jSignature`;
+                                            ktl.core.waitSelector(signatureSelector, 10000, 'visible')
+                                                .then(() => {
+                                                    $(signatureSelector).addClass('ktlNotValid_empty');
+
+                                                    //Check upon mouse up...
+                                                    $(document).off('mouseup.ktl_signature').on('mouseup.ktl_signature', () => {
+                                                        setTimeout(() => {
+                                                            const lastStrokeButton = `#${viewId} input[value="Undo last stroke"]`;
+                                                            if ($(lastStrokeButton).length && $(lastStrokeButton).is(':visible'))
+                                                                $(signatureSelector).removeClass('ktlNotValid_empty');
+                                                            else
+                                                                $(signatureSelector).addClass('ktlNotValid_empty');
+                                                        }, 100);
+                                                    });
+                                                })
+                                                .catch(() => {
+                                                })
                                         } else if (fieldType === 'multiple_choice') {
                                         } else if (fieldType === 'boolean') {
                                         } else if (fieldType === 'rich_text') {
