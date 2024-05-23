@@ -3295,15 +3295,7 @@ function Ktl($, appInfo) {
             if (ktl.scenes.isiFrameWnd() || view.type != 'form') return;
             const viewId = view.key;
 
-            if (!ktl.core.getCfg().enabled.persistentForm || (view.scene && scenesToExclude.includes(view.scene.key))) {
-                //Allow other features that depend on this event to run, even if PF is not enabled.
-                $(`#${viewId}`).addClass('ktlPersistenFormLoadedView');
-                $(document).trigger(`KTL.persistentForm.completed.view.${viewId}`, viewId);
-                return;
-            }
-
             const elementsToObserve = document.querySelectorAll(`#${viewId} .redactor-box`);
-
             const observer = new MutationObserver((records, observer) => {
                 if (!isInitialized) return;
 
@@ -3316,6 +3308,13 @@ function Ktl($, appInfo) {
             elementsToObserve.forEach((element) =>
                 observer.observe(element, { subtree: true, childList: true, attributes: false, characterData: true })
             );
+
+            if (!ktl.core.getCfg().enabled.persistentForm || (view.scene && scenesToExclude.includes(view.scene.key))) {
+                //Allow other features that depend on this event to run, even if PF is not enabled.
+                $(`#${viewId}`).addClass('ktlPersistenFormLoadedView');
+                $(document).trigger(`KTL.persistentForm.completed.view.${viewId}`, viewId);
+                return;
+            }
 
             //TODO:  ktl.fields.viewConvertNumToTel().then(() => {
             //View-based verison of sceneConvertNumToTel
@@ -9596,9 +9595,12 @@ function Ktl($, appInfo) {
                                                     });
                                                 })
                                                 .catch(() => { })
-                                        } else if (fieldType === 'multiple_choice') {
-                                        } else if (fieldType === 'boolean') {
                                         } else if (fieldType === 'rich_text') {
+                                            validateNonEmptyTextField(fieldId);
+                                        } else if (fieldType === 'multiple_choice') {
+                                            //TODO
+                                        } else if (fieldType === 'boolean') {
+                                            //TODO
                                         }
                                     }
 
@@ -9669,7 +9671,6 @@ function Ktl($, appInfo) {
                                             else
                                                 $(field).removeClass('ktlNotValid_empty');
                                         }
-
 
                                         ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
                                     }
