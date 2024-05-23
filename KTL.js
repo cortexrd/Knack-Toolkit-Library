@@ -3293,22 +3293,24 @@ function Ktl($, appInfo) {
 
         $(document).on('knack-view-render.any', function (event, view) {
             if (ktl.scenes.isiFrameWnd() || view.type != 'form') return;
+            const viewId = view.key;
 
             if (!ktl.core.getCfg().enabled.persistentForm || (view.scene && scenesToExclude.includes(view.scene.key))) {
                 //Allow other features that depend on this event to run, even if PF is not enabled.
-                $(`#${view.key}`).addClass('ktlPersistenFormLoadedView');
-                $(document).trigger(`KTL.persistentForm.completed.view.${view.key}`, view.key);
+                $(`#${viewId}`).addClass('ktlPersistenFormLoadedView');
+                $(document).trigger(`KTL.persistentForm.completed.view.${viewId}`, viewId);
                 return;
             }
 
-            const elementsToObserve = document.querySelectorAll(`#${view.key} .redactor-box`);
+            const elementsToObserve = document.querySelectorAll(`#${viewId} .redactor-box`);
 
             const observer = new MutationObserver((records, observer) => {
                 if (!isInitialized) return;
 
                 const editor = $(records.find(record => $(record.target).closest('.redactor-editor').length).target).closest('.redactor-editor');
-                if (editor)
+                if (editor) {
                     formContentHasChanged(editor[0]);
+                }
             });
 
             elementsToObserve.forEach((element) =>
@@ -3318,8 +3320,8 @@ function Ktl($, appInfo) {
             //TODO:  ktl.fields.viewConvertNumToTel().then(() => {
             //View-based verison of sceneConvertNumToTel
 
-            if (ktlKeywords[view.key] && ktlKeywords[view.key]._rlv) {
-                loadFormData(view.key)
+            if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv) {
+                loadFormData(viewId)
                     .then(() => {
                         isInitialized = true;
                         setTimeout(() => {
@@ -3327,7 +3329,7 @@ function Ktl($, appInfo) {
                         }, 1000);
                     })
             } else
-                $(document).trigger('KTL.loadFormData', view.key);
+                $(document).trigger('KTL.loadFormData', viewId);
         });
 
         $(document).on('knack-form-submit.any', function (event, view, record) {
@@ -3410,6 +3412,8 @@ function Ktl($, appInfo) {
             const subFieldId = (fieldId !== element.id) ? element.id : '';
 
             saveFormData(inputValue, viewId, fieldId, subFieldId);
+
+            $(document).trigger('KTL.fieldValueChanged', { viewId: viewId, fieldId: fieldId, text: inputValue, e: {} });
         }
 
         //Save data for a given view and field.
@@ -9555,7 +9559,6 @@ function Ktl($, appInfo) {
                                                 for (const field of Array.from(inputField)) {
                                                     if (field.type !== 'hidden' && field.name !== 'street2') {
                                                         validateNonEmptyTextField(field);
-
                                                         inputField.off('input.ktl_req').on('input.ktl_req', function () {
                                                             if (this.type !== 'hidden' && this.name !== 'street2') {
                                                                 validateNonEmptyTextField(this);
@@ -9563,11 +9566,19 @@ function Ktl($, appInfo) {
                                                         });
                                                     }
                                                 }
+                                            } else {
+                                                const paragraphText = $(`#${viewId} [data-input-id='${fieldId}'] .kn-textarea`);
+                                                if (paragraphText.length) {
+                                                    validateNonEmptyTextField(paragraphText[0]);
+                                                    paragraphText.off('input.ktl_req').on('input.ktl_req', function () {
+                                                        validateNonEmptyTextField(this);
+                                                    });
+                                                }
                                             }
                                         } else if (fieldType === 'connection') {
                                             validateNonEmptyDropdown(viewId, fieldId);
                                         } else if (fieldType === 'signature') {
-                                            //Need to handle mouse moves and check if "Undo last stroke" button is present.
+                                            //Handle mouse moves and check if "Undo last stroke" button is present.
                                             const signatureSelector = `#${viewId} [data-input-id='${fieldId}'] .jSignature`;
                                             ktl.core.waitSelector(signatureSelector, 10000, 'visible')
                                                 .then(() => {
@@ -9631,13 +9642,34 @@ function Ktl($, appInfo) {
                                     }
 
                                     function validateNonEmptyTextField(field) {
-                                        const fieldName = field.name;
-                                        if (!fieldName) return;
+                                        if (!field) return;
 
-                                        if (field.value === '')
-                                            $(field).addClass('ktlNotValid_empty');
-                                        else
-                                            $(field).removeClass('ktlNotValid_empty');
+                                        if (typeof field === 'string' && field.startsWith('field_')) {
+                                            field = Knack.objects.getField(field).attributes;
+                                        }
+
+                                        if (!field) return;
+
+                                        if (field.type === 'rich_text') {
+                                            const fieldId = field.key;
+                                            const richTextObject = $(`#${viewId} #${fieldId}`).closest('.redactor-box').find('.redactor-editor');
+                                            if (richTextObject.length) {
+                                                const text = richTextObject[0].innerHTML.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
+                                                if (text === '')
+                                                    $(richTextObject).addClass('ktlNotValid_empty');
+                                                else
+                                                    $(richTextObject).removeClass('ktlNotValid_empty');
+                                            }
+                                        } else {
+                                            const fieldName = field.name;
+                                            if (!fieldName) return;
+
+                                            if (field.value === '')
+                                                $(field).addClass('ktlNotValid_empty');
+                                            else
+                                                $(field).removeClass('ktlNotValid_empty');
+                                        }
+
 
                                         ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
                                     }
@@ -9645,7 +9677,7 @@ function Ktl($, appInfo) {
                                     $(document).on('KTL.fieldValueChanged', (event, params) => {
                                         const { viewId: eventViewId, fieldId, text, e } = params;
                                         if (eventViewId === viewId && fieldsAr.includes(fieldId)) {
-                                            validateNonEmptyTextField(e.target);
+                                            validateNonEmptyTextField(e.target || fieldId);
                                         }
                                     })
 
