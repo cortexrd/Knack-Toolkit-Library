@@ -9466,7 +9466,7 @@ function Ktl($, appInfo) {
         }
 
         function fieldIsRequired(view) {
-            if (!view) return;
+            if (!view || ktl.scenes.isiFrameWnd()) return;
 
             if (view.type !== 'form') return;
 
@@ -9495,8 +9495,8 @@ function Ktl($, appInfo) {
                 }
             }
 
-            //Process view keyword
-            if (ktl.core.getCfg().enabled.persistentForm) {
+            //Process view keyword            
+            if (ktl.core.getCfg().enabled.persistentForm && (view.action === 'insert' || view.action === 'create')) {
                 $(document).off(`KTL.persistentForm.completed.view.${viewId}.ktl_req`).on(`KTL.persistentForm.completed.view.${viewId}.ktl_req`, function (e, params) {
                     formReady();
                 });
@@ -9577,8 +9577,7 @@ function Ktl($, appInfo) {
                                                         }, 100);
                                                     });
                                                 })
-                                                .catch(() => {
-                                                })
+                                                .catch(() => { })
                                         } else if (fieldType === 'multiple_choice') {
                                         } else if (fieldType === 'boolean') {
                                         } else if (fieldType === 'rich_text') {
