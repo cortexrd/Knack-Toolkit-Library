@@ -1384,21 +1384,6 @@ function Ktl($, appInfo) {
                 var numericValue;
                 var isNumeric = false;
 
-                if (fieldId === 'chznBetter') {
-                    fld = $('#chznBetter');
-                    if (fld.length)
-                        isNumeric = fld[0].attributes && fld[0].attributes.numeric;
-                    if (isNumeric) {
-                        if (value === '') return '0'; //Blanks are considered as zero, for enforceNumeric.
-
-                        numericValue = parseFloat(value);
-                        if (!isNaN(value))
-                            return numericValue.toString();
-                        else
-                            return;
-                    }
-                }
-
                 var fieldAttributes;
                 fieldId = fieldId.match(/field_\d+/g);
                 if (fieldId && fieldId.length)
@@ -2246,26 +2231,28 @@ function Ktl($, appInfo) {
             //Dropdowns
             let chosenUpdateTimeout;
             $(`#${viewId} .chzn-select`).chosen().change(function (e, p) {
-                if (e.target.id && e.target.selectedOptions) {
-                    //This chosenUpdateTimeout is required to ignore the first undesired change event.
-                    //For some reason we get a first event with the current value, but we want the next one with the NEW changed value.
-                    //Maybe this is by design, to provide the before-and-after values that could be useful.
-                    clearTimeout(chosenUpdateTimeout);
-                    chosenUpdateTimeout = setTimeout(() => {
-                        const records = [...e.target.selectedOptions].map(option => {
-                            return {
-                                text: option.innerText,
-                                id: option.value
-                            }
-                        });
+                if ($(`.ktlPersistenFormLoadedScene`).length) {
+                    if (e.target.id && e.target.selectedOptions) {
+                        //This chosenUpdateTimeout is required to ignore the first undesired change event.
+                        //For some reason we get a first event with the current value, but we want the next one with the NEW changed value.
+                        //Maybe this is by design, to provide the before-and-after values that could be useful.
+                        clearTimeout(chosenUpdateTimeout);
+                        chosenUpdateTimeout = setTimeout(() => {
+                            const records = [...e.target.selectedOptions].map(option => {
+                                return {
+                                    text: option.innerText,
+                                    id: option.value
+                                }
+                            });
 
-                        const [targetViewId, fieldId] = e.target.id.split('-');
-                        ktl.persistentForm.ktlOnSelectValueChanged({ viewId: targetViewId, fieldId: fieldId, records: records, e: e });
+                            const [targetViewId, fieldId] = e.target.id.split('-');
+                            ktl.persistentForm.ktlOnSelectValueChanged({ viewId: targetViewId, fieldId: fieldId, records: records, e: e });
 
-                        // Keep single record call for retro-compatibility of external code
-                        if (e.target.selectedOptions[0])
-                            ktl.fields.onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: e.target.selectedOptions[0].value, text: e.target.selectedOptions[0].innerText, e: e }); //Notify app of change
-                    }, 500);
+                            // Keep single record call for retro-compatibility of external code
+                            if (e.target.selectedOptions[0])
+                                ktl.fields.onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: e.target.selectedOptions[0].value, text: e.target.selectedOptions[0].innerText, e: e }); //Notify app of change
+                        }, 500);
+                    }
                 }
             })
 
@@ -2300,7 +2287,7 @@ function Ktl($, appInfo) {
         $(document).on('KTL.persistentForm.completed.scene', function (event, viewOrScene) {
             //This is required because when removing the last option from a multiple selection dropdown, the change event is not fired.
             $('.search-choice-close').off('click.ktl_removeoption').bindFirst('click.ktl_removeoption', function (e) {
-                const [viewId, fieldId] = $(e.target).closest('.kn-input-connection').find('.chzn-select').attr('id').split('-');
+                const [viewId, fieldId] = $(e.target).closest('.kn-input').find('.chzn-select').attr('id').split('-');
 
                 setTimeout(() => {
                     const options = $(e.target).closest('.kn-input-connection').find('.chzn-select [value]').toArray();
@@ -2862,9 +2849,6 @@ function Ktl($, appInfo) {
             },
 
             getFieldDescription: function (fieldId = '') {
-                if (typeof fieldId !== 'string')
-                    debugger;
-
                 if (!fieldId || !fieldId.startsWith('field_')) return;
 
                 var descr = '';
@@ -3433,9 +3417,6 @@ function Ktl($, appInfo) {
             var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
             if (formDataObjStr)
                 formDataObj = JSON.parse(formDataObjStr);
-
-            if (fieldId === 'chznBetter')
-                fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
 
             var fieldObj = Knack.objects.getField(fieldId);
             if (fieldObj.attributes.type === 'password') return; //Ignore passwords.
@@ -9536,7 +9517,7 @@ function Ktl($, appInfo) {
                                     //Add other Required fields as set by the Builder.
                                     const inputFields = Knack.views[viewId].getInputs();
                                     for (inputField of inputFields) {
-                                        if (inputField.field.required && !fieldsAr.includes(inputField.field.key))
+                                        if (inputField.field && inputField.field.required && !fieldsAr.includes(inputField.field.key))
                                             fieldsAr.push(inputField.field.key);
                                     }
 
@@ -9556,10 +9537,10 @@ function Ktl($, appInfo) {
                                             const inputField = $(`#${viewId} [data-input-id='${fieldId}'] input`);
                                             if (inputField.length) {
                                                 for (const field of Array.from(inputField)) {
-                                                    if (field.type !== 'hidden' && field.name !== 'street2') {
+                                                    if (field.type !== 'hidden' && field.name !== 'street2' && field.name !== 'middle') {
                                                         validateNonEmptyTextField(field);
                                                         inputField.off('input.ktl_req').on('input.ktl_req', function () {
-                                                            if (this.type !== 'hidden' && this.name !== 'street2') {
+                                                            if (this.type !== 'hidden' && this.name !== 'street2' && this.name !== 'middle') {
                                                                 validateNonEmptyTextField(this);
                                                             }
                                                         });
@@ -9598,7 +9579,7 @@ function Ktl($, appInfo) {
                                         } else if (fieldType === 'rich_text') {
                                             validateNonEmptyTextField(fieldId);
                                         } else if (fieldType === 'multiple_choice') {
-                                            //TODO
+                                            validateNonEmptyTextField(fieldId);
                                         } else if (fieldType === 'boolean') {
                                             //TODO
                                         }
@@ -9652,15 +9633,25 @@ function Ktl($, appInfo) {
 
                                         if (!field) return;
 
+                                        const fieldId = field.key;
+
                                         if (field.type === 'rich_text') {
-                                            const fieldId = field.key;
                                             const richTextObject = $(`#${viewId} #${fieldId}`).closest('.redactor-box').find('.redactor-editor');
                                             if (richTextObject.length) {
                                                 const text = richTextObject[0].innerHTML.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
-                                                if (text === '')
+                                                if (text === '' || text === '\u200B')
                                                     $(richTextObject).addClass('ktlNotValid_empty');
                                                 else
                                                     $(richTextObject).removeClass('ktlNotValid_empty');
+                                            }
+                                        } if (field.type === 'multiple_choice') {
+                                            const element = $('#' + viewId + ' [name="' + fieldId + '"]');
+                                            if (element.length) {
+                                                const selectedText = element.val();
+                                                if (selectedText === '')
+                                                    element.addClass('ktlNotValid_empty');
+                                                else
+                                                    element.removeClass('ktlNotValid_empty');
                                             }
                                         } else {
                                             const fieldName = field.name;
