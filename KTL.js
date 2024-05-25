@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.24.14';
+    const KTL_VERSION = '0.25.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3259,6 +3259,7 @@ function Ktl($, appInfo) {
             ktl.fields.sceneConvertNumToTel().then(() => {
                 if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key)) {
                     //Allow other features that depend on this event to run, even if PF is not enabled.
+                    isInitialized = true;
                     $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
                     $(document).trigger('KTL.persistentForm.completed.scene', [scene]);
                 } else {
@@ -3322,12 +3323,6 @@ function Ktl($, appInfo) {
 
         const debouncedFormContentHasChanged = debounce(formContentHasChanged, 500);
         $(document).on('input', function (event) {
-            if (!isInitialized
-                || !ktl.core.getCfg().enabled.persistentForm
-                || scenesToExclude.includes(Knack.router.current_scene_key)
-                || ktl.scenes.isiFrameWnd())
-                return;
-
             if (!event
                 || !event.target.type
                 || event.target.id === 'chznBetter'
@@ -3394,7 +3389,11 @@ function Ktl($, appInfo) {
 
             const subFieldId = (fieldId !== element.id) ? element.id : '';
 
-            saveFormData(inputValue, viewId, fieldId, subFieldId);
+            if (isInitialized
+                && ktl.core.getCfg().enabled.persistentForm
+                && !scenesToExclude.includes(Knack.router.current_scene_key)
+                && !ktl.scenes.isiFrameWnd())
+                saveFormData(inputValue, viewId, fieldId, subFieldId);
 
             $(document).trigger('KTL.fieldValueChanged', { viewId: viewId, fieldId: fieldId, text: inputValue, e: {} });
         }
@@ -9582,7 +9581,9 @@ function Ktl($, appInfo) {
                                             validateNonEmptyTextField(fieldId);
                                         } else if (fieldType === 'boolean') {
                                             //TODO
-                                        }
+                                            console.log('_req - Unsupported field type:', fieldType);
+                                        } else
+                                            console.log('_req - Unsupported field type:', fieldType);
                                     }
 
                                     //Dropdown selectors.
@@ -9647,11 +9648,23 @@ function Ktl($, appInfo) {
                                         } if (field.type === 'multiple_choice') {
                                             const element = $('#' + viewId + ' [name="' + fieldId + '"]');
                                             if (element.length) {
-                                                const selectedText = element.val();
-                                                if (selectedText === '')
-                                                    element.addClass('ktlNotValid_empty');
-                                                else
-                                                    element.removeClass('ktlNotValid_empty');
+                                                let selectedText;
+                                                if (Knack.objects.getField(`${fieldId}`).attributes.format.type === 'single') {
+                                                    selectedText = element.val();
+                                                    if (selectedText === '')
+                                                        element.addClass('ktlNotValid_empty');
+                                                    else
+                                                        element.removeClass('ktlNotValid_empty');
+                                                } else {
+                                                    selectedText = $(`#${viewId} [name="${fieldId}"]  option:selected`);
+                                                    if (!selectedText.length) {
+                                                        $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
+                                                        $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).addClass('ktlNotValid_empty');
+                                                    } else {
+                                                        $((`#${viewId}_${fieldId}_chzn input`)).removeClass('ktlNotValid_empty');
+                                                        $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).removeClass('ktlNotValid_empty');
+                                                    }
+                                                }
                                             }
                                         } else {
                                             const fieldName = field.name;
