@@ -5368,7 +5368,7 @@ function Ktl($, appInfo) {
                         if (param[0].includes(filterUrlPart + '_search'))
                             newSearchStr = param[1];
                         if (param[0].includes(filterUrlPart + '_collapsed'))
-                            collapsed = param[1].split(',').filter(value => value != '');
+                            collapsed = param[1].split(',').filter(value => value != '').map(value => encodeURIComponent(value));
                     });
                 }
 
@@ -12383,18 +12383,24 @@ function Ktl($, appInfo) {
 
                 $(`#${viewId} thead th .table-fixed-label`).css('display', 'inline-flex');
 
+                //Always returns an encoded version of the columns' headers.  Needed to support question marks in headers.
                 function getCollapsedColumns() {
                     const activeFilter = ktl.userFilters.getActiveFilter(viewId);
 
                     if (activeFilter && activeFilter['collapsed'])
                         return activeFilter['collapsed'];
-                    else
-                        return (getUrlParameter(`${viewId}_collapsed`) || '').split(',').filter(value => value != '');
+                    else {
+                        const params = (getUrlParameter(`${viewId}_collapsed`) || '')
+                            .split(',')
+                            .filter(value => value != '').map(value=>encodeURIComponent(value));
+
+                        return params;
+                    }
                 }
 
                 getCollapsedColumns().forEach(title => {
                     $(`#${viewId} .kn-table th`).each((index, element) => {
-                        if ($(element).text().trim() === title)
+                        if ($(element).text().trim() === decodeURIComponent(title))
                             hideColumn(viewId, index + 1);
                     })
                 });
@@ -12434,20 +12440,20 @@ function Ktl($, appInfo) {
                     iconClickEvent.stopPropagation();
 
                     const columnIndex = $(this).parent().index() + 1;
-                    const title = $(this).parent().text().trim();
-                    let collapsedColumn = getCollapsedColumns();
+                    const title = encodeURIComponent($(this).parent().text().trim());
+                    let collapsedColumns = getCollapsedColumns();
 
                     if ($(this).parent().hasClass('ktlCollapsedColumn')) {
                         showColumn(viewId, columnIndex);
-                        collapsedColumn = collapsedColumn.filter(t => t != title);
+                        collapsedColumns = collapsedColumns.filter(t => t != title);
                     } else {
                         hideColumn(viewId, columnIndex);
-                        if (collapsedColumn.findIndex(t => t === title) < 0)
-                            collapsedColumn.push(title);
+                        if (collapsedColumns.findIndex(t => t === title) < 0)
+                            collapsedColumns.push(title);
                     }
 
-                    if (!ktl.userFilters.appendToActiveFilter(viewId, 'collapsed', collapsedColumn)) {
-                        let parameters = `${viewId}_collapsed=${collapsedColumn.join(',')}`;
+                    if (!ktl.userFilters.appendToActiveFilter(viewId, 'collapsed', collapsedColumns)) {
+                        let parameters = `${viewId}_collapsed=${collapsedColumns.join(',')}`;
                         const [url, params] = document.location.href.split('?');
 
                         if (params) {
