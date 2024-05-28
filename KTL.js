@@ -11511,6 +11511,10 @@ function Ktl($, appInfo) {
                     const field = conditions[2] || '';
                     let fieldId;
                     const view = conditions[3] || '';
+                    if (view === 'ktlLoggedInAcount' && field.startsWith('field_') && Knack.getUserAttributes() !== 'No user found') {
+                        return resolve(ktlCompare(field, operator, value));
+                    }
+
                     let viewId = ktl.scenes.findViewWithTitle(view);
 
                     if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
