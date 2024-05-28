@@ -11404,6 +11404,16 @@ function Ktl($, appInfo) {
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
+                    if (view === 'ktlLoggedInAccount') {
+                        const userAttr = Knack.getUserAttributes();
+                        if (userAttr !== 'No user found' && field.startsWith('field_')) {
+                            const userValue = userAttr['values'][field];
+                            return resolve(ktlCompare(userValue, operator, value));
+                        } else {
+                            console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
+                            return resolve(false);
+                        }
+                    }
                     const viewId = ktl.scenes.findViewWithTitle(view);
 
                     if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
@@ -11511,8 +11521,15 @@ function Ktl($, appInfo) {
                     const field = conditions[2] || '';
                     let fieldId;
                     const view = conditions[3] || '';
-                    if (view === 'ktlLoggedInAcount' && field.startsWith('field_') && Knack.getUserAttributes() !== 'No user found') {
-                        return resolve(ktlCompare(field, operator, value));
+                    if (view === 'ktlLoggedInAccount') {
+                        const userAttr = Knack.getUserAttributes();
+                        if (userAttr !== 'No user found' && field.startsWith('field_')) {
+                            const userValue = userAttr['values'][field];
+                            return resolve(ktlCompare(userValue, operator, value));
+                        } else {
+                            console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
+                            return resolve(false);
+                        }
                     }
 
                     let viewId = ktl.scenes.findViewWithTitle(view);
