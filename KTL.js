@@ -9483,7 +9483,7 @@ function Ktl($, appInfo) {
                 }
             }
 
-            //Process view keyword            
+            //Process view keyword
             if (ktl.core.getCfg().enabled.persistentForm && (view.action === 'insert' || view.action === 'create')) {
                 ktl.core.waitSelector(`#${viewId}.ktlPersistenFormLoadedView`, 20000)
                     .then(function () {
@@ -11419,6 +11419,18 @@ function Ktl($, appInfo) {
                     const value = conditions[1] || '';
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
+
+                    if (view === 'ktlLoggedInAccount') {
+                        const userAttr = Knack.getUserAttributes();
+                        if (userAttr !== 'No user found' && field.startsWith('field_')) {
+                            const userValue = userAttr['values'][field];
+                            return resolve(ktlCompare(userValue, operator, value));
+                        } else {
+                            console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
+                            return resolve(false);
+                        }
+                    }
+
                     const viewId = ktl.scenes.findViewWithTitle(view);
 
                     if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
@@ -11526,6 +11538,18 @@ function Ktl($, appInfo) {
                     const field = conditions[2] || '';
                     let fieldId;
                     const view = conditions[3] || '';
+
+                    if (view === 'ktlLoggedInAccount') {
+                        const userAttr = Knack.getUserAttributes();
+                        if (userAttr !== 'No user found' && field.startsWith('field_')) {
+                            const userValue = userAttr['values'][field];
+                            return resolve(ktlCompare(userValue, operator, value));
+                        } else {
+                            console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
+                            return resolve(false);
+                        }
+                    }
+
                     let viewId = ktl.scenes.findViewWithTitle(view);
 
                     if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
@@ -12444,7 +12468,7 @@ function Ktl($, appInfo) {
                         collapsedColumnClickEvent.stopPropagation();
                         collapsedColumnClickEvent.stopImmediatePropagation();
 
-                        const columnIndex = $(collapsedColumnClickEvent.currentTarget).index(); 
+                        const columnIndex = $(collapsedColumnClickEvent.currentTarget).index();
 
                         $(collapsedColumnClickEvent.currentTarget).closest(".kn-table").find("thead th").eq(columnIndex).find("i.ktlHideShowColumnIcon").click();
                     });
