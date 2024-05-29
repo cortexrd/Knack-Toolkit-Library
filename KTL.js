@@ -9538,9 +9538,22 @@ function Ktl($, appInfo) {
                                                 for (const field of Array.from(inputField)) {
                                                     if (field.type !== 'hidden' && field.name !== 'street2' && field.name !== 'middle') {
                                                         validateNonEmptyTextField(field);
-                                                        inputField.off('input.ktl_req').on('input.ktl_req', function () {
+                                                        inputField.off('input.ktl_req change.ktl_req').on('input.ktl_req change.ktl_req', function (e) {
                                                             if (this.type !== 'hidden' && this.name !== 'street2' && this.name !== 'middle') {
                                                                 validateNonEmptyTextField(this);
+
+                                                                //For Street sub-field, check all other address sub-fields in case auto-complete is used.
+                                                                if (this.name === 'street') {
+                                                                    const subFields = document.querySelectorAll(`[data-input-id="${fieldId}"] input:not([type="hidden"])`);
+
+                                                                    setTimeout(() => { //Leave enough time for auto-complete to fill the fields.
+                                                                        for (const subField of subFields) {
+                                                                            if (subField.type !== 'hidden' && subField.name !== 'street2') {
+                                                                                validateNonEmptyTextField(subField);
+                                                                            }
+                                                                        }
+                                                                    }, 300);
+                                                                }
                                                             }
                                                         });
                                                     }
@@ -9571,6 +9584,8 @@ function Ktl($, appInfo) {
                                                                 $(signatureSelector).removeClass('ktlNotValid_empty');
                                                             else
                                                                 $(signatureSelector).addClass('ktlNotValid_empty');
+
+                                                            ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
                                                         }, 100);
                                                     });
                                                 })
@@ -9656,7 +9671,7 @@ function Ktl($, appInfo) {
                                                     else
                                                         element.removeClass('ktlNotValid_empty');
                                                 } else {
-                                                    selectedText = $(`#${viewId} [name="${fieldId}"]  option:selected`);
+                                                    selectedText = $(`#${viewId} [name="${fieldId}"] option:selected`);
                                                     if (!selectedText.length) {
                                                         $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
                                                         $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).addClass('ktlNotValid_empty');
