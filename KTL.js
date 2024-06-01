@@ -7643,7 +7643,7 @@ function Ktl($, appInfo) {
                 e.stopImmediatePropagation();
 
                 const fieldId = $(e.target).data('field-key') || $(e.target).parent().data('field-key');
-                const viewElement = $(e.target).closest('.kn-search.kn-view, .kn-table.kn-view');
+                const viewElement = $(e.target).closest('.kn-search.kn-view[id], .kn-table.kn-view[id]');
                 if (viewElement.length) {
                     const viewId = viewElement.attr('id');
 
@@ -7766,7 +7766,7 @@ function Ktl($, appInfo) {
                     }
                 })
             } else {
-                ktl.core.timedPopup('Error - Column not found: ' + toMatch, 'warning', 4000);
+                ktl.log.clog('purple', `Warning! Column ${toMatch} not found (or grouped) in ${viewId}`);
             }
         }
 
