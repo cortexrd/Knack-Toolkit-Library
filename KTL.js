@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.25.2';
+    const KTL_VERSION = '0.25.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -138,6 +138,18 @@ function Ktl($, appInfo) {
                 ktlKeywords[scene.attributes.key] = viewKwObj;
             else if (viewKwObj._footer)
                 ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
+            else if (viewKwObj._loh) {
+                const logOutHere = scene.attributes.slug;
+                ktlKeywords.ktlLogOutHere = logOutHere;
+                $(document).on('click', '.kn-log-out', e => {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    $('.kn-scene').addClass('ktlHidden');
+                    window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + logOutHere;
+                    ktl.account.logout();
+                    setTimeout(() => { $('.kn-scene').removeClass('ktlHidden'); }, 100);
+                })
+            }
         }
     };
 
@@ -174,7 +186,7 @@ function Ktl($, appInfo) {
         strSplit.splice(0, 1);
         for (let i = 0; i < strSplit.length; i++) {
             strSplit[i] = strSplit[i].trim().replace(/\u200B/g, ''); //u200B is a "zero width space".  Caught that once during a copy/paste!
-            if (strSplit[i].startsWith('_')) {
+            if (strSplit[i].length >= 2 && strSplit[i].startsWith('_') && strSplit[i][1] !== '_') {
                 const key = strSplit[i].toLowerCase();
                 if (!keywords[key])
                     keywords[key] = [];
@@ -431,7 +443,7 @@ function Ktl($, appInfo) {
                         apiURL = 'https://usgc-api.knack.com/v1/pages/';
                     apiURL += sceneKey + '/views/' + viewId + '/records/';
 
-                    if (recId && requestType !== 'GET')
+                    if (recId)
                         apiURL += recId;
 
                     if (filters)
@@ -452,7 +464,6 @@ function Ktl($, appInfo) {
                             'X-Knack-Application-Id': Knack.application_id,
                             'X-Knack-REST-API-Key': 'knack',
                             'Content-Type': 'application/json',
-                            'Access-Control-Allow-Origin': '*.knack.com',
                         },
                         data: JSON.stringify(apiData),
                         success: function (data) {
@@ -5383,7 +5394,6 @@ function Ktl($, appInfo) {
                     filter = getActiveFilter(filterDivId);
                     if (!filter.filterSrc[filterDivId]) return;
 
-                    const filterObject = filter.filterSrc[filterDivId].filters[filter.index];
                     filterSrc = filter.filterSrc;
                     type = filter.type;
 
@@ -5393,11 +5403,14 @@ function Ktl($, appInfo) {
                         return;
                     }
 
-                    if (filter.index >= 0)
-                        filterName = filterObject.filterName;
+                    const filterObject = filter.filterSrc[filterDivId].filters[filter.index];
+                    if (filterObject) {
+                        if (filter.index >= 0)
+                            filterName = filterObject.filterName;
 
-                    if (!collapsed)
-                        collapsed = filterObject.collapsed;
+                        if (!collapsed)
+                            collapsed = filterObject.collapsed;
+                    }
                 } else {
                     const activeFilterName = getActiveFilterName(filterDivId);
 
@@ -16702,13 +16715,9 @@ function Ktl($, appInfo) {
 
         function getPublicIP() {
             return new Promise(function (resolve, reject) {
-                //NOTE:  This will not work if browser has uBlock Origin extension enabled.
-                $.get('https://www.cloudflare.com/cdn-cgi/trace', function (data, status) {
+                $.get('https://api.ipify.org?format=json', function (data, status) {
                     if (status === 'success') {
-                        var index = data.indexOf('ip=') + 3;
-                        var publicIP = data.substr(index);
-                        index = publicIP.indexOf('\n');
-                        publicIP = publicIP.substr(0, index);
+                        var publicIP = data.ip;
                         if (ktl.core.isIPFormat(publicIP))
                             resolve(publicIP);
                         else
@@ -17676,11 +17685,12 @@ function Ktl($, appInfo) {
 
                 if (linkedRecord) {
                     const fieldId = $(element).attr('data-field-key');
-                    const field = Knack.objects.getField(fieldId);
-
-                    const linkedObject = (field.attributes.relationship) ? field.attributes.relationship.object : field.attributes.object_key;
-                    const url = (linkedObject) ? `${baseURL}/records/objects/${linkedObject}/record/${linkedRecord}/edit` : undefined;
-                    container.appendChild(createLine('<b>Connects to</b> ' + linkedRecord, url));
+                    if (fieldId) {
+                        const field = Knack.objects.getField(fieldId);
+                        const linkedObject = (field.attributes.relationship) ? field.attributes.relationship.object : field.attributes.object_key;
+                        const url = (linkedObject) ? `${baseURL}/records/objects/${linkedObject}/record/${linkedRecord}/edit` : undefined;
+                        container.appendChild(createLine('<b>Connects to</b> ' + linkedRecord, url));
+                    }
                 }
 
                 const copyButton = createCopyContentButton(element, $(element).attr('class').split(/\s+/)[0]);
@@ -17753,11 +17763,12 @@ function Ktl($, appInfo) {
                     }));
 
                 linkedRecords.filter((record) => record.id && !record.id.includes(' ') && !record.id.includes('.') && record.id.length === KNACK_RECORD_LENGTH).forEach(function (record) {
-                    const field = Knack.objects.getField(fieldId);
-
-                    const linkedObject = (field.attributes.relationship) ? field.attributes.relationship.object : field.attributes.object_key;
-                    const url = (linkedObject) ? `${baseURL}/records/objects/${linkedObject}/record/${record.id}/edit` : undefined;
-                    container.appendChild(createLine(`<b>Connects to</b> ${record.label} - ${record.id}`, url));
+                    if (fieldId) {
+                        const field = Knack.objects.getField(fieldId);
+                        const linkedObject = (field.attributes.relationship) ? field.attributes.relationship.object : field.attributes.object_key;
+                        const url = (linkedObject) ? `${baseURL}/records/objects/${linkedObject}/record/${record.id}/edit` : undefined;
+                        container.appendChild(createLine(`<b>Connects to</b> ${record.label} - ${record.id}`, url));
+                    }
                 });
 
                 const copyButton = createCopyContentButton(element, fieldId);
