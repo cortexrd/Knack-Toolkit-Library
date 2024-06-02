@@ -11734,11 +11734,20 @@ function Ktl($, appInfo) {
                 });
             },
 
-            getViewSourceName: function (viewId) {
+            getView: function (viewId) {
                 if (!viewId) return;
-                const view = Knack.router.scene_view.model.views._byId[viewId];
+                let view = Knack.views[viewId];
                 if (view)
-                    return Knack.objects._byId[view.attributes.source.object].attributes.name;
+                    return view.model.view;
+                else {
+                    const scenes = Knack.scenes.models;
+                    for (const scene of scenes) {
+                        for (const view of scene.views.models) {
+                            if (view.attributes.key === viewId)
+                                return view.attributes;
+                        }
+                    }
+                }
             },
 
             getViewType: function (viewId) {
@@ -11748,11 +11757,11 @@ function Ktl($, appInfo) {
                     return viewObj.type;
             },
 
-            getView: function (viewId) {
+            getViewSourceName: function (viewId) {
                 if (!viewId) return;
-                const view = Knack.router.scene_view.model.views._byId[viewId];
+                const view = ktl.views.getView(viewId);
                 if (view)
-                    return view.attributes;
+                    return Knack.objects._byId[view.source.object].attributes.name;
             },
 
             applyZoomLevel: function (viewId, keywords) {
