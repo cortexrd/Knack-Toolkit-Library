@@ -12851,7 +12851,6 @@ function Ktl($, appInfo) {
         var prevScene = '';
         var idleWatchDogDelay = 0;
         var versionDisplayName = '';
-        var showHiddenElem = false;
 
         //App callbacks
         var onSceneRender = null;
@@ -12909,6 +12908,12 @@ function Ktl($, appInfo) {
             addFooter(ktlKeywords.ktlAppFooter);
 
             onSceneRender && onSceneRender(event, scene, appInfo);
+
+            setTimeout(() => {
+                const showHiddenElements = ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true);
+                if (showHiddenElements === 'true')
+                    showHiddenElemements();
+            }, 1000);
         })
 
         var modalScanItv;
@@ -13012,6 +13017,42 @@ function Ktl($, appInfo) {
 
             if (!document.getElementById('ktlFooter'))
                 document.body.appendChild(footerElement);
+        }
+
+        function showHiddenElemements() {
+            $('.ktlHidden').replaceClass('ktlHidden', 'dis_ktlHidden');
+            $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'dis_ktlDisplayNone');
+            $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
+
+            $('[class^=ktlHidden_], [class*=" ktlHidden_"]').each(function () {
+                var currentClass = $(this).attr('class');
+                var newClass = currentClass.split(' ').map(function (className) {
+                    if (className.startsWith('ktlHidden_')) {
+                        return 'dis_' + className;
+                    }
+                    return className;
+                }).join(' ');
+
+                $(this).attr('class', newClass);
+            });
+        }
+
+        function hideHiddenElemements() {
+            $('.dis_ktlHidden').replaceClass('dis_ktlHidden', 'ktlHidden');
+            $('.dis_ktlDisplayNone').replaceClass('dis_ktlDisplayNone', 'ktlDisplayNone');
+            $('.dis_ktlVisibilityHidden').replaceClass('dis_ktlVisibilityHidden', 'ktlVisibilityHidden');
+
+            $('[class^=dis_ktlHidden_], [class*=" dis_ktlHidden_"]').each(function () {
+                var currentClass = $(this).attr('class');
+                var newClass = currentClass.split(' ').map(function (className) {
+                    if (className.startsWith('dis_ktlHidden_')) {
+                        return className.replace('dis_', '');
+                    }
+                    return className;
+                }).join(' ');
+
+                $(this).attr('class', newClass);
+            });
         }
 
         return {
@@ -13637,43 +13678,18 @@ function Ktl($, appInfo) {
                                         ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
                                 })
 
-                                var showHiddenElemBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Elements: ' + (showHiddenElem ? 'Show' : 'Hide'), '', ['devBtn', 'kn-button']);
+                                let showHiddenElements = (ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true) === 'true');
+                                var showHiddenElemBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Elements: ' + (showHiddenElements ? 'Show' : 'Default'), '', ['devBtn', 'kn-button']);
                                 showHiddenElemBtn.addEventListener('click', () => {
-                                    showHiddenElem = !showHiddenElem;
-                                    showHiddenElemBtn.textContent = 'Hidden Elements: ' + (showHiddenElem ? 'Show' : 'Hide');
-                                    if (showHiddenElem) {
-                                        $('.ktlHidden').replaceClass('ktlHidden', 'dis_ktlHidden');
-                                        $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'dis_ktlDisplayNone');
-                                        $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
+                                    showHiddenElements = !showHiddenElements;
+                                    showHiddenElemBtn.textContent = 'Hidden Elements: ' + (showHiddenElements ? 'Show' : 'Default');
 
-                                        $('[class^=ktlHidden_], [class*=" ktlHidden_"]').each(function () {
-                                            var currentClass = $(this).attr('class');
-                                            var newClass = currentClass.split(' ').map(function (className) {
-                                                if (className.startsWith('ktlHidden_')) {
-                                                    return 'dis_' + className;
-                                                }
-                                                return className;
-                                            }).join(' ');
+                                    ktl.storage.lsSetItem('SHOW_HIDDEN_ELEMENTS', showHiddenElements, false, true);
 
-                                            $(this).attr('class', newClass);
-                                        });
-                                    } else {
-                                        $('.dis_ktlHidden').replaceClass('dis_ktlHidden', 'ktlHidden');
-                                        $('.dis_ktlDisplayNone').replaceClass('dis_ktlDisplayNone', 'ktlDisplayNone');
-                                        $('.dis_ktlVisibilityHidden').replaceClass('dis_ktlVisibilityHidden', 'ktlVisibilityHidden');
-
-                                        $('[class^=dis_ktlHidden_], [class*=" dis_ktlHidden_"]').each(function () {
-                                            var currentClass = $(this).attr('class');
-                                            var newClass = currentClass.split(' ').map(function (className) {
-                                                if (className.startsWith('dis_ktlHidden_')) {
-                                                    return className.replace('dis_', '');
-                                                }
-                                                return className;
-                                            }).join(' ');
-
-                                            $(this).attr('class', newClass);
-                                        });
-                                    }
+                                    if (showHiddenElements)
+                                        showHiddenElemements();
+                                    else
+                                        hideHiddenElemements();
                                 })
 
                                 kioskModeBtn = ktl.fields.addButton(devBtnsDiv, 'Kiosk: No', '', ['devBtn', 'kn-button']);
