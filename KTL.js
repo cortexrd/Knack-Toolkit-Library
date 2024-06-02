@@ -2873,7 +2873,7 @@ function Ktl($, appInfo) {
             getFieldIdFromLabel: function (viewId, fieldLabel, exactMatch = true) {
                 if (!viewId || !fieldLabel) return;
 
-                let view = ktl.views.getViewObject(viewId);
+                let view = ktl.views.getView(viewId);
                 if (!view) return;
 
                 let viewObjToScan = view;
@@ -2919,7 +2919,7 @@ function Ktl($, appInfo) {
             getFieldLabelFromId: function (viewId, fieldId, exactMatch = true) {
                 if (!viewId || !fieldId) return;
 
-                let view = ktl.views.getViewObject(viewId);
+                let view = ktl.views.getView(viewId);
                 if (!view) return;
 
                 let viewObjToScan = view;
@@ -2976,6 +2976,7 @@ function Ktl($, appInfo) {
 
 
             //Parameters are size, field ID and hidden text flag "h".
+            //TODO:  add https://unpkg.com/jsbarcode@latest/dist/JsBarcode.all.min.js
             generateBarcode: function (viewId, keywords, data) {
                 if (!viewId) return;
 
@@ -8708,7 +8709,7 @@ function Ktl($, appInfo) {
                             }
                         }
 
-                        let srcFieldObject = ktl.views.getViewObj(srcViewId);
+                        let srcFieldObject = ktl.views.getView(srcViewId);
                         let srcViewDisplayFieldId = Knack.objects._byId[srcFieldObject.source.object].attributes.identifier;
 
                         for (const srcRecord of srcData) {
@@ -10138,7 +10139,7 @@ function Ktl($, appInfo) {
 
                     if (ktl.bulkOps.getBulkOpsActive(viewId)) {
                         //For summary lines, prepend a space if Bulk Ops are enabled.
-                        var viewObj = ktl.views.getViewObj(viewId);
+                        var viewObj = ktl.views.getView(viewId);
                         if (!viewObj)
                             return resolve();
 
@@ -11735,31 +11736,23 @@ function Ktl($, appInfo) {
 
             getViewSourceName: function (viewId) {
                 if (!viewId) return;
-                const viewObj = Knack.views[viewId];
-                if (!viewObj) return;
-
-                var object = viewObj.model.view.source.object;
-                return Knack.objects._byId[object].attributes.name;
+                const view = Knack.router.scene_view.model.views._byId[viewId];
+                if (view)
+                    return Knack.objects._byId[view.attributes.source.object].attributes.name;
             },
 
             getViewType: function (viewId) {
                 if (!viewId) return;
-                var viewObj = ktl.views.getViewObj(viewId);
+                var viewObj = ktl.views.getView(viewId);
                 if (viewObj)
                     return viewObj.type;
             },
 
-            getViewObj: function (viewId) {
+            getView: function (viewId) {
                 if (!viewId) return;
-
-                var view = Knack.views[viewId];
-                if (view && view.model && view.model.view)
-                    return view.model.view;
-                else {
-                    view = Knack.router.scene_view.model.views._byId[viewId];
-                    if (view)
-                        return view.attributes;
-                }
+                const view = Knack.router.scene_view.model.views._byId[viewId];
+                if (view)
+                    return view.attributes;
             },
 
             applyZoomLevel: function (viewId, keywords) {
@@ -12249,7 +12242,7 @@ function Ktl($, appInfo) {
             getFieldTypeInView: function (viewId, fieldId, exactMatch = true) {
                 if (!viewId || !fieldId) return;
 
-                let view = ktl.views.getViewObject(viewId);
+                let view = ktl.views.getView(viewId);
                 if (!view) return;
 
                 let viewObjToScan = view;
@@ -12309,7 +12302,7 @@ function Ktl($, appInfo) {
 
             //Returns undefined if view type is not applicable, or the number of summaries, from 0 to 4.
             viewHasSummary: function (viewId) {
-                var viewObj = ktl.views.getViewObj(viewId);
+                var viewObj = ktl.views.getView(viewId);
                 if (viewObj && viewObj.totals)
                     return viewObj.totals.length;
             },
@@ -12616,23 +12609,6 @@ function Ktl($, appInfo) {
                 }
             },
 
-            getViewObject: function (viewId) {
-                if (!viewId) return;
-
-                let view = Knack.views[viewId];
-                if (!view) {
-                    const scenes = Knack.scenes.models;
-                    for (const scene of scenes) {
-                        for (const view of scene.views.models) {
-                            if (view.attributes.key === viewId)
-                                return view.attributes;
-                        }
-                    }
-                }
-
-                return view.model.view;
-            },
-
             //Used to perform bulk edits and copies of records programmatically.
             processAutomatedBulkOps: function (bulkOpsViewId, bulkOpsRecordsArray, requestType = 'PUT', viewsToRefresh = [], showSpinner = true, enableShowProgress = true) {
                 return new Promise(function (resolve, reject) {
@@ -12815,7 +12791,7 @@ function Ktl($, appInfo) {
 
             viewHasGroups: function (viewId) {
                 if (!viewId) return false;
-                var viewObj = ktl.views.getViewObj(viewId);
+                var viewObj = ktl.views.getView(viewId);
                 if (!viewObj) return false;
                 for (const col of viewObj.columns) {
                     if (col.grouping)
@@ -15801,7 +15777,7 @@ function Ktl($, appInfo) {
         function enableBulkOperations(view, data) {
             const viewId = view.key;
 
-            var viewObj = ktl.views.getViewObj(viewId);
+            var viewObj = ktl.views.getView(viewId);
             if (!viewObj) return;
 
             bulkOpsAddCheckboxesToTable(viewId);
