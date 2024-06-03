@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.25.4';
+    const KTL_VERSION = '0.25.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2981,7 +2981,7 @@ function Ktl($, appInfo) {
                 if (!viewId) return;
 
                 const viewType = ktl.views.getViewType(viewId);
-                if (viewType !== 'details' && viewType !== 'list' && viewType !== 'form') return;
+                if (viewType !== 'details' && viewType !== 'list' && viewType !== 'form' && viewType !== 'rich_text') return;
 
                 const kw = '_bcg';
                 if (keywords[kw].length && keywords[kw][0].options) {
@@ -3029,16 +3029,26 @@ function Ktl($, appInfo) {
                         }
                     }
 
+                    let text;
+
                     if (!fieldId) {
-                        ktl.log.clog('purple', 'generateBarcode called with an invalid field ID:', viewId);
-                        return;
+                        //Check if there's a group with specific hard-coded text.
+                        const params = keywords[kw][0].params;
+                        if (params.length >= 2 && params[1].length && params[1][0].length) {
+                            text = params[1][0];
+                        }
+
+                        if (!text) {
+                            ktl.log.clog('purple', 'generateBarcode called with an invalid field ID:', viewId, ' or empty text');
+                            return;
+                        }
                     }
 
                     ktl.core.loadLib('QRGenerator')
                         .then(() => {
                             if (viewType === 'details') {
                                 //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
-                                const text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
+                                text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
                                 const barcodeData = { text: text, width: size, height: size };
 
                                 var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
@@ -3059,7 +3069,7 @@ function Ktl($, appInfo) {
                             } else if (viewType === 'list') {
                                 data.forEach(row => {
                                     //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
-                                    const text = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`)[0].textContent.replace(/<br \/>/g, '\n');
+                                    text = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`)[0].textContent.replace(/<br \/>/g, '\n');
                                     const barcodeData = { text: text, width: size, height: size };
 
                                     var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}-${row.id}`);
@@ -3083,7 +3093,7 @@ function Ktl($, appInfo) {
                                 })
                             } else if (viewType === 'form') {
                                 //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
-                                const text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
+                                text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
                                 const barcodeData = { text: text, width: size, height: size };
 
                                 var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
@@ -3099,7 +3109,7 @@ function Ktl($, appInfo) {
                                 $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
 
                                 $(`#${viewId} #${fieldId}`).on('input', function (e) {
-                                    const text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
+                                    text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
                                     const barcodeData = { text: text, width: size, height: size };
 
                                     if (bcgDiv.lastChild)
@@ -3107,6 +3117,21 @@ function Ktl($, appInfo) {
 
                                     $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
                                 })
+                            } else if (viewType === 'rich_text') {
+                                const barcodeData = { text: text, width: size, height: size };
+
+                                var bcgDiv = document.getElementById(`${viewId}-bcgDiv`);
+                                if (!bcgDiv) {
+                                    bcgDiv = document.createElement('div');
+
+                                    $(`#${viewId}`).append(bcgDiv);
+
+                                    bcgDiv.setAttribute('id', `${viewId}-bcgDiv`);
+                                    bcgDiv.style.marginTop = '30px';
+                                    bcgDiv.style.marginLeft = '30px';
+                                }
+
+                                $(`#${viewId}-bcgDiv`).qrcode(barcodeData);
                             }
                         })
                         .catch(reason => { reject('generateBarcode error:', reason); })
@@ -8721,20 +8746,27 @@ function Ktl($, appInfo) {
                                 const dstFieldId = headersMapping[header].dst;
 
                                 if (srcFieldId.startsWith('field_')) {
-                                    const span = $(srcRecord.attributes[srcFieldId]).find('span');
-                                    if (span.length) {
-                                        const ids = ktl.core.extractIds(srcRecord.attributes[srcFieldId]);
-                                        apiData[dstFieldId] = ids;
+                                    const sourceRecord = srcRecord.attributes[srcFieldId];
+                                    const spanClass = $(sourceRecord).find('span[class]');
+                                    if (spanClass.length) {
+                                        apiData[dstFieldId] = [];
+                                        for (const classId of Array.from(spanClass)) {
+                                            apiData[dstFieldId].push(classId.classList.value);
+                                        }
                                     } else {
-                                        if (srcFieldId === srcViewDisplayFieldId)
-                                            apiData[dstFieldId] = [srcRecId];
-                                        else {
-                                            const data = srcRecord.attributes[`${srcFieldId}_raw`];
-                                            if (data) {
-                                                if (Array.isArray(data) && data.length)
-                                                    apiData[dstFieldId] = data;
-                                                else
-                                                    apiData[dstFieldId] = data;
+                                        const spanId = $(sourceRecord).find('span[id]');
+                                        if (spanId.length) {
+                                            const ids = ktl.core.extractIds(srcRecord.attributes[srcFieldId]);
+                                            apiData[dstFieldId] = ids;
+                                        } else {
+                                            if (srcFieldId === srcViewDisplayFieldId)
+                                                apiData[dstFieldId] = [srcRecId];
+                                            else {
+                                                const data = srcRecord.attributes[`${srcFieldId}_raw`];
+                                                if (data) {
+                                                    if (Array.isArray(data) && data.length)
+                                                        apiData[dstFieldId] = data;
+                                                }
                                             }
                                         }
                                     }
@@ -8791,7 +8823,10 @@ function Ktl($, appInfo) {
                             }
                         }
 
-                        proceedToUpdateRecords(bulkApiDataArray);
+                        if (bulkApiDataArray.length) {
+                            console.log('bulkApiDataArray =', JSON.stringify(bulkApiDataArray, null, 4));
+                            proceedToUpdateRecords(bulkApiDataArray);
+                        }
                     } else if (mode === 'api') {
                         if (params.length >= 2 && params[1].length === 3)
                             fieldsToCopy = params[1];
@@ -9884,9 +9919,7 @@ function Ktl($, appInfo) {
                             return resolve();
                         }
                     } else {
-                        var callerInfo = ktl.views.refreshView.caller.toString().replace(/\s+/g, ' ');
-                        ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1009 - Called refreshView with invalid parameter.  Caller info: ' + callerInfo);
-                        resolve();
+                        resolve(); //Normal: Can happen if view is hidden by a display rule.
                     }
                 });
             },
@@ -12630,6 +12663,10 @@ function Ktl($, appInfo) {
                     if (!automatedBulkOpsQueue[bulkOpsViewId]) { //No, then add all array.
                         automatedBulkOpsQueue[bulkOpsViewId] = bulkOpsRecordsArray;
                     } else { //Yes, then add only new requests, i.e. where the record ID is not found.
+                        //Ignore updates for now, until a solution is found to double API calls.
+
+                        /*
+                        console.log('existing', automatedBulkOpsQueue[bulkOpsViewId]);
                         bulkOpsRecordsArray.forEach(newRequest => {
                             const queue = automatedBulkOpsQueue[bulkOpsViewId];
                             if (!queue.some(request => request.id === newRequest.id)) {
@@ -12637,6 +12674,7 @@ function Ktl($, appInfo) {
                                 queue.push(newRequest);
                             }
                         });
+                        */
                     }
 
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
