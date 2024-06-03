@@ -12626,10 +12626,10 @@ function Ktl($, appInfo) {
 
                     requestType = requestType.toUpperCase();
 
-                    //Check if already existing in current queue, and only add if not already existing.
-                    if (!automatedBulkOpsQueue[bulkOpsViewId]) {
+                    //Check if there's already an existing queue for this view.
+                    if (!automatedBulkOpsQueue[bulkOpsViewId]) { //No, then add all array.
                         automatedBulkOpsQueue[bulkOpsViewId] = bulkOpsRecordsArray;
-                    } else {
+                    } else { //Yes, then add only new requests, i.e. where the record ID is not found.
                         bulkOpsRecordsArray.forEach(newRequest => {
                             const queue = automatedBulkOpsQueue[bulkOpsViewId];
                             if (!queue.some(request => request.id === newRequest.id)) {
@@ -12913,7 +12913,7 @@ function Ktl($, appInfo) {
                 const showHiddenElements = ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true);
                 if (showHiddenElements === 'true')
                     showHiddenElemements();
-            }, 1000);
+            }, 2000);
         })
 
         var modalScanItv;
