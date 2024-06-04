@@ -1223,10 +1223,18 @@ function Ktl($, appInfo) {
                         } else
                             resolve();
                     } else if (libName === 'QRGenerator') {
-                        //QR Code reader comes from here: https://github.com/jeromeetienne/jquery-qrcode
+                        //QR Code library comes from here: https://github.com/jeromeetienne/jquery-qrcode
                         if (typeof jQuery.fn.qrcode !== 'function') {
                             LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.qrcode/1.0/jquery.qrcode.min.js'], function () {
                                 (typeof jQuery.fn.qrcode === 'function') ? resolve() : reject('Cannot find QRGenerator library.');
+                            })
+                        } else
+                            resolve();
+                    } else if (libName === 'JsBarcodeGenerator') {
+                        //JsBarcode library comes from here: https://github.com/lindell/JsBarcode
+                        if (typeof jQuery.fn.JsBarcode !== 'function') {
+                            LazyLoad.js(['https://unpkg.com/jsbarcode@latest/dist/JsBarcode.all.min.js'], function () {
+                                (typeof jQuery.fn.JsBarcode === 'function') ? resolve() : reject('Cannot find JsBarcode library.');
                             })
                         } else
                             resolve();
@@ -2990,34 +2998,54 @@ function Ktl($, appInfo) {
                 }
 
                 if (keywords && keywords[kw]) {
-                    var size = 200;
-                    var hideText = false;
-
                     var fieldId;
 
+                    let size = 200; //QR only
+                    let hideText = false;
+                    let format = 'QR';
+                    let width = 100; //Barcode only
+                    let height = 100; //Barcode only
+
                     if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                        const params = keywords[kw][0].params;
+                        const groups = keywords[kw][0].params;
 
-                        if (params.length && params[0].length) {
-                            const sizeParam = Number(params[0][0]);
-                            if (isNaN(sizeParam)) {
-                                ktl.log.clog('purple', 'generateBarcode called with invalid size:', viewId, sizeParam);
-                                return;
+                        for (const group of groups) {
+                            if (group[0] === 'format' && group.length >= 2) {
+                                format = group[1];
+                                if (group.length >= 4) {
+                                    const widthParam = Number(group[2]);
+                                    const heightParam = Number(group[3]);
+                                    if (!isNaN(widthParam) && !isNaN(heightParam)) {
+                                        width = widthParam;
+                                        height = heightParam;
+                                    }
+                                }
+                            } else if (group[0] === 'mapping' && group.length >= 2) {
+                                console.log('mapping');
+                            } else {
+                                //Basic params, typically first group.
+                                if (group.length >= 1) {
+                                    const sizeParam = Number(group[0]);
+                                    if (isNaN(sizeParam)) {
+                                        ktl.log.clog('purple', 'generateBarcode called with invalid size:', viewId, sizeParam);
+                                        return;
+                                    }
+
+                                    size = Math.max(30, sizeParam);
+
+                                    if (group.length >= 2) {
+                                        fieldId = group[1];
+                                        if (!fieldId.startsWith('field_'))
+                                            fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
+
+                                        if (!$('#' + viewId + ' .' + fieldId).length && !$('#' + viewId + ' #' + fieldId).length)
+                                            return;
+                                    }
+
+                                    if (group.length >= 3 && group[2] === 'h')
+                                        hideText = true;
+                                }
                             }
-
-                            size = Math.max(30, sizeParam);
-
-                            if (params[0].length >= 2) {
-                                fieldId = params[0][1];
-                                if (!fieldId.startsWith('field_'))
-                                    fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
-
-                                if (!$('#' + viewId + ' .' + fieldId).length && !$('#' + viewId + ' #' + fieldId).length)
-                                    return;
-                            }
-
-                            if (params[0].length >= 3 && params[0][2] === 'h')
-                                hideText = true;
                         }
                     } else {
                         const fieldSel = $('#' + viewId + ' [class*="field_"]:first');
@@ -3044,35 +3072,51 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    ktl.core.loadLib('QRGenerator')
-                        .then(() => {
+                    if (format === 'QR') {
+                        console.log('QR');
+                        ktl.core.loadLib('QRGenerator')
+                            .then(() => { barcodeReady(); })
+                            .catch(reason => { console.log('QR error:', reason); })
+                    } else {
+                        ktl.core.loadLib('JsBarcodeGenerator')
+                            .then(() => { barcodeReady(); })
+                            .catch(reason => { console.log('JsBarcode error:', reason); })
+                    }
+
+                    function barcodeReady() {
+                        try {
                             if (viewType === 'details') {
                                 //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                                 text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
-                                const barcodeData = { text: text, width: size, height: size };
 
-                                var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
-                                if (!bcgDiv) {
-                                    bcgDiv = document.createElement('div');
+                                if (format === 'QR') {
+                                    const barcodeData = { text: text, width: size, height: size };
 
-                                    if (hideText) {
-                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).remove();
-                                        $(`#${viewId} .${fieldId} .kn-detail-body span`).append(bcgDiv);
-                                    } else
-                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).prepend(bcgDiv);
+                                    var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
+                                    if (!bcgDiv) {
+                                        bcgDiv = document.createElement('div');
 
-                                    bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}`);
-                                    bcgDiv.style.textAlign = 'center';
+                                        if (hideText) {
+                                            $(`#${viewId} .${fieldId} .kn-detail-body span span`).remove();
+                                            $(`#${viewId} .${fieldId} .kn-detail-body span`).append(bcgDiv);
+                                        } else
+                                            $(`#${viewId} .${fieldId} .kn-detail-body span span`).prepend(bcgDiv);
+
+                                        bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}`);
+                                        bcgDiv.style.textAlign = 'center';
+                                    }
+
+                                    $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
+                                } else {
+                                    console.log('details');
                                 }
-
-                                $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
                             } else if (viewType === 'list') {
                                 data.forEach(row => {
                                     //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                                     text = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`)[0].textContent.replace(/<br \/>/g, '\n');
-                                    const barcodeData = { text: text, width: size, height: size };
 
-                                    var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}-${row.id}`);
+                                    const divSelector = `${viewId}-bcgDiv-${fieldId}-${row.id}`;
+                                    var bcgDiv = document.getElementById(divSelector);
                                     if (!bcgDiv) {
                                         bcgDiv = document.createElement('div');
                                         if (hideText) {
@@ -3081,7 +3125,7 @@ function Ktl($, appInfo) {
                                         } else
                                             $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`).prepend(bcgDiv);
 
-                                        bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}-${row.id}`);
+                                        bcgDiv.setAttribute('id', divSelector);
 
                                         if (Knack.views[viewId].model.view.label_format === 'none' || Knack.views[viewId].model.view.label_format === 'top')
                                             $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body`).css('text-align', 'center');
@@ -3089,52 +3133,79 @@ function Ktl($, appInfo) {
                                             bcgDiv.style.textAlign = 'center';
                                     }
 
-                                    $(`#${viewId}-bcgDiv-${fieldId}-${row.id}`).qrcode(barcodeData);
+                                    if (format === 'QR') {
+                                        const barcodeData = { text: text, width: size, height: size };
+                                        $(`#${divSelector}`).qrcode(barcodeData);
+                                    } else {
+                                        const canvas = document.createElement('canvas');
+                                        canvas.width = width;
+                                        canvas.height = height;
+                                        bcgDiv.appendChild(canvas);
+                                        const canvasId = `${divSelector}-canvas`;
+                                        canvas.setAttribute('id', canvasId);
+                                        JsBarcode(`#${canvasId}`, text, {
+                                            format: format,
+                                            width: 2, //Width of a single bar.
+                                            height: height,
+                                        });
+                                    }
                                 })
                             } else if (viewType === 'form') {
                                 //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                                 text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
-                                const barcodeData = { text: text, width: size, height: size };
 
-                                var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
-                                if (!bcgDiv) {
-                                    bcgDiv = document.createElement('div');
-
-                                    $(`#${viewId} [data-input-id="${fieldId}"]`).append(bcgDiv);
-
-                                    bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}`);
-                                    bcgDiv.style.marginTop = '10px';
-                                }
-
-                                $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
-
-                                $(`#${viewId} #${fieldId}`).on('input', function (e) {
-                                    text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
+                                if (format === 'QR') {
                                     const barcodeData = { text: text, width: size, height: size };
 
-                                    if (bcgDiv.lastChild)
-                                        bcgDiv.removeChild(bcgDiv.lastChild);
+                                    var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
+                                    if (!bcgDiv) {
+                                        bcgDiv = document.createElement('div');
+
+                                        $(`#${viewId} [data-input-id="${fieldId}"]`).append(bcgDiv);
+
+                                        bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}`);
+                                        bcgDiv.style.marginTop = '10px';
+                                    }
 
                                     $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
-                                })
-                            } else if (viewType === 'rich_text') {
-                                const barcodeData = { text: text, width: size, height: size };
 
-                                var bcgDiv = document.getElementById(`${viewId}-bcgDiv`);
-                                if (!bcgDiv) {
-                                    bcgDiv = document.createElement('div');
+                                    $(`#${viewId} #${fieldId}`).on('input', function (e) {
+                                        text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
+                                        const barcodeData = { text: text, width: size, height: size };
 
-                                    $(`#${viewId}`).append(bcgDiv);
+                                        if (bcgDiv.lastChild)
+                                            bcgDiv.removeChild(bcgDiv.lastChild);
 
-                                    bcgDiv.setAttribute('id', `${viewId}-bcgDiv`);
-                                    bcgDiv.style.marginTop = '30px';
-                                    bcgDiv.style.marginLeft = '30px';
+                                        $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
+                                    })
+                                } else {
+                                    console.log('form');
                                 }
+                            } else if (viewType === 'rich_text') {
+                                if (format === 'QR') {
+                                    const barcodeData = { text: text, width: size, height: size };
 
-                                $(`#${viewId}-bcgDiv`).qrcode(barcodeData);
+                                    var bcgDiv = document.getElementById(`${viewId}-bcgDiv`);
+                                    if (!bcgDiv) {
+                                        bcgDiv = document.createElement('div');
+
+                                        $(`#${viewId}`).append(bcgDiv);
+
+                                        bcgDiv.setAttribute('id', `${viewId}-bcgDiv`);
+                                        bcgDiv.style.marginTop = '30px';
+                                        bcgDiv.style.marginLeft = '30px';
+                                    }
+
+                                    $(`#${viewId}-bcgDiv`).qrcode(barcodeData);
+                                } else {
+                                    console.log('rich text');
+                                }
                             }
-                        })
-                        .catch(reason => { reject('generateBarcode error:', reason); })
+                        }
+                        catch (e) {
+                            ktl.log.clog('purple', 'barcodeReady error:', e);
+                        }
+                    }
                 }
             },
 
