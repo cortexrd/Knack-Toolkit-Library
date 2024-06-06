@@ -2339,8 +2339,8 @@ function Ktl($, appInfo) {
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
                 if (window.performance.now() - lastCharTime > cfg.barcoreTimeout) {
-                    if (processBarcode && barcodeText.length >= cfg.barcodeMinLength)
-                        processBarcode(barcodeText);
+                    if (barcodeText.length >= cfg.barcodeMinLength)
+                        $(document).trigger('KTL.processBarcode', barcodeText);
 
                     barcodeText = '';
                     ktl.fields.setUsingBarcode(false);
@@ -2982,10 +2982,7 @@ function Ktl($, appInfo) {
                 return fieldKeywords;
             },
 
-
-            //Parameters are size, field ID and hidden text flag "h".
-            //TODO:  add https://unpkg.com/jsbarcode@latest/dist/JsBarcode.all.min.js
-            generateBarcode: function (viewId, keywords, data) {
+            barcodeGenerator: function (viewId, keywords, data) {
                 if (!viewId) return;
 
                 const viewType = ktl.views.getViewType(viewId);
@@ -3027,7 +3024,7 @@ function Ktl($, appInfo) {
                                 if (group.length >= 1) {
                                     const sizeParam = Number(group[0]);
                                     if (isNaN(sizeParam)) {
-                                        ktl.log.clog('purple', 'generateBarcode called with invalid size:', viewId, sizeParam);
+                                        ktl.log.clog('purple', 'barcodeGenerator called with invalid size:', viewId, sizeParam);
                                         return;
                                     }
 
@@ -3038,8 +3035,10 @@ function Ktl($, appInfo) {
                                         if (!fieldId.startsWith('field_'))
                                             fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
 
-                                        if (!$('#' + viewId + ' .' + fieldId).length && !$('#' + viewId + ' #' + fieldId).length)
+                                        if (!document.querySelector(`#${viewId} [data-input-id="${fieldId}"], #${viewId} .${fieldId}`)) {
+                                            ktl.log.clog('purple', 'barcodeGenerator called with invalid params:', viewId, fieldId);
                                             return;
+                                        }
                                     }
 
                                     if (group.length >= 3 && group[2] === 'h')
@@ -3067,7 +3066,7 @@ function Ktl($, appInfo) {
                         }
 
                         if (!text) {
-                            ktl.log.clog('purple', 'generateBarcode called with an invalid field ID:', viewId, ' or empty text');
+                            ktl.log.clog('purple', 'barcodeGenerator called with an invalid field ID:', viewId, ' or empty text');
                             return;
                         }
                     }
@@ -3089,26 +3088,36 @@ function Ktl($, appInfo) {
                                 //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                                 text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
 
+                                const divSelector = `${viewId}-bcgDiv-${fieldId}`;
+                                var bcgDiv = document.getElementById(divSelector);
+                                if (!bcgDiv) {
+                                    bcgDiv = document.createElement('div');
+
+                                    if (hideText) {
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).remove();
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span`).append(bcgDiv);
+                                    } else
+                                        $(`#${viewId} .${fieldId} .kn-detail-body span span`).prepend(bcgDiv);
+
+                                    bcgDiv.setAttribute('id', divSelector);
+                                    bcgDiv.style.textAlign = 'center';
+                                }
+
                                 if (format === 'QR') {
                                     const barcodeData = { text: text, width: size, height: size };
-
-                                    var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
-                                    if (!bcgDiv) {
-                                        bcgDiv = document.createElement('div');
-
-                                        if (hideText) {
-                                            $(`#${viewId} .${fieldId} .kn-detail-body span span`).remove();
-                                            $(`#${viewId} .${fieldId} .kn-detail-body span`).append(bcgDiv);
-                                        } else
-                                            $(`#${viewId} .${fieldId} .kn-detail-body span span`).prepend(bcgDiv);
-
-                                        bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}`);
-                                        bcgDiv.style.textAlign = 'center';
-                                    }
-
                                     $(`#${viewId}-bcgDiv-${fieldId}`).qrcode(barcodeData);
                                 } else {
-                                    console.log('details');
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = width;
+                                    canvas.height = height;
+                                    bcgDiv.appendChild(canvas);
+                                    const canvasId = `${divSelector}-canvas`;
+                                    canvas.setAttribute('id', canvasId);
+                                    JsBarcode(`#${canvasId}`, text, {
+                                        format: format,
+                                        width: 2, //Width of a single bar.
+                                        height: height,
+                                    });
                                 }
                             } else if (viewType === 'list') {
                                 data.forEach(row => {
@@ -3157,13 +3166,14 @@ function Ktl($, appInfo) {
                                 if (format === 'QR') {
                                     const barcodeData = { text: text, width: size, height: size };
 
-                                    var bcgDiv = document.getElementById(`${viewId}-bcgDiv-${fieldId}`);
+                                    const divSelector = `${viewId}-bcgDiv-${fieldId}`;
+                                    var bcgDiv = document.getElementById(divSelector);
                                     if (!bcgDiv) {
                                         bcgDiv = document.createElement('div');
 
                                         $(`#${viewId} [data-input-id="${fieldId}"]`).append(bcgDiv);
 
-                                        bcgDiv.setAttribute('id', `${viewId}-bcgDiv-${fieldId}`);
+                                        bcgDiv.setAttribute('id', divSelector);
                                         bcgDiv.style.marginTop = '10px';
                                     }
 
@@ -3180,6 +3190,7 @@ function Ktl($, appInfo) {
                                     })
                                 } else {
                                     console.log('form');
+                                    //TODO...
                                 }
                             } else if (viewType === 'rich_text') {
                                 if (format === 'QR') {
@@ -3199,6 +3210,7 @@ function Ktl($, appInfo) {
                                     $(`#${viewId}-bcgDiv`).qrcode(barcodeData);
                                 } else {
                                     console.log('rich text');
+                                    //TODO...
                                 }
                             }
                         }
@@ -3206,6 +3218,115 @@ function Ktl($, appInfo) {
                             ktl.log.clog('purple', 'barcodeReady error:', e);
                         }
                     }
+                }
+            },
+
+            barcodeReader: function (viewId, keywords) {
+                const kw = '_bcr';
+                if (!viewId || !keywords[kw]) return;
+
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+
+                let prefix;
+                let autoSubmit = false;
+                let submitDelay = 0;
+                const barcodeFields = [];
+
+                const groups = keywords[kw][0].params;
+                if (groups.length) {
+                    for (const group of groups) {
+                        if (group[0] === 'prefix' && group.length === 2) {
+                            prefix = group[1];
+                        } else if (group[0] === 'auto' && group.length >= 2) {
+                            if (group.length >= 1 && group[1].toLowerCase() === 'submit')
+                                autoSubmit = true;
+                            if (group.length >= 2 && !isNaN(group[2]))
+                                submitDelay = Number(group[2]);
+                        } else {
+                            if (group.length >= 2) {
+                                let fieldId = group[0];
+                                if (!fieldId.startsWith('field_'))
+                                    fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
+
+                                if (!document.querySelector(`#${viewId} [data-input-id="${fieldId}"], #${viewId} .${fieldId}`)) {
+                                    ktl.log.clog('purple', 'barcodeReader called with invalid params:', viewId, fieldId);
+                                    return;
+                                }
+
+                                let textLength = group[1];
+                                let decimals = 0;
+                                if (textLength && !isNaN(textLength)) {
+                                    textLength = Number(textLength);
+                                    if (group.length >= 3) {
+                                        decimals = group[2];
+                                        if (decimals && !isNaN(decimals))
+                                            decimals = Number(decimals);
+                                    }
+
+                                    barcodeFields.push({ fieldId, textLength, decimals });
+                                }
+                            }
+                        }
+                    }
+
+                    $(document).off(`KTL.processBarcode.${viewId}`).on(`KTL.processBarcode.${viewId}`, (e, barcodeText) => {
+                        if (!prefix || (prefix && barcodeText.startsWith(prefix))) {
+                            if (prefix)
+                                barcodeText = barcodeText.substring(prefix.length);
+
+                            var promisesArray = [];
+                            for (const barcodeField of barcodeFields) {
+                                let textLength = barcodeField.textLength;
+                                let fieldText = barcodeText.substring(0, textLength);
+
+                                if (barcodeField.decimals) {
+                                    fieldText = barcodeText.substring(0, textLength + barcodeField.decimals);
+                                    fieldText = fieldText.substring(0, textLength) + '.' + fieldText.substring(textLength); //TODO: use same decimal format as field.
+                                    barcodeText = barcodeText.substring(textLength + barcodeField.decimals);
+                                } else {
+                                    barcodeText = barcodeText.substring(textLength);                                    
+                                }
+
+                                const fieldType = ktl.fields.getFieldType(barcodeField.fieldId);
+                                if (TEXT_DATA_TYPES.includes(fieldType)) {
+                                    const el = document.querySelector(`#${viewId} [data-input-id=${barcodeField.fieldId}] input`)
+                                        || document.querySelector(`#${viewId} [data-input-id=${barcodeField.fieldId}] .kn-textarea`);
+
+                                    if (el)
+                                        el.value = fieldText;
+                                } else if (fieldType === 'connection') {
+                                    if ($(`#${viewId}-${barcodeField.fieldId}`).hasClass('chzn-select')) {
+                                        promisesArray.push(ktl.views.searchDropdown(fieldText, barcodeField.fieldId, true, true, viewId)
+                                            .then(function () { })
+                                            .catch(function (foundText) { console.log('error', foundText); })
+                                        );
+                                    }
+                                }
+                            }
+
+                            setTimeout(() => {
+                                if (promisesArray.length) {
+                                    Promise.all(promisesArray)
+                                        .then(() => {
+                                            barcodeExtractionComplete();
+                                        })
+                                        .catch((error) => {
+                                            ktl.log.clog('red', 'processBarcode error: ' + error);
+                                        })
+                                } else
+                                    barcodeExtractionComplete();
+
+                                function barcodeExtractionComplete() {
+                                    if (autoSubmit) {
+                                        setTimeout(() => {
+                                            $(`#${viewId} .is-primary`).click();
+                                        }, submitDelay * 1000);
+                                    }
+                                }
+                            }, 200);
+                        }
+                    })
                 }
             },
 
@@ -6327,7 +6448,8 @@ function Ktl($, appInfo) {
                     keywords._rvs && refreshViewsAfterSubmit(viewId, keywords);
                     keywords._rvr && refreshViewsAfterRefresh(viewId, keywords);
                     keywords._nsg && noSortingOnGrid(viewId, keywords);
-                    keywords._bcg && ktl.fields.generateBarcode(viewId, keywords, data);
+                    keywords._bcg && ktl.fields.barcodeGenerator(viewId, keywords, data);
+                    keywords._bcr && ktl.fields.barcodeReader(viewId, keywords);
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(viewId, keywords);
@@ -9188,7 +9310,7 @@ function Ktl($, appInfo) {
                         $(`#${viewId}-bcgDiv-${qrCodeUrlFieldId}`).qrcode(barcodeData);
                     }
                 })
-                .catch(reason => { reject('generateBarcode error:', reason); })
+                .catch(reason => { reject('barcodeGenerator error:', reason); })
         }
 
         function autoFillAndSubmit(view, keywords) {
@@ -9879,6 +10001,9 @@ function Ktl($, appInfo) {
                             if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
                                 if (viewType === 'form') {
                                     if (formAction !== 'insert' && formAction !== 'create') {
+                                        //This code causes an unintentional submit event.  Had to replace it with code below until a solution is found.
+                                        //The intention is to update the Edit Form with most recent server data, in case it's been changed elsewhere.
+                                        /*
                                         Knack.views[viewId].model.fetch({
                                             success: function (model, response, options) {
                                                 Knack.views[viewId].render();
@@ -9892,6 +10017,13 @@ function Ktl($, appInfo) {
                                                 console.log('tryRefresh error', viewId, response);
                                             }
                                         });
+                                        */
+                                        Knack.views[viewId].reloadForm(); //Reloads but with local data only, not from the server.
+                                        Knack.views[viewId].render();
+                                        setTimeout(() => {
+                                            $(document).trigger('KTL.loadFormData', viewId);
+                                            ktlProcessKeywords(view.attributes);
+                                        }, 1000);
                                     } else {
                                         Knack.views[viewId].render();
 
@@ -10009,7 +10141,7 @@ function Ktl($, appInfo) {
                                         .then(() => {
                                             //ktl.log.clog('green', 'View refreshed successfully: ' + viewId);
                                         })
-                                )
+                                );
                             }
                         })
 
@@ -13039,6 +13171,20 @@ function Ktl($, appInfo) {
                         addMenuTitleToTab();
                     }
                 }, 500)
+            }
+
+            if (!ktl.scenes.isiFrameWnd()) {
+                setTimeout(() => {
+                    const showHiddenElements = ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true);
+                    if (showHiddenElements === 'true') {
+                        showHiddenElemements();
+
+                        //TODO: Why this doesn't work?
+                        setTimeout(() => {
+                            ktl.views.fixTableRowsAlignment(view.key);
+                        }, 2000);
+                    }
+                }, 2000);
             }
         })
 
