@@ -2997,11 +2997,12 @@ function Ktl($, appInfo) {
                 if (keywords && keywords[kw]) {
                     var fieldId;
 
-                    let size = 200; //QR only
+                    let size = 200; //QR Codes only
                     let hideText = false;
                     let format = 'QR';
-                    let width = 100; //Barcode only
-                    let height = 100; //Barcode only
+                    let alignment = 'center';
+                    let width = 100; //1D Barcodes only
+                    let height = 100; //1D Barcodes only
 
                     if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                         const groups = keywords[kw][0].params;
@@ -3072,11 +3073,11 @@ function Ktl($, appInfo) {
                     }
 
                     if (format === 'QR') {
-                        console.log('QR');
                         ktl.core.loadLib('QRGenerator')
                             .then(() => { barcodeReady(); })
                             .catch(reason => { console.log('QR error:', reason); })
                     } else {
+                        alignment = 'left';
                         ktl.core.loadLib('JsBarcodeGenerator')
                             .then(() => { barcodeReady(); })
                             .catch(reason => { console.log('JsBarcode error:', reason); })
@@ -3100,7 +3101,7 @@ function Ktl($, appInfo) {
                                         $(`#${viewId} .${fieldId} .kn-detail-body span span`).prepend(bcgDiv);
 
                                     bcgDiv.setAttribute('id', divSelector);
-                                    bcgDiv.style.textAlign = 'center';
+                                    bcgDiv.style.textAlign = alignment;
                                 }
 
                                 if (format === 'QR') {
@@ -3137,9 +3138,9 @@ function Ktl($, appInfo) {
                                         bcgDiv.setAttribute('id', divSelector);
 
                                         if (Knack.views[viewId].model.view.label_format === 'none' || Knack.views[viewId].model.view.label_format === 'top')
-                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body`).css('text-align', 'center');
+                                            $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body`).css('text-align', alignment);
                                         else
-                                            bcgDiv.style.textAlign = 'center';
+                                            bcgDiv.style.textAlign = alignment;
                                     }
 
                                     if (format === 'QR') {
@@ -3233,15 +3234,19 @@ function Ktl($, appInfo) {
                 let submitDelay = 0;
                 const barcodeFields = [];
 
+                //The queue's intention is to be able to queue quick successive readings.
+                //But we need to prevent sending output characters in the fields, creating garbled text.
+                const barcodeQueue = [];
+
                 const groups = keywords[kw][0].params;
                 if (groups.length) {
                     for (const group of groups) {
                         if (group[0] === 'prefix' && group.length === 2) {
                             prefix = group[1];
                         } else if (group[0] === 'auto' && group.length >= 2) {
-                            if (group.length >= 1 && group[1].toLowerCase() === 'submit')
+                            if (group.length >= 2 && group[1].toLowerCase() === 'submit')
                                 autoSubmit = true;
-                            if (group.length >= 2 && !isNaN(group[2]))
+                            if (group.length >= 3 && !isNaN(group[2]))
                                 submitDelay = Number(group[2]);
                         } else {
                             if (group.length >= 2) {
@@ -3270,7 +3275,35 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    $(document).off(`KTL.processBarcode.${viewId}`).on(`KTL.processBarcode.${viewId}`, (e, barcodeText) => {
+                    //Prevent entering text in form's fields.
+                    $(document).keydown(function (e) {
+                        //Prevent only printable characters.
+                        if (e.key.length === 1 && e.key.match(/^[\w\s\p{P}\p{S}]$/u)) {
+                            const targetView = $(e.target).closest('.kn-view[id]');
+                            if (targetView.length && targetView.attr('id') === viewId)
+                                e.preventDefault();
+                        }
+                    })
+
+                    function addToQueue(string) {
+                        barcodeQueue.push(string);
+                        //console.log('barcodeQueue =', barcodeQueue.length, barcodeQueue);
+                        checkAndProcessQueue();
+                    }
+
+                    function checkAndProcessQueue() {
+                        if (!$(`#${viewId} .kn-button.is-primary`).is(':disabled'))
+                            processQueue();
+                    }
+
+                    function processQueue() {
+                        while (barcodeQueue.length > 0) {
+                            let currentString = barcodeQueue.shift();
+                            processBarcodeText(currentString);
+                        }
+                    }
+
+                    function processBarcodeText(barcodeText) {
                         if (!prefix || (prefix && barcodeText.startsWith(prefix))) {
                             if (prefix)
                                 barcodeText = barcodeText.substring(prefix.length);
@@ -3285,7 +3318,7 @@ function Ktl($, appInfo) {
                                     fieldText = fieldText.substring(0, textLength) + '.' + fieldText.substring(textLength); //TODO: use same decimal format as field.
                                     barcodeText = barcodeText.substring(textLength + barcodeField.decimals);
                                 } else {
-                                    barcodeText = barcodeText.substring(textLength);                                    
+                                    barcodeText = barcodeText.substring(textLength);
                                 }
 
                                 const fieldType = ktl.fields.getFieldType(barcodeField.fieldId);
@@ -3296,6 +3329,7 @@ function Ktl($, appInfo) {
                                     if (el)
                                         el.value = fieldText;
                                 } else if (fieldType === 'connection') {
+                                    connectedRecordFieldId = barcodeField.fieldId;
                                     if ($(`#${viewId}-${barcodeField.fieldId}`).hasClass('chzn-select')) {
                                         promisesArray.push(ktl.views.searchDropdown(fieldText, barcodeField.fieldId, true, true, viewId)
                                             .then(function () { })
@@ -3321,11 +3355,23 @@ function Ktl($, appInfo) {
                                     if (autoSubmit) {
                                         setTimeout(() => {
                                             $(`#${viewId} .is-primary`).click();
+                                            ktl.views.waitSubmitOutcome(viewId)
+                                                .then(() => {
+                                                    checkAndProcessQueue();
+                                                })
+                                                .catch(failure => {
+                                                    ktl.log.clog('red', 'Barcode waitSubmitOutcome failed: ' + failure);
+                                                });
                                         }, submitDelay * 1000);
                                     }
                                 }
                             }, 200);
                         }
+                    }
+
+                    $(document).off(`KTL.processBarcode.${viewId}`).on(`KTL.processBarcode.${viewId}`, (e, barcodeText) => {
+                        //console.log('addToQueue');
+                        addToQueue(barcodeText);
                     })
                 }
             },
