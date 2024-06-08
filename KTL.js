@@ -2986,7 +2986,7 @@ function Ktl($, appInfo) {
                 if (!viewId) return;
 
                 const viewType = ktl.views.getViewType(viewId);
-                if (viewType !== 'details' && viewType !== 'list' && viewType !== 'form' && viewType !== 'rich_text') return;
+                if (!['details', 'list', 'form', 'rich_text'].includes(viewType)) return;
 
                 const kw = '_bcg';
                 if (keywords[kw].length && keywords[kw][0].options) {
@@ -3059,11 +3059,11 @@ function Ktl($, appInfo) {
 
                     let text;
 
+                    //If no field is specified, then check if second group has hard-coded text.
                     if (!fieldId) {
-                        //Check if there's a group with specific hard-coded text.
-                        const params = keywords[kw][0].params;
-                        if (params.length >= 2 && params[1].length && params[1][0].length) {
-                            text = params[1][0];
+                        const groups = keywords[kw][0].params;
+                        if (groups.length >= 2 && groups[1].length && groups[1][0].length) {
+                            text = groups[1][0];
                         }
 
                         if (!text) {
@@ -3086,8 +3086,7 @@ function Ktl($, appInfo) {
                     function barcodeReady() {
                         try {
                             if (viewType === 'details') {
-                                //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
-                                text = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body span span')[0].textContent.replace(/<br \/>/g, '\n');
+                                text = $(`#${viewId} .${fieldId} .kn-detail-body span span`)[0].textContent.replace(/<br \/>/g, '\n');
 
                                 const divSelector = `${viewId}-bcgDiv-${fieldId}`;
                                 var bcgDiv = document.getElementById(divSelector);
@@ -3122,7 +3121,6 @@ function Ktl($, appInfo) {
                                 }
                             } else if (viewType === 'list') {
                                 data.forEach(row => {
-                                    //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                                     text = $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span span`)[0].textContent.replace(/<br \/>/g, '\n');
 
                                     const divSelector = `${viewId}-bcgDiv-${fieldId}-${row.id}`;
@@ -3161,7 +3159,6 @@ function Ktl($, appInfo) {
                                     }
                                 })
                             } else if (viewType === 'form') {
-                                //Read and reformat the QR String properly to convert any existing HTML line breaks to newline.
                                 text = $('#' + viewId + ' #' + fieldId).val().replace(/<br \/>/g, '\n');
 
                                 if (format === 'QR') {
@@ -6251,28 +6248,26 @@ function Ktl($, appInfo) {
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
-            if (ktl.views.viewHasSummary(viewId)) {
-                if (ktl.views.viewHasGroups(viewId)) {
-                    viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
+            if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
+                viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
 
-                    const numberOfSummaryLines = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
-                    const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
+                const numberOfSummaryLines = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
+                const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
 
-                    if (viewWithSummaryRenderCounts[viewId] === 2) {
-                        viewWithSummaryRenderCounts[viewId] = 0;
-                        ktlProcessKeywords(view, data);
-                    } else {
-                        if (numberOfSummaryLines === 1 && !noData) {
-                            if (Knack.models[viewId].results_model) {
-                                Knack.models[viewId].results_model.fetch();
-                                return;
-                            }
+                if (viewWithSummaryRenderCounts[viewId] === 2) {
+                    viewWithSummaryRenderCounts[viewId] = 0;
+                    ktlProcessKeywords(view, data);
+                } else {
+                    if (numberOfSummaryLines === 1 && !noData) {
+                        if (Knack.models[viewId].results_model) {
+                            Knack.models[viewId].results_model.fetch();
+                            return;
                         }
                     }
-
-                    if (viewWithSummaryRenderCounts[viewId] > 2 || !(numberOfSummaryLines === 1 && !noData))
-                        viewWithSummaryRenderCounts[viewId] = 0;
                 }
+
+                if (viewWithSummaryRenderCounts[viewId] > 2 || !(numberOfSummaryLines === 1 && !noData))
+                    viewWithSummaryRenderCounts[viewId] = 0;
 
                 /* This code is needed for keywords that may require summary data to achieve their task.
 
@@ -6535,11 +6530,20 @@ function Ktl($, appInfo) {
                 disableFilterOnFields(view);
                 fieldIsRequired(view);
 
-                //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values.
-                $(document).off('KTL.' + viewId + '.totalsRendered.processKeywords').on('KTL.' + viewId + '.totalsRendered.processKeywords', () => {
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType === 'form')
                     labelText(view, keywords);
-                    ktl.views.fixTableRowsAlignment(view.key);
-                })
+                else {
+                    //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values.
+                    if (ktl.views.viewHasSummary(viewId)) {
+                        $(document).off('KTL.' + viewId + '.totalsRendered.processKeywords').on('KTL.' + viewId + '.totalsRendered.processKeywords', () => {
+                            labelText(view, keywords);
+                            ktl.views.fixTableRowsAlignment(view.key);
+                        })
+                    } else {
+                        labelText(view, keywords);
+                    }
+                }
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
