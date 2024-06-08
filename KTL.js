@@ -2997,13 +2997,13 @@ function Ktl($, appInfo) {
                 if (keywords && keywords[kw]) {
                     var fieldId;
                     let text;
+                    let hideText = false;
                     let textSelector;
                     let divSelector;
                     let bcgDiv;
-                    let size = 200; //QR Codes only
-                    let hideText = false;
+                    let style;
                     let format = 'QR';
-                    let alignment = 'center';
+                    let size = 200; //QR Codes only
                     let width = 100; //1D Barcodes only
                     let height = 100; //1D Barcodes only
 
@@ -3021,6 +3021,8 @@ function Ktl($, appInfo) {
                                         height = heightParam;
                                     }
                                 }
+                            } else if (group[0] === 'style' && group.length >= 2) {
+                                style = group[1];
                             } else if (group[0] === 'text' && group.length >= 2) {
                                 text = group[1];
                             } else {
@@ -3085,11 +3087,6 @@ function Ktl($, appInfo) {
                                     divSelector = `${viewId}-bcgDiv-${fieldId}-${row.id}`;
                                     text = $(`${textSelector} span`)[0].textContent.replace(/<br \/>/g, '\n');
                                     bcgDiv = drawBarcode(text, textSelector, divSelector);
-
-                                    if (Knack.views[viewId].model.view.label_format === 'none' || Knack.views[viewId].model.view.label_format === 'top')
-                                        $(`#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body`).css('text-align', alignment);
-                                    else
-                                        bcgDiv.style.textAlign = alignment;
                                 })
                             } else if (viewType === 'form') {
                                 textSelector = `#${viewId} .${fieldId}`;
@@ -3119,25 +3116,47 @@ function Ktl($, appInfo) {
                                 bcgDiv = document.createElement('div');
                                 bcgDiv.setAttribute('id', divSelector);
 
+                                if (format === 'QR')
+                                    bcgDiv.style.marginTop = '10px';
+
+                                if (style) {
+                                    const mergedStyle = mergeStyles(bcgDiv.style.cssText, style);
+                                    console.log('mergedStyle =', mergedStyle);
+                                    Object.assign(bcgDiv.style, mergedStyle);
+                                }
+
+                                function mergeStyles(baseStyles, newStyles) {
+                                    function cssTextToObject(cssText) {
+                                        return cssText.split(';').reduce((acc, style) => {
+                                            if (style.trim()) {
+                                                const [key, value] = style.split(':');
+                                                acc[key.trim()] = value.trim();
+                                            }
+                                            return acc;
+                                        }, {});
+                                    }
+
+                                    const bsObj = cssTextToObject(baseStyles);
+                                    const nsObj = cssTextToObject(newStyles);
+                                    return { ...nsObj, ...nsObj };
+                                }
+
                                 if (viewType === 'form') {
                                     $(`#${viewId} [data-input-id="${fieldId}"]`).append(bcgDiv);
-                                    bcgDiv.style.marginTop = '10px';
-                                } if (viewType === 'rich_text') {
+                                } else if (viewType === 'rich_text') {
                                     $(`#${viewId}`).append(bcgDiv);
-                                    bcgDiv.style.marginTop = '30px';
-                                    bcgDiv.style.marginLeft = '30px';
                                 } else {
                                     if (hideText) {
                                         $(`${textSelector} span`).remove();
                                         $(`${textSelector}`).append(bcgDiv);
-                                    } else
+                                    } else {
                                         $(`${textSelector} span`).prepend(bcgDiv);
-
-                                    bcgDiv.style.textAlign = alignment;
+                                    }
                                 }
                             } else {
-                                if (bcgDiv.lastChild)
+                                if (bcgDiv.lastChild) {
                                     bcgDiv.removeChild(bcgDiv.lastChild);
+                                }
                             }
 
                             if (format === 'QR') {
@@ -3152,7 +3171,7 @@ function Ktl($, appInfo) {
                                 canvas.setAttribute('id', canvasId);
                                 JsBarcode(`#${canvasId}`, text || '<empty>', {
                                     format: format,
-                                    width: 2, //Width of a single bar.
+                                    width: 2, // Width of a single bar.
                                     height: height,
                                 });
                             }
