@@ -470,7 +470,7 @@ function Ktl($, appInfo) {
                             showSpinner && Knack.hideSpinner();
 
                             if (recId && requestType === 'GET')
-                                data.id = recId; //Put back original reference rec id for future mapping from GET to PUT operaitons, if needed.
+                                data.id = recId; //Put back original reference rec id for future mapping from GET to PUT operations, if needed.
 
                             if (viewsToRefresh.length === 0)
                                 resolve(data);
@@ -2996,7 +2996,10 @@ function Ktl($, appInfo) {
 
                 if (keywords && keywords[kw]) {
                     var fieldId;
-
+                    let text;
+                    let textSelector;
+                    let divSelector;
+                    let bcgDiv;
                     let size = 200; //QR Codes only
                     let hideText = false;
                     let format = 'QR';
@@ -3018,8 +3021,8 @@ function Ktl($, appInfo) {
                                         height = heightParam;
                                     }
                                 }
-                            } else if (group[0] === 'mapping' && group.length >= 2) {
-                                console.log('mapping');
+                            } else if (group[0] === 'text' && group.length >= 2) {
+                                text = group[1];
                             } else {
                                 //Basic params, typically first group.
                                 if (group.length >= 1) {
@@ -3048,30 +3051,13 @@ function Ktl($, appInfo) {
                             }
                         }
                     } else {
+                        //If no field is specified, then try to find the first avaiable field in the view.
                         const fieldSel = $('#' + viewId + ' [class*="field_"]:first');
                         if (fieldSel.length) {
                             var classes = fieldSel[0].classList.value;
                             const match = classes.match(/field_\d+/);
                             if (match)
                                 fieldId = match[0];
-                        }
-                    }
-
-                    let text;
-                    let textSelector;
-                    let divSelector;
-                    let bcgDiv;
-
-                    //If no field is specified, then check if second group has hard-coded text.
-                    if (!fieldId) {
-                        const groups = keywords[kw][0].params;
-                        if (groups.length >= 2 && groups[1].length && groups[1][0].length) {
-                            text = groups[1][0];
-                        }
-
-                        if (!text) {
-                            ktl.log.clog('purple', 'barcodeGenerator called with an invalid field ID:', viewId, ' or empty text');
-                            return;
                         }
                     }
 
@@ -3119,25 +3105,8 @@ function Ktl($, appInfo) {
                                     drawBarcode(text, textSelector, divSelector);
                                 })
                             } else if (viewType === 'rich_text') {
-                                if (format === 'QR') {
-                                    const barcodeData = { text: text, width: size, height: size };
-
-                                    bcgDiv = document.getElementById(`${viewId}-bcgDiv`);
-                                    if (!bcgDiv) {
-                                        bcgDiv = document.createElement('div');
-
-                                        $(`#${viewId}`).append(bcgDiv);
-
-                                        bcgDiv.setAttribute('id', `${viewId}-bcgDiv`);
-                                        bcgDiv.style.marginTop = '30px';
-                                        bcgDiv.style.marginLeft = '30px';
-                                    }
-
-                                    $(`#${viewId}-bcgDiv`).qrcode(barcodeData);
-                                } else {
-                                    console.log('rich text');
-                                    //TODO...
-                                }
+                                divSelector = `${viewId}-bcgDiv`;
+                                bcgDiv = drawBarcode(text, textSelector, divSelector);
                             }
                         }
                         catch (e) {
@@ -3153,6 +3122,10 @@ function Ktl($, appInfo) {
                                 if (viewType === 'form') {
                                     $(`#${viewId} [data-input-id="${fieldId}"]`).append(bcgDiv);
                                     bcgDiv.style.marginTop = '10px';
+                                } if (viewType === 'rich_text') {
+                                    $(`#${viewId}`).append(bcgDiv);
+                                    bcgDiv.style.marginTop = '30px';
+                                    bcgDiv.style.marginLeft = '30px';
                                 } else {
                                     if (hideText) {
                                         $(`${textSelector} span`).remove();
@@ -3177,7 +3150,7 @@ function Ktl($, appInfo) {
                                 bcgDiv.appendChild(canvas);
                                 const canvasId = `${divSelector}-canvas`;
                                 canvas.setAttribute('id', canvasId);
-                                JsBarcode(`#${canvasId}`, text, {
+                                JsBarcode(`#${canvasId}`, text || '<empty>', {
                                     format: format,
                                     width: 2, //Width of a single bar.
                                     height: height,
