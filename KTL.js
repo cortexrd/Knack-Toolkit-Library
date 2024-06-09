@@ -3144,8 +3144,8 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    $(document).off(`KTL.processBarcode.${viewId}`).on(`KTL.processBarcode.${viewId}`, (e, barcodeText) => {
-                        //console.log('addToQueue');
+                    $(document).off(`KTL.processBarcode.ktl_bcr.${viewId}`).on(`KTL.processBarcode.ktl_bcr.${viewId}`, (e, barcodeText) => {
+                        //console.log('addToQueue', viewId);
                         addToQueue(barcodeText);
                     })
                 }
