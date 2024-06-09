@@ -38,7 +38,6 @@ window.ktlReady = function (appInfo = {}) {
             selTextOnFocus: true,
             inlineEditColor: true,
             rowHoverHighlight: true,
-            chznBetter: true,
             autoFocus: true,
             sortedMenus: true,
             userFilters: true,

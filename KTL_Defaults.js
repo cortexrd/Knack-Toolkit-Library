@@ -38,7 +38,6 @@ window.KnackApp = function ($, appInfo = {}) {
                     selTextOnFocus: true,
                     inlineEditColor: true,
                     rowHoverHighlight: true,
-                    chznBetter: true,
                     autoFocus: true,
                     sortedMenus: true,
                     userFilters: true,
@@ -131,12 +130,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 onFieldValueChanged: onFieldValueChanged,
                 textAsNumeric: [],
                 textAsNumericExcludeScenes: [],
-                //chznBetterSrchDelay: 2000, //Uncomment if you prefer longer delay.
-                chznBetterThresholds: {
-                    'field_x': '4',
-                },
-                chznBetterToExclude: [],
-                chznBetterSetFocus: chznBetterSetFocus,
+                //chznDropDownSearchDelay: 2000, //Uncomment if you prefer longer delay.
                 onInlineEditPopup: onInlineEditPopup,
                 //Uncomment the two lines below to get horizontal layout for RBs and CBs.
                 //horizontalRadioButtons: true,
@@ -345,21 +339,6 @@ window.KnackApp = function ($, appInfo = {}) {
             //debugger;
         }
     })
-
-    function chznBetterSetFocus() {
-        try {
-            var chzn = document.activeElement.closest('.kn-input') || document.activeElement.closest('.chzn-container').previousElementSibling;
-            var fieldId = chzn.getAttribute('data-input-id') || chzn.getAttribute('name');
-
-            if (fieldId === 'field_xxxx') {
-                //Your specific code here...
-            }
-        }
-        catch (e) {
-            ktl.log.clog('red', 'Exception in chznBetterSetFocus:');
-            console.log(e);
-        }
-    }
 
     function onInlineEditPopup(viewId, fieldId, e) {
         //Example to stretch the text input field.

@@ -2024,18 +2024,12 @@ function Ktl($, appInfo) {
         var onFieldValueChanged = null;
         var textAsNumeric = []; //These are text fields that must be converted to numeric.
         var textAsNumericExcludeScenes = []; //Do not enforce numric for these scenes.
-        var chznBetterSrchDelay = 1500; //Default is fine-tuned experimentally, for 'a bit below average' typing speed.
-        var chznBetterThresholds = {};
-        var chznBetterToExclude = [];
-        var chznBetterSetFocus = null;
         var onInlineEditPopup = null;
         var convertNumDone = false;
         var horizontalRadioButtons = false;
         var horizontalCheckboxes = false;
         var processBarcode = null;
 
-        var chznBetterTxt = '';
-        var chznChoicesIntervalId = null;
         var chznLastKeyTimer = null;
 
         //TODO: Migrate all variables here.
@@ -2098,36 +2092,12 @@ function Ktl($, appInfo) {
             if ($('.kn-login').length > 0) //Let all keys pass through in login screen.
                 return;
 
-            //In a chznBetter, pressing enter submits the current text without waiting.
-            if (!ktl.fields.getUsingBarcode() && e.keyCode === 13/*Enter key*/ && e.target.id === 'chznBetter') {
-                e.preventDefault();
-                ktl.fields.searchChznBetterDropdown(chznBetterTxt);
-            }
-
             clearTimeout(chznLastKeyTimer);
 
             onKeyPressed(e);
         })
 
         document.addEventListener('click', function (e) {
-            //Chzn dropdown bug fix.
-            //Do we have a chzn dropdown that has more than 500 entries?  Only those have an autocomplete field.
-            var chzn = $(e.target).closest('.chzn-container');
-            if (chzn && chzn.length > 0 && (chzn.find('input.ui-autocomplete-input').length > 0)) {
-                if (chzn.find('#chznBetter').length > 0) {
-                    if ($('#chznBetter').length > 0) {
-                        //If a single sel dropdown, fetch text from clicked entry and put in in chznBetter input.
-                        var chznSingle = chzn.find('.chzn-single');
-                        if (chznSingle.length > 0)
-                            chznBetterTxt = chznSingle.text().replace('Type to search', chznBetterTxt).replace('Select', chznBetterTxt);
-
-                        $('#chznBetter').val(chznBetterTxt);
-                        ktl.fields.ktlChznBetterSetFocus();
-                    }
-                }
-            }
-
-
             //Work in progress:  When user clicks on a cell for inline editing, provide a method to change its style, to make it wider for example.
             if (e.target.classList) {
                 if (e.target.closest('.cell-editable .cell-edit')) {
@@ -2193,43 +2163,6 @@ function Ktl($, appInfo) {
                 }
 
                 ktl.fields.enforceNumeric();
-
-                if ($(e.target).length > 0) {
-                    var inputVal = $(e.target).val();
-                    var threshold = 0;
-                    if ($('#chznBetter').length > 0)
-                        threshold = $('#chznBetter').attr('threshold');
-
-                    if ($(e.target)[0].id === 'chznBetter') {
-                        //Leave this here even though we update these two variables again a few lines below.
-                        //This is to cover cases where threshold chars is not reached and focus is set elsewhere by user.
-                        inputVal = inputVal.trim();
-                        chznBetterTxt = inputVal;
-                        chznLastKeyTimer = setTimeout(function () {
-                            if (inputVal.length >= threshold) {
-                                inputVal = $(e.target).val().trim(); //Get a last update in case user was quick and entered more than threshold chars.
-                                ktl.fields.searchChznBetterDropdown(inputVal);
-                            }
-                        }, chznBetterSrchDelay);
-                    } else if ($(e.target)[0].className.includes('ui-autocomplete-input')) {
-                        var chznBetter = $(e.target).parent().find('#chznBetter');
-                        if (chznBetter.length > 0) {
-                            //When focus is switched to input in background, leave it there,
-                            //but copy input text to foreground chznBetter field so user can see it.
-                            inputVal = inputVal.trim();
-                            chznBetterTxt = inputVal;
-                            chznBetter.val(chznBetterTxt);
-
-                            //Update filtered results again.
-                            chznLastKeyTimer = setTimeout(function () {
-                                if (inputVal.length >= threshold) {
-                                    inputVal = $(e.target).val().trim(); //Get a last update in case user was quick and entered more than 4 chars.
-                                    ktl.fields.searchChznBetterDropdown(inputVal);
-                                }
-                            }, chznBetterSrchDelay);
-                        }
-                    }
-                }
             }
         })
 
@@ -2356,10 +2289,7 @@ function Ktl($, appInfo) {
                 cfgObj.onFieldValueChanged && (onFieldValueChanged = cfgObj.onFieldValueChanged);
                 cfgObj.textAsNumeric && (textAsNumeric = cfgObj.textAsNumeric);
                 cfgObj.textAsNumericExcludeScenes && (textAsNumericExcludeScenes = cfgObj.textAsNumericExcludeScenes);
-                cfgObj.chznBetterSrchDelay && (chznBetterSrchDelay = cfgObj.chznBetterSrchDelay);
-                cfgObj.chznBetterThresholds && (chznBetterThresholds = cfgObj.chznBetterThresholds);
-                cfgObj.chznBetterToExclude && (chznBetterToExclude = cfgObj.chznBetterToExclude);
-                cfgObj.chznBetterSetFocus && (chznBetterSetFocus = cfgObj.chznBetterSetFocus);
+                cfgObj.chznDropDownSearchDelay && (chznDropDownSearchDelay = cfgObj.chznDropDownSearchDelay);
                 cfgObj.onInlineEditPopup && (onInlineEditPopup = cfgObj.onInlineEditPopup);
                 cfgObj.horizontalRadioButtons && (horizontalRadioButtons = cfgObj.horizontalRadioButtons);
                 cfgObj.horizontalCheckboxes && (horizontalCheckboxes = cfgObj.horizontalCheckboxes);
@@ -2458,9 +2388,7 @@ function Ktl($, appInfo) {
                 for (const form of forms) {
                     var viewId = form.id;
                     if (viewId) {
-                        var fields = document.querySelectorAll('#cell-editor #chznBetter[numeric=true]');
-                        if (!fields.length)
-                            fields = document.querySelectorAll('#cell-editor .kn-input[numeric=true]');
+                        let fields = document.querySelectorAll('#cell-editor .kn-input[numeric=true]');
                         if (!fields.length)
                             fields = document.querySelectorAll('#' + viewId + ' .kn-input[numeric=true]');
 
@@ -2661,131 +2589,6 @@ function Ktl($, appInfo) {
 
             shouldBeNumeric: function (fieldId) {
                 return textAsNumeric.includes(fieldId);
-            },
-
-            //chznBetter functions
-            // Ex. param:  dropdownId = 'view_XXX_field_YYY_chzn';
-            addChznBetter: function (dropdownId) {
-                const input = $(`#${dropdownId} .ui-autocomplete-input`);
-                const options = input.autocomplete('option');
-
-                const fieldId = $('#' + dropdownId).closest('[data-input-id]').attr('data-input-id') || '';
-
-                input.autocomplete('option', {
-                    ...options,
-                    minLength: chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : 3,
-                    delay: chznBetterSrchDelay || 2000,
-                });
-
-                return;
-
-                // TODO Search & Destroy ChznBetter code
-                // var fieldId = document.querySelector('#' + dropdownId).closest('.kn-input').getAttribute('data-input-id');
-                // if (chznBetterToExclude.includes(fieldId))
-                //     return;
-
-                // //console.log('Entering addChznBetter');
-                // var srchField = null;
-                // if ($('#chznBetter').length === 0) {
-                //     chznBetterTxt = '';
-                //     var chznBetter = document.createElement('input');
-
-                //     //Numeric fields only, set to Tel type.
-                //     if (textAsNumeric.includes(fieldId) && !textAsNumericExcludeScenes.includes(Knack.router.current_scene_key)) {
-                //         chznBetter.setAttribute('type', 'tel');
-                //         chznBetter.setAttribute('numeric', 'true');
-                //         chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '4'); //Minimum number of characters to be typed before search is triggered.
-                //     } else {
-                //         chznBetter.setAttribute('type', 'text');
-                //         chznBetter.setAttribute('threshold', chznBetterThresholds[fieldId] ? chznBetterThresholds[fieldId] : '3');
-                //     }
-
-                //     chznBetter.setAttribute('id', 'chznBetter');
-                //     chznBetter.classList.add('input');
-
-                //     var chzn = $('#' + dropdownId);
-
-                //     srchField = chzn.find('.chzn-search');
-                //     if (srchField.length === 0)
-                //         srchField = chzn.find('.search-field');
-
-                //     if (srchField && srchField.length > 0) {
-                //         srchField.append(chznBetter);
-                //     }
-                // }
-
-                // if (srchField && srchField.length > 0) {
-                //     if (chznBetter) {
-                //         chznBetter.value = chznBetterTxt;
-                //         chznBetter.style.position = 'absolute';
-
-                //         setTimeout(function () {
-                //             chznBetter.focus();
-                //         }, 200);
-
-                //         //Start monitoring selection changes.
-                //         //Purpose:
-                //         //  It's the only way we can detect a delete because it's impossible to get notifications from a click on an X.
-                //         //  When the number of items change for whatever reason (add or delete), we want the focus back on the input field.
-                //         var numSel = 0;
-                //         var prevNumSel = 0;
-                //         chznChoicesIntervalId = setInterval(function () {
-                //             var chznChoices = chzn.find('.chzn-choices li');
-                //             if (chznChoices && chznChoices.length > 1) { //Omit first one (actually last in list), since always search-field.
-                //                 numSel = chznChoices.length - 1;
-
-                //                 if (prevNumSel !== numSel) {
-                //                     //console.log('Updating num selected =', numSel);
-                //                     prevNumSel = numSel;
-                //                     chznBetter.focus();
-                //                 }
-                //             }
-                //         }, 1000);
-                //     }
-                // }
-            },
-
-            //For KTL internal use.
-            ktlChznBetterSetFocus: function () {
-                setTimeout(function () {
-                    $('#chznBetter').focus();
-                    chznBetterSetFocus && chznBetterSetFocus();
-                }, 200);
-            },
-
-            searchChznBetterDropdown: function (text = '') {
-                if (!text) return;
-
-                try {
-                    chznBetterTxt = text;
-                    var cbSel = document.querySelector('#chznBetter');
-                    if (!cbSel || cbSel.getAttribute('valid') === 'false')
-                        return;
-
-                    var chzn = document.activeElement.closest('.kn-input') || document.activeElement.closest('.chzn-container').previousElementSibling;
-                    var fieldId = chzn.getAttribute('data-input-id') || chzn.getAttribute('name');
-                    if (chzn && fieldId) {
-                        ktl.views.searchDropdown(text, fieldId, false, true)
-                            .then(function () {
-                                if (ktl.core.isKiosk())
-                                    document.activeElement.blur(); //Remove Virtual Keyboard
-                            })
-                            .catch(function (foundText) {
-                                if (foundText === '')
-                                    ktl.fields.ktlChznBetterSetFocus();
-                                else {
-                                    setTimeout(function () {
-                                        $(chzn).find('.chzn-drop').css('left', ''); //Put back, since was moved to -9000px.
-                                        chzn.focus(); //Partial Match: Let use chose with up/down arrows and enter.
-                                    }, 500);
-                                }
-                            })
-                    }
-                }
-                catch (e) {
-                    ktl.log.clog('red', 'Exception in searchChznBetterDropdown:');
-                    console.log(e);
-                }
             },
 
             //TODO: allow modifying style dyanmically.
@@ -3572,7 +3375,6 @@ function Ktl($, appInfo) {
         $(document).on('input', function (event) {
             if (!event
                 || !event.target.type
-                || event.target.id === 'chznBetter'
                 || event.target.className.includes('knack-date')
                 || $(event.target).closest('.chzn-container').length)
                 return;
@@ -10701,7 +10503,6 @@ function Ktl($, appInfo) {
                                                                     $(this).css({ 'background-color': 'lightpink', 'padding-top': '8px' });
                                                                     $(this).css('display', 'list-item');
                                                                     ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
-                                                                    ktl.fields.ktlChznBetterSetFocus();
                                                                 } else {
                                                                     var tmpText = $(this)[0].innerText;
                                                                     //For some reason, if there's only one current entry under ul class "chzn-choices", we need to exclude that one.
@@ -10735,15 +10536,10 @@ function Ktl($, appInfo) {
 
                                                     if (!foundAtLeastOne) {
                                                         ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
-                                                        // $('.ui-autocomplete-input').val('');
-                                                        // $('#chznBetter').val('');
-                                                        // document.activeElement.blur();
-                                                        //ktl.fields.ktlChznBetterSetFocus();
                                                     }
                                                 } else {
                                                     Knack.hideSpinner();
                                                     ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
-                                                    ktl.fields.ktlChznBetterSetFocus();
                                                 }
 
                                                 //autoFocus(); <- Leave out in this case!
@@ -13364,7 +13160,7 @@ function Ktl($, appInfo) {
             autoFocus: function () {
                 if (!ktl.core.getCfg().enabled.autoFocus) return;
 
-                if (!document.querySelector('#cell-editor')) //If inline editing uses chznBetter, keep focus here after a succesful search.
+                if (!document.querySelector('#cell-editor'))
                     autoFocus && autoFocus();
             },
 

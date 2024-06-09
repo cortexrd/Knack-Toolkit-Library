@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.7.9 */
+/* KTL CSS version: 0.7.10 */
 
 /************ General Settings **************/
 :root {
@@ -379,13 +379,6 @@ a.ktlSortDisabled {
 .filterControl {
 	display: flex;
 	width: 30px;
-}
-
-/************ Improved Chzn Dropdown **************/
-#chznBetter {
-	left: 0px;
-	width: 100% !important;
-	background-color: #efedff; /*Very pale blue*/
 }
 
 /************ Pop-up **************/
