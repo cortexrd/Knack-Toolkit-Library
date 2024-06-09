@@ -3121,7 +3121,6 @@ function Ktl($, appInfo) {
 
                                 if (style) {
                                     const mergedStyle = mergeStyles(bcgDiv.style.cssText, style);
-                                    console.log('mergedStyle =', mergedStyle);
                                     Object.assign(bcgDiv.style, mergedStyle);
                                 }
 
@@ -3209,7 +3208,7 @@ function Ktl($, appInfo) {
                             if (group.length >= 3 && !isNaN(group[2]))
                                 submitDelay = Number(group[2]);
                         } else {
-                            if (group.length >= 2) {
+                            if (group.length >= 1) {
                                 let fieldId = group[0];
                                 if (!fieldId.startsWith('field_'))
                                     fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
@@ -3219,31 +3218,41 @@ function Ktl($, appInfo) {
                                     return;
                                 }
 
-                                let textLength = group[1];
+                                let textLength = 0;
                                 let decimals = 0;
-                                if (textLength && !isNaN(textLength)) {
-                                    textLength = Number(textLength);
-                                    if (group.length >= 3) {
-                                        decimals = group[2];
-                                        if (decimals && !isNaN(decimals))
-                                            decimals = Number(decimals);
+                                if (group.length >= 2) {
+                                    textLength = group[1];
+                                    decimals = 0;
+                                    if (textLength && !isNaN(textLength)) {
+                                        textLength = Number(textLength);
+                                        if (group.length >= 3) {
+                                            decimals = group[2];
+                                            if (decimals && !isNaN(decimals))
+                                                decimals = Number(decimals);
+                                        }
+
                                     }
 
-                                    barcodeFields.push({ fieldId, textLength, decimals });
                                 }
+
+                                barcodeFields.push({ fieldId, textLength, decimals });
                             }
                         }
                     }
 
                     //Prevent entering text in form's fields.
-                    $(document).keydown(function (e) {
-                        //Prevent only printable characters.
-                        if (e.key.length === 1 && e.key.match(/^[\w\s\p{P}\p{S}]$/u)) {
-                            const targetView = $(e.target).closest('.kn-view[id]');
-                            if (targetView.length && targetView.attr('id') === viewId)
-                                e.preventDefault();
-                        }
-                    })
+                    /*
+                     * Disabled for now.  Could be useful with an option in the keyword, 
+                     * to prevent barcode data from being inserted in user's text in fields.
+                    */
+                    //$(document).keydown(function (e) {
+                    //    //Prevent only printable characters.
+                    //    if (e.key.length === 1 && e.key.match(/^[\w\s\p{P}\p{S}]$/u)) {
+                    //        const targetView = $(e.target).closest('.kn-view[id]');
+                    //        if (targetView.length && targetView.attr('id') === viewId)
+                    //            e.preventDefault();
+                    //    }
+                    //})
 
                     function addToQueue(string) {
                         barcodeQueue.push(string);
@@ -3252,7 +3261,7 @@ function Ktl($, appInfo) {
                     }
 
                     function checkAndProcessQueue() {
-                        if (!$(`#${viewId} .kn-button.is-primary`).is(':disabled'))
+                        if (!autoSubmit || (autoSubmit && !$(`#${viewId} .kn-button.is-primary`).is(':disabled')))
                             processQueue();
                     }
 
@@ -3271,7 +3280,7 @@ function Ktl($, appInfo) {
                             var promisesArray = [];
                             for (const barcodeField of barcodeFields) {
                                 let textLength = barcodeField.textLength;
-                                let fieldText = barcodeText.substring(0, textLength);
+                                let fieldText = textLength === 0 ? barcodeText : barcodeText.substring(0, textLength);
 
                                 if (barcodeField.decimals) {
                                     fieldText = barcodeText.substring(0, textLength + barcodeField.decimals);
@@ -3286,10 +3295,13 @@ function Ktl($, appInfo) {
                                     const el = document.querySelector(`#${viewId} [data-input-id=${barcodeField.fieldId}] input`)
                                         || document.querySelector(`#${viewId} [data-input-id=${barcodeField.fieldId}] .kn-textarea`);
 
-                                    if (el)
+                                    if (el) {
                                         el.value = fieldText;
+                                        ktl.fields.enforceNumeric();
+                                    }
+                                } else if (fieldType === 'rich_text') {
+                                    $(`#${viewId} #${barcodeField.fieldId}`).data('redactor').code.set(fieldText);
                                 } else if (fieldType === 'connection') {
-                                    connectedRecordFieldId = barcodeField.fieldId;
                                     if ($(`#${viewId}-${barcodeField.fieldId}`).hasClass('chzn-select')) {
                                         promisesArray.push(ktl.views.searchDropdown(fieldText, barcodeField.fieldId, true, true, viewId)
                                             .then(function () { })
@@ -10693,7 +10705,8 @@ function Ktl($, appInfo) {
                                                                 } else {
                                                                     var tmpText = $(this)[0].innerText;
                                                                     //For some reason, if there's only one current entry under ul class "chzn-choices", we need to exclude that one.
-                                                                    if ($(viewSel + '[id$="' + fieldId + '_chzn_c_0"]')[0].innerText !== tmpText) {
+                                                                    const sel = `${viewSel}[id$="${fieldId}_chzn_c_0"]`;
+                                                                    if ($(sel).length && $(sel)[0].innerText !== tmpText) {
                                                                         $(this).css({ 'background-color': 'lightgreen', 'padding-top': '8px' });
                                                                         $(this).css('display', 'list-item');
                                                                         foundAtLeastOne = true;
