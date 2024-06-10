@@ -2028,9 +2028,6 @@ function Ktl($, appInfo) {
         var convertNumDone = false;
         var horizontalRadioButtons = false;
         var horizontalCheckboxes = false;
-        var processBarcode = null;
-
-        var chznLastKeyTimer = null;
 
         //TODO: Migrate all variables here.
         var cfg = {
@@ -2091,8 +2088,6 @@ function Ktl($, appInfo) {
 
             if ($('.kn-login').length > 0) //Let all keys pass through in login screen.
                 return;
-
-            clearTimeout(chznLastKeyTimer);
 
             onKeyPressed(e);
         })
@@ -3145,8 +3140,8 @@ function Ktl($, appInfo) {
                     }
 
                     $(document).off(`KTL.processBarcode.ktl_bcr.${viewId}`).on(`KTL.processBarcode.ktl_bcr.${viewId}`, (e, barcodeText) => {
-                        //console.log('addToQueue', viewId);
                         addToQueue(barcodeText);
+                        //console.log('addToQueue:', viewId, barcodeText);
                     })
                 }
             },
@@ -10373,8 +10368,21 @@ function Ktl($, appInfo) {
                         var chznSearchInput = $(viewSel + '[id$="' + fieldId + '_chzn"].chzn-container input').first();
                         var chznContainer = $(viewSel + '[id$="' + fieldId + '_chzn"].chzn-container');
 
+                        let currentOptionsMultipleChoices = [];
+
                         //If the dropdown has a search field, trigger a search on the requested text now.
                         if ($(viewSel + '[id$="' + fieldId + '_chzn"] .ui-autocomplete-input').length > 0) {
+                            //If it's a multiple selection, we must take note of the current options and merge the next one coming, if found.
+                            if (!isSingleSelection) {
+                                const currentOptions = $(`#${viewId}-${fieldId} option`);
+                                currentOptions.each(function () {
+                                    if ($(this).text() !== srchTxt) {
+                                        //$(this).attr('selected', '');
+                                        currentOptionsMultipleChoices.push(this);
+                                    }
+                                });
+                            }
+
                             chznSearchInput.focus();
                             chznSearchInput.autocomplete('search', srchTxt); //GO!
                             //Wait for response...
@@ -10472,7 +10480,7 @@ function Ktl($, appInfo) {
                                         })
                                 } else { //Multi selection
                                     if (chznContainer.length) {
-                                        chznContainer.find('.chzn-drop').css('left', '-9000px'); //Hide results until parsed.
+                                        //chznContainer.find('.chzn-drop').css('left', '-9000px'); //Hide results until parsed.
 
                                         //A bit more time is required to let the found results to settle.
                                         var update = false;
@@ -10488,62 +10496,33 @@ function Ktl($, appInfo) {
                                             if (update || initialResults !== results.length) { //Whichever comes first.
                                                 clearInterval(intervalId);
                                                 clearTimeout(searchTimeout);
+                                                delete dropdownSearching[fieldId];
 
-                                                if (results.length > 0) {
-                                                    var foundAtLeastOne = false;
-                                                    chznContainer.find('.chzn-drop').css('left', ''); //Put back, since was moved to -9000px.
-                                                    results.each(function () { //replace by for loop
-                                                        if (results.length <= 500) {
-                                                            $(this).addClass('kn-button');
-                                                            $(this).css('border-color', 'black');
+                                                //Insert back previous selected entries.
+                                                const input = $(`#${viewId}-${fieldId}`);
+                                                for (const opt of currentOptionsMultipleChoices) {
+                                                    input.append(opt);
+                                                }
 
-                                                            if (results.length === 1) {
-                                                                if ($(this).hasClass('no-results')) {
-                                                                    //Use addClass instead and let CSS do the job.
-                                                                    $(this).css({ 'background-color': 'lightpink', 'padding-top': '8px' });
-                                                                    $(this).css('display', 'list-item');
-                                                                    ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
-                                                                } else {
-                                                                    var tmpText = $(this)[0].innerText;
-                                                                    //For some reason, if there's only one current entry under ul class "chzn-choices", we need to exclude that one.
-                                                                    const sel = `${viewSel}[id$="${fieldId}_chzn_c_0"]`;
-                                                                    if ($(sel).length && $(sel)[0].innerText !== tmpText) {
-                                                                        $(this).css({ 'background-color': 'lightgreen', 'padding-top': '8px' });
-                                                                        $(this).css('display', 'list-item');
-                                                                        foundAtLeastOne = true;
-                                                                    }
-                                                                }
-                                                            } else {
-                                                                //Here, we may have a partial or exact match, or even no match at all.
-                                                                var text = $(this).text();
-                                                                if (text.toLowerCase() === lowercaseSrch) { //Exact match
-                                                                    $(this).css({ 'background-color': 'lightgreen', 'padding-top': '8px' });
-                                                                    $(this).css('display', 'list-item');
-                                                                    foundAtLeastOne = true;
-                                                                } else if (text.toLowerCase().indexOf(lowercaseSrch) >= 0 && $(this).hasClass('active-result')) { //Partial match
-                                                                    $(this).css({ 'background-color': '', 'padding-top': '8px' });
-                                                                    $(this).css('display', 'list-item');
-                                                                    foundAtLeastOne = true;
-                                                                } else
-                                                                    $(this).css('display', 'none'); //No match
-                                                            }
-                                                        }
-                                                    })
+                                                if ($(`#${viewId}_${fieldId}_chzn .chzn-results li.no-results`).length) {
+                                                    Knack.hideSpinner();
+                                                    ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
+                                                } else {
+                                                    if (results.length === 1) {
+                                                        $(`#${viewId}-${fieldId} option:not("selected")`).attr('selected', '');
+                                                        input.trigger("liszt:updated");
+                                                        if (showPopup)
+                                                            ktl.core.timedPopup('Found ' + foundText);
+                                                    } else {
+                                                        if (showPopup)
+                                                            ktl.core.timedPopup('Found many, select from list...', 'warning');
+                                                        input.trigger("liszt:updated");
+                                                    }
 
                                                     chznContainer.find('.chzn-drop').css('left', ''); //Put back, since was moved to -9000px.
                                                     Knack.hideSpinner();
                                                     chznContainer.focus(); //Allow using up/down arrows to select result and press enter.
-
-                                                    if (!foundAtLeastOne) {
-                                                        ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
-                                                    }
-                                                } else {
-                                                    Knack.hideSpinner();
-                                                    ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
                                                 }
-
-                                                //autoFocus(); <- Leave out in this case!
-                                                //...User input is required with a physical click, otherwise the existing entry is replaced by new for some reason.
                                             }
                                         }, 200);
                                     }
