@@ -56,6 +56,8 @@ Keywords can be added in a view’s **title** or **description** - interchangeab
 
 When used in a view, the keyword will be applied **in that view only**.
 
+In some cases, the keyword placed in a view will apply to the whole app, like the **_loh** (Log Out Here) keyword.  These are app-wide keywords and will be clearly identified.
+
 Also, to make them more readable in the Builder, you can add `<br>` in front of each, to force them to spread over separate lines.  They must be at the beginning and in direct contact with the keyword's underscore.
 
 Example:
