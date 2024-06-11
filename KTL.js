@@ -6286,6 +6286,7 @@ function Ktl($, appInfo) {
                     keywords._afsg && autoFillAndSubmitQRGenerator(view, keywords);
                     keywords._vk && virtualKeyboard(viewId, keywords);
                     keywords._asf && autoSubmitForm(viewId, keywords);
+                    keywords._rdclk && redirectClick(viewId, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -9517,6 +9518,56 @@ function Ktl($, appInfo) {
             }, delayBeforeSubmit * 1000);
         }
 
+        function redirectClick(viewId, keywords) {
+            const kw = '_rdclk';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                const groups = keywords[kw][0].params;
+                for (const group of groups) {
+                    //Group must have an even number of parameters.
+                    if (group.length >= 2 && group.length % 2 === 0) {
+                        const sourceColumn = group[0];
+                        const destinationColumn = group[1];
+                        const sourceColumnIndex = ktl.views.getColumnIndex(viewId, sourceColumn);
+                        const destinationColumnIndex = ktl.views.getColumnIndex(viewId, destinationColumn);
+                        if (sourceColumnIndex && destinationColumnIndex) {
+                            let sourceTargetSelector = `#${viewId} tbody td .col-${sourceColumnIndex}`;
+                            const element = $(sourceTargetSelector);
+
+                            $(`#${viewId} tbody td .col-${sourceColumnIndex} span span`).filter(function () {
+                                return $.trim($(this).text()) !== '';
+                            }).each(function () {
+                                this.outerHTML = this.outerHTML.replace(/<span/, '<a span');
+                            });
+
+                            element.off('click').on('click', e => {
+                                const target = e.target;
+                                if (target) {
+                                    let recId = target.closest('tr[id]').id;
+                                    if (recId) {
+                                        let destinationTargetSelector = `#${viewId} tbody tr[id="${recId}"] td .col-${destinationColumnIndex} a`;
+                                        if ($(destinationTargetSelector).length) {
+                                            e.preventDefault();
+                                            $(destinationTargetSelector)[0].click();
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         function fieldIsRequired(view) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
 
@@ -12330,6 +12381,7 @@ function Ktl($, appInfo) {
             },
 
             //Returns the zero-based index of the column with fieldId or header label.  Works with Action links also.
+            //Hidden columns are counted in (not ignored) to get the real index, as if they were visible.
             getColumnIndex: function (viewId, headerOrFieldId) {
                 if (!viewId || !headerOrFieldId) return;
                 if (!['table', 'search'].includes(ktl.views.getViewType(viewId))) return;
