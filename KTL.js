@@ -10377,7 +10377,6 @@ function Ktl($, appInfo) {
                                 const currentOptions = $(`#${viewId}-${fieldId} option`);
                                 currentOptions.each(function () {
                                     if ($(this).text() !== srchTxt) {
-                                        //$(this).attr('selected', '');
                                         currentOptionsMultipleChoices.push(this);
                                     }
                                 });
@@ -11880,8 +11879,7 @@ function Ktl($, appInfo) {
                                                 resolve();
                                             })
                                             .catch(function () {
-                                                console.log('Timeout waiting for selector in _cls', sel);
-                                                resolve();
+                                                resolve(); //Normal in many cases.
                                             })
                                     } else
                                         resolve();
