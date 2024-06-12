@@ -9546,7 +9546,8 @@ function Ktl($, appInfo) {
                             $(`#${viewId} tbody td .col-${sourceColumnIndex} span span`).filter(function () {
                                 return $.trim($(this).text()) !== '';
                             }).each(function () {
-                                this.outerHTML = this.outerHTML.replace(/<span/, '<a span');
+                                if (!this.outerHTML.startsWith('<a span'))
+                                    this.outerHTML = this.outerHTML.replace('<span', '<a span');
                             });
 
                             element.off('click').on('click', e => {
