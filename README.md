@@ -22,10 +22,7 @@ See our [YouTube channel for introductory tutorials](https://www.youtube.com/@co
 
 ## What is the Knack Toolkit Library?
 
-The Knack Toolkit Library (KTL) is an open-source collection of JavaScript utilities designed to streamline Knack application development by adding advanced features that are otherwise difficult to implement.
-
-### Purpose:
-The primary purpose of KTL is to accelerate the development of complex features and provide solutions to shortcomings in Knack, enabling functionalities that would otherwise be impossible or very hard to achieve.
+The Knack Toolkit Library (KTL) is an open-source collection of JavaScript utilities designed to streamline Knack application development by adding advanced features that are difficult to implement. Its primary purpose is to accelerate the development of complex features and provide solutions to shortcomings in Knack, enabling high-level functionalities with minimum effort and technical knowledge.
 
 ### Key Features:
 - **User-Friendly:** No coding skills required. Utilize a simple keyword-based approach within the Builder to activate desired features and behaviors.
