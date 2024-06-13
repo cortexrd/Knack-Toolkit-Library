@@ -20,11 +20,18 @@ See our [YouTube channel for introductory tutorials](https://www.youtube.com/@co
 
 # Introduction
 
-**What is the Knack Toolkit Library?**
+## What is the Knack Toolkit Library?
 
-The Knack Toolkit Library, or KTL for short, is a collection of open-source Javascript utilities that eases Knack application development by adding several features that are not easily created from the ground up.
+The Knack Toolkit Library (KTL) is an open-source collection of JavaScript utilities designed to streamline Knack application development by adding advanced features that are otherwise difficult to implement.
 
-You do not need any coding skills to benefit from the KTL. The simple **“keyword-based”** approach allows you to use the Builder to trigger the desired features and specific behaviors.
+### Key Features:
+- **User-Friendly:** No coding skills required. Utilize a simple keyword-based approach within the Builder to activate desired features and behaviors.
+- **Developer-Friendly:** Provides a plethora of useful functions, from general utilities to in-depth access to Knack's internal structure, catering to both beginners and advanced users.
+
+### Benefits:
+- Simplifies complex tasks in Knack applications.
+- Enhances development efficiency with pre-built functions.
+- Flexible for both non-coders and experienced developers.
 
 For the few features that require API calls, everything is done to minimize their usage as much as possible. All calls are 100% view-based, so **your API key is never used**.
 
@@ -106,10 +113,10 @@ Right out of the box, without any coding or complex setup, the KTL will provide 
 
 -   Using reserved keywords to trigger special behavior. [See list](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords).
 -   User filters to save your filters to named buttons
--   Bulk Operations: Edit, Copy and Delete
+-   Bulk Operations: Edit, Copy, Delete and Action
 -   Form data persistence that saves as you type, and will load back your data if a page is reloaded after a submit failure or power outage
 -   Dropdown selector improvements
--   Click followed by long press anywhere in a view to refresh that view
+-   Click followed by long press anywhere in a view to refresh that view (Click + ClickHold)
 -   Numeric pre-validation
 -   Auto-focus on first field of a form or search field in a table
 -   Sorted menus
