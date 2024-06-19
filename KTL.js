@@ -8840,7 +8840,7 @@ function Ktl($, appInfo) {
                         }
 
                         if (bulkApiDataArray.length) {
-                            console.log('bulkApiDataArray =', JSON.stringify(bulkApiDataArray, null, 4));
+                            //console.log('bulkApiDataArray =', JSON.stringify(bulkApiDataArray, null, 4));
                             proceedToUpdateRecords(bulkApiDataArray);
                         }
                     } else if (mode === 'api') {
