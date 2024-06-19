@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.25.5';
+    const KTL_VERSION = '0.25.6';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2935,7 +2935,7 @@ function Ktl($, appInfo) {
 
                                     const bsObj = cssTextToObject(baseStyles);
                                     const nsObj = cssTextToObject(newStyles);
-                                    return { ...nsObj, ...nsObj };
+                                    return { ...bsObj, ...nsObj };
                                 }
 
                                 if (viewType === 'form') {
@@ -3221,17 +3221,17 @@ function Ktl($, appInfo) {
                             const hide = () => {
                                 elementsArray.forEach(el => {
                                     if (el.classList)
-                                        el.classList.add('ktlDisplayNone');
+                                        el.classList.add('ktlHidden_hf');
                                     else
-                                        el[0].classList.add('ktlDisplayNone');
+                                        el[0].classList.add('ktlHidden_hf');
                                 })
                             }
                             const unhide = () => {
                                 elementsArray.forEach(el => {
                                     if (el.classList)
-                                        el.classList.remove('ktlDisplayNone');
+                                        el.classList.remove('ktlHidden_hf');
                                     else
-                                        el[0].classList.remove('ktlDisplayNone');
+                                        el[0].classList.remove('ktlHidden_hf');
                                 })
                             }
 
@@ -3695,7 +3695,7 @@ function Ktl($, appInfo) {
                                     $(`#${view.key} [data-input-id="${fieldId}"] option[value=${fieldText}]`).attr('selected', 'selected');
                                     $(`#${view.key} select#${fieldId}.select`).trigger('change');
                                 }
-                            } else if (['password', 'file'].includes(fieldType)) {
+                            } else if (['password', 'file', 'image'].includes(fieldType)) {
                                 //Ignore.
                             } else {
                                 ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
@@ -12143,7 +12143,7 @@ function Ktl($, appInfo) {
 
                     const copyToClipboard = document.createElement('BUTTON');
                     copyToClipboard.setAttribute('class', 'kn-button ktlCopyButton');
-                    copyToClipboard.innerHTML = 'Copy';
+                    copyToClipboard.innerHTML = 'Copy to Clipboard';
                     copyToClipboard.style.marginLeft = '10%';
                     copyToClipboard.setAttribute('type', 'button'); //Needed to prevent copying when pressing Enter in search field.
                     viewKtlButtonsDiv.append(copyToClipboard);

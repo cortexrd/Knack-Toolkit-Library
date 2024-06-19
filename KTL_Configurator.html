@@ -468,6 +468,10 @@
                                     <label for="bulkDelete">Bulk Delete</label>
                                     <input type="checkbox" id="bulkDelete" checked>
                                 </div>
+                                <div class="checkbox-inline">
+                                    <label for="bulkAction">Bulk Action</label>
+                                    <input type="checkbox" id="bulkAction" checked>
+                                </div>
                             </fieldset>
 
 
@@ -1032,6 +1036,7 @@
                     bulkEdit: document.getElementById('bulkEdit').checked,
                     bulkCopy: document.getElementById('bulkCopy').checked,
                     bulkDelete: document.getElementById('bulkDelete').checked,
+                    bulkAction: document.getElementById('bulkAction').checked,
                 },
             };
 
@@ -1168,6 +1173,7 @@ window.ktlReady = function (appInfo = {}) {
                 bulkEdit: ${enabled.bulkOps.bulkEdit},
                 bulkCopy: ${enabled.bulkOps.bulkCopy},
                 bulkDelete: ${enabled.bulkOps.bulkDelete},
+                bulkAction: ${enabled.bulkOps.bulkAction},
             },
         },
 
@@ -1354,7 +1360,8 @@ window.ktlReady = function (appInfo = {}) {
                 bulkOps: {
                     bulkEdit: document.getElementById('bulkEdit').checked,
                     bulkCopy: document.getElementById('bulkCopy').checked,
-                    bulkDelete: document.getElementById('bulkDelete').checked
+                    bulkDelete: document.getElementById('bulkDelete').checked,
+                    bulkAction: document.getElementById('bulkAction').checked
                 },
 
                 popupStyle: {
