@@ -15792,15 +15792,16 @@ function Ktl($, appInfo) {
     //Need to create a role called 'Bulk Edit' and assign it to 'trusty' users who will not wreak havoc.
     //For super users, a role named 'Bulk Delete' can be created to delete records in batches.
     this.bulkOps = (function () {
-        var bulkOpsActive = {};
-        var bulkOpsRecIdArray = [];
-        var bulkOpsHeaderArray = [];
-        var bulkOpsViewId = null;
-        var bulkOpsLudFieldId = null;
-        var bulkOpsLubFieldId = null;
-        var bulkOpsDeleteAll = false;
-        var previousScene = '';
-        var apiData = {};
+        let bulkOpsActive = {};
+        let bulkOpsRecIdArray = [];
+        let bulkOpsRecIdArrayCopy = []; //A working copy of the array used during Bulk Action to keep track of the progress.
+        let bulkOpsHeaderArray = [];
+        let bulkOpsViewId = null;
+        let bulkOpsLudFieldId = null;
+        let bulkOpsLubFieldId = null;
+        let bulkOpsDeleteAll = false;
+        let previousScene = '';
+        let apiData = {};
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (previousScene !== scene.key) {
@@ -15965,16 +15966,18 @@ function Ktl($, appInfo) {
                             bulkActionColumnIndex = columnElement.classList[0];
 
                             //Clean array to include only those with an action.
-                            const bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
-                            bulkOpsRecIdArray = [];
-                            for (const recId of bulkOpsRecIdArrayCopy) {
+                            bulkOpsRecIdArrayCopy = [];
+                            //bulkOpsRecIdArray = [];
+                            for (const recId of bulkOpsRecIdArray) {
                                 const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
                                 if (!actionLink.length)
                                     $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
                                 else
-                                    bulkOpsRecIdArray.push(recId);
+                                    bulkOpsRecIdArrayCopy.push(recId);
                             }
 
+                            console.log('bulkOpsRecIdArrayCopy =', bulkOpsRecIdArrayCopy);
+                            //bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
                             processBulkAction();
                         }
                     })
@@ -15983,7 +15986,9 @@ function Ktl($, appInfo) {
                 }
 
                 function processBulkAction() {
-                    if (!bulkOpsRecIdArray.length) {
+                    console.log('processBulkAction.... bulkOpsRecIdArrayCopy=', bulkOpsRecIdArrayCopy);
+                    if (!bulkOpsRecIdArrayCopy.length) {
+                        console.log('EMPTY bulkOpsRecIdArrayCopy');
                         bulkActionColumnIndex = null;
                         ktl.views.refreshView(viewId);
                         return;
@@ -15995,7 +16000,8 @@ function Ktl($, appInfo) {
                         .then(function () { })
                         .catch(function () { })
                         .finally(() => {
-                            const recId = bulkOpsRecIdArray.shift();
+                            console.log('toast-container NONE');
+                            const recId = bulkOpsRecIdArrayCopy.shift();
                             const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
 
                             if (actionLink.length) {
@@ -16005,11 +16011,13 @@ function Ktl($, appInfo) {
 
                                 //Wait until link is enabled
                                 const intervalId = setInterval(() => {
+                                    console.log('Wait until link is enabled', bulkActionColumnIndex);
                                     const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
                                     if (!actionLink.hasClass('disabled')) {
                                         clearInterval(intervalId);
                                         const outlineElement = actionLink.closest('.kn-table-link');
                                         outlineElement.addClass('ktlOutline');
+                                        console.log('click', actionLink);
                                         actionLink.click();
                                     }
                                 }, 100);
@@ -16018,6 +16026,7 @@ function Ktl($, appInfo) {
                 }
             }
 
+            console.log('updateBulkOpsGuiElements');
             updateBulkOpsGuiElements(viewId);
 
             $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
@@ -16075,7 +16084,7 @@ function Ktl($, appInfo) {
 
                 }
 
-                if (viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy') || viewCanDoBulkOp(viewId, 'delete'))
+                if (viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy') || viewCanDoBulkOp(viewId, 'delete') || viewCanDoBulkOp(viewId, 'action'))
                     $('#' + viewId + ' thead input:checkbox').addClass('bulkEditCb');
 
                 //Add a checkbox to each row in the table body
