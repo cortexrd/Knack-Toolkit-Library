@@ -15967,7 +15967,6 @@ function Ktl($, appInfo) {
 
                             //Clean array to include only those with an action.
                             bulkOpsRecIdArrayCopy = [];
-                            //bulkOpsRecIdArray = [];
                             for (const recId of bulkOpsRecIdArray) {
                                 const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
                                 if (!actionLink.length)
@@ -15977,22 +15976,19 @@ function Ktl($, appInfo) {
                             }
 
                             console.log('bulkOpsRecIdArrayCopy =', bulkOpsRecIdArrayCopy);
-                            //bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
+                            //bulkOpsRecIdArray = bulkOpsRecIdArrayCopy;
                             processBulkAction();
                         }
                     })
                 } else {
-                    processBulkAction();
+                    //bulkOpsRecIdArray = bulkOpsRecIdArrayCopy;
+                    //processBulkAction();
                 }
 
                 function processBulkAction() {
-                    console.log('processBulkAction.... bulkOpsRecIdArrayCopy=', bulkOpsRecIdArrayCopy);
-                    if (!bulkOpsRecIdArrayCopy.length) {
-                        console.log('EMPTY bulkOpsRecIdArrayCopy');
-                        bulkActionColumnIndex = null;
-                        ktl.views.refreshView(viewId);
-                        return;
-                    }
+                    console.log('processBulkAction');
+                    console.log('bulkOpsRecIdArray = ', bulkOpsRecIdArray);
+                    console.log('bulkOpsRecIdArrayCopy =', bulkOpsRecIdArrayCopy);
 
                     //Find a better way to do this without having to wait until toasts are all gone.  Too slow.
                     //The problem is due to summary renderings that cause a double call of this function and kills a click once in a while.
@@ -16001,7 +15997,25 @@ function Ktl($, appInfo) {
                         .catch(function () { })
                         .finally(() => {
                             console.log('toast-container NONE');
-                            const recId = bulkOpsRecIdArrayCopy.shift();
+
+                            if (!bulkOpsRecIdArrayCopy.length) {
+                                console.log('EMPTY array');
+                                bulkActionColumnIndex = null;
+                                ktl.views.refreshView(viewId);
+                                return;
+                            }
+
+                            bulkOpsRecIdArray = bulkOpsRecIdArrayCopy;
+
+                            //Put back selected checkboxes.
+                            for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
+                                var cb = $('#' + viewId + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
+                                if (cb.length)
+                                    cb[0].checked = true;
+                            }
+
+                            const recId = bulkOpsRecIdArray.shift();
+                            bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
                             const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
 
                             if (actionLink.length) {
@@ -16019,6 +16033,10 @@ function Ktl($, appInfo) {
                                         outlineElement.addClass('ktlOutline');
                                         console.log('click', actionLink);
                                         actionLink.click();
+
+                                        setTimeout(() => {
+                                            processBulkAction();
+                                        }, 1000);
                                     }
                                 }, 100);
                             }
@@ -16026,10 +16044,12 @@ function Ktl($, appInfo) {
                 }
             }
 
-            console.log('updateBulkOpsGuiElements');
-            updateBulkOpsGuiElements(viewId);
+            if (!bulkActionColumnIndex) {
+                console.log('updateBulkOpsGuiElements');
+                updateBulkOpsGuiElements(viewId);
 
-            $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
+                $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
+            }
         }
 
         function bulkOpsAddCheckboxesToTable(viewId) {
