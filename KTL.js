@@ -2807,7 +2807,6 @@ function Ktl($, appInfo) {
 
                     if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                         const groups = keywords[kw][0].params;
-
                         for (const group of groups) {
                             if (group[0] === 'format' && group.length >= 2) {
                                 format = group[1];
@@ -9015,6 +9014,7 @@ function Ktl($, appInfo) {
                     $(`.delete.close-modal`).bindFirst('click', e => {
                         e.preventDefault();
                         e.stopImmediatePropagation();
+                        $(document).trigger('KTL.modalClosed', viewId);
                         Knack.closeModal();
                         refreshViews();
                     })
@@ -10334,11 +10334,26 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
+                let prefix = false;
+                let hasDate = false;
+                if (keywords[kw][0] && keywords[kw][0].params) {
+                    const groups = keywords[kw][0].params;
+                    for (const group of groups) {
+                        if (group[0].includes('date')) {
+                            hasDate = true;
+                        } else if (group[0].includes('prefix') && group[0].length) {
+                            prefix = group[1];
+                        }
+                    }
+                }
+
+                let stringToDisplay = `${prefix} ${ktl.core.getCurrentDateTime(hasDate, true, false, false)}`;
+
                 if ($('#' + viewId + '-timestamp-id').length === 0/*Add only once*/) {
                     var timestamp = document.createElement('label');
                     timestamp.setAttribute('id', viewId + '-timestamp-id');
                     timestamp.classList.add('ktlTimeStamp');
-                    timestamp.appendChild(document.createTextNode(ktl.core.getCurrentDateTime(false, true, false, false)));
+                    timestamp.appendChild(document.createTextNode(stringToDisplay));
 
                     var submitBtn = $('#' + viewId + ' .kn-submit');
                     var divHdr = document.querySelector('#' + viewId + ' h1:not(#knack-logo), #' + viewId + ' h2, #' + viewId + ' h3, #' + viewId + ' h4');
@@ -10377,7 +10392,7 @@ function Ktl($, appInfo) {
                     }
                 } else {
                     //Just update existing.  This happens with Search views, where render() is not called, thus keeping the timestamp.
-                    $('#' + viewId + '-timestamp-id')[0].textContent = ktl.core.getCurrentDateTime(false, true, false, false);
+                    $('#' + viewId + '-timestamp-id')[0].textContent = stringToDisplay;
                 }
             },
 
