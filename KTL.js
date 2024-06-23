@@ -2807,7 +2807,6 @@ function Ktl($, appInfo) {
 
                     if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                         const groups = keywords[kw][0].params;
-
                         for (const group of groups) {
                             if (group[0] === 'format' && group.length >= 2) {
                                 format = group[1];
@@ -9015,6 +9014,7 @@ function Ktl($, appInfo) {
                     $(`.delete.close-modal`).bindFirst('click', e => {
                         e.preventDefault();
                         e.stopImmediatePropagation();
+                        $(document).trigger('KTL.modalClosed', viewId);
                         Knack.closeModal();
                         refreshViews();
                     })
@@ -9817,7 +9817,8 @@ function Ktl($, appInfo) {
                                         }
                                     })
 
-                                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));                                }
+                                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+                                }
                             })
                     }
                 }
@@ -10333,11 +10334,26 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
+                let prefix = false;
+                let hasDate = false;
+                if (keywords[kw][0] && keywords[kw][0].params) {
+                    const groups = keywords[kw][0].params;
+                    for (const group of groups) {
+                        if (group[0].includes('date')) {
+                            hasDate = true;
+                        } else if (group[0].includes('prefix') && group[0].length) {
+                            prefix = group[1];
+                        }
+                    }
+                }
+
+                let stringToDisplay = `${prefix} ${ktl.core.getCurrentDateTime(hasDate, true, false, false)}`;
+
                 if ($('#' + viewId + '-timestamp-id').length === 0/*Add only once*/) {
                     var timestamp = document.createElement('label');
                     timestamp.setAttribute('id', viewId + '-timestamp-id');
                     timestamp.classList.add('ktlTimeStamp');
-                    timestamp.appendChild(document.createTextNode(ktl.core.getCurrentDateTime(false, true, false, false)));
+                    timestamp.appendChild(document.createTextNode(stringToDisplay));
 
                     var submitBtn = $('#' + viewId + ' .kn-submit');
                     var divHdr = document.querySelector('#' + viewId + ' h1:not(#knack-logo), #' + viewId + ' h2, #' + viewId + ' h3, #' + viewId + ' h4');
@@ -10376,7 +10392,7 @@ function Ktl($, appInfo) {
                     }
                 } else {
                     //Just update existing.  This happens with Search views, where render() is not called, thus keeping the timestamp.
-                    $('#' + viewId + '-timestamp-id')[0].textContent = ktl.core.getCurrentDateTime(false, true, false, false);
+                    $('#' + viewId + '-timestamp-id')[0].textContent = stringToDisplay;
                 }
             },
 
@@ -12534,7 +12550,7 @@ function Ktl($, appInfo) {
                     else {
                         const params = (getUrlParameter(`${viewId}_collapsed`) || '')
                             .split(',')
-                            .filter(value => value != '').map(value=>encodeURIComponent(value));
+                            .filter(value => value != '').map(value => encodeURIComponent(value));
 
                         return params;
                     }
@@ -15792,15 +15808,16 @@ function Ktl($, appInfo) {
     //Need to create a role called 'Bulk Edit' and assign it to 'trusty' users who will not wreak havoc.
     //For super users, a role named 'Bulk Delete' can be created to delete records in batches.
     this.bulkOps = (function () {
-        var bulkOpsActive = {};
-        var bulkOpsRecIdArray = [];
-        var bulkOpsHeaderArray = [];
-        var bulkOpsViewId = null;
-        var bulkOpsLudFieldId = null;
-        var bulkOpsLubFieldId = null;
-        var bulkOpsDeleteAll = false;
-        var previousScene = '';
-        var apiData = {};
+        let bulkOpsActive = {};
+        let bulkOpsRecIdArray = [];
+        let bulkOpsRecIdArrayCopy = []; //A working copy of the array used during Bulk Action to keep track of the progress.
+        let bulkOpsHeaderArray = [];
+        let bulkOpsViewId = null;
+        let bulkOpsLudFieldId = null;
+        let bulkOpsLubFieldId = null;
+        let bulkOpsDeleteAll = false;
+        let previousScene = '';
+        let apiData = {};
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (previousScene !== scene.key) {
@@ -15965,62 +15982,75 @@ function Ktl($, appInfo) {
                             bulkActionColumnIndex = columnElement.classList[0];
 
                             //Clean array to include only those with an action.
-                            const bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
-                            bulkOpsRecIdArray = [];
-                            for (const recId of bulkOpsRecIdArrayCopy) {
+                            bulkOpsRecIdArrayCopy = [];
+                            for (const recId of bulkOpsRecIdArray) {
                                 const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
                                 if (!actionLink.length)
                                     $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
                                 else
-                                    bulkOpsRecIdArray.push(recId);
+                                    bulkOpsRecIdArrayCopy.push(recId);
                             }
 
+                            //console.log('bulkOpsRecIdArrayCopy =', bulkOpsRecIdArrayCopy);
                             processBulkAction();
                         }
                     })
-                } else {
-                    processBulkAction();
                 }
 
                 function processBulkAction() {
-                    if (!bulkOpsRecIdArray.length) {
+                    //console.log('processBulkAction');
+                    //console.log('bulkOpsRecIdArray = ', bulkOpsRecIdArray);
+                    //console.log('bulkOpsRecIdArrayCopy =', bulkOpsRecIdArrayCopy);
+                    if (!bulkOpsRecIdArrayCopy.length) {
                         bulkActionColumnIndex = null;
                         ktl.views.refreshView(viewId);
                         return;
                     }
 
-                    //Find a better way to do this without having to wait until toasts are all gone.  Too slow.
-                    //The problem is due to summary renderings that cause a double call of this function and kills a click once in a while.
-                    ktl.core.waitSelector('#toast-container', 20000, 'none')
-                        .then(function () { })
-                        .catch(function () { })
-                        .finally(() => {
-                            const recId = bulkOpsRecIdArray.shift();
+                    bulkOpsRecIdArray = bulkOpsRecIdArrayCopy;
+
+                    //Put back selected checkboxes.
+                    for (var i = 0; i < bulkOpsRecIdArray.length; i++) {
+                        var cb = $('#' + viewId + ' tr[id="' + bulkOpsRecIdArray[i] + '"] :checkbox');
+                        if (cb.length)
+                            cb[0].checked = true;
+                    }
+
+                    const recId = bulkOpsRecIdArray.shift();
+                    bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
+                    const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
+
+                    if (actionLink.length) {
+                        $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
+
+                        $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).off('click.ktl_bulkaction');
+
+                        //Wait until link is enabled
+                        const intervalId = setInterval(() => {
+                            //console.log('Wait until link is enabled', bulkActionColumnIndex);
                             const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
+                            if (!actionLink.hasClass('disabled')) {
+                                clearInterval(intervalId);
+                                const outlineElement = actionLink.closest('.kn-table-link');
+                                outlineElement.addClass('ktlOutline');
+                                //console.log('click', actionLink);
+                                actionLink.click();
 
-                            if (actionLink.length) {
-                                $(`#${viewId} tbody tr[id="${recId}"] td input[type=checkbox]`).prop('checked', false);
-
-                                $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).off('click.ktl_bulkaction');
-
-                                //Wait until link is enabled
-                                const intervalId = setInterval(() => {
-                                    const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
-                                    if (!actionLink.hasClass('disabled')) {
-                                        clearInterval(intervalId);
-                                        const outlineElement = actionLink.closest('.kn-table-link');
-                                        outlineElement.addClass('ktlOutline');
-                                        actionLink.click();
-                                    }
-                                }, 100);
+                                setTimeout(() => {
+                                    processBulkAction();
+                                }, 1000);
                             }
-                        })
+                        }, 100);
+                    }
                 }
             }
 
-            updateBulkOpsGuiElements(viewId);
+            if (!bulkActionColumnIndex) {
+                //console.log('updateBulkOpsGuiElements');
+                updateBulkOpsGuiElements(viewId);
 
-            $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
+                $(document).trigger('KTL.BulkOperation.Updated', [viewId]);
+            }
         }
 
         function bulkOpsAddCheckboxesToTable(viewId) {
@@ -16075,7 +16105,7 @@ function Ktl($, appInfo) {
 
                 }
 
-                if (viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy') || viewCanDoBulkOp(viewId, 'delete'))
+                if (viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy') || viewCanDoBulkOp(viewId, 'delete') || viewCanDoBulkOp(viewId, 'action'))
                     $('#' + viewId + ' thead input:checkbox').addClass('bulkEditCb');
 
                 //Add a checkbox to each row in the table body
