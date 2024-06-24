@@ -10374,7 +10374,7 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                let prefix = false;
+                let prefix = '';
                 let hasDate = false;
                 if (keywords[kw][0] && keywords[kw][0].params) {
                     const groups = keywords[kw][0].params;
@@ -10382,17 +10382,20 @@ function Ktl($, appInfo) {
                         if (group[0].includes('date')) {
                             hasDate = true;
                         } else if (group[0].includes('prefix') && group[0].length) {
-                            prefix = group[1];
+                            prefix = (keywords[kw][0].paramStr.match(/\[prefix,([^[]*)\]/) || [])[1] || ''; //Retrieve spaces too.
                         }
                     }
                 }
 
-                let stringToDisplay = `${prefix} ${ktl.core.getCurrentDateTime(hasDate, true, false, false)}`;
+                let stringToDisplay = `${ktl.core.getCurrentDateTime(hasDate, true, false, false)}`;
+                if (prefix)
+                    stringToDisplay = `${prefix} ${stringToDisplay}`;
 
                 if ($('#' + viewId + '-timestamp-id').length === 0/*Add only once*/) {
                     var timestamp = document.createElement('label');
                     timestamp.setAttribute('id', viewId + '-timestamp-id');
                     timestamp.classList.add('ktlTimeStamp');
+                    timestamp.style.whiteSpace = 'pre';
                     timestamp.appendChild(document.createTextNode(stringToDisplay));
 
                     var submitBtn = $('#' + viewId + ' .kn-submit');
