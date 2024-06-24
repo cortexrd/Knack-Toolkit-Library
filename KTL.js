@@ -10396,6 +10396,7 @@ function Ktl($, appInfo) {
                     timestamp.setAttribute('id', viewId + '-timestamp-id');
                     timestamp.classList.add('ktlTimeStamp');
                     timestamp.style.whiteSpace = 'pre';
+                    timestamp.style.marginLeft = '1.0em';
                     timestamp.appendChild(document.createTextNode(stringToDisplay));
 
                     var submitBtn = $('#' + viewId + ' .kn-submit');
