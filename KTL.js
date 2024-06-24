@@ -6286,6 +6286,7 @@ function Ktl($, appInfo) {
                     keywords._vk && virtualKeyboard(viewId, keywords);
                     keywords._asf && autoSubmitForm(viewId, keywords);
                     keywords._rdclk && redirectClick(viewId, keywords);
+                    keywords._cpytxt && copyText(viewId, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -9568,6 +9569,47 @@ function Ktl($, appInfo) {
                 }
             }
         }
+
+        function copyText(viewId, keywords) {
+            const kw = '_cpytxt';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                const groups = keywords[kw][0].params;
+                for (const group of groups) {
+                    // Group must have an even number of parameters.
+                    if (group.length >= 2 && group.length % 2 === 0) {
+                        const sourceColumn = group[0];
+                        const destinationColumn = group[1];
+                        const sourceColumnIndex = ktl.views.getColumnIndex(viewId, sourceColumn);
+                        const destinationColumnIndex = ktl.views.getColumnIndex(viewId, destinationColumn);
+                        if (sourceColumnIndex && destinationColumnIndex) {
+                            const rows = $(`#${viewId} .kn-table tbody tr`);
+                            rows.each((idx, row) => {
+                                const srcCell = $(row).find(`td .col-${sourceColumnIndex} span span`);
+                                if (srcCell.length) {
+                                    const srcText = srcCell.text();
+                                    const destCell = $(row).find(`td .col-${destinationColumnIndex} span`);
+                                    if (destCell.length) {
+                                        $(destCell).text(srcText);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+
 
         function fieldIsRequired(view) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
