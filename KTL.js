@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.25.6';
+    const KTL_VERSION = '0.26.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -9608,8 +9608,6 @@ function Ktl($, appInfo) {
                 }
             }
         }
-
-
 
         function fieldIsRequired(view) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
