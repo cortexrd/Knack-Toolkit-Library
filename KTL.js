@@ -12098,7 +12098,7 @@ function Ktl($, appInfo) {
                         olnSelector = '#' + viewId + ' ' + olnSelector;
 
                     const linkElement = $(olnSelector);
-                    linkElement.off('click').on('click', e => {
+                    linkElement.off('click.ktl_oln').on('click.ktl_oln', e => {
                         const target = e.target;
                         let openInNewTab = false;
 
