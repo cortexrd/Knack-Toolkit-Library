@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.26.0';
+    const KTL_VERSION = '0.26.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -10813,13 +10813,23 @@ function Ktl($, appInfo) {
                 for (var i = columns.length - 1; i >= 0; i--) {
                     var column = columns[i];
                     var header = column.header.trim();
-                    if (headers.includes(header) || fields.includes(column.id)) {
+                    const fieldId = column.field.key;
+                    if (headers.includes(header) || fields.includes(fieldId)) {
                         var thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
                         if (thead.length) {
                             var cellIndex = thead[0].cellIndex;
                             thead.remove();
                             $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').remove();
-                            columns.splice(i, 1);
+
+                            //Also wipe data from model.
+                            if (fieldId) {
+                                const viewData = view.model.data.models;
+                                for (const rowData of viewData) {
+                                    const fieldData = rowData.attributes;
+                                    delete fieldData[`${fieldId}`];
+                                    delete fieldData[`${fieldId}_raw`];
+                                }
+                            }
                         }
                     }
                 }
@@ -11520,22 +11530,34 @@ function Ktl($, appInfo) {
             removeColumns: function (view = {}, keywords = {}) {
                 const KEYWORD_NAME = '_rc';
 
-                if (!view.key
-                    || (view.key !== 'table' && view.type === 'search')
+                const viewId = view.key;
+
+                if (!viewId
+                    || (viewId !== 'table' && view.type === 'search')
                     || !keywords[KEYWORD_NAME]) return;
 
-                const model = (Knack.views[view.key] && Knack.views[view.key].model);
-                const columns = model.view.columns;
+                const model = (Knack.views[viewId] && Knack.views[viewId].model);
+                const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? model.results_model.view.columns : model.view.columns;
 
-                ktl.core.getKeywordsByType(view.key, KEYWORD_NAME).forEach(keyword => {
-
-                    if (!ktl.core.hasRoleAccess(keyword.options)) return;
+                ktl.core.getKeywordsByType(viewId, KEYWORD_NAME).forEach(keyword => {
+                    if (!ktl.core.hasRoleAccess(keyword.options))
+                        return;
 
                     const headers = columns.map(col => col.header.trim()).filter(header => {
                         return keyword.params[0].includes(header);
                     });
 
-                    ktl.views.removeTableColumns(view.key, [], headers);
+                    const fields = columns.map(col => (col.id || (col.field && col.field.key))).filter(fieldId => {
+                        return fieldId && keyword.params[0].includes(fieldId);
+                    });
+
+                    if (fields.length || headers.length) {
+                        ktl.views.validateKtlCond(keyword.options, {}, viewId)
+                            .then(valid => {
+                                if (valid)
+                                    ktl.views.removeTableColumns(viewId, fields, headers);
+                            })
+                    }
                 });
             },
 
