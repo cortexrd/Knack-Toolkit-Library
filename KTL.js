@@ -12016,9 +12016,9 @@ function Ktl($, appInfo) {
                     ktl.core.waitSelector(sel, 20000, 'visible')
                         .then(() => {
                             $(sel).each((ix, el) => {
-                                const currentStyle = $(el).attr('style');
-
+                                const currentStyle = $(el).attr('style') || '';
                                 const mergedStyles = ktl.core.mergeStyles(currentStyle, kwInstance.params[0][0]);
+
                                 const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
 
                                 $(el).attr('style', mergedStyleString);
