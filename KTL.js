@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.26.1';
+    const KTL_VERSION = '0.26.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -29,6 +29,9 @@ function Ktl($, appInfo) {
     window.APP_ROOT_NAME = APP_ROOT_NAME;
 
     const LOCAL_SERVER_PORT = '3000';
+
+    const builderUrl = `https://builder.knack.com/`;
+    const baseURL = `${builderUrl}${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}`;
 
     var ktl = this;
 
@@ -991,6 +994,13 @@ function Ktl($, appInfo) {
                     if (fields[i].attributes.name === fieldName)
                         return fields[i].attributes.key;
                 }
+            },
+
+            getFieldNameById: function (fieldId) {
+                if (!fieldId) return;
+                const fieldObject = Knack.objects.getField(fieldId);
+                if (fieldObject && fieldObject.attributes)
+                    return fieldObject.attributes.name;
             },
 
             //pageUrl is also called a slug.  It's what you find in the scene's Settings / Page URL field in the Builder.
@@ -4010,6 +4020,92 @@ function Ktl($, appInfo) {
 
         let systemColorsReady = false;
 
+        const initSystemColors = (function () {
+            ktl.core.waitSelector('#kn-dynamic-styles')
+                .then(function () {
+                    function extractSysElClr(cssSearchStr = '') {
+                        var index = 0, clrIdx = 0;
+                        var hsl = [], hsv = [], rgbClr = [];
+                        index = dynStylesCssTxt.search(cssSearchStr);
+                        clrIdx = dynStylesCssTxt.indexOf('#', index + 1);
+                        var color = dynStylesCssTxt.substr(clrIdx, 7); //Format is #rrggbb
+                        rgbClr = ktl.systemColors.hexToRgb(color);
+                        hsl = ktl.systemColors.rgbToHsl(rgbClr[0], rgbClr[1], rgbClr[2]);
+                        hsv = ktl.systemColors.rgbToHsv(rgbClr[0], rgbClr[1], rgbClr[2]);
+                        return { rgb: color, hsl: hsl, hsv: hsv };
+                    }
+
+                    var dynStylesCssTxt = document.querySelector('#kn-dynamic-styles').innerText;
+
+                    //Basic colors
+                    sysColors.header = extractSysElClr(/#kn-app-header \{\s+background-color: #/gm); //Header background color
+                    sysColors.button = extractSysElClr(/\.is-primary \{\s+background-color: #/gm); //Buttons background color
+                    sysColors.buttonText = extractSysElClr(/\.kn-navigation-bar a \{\s+color: #/gm); //Buttons text color
+                    sysColors.text = extractSysElClr(/\.kn-content a \{\s+color: #/gm); //Text color
+                    sysColors.links = extractSysElClr(/\.knMenuLink.knMenuLink--button \{\s+color: #/gm); //Button Link text color
+
+                    //Additional colors, usually derived from basic colors, or hard-coded.
+                    var newSaturation = 1.0;
+                    var newLightness = 1.0;
+                    var newRGB = '';
+
+                    //User Filter buttons
+                    newSaturation = 0.6;
+                    newLightness = 0.9;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.filterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+
+                    newSaturation = 0.5;
+                    newLightness = 0.9;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.activeFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+
+                    //Unused for now
+                    newSaturation = 1.0;
+                    newLightness = 0.3;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.borderClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+
+                    //Public Filters
+                    newSaturation = 0.4;
+                    newLightness = 0.8;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.publicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+
+                    newSaturation = 0.4;
+                    newLightness = 0.7;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.activePublicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+
+                    //Just a generic pale washed-out color for various items.
+                    newSaturation = 0.2;
+                    newLightness = 0.7;
+                    newRGB = ktl.systemColors.adjustRGB_sv(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                    sysColors.paleLowSatClrTransparent = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.5)';
+
+                    newSaturation = 0.6;
+                    newLightness = 1.0;
+                    newRGB = ktl.systemColors.adjustRGB_sv(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
+                    sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
+
+                    document.documentElement.style.setProperty('--ktlInlineEditableCellsBgColor', sysColors.inlineEditBkgColor);
+                    document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
+                    document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
+                    document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', sysColors.header.rgb + '44');
+                    document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', sysColors.header.rgb + '77');
+                    document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
+
+                    systemColorsReady = true;
+                    $(document).trigger('KTL.systemColorsReady');
+                    return resolve();
+                })
+                .catch(err => {
+                    return 'Timeout waiting for #kn-dynamic-styles:' + err;
+                })
+        })();
+
         $(document).on('knack-view-render.any', function (event, view, data) {
             ktl.systemColors.getSystemColors().then(sc => {
                 if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
@@ -4024,6 +4120,7 @@ function Ktl($, appInfo) {
         })
 
         return {
+            initSystemColors: initSystemColors,
             setCfg: function (cfgObj = {}) {
                 ktl.systemColors.getSystemColors().then(() => {
                     if (typeof cfgObj.inlineEditBkgColor !== 'undefined') {
@@ -4043,101 +4140,14 @@ function Ktl($, appInfo) {
                 })
             },
 
-            //For KTL internal use.
-            initSystemColors: function () {
-                return new Promise(function (resolve, reject) {
-                    ktl.core.waitSelector('#kn-dynamic-styles')
-                        .then(function () {
-                            function extractSysElClr(cssSearchStr = '') {
-                                var index = 0, clrIdx = 0;
-                                var hsl = [], hsv = [], rgbClr = [];
-                                index = dynStylesCssTxt.search(cssSearchStr);
-                                clrIdx = dynStylesCssTxt.indexOf('#', index + 1);
-                                var color = dynStylesCssTxt.substr(clrIdx, 7); //Format is #rrggbb
-                                rgbClr = ktl.systemColors.hexToRgb(color);
-                                hsl = ktl.systemColors.rgbToHsl(rgbClr[0], rgbClr[1], rgbClr[2]);
-                                hsv = ktl.systemColors.rgbToHsv(rgbClr[0], rgbClr[1], rgbClr[2]);
-                                return { rgb: color, hsl: hsl, hsv: hsv };
-                            }
-
-                            var dynStylesCssTxt = document.querySelector('#kn-dynamic-styles').innerText;
-
-                            //Basic colors
-                            sysColors.header = extractSysElClr(/#kn-app-header \{\s+background-color: #/gm); //Header background color
-                            sysColors.button = extractSysElClr(/\.is-primary \{\s+background-color: #/gm); //Buttons background color
-                            sysColors.buttonText = extractSysElClr(/\.kn-navigation-bar a \{\s+color: #/gm); //Buttons text color
-                            sysColors.text = extractSysElClr(/\.kn-content a \{\s+color: #/gm); //Text color
-                            sysColors.links = extractSysElClr(/\.knMenuLink.knMenuLink--button \{\s+color: #/gm); //Button Link text color
-
-                            //Additional colors, usually derived from basic colors, or hard-coded.
-                            var newS = 1.0;
-                            var newV = 1.0;
-                            var newRGB = '';
-
-                            //User Filter buttons
-                            newS = Math.min(1, sysColors.header.hsv[1] * 0.1);
-                            newV = 0.8;
-                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                            sysColors.filterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-
-                            newS = Math.min(1, sysColors.header.hsv[1] * 0.2);
-                            newV = 1.0;
-                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                            sysColors.activeFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-
-                            newS = 1.0;
-                            newV = 1.0;
-                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                            sysColors.borderClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-
-                            //Public Filters
-                            newS = Math.min(1, sysColors.button.hsv[1] * 0.6);
-                            newV = 1.0;
-                            newRGB = ktl.systemColors.hsvToRgb(sysColors.button.hsv[0], newS, newV);
-                            sysColors.publicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-
-                            newS = Math.min(1, sysColors.button.hsv[1] * 0.4);
-                            newV = 1.0;
-                            newRGB = ktl.systemColors.hsvToRgb(sysColors.button.hsv[0], newS, newV);
-                            sysColors.activePublicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-
-                            //Just a generic pale washed-out color for various items.
-                            newS = 0.2;
-                            newV = 0.7;
-                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                            sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-                            sysColors.paleLowSatClrTransparent = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.5)';
-
-                            newS = 0.5;
-                            newV = 1.0;
-                            newRGB = ktl.systemColors.hsvToRgb(sysColors.header.hsv[0], newS, newV);
-                            sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
-                            sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
-
-                            document.documentElement.style.setProperty('--ktlInlineEditableCellsBgColor', sysColors.inlineEditBkgColor);
-                            document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
-                            document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
-                            document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', sysColors.header.rgb + '44');
-                            document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', sysColors.header.rgb + '77');
-                            document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
-
-                            systemColorsReady = true;
-                            return resolve();
-                        })
-                        .catch(err => {
-                            return reject('Timeout waiting for #kn-dynamic-styles:' + err);
-                        })
-                })
-            },
-
             getSystemColors: function () {
                 return new Promise(function (resolve, reject) {
                     if (systemColorsReady) {
                         return resolve(sysColors);
                     } else {
-                        ktl.systemColors.initSystemColors()
-                            .then(() => { return resolve(sysColors); })
-                            .catch((error) => { return reject('getSystemColors failed during initSystemColors: ' + error); })
+                        $(document).on('KTL.systemColorsReady', () => {
+                            return resolve(sysColors);
+                        });
                     }
                 })
             },
@@ -4262,15 +4272,14 @@ function Ktl($, appInfo) {
                 * @param   Number  v       The value
                 * @return  Array           The RGB representation
                 */
+
             hsvToRgb: function (h, s, v) {
                 var r, g, b;
-
                 var i = Math.floor(h * 6);
                 var f = h * 6 - i;
                 var p = v * (1 - s);
                 var q = v * (1 - f * s);
-                var t = v * (1 - (1 - f) * s);
-
+                var t = v * (1 - Math.min(1, (1 - f) * s));
                 switch (i % 6) {
                     case 0: r = v, g = t, b = p; break;
                     case 1: r = q, g = v, b = p; break;
@@ -4289,6 +4298,121 @@ function Ktl($, appInfo) {
                     , (m, r, g, b) => '#' + r + r + g + g + b + b)
                     .substring(1).match(/.{2}/g)
                     .map(x => parseInt(x, 16));
+            },
+
+            //rgb is in #rrggbb string format
+            //saturation and value are 0 to 1
+            adjustRGB_sv: function (hexColor, saturation, value) {
+                hexColor = hexColor.replace('#', '');
+                const r = parseInt(hexColor.substring(0, 2), 16);
+                const g = parseInt(hexColor.substring(2, 4), 16);
+                const b = parseInt(hexColor.substring(4, 6), 16);
+
+                const rNorm = r / 255;
+                const gNorm = g / 255;
+                const bNorm = b / 255;
+
+                const max = Math.max(rNorm, gNorm, bNorm);
+
+                const sat = max === 0 ? 0 : (max - Math.min(rNorm, gNorm, bNorm)) / max;
+
+                const newSat = Math.min(sat * saturation, 1);
+                const newVal = Math.min(max * value, 1);
+
+                const c = newVal * newSat;
+                const x = c * (1 - Math.abs(((rNorm === max ? (gNorm - bNorm) / (max - Math.min(rNorm, gNorm, bNorm)) : rNorm === max ? 2 + (bNorm - rNorm) / (max - Math.min(rNorm, gNorm, bNorm)) : 4 + (rNorm - gNorm) / (max - Math.min(rNorm, gNorm, bNorm))) % 6) - 1));
+                const m = newVal - c;
+
+                let newR, newG, newB;
+                if (rNorm === max) {
+                    newR = c;
+                    newG = x;
+                    newB = 0;
+                } else if (gNorm === max) {
+                    newR = x;
+                    newG = c;
+                    newB = 0;
+                } else {
+                    newR = 0;
+                    newG = x;
+                    newB = c;
+                }
+
+                newR = Math.round((newR + m) * 255);
+                newG = Math.round((newG + m) * 255);
+                newB = Math.round((newB + m) * 255);
+
+                return [newR, newG, newB];
+            },
+
+            //rgb is in #rrggbb string format
+            //saturation and lightness are 0 to 1
+            adjustRGB_sl: function (hexColor, saturation, lightness) {
+                hexColor = hexColor.replace('#', '');
+                const r = parseInt(hexColor.substring(0, 2), 16);
+                const g = parseInt(hexColor.substring(2, 4, 16));
+                const b = parseInt(hexColor.substring(4, 6), 16);
+
+                const rNorm = r / 255;
+                const gNorm = g / 255;
+                const bNorm = b / 255;
+
+                const max = Math.max(rNorm, gNorm, bNorm);
+                const min = Math.min(rNorm, gNorm, bNorm);
+
+                let h, s, l = (max + min) / 2;
+
+                if (max === min) {
+                    //Achromatic case
+                    h = s = 0;
+                } else {
+                    const d = max - min;
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+                    switch (max) {
+                        case rNorm:
+                            h = (gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0);
+                            break;
+                        case gNorm:
+                            h = (bNorm - rNorm) / d + 2;
+                            break;
+                        case bNorm:
+                            h = (rNorm - gNorm) / d + 4;
+                            break;
+                    }
+                    h /= 6;
+                }
+
+                s = Math.min(Math.max(s * saturation, 0), 1);
+                l = Math.min(Math.max(lightness, 0), 1);
+
+                let newR, newG, newB;
+
+                if (s === 0) {
+                    //Achromatic case
+                    newR = newG = newB = l;
+                } else {
+                    const hue2rgb = (p, q, t) => {
+                        if (t < 0) t += 1;
+                        if (t > 1) t -= 1;
+                        if (t < 1 / 6) return p + (q - p) * 6 * t;
+                        if (t < 1 / 2) return q;
+                        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                        return p;
+                    };
+
+                    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                    const p = 2 * l - q;
+                    newR = hue2rgb(p, q, h + 1 / 3);
+                    newG = hue2rgb(p, q, h);
+                    newB = hue2rgb(p, q, h - 1 / 3);
+                }
+
+                const adjustedR = Math.round(newR * 255);
+                const adjustedG = Math.round(newG * 255);
+                const adjustedB = Math.round(newB * 255);
+
+                return [adjustedR, adjustedG, adjustedB];
             },
         }; //return systemColors functions
     })(); //systemColors
@@ -5991,6 +6115,7 @@ function Ktl($, appInfo) {
         };
 
         const automatedBulkOpsQueue = {};
+        const viewDataStore = {};
 
         //TODO: Migrate all variables here.
         var cfg = {
@@ -6287,6 +6412,9 @@ function Ktl($, appInfo) {
                     keywords._asf && autoSubmitForm(viewId, keywords);
                     keywords._rdclk && redirectClick(viewId, keywords);
                     keywords._cpytxt && copyText(viewId, keywords);
+                    keywords._scv && showChangedValues(viewId, keywords, data);
+                    keywords._arh && addRecordHistory(viewId, keywords, data);
+                    keywords._vrh && viewRecordHistory(viewId, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -9608,6 +9736,312 @@ function Ktl($, appInfo) {
                 }
             }
         }
+
+        function showChangedValues(viewId, keywords, data) {
+            if (!data.length) return;
+
+            const kw = '_scv';
+            if (!(viewId && keywords && keywords[kw])) return;
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            function compareAndLogDeltas(newData, lastData) {
+                const changes = {};
+
+                newData.forEach((newRecord, index) => {
+                    const lastRecord = lastData ? lastData[index] : undefined;
+                    const recordId = newRecord.id;
+                    changes[recordId] = [];
+
+                    for (const key in newRecord) {
+                        if (key.endsWith('_raw')) {
+                            const oldValue = lastRecord ? lastRecord[key] : undefined;
+                            const newValue = newRecord[key];
+                            if (lastRecord !== undefined && JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+                                const fieldId = key.replace('_raw', '');
+                                changes[recordId].push({
+                                    fieldId: fieldId,
+                                    fieldName: ktl.core.getFieldNameById(fieldId) || fieldId,
+                                    oldValue: oldValue,
+                                    newValue: newValue
+                                });
+                            }
+                        }
+                    }
+
+                    if (changes[recordId].length === 0) {
+                        delete changes[recordId];
+                    }
+                });
+
+                return changes;
+            }
+
+            function updateDataAndHighlightChanges(viewId, newData) {
+                const lastData = viewDataStore[viewId];
+                if (lastData !== undefined) {
+                    const changes = compareAndLogDeltas(newData, lastData);
+                    highlightChangedCells(viewId, changes);
+                }
+                viewDataStore[viewId] = JSON.parse(JSON.stringify(newData));
+            }
+
+            function highlightChangedCells(viewId, changes) {
+                for (const recordId in changes) {
+                    changes[recordId].forEach(change => {
+                        const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${change.fieldId}"]`);
+                        if (cell) {
+                            const originalStyle = Object.assign({}, cell.style);
+                            cell.style.boxShadow = 'inset 0 0 0 2px #0000ff';
+                            $(cell).addClass('ktlFlashingOnOff');
+                            setTimeout(() => {
+                                $(cell).removeClass('ktlFlashingOnOff');
+                                Object.assign(cell.style, originalStyle);
+                            }, 5000);
+                        }
+                    });
+                }
+            }
+
+            updateDataAndHighlightChanges(viewId, data);
+        }
+
+        //Record History Feature - BEGIN
+
+        const recordHistoryObject = ktl.core.getObjectIdByName('Record History');
+        const recordHistoryFieldIds = {
+            type: ktl.core.getFieldIdByName('Type', recordHistoryObject),
+            changes: ktl.core.getFieldIdByName('Changes', recordHistoryObject),
+            comment: ktl.core.getFieldIdByName('Comment', recordHistoryObject),
+            record_id: ktl.core.getFieldIdByName('Record ID', recordHistoryObject),
+            view_id: ktl.core.getFieldIdByName('View ID', recordHistoryObject),
+            object_name: ktl.core.getFieldIdByName('Object Name', recordHistoryObject),
+            app_url: ktl.core.getFieldIdByName('App URL', recordHistoryObject),
+            builder_url: ktl.core.getFieldIdByName('Builder URL', recordHistoryObject),
+            expiry: ktl.core.getFieldIdByName('Expiry', recordHistoryObject)
+        };
+
+        function addRecordHistory(viewId, keywords, data) {
+            const kw = '_arh';
+            if (!(viewId && keywords && keywords[kw])) return;
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(keywords && keywords[kw] && (viewType === 'form'))) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+            const addRecordHistoryLogViewId = ktl.core.getViewIdByTitle('Add Record History', '', true);
+            if (!addRecordHistoryLogViewId) return;
+
+            let changeLog = {};
+
+            function collectChange(viewId, fieldId, fieldName, oldValue, newValue) {
+                if (!changeLog[viewId]) {
+                    changeLog[viewId] = {
+                        [recordHistoryFieldIds.type]: '',
+                        [recordHistoryFieldIds.changes]: '',
+                        [recordHistoryFieldIds.comment]: '',
+                        [recordHistoryFieldIds.record_id]: '',
+                        [recordHistoryFieldIds.view_id]: viewId,
+                        [recordHistoryFieldIds.object_name]: '',
+                        [recordHistoryFieldIds.app_url]: '',
+                        [recordHistoryFieldIds.builder_url]: '',
+                        [recordHistoryFieldIds.expiry]: '',
+                    };
+                }
+
+                if (changeLog[viewId][recordHistoryFieldIds.changes])
+                    changeLog[viewId][recordHistoryFieldIds.changes] += `
+`;
+
+                changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName}:
+    Before: ${JSON.stringify(oldValue)}
+    After: ${JSON.stringify(newValue)}
+`;
+            }
+
+
+            function normalize(value) {
+                return value === undefined || value === null ? '' : value;
+            }
+
+            function isSignificantChange(oldValue, newValue) {
+                oldValue = normalize(oldValue);
+                newValue = normalize(newValue);
+
+                if (typeof oldValue === 'string' && typeof newValue === 'string') {
+                    return oldValue.trim() !== newValue.trim();
+                }
+
+                return JSON.stringify(oldValue) !== JSON.stringify(newValue);
+            }
+
+            function compareAndLogDeltas(viewId, newData, lastData, path = '') {
+                if (typeof newData !== 'object' || newData === null) {
+                    const oldValue = getNestedValue(lastData, path);
+                    if (isSignificantChange(oldValue, newData)) {
+                        const fieldId = path.split('.').pop().replace('_raw', '');
+                        const fieldName = ktl.core.getFieldNameById(fieldId) || fieldId;
+                        collectChange(viewId, fieldId, fieldName, oldValue, newData);
+                    }
+                    return;
+                }
+
+                for (const key in newData) {
+                    if (key.endsWith('_raw')) {
+                        const fullPath = path ? `${path}.${key}` : key;
+                        const oldValue = getNestedValue(lastData, fullPath);
+                        const newValue = newData[key];
+                        if (isSignificantChange(oldValue, newValue)) {
+                            const fieldId = key.replace('_raw', '');
+                            const fieldName = ktl.core.getFieldNameById(fieldId) || fieldId;
+                            collectChange(viewId, fieldId, fieldName, oldValue, newValue);
+                        }
+                    } else if (typeof newData[key] === 'object' && newData[key] !== null) {
+                        const newPath = path ? `${path}.${key}` : key;
+                        compareAndLogDeltas(viewId, newData[key], lastData, newPath);
+                    }
+                }
+            }
+
+            function getNestedValue(obj, path) {
+                return path.split('.').reduce((current, key) =>
+                    (current && current[key] !== undefined) ? current[key] : undefined, obj);
+            }
+
+            function logAllChanges() {
+                for (const viewId in changeLog) {
+                    if (changeLog[viewId][recordHistoryFieldIds.changes]) {
+                        const logEntry = changeLog[viewId];
+                        logEntry[recordHistoryFieldIds.type] = 'Edit'; //TODO: support other types.
+                        logEntry[recordHistoryFieldIds.comment] = 'Record History Added'; //TODO: Get comment from keyword params.
+                        logEntry[recordHistoryFieldIds.record_id] = data.id || '';
+                        const objId = ktl.views.getView(viewId).source.object || '';
+                        if (objId) {
+                            logEntry[recordHistoryFieldIds.object_name] = Knack.objects._byId[objId].attributes.name;
+                        }
+                        logEntry[recordHistoryFieldIds.app_url] = window.location.href;
+                        const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
+                        const viewType = ktl.views.getViewType(viewId);
+                        logEntry[recordHistoryFieldIds.builder_url] = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
+                        logEntry[recordHistoryFieldIds.expiry] = '06/30/2024'; //TODO: Get expiry date from keyword params.
+
+                        console.log("Record History Log Entry:", JSON.stringify(logEntry, null, 4));
+
+                        const apiData = logEntry;
+                        ktl.core.knAPI(addRecordHistoryLogViewId, null, apiData, 'POST')
+                            .then(function (response) {
+                                ktl.log.clog('green', 'Record History created successfully!');
+                                console.log('response =', response);
+                            })
+                            .catch(function (reason) {
+                                alert('An error occurred while creating Record History, reason: ' + JSON.stringify(reason));
+                            })
+                    }
+                }
+                changeLog = {};
+            }
+
+            function updateDataAndLogDeltas(viewId, newData) {
+                const lastData = viewDataStore[viewId];
+                if (lastData !== undefined) {
+                    compareAndLogDeltas(viewId, newData, lastData);
+                }
+                viewDataStore[viewId] = JSON.parse(JSON.stringify(newData));
+                logAllChanges();
+            }
+
+            console.log('_arh data =', viewId, data);
+            updateDataAndLogDeltas(viewId, data);
+        }
+
+        function viewRecordHistory(viewId, keywords) {
+            const kw = '_vrh';
+            if (!(viewId && keywords && keywords[kw])) return;
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(keywords && keywords[kw] && (viewType === 'table' || viewType === 'search'))) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+            const viewRecordHistoryLogViewId = ktl.core.getViewIdByTitle('View Record History');
+            if (!viewRecordHistoryLogViewId) return;
+
+            const sceneId = ktl.scenes.getSceneKeyFromViewId(viewRecordHistoryLogViewId);
+            const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+            let historyUrl = `#${slug}`;
+            Knack.scenes._byId[slug].attributes.modal = true; //Force scene to modal.
+
+            // Add new header cell with label "History"
+            const headerRow = $(`#${viewId} .kn-table thead tr`);
+            const newHeaderCell = $('<th style="text-align: left;"><span class="table-fixed-label" style="display: inline-flex;"><span>History</span></span></th>');
+            headerRow.append(newHeaderCell);
+
+            // Add new column with icon to click on to view record history.
+            const rows = document.querySelectorAll(`#${viewId} .kn-table tbody tr`);
+            for (const row of rows) {
+                const newCell = document.createElement('td');
+                const iconLink = document.createElement('a');
+                iconLink.href = historyUrl;
+                iconLink.setAttribute('data-kn-slug', '#view-record-history');
+                iconLink.innerHTML = '<i class="fa fa-clock-o" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>';
+
+                newCell.appendChild(iconLink);
+                row.appendChild(newCell);
+            }
+
+            // Add click event handler with jQuery
+            $(document).off('click.ktl_vrh').on('click.ktl_vrh', 'a[data-kn-slug="#view-record-history"]', function (event) {
+                const row = event.target.closest('tr[id]');
+                if (row) {
+                    const recordId = row.id;
+                    $(document).one('KTL.preprocessView.ktl_vrh', (event, view) => {
+                        if (!view || !view.model || !view.model.view) return;
+
+                        const viewObj = view.model.view;
+                        const viewId = viewObj.key;
+                        if (viewId === viewRecordHistoryLogViewId) {
+                            //Apply filter on record ID.
+                            var filterRules = [
+                                {
+                                    "field": recordHistoryFieldIds.record_id,
+                                    "operator": "is",
+                                    "value": recordId,
+                                    "field_name": 'Record ID'
+                                }
+                            ];
+
+                            var filterObj = {
+                                "match": "and",
+                                "rules": filterRules
+                            }
+
+                            //TODO: Put all this in an exposed function since it is used in a few places already.
+                            const sceneHash = Knack.getSceneHash();
+                            const queryString = Knack.getQueryString({ [`${viewRecordHistoryLogViewId}_filters`]: encodeURIComponent(JSON.stringify(filterObj)) });
+                            Knack.router.navigate(`${sceneHash}?${queryString}`, false);
+                            Knack.setHashVars();
+                            Knack.models[viewRecordHistoryLogViewId].setFilters(filterObj);
+                            Knack.models[viewRecordHistoryLogViewId].fetch({
+                                success: () => {
+                                    Knack.hideSpinner();
+                                }
+                            });
+                        }
+                    })
+                }
+            });
+
+            $(document).on(`knack-view-render.${viewRecordHistoryLogViewId}`, function (event, view, data) {
+                $(`#${viewRecordHistoryLogViewId} td.${recordHistoryFieldIds.changes}`).css({ 'white-space': 'pre', 'text-wrap': 'wrap' });
+            });
+        }
+
+        //Record History Feature - END
 
         function fieldIsRequired(view) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
@@ -17707,8 +18141,6 @@ function Ktl($, appInfo) {
     //Developer Popup Tool feature
     this.developerPopupTool = function () {
         if (!ktl.account.isDeveloper()) return;
-
-        const baseURL = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}`;
 
         const createButton = function (iconClass) {
             const button = document.createElement('a');
