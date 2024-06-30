@@ -6413,7 +6413,7 @@ function Ktl($, appInfo) {
                     keywords._rdclk && redirectClick(viewId, keywords);
                     keywords._cpytxt && copyText(viewId, keywords);
                     keywords._scv && showChangedValues(viewId, keywords, data);
-                    keywords._arh && addRecordHistory(viewId, keywords, data);
+                    keywords._arh && addRecordHistory(view, keywords, data);
                     keywords._vrh && viewRecordHistory(viewId, keywords);
                 }
 
@@ -9813,6 +9813,7 @@ function Ktl($, appInfo) {
 
         //Record History Feature - BEGIN
 
+        const viewRecordHistoryLogViewId = ktl.core.getViewIdByTitle('View Record History');
         const recordHistoryObject = ktl.core.getObjectIdByName('Record History');
         const recordHistoryFieldIds = {
             status: ktl.core.getFieldIdByName('Status', recordHistoryObject),
@@ -9826,8 +9827,11 @@ function Ktl($, appInfo) {
             expiry: ktl.core.getFieldIdByName('Expiry', recordHistoryObject)
         };
 
-        function addRecordHistory(viewId, keywords, data) {
+        function addRecordHistory(view, keywords, data) {
+            if (!view || !data) return;
+
             const kw = '_arh';
+            const viewId = view.key;
             if (!(viewId && keywords && keywords[kw])) return;
             const viewType = ktl.views.getViewType(viewId);
             if (!(keywords && keywords[kw] && (viewType === 'form'))) return;
@@ -9856,13 +9860,19 @@ function Ktl($, appInfo) {
                 }
 
                 if (changeLog[viewId][recordHistoryFieldIds.changes])
-                    changeLog[viewId][recordHistoryFieldIds.changes] += `
-`;
+                    changeLog[viewId][recordHistoryFieldIds.changes] += '\n\n';
 
-                changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName}:
-    Before: ${JSON.stringify(oldValue)}
-    After: ${JSON.stringify(newValue)}
-`;
+                changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName}:\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}`;
+            }
+
+            function formatValue(value) {
+                if (Array.isArray(value)) {
+                    return value.join(', ');
+                } else if (typeof value === 'string') {
+                    return value;
+                } else {
+                    return JSON.stringify(value);
+                }
             }
 
 
@@ -9883,10 +9893,17 @@ function Ktl($, appInfo) {
 
             function compareAndLogDeltas(viewId, newData, lastData, path = '') {
                 if (typeof newData !== 'object' || newData === null) {
-                    const oldValue = getNestedValue(lastData, path);
+                    let oldValue = getNestedValue(lastData, path);
                     if (isSignificantChange(oldValue, newData)) {
                         const fieldId = path.split('.').pop().replace('_raw', '');
                         const fieldName = ktl.core.getFieldNameById(fieldId) || fieldId;
+                        const fieldType = ktl.fields.getFieldType(fieldId);
+                        if (fieldType === 'signature') {
+                            if (oldValue)
+                                oldValue = 'Signed';
+                            if (newValue)
+                                newValue = 'Signed';
+                        }
                         collectChange(viewId, fieldId, fieldName, oldValue, newData);
                     }
                     return;
@@ -9895,15 +9912,13 @@ function Ktl($, appInfo) {
                 for (const key in newData) {
                     if (key.endsWith('_raw')) {
                         const fullPath = path ? `${path}.${key}` : key;
-                        const oldValue = getNestedValue(lastData, fullPath);
+                        let oldValue = getNestedValue(lastData, fullPath);
                         let newValue = newData[key];
 
-                        // Check if newValue is an object with a "full" key
                         if (typeof newValue === 'object' && newValue !== null && newValue.hasOwnProperty('full')) {
                             newValue = newValue.full;
                         }
 
-                        // Check if newValue is an array and extract the "identifier" value if it exists
                         if (Array.isArray(newValue)) {
                             const identifierObj = newValue.find(obj => obj.hasOwnProperty('identifier'));
                             if (identifierObj) {
@@ -9914,6 +9929,14 @@ function Ktl($, appInfo) {
                         if (isSignificantChange(oldValue, newValue)) {
                             const fieldId = key.replace('_raw', '');
                             const fieldName = ktl.core.getFieldNameById(fieldId) || fieldId;
+                            const fieldType = ktl.fields.getFieldType(fieldId);
+                            if (fieldType === 'signature') {
+                                if (oldValue)
+                                    oldValue = 'Signed';
+                                if (newValue)
+                                    newValue = 'Signed';
+                            }
+
                             collectChange(viewId, fieldId, fieldName, oldValue, newValue);
                         }
                     } else if (typeof newData[key] === 'object' && newData[key] !== null) {
@@ -9947,8 +9970,13 @@ function Ktl($, appInfo) {
                 for (const viewId in changeLog) {
                     if (changeLog[viewId][recordHistoryFieldIds.changes]) {
                         const logEntry = changeLog[viewId];
-                        logEntry[recordHistoryFieldIds.status] = 'Updated'; //TODO: support other status.
-                        logEntry[recordHistoryFieldIds.context] = 'Record History Added'; //TODO: Get context from keyword params.
+                        let formActionText = 'Updated';
+                        if (view.action === 'insert')
+                            formActionText = 'Inserted';
+                        //TODO: support other status.
+
+                        logEntry[recordHistoryFieldIds.status] = formActionText;
+                        logEntry[recordHistoryFieldIds.context] = 'Record History Demo'; //TODO: Get context from keyword params.
                         logEntry[recordHistoryFieldIds.record_id] = data.id || '';
                         const objId = ktl.views.getView(viewId).source.object || '';
                         if (objId)
@@ -9997,7 +10025,7 @@ function Ktl($, appInfo) {
                 const options = keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
-            const viewRecordHistoryLogViewId = ktl.core.getViewIdByTitle('View Record History');
+
             if (!viewRecordHistoryLogViewId) return;
 
             const sceneId = ktl.scenes.getSceneKeyFromViewId(viewRecordHistoryLogViewId);
@@ -10068,8 +10096,18 @@ function Ktl($, appInfo) {
 
         //Fix formatting of the Changes paragraph text field for a nice, more readable layout.
         $(document).on('knack-view-render.any', function (event, view, data) {
-            $(`.kn-table td.${recordHistoryFieldIds.changes}`).css({ 'white-space': 'pre', 'text-wrap': 'wrap' });
+            if (view.key === viewRecordHistoryLogViewId) {
+                $('.kn-modal').css({
+                    'margin': '20px 0px',
+                    'left': '50%',
+                    'transform': 'translateX(-50%)',
+                    'min-width': '90%',
+                    'max-width': '95%',
+                    'width': 'auto'
+                });
+            }
 
+            $(`.kn-table td.${recordHistoryFieldIds.changes}`).css({ 'white-space': 'pre', 'text-wrap': 'wrap' });
             const tdElements = document.querySelectorAll(`td.${recordHistoryFieldIds.changes}`);
             tdElements.forEach(td => {
                 const innerHTML = td.innerHTML;
