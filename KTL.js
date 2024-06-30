@@ -6623,6 +6623,7 @@ function Ktl($, appInfo) {
             if (e.keyCode === 27) { //Esc
                 $('.close-popover').trigger('click'); //Exit inline editing
                 $('#asset-viewer > div > a').trigger('click'); //asset-viewer is the image viewer.
+                $('.close-modal').trigger('click'); //Modal page.
             } else if (e.keyCode === 37) //Left arrow
                 $('#asset-viewer > div > div > a.kn-asset-prev').trigger('click');
             else if (e.keyCode === 39) //Right arrow
@@ -9814,9 +9815,9 @@ function Ktl($, appInfo) {
 
         const recordHistoryObject = ktl.core.getObjectIdByName('Record History');
         const recordHistoryFieldIds = {
-            type: ktl.core.getFieldIdByName('Type', recordHistoryObject),
+            status: ktl.core.getFieldIdByName('Status', recordHistoryObject),
             changes: ktl.core.getFieldIdByName('Changes', recordHistoryObject),
-            comment: ktl.core.getFieldIdByName('Comment', recordHistoryObject),
+            context: ktl.core.getFieldIdByName('Context', recordHistoryObject),
             record_id: ktl.core.getFieldIdByName('Record ID', recordHistoryObject),
             view_id: ktl.core.getFieldIdByName('View ID', recordHistoryObject),
             object_name: ktl.core.getFieldIdByName('Object Name', recordHistoryObject),
@@ -9842,9 +9843,9 @@ function Ktl($, appInfo) {
             function collectChange(viewId, fieldId, fieldName, oldValue, newValue) {
                 if (!changeLog[viewId]) {
                     changeLog[viewId] = {
-                        [recordHistoryFieldIds.type]: '',
+                        [recordHistoryFieldIds.status]: '',
                         [recordHistoryFieldIds.changes]: '',
-                        [recordHistoryFieldIds.comment]: '',
+                        [recordHistoryFieldIds.context]: '',
                         [recordHistoryFieldIds.record_id]: '',
                         [recordHistoryFieldIds.view_id]: viewId,
                         [recordHistoryFieldIds.object_name]: '',
@@ -9895,7 +9896,21 @@ function Ktl($, appInfo) {
                     if (key.endsWith('_raw')) {
                         const fullPath = path ? `${path}.${key}` : key;
                         const oldValue = getNestedValue(lastData, fullPath);
-                        const newValue = newData[key];
+                        let newValue = newData[key];
+
+                        // Check if newValue is an object with a "full" key
+                        if (typeof newValue === 'object' && newValue !== null && newValue.hasOwnProperty('full')) {
+                            newValue = newValue.full;
+                        }
+
+                        // Check if newValue is an array and extract the "identifier" value if it exists
+                        if (Array.isArray(newValue)) {
+                            const identifierObj = newValue.find(obj => obj.hasOwnProperty('identifier'));
+                            if (identifierObj) {
+                                newValue = identifierObj.identifier;
+                            }
+                        }
+
                         if (isSignificantChange(oldValue, newValue)) {
                             const fieldId = key.replace('_raw', '');
                             const fieldName = ktl.core.getFieldNameById(fieldId) || fieldId;
@@ -9909,21 +9924,35 @@ function Ktl($, appInfo) {
             }
 
             function getNestedValue(obj, path) {
-                return path.split('.').reduce((current, key) =>
+                const value = path.split('.').reduce((current, key) =>
                     (current && current[key] !== undefined) ? current[key] : undefined, obj);
+
+                if (typeof value === 'object' && value !== null) {
+                    if (value.hasOwnProperty('full')) {
+                        return value.full;
+                    }
+
+                    if (Array.isArray(value)) {
+                        const identifierObj = value.find(obj => obj.hasOwnProperty('identifier'));
+                        if (identifierObj) {
+                            return identifierObj.identifier;
+                        }
+                    }
+                }
+
+                return value;
             }
 
             function logAllChanges() {
                 for (const viewId in changeLog) {
                     if (changeLog[viewId][recordHistoryFieldIds.changes]) {
                         const logEntry = changeLog[viewId];
-                        logEntry[recordHistoryFieldIds.type] = 'Edit'; //TODO: support other types.
-                        logEntry[recordHistoryFieldIds.comment] = 'Record History Added'; //TODO: Get comment from keyword params.
+                        logEntry[recordHistoryFieldIds.status] = 'Updated'; //TODO: support other status.
+                        logEntry[recordHistoryFieldIds.context] = 'Record History Added'; //TODO: Get context from keyword params.
                         logEntry[recordHistoryFieldIds.record_id] = data.id || '';
                         const objId = ktl.views.getView(viewId).source.object || '';
-                        if (objId) {
+                        if (objId)
                             logEntry[recordHistoryFieldIds.object_name] = Knack.objects._byId[objId].attributes.name;
-                        }
                         logEntry[recordHistoryFieldIds.app_url] = window.location.href;
                         const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
                         const viewType = ktl.views.getViewType(viewId);
@@ -10035,11 +10064,21 @@ function Ktl($, appInfo) {
                     })
                 }
             });
-
-            $(document).on(`knack-view-render.${viewRecordHistoryLogViewId}`, function (event, view, data) {
-                $(`#${viewRecordHistoryLogViewId} td.${recordHistoryFieldIds.changes}`).css({ 'white-space': 'pre', 'text-wrap': 'wrap' });
-            });
         }
+
+        //Fix formatting of the Changes paragraph text field for a nice, more readable layout.
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            $(`.kn-table td.${recordHistoryFieldIds.changes}`).css({ 'white-space': 'pre', 'text-wrap': 'wrap' });
+
+            const tdElements = document.querySelectorAll(`td.${recordHistoryFieldIds.changes}`);
+            tdElements.forEach(td => {
+                const innerHTML = td.innerHTML;
+                const firstLineFeedIndex = innerHTML.indexOf('\n');
+                if (firstLineFeedIndex !== -1) {
+                    td.innerHTML = innerHTML.slice(0, firstLineFeedIndex) + innerHTML.slice(firstLineFeedIndex + 1);
+                }
+            });
+        });
 
         //Record History Feature - END
 
