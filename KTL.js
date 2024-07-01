@@ -820,6 +820,42 @@ function Ktl($, appInfo) {
                 return date + ' ' + time;
             },
 
+            getDateTime: function (format = 'YYYY-MM-DD HH:mm:ss', useUTC = false) {
+                const now = useUTC ? new Date(Date.now()) : new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][now.getMonth()];
+                const day = String(now.getDate()).padStart(2, '0');
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                let use12HourFormat = format.includes('h');
+                if (use12HourFormat) {
+                    hours = hours % 12;
+                    hours = hours ? String(hours) : '12';
+                } else {
+                    hours = String(hours).padStart(2, '0');
+                }
+                let formattedDateTime = format
+                    .replace('YYYY', year)
+                    .replace('MMM', monthShort)
+                    .replace('MM', month)
+                    .replace('DD', day)
+                    .replace(/M(?!M)/g, String(now.getMonth() + 1))
+                    .replace('HH', hours.padStart(2, '0'))
+                    .replace('hh', hours)
+                    .replace('mm', minutes)
+                    .replace('ss', seconds)
+                    .replace('SSS', milliseconds)
+                    .replace('A', ampm);
+                if (!use12HourFormat) {
+                    formattedDateTime = formattedDateTime.replace(/\s?A/, '');
+                }
+                return formattedDateTime.trim();
+            },
+
             dateInPast: function (thisDate, refDate = new Date()) {
                 if ((!isNaN(thisDate) && !isNaN(refDate)) && (thisDate.setHours(0, 0, 0, 0) < refDate.setHours(0, 0, 0, 0)))
                     return true;
@@ -9875,7 +9911,6 @@ function Ktl($, appInfo) {
                 }
             }
 
-
             function normalize(value) {
                 return value === undefined || value === null ? '' : value;
             }
@@ -10886,19 +10921,25 @@ function Ktl($, appInfo) {
                 }
 
                 let prefix = '';
-                let hasDate = false;
+                let format = 'HH:mm:ss';
                 if (keywords[kw][0] && keywords[kw][0].params) {
                     const groups = keywords[kw][0].params;
                     for (const group of groups) {
-                        if (group[0].includes('date')) {
-                            hasDate = true;
-                        } else if (group[0].includes('prefix') && group[0].length) {
-                            prefix = (keywords[kw][0].paramStr.match(/\[prefix,([^[]*)\]/) || [])[1] || ''; //Retrieve spaces too.
+                        if (group.length >= 2) {
+                            if (group[0] === 'prefix') {
+                                prefix = (keywords[kw][0].paramStr.match(/\[prefix,([^[]*)\]/) || [])[1] || '';
+                            } else if (group[0] === 'format') {
+                                format = (keywords[kw][0].paramStr.match(/\[format,([^[]*)\]/) || [])[1] || '';
+                            }
+                        } else {
+                            if (group[0] === 'date') { //Legacy compatibility.
+                                format = 'MM/DD/YYYY, HH:mm:ss';
+                            }
                         }
                     }
                 }
 
-                let stringToDisplay = `${ktl.core.getCurrentDateTime(hasDate, true, false, false)}`;
+                let stringToDisplay = `${ktl.core.getDateTime(format, false)}`;
                 if (prefix)
                     stringToDisplay = `${prefix} ${stringToDisplay}`;
 
