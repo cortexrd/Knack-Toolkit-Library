@@ -1873,6 +1873,22 @@ function Ktl($, appInfo) {
                     array1.every(id => array2.includes(id)) &&
                     array2.every(id => array1.includes(id));
             },
+
+            mergeStyles: function (baseStyles, newStyles) {
+                function cssTextToObject(cssText) {
+                    return cssText.split(';').reduce((acc, style) => {
+                        if (style.trim()) {
+                            const [key, value] = style.split(':');
+                            acc[key.trim()] = value.trim();
+                        }
+                        return acc;
+                    }, {});
+                }
+
+                const bsObj = cssTextToObject(baseStyles);
+                const nsObj = cssTextToObject(newStyles);
+                return { ...bsObj, ...nsObj };
+            },
         }
     })(); //Core
 
@@ -2963,24 +2979,8 @@ function Ktl($, appInfo) {
                                     bcgDiv.style.marginTop = '10px';
 
                                 if (style) {
-                                    const mergedStyle = mergeStyles(bcgDiv.style.cssText, style);
+                                    const mergedStyle = ktl.core.mergeStyles(bcgDiv.style.cssText, style);
                                     Object.assign(bcgDiv.style, mergedStyle);
-                                }
-
-                                function mergeStyles(baseStyles, newStyles) {
-                                    function cssTextToObject(cssText) {
-                                        return cssText.split(';').reduce((acc, style) => {
-                                            if (style.trim()) {
-                                                const [key, value] = style.split(':');
-                                                acc[key.trim()] = value.trim();
-                                            }
-                                            return acc;
-                                        }, {});
-                                    }
-
-                                    const bsObj = cssTextToObject(baseStyles);
-                                    const nsObj = cssTextToObject(newStyles);
-                                    return { ...bsObj, ...nsObj };
                                 }
 
                                 if (viewType === 'form') {
@@ -12590,10 +12590,13 @@ function Ktl($, appInfo) {
                     ktl.core.waitSelector(sel, 20000, 'visible')
                         .then(() => {
                             $(sel).each((ix, el) => {
-                                //Merge new style with existing one.
-                                const currentStyle = $(el).attr('style');
-                                $(el).attr('style', (currentStyle ? currentStyle + '; ' : '') + kwInstance.params[0]);
-                            })
+                                const currentStyle = $(el).attr('style') || '';
+                                const mergedStyles = ktl.core.mergeStyles(currentStyle, kwInstance.params[0][0]);
+
+                                const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
+
+                                $(el).attr('style', mergedStyleString);
+                            });
                         })
                         .catch(function () { })
                 }
