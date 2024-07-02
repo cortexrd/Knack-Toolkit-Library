@@ -1889,6 +1889,25 @@ function Ktl($, appInfo) {
                 const nsObj = cssTextToObject(newStyles);
                 return { ...bsObj, ...nsObj };
             },
+
+            modifyRatingStars: function (jquerySelector, newFillColor, filled = false) {
+                const $element = $(jquerySelector);
+                const svgUrl = $element.css('background-image');
+                const base64Svg = svgUrl.replace('url("data:image/svg+xml;base64,', '').replace('")', '');
+                let decodedSvg = atob(base64Svg);
+
+                if (filled) {
+                    const filledStarPath = "M26 10.109q0 0.344-0.406 0.75l-5.672 5.531 1.344 7.812q0.016 0.109 0.016 0.313 0 0.328-0.164 0.555t-0.477 0.227q-0.297 0-0.625-0.187l-7.016-3.687-7.016 3.687q-0.344 0.187-0.625 0.187-0.328 0-0.492-0.227t-0.164-0.555q0-0.094 0.031-0.313l1.344-7.812-5.688-5.531q-0.391-0.422-0.391-0.75 0-0.578 0.875-0.719l7.844-1.141 3.516-7.109q0.297-0.641 0.766-0.641t0.766 0.641l3.516 7.109 7.844 1.141q0.875 0.141 0.875 0.719z";
+                    decodedSvg = decodedSvg.replace(/<path[^>]*>/, `<path fill="${newFillColor}" d="${filledStarPath}">`);
+                } else {
+                    decodedSvg = decodedSvg.replace(/fill="[^"]*"/, `fill="${newFillColor}"`);
+                }
+
+                const newBase64Svg = btoa(decodedSvg);
+                const newSvgUrl = `url("data:image/svg+xml;base64,${newBase64Svg}")`;
+                $element.css('background-image', newSvgUrl);
+                return newSvgUrl;
+            },
         }
     })(); //Core
 
@@ -7641,6 +7660,11 @@ function Ktl($, appInfo) {
 
                     const viewType = ktl.views.getViewType(viewId);
 
+                    let isRating = false;
+                    const fieldType = ktl.fields.getFieldType(targetFieldId);
+                    if (fieldType === 'rating')
+                        isRating = true;
+                        
                     if (!targetSel) {
                         targetSel = '#' + targetViewId + ' tbody tr[id="' + record.id + '"]' + (propagate ? span : ' .' + targetFieldId + span);
                         if (viewType === 'list')
@@ -7692,6 +7716,15 @@ function Ktl($, appInfo) {
                                 //Merge current and new styles.
                                 const currentStyle = $(targetSel).attr('style');
                                 $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                if (isRating) {
+                                    const ratingValue = Number($(`${targetSel} [id]`)[0].value);
+                                    if (fgColor) {
+                                        if (ratingValue === 0) {
+                                            ktl.core.modifyRatingStars(`${targetSel} .rateit-range`, fgColor, true);
+                                        } else
+                                            ktl.core.modifyRatingStars(`${targetSel} .rateit-preset`, fgColor);
+                                    }
+                                }
                             }
 
                             if (flash)
@@ -10424,7 +10457,7 @@ function Ktl($, appInfo) {
 
                 if (cfgObj.ktlFlashRate !== undefined) {
                     cfg.ktlFlashRate = cfgObj.ktlFlashRate;
-                    document.documentElement.style.setProperty('--ktlFlashRate', cfg.ktlFlashRate);
+                    document.documentElement.style.setProperty('--ktlFlashRate', `${cfg.ktlFlashRate}s`);
                 }
                 if (cfgObj.ktlOutlineColor !== undefined) {
                     cfg.ktlOutlineColor = cfgObj.ktlOutlineColor;
