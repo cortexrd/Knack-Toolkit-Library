@@ -9831,23 +9831,29 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            let duration = 5000, color, style, mode, flashRate;
-            const params = keywords[kw][0].params.length && keywords[kw][0].params[0];
-            console.log('params =', params);
-            if (params.length >= 1) {
-                const durationParam = params[0];
-                if (!isNaN(durationParam))
-                    duration = Math.min(Math.max(Number(durationParam), 0), 3600) * 1000;
-            }
+            let duration = 5000;
+            let color = 'green';
+            let style = 'border';
+            let mode = 'flash';
+            let flashRate = '1';
 
-            if (params.length >= 2)
-                color = params[1];
-            if (params.length >= 3)
-                style = params[2];
-            if (params.length >= 4)
-                mode = params[3];
-            if (params.length >= 5)
-                flashRate = params[4];
+            const params = keywords[kw][0] && keywords[kw][0].params.length && keywords[kw][0].params[0];
+            if (params) {
+                if (params.length >= 1) {
+                    const durationParam = params[0];
+                    if (!isNaN(durationParam))
+                        duration = Math.min(Math.max(Number(durationParam), 0), 3600) * 1000;
+                }
+
+                if (params.length >= 2)
+                    color = params[1];
+                if (params.length >= 3)
+                    style = params[2];
+                if (params.length >= 4)
+                    mode = params[3];
+                if (params.length >= 5)
+                    flashRate = params[4];
+            }
 
             function compareAndLogDeltas(newData, lastData) {
                 const changes = {};
