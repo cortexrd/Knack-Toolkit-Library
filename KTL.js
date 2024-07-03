@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.0';
+    const KTL_VERSION = '0.27.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -826,6 +826,7 @@ function Ktl($, appInfo) {
                 const month = String(now.getMonth() + 1).padStart(2, '0');
                 const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][now.getMonth()];
                 const day = String(now.getDate()).padStart(2, '0');
+                const dayOfWeekShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][now.getDay()];
                 let hours = now.getHours();
                 const minutes = String(now.getMinutes()).padStart(2, '0');
                 const seconds = String(now.getSeconds()).padStart(2, '0');
@@ -842,6 +843,7 @@ function Ktl($, appInfo) {
                     .replace('YYYY', year)
                     .replace('MMM', monthShort)
                     .replace('MM', month)
+                    .replace('DDD', dayOfWeekShort)
                     .replace('DD', day)
                     .replace(/M(?!M)/g, String(now.getMonth() + 1))
                     .replace('HH', hours.padStart(2, '0'))
@@ -4135,13 +4137,13 @@ function Ktl($, appInfo) {
                     //Just a generic pale washed-out color for various items.
                     newSaturation = 0.2;
                     newLightness = 0.7;
-                    newRGB = ktl.systemColors.adjustRGB_sv(sysColors.header.rgb, newSaturation, newLightness);
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
                     sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
                     sysColors.paleLowSatClrTransparent = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.5)';
 
                     newSaturation = 0.6;
-                    newLightness = 1.0;
-                    newRGB = ktl.systemColors.adjustRGB_sv(sysColors.header.rgb, newSaturation, newLightness);
+                    newLightness = 0.7;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
                     sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
                     sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
 
@@ -7411,8 +7413,13 @@ function Ktl($, appInfo) {
                     if (viewType === 'details') {
                         var cellText;
                         const cellSelector = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body');
-                        cellText = cellSelector[0].textContent.trim();
-                        applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
+                        if (cellSelector.length) {
+                            if ($(`#${viewId} .${fieldId} .kn-detail-body .kn-rating`).length)
+                                cellText = Knack.views[viewId].record[`${fieldId}`]; //Ratings must get their value differently, from the model.
+                            else
+                                cellText = cellSelector[0].textContent.trim();
+                            applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
+                        }
                     } else { //Grids and Lists.
                         let fieldType = ktl.fields.getFieldType(fieldId);
 
@@ -7575,6 +7582,9 @@ function Ktl($, appInfo) {
                                 flashFade = true;
                             else if (parameter[6].includes('f'))
                                 flash = true;
+
+                            if (parameter[6].includes('l'))
+                                style += 'text-decoration: line-through; ';
                         }
                     }
 
@@ -7660,11 +7670,6 @@ function Ktl($, appInfo) {
 
                     const viewType = ktl.views.getViewType(viewId);
 
-                    let isRating = false;
-                    const fieldType = ktl.fields.getFieldType(targetFieldId);
-                    if (fieldType === 'rating')
-                        isRating = true;
-                        
                     if (!targetSel) {
                         targetSel = '#' + targetViewId + ' tbody tr[id="' + record.id + '"]' + (propagate ? span : ' .' + targetFieldId + span);
                         if (viewType === 'list')
@@ -7672,6 +7677,11 @@ function Ktl($, appInfo) {
                         else if (viewType === 'details')
                             targetSel = '#' + targetViewId + ' .' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
                     }
+
+
+                    let isRating = false;
+                    if ($(`${targetSel} .kn-rating`).length)
+                        isRating = true;
 
                     ktl.core.waitSelector(targetSel, 20000)
                         .then(function () {
@@ -9913,6 +9923,23 @@ function Ktl($, appInfo) {
 
             let changeLog = {};
 
+
+            //TODO: support other status.
+            let formActionText = 'Updated';
+            if (view.action === 'create' || view.action === 'insert') {
+                formActionText = 'Added';
+
+                $(document).one(`knack-form-submit.${viewId}.ktl_arh`, function (event, view, record) {
+                    //console.log('Add record =', record);
+                    //updateDataAndLogDeltas(viewId, record);
+                })
+            }
+
+
+
+
+
+
             function collectChange(viewId, fieldId, fieldName, oldValue, newValue) {
                 if (!changeLog[viewId]) {
                     changeLog[viewId] = {
@@ -9928,10 +9955,14 @@ function Ktl($, appInfo) {
                     };
                 }
 
-                if (changeLog[viewId][recordHistoryFieldIds.changes])
-                    changeLog[viewId][recordHistoryFieldIds.changes] += '\n\n';
+                if (view.action === 'create' || view.action === 'insert') {
+                    //changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName}:\n\tAdded:\t${formatValue(newValue)}`;
+                } else {
+                    if (changeLog[viewId][recordHistoryFieldIds.changes])
+                        changeLog[viewId][recordHistoryFieldIds.changes] += '\n\n';
 
-                changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName}:\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}`;
+                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName}:\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}`;
+                }
             }
 
             function formatValue(value) {
@@ -10037,27 +10068,22 @@ function Ktl($, appInfo) {
             function logAllChanges() {
                 for (const viewId in changeLog) {
                     if (changeLog[viewId][recordHistoryFieldIds.changes]) {
-                        const logEntry = changeLog[viewId];
-                        let formActionText = 'Updated';
-                        if (view.action === 'insert')
-                            formActionText = 'Inserted';
-                        //TODO: support other status.
+                        const apiData = changeLog[viewId];
 
-                        logEntry[recordHistoryFieldIds.status] = formActionText;
-                        logEntry[recordHistoryFieldIds.context] = 'Record History Demo'; //TODO: Get context from keyword params.
-                        logEntry[recordHistoryFieldIds.record_id] = data.id || '';
+                        apiData[recordHistoryFieldIds.status] = formActionText;
+                        apiData[recordHistoryFieldIds.context] = 'Record History Demo'; //TODO: Get context from keyword params.
+                        apiData[recordHistoryFieldIds.record_id] = data.id || '';
                         const objId = ktl.views.getView(viewId).source.object || '';
                         if (objId)
-                            logEntry[recordHistoryFieldIds.object_name] = Knack.objects._byId[objId].attributes.name;
-                        logEntry[recordHistoryFieldIds.app_url] = window.location.href;
+                            apiData[recordHistoryFieldIds.object_name] = Knack.objects._byId[objId].attributes.name;
+                        apiData[recordHistoryFieldIds.app_url] = window.location.href;
                         const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
                         const viewType = ktl.views.getViewType(viewId);
-                        logEntry[recordHistoryFieldIds.builder_url] = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
-                        logEntry[recordHistoryFieldIds.expiry] = '06/30/2024'; //TODO: Get expiry date from keyword params.
+                        apiData[recordHistoryFieldIds.builder_url] = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
+                        apiData[recordHistoryFieldIds.expiry] = '06/30/2024'; //TODO: Get expiry date from keyword params.
 
-                        console.log("Record History Log Entry:", JSON.stringify(logEntry, null, 4));
+                        console.log("Record History Log Entry:", JSON.stringify(apiData, null, 4));
 
-                        const apiData = logEntry;
                         ktl.core.knAPI(addRecordHistoryLogViewId, null, apiData, 'POST')
                             .then(function (response) {
                                 ktl.log.clog('green', 'Record History created successfully!');
