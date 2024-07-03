@@ -9872,6 +9872,16 @@ function Ktl($, appInfo) {
                 viewData_scv[viewId] = JSON.parse(JSON.stringify(newData));
             }
 
+            function restoreStyle(viewId, recordId, cellKey, fieldIdToRestore) {
+                const cellElement = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldIdToRestore}"]`);
+                if (cellElement) {
+                    $(cellElement).removeClass('ktlFlashingOnOff');
+                    if (flashingStates[cellKey])
+                        Object.assign(cellElement.style, flashingStates[cellKey].originalStyle);
+                }
+                delete flashingStates[cellKey];
+            }
+
             function highlightChangedCells(viewId, changes, currentData) {
                 const currentTime = Date.now();
 
@@ -9884,25 +9894,16 @@ function Ktl($, appInfo) {
                         if (cell) {
                             const remainingTime = FLASH_DURATION - (currentTime - flashingStates[cellKey].startTime);
                             if (remainingTime > 0) {
-                                // Continue flashing
+                                // Continue flashing and reschedule removal of flashing
                                 cell.style.boxShadow = 'inset 0 0 0 2px #0000ff';
                                 $(cell).addClass('ktlFlashingOnOff');
 
-                                // Reschedule removal of flashing
                                 setTimeout(() => {
-                                    const cellElement = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldId}"]`);
-                                    if (cellElement) {
-                                        $(cellElement).removeClass('ktlFlashingOnOff');
-                                        if (flashingStates[cellKey])
-                                            Object.assign(cellElement.style, flashingStates[cellKey].originalStyle);
-                                    }
-                                    delete flashingStates[cellKey];
+                                    restoreStyle(viewId, recordId, cellKey, fieldId);
                                 }, remainingTime);
                             } else {
                                 // Flashing duration has expired
-                                $(cell).removeClass('ktlFlashingOnOff');
-                                Object.assign(cell.style, flashingStates[cellKey].originalStyle);
-                                delete flashingStates[cellKey];
+                                restoreStyle(viewId, recordId, cellKey, fieldId);
                             }
                         }
                     }
@@ -9925,19 +9926,11 @@ function Ktl($, appInfo) {
                             $(cell).addClass('ktlFlashingOnOff');
 
                             setTimeout(() => {
-                                const cellElement = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${change.fieldId}"]`);
-                                if (cellElement) {
-                                    $(cellElement).removeClass('ktlFlashingOnOff');
-                                    if (flashingStates[cellKey])
-                                        Object.assign(cellElement.style, flashingStates[cellKey].originalStyle);
-                                }
-                                delete flashingStates[cellKey];
+                                restoreStyle(viewId, recordId, cellKey, change.fieldId);
                             }, FLASH_DURATION);
                         }
                     });
                 }
-
-                console.log(JSON.stringify(flashingStates, null, 4));
             }
 
             updateDataAndHighlightChanges(viewId, data);
