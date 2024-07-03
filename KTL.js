@@ -6173,7 +6173,6 @@ function Ktl($, appInfo) {
 
         const automatedBulkOpsQueue = {};
         const viewData_arh = {};
-        const viewData_scv = {};
 
         //TODO: Migrate all variables here.
         var cfg = {
@@ -6791,7 +6790,7 @@ function Ktl($, appInfo) {
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 var viewIds = ktl.views.convertViewTitlesToViewIds(keywords._rvs[0].params[0], viewId);
                 if (viewIds.length) {
-                    $(document).bindFirst('knack-form-submit.' + viewId, () => {
+                    $(document).off(`knack-form-submit.${viewId}.ktl_rvs`).bindFirst(`knack-form-submit.${viewId}.ktl_rvs`, () => {
                         ktl.views.refreshViewArray(viewIds)
                             .then(() => { })
                             .catch(() => { })
@@ -9817,9 +9816,12 @@ function Ktl($, appInfo) {
             }
         }
 
+        // Global object to store flashing states
+        const flashingStates = {};
+        const viewData_scv = {};
+
         function showChangedValues(viewId, keywords, data) {
             if (!data.length) return;
-
             const kw = '_scv';
             if (!(viewId && keywords && keywords[kw])) return;
             const viewType = ktl.views.getViewType(viewId);
@@ -9828,6 +9830,8 @@ function Ktl($, appInfo) {
                 const options = keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
+
+            const FLASH_DURATION = 10000;
 
             function compareAndLogDeltas(newData, lastData) {
                 const changes = {};
@@ -9863,30 +9867,77 @@ function Ktl($, appInfo) {
 
             function updateDataAndHighlightChanges(viewId, newData) {
                 const lastData = viewData_scv[viewId];
-                if (lastData !== undefined) {
-                    const changes = compareAndLogDeltas(newData, lastData);
-                    highlightChangedCells(viewId, changes);
-                }
+                const changes = lastData !== undefined ? compareAndLogDeltas(newData, lastData) : {};
+                highlightChangedCells(viewId, changes, newData);
                 viewData_scv[viewId] = JSON.parse(JSON.stringify(newData));
             }
 
-            function highlightChangedCells(viewId, changes) {
+            function highlightChangedCells(viewId, changes, currentData) {
+                const currentTime = Date.now();
+
+                // First, handle cells that are already flashing
+                for (const cellKey in flashingStates) {
+                    if (cellKey.startsWith(viewId)) {
+                        const [, recordId, fieldId] = cellKey.split('::');
+                        const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldId}"]`);
+
+                        if (cell) {
+                            const remainingTime = FLASH_DURATION - (currentTime - flashingStates[cellKey].startTime);
+                            if (remainingTime > 0) {
+                                // Continue flashing
+                                cell.style.boxShadow = 'inset 0 0 0 2px #0000ff';
+                                $(cell).addClass('ktlFlashingOnOff');
+
+                                // Reschedule removal of flashing
+                                setTimeout(() => {
+                                    const cellElement = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldId}"]`);
+                                    if (cellElement) {
+                                        $(cellElement).removeClass('ktlFlashingOnOff');
+                                        if (flashingStates[cellKey])
+                                            Object.assign(cellElement.style, flashingStates[cellKey].originalStyle);
+                                    }
+                                    delete flashingStates[cellKey];
+                                }, remainingTime);
+                            } else {
+                                // Flashing duration has expired
+                                $(cell).removeClass('ktlFlashingOnOff');
+                                Object.assign(cell.style, flashingStates[cellKey].originalStyle);
+                                delete flashingStates[cellKey];
+                            }
+                        }
+                    }
+                }
+
+                // Then, handle newly changed cells
                 for (const recordId in changes) {
                     changes[recordId].forEach(change => {
+                        const cellKey = `${viewId}::${recordId}::${change.fieldId}`;
                         const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${change.fieldId}"]`);
-                        if (cell) {
-                            const originalStyle = Object.assign({}, cell.style);
+
+                        if (cell && !flashingStates[cellKey]) {
+                            // Start flashing for new changes
+                            flashingStates[cellKey] = {
+                                startTime: currentTime,
+                                originalStyle: Object.assign({}, cell.style)
+                            };
+
                             cell.style.boxShadow = 'inset 0 0 0 2px #0000ff';
                             $(cell).addClass('ktlFlashingOnOff');
-                            console.log('start flashing');
+
                             setTimeout(() => {
-                                console.log('stop flashing');
-                                $(cell).removeClass('ktlFlashingOnOff');
-                                Object.assign(cell.style, originalStyle);
-                            }, 5000);
+                                const cellElement = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${change.fieldId}"]`);
+                                if (cellElement) {
+                                    $(cellElement).removeClass('ktlFlashingOnOff');
+                                    if (flashingStates[cellKey])
+                                        Object.assign(cellElement.style, flashingStates[cellKey].originalStyle);
+                                }
+                                delete flashingStates[cellKey];
+                            }, FLASH_DURATION);
                         }
                     });
                 }
+
+                console.log(JSON.stringify(flashingStates, null, 4));
             }
 
             updateDataAndHighlightChanges(viewId, data);
