@@ -119,7 +119,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 //        pendingClass: '',
                 //    },
                 headerAlignment: true,
-                ktlFlashRate: '1s',
+                ktlFlashRate: '1',
                 ktlOutlineColor: 'green',
                 //hscCollapsedColumnsWidth: '0', //In pixels
                 //hscGlobal: true,
