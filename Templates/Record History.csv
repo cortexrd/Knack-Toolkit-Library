@@ -1,0 +1,6 @@
+﻿"Auto Increment","Log ID","Date/Time","Status","Changes","Context","Logged By","Object Name","Record ID","View ID","Expiry","App URL","Builder URL"
+"1","HIST_1","06/30/2024 00:00","Added","Changes","Context","Account Connection","Object Name","Record ID","View ID","06/30/2024 00:00","https://applink.com","https://builder.knack.com/myapp"
+"2","HIST_1","06/30/2024 00:00","Updated","Changes","Context","Account Connection","Object Name","Record ID","View ID","06/30/2024 00:00","https://applink.com","https://builder.knack.com/myapp"
+"3","HIST_1","06/30/2024 00:00","Expired","Changes","Context","Account Connection","Object Name","Record ID","View ID","06/30/2024 00:00","https://applink.com","https://builder.knack.com/myapp"
+"4","HIST_1","06/30/2024 00:00","Archived","Changes","Context","Account Connection","Object Name","Record ID","View ID","06/30/2024 00:00","https://applink.com","https://builder.knack.com/myapp"
+"5","HIST_1","06/30/2024 00:00","Deleted","Changes","Context","Account Connection","Object Name","Record ID","View ID","06/30/2024 00:00","https://applink.com","https://builder.knack.com/myapp"
