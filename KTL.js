@@ -6378,7 +6378,7 @@ function Ktl($, appInfo) {
                                 }
                             }
 
-                            ktl.views.setCfg({ ktlFlashRate: `${flashRate}s` });
+                            ktl.views.setCfg({ ktlFlashRate: `${flashRate}` });
                             ktl.views.setCfg({ ktlOutlineColor: highlightColor });
 
                             $(rowSel).addClass(classes);
@@ -9816,8 +9816,8 @@ function Ktl($, appInfo) {
             }
         }
 
-        // Global object to store flashing states
-        const flashingStates = {};
+        // Global object to store highlight states
+        const highlightStates = {};
         const viewData_scv = {};
 
         function showChangedValues(viewId, keywords, data) {
@@ -9831,7 +9831,23 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            const FLASH_DURATION = 10000;
+            let duration = 5000, color, style, mode, flashRate;
+            const params = keywords[kw][0].params.length && keywords[kw][0].params[0];
+            console.log('params =', params);
+            if (params.length >= 1) {
+                const durationParam = params[0];
+                if (!isNaN(durationParam))
+                    duration = Math.min(Math.max(Number(durationParam), 0), 3600) * 1000;
+            }
+
+            if (params.length >= 2)
+                color = params[1];
+            if (params.length >= 3)
+                style = params[2];
+            if (params.length >= 4)
+                mode = params[3];
+            if (params.length >= 5)
+                flashRate = params[4];
 
             function compareAndLogDeltas(newData, lastData) {
                 const changes = {};
@@ -9876,33 +9892,41 @@ function Ktl($, appInfo) {
                 const cellElement = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldIdToRestore}"]`);
                 if (cellElement) {
                     $(cellElement).removeClass('ktlFlashingOnOff');
-                    if (flashingStates[cellKey])
-                        Object.assign(cellElement.style, flashingStates[cellKey].originalStyle);
+                    $(cellElement).removeClass('ktlOutline');
+
+                    if (highlightStates[cellKey])
+                        Object.assign(cellElement.style, highlightStates[cellKey].originalStyle);
                 }
-                delete flashingStates[cellKey];
+                delete highlightStates[cellKey];
             }
 
-            function highlightChangedCells(viewId, changes, currentData) {
+            function highlightChangedCells(viewId, changes) {
                 const currentTime = Date.now();
 
-                // First, handle cells that are already flashing
-                for (const cellKey in flashingStates) {
+                // First, handle cells that are already highlighted
+                for (const cellKey in highlightStates) {
                     if (cellKey.startsWith(viewId)) {
                         const [, recordId, fieldId] = cellKey.split('::');
                         const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldId}"]`);
 
                         if (cell) {
-                            const remainingTime = FLASH_DURATION - (currentTime - flashingStates[cellKey].startTime);
+                            const remainingTime = duration - (currentTime - highlightStates[cellKey].startTime);
                             if (remainingTime > 0) {
-                                // Continue flashing and reschedule removal of flashing
-                                cell.style.boxShadow = 'inset 0 0 0 2px #0000ff';
-                                $(cell).addClass('ktlFlashingOnOff');
+                                // Continue highlight and reschedule removal
+                                if (mode === 'flash') {
+                                    $(cell).addClass('ktlFlashingOnOff');
+                                }
+
+                                if (style === 'border') {
+                                    ktl.views.setCfg({ ktlOutlineColor: color });
+                                    $(cell).addClass('ktlOutline');
+                                }
 
                                 setTimeout(() => {
                                     restoreStyle(viewId, recordId, cellKey, fieldId);
                                 }, remainingTime);
                             } else {
-                                // Flashing duration has expired
+                                // Highlight duration has expired
                                 restoreStyle(viewId, recordId, cellKey, fieldId);
                             }
                         }
@@ -9915,19 +9939,26 @@ function Ktl($, appInfo) {
                         const cellKey = `${viewId}::${recordId}::${change.fieldId}`;
                         const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${change.fieldId}"]`);
 
-                        if (cell && !flashingStates[cellKey]) {
-                            // Start flashing for new changes
-                            flashingStates[cellKey] = {
+                        if (cell && !highlightStates[cellKey]) {
+                            // Start highlight for new changes
+                            highlightStates[cellKey] = {
                                 startTime: currentTime,
                                 originalStyle: Object.assign({}, cell.style)
                             };
 
-                            cell.style.boxShadow = 'inset 0 0 0 2px #0000ff';
-                            $(cell).addClass('ktlFlashingOnOff');
+                            if (mode === 'flash') {
+                                ktl.views.setCfg({ ktlFlashRate: `${flashRate}` });
+                                $(cell).addClass('ktlFlashingOnOff');
+                            }
+
+                            if (style === 'border') {
+                                ktl.views.setCfg({ ktlOutlineColor: color });
+                                $(cell).addClass('ktlOutline');
+                            }
 
                             setTimeout(() => {
                                 restoreStyle(viewId, recordId, cellKey, change.fieldId);
-                            }, FLASH_DURATION);
+                            }, duration);
                         }
                     });
                 }

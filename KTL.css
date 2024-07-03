@@ -612,8 +612,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 .ktlOutline {
-	outline-offset: -2px;
-	outline: 2px solid var(--ktlOutlineColor);
+	box-shadow: inset 0 0 0 3px var(--ktlOutlineColor);
 }
 
 .ktlOutlineDevPopup {
