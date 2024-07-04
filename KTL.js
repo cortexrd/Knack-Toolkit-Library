@@ -6172,7 +6172,6 @@ function Ktl($, appInfo) {
         };
 
         const automatedBulkOpsQueue = {};
-        const viewData_arh = {};
 
         //TODO: Migrate all variables here.
         var cfg = {
@@ -9834,7 +9833,7 @@ function Ktl($, appInfo) {
             let duration = 5000;
             let color = 'green';
             let style = 'border';
-            let mode = 'flash';
+            let mode = '';
             let flashRate = '1';
 
             const params = keywords[kw][0] && keywords[kw][0].params.length && keywords[kw][0].params[0];
@@ -9897,11 +9896,18 @@ function Ktl($, appInfo) {
             function restoreStyle(viewId, recordId, cellKey, fieldIdToRestore) {
                 const cellElement = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldIdToRestore}"]`);
                 if (cellElement) {
-                    $(cellElement).removeClass('ktlFlashingOnOff');
+                    if (mode === 'flash' || mode === 'fade') {
+                        ktl.views.setCfg({ ktlFlashRate: '1' });
+                        $(cellElement).removeClass('ktlFlashingOnOff');
+                        $(cellElement).removeClass('ktlFlashingFadeInOut');
+                    }
+
                     $(cellElement).removeClass('ktlOutline');
 
                     if (highlightStates[cellKey])
                         Object.assign(cellElement.style, highlightStates[cellKey].originalStyle);
+
+                    quickToggle(viewId, data); //Need to call this to put back new color, if a _qt cell was clicked.
                 }
                 delete highlightStates[cellKey];
             }
@@ -9921,18 +9927,24 @@ function Ktl($, appInfo) {
                                 // Continue highlight and reschedule removal
                                 if (mode === 'flash') {
                                     $(cell).addClass('ktlFlashingOnOff');
+                                } else if (mode === 'fade') {
+                                    $(cell).addClass('ktlFlashingFadeInOut');
                                 }
 
                                 if (style === 'border') {
                                     ktl.views.setCfg({ ktlOutlineColor: color });
                                     $(cell).addClass('ktlOutline');
+                                } else if (style === 'fill') {
+                                    const newStyle = `background-color : ${color}!important`;
+                                    const mergedStyles = ktl.core.mergeStyles(cell.style.cssText, newStyle);
+                                    const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
+                                    $(cell).attr('style', mergedStyleString);
                                 }
 
                                 setTimeout(() => {
                                     restoreStyle(viewId, recordId, cellKey, fieldId);
                                 }, remainingTime);
                             } else {
-                                // Highlight duration has expired
                                 restoreStyle(viewId, recordId, cellKey, fieldId);
                             }
                         }
@@ -9955,11 +9967,19 @@ function Ktl($, appInfo) {
                             if (mode === 'flash') {
                                 ktl.views.setCfg({ ktlFlashRate: `${flashRate}` });
                                 $(cell).addClass('ktlFlashingOnOff');
+                            } else if (mode === 'fade') {
+                                ktl.views.setCfg({ ktlFlashRate: `${flashRate}` });
+                                $(cell).addClass('ktlFlashingFadeInOut');
                             }
 
                             if (style === 'border') {
                                 ktl.views.setCfg({ ktlOutlineColor: color });
                                 $(cell).addClass('ktlOutline');
+                            } else if (style === 'fill') {
+                                const newStyle = `background-color : ${color}!important`;
+                                const mergedStyles = ktl.core.mergeStyles(cell.style.cssText, newStyle);
+                                const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
+                                $(cell).attr('style', mergedStyleString);
                             }
 
                             setTimeout(() => {
@@ -9974,6 +9994,8 @@ function Ktl($, appInfo) {
         }
 
         //Record History Feature - BEGIN
+
+        const viewData_arh = {};
 
         const viewRecordHistoryLogViewId = ktl.core.getViewIdByTitle('View Record History');
         const recordHistoryObject = ktl.core.getObjectIdByName('Record History');
@@ -10013,7 +10035,6 @@ function Ktl($, appInfo) {
                 formActionText = 'Added';
 
                 $(document).one(`knack-form-submit.${viewId}.ktl_arh`, function (event, view, record) {
-                    console.log('submit', view.key, record);
                     updateDataAndLogDeltas(viewId, record.id);
                 })
             }
@@ -10167,7 +10188,7 @@ function Ktl($, appInfo) {
                         apiData[recordHistoryFieldIds.app_url] = window.location.href;
                         const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
                         apiData[recordHistoryFieldIds.builder_url] = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
-                        apiData[recordHistoryFieldIds.expiry] = '06/30/2024'; //TODO: Get expiry date from keyword params.
+                        apiData[recordHistoryFieldIds.expiry] = ''; //TODO: Get expiry date from keyword params.
 
                         //console.log("Adding Record History entry:", JSON.stringify(apiData, null, 4));
                         ktl.core.knAPI(addRecordHistoryLogViewId, null, apiData, 'POST')
@@ -17440,9 +17461,11 @@ function Ktl($, appInfo) {
             }
 
             //Bulk Action
+            const viewHasActionLinks = document.querySelector(`#${viewId} tbody tr td .kn-action-link`);
             if (bulkOp === 'action' && ktl.core.getCfg().enabled.bulkOps.bulkAction) {
                 if ((Knack.getUserRoleNames().includes('Bulk Action') || bulkOpEnabled)
-                    && !bulkOpDisabled)
+                    && !bulkOpDisabled
+                    && viewHasActionLinks)
                     return true;
             }
 
