@@ -7682,7 +7682,7 @@ function Ktl($, appInfo) {
                     }
 
                     let isRating = false;
-                    if ($(`${targetSel} .kn-rating`).length)
+                    if ($(`${targetSel} .kn-rating`).length || $(`${targetSel} .rating`).length)
                         isRating = true;
 
                     ktl.core.waitSelector(targetSel, 20000)
@@ -9858,7 +9858,7 @@ function Ktl($, appInfo) {
                     flashRate = params[4];
             }
 
-            function compareAndLogDeltas(newData, lastData) {
+            function compareNewAndLastData(newData, lastData) {
                 const changes = {};
 
                 newData.forEach((newRecord, index) => {
@@ -9892,7 +9892,7 @@ function Ktl($, appInfo) {
 
             function updateDataAndHighlightChanges(viewId, newData) {
                 const lastData = viewData_scv[viewId];
-                const changes = lastData !== undefined ? compareAndLogDeltas(newData, lastData) : {};
+                const changes = lastData !== undefined ? compareNewAndLastData(newData, lastData) : {};
                 highlightChangedCells(viewId, changes, newData);
                 viewData_scv[viewId] = JSON.parse(JSON.stringify(newData));
             }
@@ -10032,29 +10032,42 @@ function Ktl($, appInfo) {
             const addRecordHistoryLogViewId = ktl.core.getViewIdByTitle('Add Record History', '', true);
             if (!addRecordHistoryLogViewId) return;
 
+            let context = '';
+            let fields = [];
+            if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                const groups = keywords[kw][0].params;
+                for (const group of groups) {
+                    if (group.length >= 2) {
+                        if (group[0] === 'context') {
+                            context = (keywords[kw][0].paramStr.match(/\[context,([^[]*)\]/) || [])[1] || '';
+                        } else if (group[0] === 'fields') {
+                            const fieldsString = (keywords[kw][0].paramStr.match(/\[fields,([^[]*)\]/) || [])[1] || '';
+                            fields = ktl.core.splitAndTrimToArray(fieldsString);
+                        }
+                    }
+                }
+            }
+
             let changeLog = {};
             let recordId = data.id;
+            let identifier;
 
-            //TODO: support other status.
+            const sourceObjectId = ktl.views.getViewSourceObjectId(viewId);
+            if (!sourceObjectId) return;
+
+            const identifierFieldId = ktl.views.getViewSourceIdentifier(viewId);
+
             let formActionText = 'Updated';
             if (view.action === 'create' || view.action === 'insert') {
                 formActionText = 'Added';
-
-            //    $(document).one(`knack-form-submit.${viewId}.ktl_arh`, function (event, view, record) {
-            //        updateDataAndLogDeltas(viewId, record.id);
-            //    })
             }
 
             $(document).off(`knack-form-submit.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh`, function (event, view, record) {
-                console.log('submit', viewId);
-                if (view.action === 'create' || view.action === 'insert')
-                    updateDataAndLogDeltas(viewId, record.id);
-                else
-                    updateDataAndLogDeltas(viewId, record);
+                identifier = record[identifierFieldId];
+                updateDataAndLogDeltas(viewId, record);
             })
 
-
-            function collectChange(viewId, fieldId, fieldName, oldValue, newValue) {
+            function addFieldChanges(viewId, fieldId, fieldName, oldValue, newValue) {
                 if (!changeLog[viewId]) {
                     changeLog[viewId] = {
                         [recordHistoryFieldIds.status]: '',
@@ -10075,9 +10088,9 @@ function Ktl($, appInfo) {
                     changeLog[viewId][recordHistoryFieldIds.changes] += '\n\n';
 
                 if (view.action === 'create' || view.action === 'insert') {
-                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName}:\n\t${formatValue(newValue)}`;
+                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\t${formatValue(newValue)}`;
                 } else {
-                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName}:\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}`;
+                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}`;
                 }
             }
 
@@ -10106,7 +10119,7 @@ function Ktl($, appInfo) {
                 return JSON.stringify(oldValue) !== JSON.stringify(newValue);
             }
 
-            function compareAndLogDeltas(viewId, newData, lastData, path = '') {
+            function compareNewAndLastData(viewId, newData, lastData, path = '') {
                 if (typeof newData !== 'object' || newData === null) {
                     let oldValue = getNestedValue(lastData, path);
                     if (isSignificantChange(oldValue, newData)) {
@@ -10119,7 +10132,7 @@ function Ktl($, appInfo) {
                             if (newValue)
                                 newValue = 'Signed';
                         }
-                        collectChange(viewId, fieldId, fieldName, oldValue, newData);
+                        addFieldChanges(viewId, fieldId, fieldName, oldValue, newData);
                     }
                     return;
                 }
@@ -10158,11 +10171,11 @@ function Ktl($, appInfo) {
                                     newValue = 'Signed';
                             }
 
-                            collectChange(viewId, fieldId, fieldName, oldValue, newValue);
+                            addFieldChanges(viewId, fieldId, fieldName, oldValue, newValue);
                         }
                     } else if (typeof newData[key] === 'object' && newData[key] !== null) {
                         const newPath = path ? `${path}.${key}` : key;
-                        compareAndLogDeltas(viewId, newData[key], lastData, newPath);
+                        compareNewAndLastData(viewId, newData[key], lastData, newPath);
                     }
                 }
             }
@@ -10185,7 +10198,7 @@ function Ktl($, appInfo) {
 
                     if (value.hasOwnProperty('date_formatted')) {
                         return value.date_formatted;
-                    }                    
+                    }
                 }
 
                 return value;
@@ -10198,20 +10211,23 @@ function Ktl($, appInfo) {
 
                         apiData[recordHistoryFieldIds.status] = formActionText;
                         apiData[recordHistoryFieldIds.context] = 'Record History Demo'; //TODO: Get context from keyword params.
-                        apiData[recordHistoryFieldIds.identifier] = 'Store XYZ';
+                        apiData[recordHistoryFieldIds.identifier] = identifier;
                         apiData[recordHistoryFieldIds.record_id] = recordId || '';
-                        const objId = ktl.views.getView(viewId).source.object || '';
-                        if (objId)
-                            apiData[recordHistoryFieldIds.object_name] = Knack.objects._byId[objId].attributes.name;
+                        apiData[recordHistoryFieldIds.object_name] = Knack.objects._byId[sourceObjectId].attributes.name;
                         apiData[recordHistoryFieldIds.app_url] = window.location.href;
                         const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
                         apiData[recordHistoryFieldIds.builder_url] = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
-                        apiData[recordHistoryFieldIds.builder_history] = `${baseURL}/records/objects/${objId}/record/${recordId}/history`;
+                        apiData[recordHistoryFieldIds.builder_history] = `${baseURL}/records/objects/${sourceObjectId}/record/${recordId}/history`;
                         apiData[recordHistoryFieldIds.expiry] = ''; //TODO: Get expiry date from keyword params.
 
                         //console.log("Adding Record History entry:", JSON.stringify(apiData, null, 4));
                         ktl.core.knAPI(addRecordHistoryLogViewId, null, apiData, 'POST')
-                            .then(function (response) { })
+                            .then(function (response) {
+                                if (ktl.account.isDeveloper()) {
+                                    ktl.log.clog('green', 'Record History submitted successfully');
+                                    console.log('response =', JSON.stringify(response, null, 4));
+                                }
+                            })
                             .catch(function (reason) {
                                 alert('An error occurred while creating Record History, reason: ' + JSON.stringify(reason));
                             })
@@ -10223,7 +10239,7 @@ function Ktl($, appInfo) {
             function updateDataAndLogDeltas(viewId, newData) {
                 const lastData = viewData_arh[viewId];
                 if (lastData !== undefined) {
-                    compareAndLogDeltas(viewId, newData, lastData);
+                    compareNewAndLastData(viewId, newData, lastData);
                 }
 
                 if (view.action === 'create' || view.action === 'insert') {
@@ -10250,27 +10266,46 @@ function Ktl($, appInfo) {
 
             if (!viewRecordHistoryLogViewId) return;
 
+            let header = 'History';
+            let icon = 'fa-history';
+            if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                const params = keywords[kw][0].params[0];
+                if (params.length >= 1 && params[0].length)
+                    header = params[0];
+                if (params.length >= 2 && params[1].length)
+                    icon = params[1];
+            }
+
             const sceneId = ktl.scenes.getSceneKeyFromViewId(viewRecordHistoryLogViewId);
             const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
             let historyUrl = `#${slug}`;
             Knack.scenes._byId[slug].attributes.modal = true; //Force scene to modal.
 
-            // Add new header cell with label "History"
-            const headerRow = $(`#${viewId} .kn-table thead tr`);
-            const newHeaderCell = $('<th style="text-align: left;"><span class="table-fixed-label" style="display: inline-flex;"><span>History</span></span></th>');
-            headerRow.append(newHeaderCell);
+            // Add new header cell with label "History" by default.
+            const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktlArhView")`);
+            if (headerRow.length) {
+                const newHeaderCell = $(`<th style="text-align: left;"><span class="table-fixed-label ktlArhView" style="display: inline-flex;"><span>${header}</span></span></th>`);
+                headerRow.append(newHeaderCell);
+                $(headerRow).addClass('ktlArhView');
+            }
 
             // Add new column with icon to click on to view record history.
-            const rows = document.querySelectorAll(`#${viewId} .kn-table tbody tr`);
+            const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktlArhView")`));
             for (const row of rows) {
-                const newCell = document.createElement('td');
-                const iconLink = document.createElement('a');
-                iconLink.href = historyUrl;
-                iconLink.setAttribute('data-kn-slug', '#view-record-history');
-                iconLink.innerHTML = '<i class="fa fa-clock-o" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>';
+                if ($(row).hasClass('kn-table-totals')) {
+                    $(row).append('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); //Fix alignemnt for Summaries.
+                } else {
+                    const newCell = document.createElement('td');
+                    const iconLink = document.createElement('a');
+                    iconLink.href = historyUrl;
+                    iconLink.setAttribute('data-kn-slug', '#view-record-history');
+                    iconLink.innerHTML = `<i class="fa ${icon}" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>`;
 
-                newCell.appendChild(iconLink);
-                row.appendChild(newCell);
+                    newCell.appendChild(iconLink);
+                    row.appendChild(newCell);
+                }
+
+                $(row).addClass('ktlArhView');
             }
 
             // Add click event handler with jQuery
@@ -12663,21 +12698,29 @@ function Ktl($, appInfo) {
                 if (!viewId) return;
                 var viewObj = ktl.views.getView(viewId);
                 if (viewObj)
-                    return viewObj.type;
+                    return viewObj.type || '';
+            },
+
+            getViewSourceObjectId: function (viewId) {
+                if (!viewId) return;
+                const view = ktl.views.getView(viewId);
+                if (view)
+                    return view.source.object || '';
             },
 
             getViewSourceName: function (viewId) {
                 if (!viewId) return;
                 const view = ktl.views.getView(viewId);
                 if (view)
-                    return Knack.objects._byId[view.source.object].attributes.name;
+                    return Knack.objects._byId[view.source.object].attributes.name || '';
             },
 
+            //The Display Field's field ID.
             getViewSourceIdentifier: function (viewId) {
                 if (!viewId) return;
                 const view = ktl.views.getView(viewId);
                 if (view)
-                    return Knack.objects._byId[view.source.object].attributes.identifier;
+                    return Knack.objects._byId[view.source.object].attributes.identifier || '';
             },
 
             applyZoomLevel: function (viewId, keywords) {
@@ -18839,7 +18882,10 @@ function Ktl($, appInfo) {
 
         $(document).on('keydown', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover, .kn-form .kn-input:hover').last().trigger('mouseenter.ktlPopOver', true);
+                if (event.key.startsWith('Arrow')) //Ctrl+Shift+arrows are used to select on word/paragraph boundaries.
+                    closePopOver(openedPopOverTarget);
+                else
+                    $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover, .kn-form .kn-input:hover').last().trigger('mouseenter.ktlPopOver', true);
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
