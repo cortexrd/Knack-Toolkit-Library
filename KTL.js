@@ -6193,6 +6193,10 @@ function Ktl($, appInfo) {
                     });
                 }
             }
+
+            //Prevent pages from being too wide on Kiosks, otherwise users can't close the page.
+            if (ktl.core.isKiosk())
+                $('.kn-modal-bg .kn-modal').css({ 'max-width': '98%' });
         })
 
         //Object that keeps a render count for each viewId that has a summary and groups.
@@ -10004,10 +10008,12 @@ function Ktl($, appInfo) {
             changes: ktl.core.getFieldIdByName('Changes', recordHistoryObject),
             context: ktl.core.getFieldIdByName('Context', recordHistoryObject),
             record_id: ktl.core.getFieldIdByName('Record ID', recordHistoryObject),
-            view_id: ktl.core.getFieldIdByName('View ID', recordHistoryObject),
+            identifier: ktl.core.getFieldIdByName('Identifier', recordHistoryObject),
             object_name: ktl.core.getFieldIdByName('Object Name', recordHistoryObject),
+            view_id: ktl.core.getFieldIdByName('View ID', recordHistoryObject),
             app_url: ktl.core.getFieldIdByName('App URL', recordHistoryObject),
             builder_url: ktl.core.getFieldIdByName('Builder URL', recordHistoryObject),
+            builder_history: ktl.core.getFieldIdByName('History URL', recordHistoryObject),
             expiry: ktl.core.getFieldIdByName('Expiry', recordHistoryObject)
         };
 
@@ -10034,10 +10040,19 @@ function Ktl($, appInfo) {
             if (view.action === 'create' || view.action === 'insert') {
                 formActionText = 'Added';
 
-                $(document).one(`knack-form-submit.${viewId}.ktl_arh`, function (event, view, record) {
-                    updateDataAndLogDeltas(viewId, record.id);
-                })
+            //    $(document).one(`knack-form-submit.${viewId}.ktl_arh`, function (event, view, record) {
+            //        updateDataAndLogDeltas(viewId, record.id);
+            //    })
             }
+
+            $(document).off(`knack-form-submit.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh`, function (event, view, record) {
+                console.log('submit', viewId);
+                if (view.action === 'create' || view.action === 'insert')
+                    updateDataAndLogDeltas(viewId, record.id);
+                else
+                    updateDataAndLogDeltas(viewId, record);
+            })
+
 
             function collectChange(viewId, fieldId, fieldName, oldValue, newValue) {
                 if (!changeLog[viewId]) {
@@ -10046,10 +10061,12 @@ function Ktl($, appInfo) {
                         [recordHistoryFieldIds.changes]: '',
                         [recordHistoryFieldIds.context]: '',
                         [recordHistoryFieldIds.record_id]: '',
-                        [recordHistoryFieldIds.view_id]: viewId,
+                        [recordHistoryFieldIds.identifier]: '',
                         [recordHistoryFieldIds.object_name]: '',
+                        [recordHistoryFieldIds.view_id]: viewId,
                         [recordHistoryFieldIds.app_url]: '',
                         [recordHistoryFieldIds.builder_url]: '',
+                        [recordHistoryFieldIds.builder_history]: '',
                         [recordHistoryFieldIds.expiry]: '',
                     };
                 }
@@ -10181,6 +10198,7 @@ function Ktl($, appInfo) {
 
                         apiData[recordHistoryFieldIds.status] = formActionText;
                         apiData[recordHistoryFieldIds.context] = 'Record History Demo'; //TODO: Get context from keyword params.
+                        apiData[recordHistoryFieldIds.identifier] = 'Store XYZ';
                         apiData[recordHistoryFieldIds.record_id] = recordId || '';
                         const objId = ktl.views.getView(viewId).source.object || '';
                         if (objId)
@@ -10188,6 +10206,7 @@ function Ktl($, appInfo) {
                         apiData[recordHistoryFieldIds.app_url] = window.location.href;
                         const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
                         apiData[recordHistoryFieldIds.builder_url] = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
+                        apiData[recordHistoryFieldIds.builder_history] = `${baseURL}/records/objects/${objId}/record/${recordId}/history`;
                         apiData[recordHistoryFieldIds.expiry] = ''; //TODO: Get expiry date from keyword params.
 
                         //console.log("Adding Record History entry:", JSON.stringify(apiData, null, 4));
@@ -12652,6 +12671,13 @@ function Ktl($, appInfo) {
                 const view = ktl.views.getView(viewId);
                 if (view)
                     return Knack.objects._byId[view.source.object].attributes.name;
+            },
+
+            getViewSourceIdentifier: function (viewId) {
+                if (!viewId) return;
+                const view = ktl.views.getView(viewId);
+                if (view)
+                    return Knack.objects._byId[view.source.object].attributes.identifier;
             },
 
             applyZoomLevel: function (viewId, keywords) {
