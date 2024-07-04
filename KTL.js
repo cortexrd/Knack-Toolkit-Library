@@ -11505,7 +11505,7 @@ function Ktl($, appInfo) {
                     return;
 
                 const view = Knack.views[viewId];
-                const viewType = view.type;
+                const viewType = ktl.views.getViewType(viewId);
                 let columns;
                 if (viewType === 'search')
                     columns = view.model.results_model.view.columns;
