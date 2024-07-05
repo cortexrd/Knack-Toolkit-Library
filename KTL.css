@@ -373,8 +373,7 @@ a.ktlSortDisabled {
 
 /************Show Hide Views**************/
 
-/* Show Hide CSS For _shv keyword */
-#knack-body .kn-content .ktlShowHideSection {
+#knack-body .kn-content .ktlHideShowSection {
 	position: relative;
 	padding-top: 20px;
 	margin-left: 0px;
@@ -399,8 +398,7 @@ a.ktlSortDisabled {
 		padding: 5px 15px 15px;
 		background-color: #F9F9F9;
 		border-radius: 8px;
-		border: 2px solid #222;
-		;
+		border: 2px solid var(--ktlHideShowButtonColor);
 		box-shadow: 6px 7px 5px -5px rgba(43, 43, 43, 0.22);
 	}
 
@@ -413,7 +411,7 @@ a.ktlSortDisabled {
 		margin: -10px auto -10px auto;
 	}
 
-	.ktlShowHideButton {
+	.ktlHideShowButton {
 		color: white;
 		padding: 10px;
 		font-size: 16px;
@@ -421,18 +419,17 @@ a.ktlSortDisabled {
 		margin-bottom: -14px;
 	}
 
-		/* show-hide-button used for groups */
-		.kn-content .view-header:has(.ktlShowHideButton) {
+		.kn-content .view-header:has(.ktlHideShowButton) {
 			margin-bottom: 0px;
 			max-width: fit-content;
-			background-color: #222;
+			background-color: var(--ktlHideShowButtonColor);
 			box-shadow: 7px 7px 5px -5px rgba(168, 168, 168, 0.49);
 			border-radius: 8px 8px 0 0;
 			cursor: grab;
 			overflow: hidden;
 		}
 
-			.kn-content .view-header:has(.ktlShowHideButton) .kn-title {
+			.kn-content .view-header:has(.ktlHideShowButton) .kn-title {
 				margin-top: 0px;
 			}
 

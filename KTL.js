@@ -6471,6 +6471,7 @@ function Ktl($, appInfo) {
                     keywords._scv && showChangedValues(viewId, keywords, data);
                     keywords._arh && addRecordHistory(view, keywords, data);
                     keywords._vrh && viewRecordHistory(viewId, keywords);
+                    keywords._hsv && hideShowView(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -10579,6 +10580,129 @@ function Ktl($, appInfo) {
             }
         }
 
+        //TO DO: add functionality for search views
+        function hideShowView({ key: viewId, type: viewType }, keywords) {
+            const kw = '_hsv';
+            let showViewOnLoad = false;
+            let delay = 500;
+
+            if (!viewId && !keywords && !keywords[kw]) return;
+
+            if (keywords[kw].length && keywords[kw][0].params) {
+                const [delayParam, showViewOnLoadParam] =
+                    keywords[kw][0].params[0];
+                delay = parseInt(delayParam, 10) || delay;
+                showViewOnLoad = showViewOnLoadParam || showViewOnLoad;
+            }
+
+            const hideShowId = `hideShow_${viewId}`;
+            replaceTitleWithButton(viewId, hideShowId);
+            wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad);
+            appendShrinkLink(viewId, hideShowId);
+
+            // If description is not blank, move it into show/hide section
+            const description = $(`#${viewId}`).find('.kn-description');
+            if (description.text().trim() !== '') {
+                description.detach().prependTo(`.${hideShowId}`);
+            }
+
+            hideShowContent(hideShowId, delay);
+
+            function hideShowContent(hideShowId, delay) {
+                const buttonSelector = $(`#hide-show_${hideShowId}`);
+                const arrowSelector = $(`#arrow_${hideShowId}`);
+                const shrinkLinkSelector = $(`#shrink-link_${hideShowId}`);
+                const hiddenSelector = $(`.${hideShowId}`);
+                toggleHideShowContent(
+                    buttonSelector,
+                    hiddenSelector,
+                    arrowSelector,
+                    delay
+                );
+                hideContent(
+                    shrinkLinkSelector,
+                    hiddenSelector,
+                    arrowSelector,
+                    delay,
+                    buttonSelector
+                );
+            }
+
+            function toggleHideShowContent(buttonSelector, hiddenSelector, arrowSelector, delay) {
+                buttonSelector
+                    .off('click.hideShow')
+                    .on('click.hideShow', function () {
+                        hiddenSelector.slideToggle(delay);
+                        arrowSelector.toggleClass('ktlDown ktlUp');
+                        buttonSelector.toggleClass('ktlActive');
+                    });
+            }
+
+            function hideContent(shrinkLinkSelector, hiddenSelector, arrowSelector, delay, buttonSelector) {
+                shrinkLinkSelector
+                    .off('click.shrinkLink')
+                    .on('click.shrinkLink', function () {
+                        hiddenSelector.slideUp(delay);
+                        arrowSelector.removeClass('ktlUp').addClass('ktlDown');
+                        buttonSelector.removeClass('ktlActive');
+                    });
+            }
+
+            function appendShrinkLink(wrapperId, hideShowId) {
+                const shrinkLinkHTML = `<a class="ktlHideShowButton ktlShrinkLink" id="shrink-link_${hideShowId}">Shrink &nbsp;<span class="ktlArrow ktlUp" id="arrow_${hideShowId}">◀</span></a>`;
+                const shrinkLinkSelector = $(`#shrink-link_${hideShowId}`);
+
+                if (shrinkLinkSelector.length === 0) {
+                    $(`#${wrapperId}`)
+                        .find('.ktlHideShowSection')
+                        .append(shrinkLinkHTML);
+                }
+            }
+
+            function replaceTitleWithButton(viewId, hideShowId) {
+                const viewTitle = $(`#${viewId} h2.kn-title`);
+                const titleText = viewTitle.text();
+                const hideShowBtnHTML = `<div class="ktlHideShowButton" id="hide-show_${hideShowId}">${titleText} &nbsp;<span class="ktlArrow ktlDown" id="arrow_${hideShowId}">◀</span></div>`;
+
+                if ($(`#hide-show_${hideShowId}`).length === 0) {
+                    viewTitle.html(hideShowBtnHTML);
+                }
+            }
+
+            function wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad) {
+                const wrappers = {
+                    table: '.kn-table-wrapper, .kn-records-nav',
+                    form: 'form, .kn-form-confirmation',
+                    list: '.kn-list-content',
+                };
+
+                const wrapper = wrappers[viewType];
+                const viewElement = $(`#${viewId}`);
+                const sectionElement = viewElement.find('section');
+
+                if (wrapper) {
+                    const wrapperElement = viewElement.find(wrapper);
+                    // Check if the wrapper element is already wrapped
+                    if (!wrapperElement.closest('section').length) {
+                        wrapperElement.wrapAll(
+                            `<section class='${hideShowId} ktlHideShowSection ktlBoxWithBorder' />`
+                        );
+                    }
+                } else {
+                    // Check if the section element already has the classes
+                    if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
+                        sectionElement.addClass(
+                            `${hideShowId} ktlHideShowSection ktlBoxWithBorder`
+                        );
+                    }
+                }
+
+                if (!showViewOnLoad) {
+                    sectionElement.hide();
+                }
+            }
+        }
+
         //Views
         return {
             setCfg: function (cfgObj = {}) {
@@ -10597,6 +10721,10 @@ function Ktl($, appInfo) {
                 if (cfgObj.ktlOutlineColor !== undefined) {
                     cfg.ktlOutlineColor = cfgObj.ktlOutlineColor;
                     document.documentElement.style.setProperty('--ktlOutlineColor', cfg.ktlOutlineColor);
+                }
+                if (cfgObj.ktlHideShowButtonColor !== undefined) {
+                    cfg.ktlHideShowButtonColor = cfgObj.ktlHideShowButtonColor;
+                    document.documentElement.style.setProperty('--ktlHideShowButtonColor', cfg.ktlHideShowButtonColor);
                 }
 
                 cfgObj.hscCollapsedColumnsWidth && (cfg.hscCollapsedColumnsWidth = Math.max(Math.min(cfgObj.hscCollapsedColumnsWidth, 500), 0));
