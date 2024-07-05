@@ -10037,18 +10037,27 @@ function Ktl($, appInfo) {
             if (!addRecordHistoryLogViewId) return;
 
             let context = '';
-            let fields = [];
+            let includeFields = [];
+            let excludeFields = [];
             let expiry = '';
-            let paramString;
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const groups = keywords[kw][0].params;
                 for (const group of groups) {
                     if (group.length >= 2) {
                         if (group[0] === 'context') {
                             context = (keywords[kw][0].paramStr.match(/\[context,([^[]*)\]/) || [])[1] || '';
-                        } else if (group[0] === 'fields') {
-                            paramString = (keywords[kw][0].paramStr.match(/\[fields,([^[]*)\]/) || [])[1] || '';
-                            fields = ktl.core.splitAndTrimToArray(paramString);
+                        } else if (group[0] === 'include') {
+                            const paramString = (keywords[kw][0].paramStr.match(/\[include,([^[]*)\]/) || [])[1] || '';
+                            includeFields = ktl.core.splitAndTrimToArray(paramString);
+                            includeFields = includeFields.map(field =>
+                                field && field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+                            );
+                        } else if (group[0] === 'exclude') {
+                            const paramString = (keywords[kw][0].paramStr.match(/\[exclude,([^[]*)\]/) || [])[1] || '';
+                            excludeFields = ktl.core.splitAndTrimToArray(paramString);
+                            excludeFields = excludeFields.map(field =>
+                                field && field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+                            );
                         } else if (group[0] === 'expiry') {
                             expiry = (keywords[kw][0].paramStr.match(/\[expiry,([^[]*)\]/) || [])[1].trim() || '';
                         }
@@ -10078,6 +10087,12 @@ function Ktl($, appInfo) {
             const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
 
             function addFieldChanges(viewId, fieldId, fieldName, oldValue, newValue) {
+                if (includeFields.length && !includeFields.includes(fieldId))
+                    return;
+
+                if (excludeFields.length && excludeFields.includes(fieldId))
+                    return;
+
                 if (!changeLog[viewId]) {
                     changeLog[viewId] = {
                         [recordHistoryFieldIds.status]: formActionText,
