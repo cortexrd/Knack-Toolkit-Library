@@ -9820,7 +9820,7 @@ function Ktl($, appInfo) {
         }
 
         // Global object to store highlight states
-        const highlightStates = {};
+        const highlightStates_scv = {};
         const viewData_scv = {};
 
         function showChangedValues(viewId, keywords, data) {
@@ -9908,25 +9908,25 @@ function Ktl($, appInfo) {
 
                     $(cellElement).removeClass('ktlOutline');
 
-                    if (highlightStates[cellKey])
-                        Object.assign(cellElement.style, highlightStates[cellKey].originalStyle);
+                    if (highlightStates_scv[cellKey])
+                        Object.assign(cellElement.style, highlightStates_scv[cellKey].originalStyle);
 
                     quickToggle(viewId, data); //Need to call this to put back new color, if a _qt cell was clicked.
                 }
-                delete highlightStates[cellKey];
+                delete highlightStates_scv[cellKey];
             }
 
             function highlightChangedCells(viewId, changes) {
                 const currentTime = Date.now();
 
                 // First, handle cells that are already highlighted
-                for (const cellKey in highlightStates) {
+                for (const cellKey in highlightStates_scv) {
                     if (cellKey.startsWith(viewId)) {
                         const [, recordId, fieldId] = cellKey.split('::');
                         const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldId}"]`);
 
                         if (cell) {
-                            const remainingTime = duration - (currentTime - highlightStates[cellKey].startTime);
+                            const remainingTime = duration - (currentTime - highlightStates_scv[cellKey].startTime);
                             if (remainingTime > 0) {
                                 // Continue highlight and reschedule removal
                                 if (mode === 'flash') {
@@ -9961,9 +9961,9 @@ function Ktl($, appInfo) {
                         const cellKey = `${viewId}::${recordId}::${change.fieldId}`;
                         const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${change.fieldId}"]`);
 
-                        if (cell && !highlightStates[cellKey]) {
+                        if (cell && !highlightStates_scv[cellKey]) {
                             // Start highlight for new changes
-                            highlightStates[cellKey] = {
+                            highlightStates_scv[cellKey] = {
                                 startTime: currentTime,
                                 originalStyle: Object.assign({}, cell.style)
                             };
