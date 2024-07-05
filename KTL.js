@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.3';
+    const KTL_VERSION = '0.27.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -10060,6 +10060,8 @@ function Ktl($, appInfo) {
                             );
                         } else if (group[0] === 'expiry') {
                             expiry = (keywords[kw][0].paramStr.match(/\[expiry,([^[]*)\]/) || [])[1].trim() || '';
+                        } else if (group[0] === 'align') {
+                            expiry = (keywords[kw][0].paramStr.match(/\[expiry,([^[]*)\]/) || [])[1].trim() || '';
                         }
                     }
                 }
@@ -12359,18 +12361,19 @@ function Ktl($, appInfo) {
             },
 
             removeColumns: function (view = {}, keywords = {}) {
-                const KEYWORD_NAME = '_rc';
-
+                const kw = '_rc';
                 const viewId = view.key;
 
-                if (!viewId
-                    || (viewId !== 'table' && view.type === 'search')
-                    || !keywords[KEYWORD_NAME]) return;
+                if (!(viewId && keywords && keywords[kw]))
+                    return;
+
+                if (view.type !== 'table' && view.type !== 'search')
+                    return;
 
                 const model = (Knack.views[viewId] && Knack.views[viewId].model);
                 const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? model.results_model.view.columns : model.view.columns;
 
-                ktl.core.getKeywordsByType(viewId, KEYWORD_NAME).forEach(keyword => {
+                ktl.core.getKeywordsByType(viewId, kw).forEach(keyword => {
                     if (!ktl.core.hasRoleAccess(keyword.options))
                         return;
 
@@ -12393,16 +12396,19 @@ function Ktl($, appInfo) {
             },
 
             hideColumns: function (view = {}, keywords = {}) {
-                const KEYWORD_NAME = '_hc';
+                const kw = '_hc';
+                const viewId = view.key;
 
-                if (!view.key
-                    || (view.type !== 'table' && view.type === 'search')
-                    || !keywords[KEYWORD_NAME]) return;
+                if (!(viewId && keywords && keywords[kw]))
+                    return;
 
-                const model = (Knack.views[view.key] && Knack.views[view.key].model);
+                if (view.type !== 'table' && view.type !== 'search')
+                    return;
+
+                const model = (Knack.views[viewId] && Knack.views[viewId].model);
                 const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? model.results_model.view.columns : model.view.columns;
 
-                ktl.core.getKeywordsByType(view.key, KEYWORD_NAME).forEach(keyword => {
+                ktl.core.getKeywordsByType(viewId, kw).forEach(keyword => {
                     if (!ktl.core.hasRoleAccess(keyword.options))
                         return;
 
@@ -12414,8 +12420,8 @@ function Ktl($, appInfo) {
                         return fieldId && keyword.params[0].includes(fieldId);
                     });
 
-                    const hide = () => ktl.views.hideTableColumns(view.key, fields, headers);
-                    const unhide = () => ktl.views.unhideTableColumns(view.key, fields, headers);
+                    const hide = () => ktl.views.hideTableColumns(viewId, fields, headers);
+                    const unhide = () => ktl.views.unhideTableColumns(viewId, fields, headers);
 
                     if (fields.length || headers.length)
                         ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
