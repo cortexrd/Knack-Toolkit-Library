@@ -53,7 +53,9 @@
 	left: -9000px !important;
 }
 
-.ktlDisplayNone {
+.ktlDisplayNone,
+[class^="ktlDisplayNone_"],
+[class*=" ktlDisplayNone_"] {
 	display: none !important;
 }
 

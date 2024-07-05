@@ -6207,6 +6207,9 @@ function Ktl($, appInfo) {
             if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
                 viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
 
+                ktl.views.hideColumns(view, ktlKeywords[viewId]);
+                ktl.views.removeColumns(view, ktlKeywords[viewId]);
+
                 const numberOfSummaryLines = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
                 const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
 
@@ -11577,8 +11580,8 @@ function Ktl($, appInfo) {
                         const thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
                         if (thead.length) {
                             var cellIndex = thead[0].cellIndex;
-                            thead[0].classList.add('ktlDisplayNone');
-                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').addClass('ktlDisplayNone');
+                            thead[0].classList.add('ktlDisplayNone_hc');
+                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').addClass('ktlDisplayNone_hc');
                         }
                     }
                 });
@@ -11611,8 +11614,8 @@ function Ktl($, appInfo) {
                         const thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
                         if (thead.length) {
                             var cellIndex = thead[0].cellIndex;
-                            thead[0].classList.remove('ktlDisplayNone');
-                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').removeClass('ktlDisplayNone');
+                            thead[0].classList.remove('ktlDisplayNone_hc');
+                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').removeClass('ktlDisplayNone_hc');
                         }
                     }
                 });
@@ -14064,8 +14067,6 @@ function Ktl($, appInfo) {
         }
 
         function showHiddenElemements() {
-            $('.ktlHidden').replaceClass('ktlHidden', 'dis_ktlHidden');
-            $('.ktlDisplayNone').replaceClass('ktlDisplayNone', 'dis_ktlDisplayNone');
             $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
 
             $('[class^=ktlHidden_], [class*=" ktlHidden_"]').each(function () {
@@ -14079,17 +14080,39 @@ function Ktl($, appInfo) {
 
                 $(this).attr('class', newClass);
             });
+
+            $('[class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"]').each(function () {
+                var currentClass = $(this).attr('class');
+                var newClass = currentClass.split(' ').map(function (className) {
+                    if (className.startsWith('ktlDisplayNone_')) {
+                        return 'dis_' + className;
+                    }
+                    return className;
+                }).join(' ');
+
+                $(this).attr('class', newClass);
+            });
         }
 
         function hideHiddenElemements() {
-            $('.dis_ktlHidden').replaceClass('dis_ktlHidden', 'ktlHidden');
-            $('.dis_ktlDisplayNone').replaceClass('dis_ktlDisplayNone', 'ktlDisplayNone');
             $('.dis_ktlVisibilityHidden').replaceClass('dis_ktlVisibilityHidden', 'ktlVisibilityHidden');
 
             $('[class^=dis_ktlHidden_], [class*=" dis_ktlHidden_"]').each(function () {
                 var currentClass = $(this).attr('class');
                 var newClass = currentClass.split(' ').map(function (className) {
                     if (className.startsWith('dis_ktlHidden_')) {
+                        return className.replace('dis_', '');
+                    }
+                    return className;
+                }).join(' ');
+
+                $(this).attr('class', newClass);
+            });
+
+            $('[class^=dis_ktlDisplayNone_], [class*=" dis_ktlDisplayNone_"]').each(function () {
+                var currentClass = $(this).attr('class');
+                var newClass = currentClass.split(' ').map(function (className) {
+                    if (className.startsWith('dis_ktlDisplayNone_')) {
                         return className.replace('dis_', '');
                     }
                     return className;
