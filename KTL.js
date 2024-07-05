@@ -10034,6 +10034,8 @@ function Ktl($, appInfo) {
 
             let context = '';
             let fields = [];
+            let expiry = '';
+            let paramString;
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const groups = keywords[kw][0].params;
                 for (const group of groups) {
@@ -10041,15 +10043,17 @@ function Ktl($, appInfo) {
                         if (group[0] === 'context') {
                             context = (keywords[kw][0].paramStr.match(/\[context,([^[]*)\]/) || [])[1] || '';
                         } else if (group[0] === 'fields') {
-                            const fieldsString = (keywords[kw][0].paramStr.match(/\[fields,([^[]*)\]/) || [])[1] || '';
-                            fields = ktl.core.splitAndTrimToArray(fieldsString);
+                            paramString = (keywords[kw][0].paramStr.match(/\[fields,([^[]*)\]/) || [])[1] || '';
+                            fields = ktl.core.splitAndTrimToArray(paramString);
+                        } else if (group[0] === 'expiry') {
+                            expiry = (keywords[kw][0].paramStr.match(/\[expiry,([^[]*)\]/) || [])[1].trim() || '';
                         }
                     }
                 }
             }
 
             let changeLog = {};
-            let recordId = data.id;
+            let recordId;
             let identifier;
 
             const sourceObjectId = ktl.views.getViewSourceObjectId(viewId);
@@ -10067,18 +10071,20 @@ function Ktl($, appInfo) {
                 updateDataAndLogDeltas(viewId, record);
             })
 
+            const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
+
             function addFieldChanges(viewId, fieldId, fieldName, oldValue, newValue) {
                 if (!changeLog[viewId]) {
                     changeLog[viewId] = {
-                        [recordHistoryFieldIds.status]: '',
+                        [recordHistoryFieldIds.status]: formActionText,
                         [recordHistoryFieldIds.changes]: '',
-                        [recordHistoryFieldIds.context]: '',
+                        [recordHistoryFieldIds.context]: context,
                         [recordHistoryFieldIds.record_id]: '',
                         [recordHistoryFieldIds.identifier]: '',
-                        [recordHistoryFieldIds.object_name]: '',
+                        [recordHistoryFieldIds.object_name]: Knack.objects._byId[sourceObjectId].attributes.name,
                         [recordHistoryFieldIds.view_id]: viewId,
-                        [recordHistoryFieldIds.app_url]: '',
-                        [recordHistoryFieldIds.builder_url]: '',
+                        [recordHistoryFieldIds.app_url]: window.location.href,
+                        [recordHistoryFieldIds.builder_url]: `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`,
                         [recordHistoryFieldIds.builder_history]: '',
                         [recordHistoryFieldIds.expiry]: '',
                     };
@@ -10209,16 +10215,46 @@ function Ktl($, appInfo) {
                     if (changeLog[viewId][recordHistoryFieldIds.changes]) {
                         const apiData = changeLog[viewId];
 
-                        apiData[recordHistoryFieldIds.status] = formActionText;
-                        apiData[recordHistoryFieldIds.context] = 'Record History Demo'; //TODO: Get context from keyword params.
                         apiData[recordHistoryFieldIds.identifier] = identifier;
-                        apiData[recordHistoryFieldIds.record_id] = recordId || '';
-                        apiData[recordHistoryFieldIds.object_name] = Knack.objects._byId[sourceObjectId].attributes.name;
-                        apiData[recordHistoryFieldIds.app_url] = window.location.href;
-                        const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
-                        apiData[recordHistoryFieldIds.builder_url] = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
+                        apiData[recordHistoryFieldIds.record_id] = recordId;
                         apiData[recordHistoryFieldIds.builder_history] = `${baseURL}/records/objects/${sourceObjectId}/record/${recordId}/history`;
-                        apiData[recordHistoryFieldIds.expiry] = ''; //TODO: Get expiry date from keyword params.
+
+                        //Calculate expiry date/time
+                        function getFutureDate(expiryString) {
+                            const amount = parseInt(expiryString);
+                            const unit = expiryString.charAt(expiryString.length - 1);
+
+                            if (isNaN(amount) || !['d', 'h', 'm'].includes(unit)) {
+                                throw new Error('Invalid expiry string format');
+                            }
+
+                            const futureDate = new Date();
+
+                            if (unit === 'd') {
+                                futureDate.setDate(futureDate.getDate() + amount);
+                            } else if (unit === 'h') {
+                                futureDate.setHours(futureDate.getHours() + amount);
+                            } else if (unit === 'm') {
+                                futureDate.setMinutes(futureDate.getMinutes() + amount);
+                            }
+
+                            const day = String(futureDate.getDate()).padStart(2, '0');
+                            const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+                            const year = String(futureDate.getFullYear());
+                            const hours = String(futureDate.getHours()).padStart(2, '0');
+                            const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+
+                            const dateFormat = Knack.objects.getField(recordHistoryFieldIds.expiry).attributes.format.date_format;
+
+                            if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
+                                return `${month}/${day}/${year} ${hours}:${minutes}`;
+                            } else if (dateFormat === 'dd/mm/yyyy') {
+                                return `${day}/${month}/${year} ${hours}:${minutes}`;
+                            }
+                        }
+
+                        const futureDate = getFutureDate(expiry);
+                        apiData[recordHistoryFieldIds.expiry] = futureDate;
 
                         //console.log("Adding Record History entry:", JSON.stringify(apiData, null, 4));
                         ktl.core.knAPI(addRecordHistoryLogViewId, null, apiData, 'POST')
@@ -10236,16 +10272,18 @@ function Ktl($, appInfo) {
                 changeLog = {};
             }
 
-            function updateDataAndLogDeltas(viewId, newData) {
+            function updateDataAndLogDeltas(viewId, record) {
+                recordId = record.id;
+
                 const lastData = viewData_arh[viewId];
                 if (lastData !== undefined) {
-                    compareNewAndLastData(viewId, newData, lastData);
+                    compareNewAndLastData(viewId, record, lastData);
                 }
 
                 if (view.action === 'create' || view.action === 'insert') {
                     viewData_arh[viewId] = {};
                 } else {
-                    viewData_arh[viewId] = JSON.parse(JSON.stringify(newData));
+                    viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
                 }
 
                 logAllChanges();
