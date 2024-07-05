@@ -9798,10 +9798,10 @@ function Ktl($, appInfo) {
                         const destinationColumn = group[1];
                         const sourceColumnIndex = ktl.views.getColumnIndex(viewId, sourceColumn);
                         const destinationColumnIndex = ktl.views.getColumnIndex(viewId, destinationColumn);
-                        if (sourceColumnIndex && destinationColumnIndex) {
+                        if (sourceColumnIndex >= 0 && destinationColumnIndex >= 0) {
                             const rows = $(`#${viewId} .kn-table tbody tr`);
                             rows.each((idx, row) => {
-                                const srcCell = $(row).find(`td .col-${sourceColumnIndex} span span`);
+                                const srcCell = $(row).find(`td .col-${sourceColumnIndex} span`);
                                 if (srcCell.length) {
                                     const srcText = srcCell.text();
                                     const destCell = $(row).find(`td .col-${destinationColumnIndex} span`);
