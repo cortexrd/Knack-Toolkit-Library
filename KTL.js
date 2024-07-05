@@ -9804,12 +9804,23 @@ function Ktl($, appInfo) {
                         if (sourceColumnIndex >= 0 && destinationColumnIndex >= 0) {
                             const rows = $(`#${viewId} .kn-table tbody tr`);
                             rows.each((idx, row) => {
-                                const srcCell = $(row).find(`td .col-${sourceColumnIndex} span`);
+                                const srcCell = $(row).find(`td .col-${sourceColumnIndex} > span`);
                                 if (srcCell.length) {
-                                    const srcText = srcCell.text();
+                                    let srcText = '';
+                                    const clonedSrcCell = srcCell.clone();
+
+                                    clonedSrcCell.contents().each(function() {
+                                        // Iterate over all child nodes (text and elements)
+                                        if (this.nodeType === 3) {
+                                            srcText += this.nodeValue;
+                                        } else if (this.nodeType === 1) {
+                                            srcText += $(this).text();
+                                        }
+                                    });
+
                                     const destCell = $(row).find(`td .col-${destinationColumnIndex} span`);
                                     if (destCell.length) {
-                                        $(destCell).text(srcText);
+                                        $(destCell).text(srcText); // Set the text of the destination cell
                                     }
                                 }
                             });
