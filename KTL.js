@@ -9820,7 +9820,7 @@ function Ktl($, appInfo) {
 
                                     const destCell = $(row).find(`td .col-${destinationColumnIndex} span`);
                                     if (destCell.length) {
-                                        $(destCell).text(srcText); // Set the text of the destination cell
+                                        $(destCell).text(srcText);
                                     }
                                 }
                             });
