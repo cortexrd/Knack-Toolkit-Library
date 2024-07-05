@@ -9920,36 +9920,38 @@ function Ktl($, appInfo) {
                 const currentTime = Date.now();
 
                 // First, handle cells that are already highlighted
-                for (const cellKey in highlightStates_scv) {
-                    if (cellKey.startsWith(viewId)) {
-                        const [, recordId, fieldId] = cellKey.split('::');
-                        const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldId}"]`);
+                if (duration > 0) {
+                    for (const cellKey in highlightStates_scv) {
+                        if (cellKey.startsWith(viewId)) {
+                            const [, recordId, fieldId] = cellKey.split('::');
+                            const cell = document.querySelector(`#${viewId} tr[id="${recordId}"] td[data-field-key="${fieldId}"]`);
 
-                        if (cell) {
-                            const remainingTime = duration - (currentTime - highlightStates_scv[cellKey].startTime);
-                            if (remainingTime > 0) {
-                                // Continue highlight and reschedule removal
-                                if (mode === 'flash') {
-                                    $(cell).addClass('ktlFlashingOnOff');
-                                } else if (mode === 'fade') {
-                                    $(cell).addClass('ktlFlashingFadeInOut');
-                                }
+                            if (cell) {
+                                const remainingTime = duration - (currentTime - highlightStates_scv[cellKey].startTime);
+                                if (remainingTime > 0) {
+                                    // Continue highlight and reschedule removal
+                                    if (mode === 'flash') {
+                                        $(cell).addClass('ktlFlashingOnOff');
+                                    } else if (mode === 'fade') {
+                                        $(cell).addClass('ktlFlashingFadeInOut');
+                                    }
 
-                                if (style === 'border') {
-                                    ktl.views.setCfg({ ktlOutlineColor: color });
-                                    $(cell).addClass('ktlOutline');
-                                } else if (style === 'fill') {
-                                    const newStyle = `background-color : ${color}!important`;
-                                    const mergedStyles = ktl.core.mergeStyles(cell.style.cssText, newStyle);
-                                    const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
-                                    $(cell).attr('style', mergedStyleString);
-                                }
+                                    if (style === 'border') {
+                                        ktl.views.setCfg({ ktlOutlineColor: color });
+                                        $(cell).addClass('ktlOutline');
+                                    } else if (style === 'fill') {
+                                        const newStyle = `background-color : ${color}!important`;
+                                        const mergedStyles = ktl.core.mergeStyles(cell.style.cssText, newStyle);
+                                        const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
+                                        $(cell).attr('style', mergedStyleString);
+                                    }
 
-                                setTimeout(() => {
+                                    setTimeout(() => {
+                                        restoreStyle(viewId, recordId, cellKey, fieldId);
+                                    }, remainingTime);
+                                } else {
                                     restoreStyle(viewId, recordId, cellKey, fieldId);
-                                }, remainingTime);
-                            } else {
-                                restoreStyle(viewId, recordId, cellKey, fieldId);
+                                }
                             }
                         }
                     }
@@ -9986,9 +9988,11 @@ function Ktl($, appInfo) {
                                 $(cell).attr('style', mergedStyleString);
                             }
 
-                            setTimeout(() => {
-                                restoreStyle(viewId, recordId, cellKey, change.fieldId);
-                            }, duration);
+                            if (duration > 0) {
+                                setTimeout(() => {
+                                    restoreStyle(viewId, recordId, cellKey, change.fieldId);
+                                }, duration);
+                            }
                         }
                     });
                 }
