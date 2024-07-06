@@ -10063,8 +10063,6 @@ function Ktl($, appInfo) {
                             );
                         } else if (group[0] === 'expiry') {
                             expiry = (keywords[kw][0].paramStr.match(/\[expiry,([^[]*)\]/) || [])[1].trim() || '';
-                        } else if (group[0] === 'align') {
-                            expiry = (keywords[kw][0].paramStr.match(/\[expiry,([^[]*)\]/) || [])[1].trim() || '';
                         }
                     }
                 }
@@ -10150,23 +10148,6 @@ function Ktl($, appInfo) {
             }
 
             function compareNewAndLastData(viewId, newData, lastData, path = '') {
-                if (typeof newData !== 'object' || newData === null) {
-                    let oldValue = getNestedValue(lastData, path);
-                    if (isSignificantChange(oldValue, newData)) {
-                        const fieldId = path.split('.').pop().replace('_raw', '');
-                        const fieldName = ktl.core.getFieldNameById(fieldId) || fieldId;
-                        const fieldType = ktl.fields.getFieldType(fieldId);
-                        if (fieldType === 'signature') {
-                            if (oldValue)
-                                oldValue = 'Signed';
-                            if (newValue)
-                                newValue = 'Signed';
-                        }
-                        addFieldChanges(viewId, fieldId, fieldName, oldValue, newData);
-                    }
-                    return;
-                }
-
                 for (const key in newData) {
                     if (key.endsWith('_raw')) {
                         const fullPath = path ? `${path}.${key}` : key;
@@ -10186,7 +10167,15 @@ function Ktl($, appInfo) {
                             }
 
                             if (newValue.hasOwnProperty('date_formatted')) {
-                                return newValue.date_formatted;
+                                newValue = newValue.date_formatted;
+                            }
+
+                            if (newValue.hasOwnProperty('email')) {
+                                newValue = newValue.email;
+                            }
+
+                            if (newValue.hasOwnProperty('filename')) {
+                                newValue = newValue.filename;
                             }
                         }
 
@@ -10228,6 +10217,14 @@ function Ktl($, appInfo) {
 
                     if (value.hasOwnProperty('date_formatted')) {
                         return value.date_formatted;
+                    }
+
+                    if (value.hasOwnProperty('email')) {
+                        return value.email;
+                    }
+
+                    if (value.hasOwnProperty('filename')) {
+                        return value.filename;
                     }
                 }
 
@@ -10330,12 +10327,25 @@ function Ktl($, appInfo) {
 
             let header = 'History';
             let icon = 'fa-history';
+            let filterRoles = [];
+            let align = 'left';
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                const params = keywords[kw][0].params[0];
-                if (params.length >= 1 && params[0].length)
-                    header = params[0];
-                if (params.length >= 2 && params[1].length)
-                    icon = params[1];
+                const groups = keywords[kw][0].params;
+                for (const group of groups) {
+                    if (group.length >= 2) {
+                        if (group[0] === 'filters') {
+                            const paramString = (keywords[kw][0].paramStr.match(/\[filters,([^[]*)\]/) || [])[1] || '';
+                            filterRoles = ktl.core.splitAndTrimToArray(paramString);
+                        } else if (group[0] === 'align') {
+                            align = (keywords[kw][0].paramStr.match(/\[align,([^[]*)\]/) || [])[1].trim() || '';
+                        } else {
+                            if (group.length >= 1 && group[0].length)
+                                header = group[0];
+                            if (group.length >= 2 && group[1].length)
+                                icon = group[1];
+                        }
+                    }
+                }
             }
 
             const sceneId = ktl.scenes.getSceneKeyFromViewId(viewRecordHistoryLogViewId);
@@ -10346,7 +10356,7 @@ function Ktl($, appInfo) {
             // Add new header cell with label "History" by default.
             const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktlArhView")`);
             if (headerRow.length) {
-                const newHeaderCell = $(`<th style="text-align: left;"><span class="table-fixed-label ktlArhView" style="display: inline-flex;"><span>${header}</span></span></th>`);
+                const newHeaderCell = $(`<th style="text-align: ${align};"><span class="table-fixed-label ktlArhView" style="display: inline-flex;"><span>${header}</span></span></th>`);
                 headerRow.append(newHeaderCell);
                 $(headerRow).addClass('ktlArhView');
             }
@@ -10363,6 +10373,7 @@ function Ktl($, appInfo) {
                     iconLink.setAttribute('data-kn-slug', '#view-record-history');
                     iconLink.innerHTML = `<i class="fa ${icon}" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>`;
 
+                    $(newCell).css({ 'text-align': `${align}` });
                     newCell.appendChild(iconLink);
                     row.appendChild(newCell);
                 }
@@ -10381,6 +10392,9 @@ function Ktl($, appInfo) {
                         const viewObj = view.model.view;
                         const viewId = viewObj.key;
                         if (viewId === viewRecordHistoryLogViewId) {
+                            if (filterRoles.length && !ktl.account.matchUserRoles(filterRoles))
+                                Knack.views[viewId].model.view.filter = false;
+
                             //Apply filter on record ID.
                             var filterRules = [
                                 {
