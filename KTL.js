@@ -6203,7 +6203,6 @@ function Ktl($, appInfo) {
         const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
-
             if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
                 viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
 
@@ -10008,7 +10007,7 @@ function Ktl($, appInfo) {
 
         const viewData_arh = {};
 
-        const viewRecordHistoryLogViewId = ktl.core.getViewIdByTitle('View Record History');
+        const viewRecordHistoryViewId = ktl.core.getViewIdByTitle('View Record History');
         const recordHistoryObject = ktl.core.getObjectIdByName('Record History');
         const recordHistoryFieldIds = {
             status: ktl.core.getFieldIdByName('Status', recordHistoryObject),
@@ -10031,7 +10030,7 @@ function Ktl($, appInfo) {
             const viewId = view.key;
             if (!(viewId && keywords && keywords[kw])) return;
             const viewType = ktl.views.getViewType(viewId);
-            if (!(keywords && keywords[kw] && (viewType === 'form'))) return;
+            if (!(keywords && keywords[kw] && (viewType === 'form' || viewType === 'table' || viewType === 'search'))) return;
             if (keywords[kw].length && keywords[kw][0].options) {
                 const options = keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
@@ -10082,7 +10081,7 @@ function Ktl($, appInfo) {
                 formActionText = 'Added';
             }
 
-            $(document).off(`knack-form-submit.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh`, function (event, view, record) {
+            $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
                 identifier = record[identifierFieldId];
                 updateDataAndLogDeltas(viewId, record);
             })
@@ -10242,6 +10241,7 @@ function Ktl($, appInfo) {
 
                         //Calculate expiry date/time
                         function getFutureDate(expiryString) {
+                            if (!expiryString) return;
                             const amount = parseInt(expiryString);
                             const unit = expiryString.charAt(expiryString.length - 1);
 
@@ -10297,20 +10297,38 @@ function Ktl($, appInfo) {
                 recordId = record.id;
 
                 const lastData = viewData_arh[viewId];
-                if (lastData !== undefined) {
+                if (lastData !== undefined)
                     compareNewAndLastData(viewId, record, lastData);
-                }
 
-                if (view.action === 'create' || view.action === 'insert') {
+                if (view.action === 'create' || view.action === 'insert')
                     viewData_arh[viewId] = {};
-                } else {
+                else
                     viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
-                }
 
                 logAllChanges();
             }
 
-            updateDataAndLogDeltas(viewId, data);
+            if (viewType === 'form')
+                updateDataAndLogDeltas(viewId, data);
+            else {
+                $(document).off(`click.ktl_arh`).on(`click.ktl_arh`, `#${viewId} .cell-edit`, function (event) {
+                    const row = event.target.closest('tr[id]');
+                    if (row) {
+                        const recordId = row.id;
+                        let record;
+                        if (viewType === 'search')
+                            record = Knack.views[viewId].model.results_model.data._byId[recordId].attributes;
+                        else {
+                            record = data.filter(item => item.id === recordId);
+                            if (record.length)
+                                record = record[0];
+                        }
+
+                        viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
+                        updateDataAndLogDeltas(viewId, record);
+                    }
+                });
+            }
         }
 
         function viewRecordHistory(viewId, keywords) {
@@ -10323,7 +10341,12 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
-            if (!viewRecordHistoryLogViewId) return;
+            if (!viewRecordHistoryViewId) return;
+
+            const viewRecordHistorySceneId = ktl.scenes.getSceneKeyFromViewId(viewRecordHistoryViewId);
+            const viewRecordHistorySlug = Knack.scenes.getByKey(viewRecordHistorySceneId).attributes.slug;
+            const originalSceneModal = Knack.scenes._byId[viewRecordHistorySlug].attributes.modal;
+            const originalViewRecordHistoryFilterEnabled = Knack.views[viewId].model.view.filter;
 
             let header = 'History';
             let icon = 'fa-history';
@@ -10348,11 +10371,6 @@ function Ktl($, appInfo) {
                 }
             }
 
-            const sceneId = ktl.scenes.getSceneKeyFromViewId(viewRecordHistoryLogViewId);
-            const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
-            let historyUrl = `#${slug}`;
-            Knack.scenes._byId[slug].attributes.modal = true; //Force scene to modal.
-
             // Add new header cell with label "History" by default.
             const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktlArhView")`);
             if (headerRow.length) {
@@ -10369,9 +10387,10 @@ function Ktl($, appInfo) {
                 } else {
                     const newCell = document.createElement('td');
                     const iconLink = document.createElement('a');
-                    iconLink.href = historyUrl;
+                    iconLink.href = `#${viewRecordHistorySlug}`;
                     iconLink.setAttribute('data-kn-slug', '#view-record-history');
                     iconLink.innerHTML = `<i class="fa ${icon}" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>`;
+                    $(iconLink).addClass('ktl_vrh');
 
                     $(newCell).css({ 'text-align': `${align}` });
                     newCell.appendChild(iconLink);
@@ -10382,7 +10401,8 @@ function Ktl($, appInfo) {
             }
 
             // Add click event handler with jQuery
-            $(document).off('click.ktl_vrh').on('click.ktl_vrh', 'a[data-kn-slug="#view-record-history"]', function (event) {
+            $(document).off('click.ktl_vrh').on('click.ktl_vrh', 'a[data-kn-slug="#view-record-history"].ktl_vrh', function (event) {
+                Knack.scenes._byId[viewRecordHistorySlug].attributes.modal = true; //Force scene to modal.
                 const row = event.target.closest('tr[id]');
                 if (row) {
                     const recordId = row.id;
@@ -10391,7 +10411,7 @@ function Ktl($, appInfo) {
 
                         const viewObj = view.model.view;
                         const viewId = viewObj.key;
-                        if (viewId === viewRecordHistoryLogViewId) {
+                        if (viewId === viewRecordHistoryViewId) {
                             if (filterRoles.length && !ktl.account.matchUserRoles(filterRoles))
                                 Knack.views[viewId].model.view.filter = false;
 
@@ -10412,16 +10432,21 @@ function Ktl($, appInfo) {
 
                             //TODO: Put all this in an exposed function since it is used in a few places already.
                             const sceneHash = Knack.getSceneHash();
-                            const queryString = Knack.getQueryString({ [`${viewRecordHistoryLogViewId}_filters`]: encodeURIComponent(JSON.stringify(filterObj)) });
+                            const queryString = Knack.getQueryString({ [`${viewRecordHistoryViewId}_filters`]: encodeURIComponent(JSON.stringify(filterObj)) });
                             Knack.router.navigate(`${sceneHash}?${queryString}`, false);
                             Knack.setHashVars();
-                            Knack.models[viewRecordHistoryLogViewId].setFilters(filterObj);
-                            Knack.models[viewRecordHistoryLogViewId].fetch({
+                            Knack.models[viewRecordHistoryViewId].setFilters(filterObj);
+                            Knack.models[viewRecordHistoryViewId].fetch({
                                 success: () => {
                                     Knack.hideSpinner();
                                 }
                             });
                         }
+
+                        $(document).on('knack-modal-close', (e) => {
+                            Knack.scenes._byId[viewRecordHistorySlug].attributes.modal = originalSceneModal;
+                            Knack.views[viewId].model.view.filter = originalViewRecordHistoryFilterEnabled;
+                        })
                     })
                 }
             });
@@ -10429,7 +10454,7 @@ function Ktl($, appInfo) {
 
         //Fix formatting of the Changes paragraph text field for a nice, more readable layout.
         $(document).on('knack-view-render.any', function (event, view, data) {
-            if (view.key === viewRecordHistoryLogViewId) {
+            if (view.key === viewRecordHistoryViewId) {
                 $('.kn-modal').css({
                     'margin': '20px 0px',
                     'left': '50%',
