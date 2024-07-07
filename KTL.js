@@ -10213,6 +10213,8 @@ function Ktl($, appInfo) {
                 return JSON.stringify(oldValue) !== JSON.stringify(newValue);
             }
 
+            const objectFieldTypes = ['date_formatted', 'email', 'filename', 'url'];
+
             function compareNewAndLastData(viewId, newData, lastData, path = '') {
                 for (const key in newData) {
                     if (key.endsWith('_raw')) {
@@ -10221,27 +10223,18 @@ function Ktl($, appInfo) {
                         let newValue = newData[key];
 
                         if (typeof newValue === 'object' && newValue !== null) {
-                            if (newValue.hasOwnProperty('full')) {
+                            if (newValue.hasOwnProperty('full'))
                                 newValue = newValue.full;
-                            }
 
                             if (Array.isArray(newValue)) {
                                 const identifierObj = newValue.find(obj => obj.hasOwnProperty('identifier'));
-                                if (identifierObj) {
+                                if (identifierObj)
                                     newValue = identifierObj.identifier;
-                                }
                             }
 
-                            if (newValue.hasOwnProperty('date_formatted')) {
-                                newValue = newValue.date_formatted;
-                            }
-
-                            if (newValue.hasOwnProperty('email')) {
-                                newValue = newValue.email;
-                            }
-
-                            if (newValue.hasOwnProperty('filename')) {
-                                newValue = newValue.filename;
+                            let newValueResult = getObjectFieldValue(newValue, objectFieldTypes);
+                            if (newValueResult !== null) {
+                                newValue = newValueResult;
                             }
                         }
 
@@ -10265,33 +10258,30 @@ function Ktl($, appInfo) {
                 }
             }
 
+            function getObjectFieldValue(obj, properties) {
+                for (const prop of properties) {
+                    if (obj.hasOwnProperty(prop)) {
+                        return obj[prop];
+                    }
+                }
+                return null;
+            }
+
             function getNestedValue(obj, path) {
                 const value = path.split('.').reduce((current, key) =>
                     (current && current[key] !== undefined) ? current[key] : undefined, obj);
 
                 if (typeof value === 'object' && value !== null) {
-                    if (value.hasOwnProperty('full')) {
+                    if (value.hasOwnProperty('full'))
                         return value.full;
-                    }
 
                     if (Array.isArray(value)) {
                         const identifierObj = value.find(obj => obj.hasOwnProperty('identifier'));
-                        if (identifierObj) {
+                        if (identifierObj)
                             return identifierObj.identifier;
-                        }
                     }
 
-                    if (value.hasOwnProperty('date_formatted')) {
-                        return value.date_formatted;
-                    }
-
-                    if (value.hasOwnProperty('email')) {
-                        return value.email;
-                    }
-
-                    if (value.hasOwnProperty('filename')) {
-                        return value.filename;
-                    }
+                    return getObjectFieldValue(value, objectFieldTypes) || value;
                 }
 
                 return value;
@@ -10349,7 +10339,6 @@ function Ktl($, appInfo) {
             else {
                 $(document).off(`click.ktl_arh.${viewId}`).on(`click.ktl_arh.${viewId}`, `#${viewId} .cell-edit`, function (event) {
                     const row = event.target.closest('tr[id]');
-                    ktl.log.clog('green', 'click inline editing');
                     if (row) {
                         const recordId = row.id;
                         let record;
