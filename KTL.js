@@ -1913,7 +1913,7 @@ function Ktl($, appInfo) {
 
             //Parameter is a number followed by d, h or m (days, hours, minutes).
             //Ex: 90d, 48h or 30m.
-            computeFutureDateTime: function (expiryString) {
+            computeFutureDateTime: function (expiryString, dateFormat) {
                 if (!expiryString) return;
                 const amount = parseInt(expiryString);
                 const unit = expiryString.charAt(expiryString.length - 1);
@@ -1937,8 +1937,6 @@ function Ktl($, appInfo) {
                 const year = String(futureDate.getFullYear());
                 const hours = String(futureDate.getHours()).padStart(2, '0');
                 const minutes = String(futureDate.getMinutes()).padStart(2, '0');
-
-                const dateFormat = Knack.objects.getField(recordHistoryFieldIds.expiry).attributes.format.date_format;
 
                 if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
                     return `${month}/${day}/${year} ${hours}:${minutes}`;
@@ -10072,36 +10070,43 @@ function Ktl($, appInfo) {
             let expiry = '';
 
             //Process fields keywords
-            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
-            if (!$.isEmptyObject(fieldsWithKwObj)) {
-                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                var foundKwObj = {};
-                for (let i = 0; i < fieldsWithKwAr.length; i++) {
-                    const fieldId = fieldsWithKwAr[i];
-                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj)) {
-                        if (foundKwObj[fieldId][kw]) {
-                            console.log('found', foundKwObj[fieldId][kw]);
-                            if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].params.length) {
-                                const params = foundKwObj[fieldId][kw][0].params[0][0];
-                                if (params === 'include')
-                                    includeFields.push(fieldId);
-                                else if (params === 'exclude')
-                                    excludeFields.push(fieldId);
-                            }
-                        }
-                    }
-                }
-            }
+            //var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            //if (!$.isEmptyObject(fieldsWithKwObj)) {
+            //    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+            //    var foundKwObj = {};
+            //    for (let i = 0; i < fieldsWithKwAr.length; i++) {
+            //        const fieldId = fieldsWithKwAr[i];
+            //        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+            //        if (!$.isEmptyObject(foundKwObj)) {
+            //            if (foundKwObj[fieldId][kw]) {
+            //                console.log('found', foundKwObj[fieldId][kw]);
+            //                if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].params.length) {
+            //                    const params = foundKwObj[fieldId][kw][0].params[0][0];
+            //                    if (params === 'include')
+            //                        includeFields.push(fieldId);
+            //                    else if (params === 'exclude')
+            //                        excludeFields.push(fieldId);
+            //                }
+            //            }
+            //        }
+            //    }
+            //}
 
             //Process view keyword
+
+            //Don't use ktl.views.getViewType in this case.  Search views return two events: for search and table types in view.type and we need to distinguish between them.
+            const viewType = view.type;
+
+            if ((viewType === 'table' || viewType === 'search') && !data.length) return;
+
             if (!(viewId && keywords && keywords[kw])) return;
-            const viewType = ktl.views.getViewType(viewId);
+
             if (!(keywords && keywords[kw] && (viewType === 'form' || viewType === 'table' || viewType === 'search'))) return;
             if (keywords[kw].length && keywords[kw][0].options) {
                 const options = keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
+
             const addRecordHistoryLogViewId = ktl.core.getViewIdByTitle('Add Record History', '', true);
             if (!addRecordHistoryLogViewId) return;
 
@@ -10304,15 +10309,14 @@ function Ktl($, appInfo) {
                         apiData[recordHistoryFieldIds.builder_history] = `${baseURL}/records/objects/${sourceObjectId}/record/${recordId}/history`;
 
                         //Calculate expiry date/time
-                        const futureDate = ktl.core.computeFutureDateTime(expiry);
+                        const futureDate = ktl.core.computeFutureDateTime(expiry, Knack.objects.getField(recordHistoryFieldIds.expiry).attributes.format.date_format);
                         apiData[recordHistoryFieldIds.expiry] = futureDate;
 
-                        //console.log("Adding Record History entry:", JSON.stringify(apiData, null, 4));
                         ktl.core.knAPI(addRecordHistoryLogViewId, null, apiData, 'POST')
                             .then(function (response) {
                                 if (ktl.account.isDeveloper()) {
                                     ktl.log.clog('green', 'Record History submitted successfully');
-                                    console.log('response =', JSON.stringify(response, null, 4));
+                                    //console.log('response =', JSON.stringify(response, null, 4));
                                 }
                             })
                             .catch(function (reason) {
@@ -10332,8 +10336,10 @@ function Ktl($, appInfo) {
 
                 if (view.action === 'create' || view.action === 'insert')
                     viewData_arh[viewId] = {};
-                else
-                    viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
+                else {
+                    if (view.type === 'form')
+                        viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
+                }
 
                 logAllChanges();
             }
@@ -10341,8 +10347,9 @@ function Ktl($, appInfo) {
             if (viewType === 'form')
                 updateDataAndLogDeltas(viewId, data);
             else {
-                $(document).off(`click.ktl_arh`).on(`click.ktl_arh`, `#${viewId} .cell-edit`, function (event) {
+                $(document).off(`click.ktl_arh.${viewId}`).on(`click.ktl_arh.${viewId}`, `#${viewId} .cell-edit`, function (event) {
                     const row = event.target.closest('tr[id]');
+                    ktl.log.clog('green', 'click inline editing');
                     if (row) {
                         const recordId = row.id;
                         let record;
@@ -10355,7 +10362,6 @@ function Ktl($, appInfo) {
                         }
 
                         viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
-                        updateDataAndLogDeltas(viewId, record);
                     }
                 });
             }
@@ -10402,32 +10408,32 @@ function Ktl($, appInfo) {
             }
 
             // Add new header cell with label "History" by default.
-            const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktlArhView")`);
+            const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktl_vrh")`);
             if (headerRow.length) {
-                const newHeaderCell = $(`<th style="text-align: ${align};"><span class="table-fixed-label ktlArhView" style="display: inline-flex;"><span>${header}</span></span></th>`);
+                const newHeaderCell = $(`<th style="text-align: ${align};"><span class="table-fixed-label ktl_vrh" style="display: inline-flex;"><span>${header}</span></span></th>`);
                 headerRow.append(newHeaderCell);
-                $(headerRow).addClass('ktlArhView');
-            }
+                $(headerRow).addClass('ktl_vrh');
 
-            // Add new column with icon to click on to view record history.
-            const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktlArhView")`));
-            for (const row of rows) {
-                if ($(row).hasClass('kn-table-totals')) {
-                    $(row).append('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); //Fix alignemnt for Summaries.
-                } else {
-                    const newCell = document.createElement('td');
-                    const iconLink = document.createElement('a');
-                    iconLink.href = `#${viewRecordHistorySlug}`;
-                    iconLink.setAttribute('data-kn-slug', '#view-record-history');
-                    iconLink.innerHTML = `<i class="fa ${icon}" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>`;
-                    $(iconLink).addClass('ktl_vrh');
+                // Add new column with icon to click on to view record history.
+                const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktl_vrh")`));
+                for (const row of rows) {
+                    if ($(row).hasClass('kn-table-totals')) {
+                        $(row).append('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); //Fix alignemnt for Summaries.
+                    } else {
+                        const newCell = document.createElement('td');
+                        const iconLink = document.createElement('a');
+                        iconLink.href = `#${viewRecordHistorySlug}`;
+                        iconLink.setAttribute('data-kn-slug', '#view-record-history');
+                        iconLink.innerHTML = `<i class="fa ${icon}" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>`;
+                        $(iconLink).addClass('ktl_vrh');
 
-                    $(newCell).css({ 'text-align': `${align}` });
-                    newCell.appendChild(iconLink);
-                    row.appendChild(newCell);
+                        $(newCell).css({ 'text-align': `${align}` });
+                        newCell.appendChild(iconLink);
+                        row.appendChild(newCell);
+                    }
+
+                    $(row).addClass('ktl_vrh');
                 }
-
-                $(row).addClass('ktlArhView');
             }
 
             // Add click event handler with jQuery
@@ -12941,6 +12947,7 @@ function Ktl($, appInfo) {
                 let view = Knack.views[viewId];
                 if (view)
                     return view.model.view;
+                    //return (view.model.results_model && view.model.results_model.view) ? view.model.results_model.view : view.model.view;
                 else {
                     const scenes = Knack.scenes.models;
                     for (const scene of scenes) {
