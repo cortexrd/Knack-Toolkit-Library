@@ -1911,6 +1911,8 @@ function Ktl($, appInfo) {
                 return newSvgUrl;
             },
 
+            //Parameter is a number followed by d, h or m (days, hours, minutes).
+            //Ex: 90d, 48h or 30m.
             computeFutureDateTime: function (expiryString) {
                 if (!expiryString) return;
                 const amount = parseInt(expiryString);
@@ -6509,7 +6511,6 @@ function Ktl($, appInfo) {
                     keywords._rdclk && redirectClick(viewId, keywords);
                     keywords._cpytxt && copyText(viewId, keywords);
                     keywords._scv && showChangedValues(viewId, keywords, data);
-                    keywords._arh && addRecordHistory(view, keywords, data);
                     keywords._vrh && viewRecordHistory(viewId, keywords);
                     keywords._hsv && hideShowView(view, keywords);
                 }
@@ -6527,6 +6528,7 @@ function Ktl($, appInfo) {
                 addTooltips(view, keywords);
                 disableFilterOnFields(view);
                 fieldIsRequired(view);
+                addRecordHistory(view, keywords, data);
 
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'form')
@@ -10063,6 +10065,36 @@ function Ktl($, appInfo) {
 
             const kw = '_arh';
             const viewId = view.key;
+
+            let context = '';
+            let includeFields = [];
+            let excludeFields = [];
+            let expiry = '';
+
+            //Process fields keywords
+            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            if (!$.isEmptyObject(fieldsWithKwObj)) {
+                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                var foundKwObj = {};
+                for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                    const fieldId = fieldsWithKwAr[i];
+                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                    if (!$.isEmptyObject(foundKwObj)) {
+                        if (foundKwObj[fieldId][kw]) {
+                            console.log('found', foundKwObj[fieldId][kw]);
+                            if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].params.length) {
+                                const params = foundKwObj[fieldId][kw][0].params[0][0];
+                                if (params === 'include')
+                                    includeFields.push(fieldId);
+                                else if (params === 'exclude')
+                                    excludeFields.push(fieldId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            //Process view keyword
             if (!(viewId && keywords && keywords[kw])) return;
             const viewType = ktl.views.getViewType(viewId);
             if (!(keywords && keywords[kw] && (viewType === 'form' || viewType === 'table' || viewType === 'search'))) return;
@@ -10073,10 +10105,6 @@ function Ktl($, appInfo) {
             const addRecordHistoryLogViewId = ktl.core.getViewIdByTitle('Add Record History', '', true);
             if (!addRecordHistoryLogViewId) return;
 
-            let context = '';
-            let includeFields = [];
-            let excludeFields = [];
-            let expiry = '';
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const groups = keywords[kw][0].params;
                 for (const group of groups) {
@@ -10146,13 +10174,12 @@ function Ktl($, appInfo) {
                     };
                 }
 
-                if (changeLog[viewId][recordHistoryFieldIds.changes])
-                    changeLog[viewId][recordHistoryFieldIds.changes] += '\n\n';
-
                 if (view.action === 'create' || view.action === 'insert') {
-                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\t${formatValue(newValue)}`;
+                    const formattedNewValue = formatValue(newValue);
+                    if (formattedNewValue)
+                        changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\t${formattedNewValue}\n\n`;
                 } else {
-                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}`;
+                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}\n\n`;
                 }
             }
 
@@ -10268,6 +10295,8 @@ function Ktl($, appInfo) {
             function logAllChanges() {
                 for (const viewId in changeLog) {
                     if (changeLog[viewId][recordHistoryFieldIds.changes]) {
+                        changeLog[viewId][recordHistoryFieldIds.changes] = changeLog[viewId][recordHistoryFieldIds.changes].replace(/\n\n$/, '');
+
                         const apiData = changeLog[viewId];
 
                         apiData[recordHistoryFieldIds.identifier] = identifier;
