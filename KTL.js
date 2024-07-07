@@ -1910,6 +1910,40 @@ function Ktl($, appInfo) {
                 $element.css('background-image', newSvgUrl);
                 return newSvgUrl;
             },
+
+            computeFutureDateTime: function (expiryString) {
+                if (!expiryString) return;
+                const amount = parseInt(expiryString);
+                const unit = expiryString.charAt(expiryString.length - 1);
+
+                if (isNaN(amount) || !['d', 'h', 'm'].includes(unit)) {
+                    throw new Error('Invalid expiry string format');
+                }
+
+                const futureDate = new Date();
+
+                if (unit === 'd') {
+                    futureDate.setDate(futureDate.getDate() + amount);
+                } else if (unit === 'h') {
+                    futureDate.setHours(futureDate.getHours() + amount);
+                } else if (unit === 'm') {
+                    futureDate.setMinutes(futureDate.getMinutes() + amount);
+                }
+
+                const day = String(futureDate.getDate()).padStart(2, '0');
+                const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+                const year = String(futureDate.getFullYear());
+                const hours = String(futureDate.getHours()).padStart(2, '0');
+                const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+
+                const dateFormat = Knack.objects.getField(recordHistoryFieldIds.expiry).attributes.format.date_format;
+
+                if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
+                    return `${month}/${day}/${year} ${hours}:${minutes}`;
+                } else if (dateFormat === 'dd/mm/yyyy') {
+                    return `${day}/${month}/${year} ${hours}:${minutes}`;
+                }
+            }
         }
     })(); //Core
 
@@ -10241,41 +10275,7 @@ function Ktl($, appInfo) {
                         apiData[recordHistoryFieldIds.builder_history] = `${baseURL}/records/objects/${sourceObjectId}/record/${recordId}/history`;
 
                         //Calculate expiry date/time
-                        function getFutureDate(expiryString) {
-                            if (!expiryString) return;
-                            const amount = parseInt(expiryString);
-                            const unit = expiryString.charAt(expiryString.length - 1);
-
-                            if (isNaN(amount) || !['d', 'h', 'm'].includes(unit)) {
-                                throw new Error('Invalid expiry string format');
-                            }
-
-                            const futureDate = new Date();
-
-                            if (unit === 'd') {
-                                futureDate.setDate(futureDate.getDate() + amount);
-                            } else if (unit === 'h') {
-                                futureDate.setHours(futureDate.getHours() + amount);
-                            } else if (unit === 'm') {
-                                futureDate.setMinutes(futureDate.getMinutes() + amount);
-                            }
-
-                            const day = String(futureDate.getDate()).padStart(2, '0');
-                            const month = String(futureDate.getMonth() + 1).padStart(2, '0');
-                            const year = String(futureDate.getFullYear());
-                            const hours = String(futureDate.getHours()).padStart(2, '0');
-                            const minutes = String(futureDate.getMinutes()).padStart(2, '0');
-
-                            const dateFormat = Knack.objects.getField(recordHistoryFieldIds.expiry).attributes.format.date_format;
-
-                            if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
-                                return `${month}/${day}/${year} ${hours}:${minutes}`;
-                            } else if (dateFormat === 'dd/mm/yyyy') {
-                                return `${day}/${month}/${year} ${hours}:${minutes}`;
-                            }
-                        }
-
-                        const futureDate = getFutureDate(expiry);
+                        const futureDate = ktl.core.computeFutureDateTime(expiry);
                         apiData[recordHistoryFieldIds.expiry] = futureDate;
 
                         //console.log("Adding Record History entry:", JSON.stringify(apiData, null, 4));
@@ -11736,7 +11736,6 @@ function Ktl($, appInfo) {
                 const view = Knack.views[viewId];
                 const model = (view && view.model);
                 const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? model.results_model.view.columns : model.view.columns;
-
 
                 columns.forEach(col => {
                     const header = col.header.trim();
