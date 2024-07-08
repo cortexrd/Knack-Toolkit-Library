@@ -10846,9 +10846,9 @@ function Ktl($, appInfo) {
                 } else {
                     // Check if the section element already has the classes
                     if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
-                        sectionElement.addClass(
-                            `${hideShowId} ktlHideShowSection ktlBoxWithBorder`
-                        );
+                        sectionElement
+                            .addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)
+                            .css('flex-direction', 'column');
                     }
                 }
 
