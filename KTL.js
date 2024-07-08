@@ -1910,6 +1910,40 @@ function Ktl($, appInfo) {
                 $element.css('background-image', newSvgUrl);
                 return newSvgUrl;
             },
+
+            //Parameter is a number followed by d, h or m (days, hours, minutes).
+            //Ex: 90d, 48h or 30m.
+            computeFutureDateTime: function (expiryString, dateFormat) {
+                if (!expiryString) return;
+                const amount = parseInt(expiryString);
+                const unit = expiryString.charAt(expiryString.length - 1);
+
+                if (isNaN(amount) || !['d', 'h', 'm'].includes(unit)) {
+                    throw new Error('Invalid expiry string format');
+                }
+
+                const futureDate = new Date();
+
+                if (unit === 'd') {
+                    futureDate.setDate(futureDate.getDate() + amount);
+                } else if (unit === 'h') {
+                    futureDate.setHours(futureDate.getHours() + amount);
+                } else if (unit === 'm') {
+                    futureDate.setMinutes(futureDate.getMinutes() + amount);
+                }
+
+                const day = String(futureDate.getDate()).padStart(2, '0');
+                const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+                const year = String(futureDate.getFullYear());
+                const hours = String(futureDate.getHours()).padStart(2, '0');
+                const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+
+                if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
+                    return `${month}/${day}/${year} ${hours}:${minutes}`;
+                } else if (dateFormat === 'dd/mm/yyyy') {
+                    return `${day}/${month}/${year} ${hours}:${minutes}`;
+                }
+            }
         }
     })(); //Core
 
@@ -6475,7 +6509,6 @@ function Ktl($, appInfo) {
                     keywords._rdclk && redirectClick(viewId, keywords);
                     keywords._cpytxt && copyText(viewId, keywords);
                     keywords._scv && showChangedValues(viewId, keywords, data);
-                    keywords._arh && addRecordHistory(view, keywords, data);
                     keywords._vrh && viewRecordHistory(viewId, keywords);
                     keywords._hsv && hideShowView(view, keywords);
                 }
@@ -6493,6 +6526,7 @@ function Ktl($, appInfo) {
                 addTooltips(view, keywords);
                 disableFilterOnFields(view);
                 fieldIsRequired(view);
+                addRecordHistory(view, keywords, data);
 
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'form')
@@ -10029,20 +10063,53 @@ function Ktl($, appInfo) {
 
             const kw = '_arh';
             const viewId = view.key;
-            if (!(viewId && keywords && keywords[kw])) return;
-            const viewType = ktl.views.getViewType(viewId);
-            if (!(keywords && keywords[kw] && (viewType === 'form' || viewType === 'table' || viewType === 'search'))) return;
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
-                if (!ktl.core.hasRoleAccess(options)) return;
-            }
-            const addRecordHistoryLogViewId = ktl.core.getViewIdByTitle('Add Record History', '', true);
-            if (!addRecordHistoryLogViewId) return;
 
             let context = '';
             let includeFields = [];
             let excludeFields = [];
             let expiry = '';
+
+            //Process fields keywords
+            //var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            //if (!$.isEmptyObject(fieldsWithKwObj)) {
+            //    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+            //    var foundKwObj = {};
+            //    for (let i = 0; i < fieldsWithKwAr.length; i++) {
+            //        const fieldId = fieldsWithKwAr[i];
+            //        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+            //        if (!$.isEmptyObject(foundKwObj)) {
+            //            if (foundKwObj[fieldId][kw]) {
+            //                console.log('found', foundKwObj[fieldId][kw]);
+            //                if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].params.length) {
+            //                    const params = foundKwObj[fieldId][kw][0].params[0][0];
+            //                    if (params === 'include')
+            //                        includeFields.push(fieldId);
+            //                    else if (params === 'exclude')
+            //                        excludeFields.push(fieldId);
+            //                }
+            //            }
+            //        }
+            //    }
+            //}
+
+            //Process view keyword
+
+            //Don't use ktl.views.getViewType in this case.  Search views return two events: for search and table types in view.type and we need to distinguish between them.
+            const viewType = view.type;
+
+            if ((viewType === 'table' || viewType === 'search') && !data.length) return;
+
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            if (!(keywords && keywords[kw] && (viewType === 'form' || viewType === 'table' || viewType === 'search'))) return;
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            const addRecordHistoryLogViewId = ktl.core.getViewIdByTitle('Add Record History', '', true);
+            if (!addRecordHistoryLogViewId) return;
+
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const groups = keywords[kw][0].params;
                 for (const group of groups) {
@@ -10112,13 +10179,12 @@ function Ktl($, appInfo) {
                     };
                 }
 
-                if (changeLog[viewId][recordHistoryFieldIds.changes])
-                    changeLog[viewId][recordHistoryFieldIds.changes] += '\n\n';
-
                 if (view.action === 'create' || view.action === 'insert') {
-                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\t${formatValue(newValue)}`;
+                    const formattedNewValue = formatValue(newValue);
+                    if (formattedNewValue)
+                        changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\t${formattedNewValue}\n\n`;
                 } else {
-                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}`;
+                    changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\tBefore:\t${formatValue(oldValue)}\n\tAfter:\t${formatValue(newValue)}\n\n`;
                 }
             }
 
@@ -10147,6 +10213,8 @@ function Ktl($, appInfo) {
                 return JSON.stringify(oldValue) !== JSON.stringify(newValue);
             }
 
+            const objectFieldTypes = ['date_formatted', 'email', 'filename', 'url'];
+
             function compareNewAndLastData(viewId, newData, lastData, path = '') {
                 for (const key in newData) {
                     if (key.endsWith('_raw')) {
@@ -10155,27 +10223,18 @@ function Ktl($, appInfo) {
                         let newValue = newData[key];
 
                         if (typeof newValue === 'object' && newValue !== null) {
-                            if (newValue.hasOwnProperty('full')) {
+                            if (newValue.hasOwnProperty('full'))
                                 newValue = newValue.full;
-                            }
 
                             if (Array.isArray(newValue)) {
                                 const identifierObj = newValue.find(obj => obj.hasOwnProperty('identifier'));
-                                if (identifierObj) {
+                                if (identifierObj)
                                     newValue = identifierObj.identifier;
-                                }
                             }
 
-                            if (newValue.hasOwnProperty('date_formatted')) {
-                                newValue = newValue.date_formatted;
-                            }
-
-                            if (newValue.hasOwnProperty('email')) {
-                                newValue = newValue.email;
-                            }
-
-                            if (newValue.hasOwnProperty('filename')) {
-                                newValue = newValue.filename;
+                            let newValueResult = getObjectFieldValue(newValue, objectFieldTypes);
+                            if (newValueResult !== null) {
+                                newValue = newValueResult;
                             }
                         }
 
@@ -10199,33 +10258,30 @@ function Ktl($, appInfo) {
                 }
             }
 
+            function getObjectFieldValue(obj, properties) {
+                for (const prop of properties) {
+                    if (obj.hasOwnProperty(prop)) {
+                        return obj[prop];
+                    }
+                }
+                return null;
+            }
+
             function getNestedValue(obj, path) {
                 const value = path.split('.').reduce((current, key) =>
                     (current && current[key] !== undefined) ? current[key] : undefined, obj);
 
                 if (typeof value === 'object' && value !== null) {
-                    if (value.hasOwnProperty('full')) {
+                    if (value.hasOwnProperty('full'))
                         return value.full;
-                    }
 
                     if (Array.isArray(value)) {
                         const identifierObj = value.find(obj => obj.hasOwnProperty('identifier'));
-                        if (identifierObj) {
+                        if (identifierObj)
                             return identifierObj.identifier;
-                        }
                     }
 
-                    if (value.hasOwnProperty('date_formatted')) {
-                        return value.date_formatted;
-                    }
-
-                    if (value.hasOwnProperty('email')) {
-                        return value.email;
-                    }
-
-                    if (value.hasOwnProperty('filename')) {
-                        return value.filename;
-                    }
+                    return getObjectFieldValue(value, objectFieldTypes) || value;
                 }
 
                 return value;
@@ -10234,6 +10290,8 @@ function Ktl($, appInfo) {
             function logAllChanges() {
                 for (const viewId in changeLog) {
                     if (changeLog[viewId][recordHistoryFieldIds.changes]) {
+                        changeLog[viewId][recordHistoryFieldIds.changes] = changeLog[viewId][recordHistoryFieldIds.changes].replace(/\n\n$/, '');
+
                         const apiData = changeLog[viewId];
 
                         apiData[recordHistoryFieldIds.identifier] = identifier;
@@ -10241,49 +10299,14 @@ function Ktl($, appInfo) {
                         apiData[recordHistoryFieldIds.builder_history] = `${baseURL}/records/objects/${sourceObjectId}/record/${recordId}/history`;
 
                         //Calculate expiry date/time
-                        function getFutureDate(expiryString) {
-                            if (!expiryString) return;
-                            const amount = parseInt(expiryString);
-                            const unit = expiryString.charAt(expiryString.length - 1);
-
-                            if (isNaN(amount) || !['d', 'h', 'm'].includes(unit)) {
-                                throw new Error('Invalid expiry string format');
-                            }
-
-                            const futureDate = new Date();
-
-                            if (unit === 'd') {
-                                futureDate.setDate(futureDate.getDate() + amount);
-                            } else if (unit === 'h') {
-                                futureDate.setHours(futureDate.getHours() + amount);
-                            } else if (unit === 'm') {
-                                futureDate.setMinutes(futureDate.getMinutes() + amount);
-                            }
-
-                            const day = String(futureDate.getDate()).padStart(2, '0');
-                            const month = String(futureDate.getMonth() + 1).padStart(2, '0');
-                            const year = String(futureDate.getFullYear());
-                            const hours = String(futureDate.getHours()).padStart(2, '0');
-                            const minutes = String(futureDate.getMinutes()).padStart(2, '0');
-
-                            const dateFormat = Knack.objects.getField(recordHistoryFieldIds.expiry).attributes.format.date_format;
-
-                            if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
-                                return `${month}/${day}/${year} ${hours}:${minutes}`;
-                            } else if (dateFormat === 'dd/mm/yyyy') {
-                                return `${day}/${month}/${year} ${hours}:${minutes}`;
-                            }
-                        }
-
-                        const futureDate = getFutureDate(expiry);
+                        const futureDate = ktl.core.computeFutureDateTime(expiry, Knack.objects.getField(recordHistoryFieldIds.expiry).attributes.format.date_format);
                         apiData[recordHistoryFieldIds.expiry] = futureDate;
 
-                        //console.log("Adding Record History entry:", JSON.stringify(apiData, null, 4));
                         ktl.core.knAPI(addRecordHistoryLogViewId, null, apiData, 'POST')
                             .then(function (response) {
                                 if (ktl.account.isDeveloper()) {
                                     ktl.log.clog('green', 'Record History submitted successfully');
-                                    console.log('response =', JSON.stringify(response, null, 4));
+                                    //console.log('response =', JSON.stringify(response, null, 4));
                                 }
                             })
                             .catch(function (reason) {
@@ -10303,8 +10326,10 @@ function Ktl($, appInfo) {
 
                 if (view.action === 'create' || view.action === 'insert')
                     viewData_arh[viewId] = {};
-                else
-                    viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
+                else {
+                    if (view.type === 'form')
+                        viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
+                }
 
                 logAllChanges();
             }
@@ -10312,7 +10337,7 @@ function Ktl($, appInfo) {
             if (viewType === 'form')
                 updateDataAndLogDeltas(viewId, data);
             else {
-                $(document).off(`click.ktl_arh`).on(`click.ktl_arh`, `#${viewId} .cell-edit`, function (event) {
+                $(document).off(`click.ktl_arh.${viewId}`).on(`click.ktl_arh.${viewId}`, `#${viewId} .cell-edit`, function (event) {
                     const row = event.target.closest('tr[id]');
                     if (row) {
                         const recordId = row.id;
@@ -10326,7 +10351,6 @@ function Ktl($, appInfo) {
                         }
 
                         viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
-                        updateDataAndLogDeltas(viewId, record);
                     }
                 });
             }
@@ -10373,32 +10397,32 @@ function Ktl($, appInfo) {
             }
 
             // Add new header cell with label "History" by default.
-            const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktlArhView")`);
+            const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktl_vrh")`);
             if (headerRow.length) {
-                const newHeaderCell = $(`<th style="text-align: ${align};"><span class="table-fixed-label ktlArhView" style="display: inline-flex;"><span>${header}</span></span></th>`);
+                const newHeaderCell = $(`<th style="text-align: ${align};"><span class="table-fixed-label ktl_vrh" style="display: inline-flex;"><span>${header}</span></span></th>`);
                 headerRow.append(newHeaderCell);
-                $(headerRow).addClass('ktlArhView');
-            }
+                $(headerRow).addClass('ktl_vrh');
 
-            // Add new column with icon to click on to view record history.
-            const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktlArhView")`));
-            for (const row of rows) {
-                if ($(row).hasClass('kn-table-totals')) {
-                    $(row).append('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); //Fix alignemnt for Summaries.
-                } else {
-                    const newCell = document.createElement('td');
-                    const iconLink = document.createElement('a');
-                    iconLink.href = `#${viewRecordHistorySlug}`;
-                    iconLink.setAttribute('data-kn-slug', '#view-record-history');
-                    iconLink.innerHTML = `<i class="fa ${icon}" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>`;
-                    $(iconLink).addClass('ktl_vrh');
+                // Add new column with icon to click on to view record history.
+                const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktl_vrh")`));
+                for (const row of rows) {
+                    if ($(row).hasClass('kn-table-totals')) {
+                        $(row).append('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); //Fix alignemnt for Summaries.
+                    } else {
+                        const newCell = document.createElement('td');
+                        const iconLink = document.createElement('a');
+                        iconLink.href = `#${viewRecordHistorySlug}`;
+                        iconLink.setAttribute('data-kn-slug', '#view-record-history');
+                        iconLink.innerHTML = `<i class="fa ${icon}" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>`;
+                        $(iconLink).addClass('ktl_vrh');
 
-                    $(newCell).css({ 'text-align': `${align}` });
-                    newCell.appendChild(iconLink);
-                    row.appendChild(newCell);
+                        $(newCell).css({ 'text-align': `${align}` });
+                        newCell.appendChild(iconLink);
+                        row.appendChild(newCell);
+                    }
+
+                    $(row).addClass('ktl_vrh');
                 }
-
-                $(row).addClass('ktlArhView');
             }
 
             // Add click event handler with jQuery
@@ -11737,7 +11761,6 @@ function Ktl($, appInfo) {
                 const model = (view && view.model);
                 const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? model.results_model.view.columns : model.view.columns;
 
-
                 columns.forEach(col => {
                     const header = col.header.trim();
                     if (headers.includes(header) || fields.includes(col.id)) {
@@ -12913,6 +12936,7 @@ function Ktl($, appInfo) {
                 let view = Knack.views[viewId];
                 if (view)
                     return view.model.view;
+                    //return (view.model.results_model && view.model.results_model.view) ? view.model.results_model.view : view.model.view;
                 else {
                     const scenes = Knack.scenes.models;
                     for (const scene of scenes) {
