@@ -10767,11 +10767,6 @@ function Ktl($, appInfo) {
 
             if (!viewId && !keywords && !keywords[kw]) return;
 
-            if (viewType === 'search') {
-                console.log('_hsv Doesn\'t work with search Grids on ' + viewId);
-                return;
-            }
-
             if (keywords[kw].length && keywords[kw][0].params) {
                 const [delayParam, showViewOnLoadParam] =
                     keywords[kw][0].params[0];
