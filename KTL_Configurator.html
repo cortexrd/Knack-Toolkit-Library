@@ -621,6 +621,14 @@
                                 <input type="text" class="form-control" id="ktlOutlineColor" value="green">
                             </div>
                             <div class="form-inline">
+                                <label for="ktlHideShowButtonColor">KTL Hide Show View Button Color</label>
+                                <input type="text" class="form-control" id="ktlHideShowButtonColor" value="#222222">
+                            </div>
+                            <div class="checkbox-inline">
+                                <label for="stickGroupingsWithHeader">Apply Sticky Groupings To Grids With Sticky Headers</label>
+                                <input type="checkbox" id="stickGroupingsWithHeader">
+                            </div>
+                            <div class="form-inline">
                                 <label for="hscCollapsedColumnsWidth">HSC Collapsed Columns Width (in pixels)</label>
                                 <input type="number" class="form-control" id="hscCollapsedColumnsWidth" value="5">
                             </div>
@@ -1236,6 +1244,8 @@ window.ktlReady = function (appInfo = {}) {
         headerAlignment: ${document.getElementById('headerAlignment').checked},
         ktlFlashRate: '${document.getElementById('ktlFlashRate').value}',
         ktlOutlineColor: '${document.getElementById('ktlOutlineColor').value}',
+        ktlHideShowButtonColor: '${document.getElementById('ktlHideShowButtonColor').value}',
+        stickGroupingsWithHeader: ${document.getElementById('stickGroupingsWithHeader').checked},
         hscCollapsedColumnsWidth: '${document.getElementById('hscCollapsedColumnsWidth').value}',
         hscGlobal: ${document.getElementById('hscGlobal').checked},
     });
@@ -1422,6 +1432,8 @@ window.ktlReady = function (appInfo = {}) {
                     headerAlignment: document.getElementById('headerAlignment').checked,
                     ktlFlashRate: document.getElementById('ktlFlashRate').value,
                     ktlOutlineColor: document.getElementById('ktlOutlineColor').value,
+                    ktlHideShowButtonColor: document.getElementById('ktlHideShowButtonColor').value,
+                    stickGroupingsWithHeader: document.getElementById('stickGroupingsWithHeader').checked,
                     hscCollapsedColumnsWidth: document.getElementById('hscCollapsedColumnsWidth').value,
                     hscGlobal: document.getElementById('hscGlobal').checked
                 },
@@ -1570,18 +1582,21 @@ window.ktlReady = function (appInfo = {}) {
                     document.getElementById('spinnerCtrDelay').value = config.scenesSettings.spinnerCtrDelay;
                     document.getElementById('spinnerWdExcludeScn').value = config.scenesSettings.spinnerWdExcludeScn.join(', ');
 
-                    const qtParams = config.viewsSettings.quickToggleParams;
+                    const viewSettings = config.viewsSettings;
+                    const qtParams = viewSettings.quickToggleParams;
                     document.getElementById('bgColorTrue').value = qtParams.bgColorTrue;
                     document.getElementById('bgColorFalse').value = qtParams.bgColorFalse;
                     document.getElementById('bgColorPending').value = qtParams.bgColorPending;
                     document.getElementById('showSpinner').checked = qtParams.showSpinner;
                     document.getElementById('showNotification').checked = qtParams.showNotification;
                     document.getElementById('pendingClass').value = qtParams.pendingClass ? qtParams.pendingClass:'';
-                    document.getElementById('headerAlignment').checked = config.viewsSettings.headerAlignment;
-                    document.getElementById('ktlFlashRate').value = config.viewsSettings.ktlFlashRate;
-                    document.getElementById('ktlOutlineColor').value = config.viewsSettings.ktlOutlineColor;
-                    document.getElementById('hscCollapsedColumnsWidth').value = config.viewsSettings.hscCollapsedColumnsWidth;
-                    document.getElementById('hscGlobal').checked = config.viewsSettings.hscGlobal;
+                    document.getElementById('headerAlignment').checked = viewsSettings.headerAlignment;
+                    document.getElementById('ktlFlashRate').value = viewsSettings.ktlFlashRate;
+                    document.getElementById('ktlOutlineColor').value = viewsSettings.ktlOutlineColor;
+                    document.getElementById('ktlHideShowButtonColor').value = viewsSettings.ktlHideShowButtonColor ? viewsSettings.ktlHideShowButtonColor : '#222222';
+                    document.getElementById('stickGroupingsWithHeader').checked = viewsSettings.stickGroupingsWithHeader ? viewsSettings.stickGroupingsWithHeader : false;
+                    document.getElementById('hscCollapsedColumnsWidth').value = viewsSettings.hscCollapsedColumnsWidth;
+                    document.getElementById('hscGlobal').checked = viewsSettings.hscGlobal;
 
                     document.getElementById('textAsNumeric').value = config.fieldsSettings.textAsNumeric.join(', ');
                     document.getElementById('textAsNumericExcludeScenes').value = config.fieldsSettings.textAsNumericExcludeScenes.join(', ');
