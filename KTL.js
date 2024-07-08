@@ -10767,6 +10767,9 @@ function Ktl($, appInfo) {
 
             if (!viewId && !keywords && !keywords[kw]) return;
 
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType === 'search') return;
+
             if (keywords[kw].length && keywords[kw][0].params) {
                 const [delayParam, showViewOnLoadParam] =
                     keywords[kw][0].params[0];
@@ -10870,9 +10873,9 @@ function Ktl($, appInfo) {
                 } else {
                     // Check if the section element already has the classes
                     if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
-                        sectionElement.addClass(
-                            `${hideShowId} ktlHideShowSection ktlBoxWithBorder`
-                        );
+                        sectionElement
+                            .addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)
+                            .css('flex-direction', 'column');
                     }
                 }
 
@@ -10892,6 +10895,9 @@ function Ktl($, appInfo) {
 
                 if (cfgObj.headerAlignment !== undefined)
                     cfg.headerAlignment = cfgObj.headerAlignment;
+                if (cfgObj.stickGroupingsWithHeader !== undefined)
+                    cfg.stickGroupingsWithHeader = cfgObj.stickGroupingsWithHeader;
+                
 
                 if (cfgObj.ktlFlashRate !== undefined) {
                     cfg.ktlFlashRate = cfgObj.ktlFlashRate;
@@ -10905,7 +10911,7 @@ function Ktl($, appInfo) {
                     cfg.ktlHideShowButtonColor = cfgObj.ktlHideShowButtonColor;
                     document.documentElement.style.setProperty('--ktlHideShowButtonColor', cfg.ktlHideShowButtonColor);
                 }
-
+                
                 cfgObj.hscCollapsedColumnsWidth && (cfg.hscCollapsedColumnsWidth = Math.max(Math.min(cfgObj.hscCollapsedColumnsWidth, 500), 0));
                 cfgObj.hscGlobal && (cfg.hscGlobal = cfgObj.hscGlobal);
                 cfgObj.hscAllowed && (cfg.hscAllowed = cfgObj.hscAllowed);
@@ -13788,12 +13794,30 @@ function Ktl($, appInfo) {
              * @param {number} viewHeight */
             stickTableHeader: function (viewId, viewHeight) {
                 if (!Knack.app.attributes.design.regions.header.isLegacy)
-                    $(`.knHeader__menu-dropdown-list`).css({ 'z-index': '5' }); //4 works, 5 for safety margin.
+                    $(`.knHeader__menu-dropdown-list`).css({ 'z-index': '5' });
 
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
                     .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
+
+                if (cfg.stickGroupingsWithHeader) {
+                    let tableHeaderHeight = $(`#${viewId} thead tr th:first`).outerHeight() - 11;
+                    let currentOffset = tableHeaderHeight;
+
+                    $(`#${viewId} .kn-table-group`).each(function(index) {
+                        let groupHeaderHeight = $(this).outerHeight();
+                        let topOffset = currentOffset;
+
+                        $(this).css({
+                            'position': 'sticky',
+                            'top': `${topOffset - (index === 0 ? 0 : 6)}px`,
+                            'z-index': '1'
+                        });
+
+                        currentOffset += groupHeaderHeight - 5;
+                    });
+                }
             },
 
             /** Stick table Columns
