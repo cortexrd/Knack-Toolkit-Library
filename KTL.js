@@ -10900,7 +10900,6 @@ function Ktl($, appInfo) {
                     cfg.headerAlignment = cfgObj.headerAlignment;
                 if (cfgObj.stickGroupingsWithHeader !== undefined)
                     cfg.stickGroupingsWithHeader = cfgObj.stickGroupingsWithHeader;
-                
 
                 if (cfgObj.ktlFlashRate !== undefined) {
                     cfg.ktlFlashRate = cfgObj.ktlFlashRate;
