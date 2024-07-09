@@ -10768,10 +10768,9 @@ function Ktl($, appInfo) {
             if (!viewId && !keywords && !keywords[kw]) return;
 
             if (keywords[kw].length && keywords[kw][0].params) {
-                const [delayParam, showViewOnLoadParam] =
-                    keywords[kw][0].params[0];
+                const [delayParam, showViewOnLoadParam] = keywords[kw][0].params[0];
                 delay = parseInt(delayParam, 10) || delay;
-                showViewOnLoad = showViewOnLoadParam === true;
+                showViewOnLoad = showViewOnLoadParam === 'true';
             }
 
             const hideShowId = `hideShow_${viewId}`;
