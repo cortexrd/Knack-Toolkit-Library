@@ -10150,15 +10150,15 @@ function Ktl($, appInfo) {
             }
 
             $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
-                //$.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
+                $.blockUI({ message: '', overlayCSS: { backgroundColor: '#fff', opacity: 0, } });
 
                 identifier = record[identifierFieldId];
                 updateDataAndLogDeltas(viewId, record);
 
-                //$(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, () => {
-                //    console.log('render after submit', viewId);
-                //    $.unblockUI();
-                //});
+                $(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, () => {
+                    //console.log('render after submit', viewId);
+                    $.unblockUI();
+                });
 
             })
 
@@ -10328,15 +10328,15 @@ function Ktl($, appInfo) {
             function updateDataAndLogDeltas(viewId, record) {
                 recordId = record.id;
 
-                const lastData = viewData_arh[viewId];
+                const lastData = viewData_arh[recordId];
                 if (lastData !== undefined)
                     compareNewAndLastData(viewId, record, lastData);
 
                 if (view.action === 'create' || view.action === 'insert')
-                    viewData_arh[viewId] = {};
+                    viewData_arh[recordId] = {};
                 else {
                     if (view.type === 'form')
-                        viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
+                        viewData_arh[recordId] = JSON.parse(JSON.stringify(record));
                 }
 
                 logAllChanges();
@@ -10358,7 +10358,7 @@ function Ktl($, appInfo) {
                                 record = record[0];
                         }
 
-                        viewData_arh[viewId] = JSON.parse(JSON.stringify(record));
+                        viewData_arh[recordId] = JSON.parse(JSON.stringify(record));
                     }
                 });
             }
