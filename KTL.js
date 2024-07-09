@@ -13793,10 +13793,10 @@ function Ktl($, appInfo) {
                                     return `${stickyTopOffset + outerHeight * groupIndex}px`;
                                 },
                                 'z-index': '4',
-                                'color': 'white',
+                                'color': 'black',
                             })
                             .find('td')
-                            .css('background-color', '#5e5e5e');;
+                            .css('background-color', '#c7c7c7');;
                         });
                     });
                 }
