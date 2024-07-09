@@ -3140,7 +3140,7 @@ function Ktl($, appInfo) {
 
                     //Prevent entering text in form's fields.
                     /*
-                     * Disabled for now.  Could be useful with an option in the keyword, 
+                     * Disabled for now.  Could be useful with an option in the keyword,
                      * to prevent barcode data from being inserted in user's text in fields.
                     */
                     //$(document).keydown(function (e) {
@@ -10768,7 +10768,7 @@ function Ktl($, appInfo) {
             if (!viewId && !keywords && !keywords[kw]) return;
 
             if (keywords[kw].length && keywords[kw][0].params) {
-                const [delayParam, showViewOnLoadParam] = keywords[kw][0].params[0];
+                const [delayParam, showViewOnLoadParam = ''] = keywords[kw][0].params[0];
                 delay = parseInt(delayParam, 10) || delay;
                 showViewOnLoad = showViewOnLoadParam.toLowerCase() === 'true';
             }
@@ -13766,28 +13766,38 @@ function Ktl($, appInfo) {
              * @param {number} viewHeight */
             stickTableHeader: function (viewId, viewHeight) {
                 if (!Knack.app.attributes.design.regions.header.isLegacy)
-                    $(`.knHeader__menu-dropdown-list`).css({ 'z-index': '5' });
-
+                    $('.knHeader__menu-dropdown-list').css('z-index', '5');
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
                     .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
 
                 if (cfg.stickGroupingsWithHeader) {
-                    let tableHeaderHeight = $(`#${viewId} thead tr th:first`).outerHeight() - 11;
-                    let currentOffset = tableHeaderHeight;
+                    ktl.core.waitSelector(`#${viewId} thead tr`).then(() => {
+                        const headerHeight = $(`#${viewId} thead tr`).outerHeight();
+                        let stickyTopOffset = headerHeight - 2;
 
-                    $(`#${viewId} .kn-table-group`).each(function(index) {
-                        let groupHeaderHeight = $(this).outerHeight();
-                        let topOffset = currentOffset;
-
-                        $(this).css({
-                            'position': 'sticky',
-                            'top': `${topOffset - (index === 0 ? 0 : 6)}px`,
-                            'z-index': '1'
+                        let groupLevels = new Set();
+                        $(`#${viewId} tbody tr[class*='kn-group-level-']`).each(function() {
+                            if (this.className.includes('kn-group-level-')) {
+                                groupLevels.add(this.className.match(/kn-group-level-\d+/)[0]);
+                            }
                         });
 
-                        currentOffset += groupHeaderHeight - 5;
+                        groupLevels.forEach(groupLevel => {
+                            $(`#${viewId} tbody tr.${groupLevel}`).css({
+                                'position': 'sticky',
+                                'top': function() {
+                                    const groupIndex = parseInt(groupLevel.split('-')[3], 10) - 1;
+                                    const outerHeight = $('.kn-table-group:first').outerHeight();
+                                    return `${stickyTopOffset + outerHeight * groupIndex}px`;
+                                },
+                                'z-index': '4',
+                                'color': 'black',
+                            })
+                            .find('td')
+                            .css('background-color', '#c7c7c7');;
+                        });
                     });
                 }
             },
