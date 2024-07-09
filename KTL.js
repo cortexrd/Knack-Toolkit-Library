@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.4';
+    const KTL_VERSION = '0.27.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -10434,7 +10434,7 @@ function Ktl($, appInfo) {
             }
 
             // Add click event handler with jQuery
-            $(document).off('click.ktl_vrh').on('click.ktl_vrh', 'a[data-kn-slug="#view-record-history"].ktl_vrh', function (event) {
+            $(document).off('click.ktl_vrh').on('click.ktl_vrh', `#${viewId} a[data-kn-slug="#view-record-history"].ktl_vrh`, function (event) {
                 Knack.scenes._byId[viewRecordHistorySlug].attributes.modal = true; //Force scene to modal.
                 const row = event.target.closest('tr[id]');
                 if (row) {
