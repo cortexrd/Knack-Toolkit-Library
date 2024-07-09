@@ -10768,10 +10768,9 @@ function Ktl($, appInfo) {
             if (!viewId && !keywords && !keywords[kw]) return;
 
             if (keywords[kw].length && keywords[kw][0].params) {
-                const [delayParam, showViewOnLoadParam] =
-                    keywords[kw][0].params[0];
+                const [delayParam, showViewOnLoadParam] = keywords[kw][0].params[0];
                 delay = parseInt(delayParam, 10) || delay;
-                showViewOnLoad = showViewOnLoadParam || showViewOnLoad;
+                showViewOnLoad = showViewOnLoadParam.toLowerCase() === 'true';
             }
 
             const hideShowId = `hideShow_${viewId}`;
@@ -10792,49 +10791,33 @@ function Ktl($, appInfo) {
                 const arrowSelector = $(`#arrow_${hideShowId}`);
                 const shrinkLinkSelector = $(`#shrink-link_${hideShowId}`);
                 const hiddenSelector = $(`.${hideShowId}`);
-                toggleHideShowContent(
-                    buttonSelector,
-                    hiddenSelector,
-                    arrowSelector,
-                    delay
-                );
-                hideContent(
-                    shrinkLinkSelector,
-                    hiddenSelector,
-                    arrowSelector,
-                    delay,
-                    buttonSelector
-                );
+
+                toggleHideShowContent(buttonSelector, hiddenSelector, arrowSelector, delay);
+                hideContent(shrinkLinkSelector, hiddenSelector, arrowSelector, delay, buttonSelector);
             }
 
             function toggleHideShowContent(buttonSelector, hiddenSelector, arrowSelector, delay) {
-                buttonSelector
-                    .off('click.hideShow')
-                    .on('click.hideShow', function () {
-                        hiddenSelector.slideToggle(delay);
-                        arrowSelector.toggleClass('ktlDown ktlUp');
-                        buttonSelector.toggleClass('ktlActive');
-                    });
+                buttonSelector.off('click.hideShow').on('click.hideShow', function () {
+                    hiddenSelector.slideToggle(delay);
+                    arrowSelector.toggleClass('ktlDown ktlUp');
+                    buttonSelector.toggleClass('ktlActive');
+                });
             }
 
             function hideContent(shrinkLinkSelector, hiddenSelector, arrowSelector, delay, buttonSelector) {
-                shrinkLinkSelector
-                    .off('click.shrinkLink')
-                    .on('click.shrinkLink', function () {
-                        hiddenSelector.slideUp(delay);
-                        arrowSelector.removeClass('ktlUp').addClass('ktlDown');
-                        buttonSelector.removeClass('ktlActive');
-                    });
+                shrinkLinkSelector.off('click.shrinkLink').on('click.shrinkLink', () => {
+                    hiddenSelector.slideUp(delay);
+                    arrowSelector.removeClass('ktlUp').addClass('ktlDown');
+                    buttonSelector.removeClass('ktlActive');
+                });
             }
 
             function appendShrinkLink(wrapperId, hideShowId) {
                 const shrinkLinkHTML = `<a class="ktlHideShowButton ktlShrinkLink" id="shrink-link_${hideShowId}">Shrink &nbsp;<span class="ktlArrow ktlUp" id="arrow_${hideShowId}">◀</span></a>`;
                 const shrinkLinkSelector = $(`#shrink-link_${hideShowId}`);
 
-                if (shrinkLinkSelector.length === 0) {
-                    $(`#${wrapperId}`)
-                        .find('.ktlHideShowSection')
-                        .append(shrinkLinkHTML);
+                if (!shrinkLinkSelector.length) {
+                    $(`#${wrapperId} .ktlHideShowSection`).append(shrinkLinkHTML);
                 }
             }
 
@@ -10843,7 +10826,7 @@ function Ktl($, appInfo) {
                 const titleText = viewTitle.text();
                 const hideShowBtnHTML = `<div class="ktlHideShowButton" id="hide-show_${hideShowId}">${titleText} &nbsp;<span class="ktlArrow ktlDown" id="arrow_${hideShowId}">◀</span></div>`;
 
-                if ($(`#hide-show_${hideShowId}`).length === 0) {
+                if (!$(`#hide-show_${hideShowId}`).length) {
                     viewTitle.html(hideShowBtnHTML);
                 }
             }
@@ -10861,23 +10844,16 @@ function Ktl($, appInfo) {
 
                 if (wrapper) {
                     const wrapperElement = viewElement.find(wrapper);
-                    // Check if the wrapper element is already wrapped
                     if (!wrapperElement.closest('section').length) {
-                        wrapperElement.wrapAll(
-                            `<section class='${hideShowId} ktlHideShowSection ktlBoxWithBorder' />`
-                        );
+                        wrapperElement.wrapAll(`<section class='${hideShowId} ktlHideShowSection ktlBoxWithBorder' />`);
                     }
                 } else {
-                    // Check if the section element already has the classes
                     if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
-                        sectionElement.addClass(
-                            `${hideShowId} ktlHideShowSection ktlBoxWithBorder`
-                        );
+                        sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`).css('flex-direction', 'column');
                     }
                 }
-
                 if (!showViewOnLoad) {
-                    sectionElement.hide();
+                    viewElement.find('section').hide();
                 }
             }
         }
@@ -10892,6 +10868,8 @@ function Ktl($, appInfo) {
 
                 if (cfgObj.headerAlignment !== undefined)
                     cfg.headerAlignment = cfgObj.headerAlignment;
+                if (cfgObj.stickGroupingsWithHeader !== undefined)
+                    cfg.stickGroupingsWithHeader = cfgObj.stickGroupingsWithHeader;
 
                 if (cfgObj.ktlFlashRate !== undefined) {
                     cfg.ktlFlashRate = cfgObj.ktlFlashRate;
@@ -13788,12 +13766,30 @@ function Ktl($, appInfo) {
              * @param {number} viewHeight */
             stickTableHeader: function (viewId, viewHeight) {
                 if (!Knack.app.attributes.design.regions.header.isLegacy)
-                    $(`.knHeader__menu-dropdown-list`).css({ 'z-index': '5' }); //4 works, 5 for safety margin.
+                    $(`.knHeader__menu-dropdown-list`).css({ 'z-index': '5' });
 
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
                     .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
+
+                if (cfg.stickGroupingsWithHeader) {
+                    let tableHeaderHeight = $(`#${viewId} thead tr th:first`).outerHeight() - 11;
+                    let currentOffset = tableHeaderHeight;
+
+                    $(`#${viewId} .kn-table-group`).each(function(index) {
+                        let groupHeaderHeight = $(this).outerHeight();
+                        let topOffset = currentOffset;
+
+                        $(this).css({
+                            'position': 'sticky',
+                            'top': `${topOffset - (index === 0 ? 0 : 6)}px`,
+                            'z-index': '1'
+                        });
+
+                        currentOffset += groupHeaderHeight - 5;
+                    });
+                }
             },
 
             /** Stick table Columns
