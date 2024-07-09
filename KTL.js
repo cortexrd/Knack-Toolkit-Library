@@ -10805,7 +10805,7 @@ function Ktl($, appInfo) {
             }
 
             function toggleHideShowContent(buttonSelector, hiddenSelector, arrowSelector, delay) {
-                buttonSelector.off('click.hideShow').on('click.hideShow', function () {
+                buttonSelector.off('click.ktl_hsv').on('click.ktl_hsv', function () {
                     hiddenSelector.slideToggle(delay);
                     arrowSelector.toggleClass('ktlDown ktlUp');
                     buttonSelector.toggleClass('ktlActive');
@@ -10813,7 +10813,7 @@ function Ktl($, appInfo) {
             }
 
             function hideContent(shrinkLinkSelector, hiddenSelector, arrowSelector, delay, buttonSelector) {
-                shrinkLinkSelector.off('click.shrinkLink').on('click.shrinkLink', () => {
+                shrinkLinkSelector.off('click.ktl_hsv_shrinkLink').on('click.ktl_hsv_shrinkLink', () => {
                     hiddenSelector.slideUp(delay);
                     arrowSelector.removeClass('ktlUp').addClass('ktlDown');
                     buttonSelector.removeClass('ktlActive');
