@@ -10150,8 +10150,16 @@ function Ktl($, appInfo) {
             }
 
             $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
+                //$.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
+
                 identifier = record[identifierFieldId];
                 updateDataAndLogDeltas(viewId, record);
+
+                //$(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, () => {
+                //    console.log('render after submit', viewId);
+                //    $.unblockUI();
+                //});
+
             })
 
             const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
@@ -15411,7 +15419,7 @@ function Ktl($, appInfo) {
             if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
                 $('#' + view.key + ' .cell-edit.' + bulkOpsLudFieldId).addClass('ktlNoInlineEdit');
                 $('#' + view.key + ' .cell-edit.' + bulkOpsLubFieldId).addClass('ktlNoInlineEdit');
-                $(document).off('knack-cell-update.' + view.key).on('knack-cell-update.' + view.key, function (event, view, record) {
+                $(document).off(`knack-cell-update.${view.key}.ktl_lud`).on(`knack-cell-update.${view.key}.ktl_lud`, function (event, view, record) {
                     Knack.showSpinner();
                     var apiData = {};
                     apiData[bulkOpsLudFieldId] = ktl.core.getFormattedCurrentDateTime(Knack.fields[bulkOpsLudFieldId].attributes.format.date_format);
