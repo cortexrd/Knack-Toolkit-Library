@@ -289,8 +289,8 @@ function Ktl($, appInfo) {
     //Searches a selector for text like : contains, but with an exact match, and after a spaces trim.
     $.expr[':'].textEquals = function (el, i, m) {
         let searchText = m[3];
-        let match = $(el).text().replace('*', '').trim().match('^' + searchText + '$'); //Remove * for Required fields.
-        return match && match.length > 0;
+        let elementText = $(el).text().replace('*', '').trim(); //Remove * for Required fields.
+        return elementText === searchText;
     }
 
     //Checks is selected element is visible or off screen.
@@ -12922,7 +12922,7 @@ function Ktl($, appInfo) {
                 let view = Knack.views[viewId];
                 if (view)
                     return view.model.view;
-                    //return (view.model.results_model && view.model.results_model.view) ? view.model.results_model.view : view.model.view;
+                //return (view.model.results_model && view.model.results_model.view) ? view.model.results_model.view : view.model.view;
                 else {
                     const scenes = Knack.scenes.models;
                     for (const scene of scenes) {
@@ -13786,7 +13786,7 @@ function Ktl($, appInfo) {
                         let stickyTopOffset = headerHeight - 2;
 
                         let groupLevels = new Set();
-                        $(`#${viewId} tbody tr[class*='kn-group-level-']`).each(function() {
+                        $(`#${viewId} tbody tr[class*='kn-group-level-']`).each(function () {
                             if (this.className.includes('kn-group-level-')) {
                                 groupLevels.add(this.className.match(/kn-group-level-\d+/)[0]);
                             }
@@ -13795,7 +13795,7 @@ function Ktl($, appInfo) {
                         groupLevels.forEach(groupLevel => {
                             $(`#${viewId} tbody tr.${groupLevel}`).css({
                                 'position': 'sticky',
-                                'top': function() {
+                                'top': function () {
                                     const groupIndex = parseInt(groupLevel.split('-')[3], 10) - 1;
                                     const outerHeight = $('.kn-table-group:first').outerHeight();
                                     return `${stickyTopOffset + outerHeight * groupIndex}px`;
@@ -13803,8 +13803,8 @@ function Ktl($, appInfo) {
                                 'z-index': '4',
                                 'color': 'black',
                             })
-                            .find('td')
-                            .css('background-color', '#c7c7c7');;
+                                .find('td')
+                                .css('background-color', '#c7c7c7');;
                         });
                     });
                 }
