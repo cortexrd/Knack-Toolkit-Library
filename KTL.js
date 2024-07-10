@@ -10843,7 +10843,7 @@ function Ktl($, appInfo) {
                 const wrappers = {
                     table: '.kn-table-wrapper, .kn-records-nav',
                     form: 'form, .kn-form-confirmation',
-                    list: '.kn-list-content',
+                    list: '.kn-list-content, .kn-records-nav',
                 };
 
                 const wrapper = wrappers[viewType];
@@ -10857,11 +10857,11 @@ function Ktl($, appInfo) {
                     }
                 } else {
                     if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
-                        sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`).css('flex-direction', 'column');
+                        sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)
                     }
                 }
                 if (!showViewOnLoad) {
-                    viewElement.find('section').hide();
+                    viewElement.find('section.ktlHideShowSection').css('flex-direction', 'column').hide();
                 }
             }
         }
