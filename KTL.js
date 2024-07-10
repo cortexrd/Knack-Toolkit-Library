@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.5';
+    const KTL_VERSION = '0.27.6';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -10445,7 +10445,7 @@ function Ktl($, appInfo) {
                         const viewObj = view.model.view;
                         const viewId = viewObj.key;
                         if (viewId === viewRecordHistoryViewId) {
-                            if (filterRoles.length && !ktl.account.matchUserRoles(filterRoles))
+                            if (filterRoles.length && (ktl.account.matchUserRoles(filterRoles) === false))
                                 Knack.views[viewId].model.view.filter = false;
 
                             //Apply filter on record ID.
@@ -10857,7 +10857,7 @@ function Ktl($, appInfo) {
                     }
                 } else {
                     if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
-                        sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)
+                        sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`);
                     }
                 }
                 if (!showViewOnLoad) {
@@ -16078,17 +16078,21 @@ function Ktl($, appInfo) {
 
             matchUserRoles: function (roles = []) {
                 const userRoles = Knack.getUserRoleNames().split(', ');
+                const canIncludeRoles = roles.filter(role => !role.startsWith('!'));
+                const cannotIncludeRoles = roles.filter(role => role.startsWith('!')).map(role => role.slice(1));
 
-                if (ktl.storage.lsGetItem('forceDevRole', true) === 'true')
-                    userRoles.push('Developer');
+                if (roles.length === 0)
+                    return true;
 
-                return roles.every(role => {
-                    if (role.startsWith('!')) {
-                        return !userRoles.includes(role.replace('!', ''));
-                    }
+                let result = false;
 
-                    return userRoles.includes(role);
-                });
+                if (canIncludeRoles.length > 0)
+                    result = userRoles.some(userRole => canIncludeRoles.includes(userRole));
+
+                if (cannotIncludeRoles.length > 0)
+                    result = result && !userRoles.some(userRole => cannotIncludeRoles.includes(userRole));
+
+                return result;
             },
 
             updateLocalIP: function () {
