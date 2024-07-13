@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.6';
+    const KTL_VERSION = '0.27.7';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6443,7 +6443,7 @@ function Ktl($, appInfo) {
         });
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
-        function ktlProcessKeywords(view, data) {
+        function ktlProcessKeywords(view, data = []) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
 
             if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key)) {
@@ -7019,7 +7019,7 @@ function Ktl($, appInfo) {
             let numOfRecords = 10;
             let viewHeight = 800;
 
-            if (!keywords[kw]) return;
+            if (!keywords[kw] || !data) return;
 
             if (keywords[kw].length) {
                 numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
@@ -10155,8 +10155,7 @@ function Ktl($, appInfo) {
                 identifier = record[identifierFieldId];
                 updateDataAndLogDeltas(viewId, record);
 
-                $(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, () => {
-                    //console.log('render after submit', viewId);
+                $(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, (event, view, data) => {
                     $.unblockUI();
                 });
 
@@ -10962,10 +10961,13 @@ function Ktl($, appInfo) {
                                     }
 
                                     //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
-                                    if (viewType === 'search') //Do not call render() in search views because it erases the top form section.
+                                    if (viewType === 'search') {
+                                        //Do not call render() in search views because it erases the top form section.
                                         Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-                                    else
+                                        ktlProcessKeywords(view.attributes);
+                                    } else {
                                         Knack.views[viewId].render();
+                                    }
 
                                     Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
                                     Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
@@ -13514,8 +13516,15 @@ function Ktl($, appInfo) {
             //Returns undefined if view type is not applicable, or the number of summaries, from 0 to 4.
             viewHasSummary: function (viewId) {
                 var viewObj = ktl.views.getView(viewId);
-                if (viewObj && viewObj.totals)
-                    return viewObj.totals.length;
+                if (viewObj) {
+                    if (viewObj.type === 'search') {
+                        if (Knack.views[viewId].model.results_model)
+                            return Knack.views[viewId].model.results_model.view.totals.length;
+                        else
+                            return 0;
+                    } else if (viewObj.totals)
+                        return viewObj.totals.length;
+                }
             },
 
             addCheckboxesToTable: function (viewId, withMaster = true) {
