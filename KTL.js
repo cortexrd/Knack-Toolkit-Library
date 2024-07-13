@@ -7019,7 +7019,7 @@ function Ktl($, appInfo) {
             let numOfRecords = 10;
             let viewHeight = 800;
 
-            if (!keywords[kw] || !data) return;
+            if (!viewId || !keywords[kw] || !data) return;
 
             if (keywords[kw].length) {
                 numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
