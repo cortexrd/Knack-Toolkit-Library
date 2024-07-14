@@ -17320,19 +17320,20 @@ function Ktl($, appInfo) {
         }
 
         function addBulkDeleteButtons(view, data) {
-            if (!document.querySelector('#' + view.key + ' .kn-link-delete')
+            const viewId = view.key;
+            if (!document.querySelector('#' + viewId + ' .kn-link-delete')
                 || !ktl.core.getCfg().enabled.bulkOps.bulkDelete
-                || !viewCanDoBulkOp(view.key, 'delete')
+                || !viewCanDoBulkOp(viewId, 'delete')
                 || !data.length
                 || ktl.scenes.isiFrameWnd())
                 return;
 
             //Add Delete Selected button.
-            if (!document.querySelector('#ktl-bulk-delete-selected-' + view.key)) {
-                var deleteRecordsBtn = ktl.fields.addButton(document.querySelector('#' + view.key + ' .bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-selected-' + view.key);
+            if (!document.querySelector('#ktl-bulk-delete-selected-' + viewId)) {
+                var deleteRecordsBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-selected-' + viewId);
                 deleteRecordsBtn.addEventListener('click', function (event) {
                     var deleteArray = [];
-                    $('#' + view.key + ' tbody input[type=checkbox]:checked').each(function () {
+                    $('#' + viewId + ' tbody input[type=checkbox]:checked').each(function () {
                         if (!$(this).closest('.kn-table-totals').length) {
                             deleteArray.push($(this).closest('tr').attr('id'));
                         }
@@ -17352,12 +17353,12 @@ function Ktl($, appInfo) {
                                 },
                             })
 
-                            ktl.views.refreshView(view.key).then(function (model) {
+                            ktl.views.refreshView(viewId).then(function (model) {
                                 $.unblockUI();
                                 setTimeout(() => {
                                     if (bulkOpsDeleteAll) {
                                         if (model && model.length > 0) {
-                                            $('#ktl-bulk-delete-all-' + view.key).click();
+                                            $('#ktl-bulk-delete-all-' + viewId).click();
                                         } else {
                                             bulkOpsDeleteAll = false;
                                             alert('Delete All has completed successfully');
@@ -17379,15 +17380,15 @@ function Ktl($, appInfo) {
 
             //Delete All button for massive delete operations, with automated looping over all pages automatically.
             //Only possible when filtering is used.
-            if (document.querySelector('#' + view.key + ' .kn-tag-filter') && !document.querySelector('#ktl-bulk-delete-all-' + view.key)) {
-                var deleteAllRecordsBtn = ktl.fields.addButton(document.querySelector('.bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-all-' + view.key);
+            if (document.querySelector('#' + viewId + ' .kn-tag-filter') && !document.querySelector('#ktl-bulk-delete-all-' + viewId)) {
+                var deleteAllRecordsBtn = ktl.fields.addButton(document.querySelector(`#${viewId} .bulkOpsControlsDiv`), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-all-' + viewId);
                 if (data.length > 0)
                     deleteAllRecordsBtn.disabled = false;
                 else
                     deleteAllRecordsBtn.disabled = true;
 
                 //Get total number of records to delete.  Either get it from summary, or from data length when summary not shown (less than ~7 records).
-                var totalRecords = $('#' + view.key + ' .kn-entries-summary').last();
+                var totalRecords = $('#' + viewId + ' .kn-entries-summary').last();
                 if (totalRecords.length > 0)
                     totalRecords = totalRecords.html().substring(totalRecords.html().lastIndexOf('of</span> ') + 10).replace(/\s/g, '');
                 else
@@ -17396,11 +17397,11 @@ function Ktl($, appInfo) {
                 deleteAllRecordsBtn.textContent = 'Delete All: ' + totalRecords;
 
                 deleteAllRecordsBtn.addEventListener('click', function (event) {
-                    var allChk = $('#' + view.key + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]');
+                    var allChk = $('#' + viewId + ' > div.kn-table-wrapper > table > thead > tr > th:nth-child(1) > input[type=checkbox]');
                     if (allChk.length > 0) {
                         if (data.length > 0) {
                             if (!bulkOpsDeleteAll) { //First time, kick start process.
-                                const objName = ktl.views.getViewSourceName(view.key);
+                                const objName = ktl.views.getViewSourceName(viewId);
                                 if (confirm('Are you sure you want to delete all ' + totalRecords + ' ' + objName + ((totalRecords > 1 && objName.slice(-1) !== 's') ? 's' : '') + '?\nNote:  you can abort the process at any time by pressing F5.'))
                                     bulkOpsDeleteAll = true;
                                 //Note that pressing Escape on keyboard to exit the "confim" dialog causes a loss of focus.  Search stops working since you can't type in text.
@@ -17410,7 +17411,7 @@ function Ktl($, appInfo) {
                             if (bulkOpsDeleteAll) {
                                 allChk[0].click();
                                 setTimeout(function () {
-                                    $('#ktl-bulk-delete-selected-' + view.key).click();
+                                    $('#ktl-bulk-delete-selected-' + viewId).click();
                                 }, 500);
                             }
                         } else { //For good luck - should never happen since button is disabled when no data.
@@ -17421,12 +17422,12 @@ function Ktl($, appInfo) {
                 });
             }
 
-            $('#' + view.key + ' input[type=checkbox]').on('click', function (e) {
-                var numChecked = $('#' + view.key + ' tbody input[type=checkbox]:checked').length;
+            $('#' + viewId + ' input[type=checkbox]').on('click', function (e) {
+                var numChecked = $('#' + viewId + ' tbody input[type=checkbox]:checked').length;
 
                 //If Delete All was used, just keep going!
                 if (numChecked && bulkOpsDeleteAll)
-                    $('#ktl-bulk-delete-selected-' + view.key).click();
+                    $('#ktl-bulk-delete-selected-' + viewId).click();
             });
         }
 
