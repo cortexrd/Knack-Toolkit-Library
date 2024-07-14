@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.7';
+    const KTL_VERSION = '0.27.8';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -10149,13 +10149,13 @@ function Ktl($, appInfo) {
             }
 
             $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
-                $.blockUI({ message: '', overlayCSS: { backgroundColor: '#fff', opacity: 0, } });
+                //$.blockUI({ message: '', overlayCSS: { backgroundColor: '#fff', opacity: 0, } });
 
                 identifier = record[identifierFieldId];
                 updateDataAndLogDeltas(viewId, record);
 
                 $(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, (event, view, data) => {
-                    $.unblockUI();
+                    //$.unblockUI();
                 });
 
             })
@@ -17337,6 +17337,9 @@ function Ktl($, appInfo) {
                             deleteArray.push($(this).closest('tr').attr('id'));
                         }
                     });
+
+                    if (!confirm(`Are you sure you want to permanently delete ${deleteArray.length} records?`))
+                        return;
 
                     ktl.bulkOps.deleteRecords(deleteArray, view)
                         .then(function () {
