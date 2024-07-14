@@ -1415,18 +1415,18 @@ function Ktl($, appInfo) {
 
             parseNumericValue: function (textValue) {
                 let value = textValue;
-
                 if (value.match(/[^$,.£€\ \d-]/))
                     return NaN;
 
-                if (value && ['$', '£', '€'].includes(value[0]))
+                // Check if the value starts with a negative sign followed by a currency symbol
+                if (value.startsWith('-') && ['$', '£', '€'].includes(value[1]))
+                    value = `-${value.slice(2)}`; // remove currency symbol and keep the negative sign
+                else if (value && ['$', '£', '€'].includes(value[0]))
                     value = value.slice(1); // remove currency symbol
 
                 value = value.replace(new RegExp("\\ ", 'g'), ''); //remove spaces
-
                 const commasCount = [...value.matchAll(new RegExp('\\,', 'g'))].length;
                 const dotsCount = [...value.matchAll(new RegExp('\\.', 'g'))].length;
-
                 if (commasCount > 1) { // expecting thousands separated by commas
                     value = value.replace(new RegExp("\\,", 'g'), '');
                 } else if (dotsCount === 1) { // expecting decimals separated by dot
@@ -1436,7 +1436,6 @@ function Ktl($, appInfo) {
                 } else { // expecting thousand separated by comma without decimals
                     value = value.replace(new RegExp("\\,", 'g'), '');
                 }
-
                 return parseFloat(value);
             },
 
