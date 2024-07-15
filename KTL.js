@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.8';
+    const KTL_VERSION = '0.27.9';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -10063,10 +10063,8 @@ function Ktl($, appInfo) {
             const kw = '_arh';
             const viewId = view.key;
 
-            let context = '';
             let includeFields = [];
             let excludeFields = [];
-            let expiry = '';
 
             //Process fields keywords
             //var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
@@ -10108,6 +10106,9 @@ function Ktl($, appInfo) {
 
             const addRecordHistoryLogViewId = ktl.core.getViewIdByTitle('Add Record History', '', true);
             if (!addRecordHistoryLogViewId) return;
+
+            let context = `${Knack.views[viewId].model.view.title} (${Knack.views[viewId].model.view.type})`;
+            let expiry = '';
 
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const groups = keywords[kw][0].params;
@@ -10386,18 +10387,16 @@ function Ktl($, appInfo) {
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const groups = keywords[kw][0].params;
                 for (const group of groups) {
-                    if (group.length >= 2) {
-                        if (group[0] === 'filters') {
-                            const paramString = (keywords[kw][0].paramStr.match(/\[filters,([^[]*)\]/) || [])[1] || '';
-                            filterRoles = ktl.core.splitAndTrimToArray(paramString);
-                        } else if (group[0] === 'align') {
-                            align = (keywords[kw][0].paramStr.match(/\[align,([^[]*)\]/) || [])[1].trim() || '';
-                        } else {
-                            if (group.length >= 1 && group[0].length)
-                                header = group[0];
-                            if (group.length >= 2 && group[1].length)
-                                icon = group[1];
-                        }
+                    if (group.length >= 2 && group[0] === 'filters') {
+                        const paramString = (keywords[kw][0].paramStr.match(/\[filters,([^[]*)\]/) || [])[1] || '';
+                        filterRoles = ktl.core.splitAndTrimToArray(paramString);
+                    } else if (group.length >= 2 && group[0] === 'align') {
+                        align = (keywords[kw][0].paramStr.match(/\[align,([^[]*)\]/) || [])[1].trim() || '';
+                    } else {
+                        if (group.length >= 1 && group[0].length)
+                            header = group[0];
+                        if (group.length >= 2 && group[1].length)
+                            icon = group[1];
                     }
                 }
             }
@@ -10405,7 +10404,7 @@ function Ktl($, appInfo) {
             // Add new header cell with label "History" by default.
             const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktl_vrh")`);
             if (headerRow.length) {
-                const newHeaderCell = $(`<th style="text-align: ${align};"><span class="table-fixed-label ktl_vrh" style="display: inline-flex;"><span>${header}</span></span></th>`);
+                const newHeaderCell = $(`<th style="text-align: ${align}; width: 10px;"><span class="table-fixed-label ktl_vrh" style="display: inline-flex;"><span>${header}</span></span></th>`);
                 headerRow.append(newHeaderCell);
                 $(headerRow).addClass('ktl_vrh');
 
