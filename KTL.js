@@ -10805,7 +10805,10 @@ function Ktl($, appInfo) {
                 viewElement.find('.ktlHideShowSection').append(shrinkLinkHTML);
             }
 
-            moveDescriptionToHideShowSection(viewElement, hideShowId);
+            const description = viewElement.find('.kn-description');
+            if (description.text().trim() !== '') {
+                description.detach().prependTo(`.${hideShowId}`);
+            }
 
             handleInlineEdit(viewElement);
 
@@ -10846,13 +10849,6 @@ function Ktl($, appInfo) {
 
                 if (!showViewOnLoad && !inlineEditOccurred) {
                     viewElement.find('section.ktlHideShowSection').css('flex-direction', 'column').hide();
-                }
-            }
-
-            function moveDescriptionToHideShowSection(viewElement, hideShowId) {
-                const description = viewElement.find('.kn-description');
-                if (description.text().trim() !== '') {
-                    description.detach().prependTo(`.${hideShowId}`);
                 }
             }
 
