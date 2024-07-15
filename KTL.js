@@ -10847,14 +10847,14 @@ function Ktl($, appInfo) {
                 }
 
                 const hideShowSection = viewElement.find(`section.${sectionClass.replace(/\s/g, '.')}`);
-                if (!showViewOnLoad && !window.inlineEditOccurred) {
+                if (!showViewOnLoad && !inlineEditOccurred) {
                     hideShowSection.hide();
                 }
                 hideShowSection.css('flex-direction', 'column');
             }
 
             function handleInlineEdit(viewElement) {
-                viewElement.find(' .kn-table tbody td.cell-edit').on('click.ktl_hsv_inlineEdit', () => {
+                viewElement.find(' .kn-table tbody td.cell-edit').off('click.ktl_hsv_inlineEdit').on('click.ktl_hsv_inlineEdit', () => {
                     ktl.core.waitSelector('div.drop-content .submit a.kn-button.is-primary').then(() => {
                         $('.drop-content .submit a.kn-button.is-primary').on('click', () => {
                             inlineEditOccurred = true;
@@ -10875,112 +10875,6 @@ function Ktl($, appInfo) {
                 }
             }
         }
-
-        // let inlineEditOccurred = false;
-        // // TO DO: add functionality for search views
-        // function hideShowView({ key: viewId, type: viewType }, keywords) {
-        //     const kw = '_hsv';
-        //     let showViewOnLoad = false;
-        //     let delay = 500;
-
-        //     if (!viewId && !keywords && !keywords[kw]) return;
-
-        //     if (keywords[kw].length && keywords[kw][0].params) {
-        //         const [delayParam, showViewOnLoadParam = ''] = keywords[kw][0].params[0];
-        //         delay = parseInt(delayParam, 10) || delay;
-        //         showViewOnLoad = showViewOnLoadParam.toLowerCase() === 'true';
-        //     }
-
-        //     const hideShowId = `hideShow_${viewId}`;
-        //     const viewElement = $(`#${viewId}`);
-
-        //     wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad);
-
-        //     const hiddenSelector = $(`.${hideShowId}`);
-        //     const viewTitle = viewElement.find('h2.kn-title');
-        //     const titleText = viewTitle.text();
-        //     const hideShowBtnHTML = `<div class="ktlHideShowButton" id="${hideShowId}_button">${titleText} &nbsp;<span class="ktlArrow ${hiddenSelector.is(':visible') ? 'ktlUp' : 'ktlDown'}" id="${hideShowId}_arrow">◀</span></div>`;
-
-        //     if (!$(`#${hideShowId}_button`).length) {
-        //         viewTitle.html(hideShowBtnHTML);
-        //     }
-            
-        //     const shrinkLinkHTML = `<a class="ktlHideShowButton ktlShrinkLink" id="${hideShowId}_shrink_link">Shrink &nbsp;<span class="ktlArrow ktlUp" id="${hideShowId}_arrow">◀</span></a>`;
-        //     const shrinkLinkSelector = $(`#${hideShowId}_shrink_link`);
-
-        //     if (!shrinkLinkSelector.length) {
-        //         viewElement.find('.ktlHideShowSection').append(shrinkLinkHTML);
-        //     }
-
-        //     // If description is not blank, move it into show/hide section
-        //     const description = $(`#${viewId}`).find('.kn-description');
-        //     if (description.text().trim() !== '') {
-        //         description.detach().prependTo(`.${hideShowId}`);
-        //     }
-
-        //     // Event handler for inline edit
-        //     $(`#${viewId} .kn-table tbody td.cell-edit`).on('click.ktl_hsv_inlineEdit', function () {
-        //         ktl.core.waitSelector('div.drop-content .submit a.kn-button.is-primary').then(() => {
-        //             $('.drop-content .submit a.kn-button.is-primary').on('click', function () {
-        //                 inlineEditOccurred = true;
-        //             });
-        //         });
-        //     });
-
-        //     const buttonSelector = $(`#${hideShowId}_button`);
-        //     const arrowSelector = $(`#${hideShowId}_arrow`);
-            
-
-        //     buttonSelector.add(shrinkLinkSelector).off('click.ktl_hsv').on('click.ktl_hsv', function (event) {
-        //         const isShrinkLink = $(event.target).is(shrinkLinkSelector);
-        
-        //         // Determine action based on the element that triggered the event
-        //         if (isShrinkLink || hiddenSelector.is(':visible')) {
-        //             hiddenSelector.slideUp(delay);
-        //             arrowSelector.removeClass('ktlUp').addClass('ktlDown');
-        //             buttonSelector.removeClass('ktlActive');
-        //         } else {
-        //             hiddenSelector.slideDown(delay);
-        //             arrowSelector.removeClass('ktlDown').addClass('ktlUp');
-        //             buttonSelector.addClass('ktlActive');
-        //         }
-        //     });
-        //     const isOpen = hiddenSelector.is(':visible');
-        //     if (!showViewOnLoad && inlineEditOccurred && isOpen) {
-        //         hiddenSelector.show();
-        //         arrowSelector.removeClass('ktlDown').addClass('ktlUp');
-        //         buttonSelector.addClass('ktlActive');
-        //         inlineEditOccurred = false;
-        //     }
-
-
-
-        //     function wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad) {
-        //         const wrappers = {
-        //             table: '.kn-table-wrapper, .kn-records-nav',
-        //             form: 'form, .kn-form-confirmation',
-        //             list: '.kn-list-content, .kn-records-nav',
-        //         };
-
-        //         const wrapper = wrappers[viewType];
-        //         const viewElement = $(`#${viewId}`);
-        //         const sectionElement = viewElement.find('section');
-
-        //         if (wrapper) {
-        //             const wrapperElement = viewElement.find(wrapper);
-        //             if (!wrapperElement.closest('section').length) {
-        //                 wrapperElement.wrapAll(`<section class='${hideShowId} ktlHideShowSection ktlBoxWithBorder' />`);
-        //             }
-        //         } else {
-        //             if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
-        //                 sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`);
-        //             }
-        //         }
-        //         if (!showViewOnLoad && !inlineEditOccurred) {
-        //             viewElement.find('section.ktlHideShowSection').css('flex-direction', 'column').hide();
-        //         }
-        //     }
-        // }
 
         //Views
         return {
