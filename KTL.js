@@ -10767,13 +10767,14 @@ function Ktl($, appInfo) {
             }
         }
 
-        //TO DO: add functionality for search views
+        let inlineEditOccurred = false;
+
         function hideShowView({ key: viewId, type: viewType }, keywords) {
             const kw = '_hsv';
-            let showViewOnLoad = false;
             let delay = 500;
+            let showViewOnLoad = false;
 
-            if (!viewId && !keywords && !keywords[kw]) return;
+            if (!viewId || !keywords || !keywords[kw]) return;
 
             if (keywords[kw].length && keywords[kw][0].params) {
                 const [delayParam, showViewOnLoadParam = ''] = keywords[kw][0].params[0];
@@ -10782,72 +10783,56 @@ function Ktl($, appInfo) {
             }
 
             const hideShowId = `hideShow_${viewId}`;
-            replaceTitleWithButton(viewId, hideShowId);
-            wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad);
-            appendShrinkLink(viewId, hideShowId);
+            const viewElement = $(`#${viewId}`);
 
-            // If description is not blank, move it into show/hide section
-            const description = $(`#${viewId}`).find('.kn-description');
-            if (description.text().trim() !== '') {
-                description.detach().prependTo(`.${hideShowId}`);
+            wrapContentForHideShow(viewElement, viewType, hideShowId, showViewOnLoad);
+
+            const hiddenSelector = $(`.${hideShowId}`);
+            const viewTitle = viewElement.find('h2.kn-title');
+            const titleText = viewTitle.text();
+            const hideShowBtnHTML = `
+                <div class="ktlHideShowButton" id="${hideShowId}_button">
+                    ${titleText} &nbsp;<span class="ktlArrow ${hiddenSelector.is(':visible') ? 'ktlUp' : 'ktlDown'}" id="${hideShowId}_arrow">◀</span>
+                </div>`;
+
+            if (!$(`#${hideShowId}_button`).length) {
+                viewTitle.html(hideShowBtnHTML);
             }
 
-            hideShowContent(hideShowId, delay);
-
-            function hideShowContent(hideShowId, delay) {
-                const buttonSelector = $(`#hide-show_${hideShowId}`);
-                const arrowSelector = $(`#arrow_${hideShowId}`);
-                const shrinkLinkSelector = $(`#shrink-link_${hideShowId}`);
-                const hiddenSelector = $(`.${hideShowId}`);
-
-                toggleHideShowContent(buttonSelector, hiddenSelector, arrowSelector, delay);
-                hideContent(shrinkLinkSelector, hiddenSelector, arrowSelector, delay, buttonSelector);
+            const shrinkLinkHTML = `
+                <a class="ktlHideShowButton ktlShrinkLink" id="${hideShowId}_shrink_link">
+                    Shrink &nbsp;<span class="ktlArrow ktlUp" id="${hideShowId}_arrow">◀</span>
+                </a>`;
+            if (!$(`#${hideShowId}_shrink_link`).length) {
+                viewElement.find('.ktlHideShowSection').append(shrinkLinkHTML);
             }
 
-            function toggleHideShowContent(buttonSelector, hiddenSelector, arrowSelector, delay) {
-                buttonSelector.off('click.ktl_hsv').on('click.ktl_hsv', function () {
-                    hiddenSelector.slideToggle(delay);
-                    arrowSelector.toggleClass('ktlDown ktlUp');
-                    buttonSelector.toggleClass('ktlActive');
-                });
+            moveDescriptionToHideShowSection(viewElement, hideShowId);
+
+            handleInlineEdit(viewElement);
+
+            const buttonSelector = $(`#${hideShowId}_button, #${hideShowId}_shrink_link`);
+            const arrowSelector = $(`#${hideShowId}_arrow`);
+
+            buttonSelector.off('click.ktl_hsv').on('click.ktl_hsv', (event) => {
+                const isShrinkLink = $(event.target).is(`#${hideShowId}_shrink_link`);
+                toggleHideShowSection(isShrinkLink || hiddenSelector.is(':visible'), hiddenSelector, arrowSelector, buttonSelector, delay);
+            });
+
+            if (!showViewOnLoad && inlineEditOccurred && hiddenSelector.is(':visible')) {
+                hiddenSelector.show();
+                arrowSelector.removeClass('ktlDown').addClass('ktlUp');
+                buttonSelector.addClass('ktlActive');
+                inlineEditOccurred = false;
             }
 
-            function hideContent(shrinkLinkSelector, hiddenSelector, arrowSelector, delay, buttonSelector) {
-                shrinkLinkSelector.off('click.ktl_hsv_shrinkLink').on('click.ktl_hsv_shrinkLink', () => {
-                    hiddenSelector.slideUp(delay);
-                    arrowSelector.removeClass('ktlUp').addClass('ktlDown');
-                    buttonSelector.removeClass('ktlActive');
-                });
-            }
-
-            function appendShrinkLink(wrapperId, hideShowId) {
-                const shrinkLinkHTML = `<a class="ktlHideShowButton ktlShrinkLink" id="shrink-link_${hideShowId}">Shrink &nbsp;<span class="ktlArrow ktlUp" id="arrow_${hideShowId}">◀</span></a>`;
-                const shrinkLinkSelector = $(`#shrink-link_${hideShowId}`);
-
-                if (!shrinkLinkSelector.length) {
-                    $(`#${wrapperId} .ktlHideShowSection`).append(shrinkLinkHTML);
-                }
-            }
-
-            function replaceTitleWithButton(viewId, hideShowId) {
-                const viewTitle = $(`#${viewId} h2.kn-title`);
-                const titleText = viewTitle.text();
-                const hideShowBtnHTML = `<div class="ktlHideShowButton" id="hide-show_${hideShowId}">${titleText} &nbsp;<span class="ktlArrow ktlDown" id="arrow_${hideShowId}">◀</span></div>`;
-
-                if (!$(`#hide-show_${hideShowId}`).length) {
-                    viewTitle.html(hideShowBtnHTML);
-                }
-            }
-
-            function wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad) {
+            function wrapContentForHideShow(viewElement, viewType, hideShowId, showViewOnLoad) {
                 const wrappers = {
                     table: '.kn-table-wrapper, .kn-records-nav',
                     form: 'form, .kn-form-confirmation',
                     list: '.kn-list-content, .kn-records-nav',
                 };
-
                 const wrapper = wrappers[viewType];
-                const viewElement = $(`#${viewId}`);
                 const sectionElement = viewElement.find('section');
 
                 if (wrapper) {
@@ -10860,11 +10845,147 @@ function Ktl($, appInfo) {
                         sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`);
                     }
                 }
-                if (!showViewOnLoad) {
+
+                if (!showViewOnLoad && !inlineEditOccurred) {
                     viewElement.find('section.ktlHideShowSection').css('flex-direction', 'column').hide();
                 }
             }
+
+            function moveDescriptionToHideShowSection(viewElement, hideShowId) {
+                const description = viewElement.find('.kn-description');
+                if (description.text().trim() !== '') {
+                    description.detach().prependTo(`.${hideShowId}`);
+                }
+            }
+
+            function handleInlineEdit(viewElement) {
+                viewElement.find(' .kn-table tbody td.cell-edit').on('click.ktl_hsv_inlineEdit', () => {
+                    ktl.core.waitSelector('div.drop-content .submit a.kn-button.is-primary').then(() => {
+                        $('.drop-content .submit a.kn-button.is-primary').on('click', () => {
+                            inlineEditOccurred = true;
+                        });
+                    });
+                });
+            }
+
+            function toggleHideShowSection(isShrink, hiddenSelector, arrowSelector, buttonSelector, delay) {
+                if (isShrink) {
+                    hiddenSelector.slideUp(delay);
+                    arrowSelector.removeClass('ktlUp').addClass('ktlDown');
+                    buttonSelector.removeClass('ktlActive');
+                } else {
+                    hiddenSelector.slideDown(delay);
+                    arrowSelector.removeClass('ktlDown').addClass('ktlUp');
+                    buttonSelector.addClass('ktlActive');
+                }
+            }
         }
+
+        // let inlineEditOccurred = false;
+        // // TO DO: add functionality for search views
+        // function hideShowView({ key: viewId, type: viewType }, keywords) {
+        //     const kw = '_hsv';
+        //     let showViewOnLoad = false;
+        //     let delay = 500;
+
+        //     if (!viewId && !keywords && !keywords[kw]) return;
+
+        //     if (keywords[kw].length && keywords[kw][0].params) {
+        //         const [delayParam, showViewOnLoadParam = ''] = keywords[kw][0].params[0];
+        //         delay = parseInt(delayParam, 10) || delay;
+        //         showViewOnLoad = showViewOnLoadParam.toLowerCase() === 'true';
+        //     }
+
+        //     const hideShowId = `hideShow_${viewId}`;
+        //     const viewElement = $(`#${viewId}`);
+
+        //     wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad);
+
+        //     const hiddenSelector = $(`.${hideShowId}`);
+        //     const viewTitle = viewElement.find('h2.kn-title');
+        //     const titleText = viewTitle.text();
+        //     const hideShowBtnHTML = `<div class="ktlHideShowButton" id="${hideShowId}_button">${titleText} &nbsp;<span class="ktlArrow ${hiddenSelector.is(':visible') ? 'ktlUp' : 'ktlDown'}" id="${hideShowId}_arrow">◀</span></div>`;
+
+        //     if (!$(`#${hideShowId}_button`).length) {
+        //         viewTitle.html(hideShowBtnHTML);
+        //     }
+            
+        //     const shrinkLinkHTML = `<a class="ktlHideShowButton ktlShrinkLink" id="${hideShowId}_shrink_link">Shrink &nbsp;<span class="ktlArrow ktlUp" id="${hideShowId}_arrow">◀</span></a>`;
+        //     const shrinkLinkSelector = $(`#${hideShowId}_shrink_link`);
+
+        //     if (!shrinkLinkSelector.length) {
+        //         viewElement.find('.ktlHideShowSection').append(shrinkLinkHTML);
+        //     }
+
+        //     // If description is not blank, move it into show/hide section
+        //     const description = $(`#${viewId}`).find('.kn-description');
+        //     if (description.text().trim() !== '') {
+        //         description.detach().prependTo(`.${hideShowId}`);
+        //     }
+
+        //     // Event handler for inline edit
+        //     $(`#${viewId} .kn-table tbody td.cell-edit`).on('click.ktl_hsv_inlineEdit', function () {
+        //         ktl.core.waitSelector('div.drop-content .submit a.kn-button.is-primary').then(() => {
+        //             $('.drop-content .submit a.kn-button.is-primary').on('click', function () {
+        //                 inlineEditOccurred = true;
+        //             });
+        //         });
+        //     });
+
+        //     const buttonSelector = $(`#${hideShowId}_button`);
+        //     const arrowSelector = $(`#${hideShowId}_arrow`);
+            
+
+        //     buttonSelector.add(shrinkLinkSelector).off('click.ktl_hsv').on('click.ktl_hsv', function (event) {
+        //         const isShrinkLink = $(event.target).is(shrinkLinkSelector);
+        
+        //         // Determine action based on the element that triggered the event
+        //         if (isShrinkLink || hiddenSelector.is(':visible')) {
+        //             hiddenSelector.slideUp(delay);
+        //             arrowSelector.removeClass('ktlUp').addClass('ktlDown');
+        //             buttonSelector.removeClass('ktlActive');
+        //         } else {
+        //             hiddenSelector.slideDown(delay);
+        //             arrowSelector.removeClass('ktlDown').addClass('ktlUp');
+        //             buttonSelector.addClass('ktlActive');
+        //         }
+        //     });
+        //     const isOpen = hiddenSelector.is(':visible');
+        //     if (!showViewOnLoad && inlineEditOccurred && isOpen) {
+        //         hiddenSelector.show();
+        //         arrowSelector.removeClass('ktlDown').addClass('ktlUp');
+        //         buttonSelector.addClass('ktlActive');
+        //         inlineEditOccurred = false;
+        //     }
+
+
+
+        //     function wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad) {
+        //         const wrappers = {
+        //             table: '.kn-table-wrapper, .kn-records-nav',
+        //             form: 'form, .kn-form-confirmation',
+        //             list: '.kn-list-content, .kn-records-nav',
+        //         };
+
+        //         const wrapper = wrappers[viewType];
+        //         const viewElement = $(`#${viewId}`);
+        //         const sectionElement = viewElement.find('section');
+
+        //         if (wrapper) {
+        //             const wrapperElement = viewElement.find(wrapper);
+        //             if (!wrapperElement.closest('section').length) {
+        //                 wrapperElement.wrapAll(`<section class='${hideShowId} ktlHideShowSection ktlBoxWithBorder' />`);
+        //             }
+        //         } else {
+        //             if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
+        //                 sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`);
+        //             }
+        //         }
+        //         if (!showViewOnLoad && !inlineEditOccurred) {
+        //             viewElement.find('section.ktlHideShowSection').css('flex-direction', 'column').hide();
+        //         }
+        //     }
+        // }
 
         //Views
         return {
