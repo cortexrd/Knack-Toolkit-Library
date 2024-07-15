@@ -10833,21 +10833,21 @@ function Ktl($, appInfo) {
                     form: 'form, .kn-form-confirmation',
                     list: '.kn-list-content, .kn-records-nav',
                 };
-                const wrapper = wrappers[viewType];
+                const wrapperSelector = wrappers[viewType];
                 const sectionElement = viewElement.find('section').first();
+                const sectionClass = `${hideShowId} ktlHideShowSection ktlBoxWithBorder`;
 
-                if (wrapper) {
-                    const wrapperElement = viewElement.find(wrapper);
+                if (wrapperSelector) {
+                    const wrapperElement = viewElement.find(wrapperSelector);
                     if (!wrapperElement.closest('section').length) {
-                        wrapperElement.wrapAll(`<section class='${hideShowId} ktlHideShowSection ktlBoxWithBorder' />`);
+                        wrapperElement.wrapAll(`<section class='${sectionClass}' />`);
                     }
-                } else {
-                    if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
-                        sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`);
-                    }
+                } else if (!sectionElement.hasClass(sectionClass)) {
+                    sectionElement.addClass(sectionClass);
                 }
-                const hideShowSection = viewElement.find('section.ktlHideShowSection')
-                if (!showViewOnLoad && !inlineEditOccurred) {
+
+                const hideShowSection = viewElement.find(`section.${sectionClass.replace(/\s/g, '.')}`);
+                if (!showViewOnLoad && !window.inlineEditOccurred) {
                     hideShowSection.hide();
                 }
                 hideShowSection.css('flex-direction', 'column');
