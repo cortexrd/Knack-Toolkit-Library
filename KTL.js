@@ -10834,7 +10834,7 @@ function Ktl($, appInfo) {
                     list: '.kn-list-content, .kn-records-nav',
                 };
                 const wrapper = wrappers[viewType];
-                const sectionElement = viewElement.find('section');
+                const sectionElement = viewElement.find('section').first();
 
                 if (wrapper) {
                     const wrapperElement = viewElement.find(wrapper);
@@ -10846,10 +10846,11 @@ function Ktl($, appInfo) {
                         sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`);
                     }
                 }
-
+                const hideShowSection = viewElement.find('section.ktlHideShowSection')
                 if (!showViewOnLoad && !inlineEditOccurred) {
-                    viewElement.find('section.ktlHideShowSection').css('flex-direction', 'column').hide();
+                    hideShowSection.hide();
                 }
+                hideShowSection.css('flex-direction', 'column');
             }
 
             function handleInlineEdit(viewElement) {
