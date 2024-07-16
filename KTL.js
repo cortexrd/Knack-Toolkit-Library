@@ -10766,10 +10766,11 @@ function Ktl($, appInfo) {
 
         let inlineEditOccurred = false;
 
-        function hideShowView({ key: viewId, type: viewType }, keywords) {
+        function hideShowView({ key: viewId }, keywords) {
             const kw = '_hsv';
             let delay = 500;
             let showViewOnLoad = false;
+            const viewType = ktl.views.getViewType(viewId);
 
             if (!viewId || !keywords || !keywords[kw]) return;
 
@@ -10785,7 +10786,7 @@ function Ktl($, appInfo) {
             wrapContentForHideShow(viewElement, viewType, hideShowId, showViewOnLoad);
 
             const hiddenSelector = $(`.${hideShowId}`);
-            const viewTitle = viewElement.find('h2.kn-title');
+            const viewTitle = viewType !== 'search' ? viewElement.find('h2.kn-title') : viewElement.closest('.kn-search').find('h1.kn-title');
             const titleText = viewTitle.text();
             const hideShowBtnHTML = `
                 <div class="ktlHideShowButton" id="${hideShowId}_button">
@@ -10831,8 +10832,10 @@ function Ktl($, appInfo) {
                     table: '.kn-table-wrapper, .kn-records-nav',
                     form: 'form, .kn-form-confirmation',
                     list: '.kn-list-content, .kn-records-nav',
+                    search: `form, .kn-table.${viewId}, .kn-list.${viewId}`,
                 };
                 const wrapperSelector = wrappers[viewType];
+                console.log(wrapperSelector)
                 const sectionElement = viewElement.find('section').first();
                 const sectionClass = `${hideShowId} ktlHideShowSection ktlBoxWithBorder`;
 
