@@ -10764,15 +10764,15 @@ function Ktl($, appInfo) {
             }
         }
 
-        let inlineEditOccurred = false;
+        let viewStates = {};
 
         function hideShowView({ key: viewId }, keywords) {
             const kw = '_hsv';
+            if (!viewId || !keywords || !keywords[kw]) return;
+
             let delay = 500;
             let showViewOnLoad = false;
             const viewType = ktl.views.getViewType(viewId);
-
-            if (!viewId || !keywords || !keywords[kw]) return;
 
             if (keywords[kw].length && keywords[kw][0].params) {
                 const [delayParam, showViewOnLoadParam = ''] = keywords[kw][0].params[0];
@@ -10780,21 +10780,25 @@ function Ktl($, appInfo) {
                 showViewOnLoad = showViewOnLoadParam.toLowerCase() === 'true';
             }
 
+            if (!viewStates[viewId]) {
+                viewStates[viewId] = showViewOnLoad;
+            }
+
             const hideShowId = `hideShow_${viewId}`;
             const viewElement = $(`#${viewId}`);
 
-            wrapContentForHideShow(viewElement, viewType, hideShowId, showViewOnLoad);
+            wrapContentForHideShow(viewElement, viewType, hideShowId);
 
-            const hiddenSelector = $(`.${hideShowId}`);
+            const hiddenSection = $(`.${hideShowId}`);
             const viewTitle = viewType !== 'search' ? viewElement.find('h2.kn-title') : viewElement.closest('.kn-search').find('h1.kn-title');
             const titleText = viewTitle.text();
-            const hideShowBtnHTML = `
+            const hideShowButtonHTML = `
                 <div class="ktlHideShowButton" id="${hideShowId}_button">
-                    ${titleText} &nbsp;<span class="ktlArrow ${hiddenSelector.is(':visible') ? 'ktlUp' : 'ktlDown'}" id="${hideShowId}_arrow">◀</span>
+                    ${titleText} &nbsp;<span class="ktlArrow ${hiddenSection.is(':visible') ? 'ktlUp' : 'ktlDown'}" id="${hideShowId}_arrow">◀</span>
                 </div>`;
 
             if (!$(`#${hideShowId}_button`).length) {
-                viewTitle.html(hideShowBtnHTML);
+                viewTitle.html(hideShowButtonHTML);
             }
 
             const shrinkLinkHTML = `
@@ -10810,24 +10814,15 @@ function Ktl($, appInfo) {
                 description.detach().prependTo(`.${hideShowId}`);
             }
 
-            handleInlineEdit(viewElement);
-
             const buttonSelector = $(`#${hideShowId}_button, #${hideShowId}_shrink_link`);
             const arrowSelector = $(`#${hideShowId}_arrow`);
 
             buttonSelector.off('click.ktl_hsv').on('click.ktl_hsv', (event) => {
                 const isShrinkLink = $(event.target).is(`#${hideShowId}_shrink_link`);
-                toggleHideShowSection(isShrinkLink || hiddenSelector.is(':visible'), hiddenSelector, arrowSelector, buttonSelector, delay);
+                toggleHideShowSection(isShrinkLink || hiddenSection.is(':visible'), hiddenSection, arrowSelector, buttonSelector, delay);
             });
 
-            if (!showViewOnLoad && inlineEditOccurred && hiddenSelector.is(':visible')) {
-                hiddenSelector.show();
-                arrowSelector.removeClass('ktlDown').addClass('ktlUp');
-                buttonSelector.addClass('ktlActive');
-                inlineEditOccurred = false;
-            }
-
-            function wrapContentForHideShow(viewElement, viewType, hideShowId, showViewOnLoad) {
+            function wrapContentForHideShow(viewElement, viewType, hideShowId) {
                 const wrappers = {
                     table: '.kn-table-wrapper, .kn-records-nav',
                     form: 'form, .kn-form-confirmation',
@@ -10849,39 +10844,32 @@ function Ktl($, appInfo) {
                 }
 
                 const hideShowSection = viewElement.find(`section.${sectionClass.replace(/\s/g, '.')}`);
-                if (!showViewOnLoad && !inlineEditOccurred) {
+                if (!viewStates[viewId]) {
                     hideShowSection.hide();
                 }
                 hideShowSection.css('flex-direction', 'column');
             }
 
-            function handleInlineEdit(viewElement) {
-                viewElement.find(' .kn-table tbody td.cell-edit').off('click.ktl_hsv_inlineEdit').on('click.ktl_hsv_inlineEdit', () => {
-                    ktl.core.waitSelector('div.drop-content .submit a.kn-button.is-primary').then(() => {
-                        $('.drop-content .submit a.kn-button.is-primary').on('click', () => {
-                            inlineEditOccurred = true;
-                        });
-                    });
-                });
-            }
-
-            function toggleHideShowSection(isShrink, hiddenSelector, arrowSelector, buttonSelector, delay) {
+            function toggleHideShowSection(isShrink, hiddenSection, arrowSelector, buttonSelector, delay) {
                 if (isShrink) {
-                    hiddenSelector.slideUp(delay);
+                    hiddenSection.slideUp(delay);
                     arrowSelector.removeClass('ktlUp').addClass('ktlDown');
                     buttonSelector.removeClass('ktlActive');
+                    viewStates[viewId] = false;
                 } else {
-                    hiddenSelector.slideDown(delay, function () {
+                    hiddenSection.slideDown(delay, () => {
                         const keywordsArray = ktl.core.getKeywordsByType(viewId, '_sth');
                         if (keywordsArray.length) {
-                            ktl.views.stickTableHeader(viewId)
+                            ktl.views.stickTableHeader(viewId);
                         }
                     });
                     arrowSelector.removeClass('ktlDown').addClass('ktlUp');
                     buttonSelector.addClass('ktlActive');
+                    viewStates[viewId] = true;
                 }
             }
         }
+
 
         //Views
         return {
