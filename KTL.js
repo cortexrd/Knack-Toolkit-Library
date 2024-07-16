@@ -10834,8 +10834,8 @@ function Ktl($, appInfo) {
                     list: '.kn-list-content, .kn-records-nav',
                     search: `form, .kn-table.${viewId}, .kn-list.${viewId}`,
                 };
+
                 const wrapperSelector = wrappers[viewType];
-                console.log(wrapperSelector)
                 const sectionElement = viewElement.find('section').first();
                 const sectionClass = `${hideShowId} ktlHideShowSection ktlBoxWithBorder`;
 
