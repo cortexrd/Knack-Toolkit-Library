@@ -6232,6 +6232,11 @@ function Ktl($, appInfo) {
                 $('.kn-modal-bg .kn-modal').css({ 'max-width': '98%' });
         })
 
+        $(document).on('knack-records-render.any', function (e, view, data) {
+            console.log('records rendered', view.key);
+            readSummaryValues(view.key);
+        })
+
         //Object that keeps a render count for each viewId that has a summary and groups.
         const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -6275,7 +6280,6 @@ function Ktl($, appInfo) {
                     if (Knack.views[viewId].ktlRenderTotals) {
                         Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
-                        readSummaryValues(viewId);
                         ktlProcessKeywords(view, data);
                     }
                 };
@@ -11365,6 +11369,24 @@ function Ktl($, appInfo) {
                             $('#' + viewId + ' .kn-table-totals td:last-child').remove();
                         }
                     }
+
+                    //Reposition the Summary titles if they've been hidden by a hidden column keyword.
+                    $(`#${viewId} tr.kn-table-totals`).each(function () {
+                        var $row = $(this);
+                        var $columns = $row.find('td');
+                        var $firstNonEmptyColumn = $columns.filter(function () {
+                            return $(this).text().trim() !== '';
+                        }).first();
+                        if ($firstNonEmptyColumn.is('[class^="ktlDisplayNone_"]')) {
+                            var htmlToCopy = $firstNonEmptyColumn.html();
+                            var $firstEmptyColumn = $columns.filter(function () {
+                                return $(this).text().trim().replace(/\u00a0/g, '') === '';
+                            }).first();
+                            if ($firstEmptyColumn.length > 0) {
+                                $firstEmptyColumn.html(htmlToCopy);
+                            }
+                        }
+                    });
 
                     resolve();
                 })
