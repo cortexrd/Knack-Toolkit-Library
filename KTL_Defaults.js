@@ -121,7 +121,7 @@ window.KnackApp = function ($, appInfo = {}) {
                 headerAlignment: true,
                 ktlFlashRate: '1',
                 ktlOutlineColor: 'green',
-                ktlHideShowButtonColor: '#222222',
+                ktlHideShowButtonColor: '#c7c7c7',
                 stickGroupingsWithHeader: false,
                 //hscCollapsedColumnsWidth: '0', //In pixels
                 //hscGlobal: true,

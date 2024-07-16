@@ -10768,13 +10768,15 @@ function Ktl($, appInfo) {
             }
         }
 
-        //TO DO: add functionality for search views
-        function hideShowView({ key: viewId, type: viewType }, keywords) {
-            const kw = '_hsv';
-            let showViewOnLoad = false;
-            let delay = 500;
+        let viewStates = {};
 
-            if (!viewId && !keywords && !keywords[kw]) return;
+        function hideShowView({ key: viewId }, keywords) {
+            const kw = '_hsv';
+            if (!viewId || !keywords || !keywords[kw]) return;
+
+            let delay = 500;
+            let showViewOnLoad = false;
+            const viewType = ktl.views.getViewType(viewId);
 
             if (keywords[kw].length && keywords[kw][0].params) {
                 const [delayParam, showViewOnLoadParam = ''] = keywords[kw][0].params[0];
@@ -10782,90 +10784,96 @@ function Ktl($, appInfo) {
                 showViewOnLoad = showViewOnLoadParam.toLowerCase() === 'true';
             }
 
-            const hideShowId = `hideShow_${viewId}`;
-            replaceTitleWithButton(viewId, hideShowId);
-            wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad);
-            appendShrinkLink(viewId, hideShowId);
+            if (!viewStates[viewId]) {
+                viewStates[viewId] = showViewOnLoad;
+            }
 
-            // If description is not blank, move it into show/hide section
-            const description = $(`#${viewId}`).find('.kn-description');
+            const hideShowId = `hideShow_${viewId}`;
+            const viewElement = $(`#${viewId}`);
+
+            wrapContentForHideShow(viewElement, viewType, hideShowId);
+
+            const hiddenSection = $(`.${hideShowId}`);
+            const viewTitle = viewType !== 'search' ? viewElement.find('h2.kn-title') : viewElement.closest('.kn-search').find('h1.kn-title');
+            const titleText = viewTitle.text();
+            const hideShowButtonHTML = `
+                <div class="ktlHideShowButton" id="${hideShowId}_button">
+                    ${titleText} &nbsp;<span class="ktlArrow ${hiddenSection.is(':visible') ? 'ktlUp' : 'ktlDown'}" id="${hideShowId}_arrow">◀</span>
+                </div>`;
+
+            if (!$(`#${hideShowId}_button`).length) {
+                viewTitle.html(hideShowButtonHTML);
+            }
+
+            const shrinkLinkHTML = `
+                <a class="ktlHideShowButton ktlShrinkLink" id="${hideShowId}_shrink_link">
+                    Shrink &nbsp;<span class="ktlArrow ktlUp" id="${hideShowId}_arrow">◀</span>
+                </a>`;
+            if (!$(`#${hideShowId}_shrink_link`).length) {
+                viewElement.find('.ktlHideShowSection').append(shrinkLinkHTML);
+            }
+
+            const description = viewElement.find('.kn-description');
             if (description.text().trim() !== '') {
                 description.detach().prependTo(`.${hideShowId}`);
             }
 
-            hideShowContent(hideShowId, delay);
+            const buttonSelector = $(`#${hideShowId}_button, #${hideShowId}_shrink_link`);
+            const arrowSelector = $(`#${hideShowId}_arrow`);
 
-            function hideShowContent(hideShowId, delay) {
-                const buttonSelector = $(`#hide-show_${hideShowId}`);
-                const arrowSelector = $(`#arrow_${hideShowId}`);
-                const shrinkLinkSelector = $(`#shrink-link_${hideShowId}`);
-                const hiddenSelector = $(`.${hideShowId}`);
+            buttonSelector.off('click.ktl_hsv').on('click.ktl_hsv', (event) => {
+                const isShrinkLink = $(event.target).is(`#${hideShowId}_shrink_link`);
+                toggleHideShowSection(isShrinkLink || hiddenSection.is(':visible'), hiddenSection, arrowSelector, buttonSelector, delay);
+            });
 
-                toggleHideShowContent(buttonSelector, hiddenSelector, arrowSelector, delay);
-                hideContent(shrinkLinkSelector, hiddenSelector, arrowSelector, delay, buttonSelector);
-            }
-
-            function toggleHideShowContent(buttonSelector, hiddenSelector, arrowSelector, delay) {
-                buttonSelector.off('click.ktl_hsv').on('click.ktl_hsv', function () {
-                    hiddenSelector.slideToggle(delay);
-                    arrowSelector.toggleClass('ktlDown ktlUp');
-                    buttonSelector.toggleClass('ktlActive');
-                });
-            }
-
-            function hideContent(shrinkLinkSelector, hiddenSelector, arrowSelector, delay, buttonSelector) {
-                shrinkLinkSelector.off('click.ktl_hsv_shrinkLink').on('click.ktl_hsv_shrinkLink', () => {
-                    hiddenSelector.slideUp(delay);
-                    arrowSelector.removeClass('ktlUp').addClass('ktlDown');
-                    buttonSelector.removeClass('ktlActive');
-                });
-            }
-
-            function appendShrinkLink(wrapperId, hideShowId) {
-                const shrinkLinkHTML = `<a class="ktlHideShowButton ktlShrinkLink" id="shrink-link_${hideShowId}">Shrink &nbsp;<span class="ktlArrow ktlUp" id="arrow_${hideShowId}">◀</span></a>`;
-                const shrinkLinkSelector = $(`#shrink-link_${hideShowId}`);
-
-                if (!shrinkLinkSelector.length) {
-                    $(`#${wrapperId} .ktlHideShowSection`).append(shrinkLinkHTML);
-                }
-            }
-
-            function replaceTitleWithButton(viewId, hideShowId) {
-                const viewTitle = $(`#${viewId} h2.kn-title`);
-                const titleText = viewTitle.text();
-                const hideShowBtnHTML = `<div class="ktlHideShowButton" id="hide-show_${hideShowId}">${titleText} &nbsp;<span class="ktlArrow ktlDown" id="arrow_${hideShowId}">◀</span></div>`;
-
-                if (!$(`#hide-show_${hideShowId}`).length) {
-                    viewTitle.html(hideShowBtnHTML);
-                }
-            }
-
-            function wrapContentForHideShow(viewId, viewType, hideShowId, showViewOnLoad) {
+            function wrapContentForHideShow(viewElement, viewType, hideShowId) {
                 const wrappers = {
                     table: '.kn-table-wrapper, .kn-records-nav',
                     form: 'form, .kn-form-confirmation',
                     list: '.kn-list-content, .kn-records-nav',
+                    search: `form, .kn-table.${viewId}, .kn-list.${viewId}`,
                 };
 
-                const wrapper = wrappers[viewType];
-                const viewElement = $(`#${viewId}`);
-                const sectionElement = viewElement.find('section');
+                const wrapperSelector = wrappers[viewType];
+                const sectionElement = viewElement.find('section').first();
+                const sectionClass = `${hideShowId} ktlHideShowSection ktlBoxWithBorder`;
 
-                if (wrapper) {
-                    const wrapperElement = viewElement.find(wrapper);
+                if (wrapperSelector) {
+                    const wrapperElement = viewElement.find(wrapperSelector);
                     if (!wrapperElement.closest('section').length) {
-                        wrapperElement.wrapAll(`<section class='${hideShowId} ktlHideShowSection ktlBoxWithBorder' />`);
+                        wrapperElement.wrapAll(`<section class='${sectionClass}' />`);
                     }
-                } else {
-                    if (!sectionElement.hasClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`)) {
-                        sectionElement.addClass(`${hideShowId} ktlHideShowSection ktlBoxWithBorder`);
-                    }
+                } else if (!sectionElement.hasClass(sectionClass)) {
+                    sectionElement.addClass(sectionClass);
                 }
-                if (!showViewOnLoad) {
-                    viewElement.find('section.ktlHideShowSection').css('flex-direction', 'column').hide();
+
+                const hideShowSection = viewElement.find(`section.${sectionClass.replace(/\s/g, '.')}`);
+                if (!viewStates[viewId]) {
+                    hideShowSection.hide();
+                }
+                hideShowSection.css('flex-direction', 'column');
+            }
+
+            function toggleHideShowSection(isShrink, hiddenSection, arrowSelector, buttonSelector, delay) {
+                if (isShrink) {
+                    hiddenSection.slideUp(delay);
+                    arrowSelector.removeClass('ktlUp').addClass('ktlDown');
+                    buttonSelector.removeClass('ktlActive');
+                    viewStates[viewId] = false;
+                } else {
+                    hiddenSection.slideDown(delay, () => {
+                        const keywordsArray = ktl.core.getKeywordsByType(viewId, '_sth');
+                        if (keywordsArray.length) {
+                            ktl.views.stickTableHeader(viewId);
+                        }
+                    });
+                    arrowSelector.removeClass('ktlDown').addClass('ktlUp');
+                    buttonSelector.addClass('ktlActive');
+                    viewStates[viewId] = true;
                 }
             }
         }
+
 
         //Views
         return {
