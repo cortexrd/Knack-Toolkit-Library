@@ -10871,7 +10871,12 @@ function Ktl($, appInfo) {
                     arrowSelector.removeClass('ktlUp').addClass('ktlDown');
                     buttonSelector.removeClass('ktlActive');
                 } else {
-                    hiddenSelector.slideDown(delay);
+                    hiddenSelector.slideDown(delay, function () {
+                        const keywordsArray = ktl.core.getKeywordsByType(viewId, '_sth');
+                        if (keywordsArray.length) {
+                            ktl.views.stickTableHeader(viewId)
+                        }
+                    });
                     arrowSelector.removeClass('ktlDown').addClass('ktlUp');
                     buttonSelector.addClass('ktlActive');
                 }
