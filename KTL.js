@@ -6233,7 +6233,7 @@ function Ktl($, appInfo) {
         })
 
         $(document).on('knack-records-render.any', function (e, view, data) {
-            console.log('records rendered', view.key);
+            //console.log('records rendered', view.key);
             readSummaryValues(view.key);
         })
 
@@ -9285,6 +9285,9 @@ function Ktl($, appInfo) {
                     ktl.views.refreshViewArray(viewsToRefreshArray)
                         .then(() => { })
                         .catch(() => { })
+                        .finally(() => {
+                            ktl.views.autoRefresh();
+                        })
             }
         }
 
@@ -14157,6 +14160,10 @@ function Ktl($, appInfo) {
             ktl.scenes.spinnerWatchdog();
             ktl.iFrameWnd.create();
             ktl.views.autoRefresh();
+            $(document).off('knack-modal-close.ktlAutoRefresh').on('knack-modal-close.ktlAutoRefresh', () => {
+                ktl.views.autoRefresh();
+            })
+
             ktl.scenes.resetIdleWatchdog();
             ktl.fields.sceneConvertNumToTel();
             ktl.core.sortMenu();
