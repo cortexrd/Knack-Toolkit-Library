@@ -6281,6 +6281,7 @@ function Ktl($, appInfo) {
                         Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
                         ktlProcessKeywords(view, data);
+                        ktl.views.fixTableRowsAlignment(viewId);
                     }
                 };
 
@@ -10998,7 +10999,7 @@ function Ktl($, appInfo) {
                                                 Knack.views[viewId].render();
 
                                             Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-                                            Knack.views[viewId].postRender && Knack.views[viewId].postRender();
+                                            //Knack.views[viewId].postRender && Knack.views[viewId].postRender();
                                         }
 
                                         if (viewWrapper) {
@@ -11355,7 +11356,7 @@ function Ktl($, appInfo) {
                                     var totalRows = $('#' + viewId + ' tr.kn-table-totals');
                                     if (!$('#' + viewId + ' tr.kn-table-totals td')[0].classList.contains('blankCell')) {
                                         var headers = $('#' + viewId + ' thead tr th:visible').length;
-                                        var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not(.ktlDisplayNone)').length;
+                                        var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])').length;
 
                                         if (headers > totals) {
                                             for (var i = totalRows.length - 1; i >= 0; i--) {
@@ -11374,7 +11375,7 @@ function Ktl($, appInfo) {
                     //Alignment fix for Summary rows (totals).
                     function fixSummaryRows() {
                         var headers = $('#' + viewId + ' thead tr th:visible').length;
-                        var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not(.ktlDisplayNone)').length;
+                        var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])').length;
 
                         for (var j = 0; j < (totals - headers); j++) {
                             $('#' + viewId + ' .kn-table-totals td:last-child').remove();
@@ -19797,6 +19798,23 @@ function getUrlParameter(name) {
     }
     return;
 };
+
+function logCaller(level = 1, ...extraParams) {
+    if (level < 1) level = 1;
+    level++;
+    const error = new Error();
+    const stack = error.stack.split('\n');
+    const lines = [];
+
+    for (let i = 2; i <= level + 1 && i < stack.length; i++) {
+        const line = stack[i].replace(/^\s*at\s*/, '');
+        const indent = i === 2 ? '' : '  '.repeat(i - 3);
+        const arrow = i === 2 ? '' : '⬑';
+        lines.push(`${indent}${arrow}${line}`);
+    }
+
+    console.log(lines.join('\n') + '\n', ...extraParams);
+}
 
 ////////////////  End of KTL /////////////////////
 
