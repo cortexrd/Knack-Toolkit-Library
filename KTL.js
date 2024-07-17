@@ -10836,7 +10836,7 @@ function Ktl($, appInfo) {
 
                 if (wrapperSelector) {
                     const wrapperElement = viewElement.find(wrapperSelector);
-                    if (!wrapperElement.closest('section').length) {
+                    if (!wrapperElement.parent().is('section')) {
                         wrapperElement.wrapAll(`<section class='${sectionClass}' />`);
                     }
                 } else if (!sectionElement.hasClass(sectionClass)) {
