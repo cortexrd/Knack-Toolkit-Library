@@ -10802,7 +10802,7 @@ function Ktl($, appInfo) {
             }
 
             const shrinkLinkHTML = `
-                <a class="ktlHideShowButton ktlShrinkLink" id="${hideShowId}_shrink_link">
+                <a class="ktlShrinkLink" id="${hideShowId}_shrink_link">
                     Shrink &nbsp;<span class="ktlArrow ktlUp" id="${hideShowId}_arrow">◀</span>
                 </a>`;
             if (!$(`#${hideShowId}_shrink_link`).length) {
