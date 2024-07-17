@@ -10999,7 +10999,6 @@ function Ktl($, appInfo) {
                                                 Knack.views[viewId].render();
 
                                             Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-                                            //Knack.views[viewId].postRender && Knack.views[viewId].postRender();
                                         }
 
                                         if (viewWrapper) {
