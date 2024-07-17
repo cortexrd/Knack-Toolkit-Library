@@ -10810,7 +10810,7 @@ function Ktl($, appInfo) {
             }
 
             const shrinkLinkHTML = `
-                <a class="ktlHideShowButton ktlShrinkLink" id="${hideShowId}_shrink_link">
+                <a class="ktlShrinkLink" id="${hideShowId}_shrink_link">
                     Shrink &nbsp;<span class="ktlArrow ktlUp" id="${hideShowId}_arrow">◀</span>
                 </a>`;
             if (!$(`#${hideShowId}_shrink_link`).length) {
@@ -10844,7 +10844,7 @@ function Ktl($, appInfo) {
 
                 if (wrapperSelector) {
                     const wrapperElement = viewElement.find(wrapperSelector);
-                    if (!wrapperElement.closest('section').length) {
+                    if (!wrapperElement.parent().is('section')) {
                         wrapperElement.wrapAll(`<section class='${sectionClass}' />`);
                     }
                 } else if (!sectionElement.hasClass(sectionClass)) {
@@ -13833,18 +13833,18 @@ function Ktl($, appInfo) {
                         });
 
                         groupLevels.forEach(groupLevel => {
+                            const groupIndex = parseInt(groupLevel.split('-')[3], 10);
+                            const outerHeight = $(`.${groupLevel}`).outerHeight();
+
                             $(`#${viewId} tbody tr.${groupLevel}`).css({
                                 'position': 'sticky',
-                                'top': function () {
-                                    const groupIndex = parseInt(groupLevel.split('-')[3], 10) - 1;
-                                    const outerHeight = $('.kn-table-group:first').outerHeight();
-                                    return `${stickyTopOffset + outerHeight * groupIndex}px`;
-                                },
+                                'top': `${stickyTopOffset - (1 * groupIndex)}px`,
                                 'z-index': '4',
                                 'color': 'black',
                             })
-                                .find('td')
-                                .css('background-color', '#c7c7c7');;
+                            .find('td')
+                                .css('background-color', '#c7c7c7');
+                            stickyTopOffset += outerHeight;
                         });
                     });
                 }
