@@ -13808,18 +13808,18 @@ function Ktl($, appInfo) {
                         });
 
                         groupLevels.forEach(groupLevel => {
+                            const groupIndex = parseInt(groupLevel.split('-')[3], 10);
+                            const outerHeight = $(`.${groupLevel}`).outerHeight();
+
                             $(`#${viewId} tbody tr.${groupLevel}`).css({
                                 'position': 'sticky',
-                                'top': function () {
-                                    const groupIndex = parseInt(groupLevel.split('-')[3], 10) - 1;
-                                    const outerHeight = $('.kn-table-group:first').outerHeight();
-                                    return `${stickyTopOffset + outerHeight * groupIndex}px`;
-                                },
+                                'top': `${stickyTopOffset - (1 * groupIndex)}px`,
                                 'z-index': '4',
                                 'color': 'black',
                             })
-                                .find('td')
-                                .css('background-color', '#c7c7c7');;
+                            .find('td')
+                                .css('background-color', '#c7c7c7');
+                            stickyTopOffset += outerHeight;
                         });
                     });
                 }
