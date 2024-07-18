@@ -1942,7 +1942,25 @@ function Ktl($, appInfo) {
                 } else if (dateFormat === 'dd/mm/yyyy') {
                     return `${day}/${month}/${year} ${hours}:${minutes}`;
                 }
-            }
+            },
+
+            logCaller: function (level = 1, ...extraParams) {
+                if (level < 1) level = 1;
+                level++;
+                const error = new Error();
+                const stack = error.stack.split('\n');
+                const lines = [];
+
+                for (let i = 2; i <= level + 1 && i < stack.length; i++) {
+                    const line = stack[i].replace(/^\s*at\s*/, '');
+                    const indent = i === 2 ? '' : '  '.repeat(i - 3);
+                    const arrow = i === 2 ? '' : '⬑';
+                    lines.push(`${indent}${arrow}${line}`);
+                }
+
+                console.log(lines.join('\n') + '\n', ...extraParams);
+            },
+
         }
     })(); //Core
 
@@ -6457,6 +6475,8 @@ function Ktl($, appInfo) {
                     return;
                 }
             }
+
+            //ktl.core.logCaller(2, view.key);
 
             try {
                 //ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
@@ -19797,23 +19817,6 @@ function getUrlParameter(name) {
     }
     return;
 };
-
-function logCaller(level = 1, ...extraParams) {
-    if (level < 1) level = 1;
-    level++;
-    const error = new Error();
-    const stack = error.stack.split('\n');
-    const lines = [];
-
-    for (let i = 2; i <= level + 1 && i < stack.length; i++) {
-        const line = stack[i].replace(/^\s*at\s*/, '');
-        const indent = i === 2 ? '' : '  '.repeat(i - 3);
-        const arrow = i === 2 ? '' : '⬑';
-        lines.push(`${indent}${arrow}${line}`);
-    }
-
-    console.log(lines.join('\n') + '\n', ...extraParams);
-}
 
 ////////////////  End of KTL /////////////////////
 
