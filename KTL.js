@@ -2130,7 +2130,7 @@ function Ktl($, appInfo) {
                             .then(() => {
                                 let encryptionKey = ktl.storage.lsGetItem('AES_EK', true, false, false);
                                 if (!encryptionKey) {
-                                    encryptionKey = ktl.core.generateRandomChars(40);
+                                    encryptionKey = ktl.core.generateRandomChars(32);
                                     ktl.storage.lsSetItem('AES_EK', encryptionKey, true, false, false);
                                 }
 
@@ -13318,7 +13318,6 @@ function Ktl($, appInfo) {
                         viewKtlButtonsDiv = $(`#${viewId}.kn-table .kn-records-nav, #${viewId} .kn-list-content, #${viewId}.kn-details section`);
                         viewKtlButtonsDiv.css({ 'flex-direction': 'column' });
                         copyToClipboard.css('margin-left', '8px').prependTo(viewKtlButtonsDiv);
-                        console.log('button Created')
                     }
 
                     copyToClipboard.on('click', function () {
