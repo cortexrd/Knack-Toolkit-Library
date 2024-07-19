@@ -19567,6 +19567,422 @@ function Ktl($, appInfo) {
         }
     })(); //virtualKeyboard
 
+    //===================================================
+    //API KEY feature
+    this.apiKey = (function () {
+        if (window.crypto && window.crypto.subtle) {
+            console.log("Web Crypto API is supported");
+        } else {
+            console.error("Web Crypto API is not supported in this environment");
+        }
+
+        function createApiKeyForm() {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+
+            // Create container
+            const container = document.createElement('div');
+            container.style.cssText = `
+        font-family: Arial, sans-serif;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        max-width: 300px;
+        position: relative;
+    `;
+
+            // Create title
+            const title = document.createElement('h2');
+            title.textContent = 'API Key Management';
+            title.style.marginTop = '0';
+
+            // Create API Key input
+            const apiKeyInput = document.createElement('input');
+            apiKeyInput.type = 'text';
+            apiKeyInput.id = 'apiKeyInput';
+            apiKeyInput.placeholder = 'Enter API Key';
+            apiKeyInput.style.cssText = `
+        display: block;
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+    `;
+
+            // Create button
+            const button = document.createElement('button');
+            button.textContent = 'Ok';
+            button.style.cssText = `
+        width: 100%;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    `;
+            button.addEventListener('mouseover', () => button.style.backgroundColor = '#0056b3');
+            button.addEventListener('mouseout', () => button.style.backgroundColor = '#007bff');
+
+            // Function to handle saving and closing
+            function saveAndClose(event) {
+                event.preventDefault();  // Prevent form submission
+                event.stopPropagation();  // Prevent event from bubbling up to overlay
+                handleApiKey();
+                closePopup();
+            }
+
+            // Add click event listener to button
+            button.addEventListener('click', saveAndClose);
+
+            // Add keypress event listener to input for Enter key
+            apiKeyInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    saveAndClose(event);
+                }
+            });
+
+            // Append elements to container
+            container.appendChild(title);
+            container.appendChild(apiKeyInput);
+            container.appendChild(button);
+
+            // Append container to overlay
+            overlay.appendChild(container);
+
+            // Append overlay to body
+            document.body.appendChild(overlay);
+
+            // Check if API Key is in sessionStorage and populate input field if it exists
+            const storedApiKey = sessionStorage.getItem('apiKey');
+            if (storedApiKey) {
+                apiKeyInput.value = storedApiKey;
+            }
+
+            // Focus on the input field
+            apiKeyInput.focus();
+
+            // Close popup when clicking outside the form
+            overlay.addEventListener('click', closePopup);
+            container.addEventListener('click', (event) => event.stopPropagation());
+
+            function closePopup() {
+                document.body.removeChild(overlay);
+            }
+        }
+
+        // Function to show the popup
+        function showApiKeyPopup() {
+            createApiKeyForm();
+        }
+
+
+        function handleApiKey() {
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            const apiKey = apiKeyInput.value.trim();
+
+            if (!apiKey) {
+                alert('Please enter an API Key');
+                return;
+            }
+
+            // Store API Key in sessionStorage
+            sessionStorage.setItem('apiKey', apiKey);
+
+            alert('API Key saved successfully!');
+
+            // Here you can add any additional logic you need when the API Key is saved
+            console.log('API Key saved:', apiKey);
+
+            try {
+                const encryptionKey = ktl.core.generateRandomChars(32);
+                const apiKey = 'This is a TOP SECRET API key!!!';
+
+                handleAdminEncryption(apiKey, encryptionKey);
+            } catch (error) {
+                console.error('Encryption failed:', error);
+                alert('Failed to encrypt and store API Key');
+            }
+        }
+
+
+
+
+
+
+
+        const plaintext = "This is a secret message";
+
+        async function encryptApiKey(apiKey, userPassword) {
+            const enc = new TextEncoder();
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                enc.encode(userPassword),
+                { name: 'PBKDF2' },
+                false,
+                ['deriveBits', 'deriveKey']
+            );
+
+            const key = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt']
+            );
+
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                enc.encode(apiKey)
+            );
+
+            const encryptedContent = new Uint8Array(salt.byteLength + iv.byteLength + encrypted.byteLength);
+            encryptedContent.set(salt, 0);
+            encryptedContent.set(iv, salt.byteLength);
+            encryptedContent.set(new Uint8Array(encrypted), salt.byteLength + iv.byteLength);
+
+            return btoa(String.fromCharCode.apply(null, encryptedContent));
+        }
+
+        // Usage on admin page
+        async function handleAdminEncryption(apiKey, encryptionKey) {
+            //const apiKey = document.getElementById('apiKeyInput').value;
+            //const encryptionKey = document.getElementById('userPasswordInput').value;
+
+            try {
+                const encryptedData = await encryptApiKey(apiKey, encryptionKey);
+                console.log('encryptedData =', encryptedData);
+
+                // Send encryptedData to Knack database using Knack's API
+                await sendToKnackDatabase(encryptedData);
+
+                alert('API Key encrypted and stored successfully');
+            } catch (error) {
+                console.error('Encryption failed:', error);
+                alert('Failed to encrypt and store API Key');
+            }
+        }
+
+        async function sendToKnackDatabase(encryptedData) {
+            console.log('send to Knack...');
+            return;
+
+            const response = await fetch('YOUR_KNACK_API_ENDPOINT', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Knack-Application-Id': 'YOUR_APP_ID',
+                    'X-Knack-REST-API-Key': 'YOUR_API_KEY'
+                },
+                body: JSON.stringify({ encryptedApiKey: encryptedData })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to store encrypted data in Knack database');
+            }
+        }
+
+        /////////////////////////////////////////
+
+
+        async function decryptApiKey(encryptedData, userPassword) {
+            const enc = new TextEncoder();
+            const dec = new TextDecoder();
+
+            const encryptedContent = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+
+            const salt = encryptedContent.slice(0, 16);
+            const iv = encryptedContent.slice(16, 28);
+            const data = encryptedContent.slice(28);
+
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                enc.encode(userPassword),
+                { name: 'PBKDF2' },
+                false,
+                ['deriveBits', 'deriveKey']
+            );
+
+            const key = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['decrypt']
+            );
+
+            try {
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    key,
+                    data
+                );
+
+                return dec.decode(decrypted);
+            } catch (e) {
+                throw new Error('Decryption failed. Incorrect password or corrupted data.');
+            }
+        }
+
+        // When user logs in
+        function handleLogin(username, password) {
+            // Verify login credentials (using Knack's authentication system)
+            // If successful:
+            localStorage.setItem('userPassword', password);
+        }
+
+        // When performing CRUD operations
+        async function performCrudOperation() {
+            const userPassword = localStorage.getItem('userPassword');
+            if (!userPassword) {
+                throw new Error('User not logged in');
+            }
+
+            try {
+                // Fetch encrypted API key data from Knack database
+                const encryptedData = await fetchEncryptedApiKeyFromKnackDatabase();
+
+                const apiKey = await decryptApiKey(encryptedData, userPassword);
+                // Use apiKey for CRUD operation
+                console.log('apiKey =', apiKey);
+            } catch (error) {
+                console.error('Failed to decrypt API key:', error);
+                // Handle error (e.g., prompt user to log in again)
+            }
+        }
+
+        async function fetchEncryptedApiKeyFromKnackDatabase() {
+            return '';
+
+            const response = await fetch('YOUR_KNACK_API_ENDPOINT', {
+                method: 'GET',
+                headers: {
+                    'X-Knack-Application-Id': 'YOUR_APP_ID',
+                    'X-Knack-REST-API-Key': 'YOUR_API_KEY'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch encrypted data from Knack database');
+            }
+
+            const data = await response.json();
+            return data.encryptedApiKey;
+        }
+        /////////////////////////////////////////
+
+
+
+        //Admin Page
+        const setUserApiKeyViewId = ktl.core.getViewIdByTitle('Set User API Key');
+        const accountsObj = ktl.core.getObjectIdByName('Accounts');
+        const aesKeyFieldId = ktl.core.getFieldIdByName('AES Key', accountsObj);
+        const apiKeyFieldId = ktl.core.getFieldIdByName('API Key', accountsObj);
+
+        if (setUserApiKeyViewId) {
+            $(document).on(`knack-view-render.${setUserApiKeyViewId}`, function (event, view, data) {
+                const viewId = view.key;
+                const align = 'center';
+                const header = 'Set Key';
+                const icon = 'fa-key';
+                const headerRow = $(`#${viewId} .kn-table thead tr:not(".ktl_setapikey")`);
+                if (headerRow.length) {
+                    const newHeaderCell = $(`<th style="text-align: ${align}; width: 10px;"><span class="table-fixed-label ktl_setapikey" style="display: inline-flex;"><span>${header}</span></span></th>`);
+                    headerRow.append(newHeaderCell);
+                    $(headerRow).addClass('ktl_setapikey');
+
+                    // Add new column with icon to click on to view record history.
+                    const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktl_setapikey")`));
+                    for (const row of rows) {
+                        if ($(row).hasClass('kn-table-totals')) {
+                            $(row).append('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); //Fix alignemnt for Summaries.
+                        } else {
+                            const newCell = document.createElement('td');
+                            const iconLink = document.createElement('a');
+                            //iconLink.href = `#${viewRecordHistorySlug}`;
+                            //iconLink.setAttribute('data-kn-slug', '#runTask');
+                            iconLink.innerHTML = `<i class="fa ${icon}" aria-hidden="true" style="margin-left: 4px; font-size: 1.3em; color: gray;"></i>`;
+                            $(iconLink).addClass('ktl_setapikey');
+
+                            $(newCell).css({ 'text-align': `${align}` });
+                            newCell.appendChild(iconLink);
+                            row.appendChild(newCell);
+                        }
+
+                        $(row).addClass('ktl_setapikey');
+                    }
+                }
+
+                $(document).off('click.ktl_setapikey').on('click.ktl_setapikey', `#${viewId} a.ktl_setapikey`, function (event) {
+                    const row = event.target.closest('tr[id]');
+                    if (row) {
+                        const recordId = row.id;
+
+                        const apiData = {};
+
+                        console.log('click!');
+
+                        // Call this function to create and add the form to the page
+                        showApiKeyPopup();
+
+
+
+                        //console.log('encryptedApiKey =', encryptedApiKey);
+                        //apiData[aesKeyFieldId] = encryptionKey;
+
+
+
+
+                        //    apiData[apiKeyFieldId] = encryptedApiKey;
+
+                        //    ktl.core.knAPI(viewId, recordId, apiData, 'PUT', [], true)
+                        //        .then(function () {
+                        //            console.log('Encrypted API key created successfully.');
+                        //        })
+                        //        .catch(function (reason) {
+                        //            console.log('Error creating API key.');
+                        //        });
+                    }
+                });
+            })
+        }
+
+
+
+
+
+
+    })(); //apiKey
+
     window.ktl = {
         //KTL exposed objects
         const: this.const,
@@ -19589,6 +20005,7 @@ function Ktl($, appInfo) {
         systemColors: this.systemColors,
         statusMonitoring: this.statusMonitoring,
         virtualKeyboard: this.virtualKeyboard,
+        apiKey: this.apiKey,
     };
 
     return window.ktl;
