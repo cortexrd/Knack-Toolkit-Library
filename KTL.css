@@ -719,6 +719,16 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	display: inline-block;
 }
 
+.ktlClickableCell {
+	cursor: pointer;
+	transition: background-color 0.3s ease;
+	text-decoration: underline;
+}
+
+	.ktlClickableCell:hover {
+		background-color: #aaa;
+	}
+
 /* Virtual Keyboard */
 .virtualKeyboardFocus {
 	border-color: #1E3978;
