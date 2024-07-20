@@ -8114,28 +8114,15 @@ function Ktl($, appInfo) {
 
             if (viewType === 'report') //Pivot Tables.  Simpler: all data always right-aligned.
                 $('#' + view.key + '.kn-report :is(thead th, tr.kn-table_summary td)').css('text-align', 'right');
-            else if (viewType === 'table') {
+            else if (viewType === 'table') { //Includes Search views also since we get type from view object.
                 var columns = view.columns;
                 if (!columns) return;
 
                 try {
                     columns.forEach(col => {
                         var align = col.align;
-                        if (col.type == 'field' || (col.type == 'link' && col.field)) {
-                            var fieldId = col.field.key;
-                            if (col.field) {
-                                //Remove anything after field_xxx, like pseudo selectors with colon.
-                                var extractedField = fieldId.match(/field_\d+/);
-                                if (extractedField) {
-                                    fieldId = extractedField[0];
-                                    $('#' + view.key + ' thead th.' + fieldId).css('text-align', align);
-                                    $('#' + view.key + ' thead th.' + fieldId + ' .table-fixed-label').css('display', 'inline-flex');
-                                }
-                            }
-                        } else if (col.type == 'link') {
-                            $('#' + view.key + ' thead th.kn-table-link').css('text-align', align);
-                            $('#' + view.key + ' thead th.kn-table-link .table-fixed-label').css('display', 'inline-flex');
-                        } //Any other field type?
+                        $(`#${view.key} thead th:textEquals("${col.header}")`).css('text-align', align);
+                        $(`#${view.key} thead th:textEquals("${col.header}") .table-fixed-label`).css('display', 'inline-flex');
                     })
                 } catch (e) {
                     console.log('headerAlignment error:', e);
@@ -11004,7 +10991,9 @@ function Ktl($, appInfo) {
                                     }
 
                                     Knack.views[viewId].renderGroups && Knack.views[viewId].renderGroups();
-                                    Knack.views[viewId].postRender && Knack.views[viewId].postRender(); //This is needed for menus.
+
+                                    if (viewType === 'menu')
+                                        Knack.views[viewId].postRender && Knack.views[viewId].postRender();
                                 }
 
                                 $("#kn-loading-spinner").removeClass('ktlHidden');
@@ -13919,10 +13908,8 @@ function Ktl($, appInfo) {
             //Used to perform bulk edits and copies of records programmatically.
             processAutomatedBulkOps: function (bulkOpsViewId, bulkOpsRecordsArray, requestType = 'PUT', viewsToRefresh = [], showSpinner = true, enableShowProgress = true) {
                 return new Promise(function (resolve, reject) {
-                    if (!bulkOpsViewId || !bulkOpsRecordsArray || !bulkOpsRecordsArray.length || !requestType)
+                    if (!bulkOpsViewId || !bulkOpsRecordsArray || !bulkOpsRecordsArray.length)
                         return reject('Called processAutomatedBulkOps with invalid parameters.');
-
-                    requestType = requestType.toUpperCase();
 
                     //Check if there's already an existing queue for this view.
                     if (!automatedBulkOpsQueue[bulkOpsViewId]) { //No, then add all array.
@@ -13968,16 +13955,20 @@ function Ktl($, appInfo) {
 
                         showProgress();
 
+                        requestType = (apiData.requestType ? apiData.requestType : requestType).toUpperCase();
+                        if (!requestType)
+                            return reject('Called processAutomatedBulkOps with empty request type.');
+
                         if (requestType === 'PUT') {
                             recId = apiData.id;
-                            apiData = apiData.apiData;
+                            apiData = apiData.apiData ? apiData.apiData : apiData;
                             delete apiData.id;
                         } else if (requestType === 'GET') {
                             filters = apiData.filters;
-                            recId = apiData.id; //Needed to map the origin of the request and the result.
+                            recId = apiData.id; //Needed to map the origin of the request to the result.
                         }
 
-                        ktl.core.knAPI(bulkOpsViewId, recId, apiData, requestType, viewsToRefresh, showSpinner, filters)
+                        ktl.core.knAPI(bulkOpsViewId, recId, apiData, requestType, [/*ignore until all done*/], showSpinner, filters)
                             .then(function (data) {
                                 if (requestType === 'GET')
                                     results.push(data);
@@ -13986,39 +13977,50 @@ function Ktl($, appInfo) {
                                     automatedBulkOpsQueue[bulkOpsViewId] = [];
                                     delete automatedBulkOpsQueue[bulkOpsViewId];
 
-                                    ktl.core.removeInfoPopup();
                                     if (requestType === 'GET') {
-                                        ktl.core.removeTimedPopup();
-                                        ktl.scenes.spinnerWatchdog();
-                                        ktl.views.autoRefresh();
-                                        Knack.hideSpinner();
-                                        return resolve(results);
+                                        handleProcessResolution(results);
                                     } else if (document.querySelector(`#${bulkOpsViewId}`)) {
-                                        Knack.showSpinner();
-                                        ktl.views.refreshView(bulkOpsViewId).then(function () {
-                                            ktl.core.removeTimedPopup();
-                                            ktl.scenes.spinnerWatchdog();
-                                            setTimeout(function () {
-                                                ktl.views.autoRefresh();
-                                                Knack.hideSpinner();
-                                                return resolve(countDone);
-                                            }, 1000);
-                                        })
+                                        if (showSpinner)
+                                            Knack.showSpinner();
+
+                                        if (viewsToRefresh.length) {
+                                            ktl.views.refreshViewArray(viewsToRefresh).then(() => {
+                                                handleProcessResolution(countDone);
+                                            });
+                                        } else {
+                                            handleProcessResolution(countDone);
+                                        }
                                     }
                                 } else
                                     showProgress();
                             })
                             .catch(function (reason) {
-                                ktl.core.removeInfoPopup();
-                                ktl.core.removeTimedPopup();
-                                Knack.hideSpinner();
-                                ktl.scenes.spinnerWatchdog();
-                                ktl.views.autoRefresh();
-                                return reject('processAutomatedBulkOps error: ' + reason.stack);
+                                handleProcessResolution(-1, 'processAutomatedBulkOps error: ' + reason.stack);
                             })
 
                         function showProgress() {
                             enableShowProgress && ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                        }
+
+                        async function handleProcessResolution(countDone, message) {
+                            await restoreDefaultPageState();
+                            if (requestType === 'GET') {
+                                return resolve(results);
+                            } else {
+                                if (countDone >= 0)
+                                    return resolve(countDone);
+                                else
+                                    return reject(message);
+                            }
+                        }
+
+                        async function restoreDefaultPageState() {
+                            ktl.core.removeInfoPopup();
+                            ktl.core.removeTimedPopup();
+                            ktl.scenes.spinnerWatchdog();
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            ktl.views.autoRefresh();
+                            Knack.hideSpinner();
                         }
                     }
                 })
@@ -18818,7 +18820,7 @@ function Ktl($, appInfo) {
 
                 let updatedCount = 0;
 
-                const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+                const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
                 const delayMS = 150;
 
                 await safePromiseAllSettled(recordsToUpdate.map(async (record, index) => {
@@ -19576,6 +19578,13 @@ function Ktl($, appInfo) {
         const aesKeyFieldId = ktl.core.getFieldIdByName('AES Key', accountsObj);
         const apiKeyFieldId = ktl.core.getFieldIdByName('API Key', accountsObj);
 
+        const appTasksViewId = ktl.core.getViewIdByTitle('App Tasks');
+        const tasksObj = ktl.core.getObjectIdByName('App Tasks');
+        const taskTableNameFieldId = ktl.core.getFieldIdByName('Table Name', tasksObj);
+        const taskTableIdFieldId = ktl.core.getFieldIdByName('Table ID', tasksObj);
+        const taskNameFieldId = ktl.core.getFieldIdByName('Task Name', tasksObj);
+        const taskIdFieldId = ktl.core.getFieldIdByName('Task ID', tasksObj);
+
         let recordId;
 
         if (!window.crypto || !window.crypto.subtle) {
@@ -19613,8 +19622,9 @@ function Ktl($, appInfo) {
 
             // Create title
             const title = document.createElement('h2');
-            title.textContent = 'API Key Management';
+            title.textContent = 'Enter API Key';
             title.style.marginTop = '0';
+            title.style.textAlign = 'center';
 
             // Create API Key input
             const apiKeyInput = document.createElement('input');
@@ -19809,6 +19819,7 @@ function Ktl($, appInfo) {
                 return dec.decode(decrypted);
             } catch (e) {
                 throw new Error('Decryption failed. Incorrect password or corrupted data.');
+                alert('Decryption failed.  Please advise your system operator to get a new key.');
             }
         }
 
@@ -19852,6 +19863,68 @@ function Ktl($, appInfo) {
                     }
                 });
             })
+        }
+
+        if (appTasksViewId) {
+            $(document).on(`knack-view-render.${appTasksViewId}`, (event, view, data) => {
+                console.log('render task view');
+                let bulkOpsRecordsArray = [];
+                const viewId = view.key;
+                const ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+                const refreshAllTasksBtn = ktl.fields.addButton(ktlAddonsDiv, 'Refresh All Tasks', '', ['kn-button', 'ktlButtonMargin'], 'ktlRefreshAppTasks-' + viewId);
+                refreshAllTasksBtn.addEventListener('click', function (e) {
+                    refreshAllTasks();
+                });
+                //if (!data.length) refreshAllTasks();
+                refreshAllTasks();
+
+                function refreshAllTasks() {
+                    // Create a map with taskId as key and an object containing name and record id as value
+                    const existingTasks = new Map(data.map(item => [
+                        item[taskIdFieldId],
+                        { name: item[taskNameFieldId], recordId: item.id }
+                    ]));
+
+                    let apiData = {};
+                    Knack.objects.models.forEach(object => {
+                        object.tasks.models.forEach(task => {
+                            const { name: taskName, key: taskId, object_key: taskTableId } = task.attributes;
+                            const taskTableName = Knack.objects._byId[taskTableId].attributes.name;
+                            apiData = {
+                                [taskTableNameFieldId]: taskTableName,
+                                [taskTableIdFieldId]: taskTableId,
+                                [taskNameFieldId]: taskName,
+                                [taskIdFieldId]: taskId,
+                            };
+
+                            if (!existingTasks.has(taskId)) {
+                                apiData.requestType = 'POST';
+                                bulkOpsRecordsArray.push(apiData);
+                            } else {
+                                const existingTask = existingTasks.get(taskId);
+                                if (existingTask.name !== taskName) {
+                                    apiData.requestType = 'PUT';
+                                    apiData.id = existingTask.recordId;
+                                    bulkOpsRecordsArray.push(apiData);
+                                }
+                            }
+                        });
+                    });
+                }
+
+                if (bulkOpsRecordsArray.length) {
+                    const ar = bulkOpsRecordsArray;
+                    console.log('process', ar);
+                    ktl.views.processAutomatedBulkOps(appTasksViewId, bulkOpsRecordsArray, '', [appTasksViewId], true, true)
+                        .then(countDone => {
+                            $.unblockUI();
+                        })
+                        .catch(err => {
+                            $.unblockUI();
+                            ktl.log.clog('purple', `processAutomatedBulkOps error encountered:\n${err}`);
+                        })
+                }
+            });
         }
 
         //User side.
