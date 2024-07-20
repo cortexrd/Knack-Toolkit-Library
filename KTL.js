@@ -10016,9 +10016,19 @@ function Ktl($, appInfo) {
 
                         if (cell && !highlightStates_scv[cellKey]) {
                             // Start highlight for new changes
+                            function copyStyle(style) {
+                                const copiedStyle = {};
+                                for (let prop in style) {
+                                    if (style.hasOwnProperty(prop) && isNaN(parseInt(prop))) {
+                                        copiedStyle[prop] = style[prop];
+                                    }
+                                }
+                                return copiedStyle;
+                            }
+
                             highlightStates_scv[cellKey] = {
                                 startTime: currentTime,
-                                originalStyle: Object.assign({}, cell.style)
+                                originalStyle: copyStyle(cell.style)
                             };
 
                             if (mode === 'flash') {
@@ -19771,10 +19781,10 @@ function Ktl($, appInfo) {
             apiData[apiKeyFieldId] = encryptedData;
             ktl.core.knAPI(setUserApiKeyViewId, recordId, apiData, 'PUT', [setUserApiKeyViewId], true)
                 .then(function () {
-                    console.log('Encrypted API key created successfully.');
+                    ktl.core.timedPopup('Encrypted API key created successfully.');
                 })
                 .catch(function (reason) {
-                    console.log('Error creating API key.');
+                    ktl.core.timedPopup('Error creating API key.', 'error');
                 });
         }
 
@@ -19818,12 +19828,12 @@ function Ktl($, appInfo) {
 
                 return dec.decode(decrypted);
             } catch (e) {
-                throw new Error('Decryption failed. Incorrect password or corrupted data.');
                 alert('Decryption failed.  Please advise your system operator to get a new key.');
+                throw new Error('Decryption failed. Incorrect password or corrupted data.');
             }
         }
 
-        //Admin side
+        //Admin side - BEGIN
         if (setUserApiKeyViewId) {
             $(document).on(`knack-view-render.${setUserApiKeyViewId}`, function (event, view, data) {
                 const align = 'center';
@@ -19867,67 +19877,54 @@ function Ktl($, appInfo) {
 
         if (appTasksViewId) {
             $(document).on(`knack-view-render.${appTasksViewId}`, (event, view, data) => {
-                console.log('render task view');
                 let bulkOpsRecordsArray = [];
-                const viewId = view.key;
-                const ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
-                const refreshAllTasksBtn = ktl.fields.addButton(ktlAddonsDiv, 'Refresh All Tasks', '', ['kn-button', 'ktlButtonMargin'], 'ktlRefreshAppTasks-' + viewId);
-                refreshAllTasksBtn.addEventListener('click', function (e) {
-                    refreshAllTasks();
-                });
-                //if (!data.length) refreshAllTasks();
-                refreshAllTasks();
 
-                function refreshAllTasks() {
-                    // Create a map with taskId as key and an object containing name and record id as value
-                    const existingTasks = new Map(data.map(item => [
-                        item[taskIdFieldId],
-                        { name: item[taskNameFieldId], recordId: item.id }
-                    ]));
+                // Create a map with taskId as key and an object containing name and record id as value
+                const existingTasks = new Map(data.map(item => [
+                    item[taskIdFieldId],
+                    { name: item[taskNameFieldId], recordId: item.id }
+                ]));
 
-                    let apiData = {};
-                    Knack.objects.models.forEach(object => {
-                        object.tasks.models.forEach(task => {
-                            const { name: taskName, key: taskId, object_key: taskTableId } = task.attributes;
-                            const taskTableName = Knack.objects._byId[taskTableId].attributes.name;
-                            apiData = {
-                                [taskTableNameFieldId]: taskTableName,
-                                [taskTableIdFieldId]: taskTableId,
-                                [taskNameFieldId]: taskName,
-                                [taskIdFieldId]: taskId,
-                            };
+                let apiData = {};
+                Knack.objects.models.forEach(object => {
+                    object.tasks.models.forEach(task => {
+                        const { name: taskName, key: taskId, object_key: taskTableId } = task.attributes;
+                        const taskTableName = Knack.objects._byId[taskTableId].attributes.name;
+                        apiData = {
+                            [taskTableNameFieldId]: taskTableName,
+                            [taskTableIdFieldId]: taskTableId,
+                            [taskNameFieldId]: taskName,
+                            [taskIdFieldId]: taskId,
+                        };
 
-                            if (!existingTasks.has(taskId)) {
-                                apiData.requestType = 'POST';
+                        if (!existingTasks.has(taskId)) {
+                            apiData.requestType = 'POST';
+                            bulkOpsRecordsArray.push(apiData);
+                        } else {
+                            const existingTask = existingTasks.get(taskId);
+                            if (existingTask.name !== taskName) {
+                                apiData.requestType = 'PUT';
+                                apiData.id = existingTask.recordId;
                                 bulkOpsRecordsArray.push(apiData);
-                            } else {
-                                const existingTask = existingTasks.get(taskId);
-                                if (existingTask.name !== taskName) {
-                                    apiData.requestType = 'PUT';
-                                    apiData.id = existingTask.recordId;
-                                    bulkOpsRecordsArray.push(apiData);
-                                }
                             }
-                        });
+                        }
                     });
-                }
+                });
 
                 if (bulkOpsRecordsArray.length) {
-                    const ar = bulkOpsRecordsArray;
-                    console.log('process', ar);
                     ktl.views.processAutomatedBulkOps(appTasksViewId, bulkOpsRecordsArray, '', [appTasksViewId], true, true)
                         .then(countDone => {
-                            $.unblockUI();
+                            ktl.log.clog('green', `App Task update completed.  Processed records: ${countDone}`);
                         })
                         .catch(err => {
-                            $.unblockUI();
-                            ktl.log.clog('purple', `processAutomatedBulkOps error encountered:\n${err}`);
+                            ktl.log.clog('purple', `App Task update error encountered:\n${err}`);
                         })
                 }
             });
         }
+        //Admin side - END
 
-        //User side.
+        //User side - BEGIN
         if (activateApiKeyViewId) {
             $(document).on(`knack-view-render.${activateApiKeyViewId}`, () => {
                 $(document).on('click', `#${activateApiKeyViewId} .is-primary`, (event) => {
@@ -19938,6 +19935,7 @@ function Ktl($, appInfo) {
                 });
             })
         }
+        //User side - END
 
 
         return {
