@@ -3105,10 +3105,11 @@ function Ktl($, appInfo) {
 
                 let prefix;
                 let autoSubmit = false;
+                let matchMode = 'exact';
                 let submitDelay = 0;
                 const barcodeFields = [];
 
-                //The queue's intention is to be able to queue quick successive readings.
+                //The queue's intention is to be able to queue quick successive readings, to support multiple forms concurrently.
                 //But we need to prevent sending output characters in the fields, creating garbled text.
                 const barcodeQueue = [];
 
@@ -3122,6 +3123,13 @@ function Ktl($, appInfo) {
                                 autoSubmit = true;
                             if (group.length >= 3 && !isNaN(group[2]))
                                 submitDelay = Number(group[2]);
+                        } else if (group[0] === 'match' && group.length === 2) {
+                            if (group[1].toLowerCase() === 'exact')
+                                matchMode = 'exact';
+                            else if (group[1].toLowerCase() === 'partial')
+                                matchMode = 'partial';
+                            else if (group[1].toLowerCase() === 'select')
+                                matchMode = 'select';
                         } else {
                             if (group.length >= 1) {
                                 let fieldId = group[0];
@@ -3187,10 +3195,48 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    function processBarcodeText(barcodeText) {
-                        if (!prefix || (prefix && barcodeText.startsWith(prefix))) {
+                    function processBarcodeText(rawBarcodeText) {
+                        //First, remove the barcode characters from the currently focused editable input field, if applicable.
+                        if ($(document.activeElement).is('input, textarea') ||
+                            ($(document.activeElement).hasClass('redactor-editor') && $(document.activeElement).attr('contenteditable') === 'true')) {
+
+                            var $activeElement = $(document.activeElement);
+
+                            if ($activeElement.is('input, textarea')) {
+                                var currentValue = $activeElement.val();
+                                $activeElement.val(currentValue.slice(0, -rawBarcodeText.length));
+                                ktl.fields.enforceNumeric();
+                            } else if ($activeElement.hasClass('redactor-editor')) {
+                                function removeBarcodeCharactersFromHtml(htmlContent, barcodeText) {
+                                    var tempElement = $('<div>').html(htmlContent);
+                                    var textContent = tempElement.text();
+
+                                    var barcodePosition = textContent.lastIndexOf(barcodeText);
+                                    if (barcodePosition !== -1) {
+                                        textContent = textContent.slice(0, barcodePosition);
+
+                                        tempElement.contents().each(function () {
+                                            if (this.nodeType === Node.TEXT_NODE) {
+                                                this.nodeValue = this.nodeValue.slice(0, barcodePosition);
+                                                barcodePosition -= this.nodeValue.length;
+                                            } else if (this.nodeType === Node.ELEMENT_NODE) {
+                                                $(this).html(removeBarcodeCharactersFromHtml($(this).html(), barcodeText));
+                                            }
+                                        });
+                                    }
+                                    return tempElement.html();
+                                }
+
+                                var currentContent = $activeElement.html();
+                                var cleanedContent = removeBarcodeCharactersFromHtml(currentContent, rawBarcodeText);
+                                $activeElement.html(cleanedContent);
+                            }
+                        }
+
+                        if (!prefix || (prefix && rawBarcodeText.startsWith(prefix))) {
+                            let barcodeText = rawBarcodeText;
                             if (prefix)
-                                barcodeText = barcodeText.substring(prefix.length);
+                                barcodeText = rawBarcodeText.substring(prefix.length);
 
                             var promisesArray = [];
                             for (const barcodeField of barcodeFields) {
@@ -3218,7 +3264,7 @@ function Ktl($, appInfo) {
                                     $(`#${viewId} #${barcodeField.fieldId}`).data('redactor').code.set(fieldText);
                                 } else if (fieldType === 'connection') {
                                     if ($(`#${viewId}-${barcodeField.fieldId}`).hasClass('chzn-select')) {
-                                        promisesArray.push(ktl.views.searchDropdown(fieldText, barcodeField.fieldId, true, true, viewId)
+                                        promisesArray.push(ktl.views.searchDropdown(fieldText, barcodeField.fieldId, matchMode, true, viewId)
                                             .then(function () { })
                                             .catch(function (foundText) { console.log('error', foundText); })
                                         );
@@ -11511,21 +11557,30 @@ function Ktl($, appInfo) {
 
             // srchTxt: string to find, must be non-empty.
             // fieldId:  'field_xyz' that is a chzn dropdown.
-            // onlyExactMatch: if true, only the exact match is returned.  False will return all options containing text.
+            // matchMode: can be exact, partial or select.  
+            //  If exact, only a single result must be found to be returned.
+            //  If partial, it will return the first result among many found.
+            //  Id select, it will not close the drop down and let the user select manually among many found.
             //    -> Typically used when scanning a barcode.  When manual entry, user wants to view results and choose.
             // showPopup: True will show a 2-second confirmation message, found or not found.
             // viewId: 'view_xyz' is used for Search Views, and optional for others.  If left empty, the first found field is used.
-            searchDropdown: function (srchTxt = '', fieldId = '', onlyExactMatch = true, showPopup = true, viewId = '', pfSaveForm = true) {
+            searchDropdown: function (srchTxt = '', fieldId = '', matchMode, showPopup = true, viewId = '', pfSaveForm = true) {
                 return new Promise(function (resolve, reject) {
                     if (!srchTxt || !fieldId) {
-                        reject('Empty parameters');
-                        return;
+                        return reject('Empty parameters');
                     }
 
                     if (dropdownSearching[fieldId])
-                        return; //Exit if a search is already in progress for this field.
+                        return reject('Search already in progress for this field');
 
                     dropdownSearching[fieldId] = fieldId;
+
+                    //Convert legacy flag to new options.
+                    if (typeof matchMode === 'boolean')
+                        matchMode = matchMode === true ? 'exact' : 'select';
+
+                    if (!matchMode)
+                        matchMode = 'exact';
 
                     //If we're editing a cell, then it becomes our view by default and ignore viewId parameter.
                     //If viewId not specified, find first fieldId in page.
@@ -11580,7 +11635,7 @@ function Ktl($, appInfo) {
                                     //The dropdown has finished searching and came up with some results, but we must now
                                     //filter them to exclude any found elements that are not an exact match (whole word only).
                                     //Otherwise, we may end up with wrong results.
-                                    //Ex: Typing 1234 could select 12345 if it was part of the results and before 1234.
+                                    //Ex: Searching 1234 could select 12345 if it was part of the results and found before 1234.
 
                                     var id = '';
                                     waitForOptions(dropdownObj)
@@ -11603,6 +11658,16 @@ function Ktl($, appInfo) {
                                                             break;
                                                         } else if (!foundExactMatch && text.toLowerCase().indexOf(lowercaseSrch) >= 0) { //Partial match
                                                             foundText = text;
+
+                                                            if (matchMode === 'partial') {
+                                                                id = options[i].value;
+                                                                if (isMultipleChoice)
+                                                                    dropdownObj.find('option[value="' + id + '"]').attr('selected', 1);
+                                                                else
+                                                                    dropdownObj.val(id);
+                                                                dropdownObj.trigger('liszt:updated');
+                                                                break;
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -11622,23 +11687,41 @@ function Ktl($, appInfo) {
                                                         $(chznContainer).find('.chzn-drop').css('left', '-9000px');
                                                         ktl.scenes.autoFocus();
                                                     }
-                                                } else { //Multiple options.
-                                                    if (onlyExactMatch) {
-                                                        ktl.core.timedPopup('Could not find ' + srchTxt, 'error', 3000);
+                                                } else { //Multiple options found.
+                                                    if (matchMode === 'exact') {
+                                                        if (showPopup)
+                                                            ktl.core.timedPopup('Could not find ' + srchTxt, 'error', 3000);
                                                         delete dropdownSearching[fieldId];
-                                                        reject(foundText);
-                                                        return;
+                                                        return reject(foundText);
+                                                    } else if (matchMode === 'partial') {
+                                                        if (showPopup)
+                                                            ktl.core.timedPopup('Found partial match ' + foundText, 'success', 3000);
+                                                        delete dropdownSearching[fieldId];
+
+                                                        if (pfSaveForm)
+                                                            dropdownObj.trigger('change'); //Required to save persistent form data.
+
+                                                        if (chznContainer.length) {
+                                                            $(chznContainer).find('.chzn-drop').css('left', '-9000px');
+                                                            ktl.scenes.autoFocus();
+                                                        }
+
+                                                        return reject(foundText);
+                                                    } else if (matchMode === 'select') {
+                                                        if (showPopup)
+                                                            ktl.core.timedPopup('Select partial match ' + srchTxt, 'success', 3000);
+                                                        delete dropdownSearching[fieldId];
+                                                        return reject(foundText);
                                                     }
                                                 }
 
                                                 delete dropdownSearching[fieldId];
-                                                resolve(foundText);
-                                                return;
+                                                return resolve(foundText);
                                             } else { //Nothing found.
                                                 if (showPopup)
                                                     ktl.core.timedPopup('Could not find ' + srchTxt, 'error', 3000);
 
-                                                if (onlyExactMatch) {
+                                                if (matchMode === 'exact') {
                                                     if (chznContainer.length) {
                                                         $(chznContainer).find('.chzn-drop').css('left', '-9000px');
                                                         ktl.scenes.autoFocus();
@@ -11646,13 +11729,12 @@ function Ktl($, appInfo) {
                                                 }
 
                                                 delete dropdownSearching[fieldId];
-                                                reject(foundText);
-                                                return;
+                                                return reject(foundText);
                                             }
                                         })
                                         .catch(() => {
                                             delete dropdownSearching[fieldId];
-                                            reject('No results!');
+                                            return reject('No results!');
                                         })
                                 } else { //Multi selection
                                     if (chznContainer.length) {
@@ -11710,8 +11792,7 @@ function Ktl($, appInfo) {
                             Knack.hideSpinner();
                             clearInterval(intervalId);
                             delete dropdownSearching[fieldId];
-                            reject(foundText);
-                            return; //JIC
+                            return reject(foundText);
                         }, 5000);
                     } else {
                         //ktl.log.clog('purple, 'Called searchDropdown with a field that does not exist: ' + fieldId);
@@ -11725,8 +11806,7 @@ function Ktl($, appInfo) {
                                 if (options.length) {
                                     clearInterval(intervalId);
                                     clearTimeout(failsafe);
-                                    resolve(options);
-                                    return;
+                                    return resolve(options);
                                 }
                             }, 200);
 
@@ -11734,8 +11814,7 @@ function Ktl($, appInfo) {
                                 ktl.log.clog('purple', 'waitForOptions timeout');
                                 ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1021 - waitForOptions timeout: ' + Knack.scene_hash.replace(/[/\/#]+/g, '') + ', ' + dropdownObj[0].id);
                                 clearInterval(intervalId);
-                                reject(foundText);
-                                return; //JIC
+                                return reject(foundText);
                             }, 25000);
                         })
                     }
