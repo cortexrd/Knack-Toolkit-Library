@@ -18469,7 +18469,17 @@ function Ktl($, appInfo) {
                 // Add the total keyword count
                 sortedObject["Total keywords"] = totalKeywords;
 
-                return JSON.stringify(sortedObject, null, 2);
+                function alignValues(obj) {
+                    const longestKeyLength = Math.max(...Object.keys(obj).map(key => key.length));
+                    const formattedEntries = Object.entries(obj).map(([key, value]) => {
+                        const padding = ' '.repeat(longestKeyLength - key.length);
+                        return `"${key}":${padding} ${value}`;
+                    });
+
+                    return `{\n  ${formattedEntries.join(',\n  ')}\n}`;
+                }
+
+                return alignValues(sortedObject);
             },
 
             getLinuxDeviceInfo: function () {
