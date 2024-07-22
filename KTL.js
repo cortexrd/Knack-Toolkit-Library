@@ -11706,12 +11706,12 @@ function Ktl($, appInfo) {
                                                             ktl.scenes.autoFocus();
                                                         }
 
-                                                        return reject(foundText);
+                                                        return resolve(foundText);
                                                     } else if (matchMode === 'select') {
                                                         if (showPopup)
                                                             ktl.core.timedPopup('Select partial match ' + srchTxt, 'success', 3000);
                                                         delete dropdownSearching[fieldId];
-                                                        return reject(foundText);
+                                                        return resolve(foundText);
                                                     }
                                                 }
 
