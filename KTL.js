@@ -3448,7 +3448,7 @@ function Ktl($, appInfo) {
 
         let currentViews = {}; //Needed to cleanup form data from previous views, when scene changes.
         let previousScene = '';
-        let isInitialized = false;
+        let pfIsInitialized = false;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (ktl.scenes.isiFrameWnd()) return;
@@ -3467,13 +3467,11 @@ function Ktl($, appInfo) {
             ktl.fields.sceneConvertNumToTel().then(() => {
                 if (!ktl.core.getCfg().enabled.persistentForm || scenesToExclude.includes(scene.key)) {
                     //Allow other features that depend on this event to run, even if PF is not enabled.
-                    isInitialized = true;
                     $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
                     $(document).trigger('KTL.persistentForm.completed.scene', [scene]);
                 } else {
                     loadFormData()
                         .then(() => {
-                            isInitialized = true;
                             setTimeout(() => {
                                 ktl.fields.enforceNumeric();
                                 $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
@@ -3490,7 +3488,7 @@ function Ktl($, appInfo) {
 
             const elementsToObserve = document.querySelectorAll(`#${viewId} .redactor-box`);
             const observer = new MutationObserver((records, observer) => {
-                if (!isInitialized) return;
+                if (!pfIsInitialized) return;
 
                 const editor = $(records.find(record => $(record.target).closest('.redactor-editor').length).target).closest('.redactor-editor');
                 if (editor) {
@@ -3515,7 +3513,6 @@ function Ktl($, appInfo) {
             if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv) {
                 loadFormData(viewId)
                     .then(() => {
-                        isInitialized = true;
                         setTimeout(() => {
                             ktl.fields.enforceNumeric();
                         }, 1000);
@@ -3564,6 +3561,9 @@ function Ktl($, appInfo) {
         //When input field text has changed or has lost focus, save it.
         //Note that this function applies to text input fields only.  Other field types are saved through ktlOnFieldValueChanged.
         function formContentHasChanged(element) {
+            if (!pfIsInitialized)
+                return;
+
             const view = element.closest('.kn-form.kn-view');
             if (!view) return;
 
@@ -3591,12 +3591,30 @@ function Ktl($, appInfo) {
                     inputValue = optObj;
                 } else if (field.attributes.type === 'rich_text') {
                     inputValue = element.innerHTML;
+                } else if (field.attributes.type === 'connection') {
+                    inputValue = '';
+                    if (field.attributes.format) {
+                        if (field.attributes.format.input === 'checkbox') {
+                            const options = Array.from($(knInput).find('.option.checkbox input'));
+                            for (const option of options) {
+                                if (option.checked) {
+                                    const value = option.value;
+                                    inputValue += ',' + value;
+                                }
+                            }
+                            inputValue = inputValue.replace(',', '');
+                        } else if (field.attributes.format.input === 'radio') {
+                            const checked = $(knInput).find('.option.radio input:checked');
+                            if (checked)
+                                inputValue = checked[0].value;
+                        }
+                    }
                 }
             }
 
             const subFieldId = (fieldId !== element.id) ? element.id : '';
 
-            if (isInitialized
+            if (pfIsInitialized
                 && ktl.core.getCfg().enabled.persistentForm
                 && !scenesToExclude.includes(Knack.router.current_scene_key)
                 && !ktl.scenes.isiFrameWnd())
@@ -3608,7 +3626,10 @@ function Ktl($, appInfo) {
         //Save data for a given view and field.
         function saveFormData(data, viewId = '', fieldId = '', subField = '') {
             //console.log('saveFormData', data, viewId, fieldId, subField);
-            if (!isInitialized || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
+            if (!pfIsInitialized || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
+
+            //Ignore modal scenes, since they cause confusion when being closed without submit.  Issue #326
+            if (Knack.router.scene_view.model.attributes.modal) return;
 
             var formDataObj = {};
             var view = Knack.router.scene_view.model.views._byId[viewId];
@@ -3679,16 +3700,22 @@ function Ktl($, appInfo) {
                 })
         })
 
+        $(document).on('KTL.persistentForm.completed.scene', function (event, scene) {
+            pfIsInitialized = true;
+        });
+
         //Loads any data previously saved for all fields in forms.
         //If a viewId is supplied, only this form will be processed, otherwise all forms in scene.
         //Also adds Change event handlers for dropdowns and calendars.   Eventually, support all object types.
-        //After loading, re-validates numeric fields and put errors in pink.
+        //After loading, re-validates numeric fields and hoghlights errors in pink.
         let allViewsDone = [];
         function loadFormData(viewId) {
             return new Promise(function (resolve) {
-                if (allViewsDone.length) return; //Prevent re-entry until finished.
+                if (allViewsDone.length) return resolve(); //Prevent re-entry until finished.
 
                 var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
+
+                //If nothing to load, just skip the rest and declare the view and scene as loaded and ready for further processing.
                 if (!formDataObjStr || $.isEmptyObject(JSON.parse(formDataObjStr))) {
                     ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA); //Wipe out if empty object, JIC.
                     if (viewId) {
@@ -3746,6 +3773,11 @@ function Ktl($, appInfo) {
 
                         const viewData = JSON.parse(formDataObjStr)[view.key];
                         if (!viewData) return resolve();
+
+                        const pfTimeout = setTimeout(function () { //Failsafe
+                            console.log('loadDataForView timeout expired.', viewId, pfTimeout);
+                            return resolve();
+                        }, 20000);
 
                         currentViews[view.key] = view.key;
                         formDataObj[view.key] = viewData;
@@ -3825,7 +3857,11 @@ function Ktl($, appInfo) {
                                 } else if ($(`#${view.key} #connection-picker-radio-${fieldId}`).length) { // Radio buttons
                                     $(`#${view.key} #connection-picker-radio-${fieldId} input[value="${fieldText}"]`).click();
                                 } else if ($(`#${view.key} #connection-picker-checkbox-${fieldId}`).length) { // Checkboxes
-                                    $(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${fieldText}"]`).click();
+                                    const values = fieldText.split(',');
+                                    for (const value of values) {
+                                        if (!$(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${value}"]`)[0].checked)
+                                            $(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${value}"]`).click();
+                                    }
                                 }
                             } else if (fieldType === 'multiple_choice') {
                                 if (typeof fieldText === 'object') {
@@ -3839,8 +3875,9 @@ function Ktl($, appInfo) {
                                     var options = JSON.parse(fieldText);
                                     Object.keys(options).forEach(key => {
                                         const option = $(`#${view.key} [data-input-id="${fieldId}"] input[value="${key}"]`).first();
-                                        if (options[key] != option.prop('checked'))
+                                        if (options[key] != option.prop('checked')) {
                                             option.click();
+                                        }
                                     })
                                 } else {
                                     const values = $(`#${view.key}-${fieldId}`).val() || [];
@@ -3867,14 +3904,11 @@ function Ktl($, appInfo) {
                             delete formDataObj[view.key][fieldId];
                         };
 
+                        clearTimeout(pfTimeout);
                         delete formDataObj[view.key];
                         return resolve();
                     })
                 }
-
-                setTimeout(function () { //Failsafe
-                    return resolve();
-                }, 20000);
             })
         }
 
@@ -4096,7 +4130,6 @@ function Ktl($, appInfo) {
                 autocompleteFields(view.key);
             })
         });
-
     })(); //Autocomplete
 
     //====================================================
