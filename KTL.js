@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.9';
+    const KTL_VERSION = '0.27.10';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -8583,7 +8583,9 @@ function Ktl($, appInfo) {
                                     let linkSelector;
 
                                     if (clickCurrentlyRunning.actionLinkText) {
-                                        linkSelector = $(`#${viewId} .kn-action-link:textEquals("${clickCurrentlyRunning.actionLinkText}"), #${viewId} .knViewLink__label:textEquals("${clickCurrentlyRunning.actionLinkText}")`);
+                                        linkSelector = $(`#${viewId} a.kn-action-link:textEquals("${clickCurrentlyRunning.actionLinkText}")`);
+                                        if (!linkSelector.length)
+                                            linkSelector = $(`#${viewId} a.knViewLink__label:textEquals("${clickCurrentlyRunning.actionLinkText}")`);
 
                                         if (linkSelector.length) {
                                             const recId = linkSelector[0].closest('tr').id;
@@ -9641,9 +9643,14 @@ function Ktl($, appInfo) {
             startDateInput.onfocus = (e) => { currentFocus = `#${viewId}-startDateInput`; }
             endDateInput.onfocus = (e) => { currentFocus = `#${viewId}-endDateInput`; }
 
-            if (currentFocus) {
+            //Let Search input have priority over DT fields, to set focus back on it is currently active.
+            $(document).off(`click.ktl_dtp_${viewId}`).on(`click.ktl_dtp_${viewId}`, `#${viewId} .table-keyword-search input[name=keyword]`, function (e) {
+                currentFocus = `#${viewId} .table-keyword-search input[name=keyword]`;
+            })
+
+            if (currentFocus)
                 document.querySelector(currentFocus).focus();
-            } else
+            else
                 startDateInput.focus();
 
             function computeEndDate(startDate, period) {
