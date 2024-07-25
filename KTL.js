@@ -3508,7 +3508,7 @@ function Ktl($, appInfo) {
             }
 
             //TODO:  ktl.fields.viewConvertNumToTel().then(() => {
-            //View-based verison of sceneConvertNumToTel
+            //View-based version of sceneConvertNumToTel
 
             if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv) {
                 loadFormData(viewId)
