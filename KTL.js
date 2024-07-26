@@ -1919,17 +1919,14 @@ function Ktl($, appInfo) {
 
             //Parameter is a number followed by d, h or m (days, hours, minutes).
             //Ex: 90d, 48h or 30m.
-            computeFutureDateTime: function (expiryString, dateFormat) {
+            computeFutureDateTime: function (expiryString, dateFormat = 'iso', originDateTime = new Date()) {
                 if (!expiryString) return;
                 const amount = parseInt(expiryString);
                 const unit = expiryString.charAt(expiryString.length - 1);
-
                 if (isNaN(amount) || !['d', 'h', 'm'].includes(unit)) {
                     throw new Error('Invalid expiry string format');
                 }
-
-                const futureDate = new Date();
-
+                const futureDate = new Date(originDateTime);
                 if (unit === 'd') {
                     futureDate.setDate(futureDate.getDate() + amount);
                 } else if (unit === 'h') {
@@ -1938,16 +1935,19 @@ function Ktl($, appInfo) {
                     futureDate.setMinutes(futureDate.getMinutes() + amount);
                 }
 
-                const day = String(futureDate.getDate()).padStart(2, '0');
-                const month = String(futureDate.getMonth() + 1).padStart(2, '0');
-                const year = String(futureDate.getFullYear());
-                const hours = String(futureDate.getHours()).padStart(2, '0');
-                const minutes = String(futureDate.getMinutes()).padStart(2, '0');
-
-                if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
-                    return `${month}/${day}/${year} ${hours}:${minutes}`;
-                } else if (dateFormat === 'dd/mm/yyyy') {
-                    return `${day}/${month}/${year} ${hours}:${minutes}`;
+                if (dateFormat === 'iso') {
+                    return futureDate.toISOString();
+                } else {
+                    const day = String(futureDate.getDate()).padStart(2, '0');
+                    const month = String(futureDate.getMonth() + 1).padStart(2, '0');
+                    const year = String(futureDate.getFullYear());
+                    const hours = String(futureDate.getHours()).padStart(2, '0');
+                    const minutes = String(futureDate.getMinutes()).padStart(2, '0');
+                    if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
+                        return `${month}/${day}/${year} ${hours}:${minutes}`;
+                    } else if (dateFormat === 'dd/mm/yyyy') {
+                        return `${day}/${month}/${year} ${hours}:${minutes}`;
+                    }
                 }
             },
 
@@ -6619,6 +6619,7 @@ function Ktl($, appInfo) {
                     keywords._scv && showChangedValues(viewId, keywords, data);
                     keywords._vrh && viewRecordHistory(viewId, keywords);
                     keywords._hsv && hideShowView(view, keywords);
+                    keywords._cfdt && calculateFutureDateTime(viewId, keywords, data);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -10987,6 +10988,91 @@ function Ktl($, appInfo) {
             }
         }
 
+        function calculateFutureDateTime(viewId, keywords, data) {
+            if (!viewId) return;
+            const kw = '_cfdt';
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+                const groups = keywords[kw][0].params;
+                if (groups.length >= 2) {
+                    const fields = groups[0];
+                    const srcField = (fields[0].startsWith('field_')) ? fields[0] : ktl.fields.getFieldIdFromLabel(viewId, fields[0]);
+                    const dstField = (fields[1].startsWith('field_')) ? fields[1] : ktl.fields.getFieldIdFromLabel(viewId, fields[1]);
+                    const range = groups[1]; //Ex: [7,0,0] to add 7 days, 0 hours, 0 minutes.
+                    const days = range[0];
+                    const hours = range[1];
+                    const minutes = range[2];
+                    const dateFormat = Knack.objects.getField(dstField).attributes.format.date_format;
+                    const srcDateTime = new Date(data[`${srcField}_raw`].iso_timestamp); //Ex: '2024-07-01T13:00:00.000Z'
+
+                    // Compute the future date and time based on srcDateTime + range
+                    let futureDateTime;
+
+                    if (days > 0)
+                        futureDateTime = ktl.core.computeFutureDateTime(`${days}d`, 'iso', srcDateTime);
+                    if (hours > 0)
+                        futureDateTime = ktl.core.computeFutureDateTime(`${hours}h`, 'iso', futureDateTime);
+                    if (minutes > 0)
+                        futureDateTime = ktl.core.computeFutureDateTime(`${minutes}m`, 'iso', futureDateTime);
+
+                    const futureDTIso = new Date(futureDateTime).toISOString();
+                    const [newDate, newTime] = futureDTIso.split('T');
+                    let newFormattedDate = newDate;
+
+                    let newFormattedTime = newTime.slice(0, 5);
+
+                    // Convert time from hh:mm to h:mma format
+                    const [hrs, mins] = newFormattedTime.split(':');
+                    const hourInt = parseInt(hrs, 10);
+                    const ampm = hourInt >= 12 ? 'pm' : 'am';
+                    const formattedHour = hourInt % 12 || 12;
+                    newFormattedTime = `${formattedHour}:${mins}${ampm}`;
+
+                    if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
+                        const [year, month, day] = newDate.split('-');
+                        newFormattedDate = `${month}/${day}/${year}`;
+                    } else if (dateFormat === 'dd/mm/yyyy') {
+                        //Convert to format dd/mm/yyyy
+                        const [year, month, day] = newDate.split('-');
+                        newFormattedDate = `${day}/${month}/${year}`;
+                    }
+
+                    // Populate input fields.
+                    $(`#${viewId}-${dstField}`).val(newFormattedDate);
+                    $(`#${viewId}-${dstField}-time`).val(newFormattedTime);
+
+                    const srcTimeTo = $(`#${viewId}-${srcField}-time-to`).val();
+                    $(`#${viewId}-${dstField}-time-to`).val(srcTimeTo);
+
+                    $(`#${viewId}-${dstField}-to`).val(newFormattedDate);
+
+                    if (groups.length >= 3) {
+                        let hideToSection = 0;
+                        const hiddentFields = groups[2].slice(1);
+                        console.log('hiddentFields =', hiddentFields);
+                        for (const hiddenfField of hiddentFields) {
+                            if (hiddenfField === 'ad') {
+                                $(`#${viewId} [name="all_day"]`).closest('label').addClass('ktlHidden_cfdt');
+                            } else if (hiddenfField === 'rpt') {
+                                $(`#${viewId} [name="repeat"]`).closest('label').addClass('ktlHidden_cfdt');
+                            } if (hiddenfField === 'fdt') {
+                                $(`#${viewId} [data-input-id="${dstField}"]`).addClass('ktlHidden_cfdt');
+                            } if (hiddenfField === 'et') {
+                                $(`#${viewId}-${srcField}-time-to`).addClass('ktlHidden_cfdt');
+                                hideToSection++;
+                            } if (hiddenfField === 'ed') {
+                                $(`#${viewId}-${srcField}-to`).addClass('ktlHidden_cfdt');
+                                hideToSection++
+                            }
+                        }
+
+                        if (hideToSection === 2)
+                            $(`#${viewId} [data-input-id="${srcField}"] .kn-datetime__to`).addClass('ktlHidden_cfdt');
+                    }
+                }
+            }
+        }
 
         //Views
         return {
