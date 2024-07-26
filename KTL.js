@@ -10989,7 +10989,7 @@ function Ktl($, appInfo) {
         }
 
         function calculateFutureDateTime(viewId, keywords, data) {
-            if (!viewId) return;
+            if (!viewId || Array.isArray(data)) return;
             const kw = '_cfdt';
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const options = keywords[kw][0].options;
@@ -11050,7 +11050,6 @@ function Ktl($, appInfo) {
                     if (groups.length >= 3) {
                         let hideToSection = 0;
                         const hiddentFields = groups[2].slice(1);
-                        console.log('hiddentFields =', hiddentFields);
                         for (const hiddenfField of hiddentFields) {
                             if (hiddenfField === 'ad') {
                                 $(`#${viewId} [name="all_day"]`).closest('label').addClass('ktlHidden_cfdt');
@@ -14079,7 +14078,7 @@ function Ktl($, appInfo) {
                                 'z-index': '4',
                                 'color': 'black',
                             })
-                            .find('td')
+                                .find('td')
                                 .css('background-color', '#c7c7c7');
                             stickyTopOffset += outerHeight;
                         });
