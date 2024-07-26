@@ -250,7 +250,7 @@ function Ktl($, appInfo) {
         });
     }
 
-    const numericFieldTypes = ['number', 'currency', 'sum', 'min', 'max', 'average', 'equation'];
+    const numericFieldTypes = ['number', 'currency', 'sum', 'min', 'max', 'average', 'equation', 'rating'];
 
     /**
     * Exposed constant strings
@@ -1487,6 +1487,13 @@ function Ktl($, appInfo) {
                 value = value.replace(/\s/g, '');
 
                 if (value === '') return '0'; //Blanks are considered as zero, for enforceNumeric.
+
+                //Convert commas to universal format.
+                if (fieldAttributes.format.mark_decimal === 'comma')
+                    value = value.replace(/,(?=[^,]*$)/, '.');
+
+                if (fieldAttributes.format.mark_thousands === 'comma')
+                    value = value.replace(/,/g, '');
 
                 numericValue = ktl.core.parseNumericValue(value);
 
@@ -6329,11 +6336,6 @@ function Ktl($, appInfo) {
                 $('.kn-modal-bg .kn-modal').css({ 'max-width': '98%' });
         })
 
-        $(document).on('knack-records-render.any', function (e, view, data) {
-            //console.log('records rendered', view.key);
-            readSummaryValues(view.key);
-        })
-
         //Object that keeps a render count for each viewId that has a summary and groups.
         const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -6377,8 +6379,11 @@ function Ktl($, appInfo) {
                     if (Knack.views[viewId].ktlRenderTotals) {
                         Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
-                        ktlProcessKeywords(view, data);
-                        ktl.views.fixTableRowsAlignment(viewId);
+                        readSummaryValues(viewId);
+                        $(document).off('KTL.' + viewId + '.summaryRendered.ktlRenderTotals').on('KTL.' + viewId + '.summaryRendered.ktlRenderTotals', () => {
+                            ktlProcessKeywords(view, data);
+                            ktl.views.fixTableRowsAlignment(viewId);
+                        })
                     }
                 };
 
@@ -6637,7 +6642,7 @@ function Ktl($, appInfo) {
                 else {
                     //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values.
                     if (ktl.views.viewHasSummary(viewId)) {
-                        $(document).off('KTL.' + viewId + '.totalsRendered.processKeywords').on('KTL.' + viewId + '.totalsRendered.processKeywords', () => {
+                        $(document).off('KTL.' + viewId + '.summaryRendered.processKeywords').on('KTL.' + viewId + '.summaryRendered.processKeywords', () => {
                             labelText(view, keywords);
                             ktl.views.fixTableRowsAlignment(view.key);
                         })
@@ -6975,7 +6980,7 @@ function Ktl($, appInfo) {
                         for (var col = 0; col < td.length; col++) {
                             if (headers[col]) {
                                 const txt = td[col].textContent.trim();
-                                const fieldId = headers[col].className;
+                                const fieldId = headers[col].className.split(' ')[0];
                                 const val = ktl.core.extractNumericValue(txt, fieldId);
                                 if (txt !== '' && val === undefined) {
                                     //Found a summary type, ex: "Avg".
@@ -6995,7 +7000,7 @@ function Ktl($, appInfo) {
                     else
                         ktlKeywords[viewId] = { summary: summaryObj };
 
-                    $(document).trigger('KTL.' + viewId + '.totalsRendered');
+                    $(document).trigger('KTL.' + viewId + '.summaryRendered');
                 })
         }
 
@@ -7384,8 +7389,7 @@ function Ktl($, appInfo) {
         function colorizeFieldByValue(viewId, data) {
             const CFV_KEYWORD = '_cfv';
 
-            if (!viewId)
-                return;
+            if (!viewId) return;
 
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'table' && viewType !== 'list' && viewType !== 'details')
@@ -7502,7 +7506,7 @@ function Ktl($, appInfo) {
                                             const columnHeader = ktlRefValSplit[2] || '';
 
                                             if (summaryViewId !== viewId) {
-                                                $(document).off('KTL.' + summaryViewId + '.totalsRendered.' + viewId).on('KTL.' + summaryViewId + '.totalsRendered.' + viewId, () => {
+                                                $(document).off('KTL.' + summaryViewId + '.summaryRendered.getRefVal.' + viewId).on('KTL.' + summaryViewId + '.summaryRendered.getRefVal.' + viewId, () => {
                                                     ktl.views.refreshView(viewId);
                                                 })
                                                 if (ktlKeywords[summaryViewId] && ktlKeywords[summaryViewId].summary) {
@@ -7531,9 +7535,8 @@ function Ktl($, appInfo) {
                                                 ktl.log.clog('purple', 'Failed waiting for selector in applyColorization / getTextFromSelector.', viewId, e);
                                             })
                                     }
-                                } else {
+                                } else
                                     applyColorizationToRecords(fieldId, parameters, referenceValue, options);
-                                }
                             })
                             .catch(e => {
                                 ktl.log.clog('purple', 'Failed waiting for selector in colorizeFieldByValue / getReferenceValue.', viewId, e);
@@ -7820,6 +7823,9 @@ function Ktl($, appInfo) {
                         else if (viewType === 'details')
                             targetSel = '#' + targetViewId + ' .' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
                     }
+
+                    if (targetSel.endsWith(','))
+                        targetSel = targetSel.slice(0, -1);
 
                     let isRating = false;
                     if ($(`${targetSel} .kn-rating`).length || $(`${targetSel} .rating`).length)
@@ -11455,7 +11461,7 @@ function Ktl($, appInfo) {
                     function checkSummaryFixNeeded() {
                         if (ktl.views.viewHasSummary(viewId)) {
                             var sel = '#' + viewId + ' tr.kn-table-totals';
-                            ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT) //Totals and groups usually need a bit of extra wait time due to delayed server response.
+                            ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT) //Totals and groups rendering usually need a bit of extra wait time due to calculations.
                                 .then(function () {
                                     var totalRows = $('#' + viewId + ' tr.kn-table-totals');
                                     if (!$('#' + viewId + ' tr.kn-table-totals td')[0].classList.contains('blankCell')) {
@@ -11472,7 +11478,7 @@ function Ktl($, appInfo) {
                                         fixSummaryRows();
                                     }
                                 })
-                                .catch(function (e) { ktl.log.clog('purple', 'fixTableRowsAlignment / hasSummary - failed waiting for table totals.', viewId, e); })
+                                .catch(function (e) { })
                         }
                     }
 
@@ -12497,8 +12503,7 @@ function Ktl($, appInfo) {
             handleClickDateTimeSort: function (event) {
                 const viewId = $(event.currentTarget).closest('.kn-view[id]').attr('id');
 
-                if (!viewId)
-                    return;
+                if (!viewId) return;
 
                 const viewType = ktl.views.getViewType(viewId);
                 const classes = $(event.currentTarget).attr('class');
