@@ -10036,6 +10036,7 @@ function Ktl($, appInfo) {
 
             function updateDataAndHighlightChanges(viewId, newData) {
                 const lastData = viewData_scv[viewId];
+                if (lastData && (newData.length < lastData.length)) return; //Ignore deletions
                 const changes = lastData !== undefined ? compareNewAndLastData(newData, lastData) : {};
                 highlightChangedCells(viewId, changes, newData);
                 viewData_scv[viewId] = JSON.parse(JSON.stringify(newData));
@@ -10989,7 +10990,7 @@ function Ktl($, appInfo) {
         }
 
         function calculateFutureDateTime(viewId, keywords, data) {
-            if (!viewId || Array.isArray(data)) return;
+            if (!viewId) return;
             const kw = '_cfdt';
             if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const options = keywords[kw][0].options;
@@ -10997,77 +10998,176 @@ function Ktl($, appInfo) {
                 const groups = keywords[kw][0].params;
                 if (groups.length >= 2) {
                     const fields = groups[0];
-                    const srcField = (fields[0].startsWith('field_')) ? fields[0] : ktl.fields.getFieldIdFromLabel(viewId, fields[0]);
-                    const dstField = (fields[1].startsWith('field_')) ? fields[1] : ktl.fields.getFieldIdFromLabel(viewId, fields[1]);
+                    const srcFieldId = (fields[0].startsWith('field_')) ? fields[0] : ktl.fields.getFieldIdFromLabel(viewId, fields[0]);
+                    const dstFieldId = (fields[1].startsWith('field_')) ? fields[1] : ktl.fields.getFieldIdFromLabel(viewId, fields[1]);
                     const range = groups[1]; //Ex: [7,0,0] to add 7 days, 0 hours, 0 minutes.
-                    const days = range[0];
-                    const hours = range[1];
-                    const minutes = range[2];
-                    const dateFormat = Knack.objects.getField(dstField).attributes.format.date_format;
-                    const srcDateTime = new Date(data[`${srcField}_raw`].iso_timestamp); //Ex: '2024-07-01T13:00:00.000Z'
+                    const daysRange = range[0];
+                    const hoursRange = range[1];
+                    const minutesRange = range[2];
+                    const dateFormat = Knack.objects.getField(dstFieldId).attributes.format.date_format;
 
-                    // Compute the future date and time based on srcDateTime + range
-                    let futureDateTime;
+                    const viewType = ktl.views.getViewType(viewId);
 
-                    if (days > 0)
-                        futureDateTime = ktl.core.computeFutureDateTime(`${days}d`, 'iso', srcDateTime);
-                    if (hours > 0)
-                        futureDateTime = ktl.core.computeFutureDateTime(`${hours}h`, 'iso', futureDateTime);
-                    if (minutes > 0)
-                        futureDateTime = ktl.core.computeFutureDateTime(`${minutes}m`, 'iso', futureDateTime);
+                    let srcDateTime; //Compute the future date and time based on srcDateTime + range.
 
-                    const futureDTIso = new Date(futureDateTime).toISOString();
-                    const [newDate, newTime] = futureDTIso.split('T');
-                    let newFormattedDate = newDate;
+                    if (viewType === 'form') {
+                        if ($.isEmptyObject(data)) return;
 
-                    let newFormattedTime = newTime.slice(0, 5);
+                        srcDateTime = new Date(data[`${srcFieldId}_raw`].iso_timestamp); //Ex: '2024-07-01T13:00:00.000Z'
 
-                    // Convert time from hh:mm to h:mma format
-                    const [hrs, mins] = newFormattedTime.split(':');
-                    const hourInt = parseInt(hrs, 10);
-                    const ampm = hourInt >= 12 ? 'pm' : 'am';
-                    const formattedHour = hourInt % 12 || 12;
-                    newFormattedTime = `${formattedHour}:${mins}${ampm}`;
+                        let futureDateTime;
 
-                    if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
-                        const [year, month, day] = newDate.split('-');
-                        newFormattedDate = `${month}/${day}/${year}`;
-                    } else if (dateFormat === 'dd/mm/yyyy') {
-                        //Convert to format dd/mm/yyyy
-                        const [year, month, day] = newDate.split('-');
-                        newFormattedDate = `${day}/${month}/${year}`;
-                    }
+                        if (daysRange > 0)
+                            futureDateTime = ktl.core.computeFutureDateTime(`${daysRange}d`, 'iso', srcDateTime);
+                        if (hoursRange > 0)
+                            futureDateTime = ktl.core.computeFutureDateTime(`${hoursRange}h`, 'iso', futureDateTime);
+                        if (minutesRange > 0)
+                            futureDateTime = ktl.core.computeFutureDateTime(`${minutesRange}m`, 'iso', futureDateTime);
 
-                    // Populate input fields.
-                    $(`#${viewId}-${dstField}`).val(newFormattedDate);
-                    $(`#${viewId}-${dstField}-time`).val(newFormattedTime);
+                        const futureDTIso = new Date(futureDateTime).toISOString();
+                        const [newDate, newTime] = futureDTIso.split('T');
+                        let newFormattedDate = newDate;
 
-                    const srcTimeTo = $(`#${viewId}-${srcField}-time-to`).val();
-                    $(`#${viewId}-${dstField}-time-to`).val(srcTimeTo);
+                        let newFormattedTime = newTime.slice(0, 5);
 
-                    $(`#${viewId}-${dstField}-to`).val(newFormattedDate);
+                        // Convert time from hh:mm to h:mma format
+                        const [hrs, mins] = newFormattedTime.split(':');
+                        const hourInt = parseInt(hrs, 10);
+                        const ampm = hourInt >= 12 ? 'pm' : 'am';
+                        const formattedHour = hourInt % 12 || 12;
+                        newFormattedTime = `${formattedHour}:${mins}${ampm}`;
 
-                    if (groups.length >= 3) {
-                        let hideToSection = 0;
-                        const hiddentFields = groups[2].slice(1);
-                        for (const hiddenfField of hiddentFields) {
-                            if (hiddenfField === 'ad') {
-                                $(`#${viewId} [name="all_day"]`).closest('label').addClass('ktlHidden_cfdt');
-                            } else if (hiddenfField === 'rpt') {
-                                $(`#${viewId} [name="repeat"]`).closest('label').addClass('ktlHidden_cfdt');
-                            } if (hiddenfField === 'fdt') {
-                                $(`#${viewId} [data-input-id="${dstField}"]`).addClass('ktlHidden_cfdt');
-                            } if (hiddenfField === 'et') {
-                                $(`#${viewId}-${srcField}-time-to`).addClass('ktlHidden_cfdt');
-                                hideToSection++;
-                            } if (hiddenfField === 'ed') {
-                                $(`#${viewId}-${srcField}-to`).addClass('ktlHidden_cfdt');
-                                hideToSection++
+                        if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
+                            const [year, month, day] = newDate.split('-');
+                            newFormattedDate = `${month}/${day}/${year}`;
+                        } else if (dateFormat === 'dd/mm/yyyy') {
+                            //Convert to format dd/mm/yyyy
+                            const [year, month, day] = newDate.split('-');
+                            newFormattedDate = `${day}/${month}/${year}`;
+                        }
+
+                        // Populate input fields.
+                        $(`#${viewId}-${dstFieldId}`).val(newFormattedDate);
+                        $(`#${viewId}-${dstFieldId}-time`).val(newFormattedTime);
+
+                        const srcTimeTo = $(`#${viewId}-${srcFieldId}-time-to`).val();
+                        $(`#${viewId}-${dstFieldId}-time-to`).val(srcTimeTo);
+
+                        $(`#${viewId}-${dstFieldId}-to`).val(newFormattedDate);
+
+                        if (groups.length >= 3) {
+                            let hideToSection = 0;
+                            const hiddentFields = groups[2].slice(1);
+                            for (const hiddenfField of hiddentFields) {
+                                if (hiddenfField === 'ad') {
+                                    $(`#${viewId} [name="all_day"]`).closest('label').addClass('ktlHidden_cfdt');
+                                } else if (hiddenfField === 'rpt') {
+                                    $(`#${viewId} [name="repeat"]`).closest('label').addClass('ktlHidden_cfdt');
+                                } if (hiddenfField === 'fdt') {
+                                    $(`#${viewId} [data-input-id="${dstFieldId}"]`).addClass('ktlHidden_cfdt');
+                                } if (hiddenfField === 'et') {
+                                    $(`#${viewId}-${srcFieldId}-time-to`).addClass('ktlHidden_cfdt');
+                                    hideToSection++;
+                                } if (hiddenfField === 'ed') {
+                                    $(`#${viewId}-${srcFieldId}-to`).addClass('ktlHidden_cfdt');
+                                    hideToSection++
+                                }
+                            }
+
+                            if (hideToSection === 2)
+                                $(`#${viewId} [data-input-id="${srcFieldId}"] .kn-datetime__to`).addClass('ktlHidden_cfdt');
+                        }
+                    } else if (viewType === 'table' || viewType === 'search') {
+                        let bulkOpsRecordsArray = [];
+                        for (const record of data) {
+                            const srcDT = record[`${srcFieldId}_raw`];
+                            const dstDT = record[`${dstFieldId}_raw`];
+
+                            if (!record[`${srcFieldId}_raw`]) continue;
+
+                            srcDateTime = new Date(record[`${srcFieldId}_raw`].iso_timestamp); //Ex: '2024-07-01T13:00:00.000Z'
+
+                            let futureDateTime;
+
+                            if (daysRange > 0)
+                                futureDateTime = ktl.core.computeFutureDateTime(`${daysRange}d`, 'iso', srcDateTime);
+                            if (hoursRange > 0)
+                                futureDateTime = ktl.core.computeFutureDateTime(`${hoursRange}h`, 'iso', futureDateTime);
+                            if (minutesRange > 0)
+                                futureDateTime = ktl.core.computeFutureDateTime(`${minutesRange}m`, 'iso', futureDateTime);
+
+                            const futureDTIso = new Date(futureDateTime).toISOString();
+                            const [newDate, newTime] = futureDTIso.split('T');
+                            let newFormattedDate = newDate;
+                            let newFormattedTime = newTime.slice(0, 5);
+
+                            //Compute time span.
+                            const timeSpanMs = (new Date(record[`${srcFieldId}_raw`].to.iso_timestamp) - new Date(record[`${srcFieldId}_raw`].iso_timestamp));
+                            const futureDateTimeTo = new Date(new Date(futureDateTime).getTime() + timeSpanMs);
+                            const futureDTToIso = new Date(futureDateTimeTo).toISOString();
+
+                            if (srcDT && ((dstDT.iso_timestamp !== futureDTIso) || (dstDT.to.iso_timestamp !== futureDTToIso))) {
+                                //Found something to calculate.
+                                const [newDateTo, newTimeTo] = futureDTToIso.split('T');
+                                let newFormattedDateTo = newDateTo;
+                                let newFormattedTimeTo = newTimeTo.slice(0, 5);
+
+                                // Convert time from hh:mm to h:mma format
+                                const [hours, minutes] = newFormattedTime.split(':');
+                                const hoursInt = parseInt(hours, 10);
+                                const ampm = hoursInt >= 12 ? 'pm' : 'am';
+                                const formattedHour = hoursInt % 12 || 12;
+
+                                const [hoursto, minutesto] = newFormattedTimeTo.split(':');
+                                const hoursIntTo = parseInt(hoursto, 10);
+                                const ampmto = hoursIntTo >= 12 ? 'pm' : 'am';
+                                const formattedHourto = hoursIntTo % 12 || 12;
+
+                                //Convert date to match field format.
+                                if (dateFormat === 'mm/dd/yyyy' || dateFormat === 'M D, yyyy') {
+                                    const [year, month, day] = newDate.split('-');
+                                    newFormattedDate = `${month}/${day}/${year}`;
+                                    newFormattedDateTo = `${month}/${day}/${year}`;
+                                } else if (dateFormat === 'dd/mm/yyyy') {
+                                    //Convert to format dd/mm/yyyy
+                                    const [year, month, day] = newDate.split('-');
+                                    newFormattedDate = `${day}/${month}/${year}`;
+                                    newFormattedDateTo = `${day}/${month}/${year}`;
+                                }
+
+                                //Do the API call to update the dstDT.
+                                const apiCallEntry = {
+                                    apiData: {
+                                        field_439: {
+                                            "date": newFormattedDate,
+                                            "hours": formattedHour,
+                                            "minutes": minutes,
+                                            "am_pm": ampm,
+                                            "to": {
+                                                "date": newFormattedDateTo,
+                                                "hours": formattedHourto,
+                                                "minutes": minutesto,
+                                                "am_pm": ampmto,
+                                            },
+                                        },
+                                    },
+                                    requestType: 'PUT',
+                                    id: record.id,
+                                }
+ 
+                                bulkOpsRecordsArray.push(apiCallEntry);
                             }
                         }
 
-                        if (hideToSection === 2)
-                            $(`#${viewId} [data-input-id="${srcField}"] .kn-datetime__to`).addClass('ktlHidden_cfdt');
+                        if (bulkOpsRecordsArray.length) {
+                            ktl.views.processAutomatedBulkOps(viewId, bulkOpsRecordsArray, '', [viewId], true, false)
+                                .then(countDone => {
+                                    //ktl.core.timedPopup('Future date processing complete');
+                                })
+                                .catch(err => {
+                                    alert(`Future date processing error encountered:\n${err}`);
+                                })
+                        }
                     }
                 }
             }
