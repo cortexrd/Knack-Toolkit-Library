@@ -10998,12 +10998,38 @@ function Ktl($, appInfo) {
                 const groups = keywords[kw][0].params;
                 if (groups.length >= 2) {
                     const fields = groups[0];
+                    if (groups[0].length !== 2) return;
                     const srcFieldId = (fields[0].startsWith('field_')) ? fields[0] : ktl.fields.getFieldIdFromLabel(viewId, fields[0]);
                     const dstFieldId = (fields[1].startsWith('field_')) ? fields[1] : ktl.fields.getFieldIdFromLabel(viewId, fields[1]);
-                    const range = groups[1]; //Ex: [7,0,0] to add 7 days, 0 hours, 0 minutes.
-                    const daysRange = range[0];
-                    const hoursRange = range[1];
-                    const minutesRange = range[2];
+                    if (!srcFieldId || !dstFieldId) return;
+
+                    if (!groups[1] || !groups[1].length) return;
+                    const rangeValues = groups[1]; //Ex: [7,0,0] to add 7 days, 0 hours, 0 minutes.
+
+                    let rangeField;
+                    let daysRange = 0;
+                    let hoursRange = 0;
+                    let minutesRange = 0;
+
+                    if (rangeValues.length >= 1 && rangeValues[0]) {
+                        rangeField = (rangeValues[0].startsWith('field_')) ? rangeValues[0] : ktl.fields.getFieldIdFromLabel(viewId, rangeValues[0]);
+                        if (!rangeField) {
+                            for (const range of rangeValues) {
+                                const amount = parseInt(range);
+                                const unit = range.charAt(range.length - 1);
+                                if (isNaN(amount) || !['d', 'h', 'm'].includes(unit))
+                                    throw new Error('Invalid range string format');
+
+                                if (unit === 'd')
+                                    daysRange = amount;
+                                else if (unit === 'h')
+                                    hoursRange = amount;
+                                else if (unit === 'm')
+                                    minutesRange = amount;
+                            }
+                        }
+                    }
+
                     const dateFormat = Knack.objects.getField(dstFieldId).attributes.format.date_format;
 
                     const viewType = ktl.views.getViewType(viewId);
@@ -11017,11 +11043,11 @@ function Ktl($, appInfo) {
 
                         let futureDateTime;
 
-                        if (daysRange > 0)
+                        if (daysRange >= 0)
                             futureDateTime = ktl.core.computeFutureDateTime(`${daysRange}d`, 'iso', srcDateTime);
-                        if (hoursRange > 0)
+                        if (hoursRange >= 0)
                             futureDateTime = ktl.core.computeFutureDateTime(`${hoursRange}h`, 'iso', futureDateTime);
-                        if (minutesRange > 0)
+                        if (minutesRange >= 0)
                             futureDateTime = ktl.core.computeFutureDateTime(`${minutesRange}m`, 'iso', futureDateTime);
 
                         const futureDTIso = new Date(futureDateTime).toISOString();
@@ -11089,11 +11115,11 @@ function Ktl($, appInfo) {
 
                             let futureDateTime;
 
-                            if (daysRange > 0)
+                            if (daysRange >= 0)
                                 futureDateTime = ktl.core.computeFutureDateTime(`${daysRange}d`, 'iso', srcDateTime);
-                            if (hoursRange > 0)
+                            if (hoursRange >= 0)
                                 futureDateTime = ktl.core.computeFutureDateTime(`${hoursRange}h`, 'iso', futureDateTime);
-                            if (minutesRange > 0)
+                            if (minutesRange >= 0)
                                 futureDateTime = ktl.core.computeFutureDateTime(`${minutesRange}m`, 'iso', futureDateTime);
 
                             const futureDTIso = new Date(futureDateTime).toISOString();
@@ -11138,7 +11164,7 @@ function Ktl($, appInfo) {
                                 //Do the API call to update the dstDT.
                                 const apiCallEntry = {
                                     apiData: {
-                                        field_439: {
+                                        [dstFieldId]: {
                                             "date": newFormattedDate,
                                             "hours": formattedHour,
                                             "minutes": minutes,
