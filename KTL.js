@@ -11037,6 +11037,9 @@ function Ktl($, appInfo) {
                     let srcDateTime; //Compute the future date and time based on srcDateTime + range.
 
                     if (viewType === 'form') {
+                        //Forms are more complicated and buggy right now.  Still need some work to do.
+                        //Concentrated on grids and Search view since this is what matters for now.
+
                         if ($.isEmptyObject(data)) return;
 
                         srcDateTime = new Date(data[`${srcFieldId}_raw`].iso_timestamp); //Ex: '2024-07-01T13:00:00.000Z'
@@ -11128,13 +11131,13 @@ function Ktl($, appInfo) {
                             let newFormattedTime = newTime.slice(0, 5);
 
                             //Compute time span.
-                            const timeSpanMs = (new Date(record[`${srcFieldId}_raw`].to.iso_timestamp) - new Date(record[`${srcFieldId}_raw`].iso_timestamp));
+                            const timeSpanMs = record[`${srcFieldId}_raw`].to ? (new Date(record[`${srcFieldId}_raw`].to.iso_timestamp) - srcDateTime) : 0;
                             const futureDateTimeTo = new Date(new Date(futureDateTime).getTime() + timeSpanMs);
-                            const futureDTToIso = new Date(futureDateTimeTo).toISOString();
+                            const futureDateTimeToIso = new Date(futureDateTimeTo).toISOString();
 
-                            if (srcDT && ((dstDT.iso_timestamp !== futureDTIso) || (dstDT.to.iso_timestamp !== futureDTToIso))) {
+                            if ((srcDT && ((dstDT.iso_timestamp !== futureDTIso))) || (dstDT.to && (dstDT.to.iso_timestamp !== futureDateTimeToIso))) {
                                 //Found something to calculate.
-                                const [newDateTo, newTimeTo] = futureDTToIso.split('T');
+                                const [newDateTo, newTimeTo] = futureDateTimeToIso.split('T');
                                 let newFormattedDateTo = newDateTo;
                                 let newFormattedTimeTo = newTimeTo.slice(0, 5);
 
@@ -18480,7 +18483,6 @@ function Ktl($, appInfo) {
                 }
 
                 var wdLoopTimeout;
-                var maxMemUsage = 0;
 
                 var simulateCrash = false; //Just for temporary testing during development.
 
