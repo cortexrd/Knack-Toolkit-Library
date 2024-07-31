@@ -2278,28 +2278,7 @@ function Ktl($, appInfo) {
         }, true);
 
         $(document).on('input', function (e) {
-            if (!ktl.fields.getUsingBarcode()) {
-
-                //Process special field keywords
-                var fieldId = e.target.id;
-                if (!fieldId.startsWith('field_'))
-                    fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
-
-                if (!fieldId || !fieldId.startsWith('field_')) return;
-
-                if (ktlKeywords[fieldId]) {
-                    if (ktlKeywords[fieldId]._uc)
-                        e.target.value = e.target.value.toUpperCase();
-
-                    if (ktlKeywords[fieldId]._num)
-                        e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
-
-                    if (ktlKeywords[fieldId]._int)
-                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
-                }
-
-                ktl.fields.enforceNumeric();
-            }
+            ktl.fields.enforceNumeric();
         })
 
         //Add Change event handlers for Dropdowns, Calendars, etc.
@@ -2315,6 +2294,23 @@ function Ktl($, appInfo) {
                 $('#' + viewId + ' .kn-checkbox').addClass('horizontal');
                 $('#' + viewId + ' .option.checkbox').addClass('horizontal');
             }
+
+            //Process special field keywords
+            $('input').on('input keyup', function (e) {
+                var fieldId = e.target.id;
+                if (!fieldId.startsWith('field'))
+                    fieldId = $('#' + fieldId).closest('.kn-input').attr('data-input-id');
+                if (fieldId && fieldId.startsWith('field') && ktlKeywords[fieldId]) {
+                    if (ktlKeywords[fieldId]._uc)
+                        e.target.value = e.target.value.toUpperCase();
+
+                    if (ktlKeywords[fieldId]._num)
+                        e.target.value = e.target.value.replace(/[^0-9.-]/g, '');
+
+                    if (ktlKeywords[fieldId]._int)
+                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                }
+            });
 
             //Dropdowns
             let chosenUpdateTimeout;
@@ -11210,44 +11206,87 @@ function Ktl($, appInfo) {
 
         function setFormDefaultValues(viewId, keywords, data) {
             if (!viewId) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType !== 'form') return
+
             const kw = '_sfdv';
-            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                const options = keywords[kw][0].options;
-                if (!ktl.core.hasRoleAccess(options)) return;
-                const groups = keywords[kw][0].params;
-                for (const group of groups) {
-                    if (group.length) {
-                        if (group[0] === 'paramName') {
-                        } else {
-                            //Check if it's a field and if so, apply defaults.
-                            const field = group[0];
-                            const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
-                            if (fieldId) {
-                                const fieldType = ktl.fields.getFieldType(fieldId);
-                                if (fieldType === 'connection') {
-                                    ktl.core.waitSelector(`#${viewId} #connection-picker-checkbox-${fieldId} span:textEquals("loading...")`, 10000, 'none')
-                                        .then(() => {
-                                            if ($(`#${viewId} #connection-picker-checkbox-${fieldId}`).length) {
-                                                if (group[1] === 'ktlAll') {
-                                                    $(`#${viewId} #connection-picker-checkbox-${fieldId} input`).each((idx, checkbox) => {
-                                                        checkbox.checked = false;
-                                                        checkbox.click();
-                                                    })
-                                                } else {
-                                                    for (const value of group.slice(1)) {
-                                                        if (!$(`#${viewId} #connection-picker-checkbox-${fieldId} input`)[0].checked)
-                                                            $(`#${viewId} #connection-picker-checkbox-${fieldId} span:textEquals("${value}")`).click();
+
+            $(document).on(`KTL.persistentForm.completed.view.${viewId}`, function (event, viewId) {
+                if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                    const groups = keywords[kw][0].params;
+                    for (const group of groups) {
+                        if (group.length) {
+                            if (group[0] === 'paramName') {
+                            } else {
+                                //Check if param group's first string is a field and if so, apply defaults.
+                                const field = group[0];
+                                const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                                if (fieldId) {
+                                    let selector;
+                                    const fieldType = ktl.fields.getFieldType(fieldId);
+                                    if (TEXT_DATA_TYPES.includes(fieldType)) {
+                                        selector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} .${fieldId} input`;
+                                        if ($(`${selector}`).length) {
+                                            $(`${selector}`).val(group[1]);
+                                            if (fieldType === 'date_time' && group.length >= 2)
+                                                $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(group[2]);
+                                        }
+                                    } else if (fieldType === 'connection') {
+                                        selector = `#${viewId} #connection-picker-checkbox-${fieldId}`;
+                                        if ($(`${selector}`).length) {
+                                            ktl.core.waitSelector(`${selector} span:textEquals("loading...")`, 10000, 'none')
+                                                .then(() => {
+                                                    if (group[1] === 'ktlAll') {
+                                                        $(`${selector} input`).each((idx, checkbox) => {
+                                                            checkbox.checked = false;
+                                                            checkbox.click();
+                                                        })
+                                                    } else {
+                                                        $(`${selector} input`).each((idx, checkbox) => {
+                                                            checkbox.checked = false;
+                                                            if (group.includes($(checkbox).parent().find('span').text()))
+                                                                checkbox.click();
+                                                        })
                                                     }
-                                                }
+                                                })
+                                                .catch(() => { })
+                                        } else {
+                                            selector = `#${viewId}_${fieldId}_chzn.chzn-container-single`;
+                                            if ($(`${selector}`).length) {
+                                                ktl.views.searchDropdown(group[1], fieldId, 'exact', false, viewId)
+                                                    .then(function () {
+                                                        console.log('found!');
+                                                    })
+                                                    .catch(function (foundText) {
+                                                        console.log('error', foundText);
+                                                    })
                                             }
-                                        })
-                                        .catch(() => { })
+                                        }
+                                    } else if (fieldType === 'multiple_choice') {
+                                        const format = Knack.objects.getField(fieldId).attributes.format.type;
+                                        if (format === 'radio')
+                                            $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
+                                        else if (format === 'checkboxes') {
+                                            const options = group.slice(1);
+                                            for (const option of options) {
+                                                $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`)[0].checked = false;
+                                                $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`).click();
+                                            }
+                                        }
+                                    } else if (fieldType === 'boolean') {
+                                        $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
+                                    } else {
+                                        console.log('_sdfv found an unsupported field type:', fieldId, fieldType);
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            });
         }
 
         //Views
