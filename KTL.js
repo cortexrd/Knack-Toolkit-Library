@@ -3864,11 +3864,16 @@ function Ktl($, appInfo) {
                                 } else if ($(`#${view.key} #connection-picker-radio-${fieldId}`).length) { // Radio buttons
                                     $(`#${view.key} #connection-picker-radio-${fieldId} input[value="${fieldText}"]`).click();
                                 } else if ($(`#${view.key} #connection-picker-checkbox-${fieldId}`).length) { // Checkboxes
-                                    const values = fieldText.split(',');
-                                    for (const value of values) {
-                                        if (!$(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${value}"]`)[0].checked)
-                                            $(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${value}"]`).click();
-                                    }
+                                    //Wait until finished loading.
+                                    ktl.core.waitSelector(`#${viewId} #connection-picker-checkbox-${fieldId} span:textEquals("loading...")`, 10000, 'none')
+                                        .then(() => {
+                                            const values = fieldText.split(',');
+                                            for (const value of values) {
+                                                if (!$(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${value}"]`)[0].checked)
+                                                    $(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${value}"]`).click();
+                                            }
+                                        })
+                                        .catch(() => { })
                                 }
                             } else if (fieldType === 'multiple_choice') {
                                 if (typeof fieldText === 'object') {
@@ -6620,6 +6625,7 @@ function Ktl($, appInfo) {
                     keywords._vrh && viewRecordHistory(viewId, keywords);
                     keywords._hsv && hideShowView(view, keywords);
                     keywords._cfdt && calculateFutureDateTime(viewId, keywords, data);
+                    keywords._sfdv && setFormDefaultValues(viewId, keywords, data);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -11196,6 +11202,48 @@ function Ktl($, appInfo) {
                                 .catch(err => {
                                     alert(`Future date processing error encountered:\n${err}`);
                                 })
+                        }
+                    }
+                }
+            }
+        }
+
+        function setFormDefaultValues(viewId, keywords, data) {
+            if (!viewId) return;
+            const kw = '_sfdv';
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+                const groups = keywords[kw][0].params;
+                for (const group of groups) {
+                    if (group.length) {
+                        if (group[0] === 'paramName') {
+                        } else {
+                            //Check if it's a field and if so, apply defaults.
+                            const field = group[0];
+                            const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                            if (fieldId) {
+                                const fieldType = ktl.fields.getFieldType(fieldId);
+                                if (fieldType === 'connection') {
+                                    ktl.core.waitSelector(`#${viewId} #connection-picker-checkbox-${fieldId} span:textEquals("loading...")`, 10000, 'none')
+                                        .then(() => {
+                                            if ($(`#${viewId} #connection-picker-checkbox-${fieldId}`).length) {
+                                                if (group[1] === 'ktlAll') {
+                                                    $(`#${viewId} #connection-picker-checkbox-${fieldId} input`).each((idx, checkbox) => {
+                                                        checkbox.checked = false;
+                                                        checkbox.click();
+                                                    })
+                                                } else {
+                                                    for (const value of group.slice(1)) {
+                                                        if (!$(`#${viewId} #connection-picker-checkbox-${fieldId} input`)[0].checked)
+                                                            $(`#${viewId} #connection-picker-checkbox-${fieldId} span:textEquals("${value}")`).click();
+                                                    }
+                                                }
+                                            }
+                                        })
+                                        .catch(() => { })
+                                }
+                            }
                         }
                     }
                 }
