@@ -1968,6 +1968,11 @@ function Ktl($, appInfo) {
                 console.log(lines.join('\n') + '\n', ...extraParams);
             },
 
+            hasRecordIdFormat: function (testString) {
+                // Check if the string is exactly 24 characters long
+                // and contains only hexadecimal characters (0-9 and a-f)
+                return /^[0-9a-fA-F]{24}$/.test(testString);
+            },
         }
     })(); //Core
 
@@ -3807,7 +3812,7 @@ function Ktl($, appInfo) {
                                     const options = fieldText.split(';').map(record => {
                                         const [label, id] = record.split(':');
                                         return { label, id };
-                                    }).filter(v => !!v.id);
+                                    }).filter(v => !!v.id && ktl.core.hasRecordIdFormat(v.id));
 
                                     const input = $(`#${view.key}-${fieldId}`);
 
@@ -11219,18 +11224,38 @@ function Ktl($, appInfo) {
                                                     if ($(`${selector}`).length) {
                                                         const values = group.slice(1);
 
-                                                        async function searchValuesInDropdown(values, fieldId, viewId) {
-                                                            for (const [index, value] of values.entries()) {
-                                                                try {
-                                                                    await ktl.views.searchDropdown(value, fieldId, 'exact', false, viewId);
-                                                                    //console.log(`${index + 1} - found!`, value);
-                                                                } catch (error) {
-                                                                    console.log(`${index + 1} - error`, error);
+                                                        const options = values.map(record => {
+                                                            const [label, id] = record.split(':');
+                                                            return { label, id };
+                                                        }).filter(v => (!!v.id && ktl.core.hasRecordIdFormat(v.id)));
+
+                                                        if (options.length) {
+                                                            //Direct, quick populating of dropdown, with labels and record IDs.
+                                                            const input = $(`#${viewId}-${fieldId}`);
+
+                                                            options.forEach(option => {
+                                                                if (!input.find(`option[value="${option.id}"]`).length) {
+                                                                    input.append(`<option value="${option.id}">${option.label}</option>`);
+                                                                }
+                                                            });
+
+                                                            const values2 = input.val() || [];
+                                                            input.val([...values2, ...options.map(o => o.id)]).trigger("liszt:updated");
+                                                        } else {
+                                                            //Slow, sequential searches method.
+                                                            async function searchValuesInDropdown(values, fieldId, viewId) {
+                                                                for (const [index, value] of values.entries()) {
+                                                                    try {
+                                                                        await ktl.views.searchDropdown(value, fieldId, 'exact', false, viewId);
+                                                                        //console.log(`${index + 1} - found!`, value);
+                                                                    } catch (error) {
+                                                                        console.log(`${index + 1} - error`, error);
+                                                                    }
                                                                 }
                                                             }
-                                                        }
 
-                                                        searchValuesInDropdown(values, fieldId, viewId);
+                                                            searchValuesInDropdown(values, fieldId, viewId);
+                                                        }
                                                     }
                                                 }
                                             }
@@ -11914,7 +11939,7 @@ function Ktl($, appInfo) {
                         //Multiple choice (hard coded entries) drop downs. Ex: Work Shifts
                         var isMultipleChoice = !!$(`#${viewId} [data-input-id="${fieldId}"].kn-input-multiple_choice`).length;
                         var isSingleSelection = !!$(`#${viewId}_${fieldId}_chzn.chzn-container-single`).length;
-                        var chznSearchInput = $(`#${viewId}_${fieldId}_chzn.chzn-container-multi input`).first();
+                        var chznSearchInput = $(`#${viewId}_${fieldId}_chzn.chzn-container input`).first();
                         var chznContainer = $(`#${viewId}_${fieldId}_chzn.chzn-container`);
 
                         let currentOptionsMultipleChoices = [];
