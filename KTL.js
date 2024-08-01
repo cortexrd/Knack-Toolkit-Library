@@ -2434,14 +2434,14 @@ function Ktl($, appInfo) {
                 var fieldId = fieldAttr.value;
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 const fieldType = ktl.fields.getFieldType(fieldId);
-                if ((fieldType && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
+                if ((fieldType && fieldType !== 'rating' && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
                     if (!field.getAttribute('numeric')) {
                         field.setAttribute('numeric', true);
 
                         //Change the input field to see a numeric virtual keyboard style on mobile devices.
                         if (cfg.convertNumToTel) {
                             const element = document.querySelector(`#${viewId} input[name=${fieldId}]`);
-                            element.setAttribute('inputmode', 'numeric');
+                            element && element.setAttribute('inputmode', 'numeric');
                         }
                     }
                 }
