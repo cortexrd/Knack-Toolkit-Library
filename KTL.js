@@ -2256,24 +2256,18 @@ function Ktl($, appInfo) {
             }
 
             convertNumDone = false;
-            let newInput;
-            if (viewId)
-                newInput = ktl.fields.fieldConvertNumToTel(viewId, e.target.closest('.kn-input'));
 
-            let newTarget;
-            if (newInput) {
-                newInput.select();
-                newTarget = newInput[0];
-            } else {
-                if (ktl.core.getCfg().enabled.selTextOnFocus)
-                    $(e.target).select();
-                newTarget = e.target;
-            }
+            if (viewId) {
+                ktl.fields.fieldSetAsNumeric(viewId, e.target.closest('.kn-input'));
 
-            //Turn-off auto complete for Kiosks. Users are annoyed by the dropdown that blocks the Submit button.
-            if (newTarget.classList.contains('input')) {
-                if (ktl.core.isKiosk())
-                    newTarget.setAttribute('autocomplete', 'off');
+                //Turn-off auto complete for Kiosks. Users are annoyed by the dropdown that blocks the Submit button.
+                if (e.target.classList.contains('input')) {
+                    if (ktl.core.getCfg().enabled.selTextOnFocus)
+                        $(e.target).select();
+
+                    if (ktl.core.isKiosk())
+                        newTarget.setAttribute('autocomplete', 'off');
+                }
             }
         }, true);
 
@@ -2432,9 +2426,8 @@ function Ktl($, appInfo) {
                     cfg.convertNumToTel = cfgObj.convertNumToTel;
             },
 
-            //Converts all applicable fields in the scene from text to numeric (telephone) type to allow numeric keypad on mobile devices.
-            //Also, using tel type is a little trick that allows auto-selection of text in a number field upon focus.
-            fieldConvertNumToTel: function (viewId, field) {
+            //Sets the field in the view from text to numeric type to allow numeric keypad on mobile devices.
+            fieldSetAsNumeric: function (viewId, field) {
                 if (!viewId || !field) return;
 
                 var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
@@ -2445,44 +2438,13 @@ function Ktl($, appInfo) {
                     if (!field.getAttribute('numeric')) {
                         field.setAttribute('numeric', true);
 
-                        //We also need to change the input field itself to force numeric (tel) keyboard in mobile devices.
+                        //Change the input field to see a numeric virtual keyboard style on mobile devices.
                         if (cfg.convertNumToTel) {
-                            var originalInput = $('#' + viewId + ' #' + fieldId);
-                            if (originalInput.length && originalInput.attr('type') != 'tel') {
-                                const originalValue = $('#' + viewId + ' #' + fieldId).val();
-                                var originalHandlers = $._data(originalInput[0], 'events');
-                                var newInput = $('<input>').attr('type', 'tel').attr('id', fieldId);
-
-                                // Copy over any relevant attributes from the original input to the new input
-                                newInput.attr('name', originalInput.attr('name'));
-                                newInput.attr('class', originalInput.attr('class'));
-                                // ... (copy any other attributes you need)
-
-                                // JQuery 'replaceWith' is not resilient to Aria elements
-                                originalInput.before(newInput);
-                                originalInput.hide();
-
-                                newInput.val(originalValue);
-
-                                // Restore the original event handlers to the new input field
-                                if (originalHandlers) {
-                                    $.each(originalHandlers, function (eventType, handlers) {
-                                        $.each(handlers, function (index, handler) {
-                                            newInput.on(eventType, handler.handler);
-                                        });
-                                    });
-                                }
-                                originalInput.trigger('KTL.convertNumToTel', [newInput]);
-                                originalInput.remove();
-                                originalInput.off();
-
-                                return newInput;
-                            }
+                            const element = document.querySelector(`#${viewId} input[name=${fieldId}]`);
+                            element.setAttribute('inputmode', 'numeric');
                         }
                     }
                 }
-
-                return undefined;
             },
 
             sceneConvertNumToTel: function () {
@@ -2496,7 +2458,7 @@ function Ktl($, appInfo) {
                             if (viewId) {
                                 const fields = document.querySelectorAll('#' + viewId + ' .kn-input-short_text, #' + viewId + ' .kn-input-number, #' + viewId + ' .kn-input-currency');
                                 fields.forEach(field => {
-                                    ktl.fields.fieldConvertNumToTel(viewId, field);
+                                    ktl.fields.fieldSetAsNumeric(viewId, field);
                                 })
                             }
                         })
@@ -4094,12 +4056,6 @@ function Ktl($, appInfo) {
                     const name = $(this).attr('name');
                     const key = fieldId + (!name.includes('field_') ? '-' + name : '');
                     setupAutocomplete(field, key);
-
-                    field.on('KTL.convertNumToTel', function (event, newField) {
-                        field.autocomplete('destroy');
-                        setupAutocomplete(newField, key);
-                        newField.focus();
-                    });
                 });
 
                 $(`#${viewId} div[data-input-id="${fieldId}"] textarea`).each(function () {
@@ -7249,12 +7205,7 @@ function Ktl($, appInfo) {
 
                 elements.find('a').removeAttr('href').addClass('ktlLinkDisabled');
                 elements.find('.redactor-editor').attr('contenteditable', 'false');
-
-                //one('KTL.convertNumToTel' is necessary in case we call sceneConvertNumToTel more than once.
-                elements.find('input').attr('disabled', 'disabled').one('KTL.convertNumToTel', function (event, newField) {
-                    newField.attr('disabled', 'disabled');
-                })
-
+                elements.find('input').attr('disabled', 'disabled');
                 elements.find('select').attr('disabled', 'disabled');
                 elements.find('textarea').attr('disabled', 'disabled');
                 elements.find('.rateit').rateit('readonly', true);
