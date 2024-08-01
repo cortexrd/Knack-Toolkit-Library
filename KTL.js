@@ -10771,7 +10771,6 @@ function Ktl($, appInfo) {
                                         } else if (fieldType === 'multiple_choice') {
                                             validateNonEmptyTextField(fieldId);
                                         } else if (fieldType === 'boolean') {
-                                            //TODO
                                             console.log('_req - Unsupported field type:', fieldType);
                                         } else
                                             console.log('_req - Unsupported field type:', fieldType);
@@ -11212,81 +11211,101 @@ function Ktl($, appInfo) {
 
             const kw = '_sfdv';
 
-            $(document).on(`KTL.persistentForm.completed.view.${viewId}`, function (event, viewId) {
-                if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                    const options = keywords[kw][0].options;
-                    if (!ktl.core.hasRoleAccess(options)) return;
-                    const groups = keywords[kw][0].params;
-                    for (const group of groups) {
-                        if (group.length) {
-                            if (group[0] === 'paramName') {
-                            } else {
-                                //Check if param group's first string is a field and if so, apply defaults.
-                                const field = group[0];
-                                const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
-                                if (fieldId) {
-                                    let selector;
-                                    const fieldType = ktl.fields.getFieldType(fieldId);
-                                    if (TEXT_DATA_TYPES.includes(fieldType)) {
-                                        selector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} .${fieldId} input`;
-                                        if ($(`${selector}`).length) {
-                                            $(`${selector}`).val(group[1]);
-                                            if (fieldType === 'date_time' && group.length >= 2)
-                                                $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(group[2]);
-                                        }
-                                    } else if (fieldType === 'connection') {
-                                        selector = `#${viewId} #connection-picker-checkbox-${fieldId}`;
-                                        if ($(`${selector}`).length) {
-                                            ktl.core.waitSelector(`${selector} span:textEquals("loading...")`, 10000, 'none')
-                                                .then(() => {
-                                                    if (group[1] === 'ktlAll') {
-                                                        $(`${selector} input`).each((idx, checkbox) => {
-                                                            checkbox.checked = false;
-                                                            checkbox.click();
-                                                        })
-                                                    } else {
-                                                        $(`${selector} input`).each((idx, checkbox) => {
-                                                            checkbox.checked = false;
-                                                            if (group.includes($(checkbox).parent().find('span').text()))
-                                                                checkbox.click();
-                                                        })
-                                                    }
-                                                })
-                                                .catch(() => { })
-                                        } else {
-                                            selector = `#${viewId}_${fieldId}_chzn.chzn-container-single`;
+            ktl.core.waitSelector(`#${viewId}.ktlPersistenFormLoadedView`, 20000)
+                .then(function () {
+                    if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                        const options = keywords[kw][0].options;
+                        if (!ktl.core.hasRoleAccess(options)) return;
+                        const groups = keywords[kw][0].params;
+                        for (const group of groups) {
+                            if (group.length) {
+                                if (group[0] === 'paramName') {
+                                } else {
+                                    //Check if param group's first string is a field and if so, apply defaults.
+                                    const field = group[0];
+                                    const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                                    if (fieldId) {
+                                        let selector;
+                                        const fieldType = ktl.fields.getFieldType(fieldId);
+                                        if (TEXT_DATA_TYPES.includes(fieldType)) {
+                                            selector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} .${fieldId} input`;
                                             if ($(`${selector}`).length) {
-                                                ktl.views.searchDropdown(group[1], fieldId, 'exact', false, viewId)
-                                                    .then(function () {
-                                                        console.log('found!');
-                                                    })
-                                                    .catch(function (foundText) {
-                                                        console.log('error', foundText);
-                                                    })
+                                                $(`${selector}`).val(group[1]);
+                                                if (fieldType === 'date_time' && group.length >= 2)
+                                                    $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(group[2]);
                                             }
-                                        }
-                                    } else if (fieldType === 'multiple_choice') {
-                                        const format = Knack.objects.getField(fieldId).attributes.format.type;
-                                        if (format === 'radio')
+                                        } else if (fieldType === 'connection') {
+                                            selector = `#${viewId} #connection-picker-checkbox-${fieldId}`;
+                                            if ($(`${selector}`).length) {
+                                                ktl.core.waitSelector(`${selector} span:textEquals("loading...")`, 10000, 'none')
+                                                    .then(() => {
+                                                        if (group[1] === 'ktlAll') {
+                                                            $(`${selector} input`).each((idx, checkbox) => {
+                                                                checkbox.checked = false;
+                                                                checkbox.click();
+                                                            })
+                                                        } else {
+                                                            $(`${selector} input`).each((idx, checkbox) => {
+                                                                checkbox.checked = false;
+                                                                if (group.includes($(checkbox).parent().find('span').text()))
+                                                                    checkbox.click();
+                                                            })
+                                                        }
+                                                    })
+                                                    .catch(() => { })
+                                            } else {
+                                                selector = `#${viewId}_${fieldId}_chzn.chzn-container-single`;
+                                                if ($(`${selector}`).length) {
+                                                    ktl.views.searchDropdown(group[1], fieldId, 'exact', false, viewId)
+                                                        .then(function () {
+                                                            //console.log('found!');
+                                                        })
+                                                        .catch(function (foundText) {
+                                                            console.log('error', foundText);
+                                                        })
+                                                } else {
+                                                    selector = `#${viewId}_${fieldId}_chzn.chzn-container-multi`;
+                                                    if ($(`${selector}`).length) {
+                                                        const values = group.slice(1);
+
+                                                        async function searchValuesInDropdown(values, fieldId, viewId) {
+                                                            for (const [index, value] of values.entries()) {
+                                                                try {
+                                                                    await ktl.views.searchDropdown(value, fieldId, 'exact', false, viewId);
+                                                                    //console.log(`${index + 1} - found!`, value);
+                                                                } catch (error) {
+                                                                    console.log(`${index + 1} - error`, error);
+                                                                }
+                                                            }
+                                                        }
+
+                                                        searchValuesInDropdown(values, fieldId, viewId);
+                                                    }
+                                                }
+                                            }
+                                        } else if (fieldType === 'multiple_choice') {
+                                            const format = Knack.objects.getField(fieldId).attributes.format.type;
+                                            if (format === 'radio')
+                                                $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
+                                            else if (format === 'checkboxes') {
+                                                const options = group.slice(1);
+                                                for (const option of options) {
+                                                    $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`)[0].checked = false;
+                                                    $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`).click();
+                                                }
+                                            }
+                                        } else if (fieldType === 'boolean') {
                                             $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
-                                        else if (format === 'checkboxes') {
-                                            const options = group.slice(1);
-                                            for (const option of options) {
-                                                $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`)[0].checked = false;
-                                                $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`).click();
-                                            }
+                                        } else {
+                                            console.log('_sdfv found an unsupported field type:', fieldId, fieldType);
                                         }
-                                    } else if (fieldType === 'boolean') {
-                                        $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
-                                    } else {
-                                        console.log('_sdfv found an unsupported field type:', fieldId, fieldType);
                                     }
                                 }
                             }
                         }
                     }
-                }
-            });
+                })
+                .catch(function () { })
         }
 
         //Views
@@ -11918,7 +11937,7 @@ function Ktl($, appInfo) {
                     }
 
                     if (dropdownSearching[fieldId])
-                        return reject('Search already in progress for this field');
+                        return reject(`Search already in progress: ${fieldId}, ${srchTxt}`);
 
                     dropdownSearching[fieldId] = fieldId;
 
@@ -11942,10 +11961,10 @@ function Ktl($, appInfo) {
 
                     if (dropdownObj.length) {
                         //Multiple choice (hard coded entries) drop downs. Ex: Work Shifts
-                        var isMultipleChoice = $(viewSel + '[data-input-id="' + fieldId + '"].kn-input-multiple_choice').length > 0 ? true : false;
-                        var isSingleSelection = $(viewSel + '[id$="' + fieldId + '_chzn"].chzn-container-single').length > 0 ? true : false;
-                        var chznSearchInput = $(viewSel + '[id$="' + fieldId + '_chzn"].chzn-container input').first();
-                        var chznContainer = $(viewSel + '[id$="' + fieldId + '_chzn"].chzn-container');
+                        var isMultipleChoice = !!$(`#${viewId} [data-input-id="${fieldId}"].kn-input-multiple_choice`).length;
+                        var isSingleSelection = !!$(`#${viewId}_${fieldId}_chzn.chzn-container-single`).length;
+                        var chznSearchInput = $(`#${viewId}_${fieldId}_chzn.chzn-container-multi input`).first();
+                        var chznContainer = $(`#${viewId}_${fieldId}_chzn.chzn-container`);
 
                         let currentOptionsMultipleChoices = [];
 
@@ -12113,6 +12132,7 @@ function Ktl($, appInfo) {
                                                     Knack.hideSpinner();
                                                     ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
                                                 } else {
+                                                    foundText = srchTxt;
                                                     if (results.length === 1) {
                                                         $(`#${viewId}-${fieldId} option:not("selected")`).attr('selected', '');
                                                         input.trigger("liszt:updated");
@@ -12127,6 +12147,9 @@ function Ktl($, appInfo) {
                                                     chznContainer.find('.chzn-drop').css('left', ''); //Put back, since was moved to -9000px.
                                                     Knack.hideSpinner();
                                                     chznContainer.focus(); //Allow using up/down arrows to select result and press enter.
+
+                                                    delete dropdownSearching[fieldId];
+                                                    return resolve(foundText);
                                                 }
                                             }
                                         }, 200);
