@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.27.11';
+    const KTL_VERSION = '0.28.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6582,7 +6582,7 @@ function Ktl($, appInfo) {
                     keywords._vrh && viewRecordHistory(viewId, keywords);
                     keywords._hsv && hideShowView(view, keywords);
                     keywords._cfdt && calculateFutureDateTime(viewId, keywords, data);
-                    keywords._sfdv && setFormDefaultValues(viewId, keywords, data);
+                    keywords._sfv && setFieldValue(viewId, keywords, data);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -11159,13 +11159,13 @@ function Ktl($, appInfo) {
             }
         }
 
-        function setFormDefaultValues(viewId, keywords, data) {
+        function setFieldValue(viewId, keywords, data) {
             if (!viewId) return;
 
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'form') return
 
-            const kw = '_sfdv';
+            const kw = '_sfv';
 
             ktl.core.waitSelector(`#${viewId}.ktlPersistenFormLoadedView`, 20000)
                 .then(function () {
