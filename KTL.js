@@ -1877,6 +1877,8 @@ function Ktl($, appInfo) {
             //Compares two arrays and returns true if they contain the same elements, regardless of their order.
             //Only works with simple values like strings or numbers, not objects.
             isArraysContainSameElements: function (array1, array2) {
+                if (!array1 || !array2) return undefined;
+
                 return array1.length === array2.length &&
                     array1.every(id => array2.includes(id)) &&
                     array2.every(id => array1.includes(id));
@@ -9123,7 +9125,8 @@ function Ktl($, appInfo) {
                                                         array2 = dstRecIds;
                                                     }
 
-                                                    if (!ktl.core.isArraysContainSameElements(array1, array2))
+                                                    const arraysAreSame = ktl.core.isArraysContainSameElements(array1, array2);
+                                                    if (!arraysAreSame && arraysAreSame !== undefined)
                                                         bulkApiDataArray.push({ apiData: apiData, id: dstRecId });
                                                 } else { //Text and numeric values.
                                                     const srcText = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId}`).text();
@@ -9906,10 +9909,10 @@ function Ktl($, appInfo) {
                         if (sourceColumnIndex >= 0 && destinationColumnIndex >= 0) {
                             const rows = $(`#${viewId} .kn-table tbody tr`);
                             rows.each((idx, row) => {
-                                const srcCell = $(row).find(`td .col-${sourceColumnIndex} span`);
-                                if (srcCell.length) {
+                                const srcCell = $(row).find(`td:nth-child(${sourceColumnIndex + 1}) span`).last();
+                                if (srcCell.length && srcCell.text().trim()) {
                                     const srcText = srcCell.html();
-                                    const destCell = $(row).find(`td .col-${destinationColumnIndex} span`);
+                                    const destCell = $(row).find(`td:nth-child(${destinationColumnIndex + 1}) span`).last();;
                                     if (destCell.length) {
                                         $(destCell).html(srcText);
                                     }
@@ -11507,8 +11510,6 @@ function Ktl($, appInfo) {
                 })
             },
 
-            //Parse the Knack object to find all views and start any applicable auto refresh interval timers for each, based on title.
-            //Triggered when view title contains _ar=30 (for 30 seconds interval in this example).
             autoRefresh: function (run = true, autoRestart = true) {
                 clearTimeout(unPauseTimer);
                 if (run) {
@@ -13981,6 +13982,7 @@ function Ktl($, appInfo) {
 
             //Returns the zero-based index of the column with fieldId or header label.  Works with Action links also.
             //Hidden columns are counted in (not ignored) to get the real index, as if they were visible.
+            //Note!!! This is the HTML index, not the Knack object column index.  This means it includes any added columns by code, like the Bulk Ops checkbox.
             getColumnIndex: function (viewId, headerOrFieldId) {
                 if (!viewId || !headerOrFieldId) return;
                 if (!['table', 'search'].includes(ktl.views.getViewType(viewId))) return;
