@@ -3679,7 +3679,7 @@ function Ktl($, appInfo) {
         //Loads any data previously saved for all fields in forms.
         //If a viewId is supplied, only this form will be processed, otherwise all forms in scene.
         //Also adds Change event handlers for dropdowns and calendars.   Eventually, support all object types.
-        //After loading, re-validates numeric fields and hoghlights errors in pink.
+        //After loading, re-validates numeric fields and highlights errors in pink.
         let allViewsDone = [];
         function loadFormData(viewId) {
             return new Promise(function (resolve) {
@@ -6300,11 +6300,45 @@ function Ktl($, appInfo) {
                 $('.kn-modal-bg .kn-modal').css({ 'max-width': '98%' });
         })
 
+
+
+
+
+        $(document).on('knack-records-render.any', function (e, view, data) {
+            console.log('records render', view, data);
+
+            if (ktl.views.viewHasSummary(viewId))
+                readSummaryValues(viewId);
+        })
+
+
+
         //Object that keeps a render count for each viewId that has a summary and groups.
         const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
+
+
+            viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
+            console.log('viewWithSummaryRenderCounts[viewId] =', viewWithSummaryRenderCounts[viewId]);
+
+            setTimeout(() => {
+                if (viewWithSummaryRenderCounts[viewId]) {
+                    console.log('delete', viewId);
+                    delete viewWithSummaryRenderCounts[viewId];
+                }
+            }, 3000);
+
             if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
+
+                ktl.views.hideColumns(view, ktlKeywords[viewId]);
+                ktl.views.removeColumns(view, ktlKeywords[viewId]);
+
+                console.log('has summary:', viewId);
+                //ktlProcessKeywords(view, data);
+
+
+/*
                 viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
 
                 ktl.views.hideColumns(view, ktlKeywords[viewId]);
@@ -6327,7 +6361,7 @@ function Ktl($, appInfo) {
 
                 if (viewWithSummaryRenderCounts[viewId] > 2 || !(numberOfSummaryLines === 1 && !noData))
                     viewWithSummaryRenderCounts[viewId] = 0;
-
+*/
                 /* This code is needed for keywords that may require summary data to achieve their task.
 
                 Since the summaries are rendered "a bit later" than the rest of the grid data,
@@ -6343,11 +6377,14 @@ function Ktl($, appInfo) {
                     if (Knack.views[viewId].ktlRenderTotals) {
                         Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
-                        readSummaryValues(viewId);
                         $(document).off('KTL.' + viewId + '.summaryRendered.ktlRenderTotals').on('KTL.' + viewId + '.summaryRendered.ktlRenderTotals', () => {
-                            ktlProcessKeywords(view, data);
-                            ktl.views.fixTableRowsAlignment(viewId);
+                            if (JSON.stringify(ktlKeywords[viewId]).includes('ktlSummary')) {
+                                ktlProcessKeywords(view, data);
+                                ktl.views.fixTableRowsAlignment(viewId);
+                            }
                         })
+
+                        //readSummaryValues(viewId);
                     }
                 };
 
@@ -6364,6 +6401,7 @@ function Ktl($, appInfo) {
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
                 }
             } else {
+                //No summary nor groups
                 ktlProcessKeywords(view, data);
             }
 
@@ -6524,7 +6562,7 @@ function Ktl($, appInfo) {
                 }
             }
 
-            //ktl.core.logCaller(2, view.key);
+            ktl.core.logCaller(2, view.key);
 
             try {
                 //ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
@@ -6934,40 +6972,72 @@ function Ktl($, appInfo) {
         function readSummaryValues(viewId) {
             if (!viewId) return;
 
-            ktl.views.fixTableRowsAlignment(viewId)
-                .then(() => {
-                    const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
-                    const headers = document.querySelectorAll('#' + viewId + ' thead th');
-                    var summaryObj = {};
-                    for (var t = 0; t < totals.length; t++) {
-                        const row = totals[t];
-                        const td = row.querySelectorAll('td');
-                        var summaryType = '';
-                        for (var col = 0; col < td.length; col++) {
-                            if (headers[col]) {
-                                const txt = td[col].textContent.trim();
-                                const fieldId = headers[col].className.split(' ')[0];
-                                const val = ktl.core.extractNumericValue(txt, fieldId);
-                                if (txt !== '' && val === undefined) {
-                                    //Found a summary type, ex: "Avg".
-                                    summaryType = txt;
-                                    summaryObj[summaryType] = {};
-                                } else if (summaryType && val) {
-                                    var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
-                                    if (colHeader)
-                                        summaryObj[summaryType][colHeader] = val;
-                                }
-                            }
+            const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
+            const headers = document.querySelectorAll('#' + viewId + ' thead th');
+            var summaryObj = {};
+            for (var t = 0; t < totals.length; t++) {
+                const row = totals[t];
+                const td = row.querySelectorAll('td');
+                var summaryType = '';
+                for (var col = 0; col < td.length; col++) {
+                    if (headers[col]) {
+                        const txt = td[col].textContent.trim();
+                        const fieldId = headers[col].className.split(' ')[0];
+                        const val = ktl.core.extractNumericValue(txt, fieldId);
+                        if (txt !== '' && val === undefined) {
+                            //Found a summary type, ex: "Avg".
+                            summaryType = txt;
+                            summaryObj[summaryType] = {};
+                        } else if (summaryType && val) {
+                            var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
+                            if (colHeader)
+                                summaryObj[summaryType][colHeader] = val;
                         }
                     }
+                }
+            }
 
-                    if (ktlKeywords[viewId])
-                        ktlKeywords[viewId].summary = summaryObj;
-                    else
-                        ktlKeywords[viewId] = { summary: summaryObj };
+            if (ktlKeywords[viewId])
+                ktlKeywords[viewId].summary = summaryObj;
+            else
+                ktlKeywords[viewId] = { summary: summaryObj };
 
-                    $(document).trigger('KTL.' + viewId + '.summaryRendered');
-                })
+            $(document).trigger('KTL.' + viewId + '.summaryRendered');
+
+        //    ktl.views.fixTableRowsAlignment(viewId)
+        //        .then(() => {
+        //            const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
+        //            const headers = document.querySelectorAll('#' + viewId + ' thead th');
+        //            var summaryObj = {};
+        //            for (var t = 0; t < totals.length; t++) {
+        //                const row = totals[t];
+        //                const td = row.querySelectorAll('td');
+        //                var summaryType = '';
+        //                for (var col = 0; col < td.length; col++) {
+        //                    if (headers[col]) {
+        //                        const txt = td[col].textContent.trim();
+        //                        const fieldId = headers[col].className.split(' ')[0];
+        //                        const val = ktl.core.extractNumericValue(txt, fieldId);
+        //                        if (txt !== '' && val === undefined) {
+        //                            //Found a summary type, ex: "Avg".
+        //                            summaryType = txt;
+        //                            summaryObj[summaryType] = {};
+        //                        } else if (summaryType && val) {
+        //                            var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
+        //                            if (colHeader)
+        //                                summaryObj[summaryType][colHeader] = val;
+        //                        }
+        //                    }
+        //                }
+        //            }
+
+        //            if (ktlKeywords[viewId])
+        //                ktlKeywords[viewId].summary = summaryObj;
+        //            else
+        //                ktlKeywords[viewId] = { summary: summaryObj };
+
+        //            $(document).trigger('KTL.' + viewId + '.summaryRendered');
+        //        })
         }
 
         function readSummaryValue(viewTitleOrId, columnHeader, summaryName) {
@@ -7353,7 +7423,7 @@ function Ktl($, appInfo) {
             if (!viewId) return;
 
             const viewType = ktl.views.getViewType(viewId);
-            if (viewType !== 'table' && viewType !== 'list' && viewType !== 'details')
+            if (viewType !== 'table' && viewType !== 'search' && viewType !== 'list' && viewType !== 'details')
                 return;
 
             //Begin with field _cfv.
@@ -7409,7 +7479,6 @@ function Ktl($, appInfo) {
                 if (!viewFieldIds || !data || !groups.length) return;
 
                 if (options && !!options.ktlRefVal) {
-
                     if (options.ktlRefVal.endsWith(','))
                         options.ktlRefVal = options.ktlRefVal.replace(',', '');
 
@@ -11719,96 +11788,105 @@ function Ktl($, appInfo) {
                         return resolve();
 
                     if (ktl.bulkOps.getBulkOpsActive(viewId)) {
-                        //For summary lines, prepend a space if Bulk Ops are enabled.
+                        // For summary lines, prepend a space if Bulk Ops are enabled.
                         var viewObj = ktl.views.getView(viewId);
                         if (!viewObj)
                             return resolve();
 
-                        checkSummaryFixNeeded();
+                        checkSummaryFixNeeded().then(function () {
+                            var cols = (viewObj.results && viewObj.results.columns) || viewObj.columns;
+                            var groupingFound = cols.some(function (col) {
+                                return col.grouping;
+                            });
 
-                        //For groups, extend line up to end.
-                        var cols = (viewObj.results && viewObj.results.columns) || viewObj.columns;
-                        //var cols = viewObj.columns;
-                        var groupingFound = false;
-                        for (var i = 0; i < cols.length; i++) {
-                            if (cols[i].grouping) {
-                                groupingFound = true;
-                                break;
-                            }
-                        }
-
-                        if (groupingFound) {
-                            var sel = '#' + viewId + ' tr.kn-table-group';
-                            ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT)
-                                .then(function () {
-                                    $('#' + viewId + ' tr.kn-table-group').each(function () {
-                                        if (!$(this).find('td').hasClass('blankCell'))
-                                            $(this).prepend(`<td class="blankCell" style="border-top: 1px solid #dadada;"></td>`);
+                            if (groupingFound) {
+                                var sel = '#' + viewId + ' tr.kn-table-group';
+                                ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT)
+                                    .then(function () {
+                                        $('#' + viewId + ' tr.kn-table-group').each(function () {
+                                            if (!$(this).find('td').hasClass('blankCell'))
+                                                $(this).prepend(`<td class="blankCell" style="border-top: 1px solid #dadada;"></td>`);
+                                        });
+                                        resolve(); // Resolve here after processing all group rows
+                                    })
+                                    .catch(function (e) {
+                                        ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e);
+                                        resolve(); // Ensure resolve is called even on failure
                                     });
-                                })
-                                .catch(function (e) { ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e); })
-                        }
+                            } else {
+                                resolve(); // Resolve immediately if no grouping found
+                            }
+                        });
                     } else {
-                        if (ktlKeywords[viewId] && (ktlKeywords[viewId]._hc || ktlKeywords[viewId]._rc))
-                            fixSummaryRows();
-                        else
-                            checkSummaryFixNeeded();
+                        if (ktlKeywords[viewId] && (ktlKeywords[viewId]._hc || ktlKeywords[viewId]._rc)) {
+                            fixSummaryRows().then(resolve);
+                        } else {
+                            checkSummaryFixNeeded().then(resolve);
+                        }
                     }
 
                     function checkSummaryFixNeeded() {
-                        if (ktl.views.viewHasSummary(viewId)) {
-                            var sel = '#' + viewId + ' tr.kn-table-totals';
-                            ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT) //Totals and groups rendering usually need a bit of extra wait time due to calculations.
-                                .then(function () {
-                                    var totalRows = $('#' + viewId + ' tr.kn-table-totals');
-                                    if (!$('#' + viewId + ' tr.kn-table-totals td')[0].classList.contains('blankCell')) {
-                                        var headers = $('#' + viewId + ' thead tr th:visible').length;
-                                        var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])').length;
+                        return new Promise(function (resolve) {
+                            if (ktl.views.viewHasSummary(viewId)) {
+                                var sel = '#' + viewId + ' tr.kn-table-totals';
+                                ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT)
+                                    .then(function () {
+                                        var totalRows = $('#' + viewId + ' tr.kn-table-totals');
+                                        if (!$('#' + viewId + ' tr.kn-table-totals td')[0].classList.contains('blankCell')) {
+                                            var headers = $('#' + viewId + ' thead tr th:visible').length;
+                                            var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])').length;
 
-                                        if (headers > totals) {
-                                            for (var i = totalRows.length - 1; i >= 0; i--) {
-                                                var row = totalRows[i];
-                                                $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                            if (headers > totals) {
+                                                for (var i = totalRows.length - 1; i >= 0; i--) {
+                                                    var row = totalRows[i];
+                                                    $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                                }
                                             }
+
+                                            fixSummaryRows().then(resolve);
+                                        } else {
+                                            resolve(); // Resolve if no fixes needed
                                         }
-
-                                        fixSummaryRows();
-                                    }
-                                })
-                                .catch(function (e) { })
-                        }
-                    }
-
-                    //Alignment fix for Summary rows (totals).
-                    function fixSummaryRows() {
-                        var headers = $('#' + viewId + ' thead tr th:visible').length;
-                        var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])').length;
-
-                        for (var j = 0; j < (totals - headers); j++) {
-                            $('#' + viewId + ' .kn-table-totals td:last-child').remove();
-                        }
-                    }
-
-                    //Reposition the Summary titles if they've been hidden by a hidden column keyword.
-                    $(`#${viewId} tr.kn-table-totals`).each(function () {
-                        var $row = $(this);
-                        var $columns = $row.find('td');
-                        var $firstNonEmptyColumn = $columns.filter(function () {
-                            return $(this).text().trim() !== '';
-                        }).first();
-                        if ($firstNonEmptyColumn.is('[class^="ktlDisplayNone_"]')) {
-                            var htmlToCopy = $firstNonEmptyColumn.html();
-                            var $firstEmptyColumn = $columns.filter(function () {
-                                return $(this).text().trim().replace(/\u00a0/g, '') === '';
-                            }).first();
-                            if ($firstEmptyColumn.length > 0) {
-                                $firstEmptyColumn.html(htmlToCopy);
+                                    })
+                                    .catch(function (e) { resolve(); }); // Ensure resolve is called even on failure
+                            } else {
+                                resolve(); // Resolve immediately if no summary found
                             }
-                        }
-                    });
+                        });
+                    }
 
-                    resolve();
-                })
+                    function fixSummaryRows() {
+                        return new Promise(function (resolve) {
+                            if (!ktl.views.viewHasSummary(viewId))
+                                return resolve();
+
+                            var headers = $('#' + viewId + ' thead tr th:is([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])');
+                            if (headers.length) {
+                                headers.each((ix, el) => {
+                                    $('#' + viewId + ' tr.kn-table-totals td:nth-child(' + (el.cellIndex + 1) + ')').addClass('ktlDisplayNone_hc');
+                                });
+
+                                const summaryLabel = Knack.views[viewId].model.view.totals[0].label;
+                                if (!$(`#${viewId} tr.kn-table-totals:first td:textEquals("${summaryLabel}"):visible`).length) {
+                                    const summaryCell = $(`#${viewId} tr.kn-table-totals:first td:textEquals("${summaryLabel}").ktlDisplayNone_hc`);
+                                    if (summaryCell.length) {
+                                        const originalSummaryColumn = summaryCell[0].cellIndex;
+
+                                        const newSummaryColumnIndex = $(`#${viewId} tr.kn-table-totals:first td`).filter(function () {
+                                            return $(this).text().trim().replace(/\u00a0/g, '') === ''
+                                        }).first()[0].cellIndex;
+
+                                        $(`#${viewId} tr.kn-table-totals`).each((ix, summaryRow) => {
+                                            const cellContent = $(summaryRow).find(`td:nth-child(${originalSummaryColumn + 1})`)[0].innerHTML;
+                                            $(summaryRow).find(`td:nth-child(${newSummaryColumnIndex + 1})`)[0].innerHTML = cellContent;
+                                        });
+                                    }
+                                }
+                            }
+                            resolve(); // Resolve after processing summary rows
+                        });
+                    }
+                });
             },
 
             addTimeStampToHeader: function (viewId, keywords, fontStyle = 'color: gray; font-weight: bold; font-size:x-large') {
@@ -12228,7 +12306,7 @@ function Ktl($, appInfo) {
                 columns.forEach(col => {
                     const header = col.header.trim();
                     if (headers.includes(header) || fields.includes(col.id)) {
-                        const thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
+                        const thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '"):not(.ktlDisplayNone_hc)');
                         if (thead.length) {
                             var cellIndex = thead[0].cellIndex;
                             thead[0].classList.add('ktlDisplayNone_hc');
@@ -20639,6 +20717,10 @@ function getUrlParameter(name) {
     }
     return;
 };
+
+function postTaskWithParams(func, params, options) {
+    return scheduler.postTask(() => func(...params), options);
+}
 
 ////////////////  End of KTL /////////////////////
 
