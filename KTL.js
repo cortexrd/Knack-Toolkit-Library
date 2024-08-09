@@ -6307,8 +6307,8 @@ function Ktl($, appInfo) {
         $(document).on('knack-records-render.any', function (e, view, data) {
             console.log('records render', view, data);
 
-            if (ktl.views.viewHasSummary(viewId))
-                readSummaryValues(viewId);
+            if (ktl.views.viewHasSummary(view.key))
+                readSummaryValues(view.key);
         })
 
 
@@ -6377,12 +6377,20 @@ function Ktl($, appInfo) {
                     if (Knack.views[viewId].ktlRenderTotals) {
                         Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
-                        $(document).off('KTL.' + viewId + '.summaryRendered.ktlRenderTotals').on('KTL.' + viewId + '.summaryRendered.ktlRenderTotals', () => {
-                            if (JSON.stringify(ktlKeywords[viewId]).includes('ktlSummary')) {
-                                ktlProcessKeywords(view, data);
-                                ktl.views.fixTableRowsAlignment(viewId);
-                            }
-                        })
+                        //$(document).off('KTL.' + viewId + '.summaryRendered.ktlRenderTotals').on('KTL.' + viewId + '.summaryRendered.ktlRenderTotals', () => {
+                        //    if (JSON.stringify(ktlKeywords[viewId]).includes('ktlSummary')) {
+                        //        ktlProcessKeywords(view, data);
+                        //        ktl.views.fixTableRowsAlignment(viewId);
+                        //    }
+                        //})
+
+                        ktl.views.fixTableRowsAlignment(viewId);
+
+                        const error = new Error();
+                        if (error.stack.split('at')[2].includes('postRender'))
+                            ktlProcessKeywords(view, data);
+                        else
+                            console.log('...skipped kw proc', viewId);
 
                         //readSummaryValues(viewId);
                     }
@@ -6395,7 +6403,7 @@ function Ktl($, appInfo) {
                     }
 
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
-                    ktlProcessKeywords(view, data);
+                    //ktlProcessKeywords(view, data);
                 } else { //When data has changed, but the functions remain the same.
                     Knack.views[viewId].ktlRenderTotals.ktlPost = ktlRenderTotals;
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
