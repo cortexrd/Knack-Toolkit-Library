@@ -6300,68 +6300,55 @@ function Ktl($, appInfo) {
                 $('.kn-modal-bg .kn-modal').css({ 'max-width': '98%' });
         })
 
-
-
-
-
+        //Read Summary Values.
+        //This event is triggered before the view render event.  It's important to have summaries ready, before calling ktlProcessKeywords.
         $(document).on('knack-records-render.any', function (e, view, data) {
-            console.log('records render', view, data);
+            const viewId = view.key;
+            if (ktl.views.viewHasSummary(viewId)) {
+                if (!viewId) return;
 
-            if (ktl.views.viewHasSummary(view.key))
-                readSummaryValues(view.key);
+                const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
+                const headers = document.querySelectorAll('#' + viewId + ' thead th');
+                var summaryObj = {};
+                for (var t = 0; t < totals.length; t++) {
+                    const row = totals[t];
+                    const td = row.querySelectorAll('td');
+                    var summaryType = '';
+                    for (var col = 0; col < td.length; col++) {
+                        if (headers[col]) {
+                            const txt = td[col].textContent.trim();
+                            const fieldId = headers[col].className.split(' ')[0];
+                            const val = ktl.core.extractNumericValue(txt, fieldId);
+                            if (txt !== '' && val === undefined) {
+                                //Found a summary type, ex: "Avg".
+                                summaryType = txt;
+                                summaryObj[summaryType] = {};
+                            } else if (summaryType && val) {
+                                var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
+                                if (colHeader)
+                                    summaryObj[summaryType][colHeader] = val;
+                            }
+                        }
+                    }
+                }
+
+                if (ktlKeywords[viewId])
+                    ktlKeywords[viewId].summary = summaryObj;
+                else
+                    ktlKeywords[viewId] = { summary: summaryObj };
+
+                $(document).trigger('KTL.' + viewId + '.summaryRendered');
+            }                
         })
 
-
-
         //Object that keeps a render count for each viewId that has a summary and groups.
-        const viewWithSummaryRenderCounts = {};
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
-
-
-            viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
-            console.log('viewWithSummaryRenderCounts[viewId] =', viewWithSummaryRenderCounts[viewId]);
-
-            setTimeout(() => {
-                if (viewWithSummaryRenderCounts[viewId]) {
-                    console.log('delete', viewId);
-                    delete viewWithSummaryRenderCounts[viewId];
-                }
-            }, 3000);
-
             if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
 
                 ktl.views.hideColumns(view, ktlKeywords[viewId]);
                 ktl.views.removeColumns(view, ktlKeywords[viewId]);
 
-                console.log('has summary:', viewId);
-                //ktlProcessKeywords(view, data);
-
-
-/*
-                viewWithSummaryRenderCounts[viewId] = (viewWithSummaryRenderCounts[viewId] || 0) + 1;
-
-                ktl.views.hideColumns(view, ktlKeywords[viewId]);
-                ktl.views.removeColumns(view, ktlKeywords[viewId]);
-
-                const numberOfSummaryLines = document.querySelectorAll(`#${viewId} .kn-table-totals`).length;
-                const noData = document.querySelector(`#${viewId} .kn-tr-nodata`);
-
-                if (viewWithSummaryRenderCounts[viewId] === 2) {
-                    viewWithSummaryRenderCounts[viewId] = 0;
-                    ktlProcessKeywords(view, data);
-                } else {
-                    if (numberOfSummaryLines === 1 && !noData) {
-                        if (Knack.models[viewId].results_model) {
-                            Knack.models[viewId].results_model.fetch();
-                            return;
-                        }
-                    }
-                }
-
-                if (viewWithSummaryRenderCounts[viewId] > 2 || !(numberOfSummaryLines === 1 && !noData))
-                    viewWithSummaryRenderCounts[viewId] = 0;
-*/
                 /* This code is needed for keywords that may require summary data to achieve their task.
 
                 Since the summaries are rendered "a bit later" than the rest of the grid data,
@@ -6377,22 +6364,10 @@ function Ktl($, appInfo) {
                     if (Knack.views[viewId].ktlRenderTotals) {
                         Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
-                        //$(document).off('KTL.' + viewId + '.summaryRendered.ktlRenderTotals').on('KTL.' + viewId + '.summaryRendered.ktlRenderTotals', () => {
-                        //    if (JSON.stringify(ktlKeywords[viewId]).includes('ktlSummary')) {
-                        //        ktlProcessKeywords(view, data);
-                        //        ktl.views.fixTableRowsAlignment(viewId);
-                        //    }
-                        //})
-
                         ktl.views.fixTableRowsAlignment(viewId);
-
                         const error = new Error();
                         if (error.stack.split('at')[2].includes('postRender'))
                             ktlProcessKeywords(view, data);
-                        else
-                            console.log('...skipped kw proc', viewId);
-
-                        //readSummaryValues(viewId);
                     }
                 };
 
@@ -6403,7 +6378,6 @@ function Ktl($, appInfo) {
                     }
 
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
-                    //ktlProcessKeywords(view, data);
                 } else { //When data has changed, but the functions remain the same.
                     Knack.views[viewId].ktlRenderTotals.ktlPost = ktlRenderTotals;
                     Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
@@ -6648,20 +6622,21 @@ function Ktl($, appInfo) {
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
 
-                const viewType = ktl.views.getViewType(viewId);
-                if (viewType === 'form')
-                    labelText(view, keywords);
-                else {
-                    //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values.
-                    if (ktl.views.viewHasSummary(viewId)) {
-                        $(document).off('KTL.' + viewId + '.summaryRendered.processKeywords').on('KTL.' + viewId + '.summaryRendered.processKeywords', () => {
-                            labelText(view, keywords);
-                            ktl.views.fixTableRowsAlignment(view.key);
-                        })
-                    } else {
-                        labelText(view, keywords);
-                    }
-                }
+                labelText(view, keywords);
+                //const viewType = ktl.views.getViewType(viewId);
+                //if (viewType === 'form')
+                //    labelText(view, keywords);
+                //else {
+                //    //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values.
+                //    if (ktl.views.viewHasSummary(viewId)) {
+                //        $(document).off('KTL.' + viewId + '.summaryRendered.processKeywords').on('KTL.' + viewId + '.summaryRendered.processKeywords', () => {
+                //            labelText(view, keywords);
+                //            ktl.views.fixTableRowsAlignment(view.key);
+                //        })
+                //    } else {
+                //        labelText(view, keywords);
+                //    }
+                //}
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -6975,77 +6950,6 @@ function Ktl($, appInfo) {
                         .then(() => { })
                         .catch(() => { })
             }
-        }
-
-        function readSummaryValues(viewId) {
-            if (!viewId) return;
-
-            const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
-            const headers = document.querySelectorAll('#' + viewId + ' thead th');
-            var summaryObj = {};
-            for (var t = 0; t < totals.length; t++) {
-                const row = totals[t];
-                const td = row.querySelectorAll('td');
-                var summaryType = '';
-                for (var col = 0; col < td.length; col++) {
-                    if (headers[col]) {
-                        const txt = td[col].textContent.trim();
-                        const fieldId = headers[col].className.split(' ')[0];
-                        const val = ktl.core.extractNumericValue(txt, fieldId);
-                        if (txt !== '' && val === undefined) {
-                            //Found a summary type, ex: "Avg".
-                            summaryType = txt;
-                            summaryObj[summaryType] = {};
-                        } else if (summaryType && val) {
-                            var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
-                            if (colHeader)
-                                summaryObj[summaryType][colHeader] = val;
-                        }
-                    }
-                }
-            }
-
-            if (ktlKeywords[viewId])
-                ktlKeywords[viewId].summary = summaryObj;
-            else
-                ktlKeywords[viewId] = { summary: summaryObj };
-
-            $(document).trigger('KTL.' + viewId + '.summaryRendered');
-
-        //    ktl.views.fixTableRowsAlignment(viewId)
-        //        .then(() => {
-        //            const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
-        //            const headers = document.querySelectorAll('#' + viewId + ' thead th');
-        //            var summaryObj = {};
-        //            for (var t = 0; t < totals.length; t++) {
-        //                const row = totals[t];
-        //                const td = row.querySelectorAll('td');
-        //                var summaryType = '';
-        //                for (var col = 0; col < td.length; col++) {
-        //                    if (headers[col]) {
-        //                        const txt = td[col].textContent.trim();
-        //                        const fieldId = headers[col].className.split(' ')[0];
-        //                        const val = ktl.core.extractNumericValue(txt, fieldId);
-        //                        if (txt !== '' && val === undefined) {
-        //                            //Found a summary type, ex: "Avg".
-        //                            summaryType = txt;
-        //                            summaryObj[summaryType] = {};
-        //                        } else if (summaryType && val) {
-        //                            var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
-        //                            if (colHeader)
-        //                                summaryObj[summaryType][colHeader] = val;
-        //                        }
-        //                    }
-        //                }
-        //            }
-
-        //            if (ktlKeywords[viewId])
-        //                ktlKeywords[viewId].summary = summaryObj;
-        //            else
-        //                ktlKeywords[viewId] = { summary: summaryObj };
-
-        //            $(document).trigger('KTL.' + viewId + '.summaryRendered');
-        //        })
         }
 
         function readSummaryValue(viewTitleOrId, columnHeader, summaryName) {
