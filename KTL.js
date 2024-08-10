@@ -839,19 +839,20 @@ function Ktl($, appInfo) {
                 } else {
                     hours = String(hours).padStart(2, '0');
                 }
+
+                //Note: "replace" order is crucial!  Do not change.
                 let formattedDateTime = format
+                    .replace('A', ampm)
                     .replace('YYYY', year)
                     .replace('MMM', monthShort)
                     .replace('MM', month)
                     .replace('DDD', dayOfWeekShort)
                     .replace('DD', day)
-                    .replace(/M(?!M)/g, String(now.getMonth() + 1))
                     .replace('HH', hours.padStart(2, '0'))
                     .replace('hh', hours)
                     .replace('mm', minutes)
                     .replace('ss', seconds)
-                    .replace('SSS', milliseconds)
-                    .replace('A', ampm);
+                    .replace('SSS', milliseconds);
                 if (!use12HourFormat) {
                     formattedDateTime = formattedDateTime.replace(/\s?A/, '');
                 }
@@ -6337,8 +6338,8 @@ function Ktl($, appInfo) {
                 else
                     ktlKeywords[viewId] = { summary: summaryObj };
 
-                $(document).trigger('KTL.' + viewId + '.summaryRendered');
-            }                
+                $(document).trigger(`KTL.summaryRendered.${viewId}`);
+            }
         })
 
         //Object that keeps a render count for each viewId that has a summary and groups.
@@ -6366,7 +6367,8 @@ function Ktl($, appInfo) {
 
                         ktl.views.fixTableRowsAlignment(viewId);
                         const error = new Error();
-                        if (error.stack.split('at')[2].includes('postRender'))
+                        const callStack = error.stack.split('\n');
+                        if (callStack && callStack.length >= 2 && callStack[2].includes('.postRender'))
                             ktlProcessKeywords(view, data);
                     }
                 };
@@ -6453,7 +6455,7 @@ function Ktl($, appInfo) {
 
             const keywords = ktlKeywords[view.key];
 
-            //_rcm Remove confirmation Message
+            //_rcm Remove Confirmation Message
             if (keywords && keywords._rcm) {
                 let delayBeforeRemovingMsg = 0;
                 if (keywords._rcm.length && keywords._rcm[0].params[0].length) {
@@ -6621,22 +6623,7 @@ function Ktl($, appInfo) {
                 disableFilterOnFields(view);
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
-
                 labelText(view, keywords);
-                //const viewType = ktl.views.getViewType(viewId);
-                //if (viewType === 'form')
-                //    labelText(view, keywords);
-                //else {
-                //    //Wait for summary to complete before changing the header.  The summary needs the fields' original labels to place its values.
-                //    if (ktl.views.viewHasSummary(viewId)) {
-                //        $(document).off('KTL.' + viewId + '.summaryRendered.processKeywords').on('KTL.' + viewId + '.summaryRendered.processKeywords', () => {
-                //            labelText(view, keywords);
-                //            ktl.views.fixTableRowsAlignment(view.key);
-                //        })
-                //    } else {
-                //        labelText(view, keywords);
-                //    }
-                //}
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -7448,7 +7435,7 @@ function Ktl($, appInfo) {
                                             const columnHeader = ktlRefValSplit[2] || '';
 
                                             if (summaryViewId !== viewId) {
-                                                $(document).off('KTL.' + summaryViewId + '.summaryRendered.getRefVal.' + viewId).on('KTL.' + summaryViewId + '.summaryRendered.getRefVal.' + viewId, () => {
+                                                $(document).off(`KTL.summaryRendered.${summaryViewId}.getRefVal.${viewId}`).on(`KTL.summaryRendered.${summaryViewId}.getRefVal.${viewId}`, () => {
                                                     ktl.views.refreshView(viewId);
                                                 })
                                                 if (ktlKeywords[summaryViewId] && ktlKeywords[summaryViewId].summary) {
@@ -11124,7 +11111,7 @@ function Ktl($, appInfo) {
                                     requestType: 'PUT',
                                     id: record.id,
                                 }
- 
+
                                 bulkOpsRecordsArray.push(apiCallEntry);
                             }
                         }
@@ -11617,12 +11604,12 @@ function Ktl($, appInfo) {
 
                         if (keyword.options.ktlCond) {
                             let validatingKtlCond = true;
-                            const hide = () => { $('#' + viewId).addClass('ktlHidden'); }
+                            const hide = () => { $('#' + viewId).addClass('ktlHidden_rv'); }
                             const unhide = () => {
                                 if (validatingKtlCond)
-                                    $('#' + viewId).removeClass('ktlHidden');
+                                    $('#' + viewId).removeClass('ktlHidden_rv');
                                 else
-                                    $('#' + viewId + '.ktlHidden').remove();
+                                    $('#' + viewId + '.ktlHidden_rv').remove();
                             }
 
                             const conditions = keyword.options.ktlCond.replace(']', '').split(',').map(e => e.trim());
@@ -12817,8 +12804,10 @@ function Ktl($, appInfo) {
                         const isDateTime = (field.type === 'date_time') || (field.type === 'equation' && field.format.equation_type === 'date');
                         if ((isDateTime && !event.ctrlKey && !event.metaKey) || (!isDateTime && (event.ctrlKey || event.metaKey))) {
                             const anchor = $(event.currentTarget).find('a');
-                            const href = anchor.attr('href').split('|')[0]; // Safeguard if order is already there.
-                            anchor.attr('href', `${href}|desc`);
+                            if (anchor && anchor.length) {
+                                const href = anchor.attr('href').split('|')[0]; // Safeguard if order is already there.
+                                anchor.attr('href', `${href}|desc`);
+                            }
                         }
                     }
                 }
@@ -13438,20 +13427,19 @@ function Ktl($, appInfo) {
                     const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
 
-                    $('#' + viewId).addClass('ktlHidden_zm');
-
                     const sel = ktl.core.computeTargetSelector(viewId, '', options);
                     ktl.core.waitSelector(sel, 20000)
                         .then(() => {
+                            if (!$(sel)[0].style.zoom)
+                                $(sel).addClass('ktlHidden_zm');
+
                             var zoomLevel = keywords[kw][0].params[0][0];
-                            if (!isNaN(zoomLevel))
+                            if (!isNaN(zoomLevel)) {
                                 $(sel).css({ 'zoom': zoomLevel + '%' });
+                                $(sel).removeClass('ktlHidden_zm');
+                            }
                         })
                         .catch(function () { })
-                        .finally(() => {
-                            $('#' + viewId).removeClass('ktlHidden_zm');
-                        })
-
                 }
             },
 
