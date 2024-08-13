@@ -6342,52 +6342,57 @@ function Ktl($, appInfo) {
             }
         })
 
-        //Object that keeps a render count for each viewId that has a summary and groups.
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
-            if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
 
-                ktl.views.hideColumns(view, ktlKeywords[viewId]);
-                ktl.views.removeColumns(view, ktlKeywords[viewId]);
+            if (view.type !== 'search') { //Always skip the top portion of the search view types, since they don't support keywords.
+                if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
 
-                /* This code is needed for keywords that may require summary data to achieve their task.
+                    ktl.views.hideColumns(view, ktlKeywords[viewId]);
+                    ktl.views.removeColumns(view, ktlKeywords[viewId]);
 
-                Since the summaries are rendered "a bit later" than the rest of the grid data,
-                we must find a way to capture the summary data BEFORE applying the keywords.
+                    /* This code is needed for keywords that may require summary data to achieve their task.
+    
+                    Since the summaries are rendered "a bit later" than the rest of the grid data,
+                    we must find a way to capture the summary data BEFORE applying the keywords.
+    
+                    The function ktlRenderTotals below replaces Knack's original renderTotals.
+                    Doing this allows us to gain control over WHEN the summary has completed rendering.
+                    At that prceise moment, it's time to capture the summary data in an object for eventual processing.
+    
+                    *** A big thank you to Charles Brunelle who taught me this amazing technique - Normand D. */
 
-                The function ktlRenderTotals below replaces Knack's original renderTotals.
-                Doing this allows us to gain control over WHEN the summary has completed rendering.
-                At that prceise moment, it's time to capture the summary data in an object for eventual processing.
+                    var ktlRenderTotals = function () {
+                        if (Knack.views[viewId].ktlRenderTotals) {
+                            Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
 
-                *** A big thank you to Charles Brunelle who taught me this amazing technique - Normand D. */
+                            ktl.views.fixTableRowsAlignment(viewId);
+                            const error = new Error();
+                            const callStack = error.stack.split('\n');
+                            if (callStack && callStack.length >= 2 && callStack[2].includes('.postRender'))
+                                ktlProcessKeywords(view, data);
+                        }
+                    };
 
-                var ktlRenderTotals = function () {
-                    if (Knack.views[viewId].ktlRenderTotals) {
-                        Knack.views[viewId].ktlRenderTotals.original.call(this, ...arguments);
+                    if (!Knack.views[viewId].ktlRenderTotals || Knack.views[viewId].renderTotals !== Knack.views[viewId].ktlRenderTotals.ktlPost) {
+                        Knack.views[viewId].ktlRenderTotals = {
+                            original: Knack.views[viewId].renderTotals,
+                            ktlPost: ktlRenderTotals
+                        }
 
-                        ktl.views.fixTableRowsAlignment(viewId);
-                        const error = new Error();
-                        const callStack = error.stack.split('\n');
-                        if (callStack && callStack.length >= 2 && callStack[2].includes('.postRender'))
-                            ktlProcessKeywords(view, data);
+                        Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
+                    } else { //When data has changed, but the functions remain the same.
+                        Knack.views[viewId].ktlRenderTotals.ktlPost = ktlRenderTotals;
+                        Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
                     }
-                };
 
-                if (!Knack.views[viewId].ktlRenderTotals || Knack.views[viewId].renderTotals !== Knack.views[viewId].ktlRenderTotals.ktlPost) {
-                    Knack.views[viewId].ktlRenderTotals = {
-                        original: Knack.views[viewId].renderTotals,
-                        ktlPost: ktlRenderTotals
-                    }
-
-                    Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
-                } else { //When data has changed, but the functions remain the same.
-                    Knack.views[viewId].ktlRenderTotals.ktlPost = ktlRenderTotals;
-                    Knack.views[viewId].renderTotals = Knack.views[viewId].ktlRenderTotals.ktlPost;
+                    ktlProcessKeywords(view, data); //First time, for scene render.
+                } else {
+                    //No summary nor groups
+                    ktlProcessKeywords(view, data);
                 }
-            } else {
-                //No summary nor groups
-                ktlProcessKeywords(view, data);
             }
+
 
             ktl.views.addViewId(view);
 
@@ -6546,7 +6551,7 @@ function Ktl($, appInfo) {
                 }
             }
 
-            ktl.core.logCaller(2, view.key);
+            //ktl.core.logCaller(2, view.key);
 
             try {
                 //ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
@@ -11354,7 +11359,6 @@ function Ktl($, appInfo) {
                                     if (viewType === 'search') {
                                         //Do not call render() in search views because it erases the top form section.
                                         Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
-                                        ktlProcessKeywords(view.attributes);
                                     } else {
                                         Knack.views[viewId].render();
                                     }
