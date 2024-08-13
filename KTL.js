@@ -6524,7 +6524,7 @@ function Ktl($, appInfo) {
                                 $(rowSel + ' td').removeClass('ktlNoBgColor');
                                 $(rowSel + ' td a-ktlnoanchor').each((ix, el) => { el.outerHTML = ktl.fields.revertToAnchor(el.outerHTML); })
                                 $(rowSel).attr('style', currentStyle ? currentStyle : '');
-                                ktl.views.setCfg({ ktlFlashRate: '1s' });
+                                ktl.views.setCfg({ ktlFlashRate: '1' });
                             }, duration);
                         }
                     })
@@ -12687,7 +12687,6 @@ function Ktl($, appInfo) {
                 //Scan all fields in view to find any keywords.
                 const view = Knack.views[viewId].model.view;
                 var foundFields = [];
-                var fields = [];
 
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType === 'search') {
@@ -12708,8 +12707,8 @@ function Ktl($, appInfo) {
                         view.results.columns.forEach(fld => {
                             if (fld.connection && !foundFields.includes(fld.connection.key))
                                 foundFields.push(fld.connection.key);
-                            else if (!foundFields.includes(fld.id))
-                                foundFields.push(fld.id);
+                            else if (!foundFields.includes(fld.id || fld.field.key))
+                                foundFields.push(fld.id || fld.field.key);
                         })
                     }
                 } else if (viewType === 'form') {
