@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.28.0';
+    const KTL_VERSION = '0.28.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -7705,7 +7705,7 @@ function Ktl($, appInfo) {
                             targetSel = '#' + targetViewId; //Starting point - the view ID.
 
                             const targetViewType = ktl.views.getViewType(targetViewId);
-                            if (targetViewType === 'table')
+                            if (targetViewType === 'table' || targetViewType === 'search')
                                 targetSel += ' tbody';
                             else if (targetViewType === 'list')
                                 targetSel += ' kn-list-content, '; //Comma at end is required.
@@ -7719,7 +7719,7 @@ function Ktl($, appInfo) {
                                     targetFieldId = ktl.fields.getFieldIdFromLabel(targetViewId, ktlTarget[i]);
                                 }
 
-                                if (targetViewType === 'table') {
+                                if (targetViewType === 'table' || targetViewType === 'search') {
                                     colNb = ktl.views.getFieldPositionFromHeader(targetViewId, ktlTarget[i]);
                                     if (colNb === undefined)
                                         colNb = ktl.views.getFieldPositionFromFieldId(targetViewId, targetFieldId);
@@ -13900,7 +13900,7 @@ function Ktl($, appInfo) {
             getFieldPositionFromHeader: function (viewId, header) {
                 if (!viewId || !header) return;
                 const viewType = ktl.views.getViewType(viewId);
-                if (viewType !== 'table') {
+                if (viewType !== 'table' && viewType !== 'search') {
                     ktl.log.clog('purple', 'getFieldPositionFromHeader - unsupported view type', viewId, viewType);
                     return;
                 }
