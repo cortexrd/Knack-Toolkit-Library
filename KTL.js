@@ -2274,7 +2274,7 @@ function Ktl($, appInfo) {
                         $(e.target).select();
 
                     if (ktl.core.isKiosk())
-                        newTarget.setAttribute('autocomplete', 'off');
+                        e.target.setAttribute('autocomplete', 'off');
                 }
             }
         }, true);
@@ -12699,48 +12699,63 @@ function Ktl($, appInfo) {
                 var foundFields = [];
 
                 const viewType = ktl.views.getViewType(viewId);
-                if (viewType === 'search') {
-                    //Search portion at top
-                    view.groups.forEach(grp => {
-                        grp.columns.forEach(cols => {
-                            cols.fields.forEach(fld => {
-                                if (fld.connection)
-                                    foundFields.push(fld.connection.key);
-                                else
-                                    foundFields.push(fld.id);
-                            })
-                        })
-                    })
-
-                    //Results portion at bottom
-                    if (view.results && view.results.columns) {
-                        view.results.columns.forEach(fld => {
-                            if (fld.connection && !foundFields.includes(fld.connection.key))
-                                foundFields.push(fld.connection.key);
-                            else if (!foundFields.includes(fld.id || fld.field.key))
-                                foundFields.push(fld.id || fld.field.key);
-                        })
-                    }
-                } else if (viewType === 'form') {
-                    view.groups.forEach(grp => {
-                        grp.columns.forEach(cols => {
-                            cols.inputs.forEach(fld => {
-                                foundFields.push(fld.id);
-                            })
-                        })
-                    })
-                } else if (viewType === 'table' || viewType === 'list')
-                    foundFields.push(...view.fields.filter(f => !!f).map(field => field.key));
-                else if (viewType === 'details') {
-                    view.columns.forEach(col => {
-                        col.groups.forEach(grp => {
+                try {
+                    if (viewType === 'search') {
+                        //Search portion at top
+                        view.groups.forEach(grp => {
                             grp.columns.forEach(cols => {
-                                cols.forEach(fld => {
-                                    foundFields.push(fld.key);
+                                cols.fields.forEach(fld => {
+                                    if (fld.connection)
+                                        foundFields.push(fld.connection.key);
+                                    else
+                                        foundFields.push(fld.id || fld.field);
                                 })
                             })
                         })
-                    })
+
+                        //Results portion at bottom
+                        const resultsView = Knack.views[viewId].model.results_model || Knack.views[viewId].model;
+                        const resultsViewType = resultsView.view.type;
+                        if (resultsViewType === 'table') {
+                            if (view.results && view.results.columns) {
+                                view.results.columns.forEach(fld => {
+                                    if (fld.connection && !foundFields.includes(fld.connection.key))
+                                        foundFields.push(fld.connection.key);
+                                    else if (!foundFields.includes(fld.id || (fld.field && fld.field.key)))
+                                        foundFields.push(fld.id || (fld.field && fld.field.key));
+                                })
+                            }
+                        } else if (resultsViewType === 'list') {
+                            const fields = Knack.views[viewId].model.results_model.view.fields;
+                            if (fields.length) {
+                                fields.forEach(fld => {
+                                    foundFields.push(fld.key);
+                                })
+                            }
+                        }
+                    } else if (viewType === 'form') {
+                        view.groups.forEach(grp => {
+                            grp.columns.forEach(cols => {
+                                cols.inputs.forEach(fld => {
+                                    foundFields.push(fld.id);
+                                })
+                            })
+                        })
+                    } else if (viewType === 'table' || viewType === 'list')
+                        foundFields.push(...view.fields.filter(f => !!f).map(field => field.key));
+                    else if (viewType === 'details') {
+                        view.columns.forEach(col => {
+                            col.groups.forEach(grp => {
+                                grp.columns.forEach(cols => {
+                                    cols.forEach(fld => {
+                                        foundFields.push(fld.key);
+                                    })
+                                })
+                            })
+                        })
+                    }
+                } catch (e) {
+                    console.log('Error in getAllFieldsWithKeywordsInView:', view,Id, e);
                 }
 
                 if (!foundFields.length) return {};
@@ -14768,10 +14783,10 @@ function Ktl($, appInfo) {
         function showHiddenElemements() {
             $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
 
-            $('[class^=ktlHidden_], [class*=" ktlHidden_"]').each(function () {
+            $('[class^=ktlHidden], [class*=" ktlHidden"]').each(function () {
                 var currentClass = $(this).attr('class');
                 var newClass = currentClass.split(' ').map(function (className) {
-                    if (className.startsWith('ktlHidden_')) {
+                    if (className.startsWith('ktlHidden')) {
                         return 'dis_' + className;
                     }
                     return className;
@@ -14780,10 +14795,10 @@ function Ktl($, appInfo) {
                 $(this).attr('class', newClass);
             });
 
-            $('[class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"]').each(function () {
+            $('[class^=ktlDisplayNone], [class*=" ktlDisplayNone"]').each(function () {
                 var currentClass = $(this).attr('class');
                 var newClass = currentClass.split(' ').map(function (className) {
-                    if (className.startsWith('ktlDisplayNone_')) {
+                    if (className.startsWith('ktlDisplayNone')) {
                         return 'dis_' + className;
                     }
                     return className;
@@ -14796,10 +14811,10 @@ function Ktl($, appInfo) {
         function hideHiddenElemements() {
             $('.dis_ktlVisibilityHidden').replaceClass('dis_ktlVisibilityHidden', 'ktlVisibilityHidden');
 
-            $('[class^=dis_ktlHidden_], [class*=" dis_ktlHidden_"]').each(function () {
+            $('[class^=dis_ktlHidden], [class*=" dis_ktlHidden"]').each(function () {
                 var currentClass = $(this).attr('class');
                 var newClass = currentClass.split(' ').map(function (className) {
-                    if (className.startsWith('dis_ktlHidden_')) {
+                    if (className.startsWith('dis_ktlHidden')) {
                         return className.replace('dis_', '');
                     }
                     return className;
@@ -14808,10 +14823,10 @@ function Ktl($, appInfo) {
                 $(this).attr('class', newClass);
             });
 
-            $('[class^=dis_ktlDisplayNone_], [class*=" dis_ktlDisplayNone_"]').each(function () {
+            $('[class^=dis_ktlDisplayNone], [class*=" dis_ktlDisplayNone"]').each(function () {
                 var currentClass = $(this).attr('class');
                 var newClass = currentClass.split(' ').map(function (className) {
-                    if (className.startsWith('dis_ktlDisplayNone_')) {
+                    if (className.startsWith('dis_ktlDisplayNone')) {
                         return className.replace('dis_', '');
                     }
                     return className;
