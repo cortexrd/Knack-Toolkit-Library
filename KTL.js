@@ -8140,8 +8140,14 @@ function Ktl($, appInfo) {
                 try {
                     columns.forEach(col => {
                         var align = col.align;
-                        $(`#${view.key} thead th:textEquals("${col.header}")`).css('text-align', align);
-                        $(`#${view.key} thead th:textEquals("${col.header}") .table-fixed-label`).css('display', 'inline-flex');
+                        const colElem = $(`#${view.key} thead th:textEquals("${col.header}")`);
+                        if (colElem.length) {
+                            const currentAlignment = colElem[0].style.textAlign || 'left';
+                            if (align && (currentAlignment !== align)) {
+                                $(`#${view.key} thead th:textEquals("${col.header}")`).css('text-align', align);
+                                $(`#${view.key} thead th:textEquals("${col.header}") .table-fixed-label`).css('display', 'inline-flex');
+                            }
+                        }
                     })
                 } catch (e) {
                     console.log('headerAlignment error:', e);
