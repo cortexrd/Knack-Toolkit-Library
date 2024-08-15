@@ -19210,9 +19210,10 @@ function Ktl($, appInfo) {
         });
 
         function processRecordsUpdate(viewId) {
-            readyToProcessRecords = false;
             const data = Knack.views[viewId].model && Knack.views[viewId].model.data && Knack.views[viewId].model.data.models;
             if (!data || !data.length) return;
+
+            readyToProcessRecords = false;
 
             const recordsToUpdate = refreshRecords(data);
             updateAccounts(recordsToUpdate, viewId)
