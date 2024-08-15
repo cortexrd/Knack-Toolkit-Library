@@ -11920,6 +11920,9 @@ function Ktl($, appInfo) {
                         viewId && (viewId = viewId.id);
                     }
 
+                    if (!viewId && $('.kn-form').length)
+                        viewId = $('.kn-form')[0].id;
+
                     viewSel = viewId ? '#' + viewId + ' ' : viewSel;
                     var dropdownObj = $(viewSel + '[name="' + fieldId + '"].select');
 
@@ -20643,6 +20646,7 @@ function getUrlParameter(name) {
     return;
 };
 
+//Usage ex: postTaskWithParams(ktlProcessKeywords, [view, data], { priority: 'background' });
 function postTaskWithParams(func, params, options) {
     return scheduler.postTask(() => func(...params), options);
 }
