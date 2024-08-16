@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.28.1';
+    const KTL_VERSION = '0.28.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2167,7 +2167,7 @@ function Ktl($, appInfo) {
     //====================================================
     //Fields feature
     this.fields = (function () {
-        var keyBuffer = '';
+        let barcodeText = '';
         var usingBarcodeReader = false;
         var onKeyPressed = null;
         var onFieldValueChanged = null;
@@ -2225,7 +2225,7 @@ function Ktl($, appInfo) {
                 }, 200);
             }
 
-            readBarcode(e);
+            addKeyToBarcode(e);
         })
 
         $(document).on('keypress', function (e) {
@@ -2389,15 +2389,14 @@ function Ktl($, appInfo) {
             })
         });
 
-        let barcodeText = '';
         let timeoutId;
         let lastCharTime = window.performance.now();
-        function readBarcode(e) {
+        function addKeyToBarcode(e) {
             if (!e.key) return;
             if (e.key.length === 1)
                 barcodeText += e.key;
 
-            if (barcodeText.length >= 2)
+            if (!usingBarcodeReader && barcodeText.length >= 2)
                 ktl.fields.setUsingBarcode(true);
 
             if (ktl.fields.getUsingBarcode() && (e.key === 'Tab' || e.key === 'Enter'))
@@ -2646,10 +2645,10 @@ function Ktl($, appInfo) {
                     return;
                 }
 
-                keyBuffer += char;
+                barcodeText += char;
             },
-            clearBuffer: function () { keyBuffer = ''; },
-            getBuffer: function () { return keyBuffer; },
+            clearBuffer: function () { barcodeText = ''; },
+            getBuffer: function () { return barcodeText; },
             setUsingBarcode: function (using) { usingBarcodeReader = using; },
             getUsingBarcode: function () { return usingBarcodeReader; },
 
@@ -7327,7 +7326,7 @@ function Ktl($, appInfo) {
             if (!viewId) return;
 
             const viewType = ktl.views.getViewType(viewId);
-            if (viewType !== 'table' && viewType !== 'search' && viewType !== 'list' && viewType !== 'details')
+            if (viewType !== 'table' && viewType !== 'search' && viewType !== 'list' && viewType !== 'details' && viewType !== 'form')
                 return;
 
             //Begin with field _cfv.
@@ -7351,7 +7350,10 @@ function Ktl($, appInfo) {
                                 fieldId = fieldId[0];
                             return fieldId;
                         });
-                    } else { //Grids and Lists.
+                    } else if (viewType === 'form') {
+                        //console.log('form');
+                        //fieldIds = ['field_521'];
+                    } else { //Grids, Searches and Lists.
                         fieldIds = Knack.views[viewId].model.view.fields.filter(f => !!f).map((f) => f.key);
                     }
 
@@ -7500,7 +7502,12 @@ function Ktl($, appInfo) {
                                 cellText = cellSelector[0].textContent.trim();
                             applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
                         }
-                    } else { //Grids and Lists.
+                    } else if (viewType === 'form') {
+                        cellText = $(`#${viewId} [data-input-id=${fieldId}]`).contents().filter(function () {
+                            return this.nodeType === 3 && $.trim(this.nodeValue) !== "";
+                        }).text().trim();
+                        applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
+                    } else { //Grids, Searches and Lists.
                         let fieldType = ktl.fields.getFieldType(fieldId);
 
                         if (fieldType === 'connection') { //Get display field type.
