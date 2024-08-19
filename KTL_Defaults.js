@@ -138,8 +138,9 @@ window.KnackApp = function ($, appInfo = {}) {
                 //horizontalRadioButtons: true,
                 //horizontalCheckboxes: true,
 
-                //barcoreTimeout: 20,
+                //barcodeTimeout: 20,
                 //barcodeMinLength: 3,
+                //barcodePrefixes: [],
                 //convertNumToTel: true,
             })
 

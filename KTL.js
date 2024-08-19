@@ -2167,8 +2167,6 @@ function Ktl($, appInfo) {
     //====================================================
     //Fields feature
     this.fields = (function () {
-        let barcodeText = '';
-        var usingBarcodeReader = false;
         var onKeyPressed = null;
         var onFieldValueChanged = null;
         var textAsNumeric = []; //These are text fields that must be converted to numeric.
@@ -2180,8 +2178,9 @@ function Ktl($, appInfo) {
 
         //TODO: Migrate all variables here.
         var cfg = {
-            barcoreTimeout: 50,
+            barcodeTimeout: 50,
             barcodeMinLength: 3,
+            barcodePrefixes: [],
             convertNumToTel: true,
         }
 
@@ -2389,31 +2388,63 @@ function Ktl($, appInfo) {
             })
         });
 
+        let usingBarcodeReader = false;
         let timeoutId;
         let lastCharTime = window.performance.now();
+        let barcodeText = '';
+        let originalValue = '';
+        let selectionStart = 0;
+        let selectionEnd = 0;
         function addKeyToBarcode(e) {
-            if (!e.key) return;
-            if (e.key.length === 1)
+            let focusedElement = document.activeElement;
+            if (focusedElement && focusedElement.tagName === 'INPUT') {
+                if (!barcodeText) {
+                    originalValue = focusedElement.value;
+                    selectionStart = focusedElement.selectionStart;
+                    selectionEnd = focusedElement.selectionEnd;
+                }
+            } else
+                focusedElement = undefined;
+
+            if (usingBarcodeReader)
+                e.preventDefault();
+
+            if (!e.key || (e.key && e.key.length !== 1)) return; // Ignore keys like "shift" or "alt".
+
+            // Keep only printable characters.
+            if (e.key.match(/^[\w\p{P}\p{S} ]$/u)) {
                 barcodeText += e.key;
 
-            if (!usingBarcodeReader && barcodeText.length >= 2)
-                ktl.fields.setUsingBarcode(true);
-
-            if (ktl.fields.getUsingBarcode() && (e.key === 'Tab' || e.key === 'Enter'))
-                e.preventDefault(); //Prevent Submitting form if terminator is CRLF or Tab.
-
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => {
-                if (window.performance.now() - lastCharTime > cfg.barcoreTimeout) {
-                    if (barcodeText.length >= cfg.barcodeMinLength)
-                        $(document).trigger('KTL.processBarcode', barcodeText);
-
-                    barcodeText = '';
-                    ktl.fields.setUsingBarcode(false);
+                if (!usingBarcodeReader) {
+                    const foundPrefix = cfg.barcodePrefixes.find(prefix => barcodeText.startsWith(prefix));
+                    if (foundPrefix)
+                        usingBarcodeReader = true;
                 }
-            }, cfg.barcoreTimeout);
 
-            lastCharTime = window.performance.now();
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    if (window.performance.now() - lastCharTime > cfg.barcodeTimeout) {
+                        if (barcodeText.length >= cfg.barcodeMinLength) {
+                            //Restore the original focused input text value and its selection, if there was one.
+                            if (focusedElement) {
+                                focusedElement.value = originalValue;
+                                focusedElement.setSelectionRange(selectionStart, selectionEnd);
+                                focusedElement = undefined;
+                                originalValue = '';
+                            }
+
+                            ktl.fields.enforceNumeric();
+
+                            $(document).trigger('KTL.processBarcode', barcodeText);
+                        }
+
+                        barcodeText = '';
+                        usingBarcodeReader = false;
+                    }
+                }, cfg.barcodeTimeout);
+
+                lastCharTime = window.performance.now();
+            }
         }
 
         return {
@@ -2426,8 +2457,9 @@ function Ktl($, appInfo) {
                 cfgObj.onInlineEditPopup && (onInlineEditPopup = cfgObj.onInlineEditPopup);
                 cfgObj.horizontalRadioButtons && (horizontalRadioButtons = cfgObj.horizontalRadioButtons);
                 cfgObj.horizontalCheckboxes && (horizontalCheckboxes = cfgObj.horizontalCheckboxes);
-                cfgObj.barcoreTimeout && (cfg.barcoreTimeout = cfgObj.barcoreTimeout);
+                cfgObj.barcodeTimeout && (cfg.barcodeTimeout = cfgObj.barcodeTimeout);
                 cfgObj.barcodeMinLength && (cfg.barcodeMinLength = cfgObj.barcodeMinLength);
+                cfgObj.barcodePrefixes && (cfg.barcodePrefixes = cfgObj.barcodePrefixes);
                 cfgObj.processBarcode && (processBarcode = cfgObj.processBarcode);
                 if (typeof cfgObj.convertNumToTel !== 'undefined')
                     cfg.convertNumToTel = cfgObj.convertNumToTel;
@@ -3140,14 +3172,6 @@ function Ktl($, appInfo) {
                      * Disabled for now.  Could be useful with an option in the keyword,
                      * to prevent barcode data from being inserted in user's text in fields.
                     */
-                    //$(document).keydown(function (e) {
-                    //    //Prevent only printable characters.
-                    //    if (e.key.length === 1 && e.key.match(/^[\w\s\p{P}\p{S}]$/u)) {
-                    //        const targetView = $(e.target).closest('.kn-view[id]');
-                    //        if (targetView.length && targetView.attr('id') === viewId)
-                    //            e.preventDefault();
-                    //    }
-                    //})
 
                     function addToQueue(string) {
                         barcodeQueue.push(string);
