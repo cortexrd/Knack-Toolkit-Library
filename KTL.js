@@ -1738,20 +1738,44 @@ function Ktl($, appInfo) {
             findKeyWithValueInObject: function (obj, keyToFind, keyValue, keyNameToReturn, exactMatch = true, maxDepth = 20, currentDepth = 0) {
                 if (typeof obj !== 'object' || obj === null || currentDepth > maxDepth) return null;
 
-                for (let key in obj) {
-                    if (key === keyToFind) {
-                        if (exactMatch && obj[key] === keyValue)
-                            return obj[keyNameToReturn] || obj;
-                        else if (!exactMatch && obj[key].includes(keyValue))
-                            return obj[keyNameToReturn] || obj;
-                    } else if (typeof obj[key] === 'object') {
-                        let found = this.findKeyWithValueInObject(obj[key], keyToFind, keyValue, keyNameToReturn, exactMatch, maxDepth, currentDepth + 1);
-                        if (found !== null)
-                            return found;
+                try {
+                    for (let key in obj) {
+                        if (key === keyToFind) {
+                            if (exactMatch && obj[key] === keyValue)
+                                return obj[keyNameToReturn] || obj;
+                            else if (!exactMatch && obj[key].includes(keyValue))
+                                return obj[keyNameToReturn] || obj;
+                        } else if (typeof obj[key] === 'object') {
+                            let found = this.findKeyWithValueInObject(obj[key], keyToFind, keyValue, keyNameToReturn, exactMatch, maxDepth, currentDepth + 1);
+                            if (found !== null)
+                                return found;
+                        }
                     }
+                } catch (e) {
+                    ktl.log.clog('purple', 'Error in findKeyWithValueInObject:', e);
                 }
 
                 return null;
+            },
+
+            findAllReferencesToThisScene: function (sceneId) {
+                let foundViewIds = [];
+                const scenes = Knack.scenes.models;
+                for (const scene of scenes) {
+                    var views = scene.views.models;
+                    for (const view of views) {
+                        let found = ktl.core.findKeyWithValueInObject(view, 'conn_link', sceneId, '', true, 4);
+                        if (found) {
+                            const viewId = view.id;
+                            if (viewId) {
+                                foundViewIds.push(viewId);
+                                console.log(viewId);
+                            }
+                        }
+                    }
+                }
+
+                return foundViewIds;
             },
 
             addAppResizeSubscriber: function (callback) {
