@@ -19679,7 +19679,7 @@ function Ktl($, appInfo) {
 
         let openedPopOverTarget;
         let popover;
-        const POPOVER_DEBOUNCE_DELAY = 200;
+        const POPOVER_DEBOUNCE_DELAY = 100;
         function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
             if (!ktl.core.getCfg().enabled.devInfoPopup)
                 return;
@@ -19753,13 +19753,19 @@ function Ktl($, appInfo) {
                 .trigger('mouseenter.ktlPopOver', true);
         }, POPOVER_DEBOUNCE_DELAY);
 
-        function keydownHandler(event) {
+        const debouncedKeydownHandler = debounce((event) => {
             if (event.shiftKey && event.ctrlKey) {
                 if (event.key.startsWith('Arrow')) {
-                    //Ctrl+Shift+arrows are used to select on word/paragraph boundaries.
                     closePopOver(openedPopOverTarget);
-                } else
+                } else {
                     debouncedMouseEnterTrigger();
+                }
+            }
+        }, POPOVER_DEBOUNCE_DELAY);
+
+        function keydownHandler(event) {
+            if (event.shiftKey && event.ctrlKey) {
+                debouncedKeydownHandler(event);
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
