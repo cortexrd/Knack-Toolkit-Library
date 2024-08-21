@@ -19679,7 +19679,7 @@ function Ktl($, appInfo) {
 
         let openedPopOverTarget;
         let popover;
-
+        const POPOVER_DEBOUNCE_DELAY = 200;
         function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
             if (!ktl.core.getCfg().enabled.devInfoPopup)
                 return;
@@ -19751,9 +19751,9 @@ function Ktl($, appInfo) {
             $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover, .kn-form .kn-input:hover')
                 .last()
                 .trigger('mouseenter.ktlPopOver', true);
-        }, 200);
+        }, POPOVER_DEBOUNCE_DELAY);
 
-        $(document).on('keydown.ktlPopOver', function (event) {
+        function keydownHandler(event) {
             if (event.shiftKey && event.ctrlKey) {
                 if (event.key.startsWith('Arrow')) {
                     //Ctrl+Shift+arrows are used to select on word/paragraph boundaries.
@@ -19763,6 +19763,16 @@ function Ktl($, appInfo) {
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
+        }
+
+        const debouncedToggleKeydownListener = debounce(() => {
+            $(document).off('keydown.ktlPopOver').on('keydown.ktlPopOver', keydownHandler);
+        }, POPOVER_DEBOUNCE_DELAY);
+
+        $(document).on('keydown.ktlPopOver', keydownHandler);
+
+        $(document).on('mouseenter.ktlPopOver mouseleave.ktlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body, .kn-form .kn-input', function (event) {
+            debouncedToggleKeydownListener();
         });
     };//developerPopupTool
 
