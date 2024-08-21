@@ -19679,35 +19679,28 @@ function Ktl($, appInfo) {
 
         let openedPopOverTarget;
         let popover;
+
         function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
             if (!ktl.core.getCfg().enabled.devInfoPopup)
                 return;
-
             if ((event.shiftKey && event.ctrlKey) || force) {
-
                 //Let the Ctrl+Shift keys do their default job during inline editing.
                 //Useful to snap-select at word boundaries with arrow keys.
                 const inlineEditing = !!($('#cell-editor, #cell-editor-form').length);
                 if (inlineEditing)
                     return;
-
                 if (document.querySelector('#kn-add-option'))
                     return;
-
                 $(openedPopOverTarget).removeClass('active').removeData('popover');
-
                 const target = $(event.currentTarget);
                 openedPopOverTarget = event.currentTarget;
-
                 const bindedOptions = {
                     ...options,
                     content: options.content.bind(this, event.currentTarget)
                 };
-
                 if (!popover) {
                     target.popover(bindedOptions);
                     popover = target.data('popover');
-
                     popover.$win = { resize: () => { } }; // Remove subsequent resize occurence
                     const bindEvents = popover.bindEvents;
                     popover.bindEvents = () => { }; // Remove subsequent bindEvents occurence
@@ -19721,11 +19714,9 @@ function Ktl($, appInfo) {
                     popover.init(bindedOptions, target);
                     $('#kn-popover [role=presentation]').remove();
                 }
-
                 // Outlines target element.
                 $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
                 target.addClass('ktlOutlineDevPopup');
-
                 event.stopPropagation();
             }
         }
@@ -19756,12 +19747,19 @@ function Ktl($, appInfo) {
             })
         })
 
-        $(document).on('keydown', function (event) {
+        const debouncedMouseEnterTrigger = debounce(() => {
+            $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover, .kn-form .kn-input:hover')
+                .last()
+                .trigger('mouseenter.ktlPopOver', true);
+        }, 200);
+
+        $(document).on('keydown.ktlPopOver', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                if (event.key.startsWith('Arrow')) //Ctrl+Shift+arrows are used to select on word/paragraph boundaries.
+                if (event.key.startsWith('Arrow')) {
+                    //Ctrl+Shift+arrows are used to select on word/paragraph boundaries.
                     closePopOver(openedPopOverTarget);
-                else
-                    $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover, .kn-form .kn-input:hover').last().trigger('mouseenter.ktlPopOver', true);
+                } else
+                    debouncedMouseEnterTrigger();
             } else if (event.key === 'Escape') {
                 closePopOver(openedPopOverTarget);
             }
