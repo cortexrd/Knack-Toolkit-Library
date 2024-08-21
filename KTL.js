@@ -7289,7 +7289,7 @@ function Ktl($, appInfo) {
                         let selector;
 
                         const isMultipleChoice = fieldType === 'multiple_choice';
-                        const isConnection = fieldType === 'connection';
+                        const isConnection = fieldType === 'connection' || fieldType === 'user_roles';
                         const isBoolean = fieldType === 'boolean';
 
                         const formatType = fieldFormat && fieldFormat.type;
