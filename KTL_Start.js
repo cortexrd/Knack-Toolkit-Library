@@ -58,17 +58,37 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         fullCode = 'full';
         ktlSvr = 'http://localhost:3000/';
 
+        function checkFileExists(url) {
+            return new Promise((resolve, reject) => {
+                fetch(url, { method: 'HEAD' })
+                    .then(response => resolve(response.ok))
+                    .catch(() => resolve(false));
+            });
+        }
+
         var fileName = localStorage.getItem(lsShortName + 'fileName');
         if (fileName !== 'NO_APP_FILE') {
             !fileName && (fileName = Knack.app.attributes.name);
             let appJsFile = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
             appJsFile = encodeURI(appJsFile);
 
-            //Replace CSS from Builder by local file.
-            document.querySelector('#kn-custom-css').textContent = '';
+            //Replace CSS from Builder by local file, if it exists.
             let appCSSFile = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.css';
             appCSSFile = encodeURI(appCSSFile);
-            LazyLoad.css([appCSSFile]);
+            checkFileExists(appCSSFile).then(exists => {
+                if (exists) {
+                    // Replace CSS from Builder by local file
+                    const cssText = document.querySelector('#kn-custom-css');
+                    if (cssText) {
+                        cssText.textContent = '';
+                    } else {
+                        const cssFile = document.querySelector('link[href*="main.css"]');
+                        if (cssFile)
+                            cssFile.disabled = true;
+                    }
+                    LazyLoad.css([appCSSFile]);
+                }
+            });
 
             //Replace JAVASCRIPT from Builder by local file.
             delete KnackApp;
