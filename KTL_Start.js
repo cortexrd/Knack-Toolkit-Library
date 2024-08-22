@@ -61,17 +61,24 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         var fileName = localStorage.getItem(lsShortName + 'fileName');
         if (fileName !== 'NO_APP_FILE') {
             !fileName && (fileName = Knack.app.attributes.name);
-            var appUrl = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
-            appUrl = encodeURI(appUrl);
+            let appJsFile = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
+            appJsFile = encodeURI(appJsFile);
 
+            //Replace CSS from Builder by local file.
+            document.querySelector('#kn-custom-css').textContent = '';
+            let appCSSFile = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.css';
+            appCSSFile = encodeURI(appCSSFile);
+            LazyLoad.css([appCSSFile]);
+
+            //Replace JAVASCRIPT from Builder by local file.
             delete KnackApp;
 
             if (typeof window.ktlReady === 'function')
                 delete window.ktlReady;
 
-            LazyLoad.js([appUrl], () => {
+            LazyLoad.js([appJsFile], () => {
                 if (typeof window.ktlReady !== 'function') {
-                    var srcFileName = prompt(`Can't find source file with ktlReady:\n\n${appUrl}\n\nWhat is file name (without .js)?\n\nLeave empty for none.`, Knack.app.attributes.name);
+                    var srcFileName = prompt(`Can't find source file with ktlReady:\n\n${appJsFile}\n\nWhat is file name (without .js)?\n\nLeave empty for none.`, Knack.app.attributes.name);
                     if (srcFileName === null) {
                         localStorage.removeItem(lsShortName + 'dev');
                         alert('Reverting to Prod mode.');
