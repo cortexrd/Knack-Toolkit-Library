@@ -2484,7 +2484,6 @@ function Ktl($, appInfo) {
                 cfgObj.barcodeTimeout && (cfg.barcodeTimeout = cfgObj.barcodeTimeout);
                 cfgObj.barcodeMinLength && (cfg.barcodeMinLength = cfgObj.barcodeMinLength);
                 cfgObj.barcodePrefixes && (cfg.barcodePrefixes = cfgObj.barcodePrefixes);
-                cfgObj.processBarcode && (processBarcode = cfgObj.processBarcode);
                 if (typeof cfgObj.convertNumToTel !== 'undefined')
                     cfg.convertNumToTel = cfgObj.convertNumToTel;
             },
@@ -3299,7 +3298,7 @@ function Ktl($, appInfo) {
                                             barcodeExtractionComplete();
                                         })
                                         .catch((error) => {
-                                            ktl.log.clog('red', 'processBarcode error: ' + error);
+                                            ktl.log.clog('red', 'processBarcodeText error: ' + error);
                                         })
                                 } else
                                     barcodeExtractionComplete();
@@ -3367,14 +3366,14 @@ function Ktl($, appInfo) {
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                     const kwList = ktl.core.getKeywordsByType(viewId, kw);
                     for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
-                        execKw(kwList[kwIdx]);
+                        execKw(kwList[kwIdx], kwIdx);
                     }
 
-                    function execKw(kwInstance) {
+                    function execKw(kwInstance, instanceCount) {
                         const options = kwInstance.options;
                         if (!ktl.core.hasRoleAccess(options)) return;
 
-                        $('#' + viewId).addClass('ktlHidden_hf');
+                        $('#' + viewId).addClass(`ktlHidden_hf_${instanceCount}`);
 
                         var elementsArray = [];
                         const kwFields = kwInstance.params[0];
@@ -3404,26 +3403,26 @@ function Ktl($, appInfo) {
                             const hide = () => {
                                 elementsArray.forEach(el => {
                                     if (el.classList)
-                                        el.classList.add('ktlHidden_hf');
+                                        el.classList.add(`ktlHidden_hf_${instanceCount}`);
                                     else
-                                        el[0].classList.add('ktlHidden_hf');
+                                        el[0].classList.add(`ktlHidden_hf_${instanceCount}`);
                                 })
                             }
                             const unhide = () => {
                                 elementsArray.forEach(el => {
                                     if (el.classList)
-                                        el.classList.remove('ktlHidden_hf');
+                                        el.classList.remove(`ktlHidden_hf_${instanceCount}`);
                                     else
-                                        el[0].classList.remove('ktlHidden_hf');
+                                        el[0].classList.remove(`ktlHidden_hf_${instanceCount}`);
                                 })
                             }
 
                             ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
                                 .then(() => {
-                                    $('#' + viewId).removeClass('ktlHidden_hf');
+                                    $('#' + viewId).removeClass(`ktlHidden_hf_${instanceCount}`);
                                 })
                         } else
-                            $('#' + viewId).removeClass('ktlHidden_hf');
+                            $('#' + viewId).removeClass(`ktlHidden_hf_${instanceCount}`);
                     }
                 }
             },
@@ -20020,10 +20019,12 @@ function Ktl($, appInfo) {
                         capslockKeyPressed = false;
                         shiftKeyPressed = false;
 
-                        $('#simple-keyboard').show();
-
-                        if (ktl.sysInfo.getSysInfo().keyboardDetected)
+                        if (ktl.sysInfo.getSysInfo().keyboardDetected) {
                             $('.simple-keyboard').hide();
+                        } else {
+                            $('body').addClass('ktlBottomExtraSpaces');
+                            $('#simple-keyboard').show();
+                        }
 
                         if (($(target).offset().top - $(document).scrollTop()) > ($(window).height() - $('#simple-keyboard').height() - 100)) {
                             $([document.documentElement, document.body]).animate({
