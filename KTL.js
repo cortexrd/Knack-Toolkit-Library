@@ -6587,6 +6587,7 @@ function Ktl($, appInfo) {
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data = []) {
+            return;
             if (!view || ktl.scenes.isiFrameWnd()) return;
 
             if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key)) {
@@ -19375,7 +19376,7 @@ function Ktl($, appInfo) {
     //===================================================
     //Developer Popup Tool feature
     this.developerPopupTool = function () {
-        if (!ktl.account.isDeveloper()) return;
+        if (!ktl.core.getCfg().enabled.devInfoPopup || !ktl.account.isDeveloper()) return;
 
         const createButton = function (iconClass) {
             const button = document.createElement('a');
@@ -19678,46 +19679,52 @@ function Ktl($, appInfo) {
 
         let openedPopOverTarget;
         let popover;
-        const POPOVER_DEBOUNCE_DELAY = 100;
-        function showPopOver(options, event, force = false) { // force comes from .trigger('mouseenter', true);
-            if (!ktl.core.getCfg().enabled.devInfoPopup)
-                return;
-            if ((event.shiftKey && event.ctrlKey) || force) {
-                //Let the Ctrl+Shift keys do their default job during inline editing.
-                //Useful to snap-select at word boundaries with arrow keys.
-                const inlineEditing = !!($('#cell-editor, #cell-editor-form').length);
-                if (inlineEditing)
-                    return;
-                if (document.querySelector('#kn-add-option'))
-                    return;
-                $(openedPopOverTarget).removeClass('active').removeData('popover');
-                const target = $(event.currentTarget);
-                openedPopOverTarget = event.currentTarget;
-                const bindedOptions = {
-                    ...options,
-                    content: options.content.bind(this, event.currentTarget)
-                };
-                if (!popover) {
-                    target.popover(bindedOptions);
-                    popover = target.data('popover');
-                    popover.$win = { resize: () => { } }; // Remove subsequent resize occurence
-                    const bindEvents = popover.bindEvents;
-                    popover.bindEvents = () => { }; // Remove subsequent bindEvents occurence
-                    $('body').on('click', (event) => {
-                        if (!$(event.target).closest('#kn-popover').length) {
-                            bindEvents.call(popover);
-                            $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
-                        }
-                    }); // reinstate modal click after initial bindEvents
-                } else {
-                    popover.init(bindedOptions, target);
-                    $('#kn-popover [role=presentation]').remove();
-                }
-                // Outlines target element.
-                $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
-                target.addClass('ktlOutlineDevPopup');
-                event.stopPropagation();
+        let isMonitoring = false;
+
+        const popoverSelectors = {
+            '.knTable th': tableHeadOptions,
+            '.knTable td': tableDataOptions,
+            '.kn-table .view-header, .kn-view': viewOptions,
+            '.kn-detail-label': listDetailLabelOptions,
+            '.kn-detail-body': listDetailBodyOptions,
+            '.kn-form .kn-input': formInputOptions
+        };
+
+        function showPopOver(options, event) {
+            if (!ktl.core.getCfg().enabled.devInfoPopup) return;
+
+            const inlineEditing = !!($('#cell-editor, #cell-editor-form').length);
+            if (inlineEditing || document.querySelector('#kn-add-option')) return;
+
+            $(openedPopOverTarget).removeClass('active').removeData('popover');
+            const target = $(event.currentTarget);
+            openedPopOverTarget = event.currentTarget;
+
+            const bindedOptions = {
+                ...options,
+                content: options.content.bind(this, event.currentTarget)
+            };
+
+            if (!popover) {
+                target.popover(bindedOptions);
+                popover = target.data('popover');
+                popover.$win = { resize: () => { } };
+                const bindEvents = popover.bindEvents;
+                popover.bindEvents = () => { };
+                $('body').on('click', (event) => {
+                    if (!$(event.target).closest('#kn-popover').length) {
+                        bindEvents.call(popover);
+                        $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
+                    }
+                });
+            } else {
+                popover.init(bindedOptions, target);
+                $('#kn-popover [role=presentation]').remove();
             }
+
+            $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
+            target.addClass('ktlOutlineDevPopup');
+            event.stopPropagation();
         }
 
         function closePopOver(eventTarget) {
@@ -19727,57 +19734,112 @@ function Ktl($, appInfo) {
             $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
         }
 
-        $(document).on('mouseenter.ktlPopOver', '.knTable th', showPopOver.bind(this, tableHeadOptions));
-        $(document).on('mouseenter.ktlPopOver', '.knTable td', showPopOver.bind(this, tableDataOptions));
-        $(document).on('mouseenter.ktlPopOver', '.kn-table .view-header', showPopOver.bind(this, viewOptions));
-        $(document).on('mouseenter.ktlPopOver', '.kn-view', showPopOver.bind(this, viewOptions));
-        $(document).on('mouseenter.ktlPopOver', '.kn-detail-label', showPopOver.bind(this, listDetailLabelOptions));
-        $(document).on('mouseenter.ktlPopOver', '.kn-detail-body', showPopOver.bind(this, listDetailBodyOptions));
-        $(document).on('mouseenter.ktlPopOver', '.kn-form .kn-input', showPopOver.bind(this, formInputOptions));
-        $(document).on('mouseleave.ktlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body, .kn-form .kn-input', function hidePopOver(event) {
-            if (event.shiftKey && event.ctrlKey) {
-                closePopOver(event.currentTarget);
+        function showPopOver(options, event) {
+            if (!ktl.core.getCfg().enabled.devInfoPopup) return;
+
+            const inlineEditing = !!($('#cell-editor, #cell-editor-form').length);
+            if (inlineEditing || document.querySelector('#kn-add-option')) return;
+
+            $(openedPopOverTarget).removeClass('active').removeData('popover');
+            const target = $(event.currentTarget);
+            openedPopOverTarget = event.currentTarget;
+
+            const bindedOptions = {
+                ...options,
+                content: options.content.bind(this, event.currentTarget)
+            };
+
+            if (!popover) {
+                target.popover(bindedOptions);
+                popover = target.data('popover');
+                popover.$win = { resize: () => { } };
+                const bindEvents = popover.bindEvents;
+                popover.bindEvents = () => { };
+            } else {
+                popover.init(bindedOptions, target);
+                $('#kn-popover [role=presentation]').remove();
             }
-        });
 
-        $(document).on('knack-view-render.any', function (event, view, data) {
-            $('#' + view.key + ' a.kn-add-option').bindFirst('click', function (event) {
-                closePopOver(openedPopOverTarget);
-            })
-        })
+            $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
+            target.addClass('ktlOutlineDevPopup');
+            event.stopPropagation();
+        }
 
-        const debouncedMouseEnterTrigger = debounce(() => {
-            $('.knTable th:hover, .knTable td:hover, .kn-table .view-header:hover, .kn-view:hover, .kn-detail-label:hover, .kn-detail-body:hover, .kn-form .kn-input:hover')
-                .last()
-                .trigger('mouseenter.ktlPopOver', true);
-        }, POPOVER_DEBOUNCE_DELAY);
-
-        const debouncedKeydownHandler = debounce((event) => {
-            if (event.shiftKey && event.ctrlKey) {
-                if (event.key.startsWith('Arrow')) {
-                    closePopOver(openedPopOverTarget);
-                } else {
-                    debouncedMouseEnterTrigger();
-                }
-            }
-        }, POPOVER_DEBOUNCE_DELAY);
-
-        function keydownHandler(event) {
-            if (event.shiftKey && event.ctrlKey) {
-                debouncedKeydownHandler(event);
-            } else if (event.key === 'Escape') {
-                closePopOver(openedPopOverTarget);
+        function closePopOver() {
+            if (openedPopOverTarget) {
+                $(openedPopOverTarget).removeClass('active').removeData('popover');
+                openedPopOverTarget = null;
+                $('#kn-popover').hide();
+                $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
             }
         }
 
-        const debouncedToggleKeydownListener = debounce(() => {
-            $(document).off('keydown.ktlPopOver').on('keydown.ktlPopOver', keydownHandler);
-        }, POPOVER_DEBOUNCE_DELAY);
+        function handleMouseEnter(event) {
+            const options = popoverSelectors[Object.keys(popoverSelectors).find(selector => $(event.target).is(selector))];
+            if (options) {
+                showPopOver(options, event);
+            }
+        }
 
-        $(document).on('keydown.ktlPopOver', keydownHandler);
+        function findElementForPopover() {
+            let element = document.activeElement || document.body;
+            while (element && element !== document.body) {
+                if ($(element).is(Object.keys(popoverSelectors).join(','))) {
+                    return element;
+                }
+                element = element.parentElement;
+            }
+            return $(Object.keys(popoverSelectors).join(',')).first()[0];
+        }
 
-        $(document).on('mouseenter.ktlPopOver mouseleave.ktlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body, .kn-form .kn-input', function (event) {
-            debouncedToggleKeydownListener();
+        function startMonitoringMouse() {
+            if (isMonitoring) return;
+
+            isMonitoring = true;
+            $(document).on('mouseenter.ktlPopOver', Object.keys(popoverSelectors).join(', '), handleMouseEnter);
+
+            const element = findElementForPopover();
+            if (element) {
+                $(element).trigger('mouseenter.ktlPopOver');
+            }
+        }
+
+        function stopMonitoringMouse() {
+            if (!isMonitoring) return;
+
+            isMonitoring = false;
+            $(document).off('mouseenter.ktlPopOver');
+        }
+
+        function handleOutsideClick(event) {
+            if (openedPopOverTarget && !$(event.target).closest('#kn-popover, .ktlOutlineDevPopup').length) {
+                closePopOver();
+                $(document).off('click.ktlPopOverOutside');
+            }
+        }
+
+        $(document).on('keydown.ktlPopOver', function (event) {
+            if (event.shiftKey && event.ctrlKey) {
+                startMonitoringMouse();
+            } else if (event.key === 'Escape') {
+                closePopOver();
+                $(document).off('click.ktlPopOverOutside');
+            }
+        });
+
+        $(document).on('keyup.ktlPopOver', function (event) {
+            if (!event.shiftKey || !event.ctrlKey) {
+                stopMonitoringMouse();
+                $(document).on('click.ktlPopOverOutside', handleOutsideClick);
+            }
+        });
+
+        $(document).off('mouseenter.ktlPopOver mouseleave.ktlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body, .kn-form .kn-input');
+
+        $(document).on('knack-view-render.any', function (event, view, data) {
+            $('#' + view.key + ' a.kn-add-option').bindFirst('click', function (event) {
+                closePopOver();
+            });
         });
     };//developerPopupTool
 
