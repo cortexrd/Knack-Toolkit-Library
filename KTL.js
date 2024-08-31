@@ -19751,7 +19751,7 @@ function Ktl($, appInfo) {
                     return closestMatchingElement;
                 }
             }
-            return $(Object.keys(popoverSelectors).join(',')).first()[0];
+            return undefined;
         }
 
         function startMonitoringMouse() {
