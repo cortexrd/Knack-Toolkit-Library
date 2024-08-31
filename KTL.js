@@ -16734,8 +16734,7 @@ function Ktl($, appInfo) {
             acctOnlineFld: ktl.core.getFieldIdByName('Online', accountsObj),
             acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
             acctUtcLastActFld: (ktl.core.getFieldIdByName('UTC ACT', accountsObj) || ktl.core.getFieldIdByName('UTC Last Activity', accountsObj)),
-            acctFirstNameFld: ktl.core.getFieldIdByName('First Name', accountsObj),
-            acctLastNameFld: ktl.core.getFieldIdByName('Last Name', accountsObj),
+            acctNameFld: ktl.core.getFieldIdByName('Name', accountsObj),
 
             alAccountFld: ktl.core.getFieldIdByName('Account', accountLogsObj),
             alDateTimeFld: ktl.core.getFieldIdByName('Date/Time', accountLogsObj),
@@ -19343,13 +19342,11 @@ function Ktl($, appInfo) {
 
                 function sendUpdate(recObj) {
                     const record = recObj.record;
+                    const accountName = record[ktl.iFrameWnd.getCfg().acctNameFld];
 
-                    const firstNameField = record[ktl.iFrameWnd.getCfg().acctFirstNameFld];
-                    const lastNameField = record[ktl.iFrameWnd.getCfg().acctLastNameFld];
-                    const accountName = firstNameField + ' ' + lastNameField;
-
-                    const apiData = {};
-                    apiData[onlineStatusFieldId] = recObj.online;
+                    const apiData = {
+                        [onlineStatusFieldId]: recObj.online
+                    };
 
                     return ktl.core.knAPI(viewKey, record.id, apiData, 'PUT', [], false)
                         .then(function () {
@@ -19680,14 +19677,15 @@ function Ktl($, appInfo) {
         let openedPopOverTarget;
         let popover;
         let isMonitoring = false;
+        let lastMousePosition = { x: 0, y: 0 };
 
         const popoverSelectors = {
             '.knTable th': tableHeadOptions,
             '.knTable td': tableDataOptions,
-            '.kn-table .view-header, .kn-view': viewOptions,
             '.kn-detail-label': listDetailLabelOptions,
             '.kn-detail-body': listDetailBodyOptions,
-            '.kn-form .kn-input': formInputOptions
+            '.kn-form .kn-input': formInputOptions,
+            '.kn-table .view-header, .kn-view': viewOptions,
         };
 
         function showPopOver(options, event) {
@@ -19709,51 +19707,6 @@ function Ktl($, appInfo) {
                 target.popover(bindedOptions);
                 popover = target.data('popover');
                 popover.$win = { resize: () => { } };
-                const bindEvents = popover.bindEvents;
-                popover.bindEvents = () => { };
-                $('body').on('click', (event) => {
-                    if (!$(event.target).closest('#kn-popover').length) {
-                        bindEvents.call(popover);
-                        $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
-                    }
-                });
-            } else {
-                popover.init(bindedOptions, target);
-                $('#kn-popover [role=presentation]').remove();
-            }
-
-            $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
-            target.addClass('ktlOutlineDevPopup');
-            event.stopPropagation();
-        }
-
-        function closePopOver(eventTarget) {
-            $(eventTarget).removeClass('active').removeData('popover');
-            openedPopOverTarget = null;
-            $('#kn-popover').hide();
-            $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
-        }
-
-        function showPopOver(options, event) {
-            if (!ktl.core.getCfg().enabled.devInfoPopup) return;
-
-            const inlineEditing = !!($('#cell-editor, #cell-editor-form').length);
-            if (inlineEditing || document.querySelector('#kn-add-option')) return;
-
-            $(openedPopOverTarget).removeClass('active').removeData('popover');
-            const target = $(event.currentTarget);
-            openedPopOverTarget = event.currentTarget;
-
-            const bindedOptions = {
-                ...options,
-                content: options.content.bind(this, event.currentTarget)
-            };
-
-            if (!popover) {
-                target.popover(bindedOptions);
-                popover = target.data('popover');
-                popover.$win = { resize: () => { } };
-                const bindEvents = popover.bindEvents;
                 popover.bindEvents = () => { };
             } else {
                 popover.init(bindedOptions, target);
@@ -19775,19 +19728,28 @@ function Ktl($, appInfo) {
         }
 
         function handleMouseEnter(event) {
-            const options = popoverSelectors[Object.keys(popoverSelectors).find(selector => $(event.target).is(selector))];
+            const options = popoverSelectors[Object.keys(popoverSelectors).find(selector => !!$(event.target).closest(selector).length)];
             if (options) {
                 showPopOver(options, event);
             }
         }
 
+        $(document).on('mousemove', function (event) {
+            lastMousePosition.x = event.clientX;
+            lastMousePosition.y = event.clientY;
+        });
+
         function findElementForPopover() {
-            let element = document.activeElement || document.body;
-            while (element && element !== document.body) {
-                if ($(element).is(Object.keys(popoverSelectors).join(','))) {
+            const element = document.elementFromPoint(lastMousePosition.x, lastMousePosition.y);
+            if (element) {
+                const matchingSelector = Object.keys(popoverSelectors).find(selector => !!$(event.target).closest(selector).length);
+                if (matchingSelector) {
                     return element;
                 }
-                element = element.parentElement;
+                const closestMatchingElement = $(element).closest(Object.keys(popoverSelectors).join(',')).get(0);
+                if (closestMatchingElement) {
+                    return closestMatchingElement;
+                }
             }
             return $(Object.keys(popoverSelectors).join(',')).first()[0];
         }
