@@ -6587,7 +6587,6 @@ function Ktl($, appInfo) {
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data = []) {
-            return;
             if (!view || ktl.scenes.isiFrameWnd()) return;
 
             if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key)) {
