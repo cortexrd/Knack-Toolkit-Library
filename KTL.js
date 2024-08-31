@@ -2414,11 +2414,14 @@ function Ktl($, appInfo) {
 
         let usingBarcodeReader = false;
         let timeoutId;
-        let lastCharTime = window.performance.now();
+        let startTime;
+        let timings = [];
         let barcodeText = '';
         let originalValue = '';
         let selectionStart = 0;
         let selectionEnd = 0;
+        let noCharTimeout = cfg.barcodeTimeout;
+
         function addKeyToBarcode(e) {
             let focusedElement = document.activeElement;
             if (focusedElement && focusedElement.tagName === 'INPUT') {
@@ -2429,46 +2432,63 @@ function Ktl($, appInfo) {
                 }
             } else
                 focusedElement = undefined;
-
             if (usingBarcodeReader)
                 e.preventDefault();
-
             if (!e.key || (e.key && e.key.length !== 1)) return; // Ignore keys like "shift" or "alt".
-
             // Keep only printable characters.
             if (e.key.match(/^[\w\p{P}\p{S} ]$/u)) {
-                barcodeText += e.key;
+                if (!barcodeText) {
+                    startTime = window.performance.now();
+                }
+                const currentTime = window.performance.now();
+                const elapsedTime = currentTime - startTime;
+                timings.push({ char: e.key, time: elapsedTime });
 
+                barcodeText += e.key;
                 if (!usingBarcodeReader) {
                     const foundPrefix = cfg.barcodePrefixes.find(prefix => barcodeText.startsWith(prefix));
-                    if (foundPrefix)
+                    if (foundPrefix) {
                         usingBarcodeReader = true;
+                        noCharTimeout = 500;
+                    }
                 }
-
                 clearTimeout(timeoutId);
                 timeoutId = setTimeout(() => {
-                    if (window.performance.now() - lastCharTime > cfg.barcodeTimeout) {
-                        if (barcodeText.length >= cfg.barcodeMinLength) {
-                            //Restore the original focused input text value and its selection, if there was one.
-                            if (focusedElement) {
-                                focusedElement.value = originalValue;
-                                focusedElement.setSelectionRange(selectionStart, selectionEnd);
-                                focusedElement = undefined;
-                                originalValue = '';
-                            }
-
-                            ktl.fields.enforceNumeric();
-
-                            $(document).trigger('KTL.processBarcode', barcodeText);
+                    if (window.performance.now() - currentTime > cfg.barcodeTimeout) {
+                        //Restore the original focused input text value and its selection, if there was one.
+                        if (focusedElement) {
+                            focusedElement.value = originalValue;
+                            focusedElement.setSelectionRange(selectionStart, selectionEnd);
+                            focusedElement = undefined;
+                            originalValue = '';
                         }
-
+                        ktl.fields.enforceNumeric();
+                        $(document).trigger('KTL.processBarcode', barcodeText);
+                        displayTimings();
                         barcodeText = '';
+                        timings = [];
                         usingBarcodeReader = false;
+                        noCharTimeout = cfg.barcodeTimeout;
                     }
-                }, cfg.barcodeTimeout);
-
-                lastCharTime = window.performance.now();
+                }, noCharTimeout);
             }
+        }
+
+        function displayTimings() {
+            let alertMessage = '';
+            let maxDelay = 0;
+            for (let i = 0; i < timings.length; i++) {
+                const { char, time } = timings[i];
+                alertMessage += `${time.toFixed(0).padStart(3, '0')}: ${char}\n`;
+                if (i > 0) {
+                    const delay = time - timings[i - 1].time;
+                    maxDelay = Math.max(maxDelay, delay);
+                }
+            }
+            alertMessage += `\nMaximum inter-character delay: ${maxDelay.toFixed(0)} ms`;
+            //alert(alertMessage);
+            //ktl.core.timedPopup(`Maximum inter-character delay: ${maxDelay.toFixed(0)} ms`);
+            ktl.core.timedPopup(alertMessage, 'success', 5000, 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%);min-width:300px;min-height:50px;line-height:20px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px;white-space:pre;z-index:3000');
         }
 
         return {
@@ -6587,7 +6607,6 @@ function Ktl($, appInfo) {
 
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data = []) {
-            return;
             if (!view || ktl.scenes.isiFrameWnd()) return;
 
             if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key)) {
@@ -19332,8 +19351,10 @@ function Ktl($, appInfo) {
                     await sleep(index * delayMS);
                     return sendUpdate(record);
                 })).finally(() => {
-                    ktl.core.removeInfoPopup();
-                    ktl.core.removeTimedPopup();
+                    setTimeout(() => {
+                        ktl.core.removeInfoPopup();
+                        ktl.core.removeTimedPopup();
+                    }, 2000);
                     Knack.hideSpinner();
                     ktl.scenes.spinnerWatchdog();
 
