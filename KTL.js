@@ -12384,16 +12384,16 @@ function Ktl($, appInfo) {
 
                 const view = Knack.views[viewId];
                 const columns = view.model.view.columns;
-                for (var i = columns.length - 1; i >= 0; i--) {
-                    var column = columns[i];
-                    var header = column.header.trim();
+                for (let i = columns.length - 1; i >= 0; i--) {
+                    const column = columns[i];
+                    const header = column.header.trim();
                     const fieldId = (column.field && column.field.key) || '';
                     if (headers.includes(header) || fields.includes(fieldId)) {
-                        var thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
+                        const thead = $(`#${viewId} thead tr th:textEquals("${header}")`);
                         if (thead.length) {
-                            var cellIndex = thead[0].cellIndex;
+                            const cellIndex = thead[0].cellIndex;
                             thead.remove();
-                            $('#' + viewId + ' tbody tr td:nth-child(' + (cellIndex + 1) + ')').remove();
+                            $(`#${viewId} tbody tr td:nth-child(${cellIndex + 1})`).remove();
 
                             //Also wipe data from model.
                             if (fieldId) {
