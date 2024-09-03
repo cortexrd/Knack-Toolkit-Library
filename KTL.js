@@ -19419,6 +19419,16 @@ function Ktl($, appInfo) {
     this.developerPopupTool = function () {
         if (!ktl.core.getCfg().enabled.devInfoPopup || !ktl.account.isDeveloper()) return;
 
+        const createPopup = function () {
+            const container = document.createElement('div');
+            const escSpan = document.createElement('span');
+            escSpan.innerText = 'Esc to close';
+            escSpan.style.color = 'grey';
+            escSpan.style.margin = '0em 0.5em';
+            container.appendChild(escSpan);
+            return container
+        }
+
         const createButton = function (iconClass) {
             const button = document.createElement('a');
             button.classList.add('is-small');
@@ -19464,7 +19474,7 @@ function Ktl($, appInfo) {
             return button;
         }
 
-        const createLine = function (text, url) {
+        const createTextLine = function (text) {
             const container = document.createElement('div');
             container.style.padding = '2px 12px';
 
@@ -19472,6 +19482,11 @@ function Ktl($, appInfo) {
             textSpan.innerHTML = text;
             textSpan.style.margin = '0em 0.5em';
             container.appendChild(textSpan);
+            return container;
+        }
+
+        const createLine = function (text, url) {
+            const container = createTextLine(text);
 
             const copyButton = createButton('fa-copy');
             copyButton.addEventListener('click', () => {
@@ -19510,19 +19525,88 @@ function Ktl($, appInfo) {
             return container;
         }
 
+        const createLineWithKeyword = function(id, url) {
+            const line = createLine(id, url);
+
+            if (!ktlKeywords[id])
+                return line;
+
+            const keywords = Object.entries(ktlKeywords[id]).filter(([keyword]) => keyword.startsWith('_')) // remove non-keyword entries
+
+            if (keywords.length === 0)
+                return line;
+
+            const button = createButton('fa-key');
+                const container = document.createElement('div');
+            container.style.marginLeft = '0.5em';
+
+            keywords.forEach(([keyword, params]) => {
+                if (params.length > 0) {
+                    params.forEach( param => container.appendChild(createTextLine(`${keyword}=${param.paramStr}`)));
+                }
+                else {
+                    container.appendChild(createTextLine(keyword));
+                }
+            });
+
+            line.appendChild(button);
+
+            let jqContainer;
+
+            button.addEventListener('click', (event) => {
+                if (jqContainer)
+                    jqContainer.toggle();
+                else
+                    jqContainer = $(container).insertAfter($(event.target).parent());
+            });
+
+            return line
+        }
+
+        const appendSceneReferencesBlock = function(line, sceneId) {
+            const references = ktl.core.findAllReferencesToThisScene(sceneId);
+
+            if (references.length === 0)
+                return;
+
+            const button = createButton('fa-eye');
+            const container = document.createElement('div');
+            container.style.marginLeft = '0.5em';
+
+            container.appendChild(createTextLine('Referenced by'));
+
+            references.forEach(viewId => {
+                const viewType = Knack.scenes.find(s => s.views.find(v => v.id === viewId)).views._byId[viewId].attributes.type
+                const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
+                container.appendChild(createLine(`> ${viewId}`, viewUrl));
+            });
+
+            let jqContainer;
+
+            button.addEventListener('click', (event) => {
+                if (jqContainer)
+                    jqContainer.toggle();
+                else
+                    jqContainer = $(container).insertAfter($(event.target).parent());
+
+                const icon = $(event.currentTarget).children('i');
+                icon.toggleClass('fa-eye').toggleClass('fa-eye-slash');
+            });
+
+            line.appendChild(button);
+        }
+
         const defaultOptions = {
             content: function (element) {
-                const container = document.createElement('div');
-
-                const escSpan = document.createElement('span');
-                escSpan.innerText = 'Esc to close';
-                escSpan.style.color = 'grey';
-                escSpan.style.margin = '0em 0.5em';
-                container.appendChild(escSpan);
+                const container = createPopup();
 
                 if (!document.querySelector('#kn-add-option')) {
                     const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
-                    container.appendChild(createLine(sceneId, `${baseURL}/pages/${sceneId}`));
+                    const line = createLineWithKeyword(sceneId, `${baseURL}/pages/${sceneId}`);
+
+                    appendSceneReferencesBlock(line, sceneId);
+
+                    container.appendChild(line);
                 }
 
                 return container;
@@ -19541,7 +19625,7 @@ function Ktl($, appInfo) {
                     const sceneId = $(element).closest('.kn-scene[id]').attr('id').substring(3);
                     const viewType = Knack.views[viewId].model.view.type;
                     const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
-                    container.appendChild(createLine(viewId, viewUrl));
+                    container.appendChild(createLineWithKeyword(viewId, viewUrl));
                 }
 
                 return container;
@@ -19571,7 +19655,7 @@ function Ktl($, appInfo) {
 
                 if (fieldId && fieldId.includes('field')) {
                     const fieldURL = (objectId) ? `${baseURL}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
-                    container.appendChild(createLine(fieldId, fieldURL));
+                    container.appendChild(createLineWithKeyword(fieldId, fieldURL));
                 }
 
                 return container;
@@ -19649,7 +19733,7 @@ function Ktl($, appInfo) {
 
                 if (fieldId && fieldId.includes('field')) {
                     const fieldURL = (objectId) ? `${baseURL}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
-                    container.appendChild(createLine(fieldId, fieldURL));
+                    container.appendChild(createLineWithKeyword(fieldId, fieldURL));
                 }
 
                 const recordId = $(element).closest('.kn-list-item-container').attr('data-record-id') || (Knack.views[viewId].record && Knack.views[viewId].record.id);
@@ -19711,7 +19795,7 @@ function Ktl($, appInfo) {
                     }
 
                     const fieldURL = (objectId) ? `${baseURL}/schema/list/objects/${objectId}/fields/${fieldId}/settings` : undefined;
-                    container.appendChild(createLine(fieldId, fieldURL));
+                    container.appendChild(createLineWithKeyword(fieldId, fieldURL));
                 }
 
                 return container;
