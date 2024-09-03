@@ -12387,7 +12387,7 @@ function Ktl($, appInfo) {
                 for (var i = columns.length - 1; i >= 0; i--) {
                     var column = columns[i];
                     var header = column.header.trim();
-                    const fieldId = column.field.key;
+                    const fieldId = (column.field && column.field.key) || '';
                     if (headers.includes(header) || fields.includes(fieldId)) {
                         var thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '")');
                         if (thead.length) {
