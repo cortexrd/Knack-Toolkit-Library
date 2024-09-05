@@ -6718,7 +6718,7 @@ function Ktl($, appInfo) {
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
                 labelText(view, keywords);
-                removeConnectionPicker(view, keywords);
+                removeConnectionPicker(viewId);
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -7410,7 +7410,7 @@ function Ktl($, appInfo) {
             }
         }
 
-        function removeConnectionPicker({key: viewId}) {
+        function removeConnectionPicker(viewId) {
             const keyword = '_rcp';
             if (!viewId) return;
 
