@@ -10978,11 +10978,13 @@ function Ktl($, appInfo) {
             });
 
             function wrapContentForHideShow(viewElement, viewType, hideShowId) {
+                console.log(viewType)
                 const wrappers = {
                     table: '.kn-table-wrapper, .kn-records-nav',
                     form: 'form, .kn-form-confirmation',
                     list: '.kn-list-content, .kn-records-nav',
                     search: `form, .kn-table.${viewId}, .kn-list.${viewId}`,
+                    calendar: 'div.knack-calendar',
                 };
 
                 const wrapperSelector = wrappers[viewType];
