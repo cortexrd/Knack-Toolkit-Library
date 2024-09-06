@@ -6441,14 +6441,14 @@ function Ktl($, appInfo) {
                     ktl.views.removeColumns(view, ktlKeywords[viewId]);
 
                     /* This code is needed for keywords that may require summary data to achieve their task.
-    
+
                     Since the summaries are rendered "a bit later" than the rest of the grid data,
                     we must find a way to capture the summary data BEFORE applying the keywords.
-    
+
                     The function ktlRenderTotals below replaces Knack's original renderTotals.
                     Doing this allows us to gain control over WHEN the summary has completed rendering.
                     At that prceise moment, it's time to capture the summary data in an object for eventual processing.
-    
+
                     *** A big thank you to Charles Brunelle who taught me this amazing technique - Normand D. */
 
                     var ktlRenderTotals = function () {
@@ -6718,6 +6718,7 @@ function Ktl($, appInfo) {
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
                 labelText(view, keywords);
+                removeConnectionPicker(viewId);
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -7407,6 +7408,21 @@ function Ktl($, appInfo) {
 
                 selector && $(selector).text(labelTxt);
             }
+        }
+
+        function removeConnectionPicker(viewId) {
+            const keyword = '_rcp';
+            if (!viewId) return;
+
+            const fields = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+
+            Object.entries(fields)
+                .filter( ([_, keywords]) => Object.keys(keywords).includes(keyword))
+                .forEach( ([id]) => {
+                    const jqField = $(`#${viewId} [data-input-id="${id}"]`);
+                    jqField.data().connectionPicker.chosen.disable_search = true;
+                    jqField.data().connectionPicker.chosen.dropdown.remove();
+                });
         }
 
         /////////////////////////////////////////////////////////////////////////////////
@@ -11984,7 +12000,7 @@ function Ktl($, appInfo) {
 
             // srchTxt: string to find, must be non-empty.
             // fieldId:  'field_xyz' that is a chzn dropdown.
-            // matchMode: can be exact, partial or select.  
+            // matchMode: can be exact, partial or select.
             //  If exact, only a single result must be found to be returned.
             //  If partial, it will return the first result among many found.
             //  Id select, it will not close the drop down and let the user select manually among many found.
