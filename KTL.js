@@ -20722,6 +20722,13 @@ function addLongClickListener(selector, callback, duration = 500, needFirstClick
         function handleMouseDown(event) {
             if (needFirstClick && !clickOccurred) return;
 
+            // Check if the target is an input element
+            if (
+                $(event.target).is('input, textarea') ||
+                $(event.target).closest('.kn-signature').length ||
+                $(event.target).closest('.redactor-editor').length
+            ) return;
+
             startPosition.x = event.pageX;
             startPosition.y = event.pageY;
 
