@@ -115,7 +115,7 @@ function Ktl($, appInfo) {
                     const keywords = getKeywords(report.description);
 
                     if (!$.isEmptyObject(keywords)) {
-                        ktlKeywords[`${view.id}_r${rowIndex}_c${columnIndex}`] = getKeywords(report.description); // _r's & _c's order matters for later matching
+                        ktlKeywords[`${view.id}_r${rowIndex}_c${columnIndex}`] = keywords; // _r's & _c's order matters for later matching
                         report.description = cleanUpKeywords(report.description);
                     }
                 });
@@ -126,7 +126,7 @@ function Ktl($, appInfo) {
                     const keywords = getKeywords(report.description);
 
                     if (!$.isEmptyObject(keywords)) {
-                        ktlKeywords[`${view.id}_c${columnIndex}_r${rowIndex}`] = getKeywords(report.description); // _r's & _c's order matters for later matching
+                        ktlKeywords[`${view.id}_c${columnIndex}_r${rowIndex}`] = keywords; // _r's & _c's order matters for later matching
                         report.description = cleanUpKeywords(report.description);
                     }
                 });
@@ -6441,14 +6441,14 @@ function Ktl($, appInfo) {
                     ktl.views.removeColumns(view, ktlKeywords[viewId]);
 
                     /* This code is needed for keywords that may require summary data to achieve their task.
-    
+
                     Since the summaries are rendered "a bit later" than the rest of the grid data,
                     we must find a way to capture the summary data BEFORE applying the keywords.
-    
+
                     The function ktlRenderTotals below replaces Knack's original renderTotals.
                     Doing this allows us to gain control over WHEN the summary has completed rendering.
                     At that prceise moment, it's time to capture the summary data in an object for eventual processing.
-    
+
                     *** A big thank you to Charles Brunelle who taught me this amazing technique - Normand D. */
 
                     var ktlRenderTotals = function () {
@@ -6628,6 +6628,23 @@ function Ktl($, appInfo) {
             }
         });
 
+        function iterateViewReports(view, func) {
+            if(view.type !== 'report')
+                return;
+
+            view.rows.forEach((row, rowIndex) => {
+                row.reports.forEach((report, columnIndex) => {
+                    func(report, ktlKeywords[`${view.key}_r${rowIndex}_c${columnIndex}`]);
+                });
+            });
+
+            view.columns.forEach((column) => {
+                column.reports.forEach((report) => {
+                    func(report, ktlKeywords[`${view.key}_r${rowIndex}_c${columnIndex}`]);
+                });
+            });
+        }
+
         //Process views with special keywords in their titles, fields, descriptions, etc.
         function ktlProcessKeywords(view, data = []) {
             if (!view || ktl.scenes.isiFrameWnd()) return;
@@ -6639,8 +6656,6 @@ function Ktl($, appInfo) {
                     return;
                 }
             }
-
-            //ktl.core.logCaller(2, view.key);
 
             try {
                 //ktl.bulkOps.prepareBulkOps(view, data); //Must be applied before keywords to get the right column indexes.
@@ -6718,6 +6733,11 @@ function Ktl($, appInfo) {
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
                 labelText(view, keywords);
+
+                iterateViewReports(view, (report, keywords) => {
+                    //TODO keywords._sth && stickyReportTableHeader(viewId, keywords, report);
+                    //TODO keywords._stc && stickyReportTableColumns(viewId, keywords, report);
+                })
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
             }
@@ -7146,33 +7166,28 @@ function Ktl($, appInfo) {
             }
         }
 
-        /** _sth = Sticky Table Header
-        * keyword @params numOfRecords, viewHeight - minimum records in table and height of view
-        * @param {string} viewId
-        * @param {object} keywords
-        * @param {object} data */
         function stickyTableHeader(viewId, keywords, data) {
             const kw = '_sth';
             let numOfRecords = 10;
             let viewHeight = 800;
 
-            if (!viewId || !keywords[kw] || !data) return;
+            if (!viewId || !keywords[kw] || !data)
+                return;
 
             if (keywords[kw].length) {
                 numOfRecords = keywords[kw][0].params[0][0] || numOfRecords;
                 viewHeight = keywords[kw][0].params[0][1] || viewHeight;
             }
 
-            if (data.length < numOfRecords) return;
+            if (data.length < numOfRecords)
+                return;
 
-            const bulkOp = getFirstEnabledBulkOp(keywords);
-            if (bulkOp) {
+            const bulkOperationEnabled = isBulkOperationEnabled(keywords);
+
+            if (bulkOperationEnabled) {
                 ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`, 500)
-                    .then(() => {
-                        ktl.views.stickTableHeader(viewId, viewHeight);
-                    })
-                    .catch(() => {
-                        //give enough time for the bulkOps div to show if not apply sticky header
+                    .catch(function(){})
+                    .finally(() => {
                         ktl.views.stickTableHeader(viewId, viewHeight);
                     });
             } else {
@@ -7180,43 +7195,37 @@ function Ktl($, appInfo) {
             }
         }
 
-        /** _stc = Sticky Table Columns
-        * keyword @param stickyColBkgdColor - The background color of the sticky column
-        * @param {string} viewId
-        * @param {object} keywords */
         function stickyTableColumns(viewId, keywords) {
             const kw = '_stc';
-            let numOfColumns = 1;
-            let stickyColBkgdColor = 'rgb(243 246 249)';
+            let columnsCount = 1;
+            let backgroundColor = 'rgb(243 246 249)';
 
-            if (!keywords[kw]) return;
+            if (!keywords[kw])
+                return;
 
             if (keywords[kw].length) {
-                numOfColumns = keywords[kw][0].params[0][0] || numOfColumns;
-                stickyColBkgdColor = keywords[kw][0].params[0][1] || stickyColBkgdColor;
+                columnsCount = keywords[kw][0].params[0][0] || columnsCount;
+                backgroundColor = keywords[kw][0].params[0][1] || backgroundColor;
             }
 
-            const bulkOp = getFirstEnabledBulkOp(keywords);
+            const bulkOperationEnabled = isBulkOperationEnabled(keywords);
 
-            if (bulkOp) {
+            if (bulkOperationEnabled) {
                 ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`, 500)
                     .then(() => {
-                        numOfColumns = numOfColumns < 2 ? 2 : numOfColumns;
-                        ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                        columnsCount = columnsCount < 2 ? 2 : columnsCount;
+                        ktl.views.stickTableColumns(viewId, columnsCount, backgroundColor);
                     })
                     .catch(() => {
                         //give enough time for the bulkOps div to show if not apply sticky columns with original params
-                        ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                        ktl.views.stickTableColumns(viewId, columnsCount, backgroundColor);
                     });
             } else {
-                ktl.views.stickTableColumns(viewId, numOfColumns, stickyColBkgdColor);
+                ktl.views.stickTableColumns(viewId, columnsCount, backgroundColor);
             }
         }
 
-        /** Check if user and bulkOps operation is enabled
-         * @param {object} keywords
-         * @returns {boolean} - true if user has access and bulkOps are enabled*/
-        function getFirstEnabledBulkOp(keywords) {
+        function isBulkOperationEnabled(keywords) {
             if (keywords._nbo) return false;
 
             const bulkOps = [
@@ -11984,7 +11993,7 @@ function Ktl($, appInfo) {
 
             // srchTxt: string to find, must be non-empty.
             // fieldId:  'field_xyz' that is a chzn dropdown.
-            // matchMode: can be exact, partial or select.  
+            // matchMode: can be exact, partial or select.
             //  If exact, only a single result must be found to be returned.
             //  If partial, it will return the first result among many found.
             //  Id select, it will not close the drop down and let the user select manually among many found.
@@ -14364,60 +14373,55 @@ function Ktl($, appInfo) {
                 })
             },
 
-            /** Stick table Headers
-             * @param {string} viewId
-             * @param {number} viewHeight */
             stickTableHeader: function (viewId, viewHeight) {
                 if (!Knack.app.attributes.design.regions.header.isLegacy)
                     $('.knHeader__menu-dropdown-list').css('z-index', '5');
+
                 $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
                     .css('height', viewHeight + 'px')
                     .find('th')
                     .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
 
-                if (cfg.stickGroupingsWithHeader) {
-                    ktl.core.waitSelector(`#${viewId} thead tr`).then(() => {
-                        const headerHeight = $(`#${viewId} thead tr`).outerHeight();
-                        let stickyTopOffset = headerHeight - 2;
+                if (!cfg.stickGroupingsWithHeader)
+                    return;
 
-                        let groupLevels = new Set();
-                        $(`#${viewId} tbody tr[class*='kn-group-level-']`).each(function () {
-                            if (this.className.includes('kn-group-level-')) {
-                                groupLevels.add(this.className.match(/kn-group-level-\d+/)[0]);
-                            }
-                        });
+                ktl.core.waitSelector(`#${viewId} thead tr`).then(() => {
+                    const headerHeight = $(`#${viewId} thead tr`).outerHeight();
+                    let stickyTopOffset = headerHeight - 2;
 
-                        groupLevels.forEach(groupLevel => {
-                            const groupIndex = parseInt(groupLevel.split('-')[3], 10);
-                            const outerHeight = $(`.${groupLevel}`).outerHeight();
-
-                            $(`#${viewId} tbody tr.${groupLevel}`).css({
-                                'position': 'sticky',
-                                'top': `${stickyTopOffset - (1 * groupIndex)}px`,
-                                'z-index': '4',
-                                'color': 'black',
-                            })
-                                .find('td')
-                                .css('background-color', '#c7c7c7');
-                            stickyTopOffset += outerHeight;
-                        });
+                    let groupLevels = new Set();
+                    $(`#${viewId} tbody tr[class*='kn-group-level-']`).each(function () {
+                        if (this.className.includes('kn-group-level-')) {
+                            groupLevels.add(this.className.match(/kn-group-level-\d+/)[0]);
+                        }
                     });
-                }
+
+                    groupLevels.forEach(groupLevel => {
+                        const groupIndex = parseInt(groupLevel.split('-')[3], 10);
+                        const outerHeight = $(`.${groupLevel}`).outerHeight();
+
+                        $(`#${viewId} tbody tr.${groupLevel}`).css({
+                            'position': 'sticky',
+                            'top': `${stickyTopOffset - (1 * groupIndex)}px`,
+                            'z-index': '4',
+                            'color': 'black',
+                        })
+                            .find('td')
+                            .css('background-color', '#c7c7c7');
+                        stickyTopOffset += outerHeight;
+                    });
+                });
             },
 
-            /** Stick table Columns
-             * @param {string} viewId
-             * @param {number} numOfColumns
-             * @param {string} stickyColBkgdColor */
-            stickTableColumns: function (viewId, numOfColumns, stickyColBkgdColor) {
+            stickTableColumns: function (viewId, columnCount, backgroundColor) {
                 let stickyColWidth = 0;
-                for (let i = 1; i <= numOfColumns; i++) {
-                    const tableHeadSelector = $(`#${viewId} thead tr th:nth-child(${i})`);
-                    const tableBodySelector = $(`#${viewId} tbody tr td:nth-child(${i})`);
-                    const columnWidth = tableHeadSelector.outerWidth();
+                for (let i = 1; i <= columnCount; i++) {
+                    const jqthead = $(`#${viewId} thead tr th:nth-child(${i})`);
+                    const jqtbody = $(`#${viewId} tbody tr td:nth-child(${i})`);
+                    const columnWidth = jqthead.outerWidth();
                     stickyColWidth += columnWidth;
-                    tableHeadSelector.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px' });
-                    tableBodySelector.css({ 'z-index': 1, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': stickyColBkgdColor });
+                    jqthead.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px' });
+                    jqtbody.css({ 'z-index': 1, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': backgroundColor });
                 }
             },
 
