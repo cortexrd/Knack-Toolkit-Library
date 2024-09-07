@@ -10999,6 +10999,7 @@ function Ktl($, appInfo) {
                     form: 'form, .kn-form-confirmation',
                     list: '.kn-list-content, .kn-records-nav',
                     search: `form, .kn-table.${viewId}, .kn-list.${viewId}`,
+                    calendar: 'div.knack-calendar',
                 };
 
                 const wrapperSelector = wrappers[viewType];
