@@ -7011,13 +7011,21 @@ function Ktl($, appInfo) {
                 ktl.core.waitSelector('#add-filter-link', 3000)
                     .then(function () {
                         $(`#add-filter-link`).on('mousedown', function (e) {
+                            //First, hide all filters section otherwise we have time to see the unwanted fields brielfy.
+                            ktl.core.waitSelector(`.filters-list`, 3000, '', ktl.const.WAIT_SEL_IGNORE, 1)
+                                .then(function () {
+                                    $('.filters-list').addClass('ktlVisibilityHidden'); //Must use this class.
+                                })
+                                .catch(function () { })
+
                             const count = $('.field.kn-select select').length;
                             ktl.core.waitSelector(`.field.kn-select select:eq(${count})`, 3000)
                                 .then(function () {
-                                        removeOption(); // On new filter line
+                                    removeOption(); // On new filter line
+                                    $('.filters-list').removeClass('ktlVisibilityHidden');
                                 })
                                 .catch(function () { })
-                            });
+                        });
                     })
                     .catch(function () { })
 
