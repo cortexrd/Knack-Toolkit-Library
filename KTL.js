@@ -18390,7 +18390,7 @@ function Ktl($, appInfo) {
             }
         }
 
-        //bulkOp must be "edit", "copy" or "delete".
+        //bulkOp must be "edit", "copy", "delete" or "action".
         function viewCanDoBulkOp(viewId, bulkOp) {
             if (!viewId || !bulkOp) return false;
 
