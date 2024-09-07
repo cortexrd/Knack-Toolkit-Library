@@ -19854,8 +19854,9 @@ function Ktl($, appInfo) {
                 popover.bindEvents = () => { };
             } else {
                 popover.init(bindedOptions, target);
-                $('#kn-popover [role=presentation]').remove();
             }
+
+            $('#kn-popover [role=presentation]').remove();
 
             $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
             target.addClass('ktlOutlineDevPopup');
