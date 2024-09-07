@@ -7011,8 +7011,13 @@ function Ktl($, appInfo) {
                 ktl.core.waitSelector('#add-filter-link', 3000)
                     .then(function () {
                         $(`#add-filter-link`).on('mousedown', function (e) {
-                            removeOption(); // On new filter line
-                        })
+                            const count = $('.field.kn-select select').length;
+                            ktl.core.waitSelector(`.field.kn-select select:eq(${count})`, 3000)
+                                .then(function () {
+                                        removeOption(); // On new filter line
+                                })
+                                .catch(function () { })
+                            });
                     })
                     .catch(function () { })
 
