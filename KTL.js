@@ -6729,7 +6729,7 @@ function Ktl($, appInfo) {
                 colorizeFieldByValue(viewId, data);
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
-                disableFilterOnFields(view);
+                noFiltering(view);
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
                 labelText(view, keywords);
@@ -6738,6 +6738,8 @@ function Ktl($, appInfo) {
                 iterateViewReports(view, (report, keywords) => {
                     //TODO keywords._sth && stickyReportTableHeader(viewId, keywords, report);
                     //TODO keywords._stc && stickyReportTableColumns(viewId, keywords, report);
+
+                    noFilteringInReport(report, keywords);
                 })
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
@@ -6925,16 +6927,15 @@ function Ktl($, appInfo) {
         })
 
         //Hides a field from the filter's drop-down.
-        let noFilteringViewFields = {};
-        function disableFilterOnFields(view) {
+        function noFiltering(view) {
             if (!view) return;
 
-            if (!(view.type === 'table' || view.type === 'list'/* || view.type === 'report'    TODO Issue #242   */))
+            if (!(view.type === 'table' || view.type === 'list'))
                 return;
 
             const kw = '_nf';
-            let viewId = view.key;
-            var fieldsAr = [];
+            const viewId = view.key;
+            let fieldsAr = [];
 
             //Process view keyword
             const keywords = ktlKeywords[viewId];
@@ -6980,36 +6981,64 @@ function Ktl($, appInfo) {
                 }
             }
 
-            fieldsAr = fieldsAr.map(field =>
-                field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
-            );
+            removeFilterOptions(viewId, fieldsAr)
+        }
 
-            noFilteringViewFields[viewId] = { fieldsAr: fieldsAr };
+        function removeFilterOptions(viewSelector, options) {
+            const removeOption = () => {
+                for (const option of options) {
+                    if (option.startsWith('field_')) {
+                        const fieldSelector = `.field.kn-select select option[value="${option}"]`;
 
-            $(`#${viewId} .kn-add-filter, #${viewId} .kn-filters`).on('mousedown', function (e) {
-                noFilteringRemoveFields(viewId);
+                        ktl.core.waitSelector(fieldSelector, 3000)
+                            .then(function () {
+                                $(fieldSelector).remove();
+                            })
+                            .catch(function () { })
+                    } else { // by text
+                        ktl.core.waitSelector('.field.kn-select select option', 3000)
+                            .then(function () {
+                                $('.field.kn-select select option').filter((index, element) => element.text === option).remove();
+                            })
+                            .catch(function () { })
+                    }
+                }
+            }
+
+            $(`#${viewSelector} .kn-add-filter, #${viewSelector} .kn-filters`).on('mousedown', function (e) {
+                removeOption(viewSelector); // On modal open
 
                 ktl.core.waitSelector('#add-filter-link', 3000)
                     .then(function () {
                         $(`#add-filter-link`).on('mousedown', function (e) {
-                            noFilteringRemoveFields(viewId);
+                            removeOption(); // On new filter line
                         })
                     })
                     .catch(function () { })
 
-            })
+            });
+        }
 
-            function noFilteringRemoveFields(viewId) {
-                const fieldsAr = noFilteringViewFields[viewId].fieldsAr;
-                for (const fieldId of fieldsAr) {
-                    const fieldSelector = `.field.kn-select select option[value="${fieldId}"]`;
-                    ktl.core.waitSelector(fieldSelector, 3000)
-                        .then(function () {
-                            $(fieldSelector).remove();
-                        })
-                        .catch(function () { })
-                }
-            }
+        function noFilteringInReport(report, keywords) {
+            const _nf = '_nf';
+
+            if (!report || !keywords[_nf] || !keywords[_nf].length)
+                return;
+
+            if (keywords[_nf][0].options && !ktl.core.hasRoleAccess(keywords[_nf][0].options))
+                return;
+
+            const selector = `kn-report-${report.this.slug}-${report.index + 1}`;
+            const options = keywords[_nf][0].params[0];
+
+            const optionsFromFields = Object.entries(ktl.views.getAllFieldsWithKeywordsInObject(report.source.object))
+                .filter(([id, keywords]) => Object.keys(keywords).includes(_nf))
+                .filter(([id, keywords]) => {
+                    return !keywords[_nf].length || !keywords[_nf][0].options || ktl.core.hasRoleAccess(keywords[_nf][0].options);
+                })
+                .map( e => e[0]);
+
+            removeFilterOptions(selector, [...options, ...optionsFromFields]);
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
