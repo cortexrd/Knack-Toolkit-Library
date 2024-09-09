@@ -8304,12 +8304,13 @@ function Ktl($, appInfo) {
                 try {
                     columns.forEach(col => {
                         var align = col.align;
-                        const colElem = $(`#${view.key} thead th:textEquals("${col.header}")`);
+                        const columnHeaderText = col.header.replace(/<br\s*\/?>/gi, '');
+                        const colElem = $(`#${view.key} thead th:textEquals("${columnHeaderText}")`);
                         if (colElem.length) {
                             const currentAlignment = colElem[0].style.textAlign || 'left';
                             if (align && (currentAlignment !== align)) {
-                                $(`#${view.key} thead th:textEquals("${col.header}")`).css('text-align', align);
-                                $(`#${view.key} thead th:textEquals("${col.header}") .table-fixed-label`).css('display', 'inline-flex');
+                                $(`#${view.key} thead th:textEquals("${columnHeaderText}")`).css('text-align', align);
+                                $(`#${view.key} thead th:textEquals("${columnHeaderText}") .table-fixed-label`).css('display', 'inline-flex');
                             }
                         }
                     })
