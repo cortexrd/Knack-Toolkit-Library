@@ -10864,6 +10864,7 @@ function Ktl($, appInfo) {
                                                             else
                                                                 $(signatureSelector).addClass('ktlNotValid_empty');
 
+                                                            removeRequestedAttributeOnVisibleFields(viewId);
                                                             ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
                                                         }, 100);
                                                     });
@@ -10914,6 +10915,7 @@ function Ktl($, appInfo) {
                                                 }
                                             }
 
+                                            removeRequestedAttributeOnVisibleFields(viewId);
                                             ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
                                         }, 200);
                                     }
@@ -10969,6 +10971,7 @@ function Ktl($, appInfo) {
                                                 $(field).removeClass('ktlNotValid_empty');
                                         }
 
+                                        removeRequestedAttributeOnVisibleFields(viewId);
                                         ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
                                     }
 
@@ -10979,7 +10982,13 @@ function Ktl($, appInfo) {
                                         }
                                     })
 
+                                    removeRequestedAttributeOnVisibleFields(viewId);
                                     ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+
+                                    function removeRequestedAttributeOnVisibleFields(viewId) {
+                                        $(`#${viewId} .ktlNotValid_empty:not(:visible)`).replaceClass('ktlNotValid_empty', 'dis_ktlNotValid_empty');
+                                        $(`#${viewId} .dis_ktlNotValid_empty:visible`).replaceClass('dis_ktlNotValid_empty', 'ktlNotValid_empty');
+                                    }
                                 }
                             })
                     }
