@@ -578,6 +578,10 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	vertical-align: middle !important;
 }
 
+.ktlKioskModalPage {
+	max-width: 98%;
+}
+
 /* Reduced page margins, to maximize available real-estate. */
 .ktlNarrowMarginsPage .kn-scene.kn-container {
 	padding: 2px;
