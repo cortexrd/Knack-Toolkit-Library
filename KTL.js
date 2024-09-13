@@ -4196,14 +4196,14 @@ function Ktl($, appInfo) {
     //====================================================
     // Searchable Dropdown Threshold Feature
     this.searchableDropdownThreshold = (function () {
-        const KEYWORD = '_sddt';
+        const kw = '_sddt';
 
         function searchableDropdownThresholdFields(viewId, containerId) {
             const fieldsWithKeywords = ktl.views.getAllFieldsWithKeywordsInView(viewId) || {};
-            const fields = Object.entries(fieldsWithKeywords).filter(([key, value]) => !!value[KEYWORD]);
+            const fields = Object.entries(fieldsWithKeywords).filter(([key, value]) => !!value[kw]);
 
             fields.forEach(([fieldId, args]) => {
-                const [minLength, delay] = args[KEYWORD][0].params[0];
+                const [minLength, delay] = args[kw][0].params[0];
                 let input = $(`#${containerId || viewId} [data-input-id="${fieldId}"] input.ui-autocomplete-input`);
 
                 if (!input.length)
@@ -7033,21 +7033,21 @@ function Ktl($, appInfo) {
         }
 
         function noFilteringInReport(report, keywords) {
-            const _nf = '_nf';
+            const kw = '_nf';
 
-            if (!report || !keywords[_nf] || !keywords[_nf].length)
+            if (!report || !keywords[kw] || !keywords[kw].length)
                 return;
 
-            if (keywords[_nf][0].options && !ktl.core.hasRoleAccess(keywords[_nf][0].options))
+            if (keywords[kw][0].options && !ktl.core.hasRoleAccess(keywords[kw][0].options))
                 return;
 
             const selector = `kn-report-${report.this.slug}-${report.index + 1}`;
-            const options = keywords[_nf][0].params[0];
+            const options = keywords[kw][0].params[0];
 
             const optionsFromFields = Object.entries(ktl.views.getAllFieldsWithKeywordsInObject(report.source.object))
-                .filter(([id, keywords]) => Object.keys(keywords).includes(_nf))
+                .filter(([id, keywords]) => Object.keys(keywords).includes(kw))
                 .filter(([id, keywords]) => {
-                    return !keywords[_nf].length || !keywords[_nf][0].options || ktl.core.hasRoleAccess(keywords[_nf][0].options);
+                    return !keywords[kw].length || !keywords[kw][0].options || ktl.core.hasRoleAccess(keywords[kw][0].options);
                 })
                 .map( e => e[0]);
 
@@ -7462,23 +7462,25 @@ function Ktl($, appInfo) {
         }
 
         function removeConnectionPicker(viewId) {
-            const keyword = '_rcp';
-            if (!viewId) return;
-
+            const kw = '_rcp';
+            if (!viewId || ktl.views.getViewType(viewId) !== 'form') return;
+            
             const fields = ktl.views.getAllFieldsWithKeywordsInView(viewId);
 
             Object.entries(fields)
-                .filter( ([_, keywords]) => Object.keys(keywords).includes(keyword))
+                .filter( ([_, keywords]) => Object.keys(keywords).includes(kw))
                 .forEach( ([id]) => {
                     const jqField = $(`#${viewId} [data-input-id="${id}"]`);
-                    jqField.data().connectionPicker.chosen.disable_search = true;
-                    jqField.data().connectionPicker.chosen.dropdown.remove();
+                    if (jqField.length && jqField.data() && jqField.data().connectionPicker) {
+                        jqField.data().connectionPicker.chosen.disable_search = true;
+                        jqField.data().connectionPicker.chosen.dropdown.remove();
+                    }
                 });
         }
 
         /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
-            const CFV_KEYWORD = '_cfv';
+            const kw = '_cfv';
 
             if (!viewId) return;
 
@@ -7490,7 +7492,7 @@ function Ktl($, appInfo) {
             colorizeFromFieldKeyword();
 
             //Then end with view _cfv, for precedence.
-            ktl.core.getKeywordsByType(viewId, CFV_KEYWORD).forEach(execKw);
+            ktl.core.getKeywordsByType(viewId, kw).forEach(execKw);
 
             function execKw(keyword) {
                 if (!ktl.core.hasRoleAccess(keyword.options)) return;
@@ -7526,9 +7528,9 @@ function Ktl($, appInfo) {
                         const fieldKeywords = ktl.fields.getFieldKeywords(fieldId);
                         if (!$.isEmptyObject(fieldKeywords)
                             && fieldKeywords[fieldId]
-                            && fieldKeywords[fieldId][CFV_KEYWORD]
-                            && fieldKeywords[fieldId][CFV_KEYWORD].length) {
-                            ktl.core.getKeywordsByType(fieldId, CFV_KEYWORD).forEach((keyword) => {
+                            && fieldKeywords[fieldId][kw]
+                            && fieldKeywords[fieldId][kw].length) {
+                            ktl.core.getKeywordsByType(fieldId, kw).forEach((keyword) => {
                                 if (ktl.core.hasRoleAccess(keyword.options)) {
                                     cfvScanGroups([fieldId], keyword.params, keyword.options);
                                 }
