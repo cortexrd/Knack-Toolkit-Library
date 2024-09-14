@@ -382,7 +382,12 @@ a.ktlSortDisabled {
 	border-top-left-radius: 0;
 	margin-top: unset;
 	margin-bottom: unset;
+    overflow: visible;
 }
+
+    #knack-body .kn-modal .ktlHideShowSection .kn-details-column {
+        overflow: visible;
+    }
 
 	.ktlArrow {
 		display: inline-block;
