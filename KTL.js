@@ -11051,14 +11051,14 @@ function Ktl($, appInfo) {
             const buttonSelector = $(`#${hideShowId}_button, #${hideShowId}_shrink_link`);
             const arrowSelector = $(`#${hideShowId}_arrow`);
 
-            hiddenSection.css('min-width', buttonSelector.width() + 30);
+            hiddenSection.css('min-width', buttonSelector.outerWidth() + 10);
+
             buttonSelector.off('click.ktl_hsv').on('click.ktl_hsv', (event) => {
                 const isShrinkLink = $(event.target).is(`#${hideShowId}_shrink_link`);
                 toggleHideShowSection(isShrinkLink || hiddenSection.is(':visible'), hiddenSection, arrowSelector, buttonSelector, delay);
             });
 
             function wrapContentForHideShow(viewElement, viewType, hideShowId) {
-                console.log(viewType)
                 const wrappers = {
                     table: '.kn-table-wrapper, .kn-records-nav',
                     form: 'form, .kn-form-confirmation',
