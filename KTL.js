@@ -6456,39 +6456,41 @@ function Ktl($, appInfo) {
 
                 //Special case for Search views, where the postRender is not at same place and doesn't behave the same way.
                 if (viewType === 'search') {
-                    dbg && console.log('SEARCH 1');
-                    const originalCxtPostRender = Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender;
-                    const ktlCtxPostRender = function () {
-                        if (Knack.views[viewId].ktlCtxPostRender) {
-                            try {
-                                dbg && console.log('SEARCH 2');
-                                Knack.views[viewId].ktlCtxPostRender.original.call(this, ...arguments);
+                    if (Knack.views[viewId].model.results_model) {
+                        dbg && console.log('SEARCH 1');
+                        const originalCxtPostRender = Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender;
+                        const ktlCtxPostRender = function () {
+                            if (Knack.views[viewId].ktlCtxPostRender) {
+                                try {
+                                    dbg && console.log('SEARCH 2');
+                                    Knack.views[viewId].ktlCtxPostRender.original.call(this, ...arguments);
 
-                                setTimeout(() => { //Need this for some reason, otherwise it doesnt' work.
-                                    dbg && console.log('SEARCH 3');
-                                    finalizeSummaryPostProcessing(view, data);
-                                }, 0);
+                                    setTimeout(() => { //Need this for some reason, otherwise it doesnt' work.
+                                        dbg && console.log('SEARCH 3');
+                                        finalizeSummaryPostProcessing(view, data);
+                                    }, 0);
+                                }
+                                catch (e) {
+                                    console.log('Exception in ktlCtxPostRender.original.call:', viewId, e);
+                                }
                             }
-                            catch (e) {
-                                console.log('Exception in ktlCtxPostRender.original.call:', viewId, e);
+                        };
+
+                        if (!Knack.views[viewId].ktlCtxPostRender || originalCxtPostRender !== Knack.views[viewId].ktlCtxPostRender.ktlCtxPost) {
+                            Knack.views[viewId].ktlCtxPostRender = {
+                                original: originalCxtPostRender,
+                                ktlCtxPost: ktlCtxPostRender
                             }
-                        }
-                    };
 
-                    if (!Knack.views[viewId].ktlCtxPostRender || originalCxtPostRender !== Knack.views[viewId].ktlCtxPostRender.ktlCtxPost) {
-                        Knack.views[viewId].ktlCtxPostRender = {
-                            original: originalCxtPostRender,
-                            ktlCtxPost: ktlCtxPostRender
+                            Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
+                            dbg && console.log('SEARCH 4');
+                            Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender();
+                            dbg && console.log('SEARCH 5');
+                        } else { //When data has changed, but the functions remain the same.
+                            Knack.views[viewId].ktlCtxPostRender.ktlCtxPost = ktlCtxPostRender;
+                            Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
+                            dbg && console.log('SEARCH 6');
                         }
-
-                        Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
-                        dbg && console.log('SEARCH 4');
-                        Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender();
-                        dbg && console.log('SEARCH 5');
-                    } else { //When data has changed, but the functions remain the same.
-                        Knack.views[viewId].ktlCtxPostRender.ktlCtxPost = ktlCtxPostRender;
-                        Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
-                        dbg && console.log('SEARCH 6');
                     }
                 } else {
                     dbg && console.log('TABLE 1');
@@ -7534,7 +7536,7 @@ function Ktl($, appInfo) {
         function removeConnectionPicker(viewId) {
             const kw = '_rcp';
             if (!viewId || ktl.views.getViewType(viewId) !== 'form') return;
-            
+
             const fields = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             Object.entries(fields)
                 .filter(([_, keywords]) => Object.keys(keywords).includes(kw))

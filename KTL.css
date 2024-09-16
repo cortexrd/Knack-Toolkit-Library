@@ -222,7 +222,7 @@ a.ktlSortDisabled {
 }
 
 /* Bulk Operations */
-	.bulkOpsControlsDiv {
+.bulkOpsControlsDiv {
 	display: flex;
 }
 
@@ -283,7 +283,7 @@ a.ktlSortDisabled {
 }
 
 /************ Tooltips **************/
-	.tooltip {
+.tooltip {
 	position: relative;
 	display: inline-block;
 }
@@ -382,61 +382,61 @@ a.ktlSortDisabled {
 	border-top-left-radius: 0;
 	margin-top: unset;
 	margin-bottom: unset;
-    margin-right: unset;
+	margin-right: unset;
 }
 
-    #knack-body .kn-modal .ktlHideShowSection .kn-details-column {
-        overflow: visible;
-    }
+#knack-body .kn-modal .ktlHideShowSection .kn-details-column {
+	overflow: visible;
+}
 
-	.ktlArrow {
-		display: inline-block;
+.ktlArrow {
+	display: inline-block;
+}
+
+.ktlUp {
+	transform: rotate(90deg);
+}
+
+.ktlDown {
+	transform: rotate(-90deg);
+}
+
+.ktlBoxWithBorder {
+	padding: 5px 15px 15px;
+	background-color: #F9F9F9;
+	border-radius: 8px;
+	border: 2px solid var(--ktlHideShowButtonColor);
+}
+
+#knack-body .kn-content .ktlShrinkLink {
+	font-size: 12px;
+	text-decoration: none;
+	text-align: center;
+	display: block;
+	width: fit-content;
+	margin: -10px auto -10px auto;
+}
+
+.ktlHideShowButton {
+	color: black;
+	padding: 10px;
+	font-size: 16px;
+	font-weight: 300;
+	margin-bottom: -14px;
+}
+
+.kn-content .view-header:has(.ktlHideShowButton) {
+	margin-bottom: 0px;
+	max-width: fit-content;
+	background-color: var(--ktlHideShowButtonColor);
+	border-radius: 8px 8px 0 0;
+	cursor: grab;
+	overflow: hidden;
+}
+
+	.kn-content .view-header:has(.ktlHideShowButton) .kn-title {
+		margin-top: 0px;
 	}
-
-	.ktlUp {
-		transform: rotate(90deg);
-	}
-
-	.ktlDown {
-		transform: rotate(-90deg);
-	}
-
-	.ktlBoxWithBorder {
-		padding: 5px 15px 15px;
-		background-color: #F9F9F9;
-		border-radius: 8px;
-		border: 2px solid var(--ktlHideShowButtonColor);
-	}
-
-	#knack-body .kn-content .ktlShrinkLink {
-		font-size: 12px;
-		text-decoration: none;
-		text-align: center;
-		display: block;
-		width: fit-content;
-		margin: -10px auto -10px auto;
-	}
-
-	.ktlHideShowButton {
-		color: black;
-		padding: 10px;
-		font-size: 16px;
-		font-weight: 300;
-		margin-bottom: -14px;
-	}
-
-		.kn-content .view-header:has(.ktlHideShowButton) {
-			margin-bottom: 0px;
-			max-width: fit-content;
-			background-color: var(--ktlHideShowButtonColor);
-			border-radius: 8px 8px 0 0;
-			cursor: grab;
-			overflow: hidden;
-		}
-
-			.kn-content .view-header:has(.ktlHideShowButton) .kn-title {
-				margin-top: 0px;
-			}
 
 /************ User Filters **************/
 .activeFilter {
