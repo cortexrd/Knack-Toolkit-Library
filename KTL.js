@@ -11120,6 +11120,8 @@ function Ktl($, appInfo) {
             const buttonSelector = $(`#${hideShowId}_button, #${hideShowId}_shrink_link`);
             const arrowSelector = $(`#${hideShowId}_arrow`);
 
+            hiddenSection.css('min-width', buttonSelector.outerWidth() + 10);
+
             buttonSelector.off('click.ktl_hsv').on('click.ktl_hsv', (event) => {
                 const isShrinkLink = $(event.target).is(`#${hideShowId}_shrink_link`);
                 toggleHideShowSection(isShrinkLink || hiddenSection.is(':visible'), hiddenSection, arrowSelector, buttonSelector, delay);
@@ -11132,6 +11134,7 @@ function Ktl($, appInfo) {
                     list: '.kn-list-content, .kn-records-nav',
                     search: `form, .kn-table.${viewId}, .kn-list.${viewId}`,
                     calendar: 'div.knack-calendar',
+                    menu: 'div.menu-links',
                 };
 
                 const wrapperSelector = wrappers[viewType];
@@ -11151,7 +11154,7 @@ function Ktl($, appInfo) {
                 if (!viewStates[viewId]) {
                     hideShowSection.hide();
                 }
-                hideShowSection.css('flex-direction', 'column');
+                hideShowSection.css({ 'flex-direction': 'column' });
             }
 
             function toggleHideShowSection(isShrink, hiddenSection, arrowSelector, buttonSelector, delay) {
