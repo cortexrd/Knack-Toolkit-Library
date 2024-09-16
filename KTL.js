@@ -6440,6 +6440,7 @@ function Ktl($, appInfo) {
         function summaryPostProcessing(view, data) {
             const viewId = view.key;
             const viewType = ktl.views.getViewType(viewId);
+            const dbg = false; //Temporary flag to enable tracing and debugging.
 
             if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
                 /* This code is needed for keywords that may require summary data to achieve their task.
@@ -6455,16 +6456,16 @@ function Ktl($, appInfo) {
 
                 //Special case for Search views, where the postRender is not at same place and doesn't behave the same way.
                 if (viewType === 'search') {
-                    console.log('SEARCH 1');
+                    dbg && console.log('SEARCH 1');
                     const originalCxtPostRender = Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender;
                     const ktlCtxPostRender = function () {
                         if (Knack.views[viewId].ktlCtxPostRender) {
                             try {
-                                console.log('SEARCH 2');
+                                dbg && console.log('SEARCH 2');
                                 Knack.views[viewId].ktlCtxPostRender.original.call(this, ...arguments);
 
                                 setTimeout(() => { //Need this for some reason, otherwise it doesnt' work.
-                                    console.log('SEARCH 3');
+                                    dbg && console.log('SEARCH 3');
                                     finalizeSummaryPostProcessing(view, data);
                                 }, 0);
                             }
@@ -6481,16 +6482,16 @@ function Ktl($, appInfo) {
                         }
 
                         Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
-                        console.log('SEARCH 4');
+                        dbg && console.log('SEARCH 4');
                         Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender();
-                        console.log('SEARCH 5');
+                        dbg && console.log('SEARCH 5');
                     } else { //When data has changed, but the functions remain the same.
                         Knack.views[viewId].ktlCtxPostRender.ktlCtxPost = ktlCtxPostRender;
                         Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
-                        console.log('SEARCH 6');
+                        dbg && console.log('SEARCH 6');
                     }
                 } else {
-                    console.log('TABLE 1');
+                    dbg && console.log('TABLE 1');
                     const originalPostRender = Knack.views[viewId].postRender;
                     const ktlPostRender = function () {
                         if (Knack.views[viewId].ktlPostRender) {
@@ -6502,11 +6503,11 @@ function Ktl($, appInfo) {
                             //}
 
                             try {
-                                console.log('TABLE 2');
+                                dbg && console.log('TABLE 2');
                                 Knack.views[viewId].ktlPostRender.original.call(this, ...arguments);
 
                                 setTimeout(() => { //Need this for some reason, otherwise it doesnt' work.
-                                    console.log('TABLE 3');
+                                    dbg && console.log('TABLE 3');
                                     finalizeSummaryPostProcessing(view, data);
                                 }, 0);
                             }
@@ -6523,22 +6524,21 @@ function Ktl($, appInfo) {
                         }
 
                         Knack.views[viewId].postRender = Knack.views[viewId].ktlPostRender.ktlPost;
-                        console.log('TABLE 4');
+                        dbg && console.log('TABLE 4');
                         Knack.views[viewId].postRender();
-                        console.log('TABLE 5');
+                        dbg && console.log('TABLE 5');
                     } else { //When data has changed, but the functions remain the same.
                         Knack.views[viewId].ktlPostRender.ktlPost = ktlPostRender;
                         Knack.views[viewId].postRender = Knack.views[viewId].ktlPostRender.ktlPost;
-                        console.log('TABLE 6');
+                        dbg && console.log('TABLE 6');
                     }
                 }
             } else {
-                console.log('999');
                 finalizeSummaryPostProcessing(view, data);
             }
 
             if (viewType === 'search' && Knack.views[viewId].model.results_model) {
-                console.log('SEARCH 7');
+                dbg && console.log('SEARCH 7');
                 Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender();
             }
 
