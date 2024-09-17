@@ -485,13 +485,13 @@ function Ktl($, appInfo) {
                         },
                         error: function (response /*jqXHR*/) {
                             //Example of the data format in response:
-                            //{ "readyState": 4, "responseText": "{\"errors\":[\"Invalid Record Id\"]}", "status": 400, "statusText": "Bad Request" }
+                            //{"readyState":4,"responseText":"{"errors":[{"field":"field_57","type":"required","message":"Store is required."}]}","status":400,"statusText":"error"}
 
                             ktl.log.clog('purple', 'knAPI error:');
                             console.log('retries:', this.retryLimit, '\nresponse:', response);
 
                             let unrecoverableError = false;
-                            if (response.status === 400)
+                            if ([400 /*Add more as we find them.*/].includes(response.status))
                                 unrecoverableError = true;
 
                             if (!unrecoverableError && this.retryLimit-- > 0) {
@@ -2315,13 +2315,13 @@ function Ktl($, appInfo) {
             const viewId = view.key;
 
             if (horizontalRadioButtons) {
-                $('#' + viewId + ' .kn-radio').addClass('horizontal');
-                $('#' + viewId + ' .option.radio').addClass('horizontal');
+                $(`#${viewId} .kn-radio`).addClass('horizontal');
+                $(`#${viewId} .option.radio`).addClass('horizontal');
             }
 
             if (horizontalCheckboxes) {
-                $('#' + viewId + ' .kn-checkbox').addClass('horizontal');
-                $('#' + viewId + ' .option.checkbox').addClass('horizontal');
+                $(`#${viewId} .kn-checkbox`).addClass('horizontal');
+                $(`#${viewId} .option.checkbox`).addClass('horizontal');
             }
 
             //Process special field keywords
@@ -2388,7 +2388,7 @@ function Ktl($, appInfo) {
                 try {
                     var viewId = e.target.closest('.kn-view').id;
                     var fieldId = document.querySelector('#' + e.target.id).closest('.kn-input').getAttribute('data-input-id')
-                        || document.querySelector('#' + viewId + ' .kn-search-filter #' + e.target.id).getAttribute('name'); //TODO: Need to support multiple search fields.
+                        || document.querySelector(`#${viewId} .kn-search-filter #` + e.target.id).getAttribute('name'); //TODO: Need to support multiple search fields.
 
                     var p = { viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e };
                     ktl.persistentForm.ktlOnFieldValueChanged(p);
@@ -18339,17 +18339,17 @@ function Ktl($, appInfo) {
         function updateHeaderCheckboxes(viewId, numChecked = 0) {
             if (!viewId || (!viewCanDoBulkOp(viewId, 'edit') && !viewCanDoBulkOp(viewId, 'copy'))) return;
             if (numChecked) {
-                $('#' + viewId + ' .bulkEditHeaderCbox').removeClass('ktlDisplayNone');
+                $(`#${viewId} .bulkEditHeaderCbox`).removeClass('ktlDisplayNone');
 
                 if (viewCanDoBulkOp(viewId, 'edit')) {
-                    if ($('#' + viewId + ' .bulkEditHeaderCbox:checked').length)
-                        $('#' + viewId + ' tbody tr td').addClass('bulkEditSelectSrc');
+                    if ($(`#${viewId} .bulkEditHeaderCbox:checked`).length)
+                        $(`#${viewId} tbody tr td`).addClass('bulkEditSelectSrc');
                     else
-                        $('#' + viewId + ' tbody tr td.cell-edit').addClass('bulkEditSelectSrc');
+                        $(`#${viewId} tbody tr td.cell-edit`).addClass('bulkEditSelectSrc');
                 }
             } else {
-                $('#' + viewId + ' .bulkEditHeaderCbox').addClass('ktlDisplayNone');
-                $('#' + viewId + ' tbody tr td').removeClass('bulkEditSelectSrc');
+                $(`#${viewId} .bulkEditHeaderCbox`).addClass('ktlDisplayNone');
+                $(`#${viewId} tbody tr td`).removeClass('bulkEditSelectSrc');
             }
         }
 
@@ -18359,8 +18359,8 @@ function Ktl($, appInfo) {
         function updateBulkOpsRecIdArray(viewId) {
             if (!viewId) return;
             bulkOpsRecIdArray = [];
-            $('#' + viewId + ' .bulkEditSelectedRow').removeClass('bulkEditSelectedRow');
-            $('#' + viewId + ' tbody input[type=checkbox]:checked').each(function () {
+            $(`#${viewId} .bulkEditSelectedRow`).removeClass('bulkEditSelectedRow');
+            $(`#${viewId} tbody input[type=checkbox]:checked`).each(function () {
                 var id = $(this).closest('tr').attr('id');
                 bulkOpsRecIdArray.push(id);
                 $(this).closest('tr').find('td:not(.ktlNoInlineEdit)').addClass('bulkEditSelectedRow');
@@ -18375,9 +18375,9 @@ function Ktl($, appInfo) {
         function processBulkOps(viewId, e) {
             if (!viewId) return;
 
-            var numToProcess = 0;
-            var recId;
-            var operation = e.target.id;
+            let numToProcess = 0;
+            let recId;
+            let operation = e.target.id;
             if (operation === 'ktl-bulk-duplicate-' + viewId) {
                 //Bulk Copy
                 numToProcess = prompt('How many copies do you want to create?', 0);
@@ -18404,10 +18404,10 @@ function Ktl($, appInfo) {
                     const src = Knack.views[viewId].model.data._byId[recId].attributes;
 
                     //Add all selected fields from header.
-                    var checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
+                    let checkedFields = $(`#${viewId} .bulkEditHeaderCbox:is(:checked)`);
                     if (checkedFields.length) {
                         checkedFields.each((idx, cbox) => {
-                            var fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
+                            let fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
                             if (fieldId.startsWith('field_')) {
                                 if (cbox.checked) {
                                     apiData[fieldId] = src[fieldId + '_raw'];
@@ -18421,7 +18421,7 @@ function Ktl($, appInfo) {
                         })
                     } else {
                         //If no column selected, use field clicked.
-                        var clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
+                        let clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
                         if (clickedFieldId.length && clickedFieldId.attr('data-field-key').startsWith('field_')) {
                             clickedFieldId = clickedFieldId.attr('data-field-key');
                             apiData[clickedFieldId] = src[clickedFieldId + '_raw'];
@@ -18507,7 +18507,7 @@ function Ktl($, appInfo) {
                     let countDone = 0;
                     let countInprocess = 0;
                     let errorEncountered = false;
-                    var itv = setInterval(() => {
+                    let itv = setInterval(() => {
                         if (!errorEncountered && countInprocess++ < numToProcess)
                             createRecord();
                         else
@@ -18597,7 +18597,7 @@ function Ktl($, appInfo) {
             }
 
             //Bulk Delete
-            if (bulkOp === 'delete' && ktl.core.getCfg().enabled.bulkOps.bulkDelete && document.querySelector('#' + viewId + ' .kn-link-delete')) {
+            if (bulkOp === 'delete' && ktl.core.getCfg().enabled.bulkOps.bulkDelete && document.querySelector(`#${viewId} .kn-link-delete`)) {
                 if ((Knack.getUserRoleNames().includes('Bulk Delete') || bulkOpEnabled)
                     && !bulkOpDisabled)
                     return true;
@@ -19743,6 +19743,10 @@ function Ktl($, appInfo) {
         }
 
         const appendSceneReferencesBlock = function (line, sceneId) {
+            //Disabled for now.  Induces too much latency when mousing the mouse around.
+            //Instead, we should always have the eye icon, and only do the search when clicked.
+            return;
+
             const references = ktl.core.findAllReferencesToThisScene(sceneId);
 
             if (references.length === 0)
