@@ -490,7 +490,11 @@ function Ktl($, appInfo) {
                             ktl.log.clog('purple', 'knAPI error:');
                             console.log('retries:', this.retryLimit, '\nresponse:', response);
 
-                            if (this.retryLimit-- > 0) {
+                            let unrecoverableError = false;
+                            if (response.status === 400)
+                                unrecoverableError = true;
+
+                            if (!unrecoverableError && this.retryLimit-- > 0) {
                                 var ajaxParams = this; //Backup 'this' otherwise this will become the Window object in the setTimeout.
                                 setTimeout(function () {
                                     $.ajax(ajaxParams);
@@ -14689,7 +14693,12 @@ function Ktl($, appInfo) {
                                     showProgress();
                             })
                             .catch(function (reason) {
-                                handleProcessResolution(-1, 'processAutomatedBulkOps error: ' + reason.stack);
+                                try {
+                                    const reasonMessage = JSON.parse(reason.responseText).errors[0].message;
+                                    handleProcessResolution(-1, 'processAutomatedBulkOps error: ' + reasonMessage);
+                                } catch (err) {
+                                    ktl.core.timedPopup(`Undefined Bulk Operation Error: ${err}`, 'error', 2000);
+                                }
                             })
 
                         function showProgress() {
@@ -18443,12 +18452,13 @@ function Ktl($, appInfo) {
                     ktl.scenes.spinnerWatchdog(false);
                     Knack.showSpinner();
 
-                    var arrayLen = bulkOpsRecIdArray.length;
+                    let idx = 0;
+                    let countDone = 0;
+                    let errorEncountered = 0;
+                    const arrayLen = bulkOpsRecIdArray.length;
 
-                    var idx = 0;
-                    var countDone = 0;
-                    var itv = setInterval(() => {
-                        if (idx < arrayLen)
+                    const itv = setInterval(() => {
+                        if (!errorEncountered && idx < arrayLen)
                             updateRecord(bulkOpsRecIdArray[idx++]);
                         else
                             clearInterval(itv);
@@ -18470,10 +18480,10 @@ function Ktl($, appInfo) {
                                     showProgress();
                             })
                             .catch(function (reason) {
-                                postBulkOpsRestoreState();
-                                setTimeout(() => {
-                                    alert('Bulk Edit Error: ' + reason.stack);
-                                }, 500);
+                                errorEncountered++;
+                                clearInterval(itv);
+                                if (errorEncountered === 1)
+                                    postBulkOpsRestoreState('Bulk Edit Error:', reason);
                             })
 
                         function showProgress() {
@@ -18494,10 +18504,11 @@ function Ktl($, appInfo) {
                     ktl.views.autoRefresh(false);
                     ktl.scenes.spinnerWatchdog(false);
 
-                    var countDone = 0;
-                    var countInprocess = 0;
+                    let countDone = 0;
+                    let countInprocess = 0;
+                    let errorEncountered = false;
                     var itv = setInterval(() => {
-                        if (countInprocess++ < numToProcess)
+                        if (!errorEncountered && countInprocess++ < numToProcess)
                             createRecord();
                         else
                             clearInterval(itv);
@@ -18517,8 +18528,9 @@ function Ktl($, appInfo) {
                                     showProgress();
                             })
                             .catch(function (reason) {
-                                postBulkOpsRestoreState();
-                                alert('Bulk Copy Error: ' + reason.stack);
+                                errorEncountered = true;
+                                clearInterval(itv);
+                                postBulkOpsRestoreState('Bulk Copy Error:', reason);
                             })
 
                         function showProgress() {
@@ -18603,12 +18615,23 @@ function Ktl($, appInfo) {
             return false;
         }
 
-        function postBulkOpsRestoreState() {
+        function postBulkOpsRestoreState(messageText, reason) {
             ktl.core.removeInfoPopup();
             ktl.core.removeTimedPopup();
             Knack.hideSpinner();
             ktl.scenes.spinnerWatchdog();
             ktl.views.autoRefresh();
+
+            if (messageText && reason) {
+                setTimeout(() => {
+                    try {
+                        const reasonMessage = JSON.parse(reason.responseText).errors[0].message;
+                        alert(`${messageText} ${reasonMessage}`);
+                    } catch (err) {
+                        ktl.core.timedPopup(`Undefined Bulk Operation Error: ${messageText} - ${err}`, 'error', 2000);
+                    }
+                }, 500);
+            }
         }
 
         return {
@@ -18645,7 +18668,8 @@ function Ktl($, appInfo) {
                                     showProgress();
                             })
                             .catch(function (reason) {
-                                postBulkOpsRestoreState();
+                                const errorMessage = `deleteRecords - Failed to delete record ${recId}`;
+                                postBulkOpsRestoreState(errorMessage, reason);
                                 reject('deleteRecords - Failed to delete record ' + recId + ', reason: ' + JSON.stringify(reason));
                             })
 
