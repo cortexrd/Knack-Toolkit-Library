@@ -7733,8 +7733,8 @@ function Ktl($, appInfo) {
 
                             if (cellText !== '' && numericFieldTypes.includes(fieldType)) {
                                 cellText = ktl.core.extractNumericValue(cellText, fieldId);
-                                applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
                             }
+                            applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
                         }
                     } else if (viewType === 'form') {
                         cellText = $(`#${viewId} [data-input-id=${fieldId}]`).contents().filter(function () {
