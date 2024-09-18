@@ -3426,11 +3426,7 @@ function Ktl($, appInfo) {
                         const kwFields = kwInstance.params[0];
                         for (var i = 0; i < kwFields.length; i++) {
                             var fieldLabel = kwFields[i];
-
-                            var fieldId = fieldLabel;
-                            if (!fieldLabel.startsWith('field_'))
-                                fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
-
+                            const fieldId = fieldLabel.startsWith('field_') ? fieldLabel : ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
                             if (fieldId) {
                                 const elements = document.querySelectorAll(`#${viewId} [data-input-id="${fieldId}"], #${viewId} .${fieldId}`);
                                 if (elements.length)
@@ -7244,7 +7240,8 @@ function Ktl($, appInfo) {
                     for (let i = 0; i < paramGroups.length; i += 2) {
                         const [firstParam, [fieldLabel, ttipIcon]] = paramGroups.slice(i, i + 2);
                         const ttipText = firstParam.map(item => item.trim()).join(', ');
-                        fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                        const fieldId = fieldLabel.startsWith('field_') ? fieldLabel : ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+
                         const tooltipIcon = ttipIcon || 'fa-question-circle';
 
                         let tooltipIconPosition;
@@ -14106,11 +14103,7 @@ function Ktl($, appInfo) {
                     const kwFields = kwInstance.params[0];
                     for (var i = 0; i < kwFields.length; i++) {
                         var fieldLabel = kwFields[i];
-
-                        var fieldId = fieldLabel;
-                        if (!fieldLabel.startsWith('field_'))
-                            fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
-
+                        const fieldId = fieldLabel.startsWith('field_') ? fieldLabel : ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
                         if (fieldId) {
                             fieldsArray.push(fieldId);
                         } else {
@@ -14329,7 +14322,7 @@ function Ktl($, appInfo) {
                 $(tooltipIconPosition)
                     .append(icon)
                     .find('.table-fixed-label')
-                    .css('display', 'inline-block');
+                    .css('display', 'inline-flex');
 
                 const pos = $(tooltipIconPosition);
                 if (pos.length) {
@@ -20086,7 +20079,7 @@ function Ktl($, appInfo) {
         }
 
         function handleOutsideClick(event) {
-            if (openedPopOverTarget && !$(event.target).closest('#kn-popover, .ktlOutlineDevPopup').length) {
+            if (openedPopOverTarget && !$(event.target).closest('#kn-popover').length) {
                 closePopOver();
                 $(document).off('click.ktlPopOverOutside');
             }
