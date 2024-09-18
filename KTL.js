@@ -7722,15 +7722,18 @@ function Ktl($, appInfo) {
                     }
 
                     const viewType = ktl.views.getViewType(viewId);
-
+                    let fieldType = ktl.fields.getFieldType(fieldId);
+                    let cellText;
                     if (viewType === 'details') {
-                        var cellText;
-                        const cellSelector = $('#' + viewId + ' .' + fieldId + ' .kn-detail-body');
+                        const cellSelector = $(`#${viewId} .${fieldId} .kn-detail-body`);
+
                         if (cellSelector.length) {
-                            if ($(`#${viewId} .${fieldId} .kn-detail-body .kn-rating`).length)
-                                cellText = Knack.views[viewId].record[`${fieldId}`]; //Ratings must get their values differently, from the model.
-                            else
-                                cellText = cellSelector[0].textContent.trim();
+                            const isRatingField = cellSelector.find('.kn-rating').length > 0; //Ratings must get their values differently, from the model.
+                            let cellText = isRatingField ? Knack.views[viewId].record[fieldId] : cellSelector[0].textContent.trim();
+
+                            if (cellText !== '' && numericFieldTypes.includes(fieldType)) {
+                                cellText = ktl.core.extractNumericValue(cellText, fieldId);
+                            }
                             applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
                         }
                     } else if (viewType === 'form') {
@@ -7739,8 +7742,6 @@ function Ktl($, appInfo) {
                         }).text().trim();
                         applyColorizationToCells(fieldId, parameters, cellText, value, '', options);
                     } else { //Grids, Searches and Lists.
-                        let fieldType = ktl.fields.getFieldType(fieldId);
-
                         if (fieldType === 'connection') { //Get display field type.
                             const objId = Knack.objects.getField(fieldId).attributes.relationship.object;
                             const displayFieldId = Knack.objects._byId[objId].attributes.identifier;
