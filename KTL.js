@@ -6708,8 +6708,7 @@ function Ktl($, appInfo) {
         });
 
         function iterateViewReports(view, func) {
-            if (view.type !== 'report')
-                return;
+            if (view.type !== 'report') return;
 
             view.rows.forEach((row, rowIndex) => {
                 row.reports.forEach((report, columnIndex) => {
@@ -6813,6 +6812,13 @@ function Ktl($, appInfo) {
                 iterateViewReports(view, (report, keywords) => {
                     //TODO keywords._sth && stickyReportTableHeader(viewId, keywords, report);
                     //TODO keywords._stc && stickyReportTableColumns(viewId, keywords, report);
+
+                    noFilteringInReport(report, keywords);
+                })
+
+                iterateViewReports(view, (report, keywords) => {
+                    keywords._sth && stickyReportTableHeader(report, keywords);
+                    keywords._stc && stickyReportTableColumns(report, keywords);
 
                     noFilteringInReport(report, keywords);
                 })
@@ -7341,6 +7347,48 @@ function Ktl($, appInfo) {
             } else {
                 ktl.views.stickTableColumns(viewId, columnsCount, backgroundColor);
             }
+        }
+
+        function stickyReportTableHeader(report, keywords) {
+            const _sth = '_sth';
+            let recordsCount = 10;
+            let viewHeight = 800;
+
+            const selector = `kn-report-${report.this.slug}-${report.index + 1}`;
+            const rowCount = $('#'+selector).find('tr').length;
+
+            if (!keywords[_sth] || !rowCount)
+                return;
+
+            if (keywords[_sth].length) {
+                recordsCount = keywords[_sth][0].params[0][0] || recordsCount;
+                viewHeight = keywords[_sth][0].params[0][1] || viewHeight;
+            }
+
+            if (rowCount < recordsCount)
+                return;
+
+
+            ktl.views.stickTableHeader(selector, viewHeight);
+            $(`#${selector} .kn-report-rendered`).find('th').css({'background': 'white'});
+        }
+
+        function stickyReportTableColumns(report, keywords) {
+            const _stc = '_stc';
+            let columnsCount = 1;
+            let backgroundColor = 'rgb(243 246 249)';
+
+            if (!keywords[_stc])
+                return;
+
+            if (keywords[_stc].length) {
+                columnsCount = keywords[_stc][0].params[0][0] || columnsCount;
+                backgroundColor = keywords[_stc][0].params[0][1] || backgroundColor;
+            }
+
+            const selector = `kn-report-${report.this.slug}-${report.index + 1}`;
+
+            ktl.views.stickTableColumns(selector, columnsCount, backgroundColor);
         }
 
         function isBulkOperationEnabled(keywords) {
@@ -14528,24 +14576,24 @@ function Ktl($, appInfo) {
                 })
             },
 
-            stickTableHeader: function (viewId, viewHeight) {
+            stickTableHeader: function (viewSelector, viewHeight) {
                 if (!Knack.app.attributes.design.regions.header.isLegacy)
                     $('.knHeader__menu-dropdown-list').css('z-index', '5');
 
-                $(`#${viewId} table, #${viewId} .kn-table-wrapper`)
+                $(`#${viewSelector} .kn-table-wrapper, #${viewSelector} .kn-report-rendered`)
                     .css('height', viewHeight + 'px')
                     .find('th')
-                    .css({ 'position': 'sticky', 'top': '-2px', 'z-index': '2' });
+                    .css({ 'position': 'sticky', 'top': '1px', 'z-index': '2' });
 
                 if (!cfg.stickGroupingsWithHeader)
                     return;
 
-                ktl.core.waitSelector(`#${viewId} thead tr`).then(() => {
-                    const headerHeight = $(`#${viewId} thead tr`).outerHeight();
+                ktl.core.waitSelector(`#${viewSelector} thead tr`).then(() => {
+                    const headerHeight = $(`#${viewSelector} thead tr`).outerHeight();
                     let stickyTopOffset = headerHeight - 2;
 
                     let groupLevels = new Set();
-                    $(`#${viewId} tbody tr[class*='kn-group-level-']`).each(function () {
+                    $(`#${viewSelector} tbody tr[class*='kn-group-level-']`).each(function () {
                         if (this.className.includes('kn-group-level-')) {
                             groupLevels.add(this.className.match(/kn-group-level-\d+/)[0]);
                         }
@@ -14555,7 +14603,7 @@ function Ktl($, appInfo) {
                         const groupIndex = parseInt(groupLevel.split('-')[3], 10);
                         const outerHeight = $(`.${groupLevel}`).outerHeight();
 
-                        $(`#${viewId} tbody tr.${groupLevel}`).css({
+                        $(`#${viewSelector} tbody tr.${groupLevel}`).css({
                             'position': 'sticky',
                             'top': `${stickyTopOffset - (1 * groupIndex)}px`,
                             'z-index': '4',
@@ -14568,11 +14616,11 @@ function Ktl($, appInfo) {
                 });
             },
 
-            stickTableColumns: function (viewId, columnCount, backgroundColor) {
+            stickTableColumns: function (viewSelector, columnCount, backgroundColor) {
                 let stickyColWidth = 0;
                 for (let i = 1; i <= columnCount; i++) {
-                    const jqthead = $(`#${viewId} thead tr th:nth-child(${i})`);
-                    const jqtbody = $(`#${viewId} tbody tr td:nth-child(${i})`);
+                    const jqthead = $(`#${viewSelector} thead tr th:nth-child(${i})`);
+                    const jqtbody = $(`#${viewSelector} tbody tr td:nth-child(${i})`);
                     const columnWidth = jqthead.outerWidth();
                     stickyColWidth += columnWidth;
                     jqthead.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px' });
