@@ -6810,16 +6810,12 @@ function Ktl($, appInfo) {
                 removeConnectionPicker(viewId);
 
                 iterateViewReports(view, (report, keywords) => {
-                    //TODO keywords._sth && stickyReportTableHeader(viewId, keywords, report);
-                    //TODO keywords._stc && stickyReportTableColumns(viewId, keywords, report);
-
                     noFilteringInReport(report, keywords);
                 })
 
                 iterateViewReports(view, (report, keywords) => {
                     keywords._sth && stickyReportTableHeader(report, keywords);
                     keywords._stc && stickyReportTableColumns(report, keywords);
-
                     noFilteringInReport(report, keywords);
                 })
 
@@ -14196,12 +14192,14 @@ function Ktl($, appInfo) {
             },
 
             hideShowColumns: function (viewId, keywords) {
-                if (!viewId || cfg.hscGlobal) return;
+                if (!viewId) return;
 
-                const kw = '_hsc';
-                if (keywords[kw].length && keywords[kw][0].options) {
-                    const options = keywords[kw][0].options;
-                    if (!ktl.core.hasRoleAccess(options)) return;
+                if (!cfg.hscGlobal) {
+                    const kw = '_hsc';
+                    if (keywords[kw].length && keywords[kw][0].options) {
+                        const options = keywords[kw][0].options;
+                        if (!ktl.core.hasRoleAccess(options)) return;
+                    }
                 }
 
                 ktl.views.addHideShowIconsToTableHeaders(viewId);
@@ -14498,7 +14496,7 @@ function Ktl($, appInfo) {
                     });
                 }
 
-                $(`#${viewId} .kn-table thead i.ktlHideShowColumnIcon`).on('click', function (iconClickEvent) {
+                $(`#${viewId} .kn-table thead i.ktlHideShowColumnIcon`).off('click').on('click', function (iconClickEvent) {
                     iconClickEvent.preventDefault();
                     iconClickEvent.stopPropagation();
 
