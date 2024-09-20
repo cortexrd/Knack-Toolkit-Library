@@ -9685,8 +9685,10 @@ function Ktl($, appInfo) {
                 if (otherParams.disable)
                     ktl.fields.disableFields(viewId, otherParams.disable);
 
+                let closeWindow = false;
                 let timerValueAfterClose;
-                if (otherParams.automation.includes('close')) {
+                if (otherParams && otherParams.automation && otherParams.automation.includes('close')) {
+                    closeWindow = true;
                     //Extract optional timer value in seconds, following 'close'.
                     const closeIndex = otherParams.automation.indexOf('close');
                     timerValueAfterClose =
@@ -9697,7 +9699,7 @@ function Ktl($, appInfo) {
                             : null;
                 }
 
-                if (otherParams.automation.includes('submit')) {
+                if (otherParams && otherParams.automation && otherParams.automation.includes('submit')) {
                     $(`#${viewId} .is-primary`).click();
                     $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
                         processClose();
@@ -9706,6 +9708,7 @@ function Ktl($, appInfo) {
                     processClose();
 
                 function processClose() {
+                    if (!closeWindow) return;
                     if (timerValueAfterClose > 0 || timerValueAfterClose < 172800 /*2 days*/) {
                         setTimeout(() => {
                             window.close();
