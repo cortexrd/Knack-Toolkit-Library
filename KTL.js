@@ -1745,9 +1745,9 @@ function Ktl($, appInfo) {
                 try {
                     for (let key in obj) {
                         if (key === keyToFind) {
-                            if (exactMatch && obj[key] === keyValue)
+                            if (exactMatch && obj[key].trim() === keyValue)
                                 return obj[keyNameToReturn] || obj;
-                            else if (!exactMatch && obj[key].includes(keyValue))
+                            else if (!exactMatch && obj[key].trim().includes(keyValue))
                                 return obj[keyNameToReturn] || obj;
                         } else if (typeof obj[key] === 'object') {
                             let found = this.findKeyWithValueInObject(obj[key], keyToFind, keyValue, keyNameToReturn, exactMatch, maxDepth, currentDepth + 1);
@@ -3090,8 +3090,10 @@ function Ktl($, appInfo) {
                                 data.forEach(row => {
                                     textSelector = `#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`;
                                     divSelector = `${viewId}-bcgDiv-${fieldId}-${row.id}`;
-                                    text = $(`${textSelector} span`)[0].textContent.replace(/<br \/>/g, '\n');
-                                    bcgDiv = drawBarcode(text, textSelector, divSelector);
+                                    if ($(`${textSelector} span`)[0]) {
+                                        text = $(`${textSelector} span`)[0].textContent.replace(/<br \/>/g, '\n');
+                                        bcgDiv = drawBarcode(text, textSelector, divSelector);
+                                    }
                                 })
                             } else if (viewType === 'form') {
                                 textSelector = `#${viewId} .${fieldId}`;
