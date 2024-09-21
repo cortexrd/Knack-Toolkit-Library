@@ -9731,7 +9731,6 @@ function Ktl($, appInfo) {
             if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
             if (!(view.action === 'insert' || view.action === 'create')) return;
             if (!!$('.kn-message:visible').length) return;
-            //TODO: Add protection against looping.  Save last URL and compare: only process if different.
 
             ktl.persistentForm.disablePersistentForm(Knack.router.current_scene_key);
 
@@ -9808,8 +9807,16 @@ function Ktl($, appInfo) {
 
                     function formAutoFillComplete() {
                         if (otherParams && otherParams.automation && otherParams.automation.includes('submit')) {
+                            //Prevent looping in some mobile browser apps where, if the page closed is the last one, it will re-open itself.
+                            //This is solved by comparing the current URL with the last one, and process only if different.
+                            //But still fill the form so user can see the last data submitted.
+                            const lastUrl = ktl.storage.lsGetItem('AFS_LAST_URL', true);
+                            if (lastUrl === window.location.href) return;
+
                             $(`#${viewId} .is-primary`).click();
+
                             $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
+                                ktl.storage.lsSetItem('AFS_LAST_URL', window.location.href, true);
                                 processClose();
                             });
                         } else
