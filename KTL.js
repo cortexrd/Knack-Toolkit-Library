@@ -9643,7 +9643,10 @@ function Ktl($, appInfo) {
 
             ktl.fields.disableFields(viewId, [qrCodeUrlFieldId]);
 
-            let varsObject = {}; //Named after the _vars parameters.  See here: https://learn.knack.com/article/z36i2it02b-how-to-use-url-variables-to-pre-populate-a-form
+            //This feature is Inspired from the _vars parameters here: https://learn.knack.com/article/z36i2it02b-how-to-use-url-variables-to-pre-populate-a-form
+            //But I decided to go beyond and let the user use the field labels instead of field IDs for mapping between the fields of source vs dest tables.
+            //This gives a lot more flexibility.
+            let autoFillParameters = {};
             let urlWithVars;
             let fieldsAutoPopulatedByQrCode;
             let otherParams = {};
@@ -9653,8 +9656,7 @@ function Ktl($, appInfo) {
                 if (group[0] === 'qr') {
                     fieldsAutoPopulatedByQrCode = group.slice(1);
                     for (const autoPopField of fieldsAutoPopulatedByQrCode) {
-                        const fieldId = autoPopField.startsWith('field_') ? autoPopField : ktl.fields.getFieldIdFromLabel(viewId, autoPopField);
-                        varsObject[fieldId] = '';
+                        autoFillParameters[autoPopField] = '';
                     }
                 } else if (group[0] === 'disable') {
                     let disable = group.slice(1);
@@ -9670,22 +9672,31 @@ function Ktl($, appInfo) {
             ktl.core.loadLib('QRGenerator')
                 .then(() => {
                     $(`#${viewId}`).on('input', function (e) {
-                        for (const fieldId in varsObject) {
-                            let value = $(`#${viewId} #${fieldId}`).val();
-
-                            if (ktl.fields.getFieldType(fieldId) === 'connection')
-                                value = [`${document.querySelector(`#${viewId}-${fieldId}`).selectedOptions[0].value}`];
-
-                            varsObject[fieldId] = value;
-                        }
-
                         generateQRCode();
                     })
 
-                    generateQRCode();
+                    $(document).on('KTL.dropDownValueChanged', (event, params) => {
+                        const { viewId: eventViewId, fieldId, records } = params;
+                        if (eventViewId === viewId) {
+                            generateQRCode();
+                        }
+                    })
 
                     function generateQRCode() {
-                        urlWithVars = `${url}?${afsViewId}_vars=${encodeURIComponent(JSON.stringify(varsObject))}`;
+                        for (const fieldLabel in autoFillParameters) {
+                            const fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                            if (fieldId) {
+                                let value;
+                                if (ktl.fields.getFieldType(fieldId) === 'connection')
+                                    value = document.querySelector(`#${viewId}-${fieldId}`).selectedOptions[0].textContent;
+                                else
+                                    value = $(`#${viewId} #${fieldId}`).val();
+
+                                autoFillParameters[fieldLabel] = value;
+                            }
+                        }
+
+                        urlWithVars = `${url}?${afsViewId}_afsVars=${encodeURIComponent(JSON.stringify(autoFillParameters))}`;
 
                         if (!$.isEmptyObject(otherParams))
                             urlWithVars += `&otherParams=${encodeURIComponent(JSON.stringify(otherParams))}`;
@@ -9708,24 +9719,64 @@ function Ktl($, appInfo) {
                             bcgDiv.removeChild(bcgDiv.lastChild);
                         $(`#${viewId}-bcgDiv-${qrCodeUrlFieldId}`).qrcode(barcodeData);
                     }
+
+                    generateQRCode();
                 })
                 .catch(reason => { reject('barcodeGenerator error:', reason); })
         }
 
         function autoFillAndSubmit(view, keywords) {
             const kw = '_afs';
-            if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
 
+            if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
             if (!(view.action === 'insert' || view.action === 'create')) return;
+            if (!!$('.kn-message:visible').length) return;
+            //TODO: Add protection against looping.  Save last URL and compare: only process if different.
 
             ktl.persistentForm.disablePersistentForm(Knack.router.current_scene_key);
 
             const viewId = view.key;
 
             const parts = ktl.core.splitUrl(window.location.href);
-            let otherParams = parts.params.otherParams;
-            if (otherParams) {
-                otherParams = JSON.parse(otherParams);
+            const urlParamsObject = parts.params;
+            const viewAfsVars = `${viewId}_afsVars`;
+            if (!urlParamsObject[viewAfsVars]) return;
+
+            const fields = JSON.parse(urlParamsObject[viewAfsVars]);
+            if ($.isEmptyObject(fields)) return;
+
+            var promisesArray = [];
+
+            for (const fieldLabel in fields) {
+                const fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                if (fieldId) {
+                    let selector;
+                    const fieldType = ktl.fields.getFieldType(fieldId);
+                    let value = fields[fieldLabel];
+                    if (Array.isArray(value))
+                        value = value[0];
+                    if (TEXT_DATA_TYPES.includes(fieldType)) {
+                        selector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} .${fieldId} input`;
+                        if ($(`${selector}`).length) {
+                            $(`${selector}`).val(value);
+                            if (fieldType === 'date_time' && group.length >= 2)
+                                $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(group[2]);
+                        }
+                    } else if (fieldType === 'connection') {
+                        selector = `#${viewId}_${fieldId}_chzn.chzn-container-single`;
+                        if ($(`${selector}`).length) {
+                            promisesArray.push(ktl.views.searchDropdown(value, fieldId, 'exact', false, viewId)
+                                .then(function () { })
+                                .catch(function (foundText) { console.log('_afs error:', foundText); })
+                            );
+                        }
+                    }
+                }
+            }
+
+            const otherParamsStr = parts.params.otherParams;
+            if (otherParamsStr) {
+                const otherParams = JSON.parse(otherParamsStr);
                 if (otherParams.disable)
                     ktl.fields.disableFields(viewId, otherParams.disable);
 
@@ -9743,23 +9794,38 @@ function Ktl($, appInfo) {
                             : null;
                 }
 
-                if (otherParams && otherParams.automation && otherParams.automation.includes('submit')) {
-                    $(`#${viewId} .is-primary`).click();
-                    $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
-                        processClose();
-                    });
-                } else
-                    processClose();
+                setTimeout(() => {
+                    if (promisesArray.length) {
+                        Promise.all(promisesArray)
+                            .then(() => {
+                                formAutoFillComplete();
+                            })
+                            .catch((error) => {
+                                ktl.log.clog('red', 'formAutoFillComplete error: ' + error);
+                            })
+                    } else
+                        formAutoFillComplete();
 
-                function processClose() {
-                    if (!closeWindow) return;
-                    if (timerValueAfterClose > 0 || timerValueAfterClose < 172800 /*2 days*/) {
-                        setTimeout(() => {
-                            window.close();
-                        }, 1000 * timerValueAfterClose);
-                    } else if (!timerValueAfterClose)
-                        window.close();
-                }
+                    function formAutoFillComplete() {
+                        if (otherParams && otherParams.automation && otherParams.automation.includes('submit')) {
+                            $(`#${viewId} .is-primary`).click();
+                            $(document).on('knack-form-submit.' + viewId, function (event, view, record) {
+                                processClose();
+                            });
+                        } else
+                            processClose();
+
+                        function processClose() {
+                            if (!closeWindow) return;
+                            if (timerValueAfterClose > 0 || timerValueAfterClose < 172800 /*2 days*/) {
+                                setTimeout(() => {
+                                    window.close();
+                                }, 1000 * timerValueAfterClose);
+                            } else if (!timerValueAfterClose)
+                                window.close();
+                        }
+                    }
+                }, 200);
             }
         }
 
