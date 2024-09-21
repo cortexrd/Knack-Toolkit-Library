@@ -3692,10 +3692,10 @@ function Ktl($, appInfo) {
             //console.log('saveFormData', data, viewId, fieldId, subField);
             if (!pfIsInitialized || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
-            //Ignore modal scenes, since they cause confusion when being closed without submit.  Issue #326
-            if (Knack.router.scene_view.model.attributes.modal) return;
+            //Ignore modal scenes, since they cause confusion when being closed without submit (Issue #326)
+            //Except if _rlv is used (Issue #370)
+            if (Knack.router.scene_view.model.attributes.modal && !ktlKeywords[viewId]._rlv) return;
 
-            var formDataObj = {};
             var view = Knack.router.scene_view.model.views._byId[viewId];
             if (!view) return;
             var viewAttr = view.attributes;
@@ -3705,6 +3705,7 @@ function Ktl($, appInfo) {
             if (fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
                 return;
 
+            var formDataObj = {};
             var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
             if (formDataObjStr)
                 formDataObj = JSON.parse(formDataObjStr);
@@ -3991,15 +3992,17 @@ function Ktl($, appInfo) {
                     var formDataObj = JSON.parse(formDataObjStr);
 
                     //Process Reload Last Values _rlv
-                    if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv && ktlKeywords[viewId]._rlv.length && ktlKeywords[viewId]._rlv[0].params[0].length) {
-                        const rlvFields = ktlKeywords[viewId]._rlv[0].params[0];
-                        const rlvFieldsId = rlvFields.map(field => field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field));
+                    if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv) {
+                        if (ktlKeywords[viewId]._rlv.length && ktlKeywords[viewId]._rlv[0].params[0].length) {
+                            const rlvFields = ktlKeywords[viewId]._rlv[0].params[0];
+                            const rlvFieldsId = rlvFields.map(field => field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field));
 
-                        Object.keys(formDataObj[viewId]).forEach(persistentFieldId => {
-                            if (!rlvFieldsId.includes(persistentFieldId)) {
-                                delete formDataObj[viewId][persistentFieldId];
-                            }
-                        });
+                            Object.keys(formDataObj[viewId]).forEach(persistentFieldId => {
+                                if (!rlvFieldsId.includes(persistentFieldId)) {
+                                    delete formDataObj[viewId][persistentFieldId];
+                                }
+                            });
+                        }
                     } else
                         delete formDataObj[viewId];
 
