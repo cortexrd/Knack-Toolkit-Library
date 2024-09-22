@@ -4190,6 +4190,18 @@ function Ktl($, appInfo) {
             autocompleteFields(view.key)
         });
 
+        $(document).on('knack-scene-render.any', function (event, scene) {
+            if (ktl.core.getCfg().enabled.autoFocus) {
+                //When page is rendered, prevent auto focused input to open the autocomplete dropdown.
+                //Only to do it after, when user clicks on it.
+                $(document).one('focus', 'input', function () {
+                    setTimeout(() => {
+                        $(document.activeElement).autocomplete('close');
+                    }, 100);
+                });
+            }
+        });
+
         $(document).on('KTL.persistentForm.completed.scene', function (event, scene) {
             if (!scene || !scene.views) return;
             scene.views.forEach(view => {
