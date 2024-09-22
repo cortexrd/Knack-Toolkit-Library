@@ -3479,9 +3479,10 @@ function Ktl($, appInfo) {
                 for (const field of fields) {
                     const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
                     const fieldType = this.getFieldType(fieldId);
-                    if (fieldType === 'connection')
+                    if (fieldType === 'connection') {
                         $(`#${viewId} [data-input-id="${fieldId}"] a`).attr('disabled', true);
-                    else
+                        $(`#${viewId} [data-input-id="${fieldId}"]`).addClass('ktlLinkDisabled');
+                    } else
                         $(`#${viewId} [data-input-id="${fieldId}"] input`).attr('disabled', true);
                 }
             },
@@ -7464,22 +7465,24 @@ function Ktl($, appInfo) {
 
                 elements.find('a').removeAttr('href').addClass('ktlLinkDisabled');
                 elements.find('.redactor-editor').attr('contenteditable', 'false');
-                elements.find('input').attr('disabled', 'disabled');
-                elements.find('select').attr('disabled', 'disabled');
-                elements.find('textarea').attr('disabled', 'disabled');
+                elements.find('input').attr('disabled', true);
+                elements.addClass('ktlLinkDisabled'); //To prevent clicking on dropdowns.
+                elements.find('.chzn-single').css('background-color', 'rgba(0, 0, 0, 0.1)'); //Special case for single selection dropdowns.
+                elements.find('select').attr('disabled', true);
+                elements.find('textarea').attr('disabled', true);
                 elements.find('.rateit').rateit('readonly', true);
                 elements.filter('.kn-input-signature').css('pointer-events', 'none');
 
                 if (viewType === 'form') {
                     $(document).one('KTL.persistentForm.completed.scene', () => {
                         // Persistent Form is adding and removing the attribute during its process
-                        $(`#${viewId} .kn-button`).attr('disabled', 'disabled');
+                        $(`#${viewId} .kn-button`).attr('disabled', true);
                         ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
                     });
                 }
             }
 
-            $(`#${viewId} .kn-button`).attr('disabled', 'disabled');
+            $(`#${viewId} .kn-button`).attr('disabled', true);
             ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
         }
 
