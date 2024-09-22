@@ -4196,7 +4196,10 @@ function Ktl($, appInfo) {
                 //Only to do it after, when user clicks on it.
                 $(document).one('focus', 'input', function () {
                     setTimeout(() => {
-                        $(document.activeElement).autocomplete('close');
+                        if (document.activeElement &&
+                            $(document.activeElement).data('ui-autocomplete')) {
+                            $(document.activeElement).autocomplete('close');
+                        }
                     }, 100);
                 });
             }
