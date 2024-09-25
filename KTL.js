@@ -214,7 +214,6 @@ function Ktl($, appInfo) {
             paramStr = '[' + paramStr + ']';
 
         const paramGroups = parseKeywordParamGroups(paramStr) || [];
-        console.log(paramGroups);
         extractParamsAndOptions(paramGroups, params, options);
 
         const parameters = { params: params };
