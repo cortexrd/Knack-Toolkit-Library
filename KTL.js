@@ -228,10 +228,39 @@ function Ktl($, appInfo) {
     }
 
     function parseKeywordParamGroups(kwGroups = '') {
-        const cleanedStr = kwGroups.trim().replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); //Remove spaces around square brackets.
+        const cleanedStr = kwGroups.trim().replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); // Remove spaces around square brackets.
         const elements = cleanedStr.split('],[');
 
-        return elements.map(element => element.replace('[', '').replace(']', ''));
+        return elements.map(element => {
+            // Skip elements that do not contain 'ktlTarget' or any jQuery brackets
+            if (!element.includes('ktlTarget') && !/\$\(['"`]/.test(element)) {
+                return element.replace('[', '').replace(']', '');
+            }
+
+            let insideDollarBrackets = false;
+            let result = [];
+
+            // Loop through the characters to find square brackets inside a JQuery Bracket
+            for (let i = 0; i < element.length; i++) {
+                const char = element[i];
+
+                if (char === '$' && element[i + 1] === '(') {
+                    insideDollarBrackets = true;
+                }
+
+                if (insideDollarBrackets && char === ')') {
+                    insideDollarBrackets = false;
+                }
+
+                if ((char === '[' || char === ']') && !insideDollarBrackets) {
+                    continue;
+                }
+
+                result.push(char);
+            }
+
+            return result.join('');
+        });
     }
 
     function extractParamsAndOptions(paramGroups = [], params = {}, options = {}) {
