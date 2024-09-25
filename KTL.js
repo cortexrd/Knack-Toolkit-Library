@@ -214,6 +214,7 @@ function Ktl($, appInfo) {
             paramStr = '[' + paramStr + ']';
 
         const paramGroups = parseKeywordParamGroups(paramStr) || [];
+        console.log(paramGroups);
         extractParamsAndOptions(paramGroups, params, options);
 
         const parameters = { params: params };
@@ -240,16 +241,21 @@ function Ktl($, appInfo) {
             let insideDollarBrackets = false;
             let result = [];
 
+            let startingQuote = null;
             // Loop through the characters to find square brackets inside a JQuery Bracket
             for (let i = 0; i < element.length; i++) {
                 const char = element[i];
 
-                if (char === '$' && element[i + 1] === '(') {
+                // Check for the start of jQuery brackets followed by a quote
+                if (char === '$' && element[i + 1] === '(' && (element[i + 2] === '"' || element[i + 2] === "'" || element[i + 2] === '`')) {
                     insideDollarBrackets = true;
+                    startingQuote = element[i + 2]; // Store the starting quote
                 }
 
-                if (insideDollarBrackets && char === ')') {
+                // Check for the end of jQuery brackets followed by the matching quote
+                if (insideDollarBrackets && char === ')' && element[i - 1] === startingQuote) {
                     insideDollarBrackets = false;
+                    startingQuote = null; // Reset the starting quote
                 }
 
                 if ((char === '[' || char === ']') && !insideDollarBrackets) {
