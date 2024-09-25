@@ -232,7 +232,6 @@ function Ktl($, appInfo) {
         const elements = cleanedStr.split('],[');
 
         return elements.map(element => {
-            // Skip elements that do not contain 'ktlTarget' or any jQuery brackets
             if (!element.includes('ktlTarget') && !/\$\(['"`]/.test(element)) {
                 return element.replace('[', '').replace(']', '');
             }
@@ -248,13 +247,13 @@ function Ktl($, appInfo) {
                 // Check for the start of jQuery brackets followed by a quote
                 if (char === '$' && element[i + 1] === '(' && (element[i + 2] === '"' || element[i + 2] === "'" || element[i + 2] === '`')) {
                     insideDollarBrackets = true;
-                    startingQuote = element[i + 2]; // Store the starting quote
+                    startingQuote = element[i + 2];
                 }
 
                 // Check for the end of jQuery brackets followed by the matching quote
                 if (insideDollarBrackets && char === ')' && element[i - 1] === startingQuote) {
                     insideDollarBrackets = false;
-                    startingQuote = null; // Reset the starting quote
+                    startingQuote = null;
                 }
 
                 if ((char === '[' || char === ']') && !insideDollarBrackets) {
