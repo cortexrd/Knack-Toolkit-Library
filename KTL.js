@@ -244,13 +244,13 @@ function Ktl($, appInfo) {
             for (let i = 0; i < element.length; i++) {
                 const char = element[i];
 
-                // Check for the start of jQuery brackets prefixed by a quote
+                // Check for the start of jQuery brackets followed by a quote
                 if (char === '$' && element[i + 1] === '(' && (element[i + 2] === '"' || element[i + 2] === "'" || element[i + 2] === '`')) {
                     insideDollarBrackets = true;
                     startingQuote = element[i + 2];
                 }
 
-                // Check for the end of jQuery brackets followed by the matching quote
+                // Check for the end of jQuery brackets prefixed by the matching quote
                 if (insideDollarBrackets && char === ')' && element[i - 1] === startingQuote) {
                     insideDollarBrackets = false;
                     startingQuote = null;
