@@ -244,7 +244,7 @@ function Ktl($, appInfo) {
             for (let i = 0; i < element.length; i++) {
                 const char = element[i];
 
-                // Check for the start of jQuery brackets followed by a quote
+                // Check for the start of jQuery brackets prefixed by a quote
                 if (char === '$' && element[i + 1] === '(' && (element[i + 2] === '"' || element[i + 2] === "'" || element[i + 2] === '`')) {
                     insideDollarBrackets = true;
                     startingQuote = element[i + 2];
