@@ -2369,28 +2369,10 @@ function Ktl($, appInfo) {
                 }
             })
 
-            //Calendars
-            //...Date
-            $(`#${viewId} .knack-date`).datepicker().change(function (e) {
+            //Date and Time fields
+            $(`#${viewId} .kn-input-date_time`).on('change', function (e) {
                 processFieldChanged({ text: e.target.value, e: e });
-            })
-
-            //...Time
-            const timepickers = $(`#${viewId} .kn-time`);
-            if (timepickers.length) {
-                if (!$._data($(timepickers)[0], "events").change) {
-                    Knack.views[viewId].render();
-                } else {
-                    timepickers.each((index, element) => {
-                        const timePickerSelector = `#${element.id}`;
-                        if ($._data($(timePickerSelector)[0], "events").change) {
-                            $(timePickerSelector).on('change', function (e) {
-                                processFieldChanged({ text: e.target.value, e: e });
-                            });
-                        }
-                    })
-                }
-            }
+            });
 
             //More to come...
             //TODO: multiple choices, all formats
@@ -4051,11 +4033,14 @@ function Ktl($, appInfo) {
             //For KTL internal use.  Add Change event handlers for Calendars, etc.
             ktlOnFieldValueChanged: function ({ viewId: viewId, fieldId: fieldId, recId: recId, text: text, e: e }) {
                 if (!fieldsToExclude.includes(fieldId)) {
-                    let longestWord = ktl.core.findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
-
-                    if (recId)
-                        longestWord += '-' + recId;
-                    saveFormData(longestWord, viewId, fieldId);
+                    const fieldType = ktl.fields.getFieldType(fieldId);
+                    let textToSave = text;
+                    if (fieldType === 'connection') {
+                        textToSave = ktl.core.findLongestWord(text); //Maximize your chances of finding something unique, thus reducing the number of records found.
+                        if (recId)
+                            textToSave += '-' + recId;
+                    }
+                    saveFormData(textToSave, viewId, fieldId);
                     $(document).trigger('KTL.fieldValueChanged', { viewId: viewId, fieldId: fieldId, text: text, e: e });
                 }
             },
