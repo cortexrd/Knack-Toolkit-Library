@@ -228,10 +228,43 @@ function Ktl($, appInfo) {
     }
 
     function parseKeywordParamGroups(kwGroups = '') {
-        const cleanedStr = kwGroups.trim().replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); //Remove spaces around square brackets.
+        const cleanedStr = kwGroups.trim().replace(/\s*\[\s*/g, '[').replace(/\s*\]\s*/g, ']'); // Remove spaces around square brackets.
         const elements = cleanedStr.split('],[');
 
-        return elements.map(element => element.replace('[', '').replace(']', ''));
+        return elements.map(element => {
+            if (!element.includes('ktlTarget') && !/\$\(['"`]/.test(element)) {
+                return element.replace('[', '').replace(']', '');
+            }
+
+            let insideDollarBrackets = false;
+            let result = [];
+
+            let startingQuote = null;
+            // Loop through the characters to find square brackets inside a JQuery Bracket
+            for (let i = 0; i < element.length; i++) {
+                const char = element[i];
+
+                // Check for the start of jQuery brackets followed by a quote
+                if (char === '$' && element[i + 1] === '(' && (element[i + 2] === '"' || element[i + 2] === "'" || element[i + 2] === '`')) {
+                    insideDollarBrackets = true;
+                    startingQuote = element[i + 2];
+                }
+
+                // Check for the end of jQuery brackets prefixed by the matching quote
+                if (insideDollarBrackets && char === ')' && element[i - 1] === startingQuote) {
+                    insideDollarBrackets = false;
+                    startingQuote = null;
+                }
+
+                if ((char === '[' || char === ']') && !insideDollarBrackets) {
+                    continue;
+                }
+
+                result.push(char);
+            }
+
+            return result.join('');
+        });
     }
 
     function extractParamsAndOptions(paramGroups = [], params = {}, options = {}) {
