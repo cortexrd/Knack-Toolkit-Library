@@ -12659,15 +12659,14 @@ function Ktl($, appInfo) {
                 columns.forEach(col => {
                     const header = col.header.trim();
                     if (headers.includes(header) || fields.includes(col.id)) {
-                        const thead = $('#' + viewId + ' thead tr th:textEquals("' + header + '"):not(.ktlDisplayNone_hc)');
+                        const thead = $(`#${viewId} thead tr th:textEquals("${header}"):not(.ktlDisplayNone_hc)`);
                         if (thead.length) {
-                            var cellIndex = thead[0].cellIndex;
-                            thead[0].classList.add('ktlDisplayNone_hc');
-                            $('#' + viewId + ' tbody tr:not(.kn-table-group) td:nth-child(' + (cellIndex + 1) + ')').addClass('ktlDisplayNone_hc');
+                            const cellIndex = thead[0].cellIndex;
+                            thead.addClass('ktlDisplayNone_hc');
+                            $(`#${viewId} tbody tr:not(.kn-table-group) > td:nth-child(${cellIndex + 1}):not(td tr > td)`).addClass('ktlDisplayNone_hc');
                         }
                     }
                 });
-
                 ktl.views.fixTableRowsAlignment(viewId);
             },
 
