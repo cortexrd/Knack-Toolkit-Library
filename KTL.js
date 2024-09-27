@@ -12645,7 +12645,7 @@ function Ktl($, appInfo) {
                         if (thead.length) {
                             const cellIndex = thead[0].cellIndex;
                             thead.addClass('ktlDisplayNone_hc');
-                            $(`#${viewId} tbody tr:not(.kn-table-group) > td:nth-child(${cellIndex + 1}):not(td table tr > td)`).addClass('ktlDisplayNone_hc');
+                            $(`#${viewId} tbody tr:not(.kn-table-group) > td:nth-child(${cellIndex + 1}):not(td tr > td)`).addClass('ktlDisplayNone_hc');
                         }
                     }
                 });
