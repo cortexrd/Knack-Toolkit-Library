@@ -2376,9 +2376,21 @@ function Ktl($, appInfo) {
             })
 
             //...Time
-            $(`#${viewId} .kn-time`).timepicker().change(function (e) {
-                processFieldChanged({ text: e.target.value, e: e });
-            })
+            const timepickers = $(`#${viewId} .kn-time`);
+            if (timepickers.length) {
+                if (!$._data($(timepickers)[0], "events").change) {
+                    Knack.views[viewId].render();
+                } else {
+                    timepickers.each((index, element) => {
+                        const timePickerSelector = `#${element.id}`;
+                        if ($._data($(timePickerSelector)[0], "events").change) {
+                            $(timePickerSelector).on('change', function (e) {
+                                processFieldChanged({ text: e.target.value, e: e });
+                            });
+                        }
+                    })
+                }
+            }
 
             //More to come...
             //TODO: multiple choices, all formats
@@ -3033,16 +3045,18 @@ function Ktl($, appInfo) {
                             } else {
                                 //Basic params, typically first group.
                                 if (group.length >= 1) {
-                                    const sizeParam = Number(group[0]);
-                                    if (isNaN(sizeParam)) {
-                                        ktl.log.clog('purple', 'barcodeGenerator called with invalid size:', viewId, sizeParam);
-                                        return;
-                                    }
+                                    let sizeParam = Number(group[0]);
+                                    if (isNaN(sizeParam) || sizeParam < 30)
+                                        sizeParam = size;
 
                                     size = Math.max(30, sizeParam);
 
                                     if (group.length >= 2) {
                                         fieldId = group[1];
+
+                                        if (!fieldId)
+                                            findFirstFieldInView();
+
                                         if (!fieldId.startsWith('field_'))
                                             fieldId = ktl.fields.getFieldIdFromLabel(viewId, fieldId);
 
@@ -3057,8 +3071,10 @@ function Ktl($, appInfo) {
                                 }
                             }
                         }
-                    } else {
-                        //If no field is specified, then try to find the first avaiable field in the view.
+                    } else
+                        findFirstFieldInView();
+
+                    function findFirstFieldInView(){
                         const fieldSel = $('#' + viewId + ' [class*="field_"]:first');
                         if (fieldSel.length) {
                             var classes = fieldSel[0].classList.value;
@@ -3084,14 +3100,18 @@ function Ktl($, appInfo) {
                             if (viewType === 'details') {
                                 textSelector = `#${viewId} .${fieldId} .kn-detail-body span`;
                                 divSelector = `${viewId}-bcgDiv-${fieldId}`;
-                                text = $(`${textSelector} span`)[0].textContent.replace(/<br \/>/g, '\n');
-                                drawBarcode(text, textSelector, divSelector);
+                                const spanSelector = $(`${textSelector} span`);
+                                if (spanSelector.length) {
+                                    text = spanSelector[0].textContent.replace(/<br \/>/g, '\n');
+                                    drawBarcode(text, textSelector, divSelector);
+                                }
                             } else if (viewType === 'list') {
                                 data.forEach(row => {
                                     textSelector = `#${viewId} [data-record-id="${row.id}"] .${fieldId} .kn-detail-body span`;
                                     divSelector = `${viewId}-bcgDiv-${fieldId}-${row.id}`;
-                                    if ($(`${textSelector} span`)[0]) {
-                                        text = $(`${textSelector} span`)[0].textContent.replace(/<br \/>/g, '\n');
+                                    const spanSelector = $(`${textSelector} span`);
+                                    if (spanSelector.length) {
+                                        text = spanSelector[0].textContent.replace(/<br \/>/g, '\n');
                                         bcgDiv = drawBarcode(text, textSelector, divSelector);
                                     }
                                 })
