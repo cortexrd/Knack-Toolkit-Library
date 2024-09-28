@@ -3728,12 +3728,12 @@ function Ktl($, appInfo) {
             //console.log('saveFormData', data, viewId, fieldId, subField);
             if (!pfIsInitialized || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
-            const fieldObj = Knack.objects.getField(fieldId);
-            if (!fieldObj) return;
+            const fieldType = ktl.fields.getFieldType(fieldId);
+            if (!fieldType || fieldType === 'password') return;
 
             //Ignore modal scenes, since they cause confusion when being closed without submit (Issue #326)
             //Except if _rlv is used (Issue #370)
-            if (Knack.router.scene_view.model.attributes.modal && !ktlKeywords[viewId]._rlv) return;
+            if (Knack.router.scene_view.model.attributes.modal && (!ktlKeywords[viewId] || (ktlKeywords[viewId] && !ktlKeywords[viewId]._rlv))) return;
 
             var view = Knack.router.scene_view.model.views._byId[viewId];
             if (!view) return;
@@ -3749,15 +3749,12 @@ function Ktl($, appInfo) {
             if (formDataObjStr)
                 formDataObj = JSON.parse(formDataObjStr);
 
-
-            if (fieldObj.attributes && fieldObj.attributes.type === 'password') return; //Ignore passwords.
-
             //console.log('saveFormData: formDataObj =', formDataObj);
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
 
             if (!subField) {
                 if (typeof data === 'string') {
-                    if (data === 'Select' && fieldObj.attributes && (fieldObj.attributes.type === 'connection' || fieldObj.attributes.type === 'user_roles'))
+                    if (data === 'Select' && (fieldType === 'connection' || fieldType === 'user_roles'))
                         data = ''; //Do not save the placeholder 'Select';
                 } else { //Object
                     data = JSON.stringify(data);
@@ -3765,8 +3762,17 @@ function Ktl($, appInfo) {
 
                 if (!data)
                     delete formDataObj[viewId][fieldId];
-                else
-                    formDataObj[viewId][fieldId] = data;
+                else {
+                    if (fieldType === 'date_time') {
+                        const fieldRootSelector = `#${viewId}-${fieldId}`;
+                        const dateTimeFieldsSuffixes = [``, `-time`, `-time-to`, `-to`];
+                        for (const fieldSuffix of dateTimeFieldsSuffixes) {
+                            if ($(`${fieldRootSelector}${fieldSuffix}`).length)
+                                formDataObj[viewId][`${fieldId}${fieldSuffix}`] = $(`${fieldRootSelector}${fieldSuffix}`).val();
+                        }
+                    } else
+                        formDataObj[viewId][fieldId] = data;
+                }
             } else { //Some field types like Name and Address have sub-fields.
                 formDataObj[viewId][fieldId] = formDataObj[viewId][fieldId] ? formDataObj[viewId][fieldId] : {};
                 formDataObj[viewId][fieldId][subField] = data;
@@ -3886,7 +3892,8 @@ function Ktl($, appInfo) {
 
                         //Object.keys(formDataObj[view.key]).forEach(fieldId => {
                         const keys = Object.keys(formDataObj[view.key]);
-                        for (const fieldId of keys) {
+                        for (const fieldKey of keys) {
+                            const fieldId = fieldKey.match(/field_\d+/)[0];
                             if (fieldsToExclude.includes(fieldId)) {
                                 ktl.log.clog('purple', 'Skipped field for PF: ' + fieldId);
                                 continue; //JIC - should never happen since fieldsToExclude are never saved in the first place.
