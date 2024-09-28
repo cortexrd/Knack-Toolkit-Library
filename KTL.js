@@ -3728,6 +3728,9 @@ function Ktl($, appInfo) {
             //console.log('saveFormData', data, viewId, fieldId, subField);
             if (!pfIsInitialized || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
 
+            const fieldObj = Knack.objects.getField(fieldId);
+            if (!fieldObj) return;
+
             //Ignore modal scenes, since they cause confusion when being closed without submit (Issue #326)
             //Except if _rlv is used (Issue #370)
             if (Knack.router.scene_view.model.attributes.modal && !ktlKeywords[viewId]._rlv) return;
@@ -3746,18 +3749,16 @@ function Ktl($, appInfo) {
             if (formDataObjStr)
                 formDataObj = JSON.parse(formDataObjStr);
 
-            var fieldObj = Knack.objects.getField(fieldId);
-            if (fieldObj.attributes.type === 'password') return; //Ignore passwords.
+
+            if (fieldObj.attributes && fieldObj.attributes.type === 'password') return; //Ignore passwords.
 
             //console.log('saveFormData: formDataObj =', formDataObj);
             formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
 
             if (!subField) {
                 if (typeof data === 'string') {
-                    if (fieldObj) {
-                        if (data === 'Select' && (fieldObj.attributes.type === 'connection' || fieldObj.attributes.type === 'user_roles'))
-                            data = ''; //Do not save the placeholder 'Select';
-                    }
+                    if (data === 'Select' && fieldObj.attributes && (fieldObj.attributes.type === 'connection' || fieldObj.attributes.type === 'user_roles'))
+                        data = ''; //Do not save the placeholder 'Select';
                 } else { //Object
                     data = JSON.stringify(data);
                 }
