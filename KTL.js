@@ -6875,12 +6875,11 @@ function Ktl($, appInfo) {
                 removeConnectionPicker(viewId);
 
                 iterateViewReports(view, (report, keywords) => {
-                    noFilteringInReport(report, keywords);
-                })
+                    if (keywords) {
+                        keywords._sth && stickyReportTableHeader(report, keywords);
+                        keywords._stc && stickyReportTableColumns(report, keywords);
+                    }
 
-                iterateViewReports(view, (report, keywords) => {
-                    keywords._sth && stickyReportTableHeader(report, keywords);
-                    keywords._stc && stickyReportTableColumns(report, keywords);
                     noFilteringInReport(report, keywords);
                 })
 
