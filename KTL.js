@@ -18924,7 +18924,7 @@ function Ktl($, appInfo) {
             keyboardDetected: false,
         };
 
-        const swUpdateViewId = ktl.core.getViewIdByTitle('SW Update');
+        const swUpdateViewId = ktl.core.getViewIdByTitle('SW Update', '', true);
         var cfg = {
             appBcstSWUpdateViewId: swUpdateViewId,
             softwareUpdatesEnabled: !!swUpdateViewId,
