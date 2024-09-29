@@ -17237,7 +17237,7 @@ function Ktl($, appInfo) {
                 var rec = ktl.views.findRecord(data, cfg.appSettingsItemFld, 'APP_KTL_VERSIONS');
                 if (rec) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
-                    if (newSWVersion !== APP_KTL_VERSIONS) {
+                    if (newSWVersion !== APP_KTL_VERSIONS && ktl.sysInfo.getCfg().softwareUpdatesEnabled) {
                         const ktlCode = ktl.storage.lsGetItem('ktlCode', true);
                         if (['dev', 'beta', 'local'].includes(ktlCode) || /^\d.*\./.test(ktlCode)) {
                             //Dev, Beta, Local or specific version, ignore.
@@ -18924,8 +18924,10 @@ function Ktl($, appInfo) {
             keyboardDetected: false,
         };
 
+        const swUpdateViewId = ktl.core.getViewIdByTitle('SW Update');
         var cfg = {
-            appBcstSWUpdateViewId: ktl.core.getViewIdByTitle('SW Update', Knack.router.current_scene_key, true),
+            appBcstSWUpdateViewId: swUpdateViewId,
+            softwareUpdatesEnabled: !!swUpdateViewId,
         };
 
         //Comes from here:  https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
@@ -19159,6 +19161,10 @@ function Ktl($, appInfo) {
 
             setCfg: function (cfgObj = {}) {
                 cfgObj.recoveryWatchdogEnabled && (cfg.recoveryWatchdogEnabled = cfgObj.recoveryWatchdogEnabled);
+            },
+
+            getCfg: function () {
+                return cfg;
             },
 
             //See list here: https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords
