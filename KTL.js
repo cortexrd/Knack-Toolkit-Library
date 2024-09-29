@@ -7175,23 +7175,24 @@ function Ktl($, appInfo) {
 
         function noFilteringInReport(report, keywords) {
             const kw = '_nf';
-            if (!report || !keywords || !keywords[kw] || !keywords[kw].length)
-                return;
+            if (!report) return;
 
-            if (keywords[kw][0].options && !ktl.core.hasRoleAccess(keywords[kw][0].options))
-                return;
-
-            const selector = `kn-report-${report.this.slug}-${report.index + 1}`;
-            const options = keywords[kw][0].params[0];
-
-            const optionsFromFields = Object.entries(ktl.views.getAllFieldsWithKeywordsInObject(report.source.object))
+            const noFilteringFieldsFromFields = Object.entries(ktl.views.getAllFieldsWithKeywordsInObject(report.source.object))
                 .filter(([id, keywords]) => Object.keys(keywords).includes(kw))
                 .filter(([id, keywords]) => {
                     return !keywords[kw].length || !keywords[kw][0].options || ktl.core.hasRoleAccess(keywords[kw][0].options);
                 })
                 .map(e => e[0]);
 
-            removeFilterOptions(selector, [...options, ...optionsFromFields]);
+            let noFilteringFieldsFromReport = [];
+            if (keywords && keywords[kw] && keywords[kw].length) {
+                if (!keywords[kw][0].options || (keywords[kw][0].options && ktl.core.hasRoleAccess(keywords[kw][0].options))) {
+                    noFilteringFieldsFromReport = keywords[kw][0].params[0];
+                }
+            }
+
+            const selector = `kn-report-${report.this.slug}-${report.index + 1}`;
+            removeFilterOptions(selector, [...noFilteringFieldsFromReport, ...noFilteringFieldsFromFields]);
         }
 
         function refreshViewsAfterSubmit(viewId = '', keywords) {
