@@ -11260,20 +11260,29 @@ function Ktl($, appInfo) {
             }
         }
 
-        let viewStates = {};
+        const viewStates = {};
 
         function hideShowView({ key: viewId }, keywords) {
             const kw = '_hsv';
             if (!viewId || !keywords || !keywords[kw]) return;
 
+            const viewType = ktl.views.getViewType(viewId);
+            const keywordParams = keywords[kw].length && keywords[kw][0].params;
+
+            let saveViewState = true;
             let delay = 500;
             let showViewOnLoad = false;
-            const viewType = ktl.views.getViewType(viewId);
 
-            if (keywords[kw].length && keywords[kw][0].params) {
-                const [delayParam, showViewOnLoadParam = ''] = keywords[kw][0].params[0];
-                delay = parseInt(delayParam, 10) || delay;
-                showViewOnLoad = showViewOnLoadParam.toLowerCase() === 'true';
+            if (keywordParams) {
+                for (const paramGroup of keywordParams) {
+                    if (paramGroup.length === 2 && paramGroup[0] === 'save' && paramGroup[1] === 'false') {
+                        saveViewState = false;
+                    } else {
+                        const [delayParam, showViewOnLoadParam = ''] = paramGroup;
+                        delay = parseInt(delayParam, 10) || delay;
+                        showViewOnLoad = showViewOnLoadParam.toLowerCase() === 'true';
+                    }
+                }
             }
 
             if (!viewStates[viewId]) {
@@ -11300,7 +11309,9 @@ function Ktl($, appInfo) {
             const shrinkLinkHTML = `
                 <a class="ktlShrinkLink" id="${hideShowId}_shrink_link">
                     Shrink &nbsp;<span class="ktlArrow ktlUp" id="${hideShowId}_arrow">◀</span>
-                </a>`;
+                </a>
+            `;
+
             if (!$(`#${hideShowId}_shrink_link`).length) {
                 viewElement.find('.ktlHideShowSection').append(shrinkLinkHTML);
             }
@@ -11355,7 +11366,9 @@ function Ktl($, appInfo) {
                     hiddenSection.slideUp(delay);
                     arrowSelector.removeClass('ktlUp').addClass('ktlDown');
                     buttonSelector.removeClass('ktlActive');
-                    viewStates[viewId] = false;
+                    if (saveViewState) {
+                        viewStates[viewId] = false;
+                    }
                 } else {
                     hiddenSection.slideDown(delay, () => {
                         const keywordsArray = ktl.core.getKeywordsByType(viewId, '_sth');
@@ -11365,7 +11378,9 @@ function Ktl($, appInfo) {
                     });
                     arrowSelector.removeClass('ktlDown').addClass('ktlUp');
                     buttonSelector.addClass('ktlActive');
-                    viewStates[viewId] = true;
+                    if (saveViewState) {
+                        viewStates[viewId] = true;
+                    }
                 }
             }
         }
