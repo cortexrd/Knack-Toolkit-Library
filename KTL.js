@@ -2376,7 +2376,7 @@ function Ktl($, appInfo) {
 
             //Dropdowns
             let chosenUpdateTimeout;
-            $(`#${viewId} .chzn-select`).chosen().change(function (e, p) {
+            $(`#${viewId} .chzn-select`).on('change', function (e) {
                 if ($(`.ktlPersistenFormLoadedScene`).length) {
                     if (e.target.id && e.target.selectedOptions) {
                         //This chosenUpdateTimeout is required to ignore the first undesired change event.
