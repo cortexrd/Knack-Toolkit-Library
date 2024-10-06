@@ -9283,42 +9283,44 @@ function Ktl($, appInfo) {
                 const srcViewTitle = params[0][0];
                 const srcViewId = ktl.scenes.findViewWithTitle(srcViewTitle, true, dstViewId);
 
-                ktl.views.waitViewDataReady(srcViewId)
-                    .then(() => { srcDataReady(); })
-                    .catch(reason => {
-                        ktl.log.clog('purple', `copyRecordsFromView - Timeout waiting for data: ${srcViewId}`);
-                        console.error(reason);
-                    })
 
-                function srcDataReady() {
-                    const srcData = Knack.views[srcViewId].model.data.models;
-                    if (!srcData.length) return;
 
-                    let needConfirm = true;
-                    if (params[0].length >= 2 && params[0][1] === 'auto')
-                        needConfirm = false;
+                let needConfirm = true;
+                if (params[0].length >= 2 && params[0][1] === 'auto')
+                    needConfirm = false;
 
-                    if (params[0].length >= 3 && params[0][2]) {
-                        //Add a start button
-                        const buttonLabel = params[0][2];
-                        let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
-                        const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `cpyfrom-${dstViewId}-${buttonLabel}`);
-                        $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', e => {
-                            if (needConfirm) {
-                                if (confirm(`Proceed with copy?`))
-                                    proceed();
-                            } else
-                                proceed();
-                        });
-                    } else { //No button
+                if (params[0].length >= 3 && params[0][2]) {
+                    //Add a start button
+                    const buttonLabel = params[0][2];
+                    let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
+                    const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `cpyfrom-${dstViewId}-${buttonLabel}`);
+                    $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', e => {
                         if (needConfirm) {
                             if (confirm(`Proceed with copy?`))
-                                proceed();
+                                waitSourceDataReady();
                         } else
-                            proceed();
-                    }
+                            waitSourceDataReady();
+                    });
+                } else { //No button
+                    if (needConfirm) {
+                        if (confirm(`Proceed with copy?`))
+                            waitSourceDataReady();
+                    } else
+                        waitSourceDataReady();
+                }
+
+                function waitSourceDataReady() {
+                    ktl.views.waitViewDataReady(srcViewId)
+                        .then(() => { proceed(); })
+                        .catch(reason => {
+                            ktl.log.clog('purple', `copyRecordsFromView - Timeout waiting for data: ${srcViewId}`);
+                            console.error(reason);
+                        })
 
                     function proceed() {
+                        const srcData = Knack.views[srcViewId].model.data.models;
+                        if (!srcData.length) return;
+
                         let mode = 'add';
                         if (params[0].length >= 4 && params[0][3]) {
                             if (['add', 'edit', 'api'].includes(params[0][3]))
