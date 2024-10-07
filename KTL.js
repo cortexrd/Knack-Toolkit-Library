@@ -9270,321 +9270,342 @@ function Ktl($, appInfo) {
                 return;
             }
 
+            let srcViewId;
+            let options;
+            let params;
+            let mode;
+            let needsRefresh = false;
+
             const kwList = ktl.core.getKeywordsByType(dstViewId, kw);
-            kwList.forEach(kwInstance => { execKw(kwInstance); })
+            processKwList(kwList).then(() => {
+                if (needsRefresh)
+                    ktl.views.refreshView(dstViewId);
+            }).catch(error => {
+                console.error("An error occurred in copyRecordsFromView:", error);
+            });
 
-            function execKw(kwInstance) {
-                const options = kwInstance.options;
-                if (!ktl.core.hasRoleAccess(options)) return;
+            async function processKwList(kwList) {
+                for (const kwInstance of kwList) {
+                    await execKw(kwInstance);
+                }
+            }
 
-                const params = kwInstance.params;
-                if (params.length < 1 || params[0].length < 1) return;
+            async function execKw(kwInstance) {
+                try {
+                    options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
 
-                const srcViewTitle = params[0][0];
-                const srcViewId = ktl.scenes.findViewWithTitle(srcViewTitle, true, dstViewId);
+                    params = kwInstance.params;
+                    if (params.length < 1 || params[0].length < 1) return;
 
+                    const srcViewTitle = params[0][0];
+                    srcViewId = ktl.scenes.findViewWithTitle(srcViewTitle, true, dstViewId);
 
+                    let needConfirm = true;
+                    if (params[0].length >= 2 && params[0][1] === 'auto')
+                        needConfirm = false;
 
-                let needConfirm = true;
-                if (params[0].length >= 2 && params[0][1] === 'auto')
-                    needConfirm = false;
+                    mode = 'add';
+                    if (params[0].length >= 4 && params[0][3]) {
+                        if (['add', 'edit', 'api'].includes(params[0][3]))
+                            mode = params[0][3];
+                        else {
+                            ktl.log.clog('purple', 'Invalid mode found in _cpyfrom:', dstViewId, params[0][3]);
+                            return;
+                        }
+                    }
 
-                if (params[0].length >= 3 && params[0][2]) {
-                    //Add a start button
-                    const buttonLabel = params[0][2];
-                    let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
-                    const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `cpyfrom-${dstViewId}-${buttonLabel}`);
-                    $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', e => {
+                    if (params[0].length >= 3 && params[0][2]) {
+                        //Add a start button
+                        const buttonLabel = params[0][2];
+                        let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
+                        const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `cpyfrom-${dstViewId}-${buttonLabel}`);
+                        $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', async e => {
+                            if (needConfirm) {
+                                if (confirm(`Proceed with copy?`))
+                                    await waitSourceDataReady();
+                            } else
+                                await waitSourceDataReady();
+                        });
+                    } else { //No button
                         if (needConfirm) {
                             if (confirm(`Proceed with copy?`))
-                                waitSourceDataReady();
+                                await waitSourceDataReady();
                         } else
-                            waitSourceDataReady();
-                    });
-                } else { //No button
-                    if (needConfirm) {
-                        if (confirm(`Proceed with copy?`))
-                            waitSourceDataReady();
-                    } else
-                        waitSourceDataReady();
+                            await waitSourceDataReady();
+                    }
+                } catch (error) {
+                    ktl.log.clog('purple', 'Error in _cpyfrom');
+                    throw error;
                 }
+            }
 
-                function waitSourceDataReady() {
-                    ktl.views.waitViewDataReady(srcViewId)
-                        .then(() => { proceed(); })
-                        .catch(reason => {
-                            ktl.log.clog('purple', `copyRecordsFromView - Timeout waiting for data: ${srcViewId}`);
-                            console.error(reason);
-                        })
+            async function waitSourceDataReady() {
+                try {
+                    await ktl.views.waitViewDataReady(srcViewId);
+                    await proceed();
+                } catch (error) {
+                    ktl.log.clog('purple', `copyRecordsFromView - Timeout waiting for data: ${srcViewId}`);
+                    throw error;
+                }
+            }
 
-                    function proceed() {
-                        const srcData = Knack.views[srcViewId].model.data.models;
-                        if (!srcData.length) return;
+            async function proceedToUpdateRecords(bulkApiDataArray = [], options) {
+                if (!bulkApiDataArray.length) return;
 
-                        let mode = 'add';
-                        if (params[0].length >= 4 && params[0][3]) {
-                            if (['add', 'edit', 'api'].includes(params[0][3]))
-                                mode = params[0][3];
-                            else {
-                                ktl.log.clog('purple', 'Invalid mode found in _cpyfrom:', dstViewId, params[0][3]);
-                                return;
-                            }
-                        }
-
-                        if (mode === 'add' && data.length) return;
-
-                        let bulkApiDataArray = [];
-                        let fieldsToCopy = ['']; //All fields by default
-                        let headersMapping = {};
-
-                        if (mode === 'add' || mode === 'edit') {
-                            if (params.length >= 2 && params[1].length >= 1)
-                                fieldsToCopy = params[1];
-
-                            const model = Knack.views[dstViewId] && Knack.views[dstViewId].model;
-                            const columns = model.view.columns;
-                            const headers = columns.map(col => col.header.trim()).filter(header => {
-                                return (fieldsToCopy.includes(header) || fieldsToCopy[0] === '');
-                            });
-
-                            //Try to find the equivalent headers in source view.
-                            for (const header of headers) {
-                                const dstFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, header);
-                                if (dstFieldId && dstFieldId.startsWith('field_') && Knack.objects.getField(dstFieldId).attributes.type !== 'concatenation') {
-                                    const srcFieldId = ktl.fields.getFieldIdFromLabel(srcViewId, header);
-                                    if (srcFieldId)
-                                        headersMapping[header] = { src: srcFieldId, dst: dstFieldId };
-                                }
-                            }
-
-                            //Process additional parameter groups, if any.
-                            for (let i = 2; i < params.length; i++) {
-                                let param = params[i];
-                                if (param.length == 2) {
-                                    if (param[0] !== '' && param[1] === 'ktlLoggedInAccount') {
-                                        const dstFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, param[0]);
-                                        if (dstFieldId && dstFieldId.startsWith('field_') && Knack.objects.getField(dstFieldId).attributes.type !== 'concatenation') //Exclude Text Formulas
-                                            headersMapping[param[0]] = { src: 'ktlLoggedInAccount', dst: dstFieldId };
-                                    }
-                                } else if (param.length == 3) {
-                                    //When source is a field/view selector.
-                                    const fieldLabel = param[1];
-                                    const viewTitle = param[2];
-                                    const foreignViewId = ktl.scenes.findViewWithTitle(viewTitle, true, srcViewId);
-                                    const foreignFieldId = ktl.fields.getFieldIdFromLabel(foreignViewId, fieldLabel);
-                                    if (foreignFieldId) {
-                                        const viewType = ktl.views.getViewType(foreignViewId);
-                                        if (viewType === 'details') {
-                                            ktl.views.waitViewDataReady(foreignViewId)
-                                                .then(() => {
-                                                    const value = Knack.views[foreignViewId].record;
-                                                    headersMapping[param[0]] = { src: 'ktlUseThisValue', dst: value };
-                                                })
-                                                .catch(err => {
-                                                    ktl.log.clog('purple', `copyRecordsFromView, proceed - Timeout waiting for data: ${foreignViewId}`);
-                                                    console.log('err =', err);
-                                                })
-                                        }
-                                    }
-                                }
-                            }
-
-                            let srcFieldObject = ktl.views.getView(srcViewId);
-                            let srcViewDisplayFieldId = Knack.objects._byId[srcFieldObject.source.object].attributes.identifier;
-
-                            for (const srcRecord of srcData) {
-                                let srcRecId = srcRecord.id;
-
-                                const apiData = {};
-                                for (const header in headersMapping) {
-                                    const srcFieldId = headersMapping[header].src;
-                                    const dstFieldId = headersMapping[header].dst;
-
-                                    if (srcFieldId.startsWith('field_')) {
-                                        const sourceRecord = srcRecord.attributes[srcFieldId];
-                                        try {
-                                            const spanClass = $(sourceRecord).find('span[class]');
-                                            if (spanClass.length) {
-                                                apiData[dstFieldId] = [];
-                                                for (const classId of Array.from(spanClass)) {
-                                                    apiData[dstFieldId].push(classId.classList.value);
-                                                }
-                                            } else {
-                                                const spanId = $(sourceRecord).find('span[id]');
-                                                if (spanId.length) {
-                                                    const ids = ktl.core.extractIds(srcRecord.attributes[srcFieldId]);
-                                                    apiData[dstFieldId] = ids;
-                                                } else {
-                                                    if (srcFieldId === srcViewDisplayFieldId) {
-                                                        const srcFieldType = ktl.fields.getFieldType(srcFieldId);
-                                                        if (srcFieldType === 'connection')
-                                                            apiData[dstFieldId] = [srcRecId];
-                                                        else
-                                                            apiData[dstFieldId] = sourceRecord;
-                                                    } else {
-                                                        const data = srcRecord.attributes[`${srcFieldId}_raw`];
-                                                        if (data) {
-                                                            if (Array.isArray(data) && data.length)
-                                                                apiData[dstFieldId] = data;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        } catch (e) {
-                                            apiData[dstFieldId] = sourceRecord;
-                                        }
-                                    } else {
-                                        if (srcFieldId === 'ktlLoggedInAccount')
-                                            apiData[dstFieldId] = [Knack.getUserAttributes().id];
-                                    }
-                                }
-
-                                if (mode === 'add')
-                                    bulkApiDataArray.push(apiData);
-                                else if (mode === 'edit') {
-                                    //Edit mode requires the additional record ID for each destination row.
-                                    if (!$.isEmptyObject(apiData)) {
-                                        const dstRowsWithSameRecId = $(`#${dstViewId} tbody tr td .${srcRecId}`);
-                                        if (dstRowsWithSameRecId.length) {
-                                            dstRowsWithSameRecId.each((ix, el) => {
-                                                const dstRecId = el.closest('tr').id;
-
-                                                for (const header in headersMapping) {
-                                                    const srcFieldId = headersMapping[header].src;
-                                                    const dstFieldId = headersMapping[header].dst;
-
-                                                    const dstFieldType = ktl.fields.getFieldType(dstFieldId);
-                                                    if (dstFieldType === 'connection') {
-                                                        const html = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).html();
-                                                        const dstRecIds = ktl.core.extractIds(html);
-
-                                                        let array1 = [];
-                                                        let array2 = [];
-
-                                                        if (apiData[dstFieldId]) {
-                                                            array1 = apiData[dstFieldId];
-                                                            array2 = dstRecIds;
-                                                        }
-
-                                                        const arraysAreSame = ktl.core.isArraysContainSameElements(array1, array2);
-                                                        if (!arraysAreSame && arraysAreSame !== undefined)
-                                                            bulkApiDataArray.push({ apiData: apiData, id: dstRecId });
-                                                    } else { //Text and numeric values.
-                                                        const srcText = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId}`).text();
-                                                        const dstText = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).text();
-
-                                                        if (srcText !== dstText) {
-                                                            //console.log('src vs dst text', srcText, dstText);
-                                                            //console.log('sel', `#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`);
-                                                            bulkApiDataArray.push({ apiData: apiData, id: dstRecId });
-                                                        }
-
-                                                    } //TODO: add support for all field types.
-                                                }
-                                            });
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (bulkApiDataArray.length) {
-                                //console.log('bulkApiDataArray =', JSON.stringify(bulkApiDataArray, null, 4));
-                                proceedToUpdateRecords(bulkApiDataArray);
-                            }
-                        } else if (mode === 'api') {
-                            if (params.length >= 2 && params[1].length === 3)
-                                fieldsToCopy = params[1];
-                            else
-                                return;
-
-                            if (fieldsToCopy[0].startsWith('field_')) return;
-
-                            const remoteViewId = fieldsToCopy[1];
-                            const remoteSourceFieldId = ktl.fields.getFieldIdFromLabel(remoteViewId, fieldsToCopy[0]);
-                            const localSourceFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, fieldsToCopy[0]);
-                            if (!remoteViewId.startsWith('view_')) return;
-                            const dstFieldId = fieldsToCopy[2].startsWith('field_') ? fieldsToCopy[2] : ktl.fields.getFieldIdFromLabel(dstViewId, fieldsToCopy[2]);
-
-                            //First pass to fetch all record IDs we need.
-                            for (const srcRecord of srcData) {
-                                const record = srcRecord.attributes;
-                                let srcRecId = record.id;
-
-                                const dstText = $(`#${dstViewId} tr[id="${srcRecId}"] .${dstFieldId}`).text().trim();
-                                if (dstText !== record[localSourceFieldId]) {
-                                    const filters = {
-                                        'match': 'and',
-                                        'rules': [
-                                            {
-                                                'field': remoteSourceFieldId,
-                                                'operator': 'is',
-                                                'value': record[localSourceFieldId]
-                                            },
-                                        ]
-                                    };
-
-                                    bulkApiDataArray.push({ id: srcRecId, filters: filters });
-                                }
-                            }
-
-                            if (!bulkApiDataArray.length) return;
-
-                            ktl.views.processAutomatedBulkOps(remoteViewId, bulkApiDataArray, 'GET', [], false, false)
-                                .then(results => {
-                                    $.unblockUI();
-                                    bulkApiDataArray = [];
-                                    for (const result of results) {
-                                        const apiData = {};
-
-                                        apiData[dstFieldId] = [];
-                                        for (const record of result.records) {
-                                            apiData[dstFieldId].push(record.id);
-                                        }
-
-                                        bulkApiDataArray.push({ id: result.id, apiData: apiData });
-                                    }
-
-                                    //Second pass to update the records in the destination view.
-                                    proceedToUpdateRecords(bulkApiDataArray);
-                                })
-                                .catch(err => {
-                                    $.unblockUI();
-                                    ktl.log.clog('purple', `processAutomatedBulkOps error encountered:\n${err}`);
-                                })
-                        } //API mode
-
-                        function proceedToUpdateRecords(bulkApiDataArray = []) {
-                            if (!bulkApiDataArray.length) return;
-
-                            if (options && options.ktlMsg) {
-                                const message = options.ktlMsg.split(',').slice(1).join(',').trim();
-                                const displayMode = options.ktlMsg.split(',')[0].trim();
-                                if (message) {
-                                    if (displayMode === 'static') {
-                                        $.blockUI({
-                                            message: message,
-                                            overlayCSS: {
-                                                backgroundColor: '#ddd', opacity: 0.2, cursor: 'wait'
-                                            },
-                                            css: { padding: 20 }
-                                        })
-                                    }
-                                }
-                            }
-
-                            let requestType = (mode === 'add') ? 'POST' : 'PUT';
-
-                            ktl.views.processAutomatedBulkOps(dstViewId, bulkApiDataArray, requestType, [dstViewId], false, false)
-                                .then(countDone => {
-                                    $.unblockUI();
-                                })
-                                .catch(err => {
-                                    $.unblockUI();
-                                    ktl.log.clog('purple', `processAutomatedBulkOps error encountered:\n${err}`);
-                                })
+                if (options && options.ktlMsg) {
+                    const message = options.ktlMsg.split(',').slice(1).join(',').trim();
+                    const displayMode = options.ktlMsg.split(',')[0].trim();
+                    if (message) {
+                        if (displayMode === 'static') {
+                            $.blockUI({
+                                message: message,
+                                overlayCSS: {
+                                    backgroundColor: '#ddd', opacity: 0.2, cursor: 'wait'
+                                },
+                                css: { padding: 20 }
+                            })
                         }
                     }
                 }
+
+                let requestType = (mode === 'add') ? 'POST' : 'PUT';
+                try {
+                    const countDone = await ktl.views.processAutomatedBulkOps(dstViewId, bulkApiDataArray, requestType, [], false, false)
+                    needsRefresh = !!countDone;
+                    $.unblockUI();
+                } catch (error) {
+                    $.unblockUI();
+                    ktl.log.clog('purple', `processAutomatedBulkOps error encountered`);
+                    throw error;
+                }
+            }
+
+            async function proceed() {
+                const srcData = Knack.views[srcViewId].model.data.models;
+                if (!srcData.length) return;
+
+                if (mode === 'add' && data.length) return; //Add only if view is empty.
+
+                let bulkApiDataArray = [];
+                let fieldsToCopy = ['']; //All fields by default
+                let headersMapping = {};
+
+                if (mode === 'add' || mode === 'edit') {
+                    if (params.length >= 2 && params[1].length >= 1)
+                        fieldsToCopy = params[1];
+
+                    const model = Knack.views[dstViewId] && Knack.views[dstViewId].model;
+                    const columns = model.view.columns;
+                    const headers = columns.map(col => col.header.trim()).filter(header => {
+                        return (fieldsToCopy.includes(header) || fieldsToCopy[0] === '');
+                    });
+
+                    //Try to find the equivalent headers in source view.
+                    for (const header of headers) {
+                        const dstFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, header);
+                        if (dstFieldId && dstFieldId.startsWith('field_') && Knack.objects.getField(dstFieldId).attributes.type !== 'concatenation') {
+                            const srcFieldId = ktl.fields.getFieldIdFromLabel(srcViewId, header);
+                            if (srcFieldId)
+                                headersMapping[header] = { src: srcFieldId, dst: dstFieldId };
+                        }
+                    }
+
+                    //Process additional parameter groups, if any.
+                    for (let i = 2; i < params.length; i++) {
+                        let param = params[i];
+                        if (param.length == 2) {
+                            if (param[0] !== '' && param[1] === 'ktlLoggedInAccount') {
+                                const dstFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, param[0]);
+                                if (dstFieldId && dstFieldId.startsWith('field_') && Knack.objects.getField(dstFieldId).attributes.type !== 'concatenation') //Exclude Text Formulas
+                                    headersMapping[param[0]] = { src: 'ktlLoggedInAccount', dst: dstFieldId };
+                            }
+                        } else if (param.length == 3) {
+                            //When source is a field/view selector.
+                            const fieldLabel = param[1];
+                            const viewTitle = param[2];
+                            const foreignViewId = ktl.scenes.findViewWithTitle(viewTitle, true, srcViewId);
+                            const foreignFieldId = ktl.fields.getFieldIdFromLabel(foreignViewId, fieldLabel);
+                            if (foreignFieldId) {
+                                const viewType = ktl.views.getViewType(foreignViewId);
+                                if (viewType === 'details') {
+                                    try {
+                                        await ktl.views.waitViewDataReady(foreignViewId);
+                                        const value = Knack.views[foreignViewId].record;
+                                        headersMapping[param[0]] = { src: 'ktlUseThisValue', dst: value };
+                                    } catch (error) {
+                                        ktl.log.clog('purple', `copyRecordsFromView, proceed - Timeout waiting for data: ${foreignViewId}`);
+                                        console.error(error);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let srcFieldObject = ktl.views.getView(srcViewId);
+                    let srcViewDisplayFieldId = Knack.objects._byId[srcFieldObject.source.object].attributes.identifier;
+
+                    for (const srcRecord of srcData) {
+                        let srcRecId = srcRecord.id;
+
+                        const apiData = {};
+                        for (const header in headersMapping) {
+                            const srcFieldId = headersMapping[header].src;
+                            const dstFieldId = headersMapping[header].dst;
+
+                            if (srcFieldId.startsWith('field_')) {
+                                const sourceRecord = srcRecord.attributes[srcFieldId];
+                                try {
+                                    const spanClass = $(sourceRecord).find('span[class]');
+                                    if (spanClass.length) {
+                                        apiData[dstFieldId] = [];
+                                        for (const classId of Array.from(spanClass)) {
+                                            apiData[dstFieldId].push(classId.classList.value);
+                                        }
+                                    } else {
+                                        const spanId = $(sourceRecord).find('span[id]');
+                                        if (spanId.length) {
+                                            const ids = ktl.core.extractIds(srcRecord.attributes[srcFieldId]);
+                                            apiData[dstFieldId] = ids;
+                                        } else {
+                                            if (srcFieldId === srcViewDisplayFieldId) {
+                                                const srcFieldType = ktl.fields.getFieldType(srcFieldId);
+                                                if (srcFieldType === 'connection')
+                                                    apiData[dstFieldId] = [srcRecId];
+                                                else
+                                                    apiData[dstFieldId] = sourceRecord;
+                                            } else {
+                                                const data = srcRecord.attributes[`${srcFieldId}_raw`];
+                                                if (data) {
+                                                    if (Array.isArray(data) && data.length)
+                                                        apiData[dstFieldId] = data;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    apiData[dstFieldId] = sourceRecord;
+                                }
+                            } else {
+                                if (srcFieldId === 'ktlLoggedInAccount')
+                                    apiData[dstFieldId] = [Knack.getUserAttributes().id];
+                            }
+                        }
+
+                        if (mode === 'add')
+                            bulkApiDataArray.push(apiData);
+                        else if (mode === 'edit') {
+                            //Edit mode requires the additional record ID for each destination row.
+                            if (!$.isEmptyObject(apiData)) {
+                                const dstRowsWithSameRecId = $(`#${dstViewId} tbody tr td .${srcRecId}`);
+                                if (dstRowsWithSameRecId.length) {
+                                    dstRowsWithSameRecId.each((ix, el) => {
+                                        const dstRecId = el.closest('tr').id;
+
+                                        for (const header in headersMapping) {
+                                            const srcFieldId = headersMapping[header].src;
+                                            const dstFieldId = headersMapping[header].dst;
+
+                                            const dstFieldType = ktl.fields.getFieldType(dstFieldId);
+                                            if (dstFieldType === 'connection') {
+                                                const html = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).html();
+                                                const dstRecIds = ktl.core.extractIds(html);
+
+                                                let array1 = [];
+                                                let array2 = [];
+
+                                                if (apiData[dstFieldId]) {
+                                                    array1 = apiData[dstFieldId];
+                                                    array2 = dstRecIds;
+                                                }
+
+                                                const arraysAreSame = ktl.core.isArraysContainSameElements(array1, array2);
+                                                if (!arraysAreSame && arraysAreSame !== undefined)
+                                                    bulkApiDataArray.push({ apiData: apiData, id: dstRecId });
+                                            } else { //Text and numeric values.
+                                                const srcText = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId}`).text();
+                                                const dstText = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).text();
+
+                                                if (srcText !== dstText) {
+                                                    //console.log('src vs dst text', srcText, dstText);
+                                                    //console.log('sel', `#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`);
+                                                    bulkApiDataArray.push({ apiData: apiData, id: dstRecId });
+                                                }
+
+                                            } //TODO: add support for all field types.
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    if (bulkApiDataArray.length) {
+                        //console.log('bulkApiDataArray =', JSON.stringify(bulkApiDataArray, null, 4));
+                        needsRefresh = true;
+                        await proceedToUpdateRecords(bulkApiDataArray, options);
+                    }
+                } else if (mode === 'api') {
+                    if (params.length >= 2 && params[1].length === 3)
+                        fieldsToCopy = params[1];
+                    else
+                        return;
+
+                    if (fieldsToCopy[0].startsWith('field_')) return;
+
+                    const remoteViewId = fieldsToCopy[1];
+                    const remoteSourceFieldId = ktl.fields.getFieldIdFromLabel(remoteViewId, fieldsToCopy[0]);
+                    const localSourceFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, fieldsToCopy[0]);
+                    if (!remoteViewId.startsWith('view_')) return;
+                    const dstFieldId = fieldsToCopy[2].startsWith('field_') ? fieldsToCopy[2] : ktl.fields.getFieldIdFromLabel(dstViewId, fieldsToCopy[2]);
+
+                    //First pass to fetch all record IDs we need.
+                    for (const srcRecord of srcData) {
+                        const record = srcRecord.attributes;
+                        let srcRecId = record.id;
+
+                        const dstText = $(`#${dstViewId} tr[id="${srcRecId}"] .${dstFieldId}`).text().trim();
+                        if (dstText !== record[localSourceFieldId]) {
+                            const filters = {
+                                'match': 'and',
+                                'rules': [
+                                    {
+                                        'field': remoteSourceFieldId,
+                                        'operator': 'is',
+                                        'value': record[localSourceFieldId]
+                                    },
+                                ]
+                            };
+
+                            bulkApiDataArray.push({ id: srcRecId, filters: filters });
+                        }
+                    }
+
+                    if (!bulkApiDataArray.length) return;
+
+                    try {
+                        const results = await ktl.views.processAutomatedBulkOps(remoteViewId, bulkApiDataArray, 'GET', [], false, false);
+                        $.unblockUI();
+                        bulkApiDataArray = [];
+                        for (const result of results) {
+                            const apiData = {};
+
+                            apiData[dstFieldId] = [];
+                            for (const record of result.records) {
+                                apiData[dstFieldId].push(record.id);
+                            }
+
+                            bulkApiDataArray.push({ id: result.id, apiData: apiData });
+                        }
+
+                        //Second pass to update the records in the destination view.
+                        await proceedToUpdateRecords(bulkApiDataArray, options);
+                    } catch (error) {
+                        $.unblockUI();
+                        ktl.log.clog('purple', `processAutomatedBulkOps error encountered`);
+                        throw error;
+                    }
+                } //API mode
             }
         }
 
