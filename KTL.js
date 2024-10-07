@@ -2661,12 +2661,14 @@ function Ktl($, appInfo) {
                         viewId = div.id;
 
                     id = viewId + '_' + id;
+                } else {
+                    id = id.replace(/ /g, '-'); //Replace spaces by dashes
                 }
 
                 var button = document.getElementById(id);
                 if (button === null) {
                     button = document.createElement('BUTTON');
-                    button.id = ktl.core.getCleanId(id);
+                    button.id = id;
                     button.setAttribute('type', 'button');
 
                     button.appendChild(document.createTextNode(label));
