@@ -2035,6 +2035,16 @@ function Ktl($, appInfo) {
                 // and contains only hexadecimal characters (0-9 and a-f)
                 return /^[0-9a-fA-F]{24}$/.test(testString);
             },
+
+            //Param can be a number or a string.
+            addThousandsSeparators: function (num) {
+                const numStr = num.toString();
+                const parts = numStr.split('.');
+                const integerPart = parts[0];
+                const decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+                const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return formattedInteger + decimalPart;
+            },
         }
     })(); //Core
 
@@ -2566,6 +2576,7 @@ function Ktl($, appInfo) {
 
                 var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
                 var fieldId = fieldAttr.value;
+                if (!fieldId.startsWith('field_')) return;
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 const fieldType = ktl.fields.getFieldType(fieldId);
                 if ((fieldType && fieldType !== 'rating' && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
@@ -7610,7 +7621,7 @@ function Ktl($, appInfo) {
 
         function labelText({ key: viewId, type: viewType }, keywords) {
             const kw = '_lbl';// @params = [label text], [options] OR @params = label text
-            if (!viewId && !keywords[kw]) return;
+            if (!viewId || !keywords || !keywords[kw]) return;
 
             var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             if (!$.isEmptyObject(fieldsWithKwObj)) {
@@ -20332,7 +20343,10 @@ function Ktl($, appInfo) {
 
         $(document).on('keydown.ktlPopOver', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                startMonitoringMouse();
+                if (event.key === 'Control' || event.key === 'Shift')
+                    startMonitoringMouse();
+                else
+                    closePopOver();
             } else if (event.key === 'Escape') {
                 closePopOver();
                 $(document).off('click.ktlPopOverOutside');
