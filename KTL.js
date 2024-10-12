@@ -19425,9 +19425,9 @@ function Ktl($, appInfo) {
 
             //Will show all objects and the number of fields each have, sorted by decreasing order of fields.
             objectsAndFieldCounts: function () {
-                var objectData = Knack.objects.models
+                const objectData = Knack.objects.models
                     .map(function (object) {
-                        var connectionCount = object.fields.models.filter(function (field) {
+                        const connectionCount = object.fields.models.filter(function (field) {
                             return field.attributes.type === 'connection';
                         }).length;
                         return {
@@ -19439,24 +19439,13 @@ function Ktl($, appInfo) {
                     .sort(function (a, b) {
                         return a.fieldCount - b.fieldCount;
                     });
-
-                // Find the length of the longest object name and counts for proper formatting
-                var maxNameLength = Math.max(...objectData.map(obj => obj.name.length), "Object Name".length);
-                var maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), "Total Fields".length);
-                var maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), "Connections".length);
-
-                // Construct the formatted string
-                var output = "Objects sorted by field count (ascending):\n";
-                output += "Object Name" + " ".repeat(maxNameLength - 11) + " : Total Fields : Connections\n";
-                output += "-".repeat(maxNameLength) + ":-" + "-".repeat(maxFieldCountLength) + ":-" + "-".repeat(maxConnectionCountLength) + "\n";
-                objectData.forEach(function (obj) {
-                    var namePadding = ' '.repeat(maxNameLength - obj.name.length);
-                    var fieldCountPadding = ' '.repeat(maxFieldCountLength - obj.fieldCount.toString().length);
-                    var connectionCountPadding = ' '.repeat(maxConnectionCountLength - obj.connectionCount.toString().length);
-                    output += `${obj.name}${namePadding} : ${obj.fieldCount}${fieldCountPadding} : ${obj.connectionCount}${connectionCountPadding}\n`;
-                });
-
-                // Output the entire formatted string at once
+                const maxNameLength = Math.max(...objectData.map(obj => obj.name.length), 'Object Name'.length);
+                const maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), 'Total Fields'.length);
+                const maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), 'Connections'.length);
+                const output = `Objects sorted by field count (ascending):
+${'Object Name'.padEnd(maxNameLength)} : ${'Total Fields'.padStart(maxFieldCountLength)} : ${'Connections'.padStart(maxConnectionCountLength)}
+${'-'.repeat(maxNameLength)}:${'-'.repeat(maxFieldCountLength + 1)}:${'-'.repeat(maxConnectionCountLength + 1)}
+${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} : ${obj.fieldCount.toString().padStart(maxFieldCountLength)} : ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
                 console.log(output);
             },
 
