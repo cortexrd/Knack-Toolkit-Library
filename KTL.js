@@ -19357,6 +19357,32 @@ function Ktl($, appInfo) {
                 return alignValues(sortedObject);
             },
 
+            //Will show all objects and the number of fields each have, sorted by decreasing order of fields.
+            objectsAndFieldCounts: function () {
+                var objectData = Knack.objects.models
+                    .map(function (object) {
+                        return {
+                            name: object.attributes.name,
+                            fieldCount: object.fields.length
+                        };
+                    })
+                    .sort(function (a, b) {
+                        return a.fieldCount - b.fieldCount;
+                    });
+
+                // Find the length of the longest object name and field count for proper formatting
+                var maxNameLength = Math.max(...objectData.map(obj => obj.name.length));
+                var maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length));
+
+                // Print the sorted and formatted results
+                console.log("Objects sorted by field count (descending):");
+                objectData.forEach(function (obj) {
+                    var namePadding = ' '.repeat(maxNameLength - obj.name.length);
+                    var countPadding = ' '.repeat(maxFieldCountLength - obj.fieldCount.toString().length);
+                    console.log(`${obj.name}${namePadding} : ${countPadding}${obj.fieldCount} fields`);
+                });
+            },
+
             getLinuxDeviceInfo: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
@@ -21088,6 +21114,11 @@ window.kw2str = function (depth = 10) {
 window.kwcount = function () {
     const kwCount = ktl.sysInfo.countKeywords(ktlKeywords);
     console.log('Count of each KTL Keywords:\n\n', kwCount);
+}
+
+window.objectsAndFieldCounts = function () {
+    ktl.sysInfo.objectsAndFieldCounts();
+    console.log('Count of objects:', Knack.objects.length);
 }
 
 function ktlCompare(a, operator, b) {
