@@ -15877,6 +15877,8 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--viBarOpacity', vi.viOpacity.toString() + '%');
                 };
 
+                let ktlDevToolsLastSearch = '';
+
                 //Special Dev Options popup, require a PIN to access options.
                 $('#verButtonId').on('click touchstart', function (e) {
                     let logoutBtn;
@@ -15909,7 +15911,10 @@ function Ktl($, appInfo) {
                                 ktl.storage.lsSetItem('pinAlreadyEntered', true, false, true);
                                 let userPrefsObj = ktl.userPrefs.getUserPrefs();
 
-                                if ($('#devBtnsDivId').length) return;
+                                if ($('#devBtnsDivId').length) {
+                                    $('#devBtnsDivId').show();
+                                    return;
+                                }
 
                                 let devBtnsDiv = document.createElement('div');
                                 devBtnsDiv.setAttribute('id', 'devBtnsDivId');
@@ -16061,9 +16066,14 @@ function Ktl($, appInfo) {
                                     })
                                 }
 
-                                var searchBtn = ktl.fields.addButton(devBtnsDiv, 'Search...', '', ['devBtn', 'kn-button']);
+                                var searchBtn = ktl.fields.addButton(devBtnsDiv, 'Search...', '', ['devBtn', 'kn-button'], 'ktlDevToolsSearchButtonId');
                                 searchBtn.addEventListener('click', () => {
-                                    if ($('#devToolSearchDivId').length) return;
+                                    if ($('#devToolSearchDivId').length) {
+                                        $('#devToolSearchDivId').show();
+                                        $('#ktlDevToolsSearchInputId').focus();
+                                        $('#ktlDevToolsSearchInputId').val(ktlDevToolsLastSearch);
+                                        return;
+                                    }
 
                                     var devToolSearchDiv = document.createElement('div');
                                     devToolSearchDiv.setAttribute('id', 'devToolSearchDivId');
@@ -16103,6 +16113,7 @@ function Ktl($, appInfo) {
                                     var searchInput = document.createElement("input");
                                     searchInput.type = 'text';
                                     searchInput.value = '';
+                                    searchInput.setAttribute('id', 'ktlDevToolsSearchInputId');
                                     searchInput.classList.add('ktlDevToolsSearchInput');
                                     devToolSearchDiv.appendChild(searchInput);
                                     searchInput.focus();
@@ -16111,6 +16122,7 @@ function Ktl($, appInfo) {
 
                                     searchInput.addEventListener('keyup', function (event) {
                                         if (event.key === 'Enter') {
+                                            ktlDevToolsLastSearch = searchInput.value;
                                             performSearch(searchInput.value);
                                         }
                                     });
@@ -16203,7 +16215,9 @@ function Ktl($, appInfo) {
                                             }
 
                                             if (kwResults) {
-                                                if (!$('#resultWndTextId').length) {
+                                                if ($('#resultWndId').length) {
+                                                    $('#resultWndId').show();
+                                                } else {
                                                     const DEFAULT_TOP = 80;
                                                     const DEFAULT_LEFT = 80;
                                                     const DEFAULT_HEIGHT = window.innerHeight - 160;
@@ -16266,9 +16280,9 @@ function Ktl($, appInfo) {
                                                         const position = ktl.core.centerElementOnScreen(resultWnd);
                                                         ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, position);
                                                     }
-                                                } else {
-                                                    resultWndText.innerHTML = kwResults;
                                                 }
+
+                                                resultWndText.innerHTML = kwResults;
                                             }
                                         } else {
                                             console.log('Not found');
@@ -16359,22 +16373,48 @@ function Ktl($, appInfo) {
                     return false; //False to prevent firing both events on mobile devices.
                 })
 
-                //For Dev Options popup, act like a modal window: close when clicking oustide.
+                //For Dev Options popup, act like a modal window: close when clicking outside, or pressing escape.
                 $(document).on('click', function (e) {
                     if (e.target.closest('.kn-content') || (e.target && e.target.id && e.target.id === 'knack-body')) {
-                        $('#popupDivId').remove();
                         $('#popupFormId').remove();
 
-                        if ($('#dbgWndId').length)
+                        if ($('#dbgWndId:visible').length)
                             ktl.debugWnd.showDebugWnd(false);
-                        else if ($('#resultWndId').length)
-                            $('#resultWndId').remove();
-                        else if ($('#devToolSearchDivId').length)
-                            $('#devToolSearchDivId').remove();
+                        else if ($('#resultWndId:visible').length)
+                            $('#resultWndId').hide();
+                        else if ($('#devToolSearchDivId:visible').length)
+                            $('#devToolSearchDivId').hide();
                         else
-                            $('#devBtnsDivId').remove();
+                            $('#devBtnsDivId').hide();
                     }
                 })
+
+                //Hotkey for Dev Popup and Search
+                $(document).on('keydown.ktlDevPopup', function (event) {
+                    if (event.shiftKey && event.ctrlKey) {
+                        if (event.key === 'F') {
+                            if ($('#devBtnsDivId').length)
+                                $('#devBtnsDivId').show();
+                            else
+                                $('#verButtonId').click();
+
+                            ktl.core.waitSelector('#ktlDevToolsSearchButtonId')
+                                .then(() => {
+                                    $('#ktlDevToolsSearchButtonId').click();
+                                })
+                        }
+                    } else if (event.key === 'Escape') {
+                        if($('#dbgWndId:visible').length)
+                        ktl.debugWnd.showDebugWnd(false);
+                    else if ($('#resultWndId:visible').length)
+                        $('#resultWndId').hide();
+                    else if ($('#devToolSearchDivId:visible').length)
+                        $('#devToolSearchDivId').hide();
+                    else
+                        $('#devBtnsDivId').hide();
+
+                    }
+                });
             },
 
             isiFrameWnd: function () {
@@ -19295,9 +19335,14 @@ function Ktl($, appInfo) {
                         }
 
                         if (isKeyword) {
-                            let kwInstanceStr = '';
-                            for (const kwInstance of kwInfo[search]) {
-                                kwInstanceStr = kwInstance.paramStr;
+                            let kwInstanceStr = '[]';
+                            if (kwInfo[search].length) {
+                                for (const kwInstance of kwInfo[search]) {
+                                    kwInstanceStr = kwInstance.paramStr;
+                                    console.log(`\t${search}=${kwInstanceStr}\n`);
+                                    result += `   ${search}=${kwInstanceStr}<br>`;
+                                }
+                            } else {
                                 console.log(`\t${search}=${kwInstanceStr}\n`);
                                 result += `   ${search}=${kwInstanceStr}<br>`;
                             }
