@@ -19229,69 +19229,88 @@ function Ktl($, appInfo) {
 
             //See list here: https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords
             //Show only what contains search string parameter, or all if empty.
+            //If searched string start with an underscrode followed by a letter, then that specific keyword will be searched for.
+            //Otherwise, a "loose" string search will be applied, i.e. if that string appears anywhere in the keywords.
             findAllKeywords: function (search = '') {
-                var result = '';
-                var st = window.performance.now();
-                search && console.log('Searching all keywords for:', search);
+                let result = '';
+                const st = window.performance.now();
+                search && console.log(`Searching all keywords for: ${search}`);
                 const regex = new RegExp(search, 'i');
 
-                var builderUrl;
-                var appUrl;
+                let builderUrl;
+                let appUrl;
+                const isKeyword = /^_[a-zA-Z]/.test(search);
 
-                for (var kwKey in ktlKeywords) {
+                for (const kwKey in ktlKeywords) {
                     const kwInfo = ktlKeywords[kwKey];
                     const str = JSON.stringify(kwInfo, null, 4);
-                    if (regex.test(kwKey) || regex.test(str)) {
+                    let found = false;
+                    if (isKeyword) {
+                        if (kwInfo[search])
+                            found = true;
+                    } else {
+                        if (regex.test(kwKey) || regex.test(str))
+                            found = true;
+                    }
+
+                    if (found) {
                         if (kwKey.startsWith('view_')) {
-                            for (var s = 0; s < Knack.scenes.models.length; s++) {
-                                var views = Knack.scenes.models[s].views;
-                                for (var v = 0; v < views.models.length; v++) {
-                                    let view = views.models[v];
+                            for (const scene of Knack.scenes.models) {
+                                const views = scene.views;
+                                for (const view of views.models) {
                                     if (view) {
                                         const attr = view.attributes;
                                         const viewId = attr.key;
                                         if (viewId === kwKey) {
                                             const sceneId = attr.scene.key;
-
                                             builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/${attr.type}`;
-
                                             const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
                                             appUrl = `${Knack.url_base}#${slug}`;
-
-                                            console.log('Builder:', builderUrl);
-                                            console.log('App:', appUrl);
-                                            console.log('Title:', attr.title);
-                                            result += '<br><a href="' + builderUrl + '" target="_blank">' + builderUrl + '</a>';
-                                            result += '<br><a href="' + appUrl + '" target="_self">' + appUrl + '</a>';
-                                            result += '<br>Title: ' + attr.title;
+                                            console.log(`Builder: ${builderUrl}`);
+                                            console.log(`App: ${appUrl}`);
+                                            console.log(`${kwKey}: ${attr.title ? attr.title : '<no title>'}`);
+                                            result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                            result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
+                                            result += `${kwKey}: ${attr.title ? `${attr.title}<br>` : '<no title><br>'}`;
                                             break;
                                         }
                                     }
                                 }
                             }
                         } else if (kwKey.startsWith('scene_')) {
-                            for (var t = 0; t < Knack.scenes.models.length; t++) {
-                                if (kwKey === Knack.scenes.models[t].attributes.key) {
+                            for (const scene of Knack.scenes.models) {
+                                if (kwKey === scene.attributes.key) {
                                     builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${kwKey}`;
-                                    console.log('Builder URL =', builderUrl);
-                                    result += '<br><a href="' + builderUrl + '" target="_blank">' + builderUrl + '</a>';
-                                    result += '<br><a href="' + appUrl + '" target="_self">' + appUrl + '</a>';
+                                    console.log(`Builder URL = ${builderUrl}`);
+                                    result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                    result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
                                     break;
                                 }
                             }
                         } else if (kwKey.startsWith('field_')) {
                             const objectId = Knack.objects.getField(kwKey).attributes.object_key;
                             builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${kwKey}/settings`;
-                            console.log('Builder URL =', builderUrl);
-                            result += '<br><a href="' + builderUrl + '" target="_blank">' + builderUrl + '</a>';
+                            console.log(`Builder URL = ${builderUrl}`);
+                            result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                         }
 
-                        console.log(kwKey + ':\n', str, '\n\n\n');
-                        result += '<br>' + kwKey + ':<br>' + str + '<br><br><br>';
+                        if (isKeyword) {
+                            let kwInstanceStr = '';
+                            for (const kwInstance of kwInfo[search]) {
+                                kwInstanceStr = kwInstance.paramStr;
+                                console.log(`\t${search}=${kwInstanceStr}\n`);
+                                result += `   ${search}=${kwInstanceStr}<br>`;
+                            }
+                            console.log('\n');
+                            result += `<br>`;
+                        } else {
+                            console.log(`${kwKey}:\n${str}\n\n`);
+                            result += `${kwKey}:<br>${str}<br>`;
+                        }
                     }
                 }
 
-                var en = window.performance.now();
+                const en = window.performance.now();
                 console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
 
                 return result;
