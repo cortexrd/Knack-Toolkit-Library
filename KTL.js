@@ -19460,6 +19460,100 @@ function Ktl($, appInfo) {
                 console.log(output);
             },
 
+            searchTextInViewsAndInputs: function (textToFind) {
+                // Check if Knack and scenes are defined
+                if (!Knack || !Knack.scenes || !Knack.scenes.models) {
+                    console.error('Knack scenes are not defined');
+                    return;
+                }
+                let textFound = false;
+
+                // Loop through each scene in Knack.scenes.models
+                Knack.scenes.models.forEach(scene => {
+                    const views = scene.views && scene.views.models;
+                    if (!views) {
+                        console.warn('Scene views are not defined for scene:', scene);
+                        return;
+                    }
+
+                    // Loop through each view in scene.views.models
+                    views.forEach(view => {
+                        const { attributes = {} } = view;
+                        const { title = '', description = '', rules, type = '', content = '', groups, columns, key } = attributes;
+
+                        const checkTextInContent = (text, context) => {
+                            if (text.toLowerCase().includes(textToFind.toLowerCase())) {
+                                console.log(`Found text: ${textToFind} in ${context}:`, key, text);
+                                textFound = true;
+                                return true;
+                            }
+                            return false;
+                        };
+
+                        // Check title and description
+                        if (checkTextInContent(title, 'title') || checkTextInContent(description, 'description')) {
+                            return;
+                        }
+
+                        // Check submit rules
+                        const submitRules = rules?.submits;
+                        if (submitRules) {
+                            submitRules.forEach(({ message = '' }) => {
+                                if (checkTextInContent(message, 'submit rule')) {
+                                    return;
+                                }
+                            });
+                        }
+
+                        // Check columns in list or details view
+                        if ((type === 'list' || type === 'details') && columns) {
+                            columns.forEach(({ groups: columnGroups }) => {
+                                if (columnGroups) {
+                                    columnGroups.forEach(({ columns: groupColumns }) => {
+                                        if (groupColumns) {
+                                            groupColumns.forEach(col => {
+                                                col.forEach(({ copy = '', name = '' }) => {
+                                                    if (checkTextInContent(copy, 'details copy') || checkTextInContent(name, 'detrails name')) {
+                                                        return;
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
+                        // Check rich text content
+                        if (type === 'rich_text' && checkTextInContent(content, 'rich text view')) {
+                            return;
+                        }
+
+                        // Check groups, columns, and inputs
+                        if (groups) {
+                            groups.forEach(({ columns: groupColumns }) => {
+                                if (groupColumns) {
+                                    groupColumns.forEach(({ inputs }) => {
+                                        if (inputs) {
+                                            inputs.forEach(({ label = '', instructions = '', copy = '' }) => {
+                                                if (checkTextInContent(label, 'input label') || checkTextInContent(instructions, 'input instructions') || checkTextInContent(copy, 'input copy')) {
+                                                    return;
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+
+                if (!textFound) {
+                    ktl.log.clog('green', `${textToFind} is not found in rich_text view any view Description, Title, Rules, Inputs`);
+                    console.warn('Remember to check _cls');
+                }
+            },
+
             getLinuxDeviceInfo: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
@@ -21196,6 +21290,10 @@ window.kwcount = function () {
 window.objectsAndFieldCounts = function () {
     ktl.sysInfo.objectsAndFieldCounts();
     console.log('Count of objects:', Knack.objects.length);
+}
+
+window.searchTextInViewsAndInputs = function (search) {
+    ktl.sysInfo.searchTextInViewsAndInputs(search);    
 }
 
 function ktlCompare(a, operator, b) {
