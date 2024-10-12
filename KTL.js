@@ -19370,17 +19370,17 @@ function Ktl($, appInfo) {
                         return a.fieldCount - b.fieldCount;
                     });
 
-                // Find the length of the longest object name and field count for proper formatting
                 var maxNameLength = Math.max(...objectData.map(obj => obj.name.length));
                 var maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length));
 
-                // Print the sorted and formatted results
-                console.log("Objects sorted by field count (descending):");
+                var output = "Objects sorted by field count (ascending):\n";
                 objectData.forEach(function (obj) {
                     var namePadding = ' '.repeat(maxNameLength - obj.name.length);
                     var countPadding = ' '.repeat(maxFieldCountLength - obj.fieldCount.toString().length);
-                    console.log(`${obj.name}${namePadding} : ${countPadding}${obj.fieldCount} fields`);
+                    output += `${obj.name}${namePadding} : ${countPadding}${obj.fieldCount} fields\n`;
                 });
+
+                console.log(output);
             },
 
             getLinuxDeviceInfo: function () {
