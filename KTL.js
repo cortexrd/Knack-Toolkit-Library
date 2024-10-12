@@ -19362,25 +19362,36 @@ function Ktl($, appInfo) {
             objectsAndFieldCounts: function () {
                 var objectData = Knack.objects.models
                     .map(function (object) {
+                        var connectionCount = object.fields.models.filter(function (field) {
+                            return field.attributes.type === 'connection';
+                        }).length;
                         return {
                             name: object.attributes.name,
-                            fieldCount: object.fields.length
+                            fieldCount: object.fields.length,
+                            connectionCount: connectionCount
                         };
                     })
                     .sort(function (a, b) {
                         return a.fieldCount - b.fieldCount;
                     });
 
-                var maxNameLength = Math.max(...objectData.map(obj => obj.name.length));
-                var maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length));
+                // Find the length of the longest object name and counts for proper formatting
+                var maxNameLength = Math.max(...objectData.map(obj => obj.name.length), "Object Name".length);
+                var maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), "Total Fields".length);
+                var maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), "Connections".length);
 
+                // Construct the formatted string
                 var output = "Objects sorted by field count (ascending):\n";
+                output += "Object Name" + " ".repeat(maxNameLength - 11) + " : Total Fields : Connections\n";
+                output += "-".repeat(maxNameLength) + ":-" + "-".repeat(maxFieldCountLength) + ":-" + "-".repeat(maxConnectionCountLength) + "\n";
                 objectData.forEach(function (obj) {
                     var namePadding = ' '.repeat(maxNameLength - obj.name.length);
-                    var countPadding = ' '.repeat(maxFieldCountLength - obj.fieldCount.toString().length);
-                    output += `${obj.name}${namePadding} : ${countPadding}${obj.fieldCount} fields\n`;
+                    var fieldCountPadding = ' '.repeat(maxFieldCountLength - obj.fieldCount.toString().length);
+                    var connectionCountPadding = ' '.repeat(maxConnectionCountLength - obj.connectionCount.toString().length);
+                    output += `${obj.name}${namePadding} : ${obj.fieldCount}${fieldCountPadding} : ${obj.connectionCount}${connectionCountPadding}\n`;
                 });
 
+                // Output the entire formatted string at once
                 console.log(output);
             },
 
