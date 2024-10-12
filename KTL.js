@@ -16072,6 +16072,7 @@ function Ktl($, appInfo) {
                                         $('#devToolSearchDivId').show();
                                         $('#ktlDevToolsSearchInputId').focus();
                                         $('#ktlDevToolsSearchInputId').val(ktlDevToolsLastSearch);
+                                        $('#ktlDevToolsSearchInputId').select();
                                         return;
                                     }
 
