@@ -19443,13 +19443,13 @@ function Ktl($, appInfo) {
                 const maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), 'Total Fields'.length);
                 const maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), 'Connections'.length);
                 const output = `Objects sorted by field count (ascending):
-${'Object Name'.padEnd(maxNameLength)} : ${'Total Fields'.padStart(maxFieldCountLength)} : ${'Connections'.padStart(maxConnectionCountLength)}
-${'-'.repeat(maxNameLength)}:${'-'.repeat(maxFieldCountLength + 1)}:${'-'.repeat(maxConnectionCountLength + 1)}
-${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} : ${obj.fieldCount.toString().padStart(maxFieldCountLength)} : ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
+                    ${'Object Name'.padEnd(maxNameLength)} : ${'Total Fields'.padStart(maxFieldCountLength)} : ${'Connections'.padStart(maxConnectionCountLength)}
+                    ${'-'.repeat(maxNameLength)}:${'-'.repeat(maxFieldCountLength + 1)}:${'-'.repeat(maxConnectionCountLength + 1)}
+                    ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} : ${obj.fieldCount.toString().padStart(maxFieldCountLength)} : ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
                 console.log(output);
             },
 
-            searchTextInViewsAndInputs: function (textToFind) {
+            ktlSearch: function (textToFind) {
                 // Check if Knack and scenes are defined
                 if (!Knack || !Knack.scenes || !Knack.scenes.models) {
                     console.error('Knack scenes are not defined');
@@ -19485,10 +19485,19 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} : ${obj.fieldCount.to
                         }
 
                         // Check submit rules
-                        const submitRules = rules?.submits;
+                        const submitRules = rules && rules.submits;
                         if (submitRules) {
                             submitRules.forEach(({ message = '' }) => {
                                 if (checkTextInContent(message, 'submit rule')) {
+                                    return;
+                                }
+                            });
+                        }
+
+                        const emails = rules && rules.emails
+                        if (emails) {
+                            emails.forEach(({ email: { message = '', subject = '' } }) => {
+                                if (checkTextInContent(message, 'email message') || checkTextInContent(subject, 'email subject')) {
                                     return;
                                 }
                             });
@@ -19501,8 +19510,12 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} : ${obj.fieldCount.to
                                     columnGroups.forEach(({ columns: groupColumns }) => {
                                         if (groupColumns) {
                                             groupColumns.forEach(col => {
-                                                col.forEach(({ copy = '', name = '' }) => {
-                                                    if (checkTextInContent(copy, 'details copy') || checkTextInContent(name, 'detrails name')) {
+                                                col.forEach(({ copy = '', name = '' , link_text = ''}) => {
+                                                    if (
+                                                        checkTextInContent(copy, 'details copy') ||
+                                                        checkTextInContent(name, 'details name') ||
+                                                        checkTextInContent(link_text, 'details link text')
+                                                    ) {
                                                         return;
                                                     }
                                                 });
@@ -19538,8 +19551,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} : ${obj.fieldCount.to
                 });
 
                 if (!textFound) {
-                    ktl.log.clog('green', `${textToFind} is not found in rich_text view any view Description, Title, Rules, Inputs`);
-                    console.warn('Remember to check _cls');
+                    ktl.log.clog('green', `${textToFind} is not found in rich_text view any view Description, Title, Rules, Inputs, Emails, Detail Labels`);
                 }
             },
 
@@ -21281,8 +21293,8 @@ window.objectsAndFieldCounts = function () {
     console.log('Count of objects:', Knack.objects.length);
 }
 
-window.searchTextInViewsAndInputs = function (search) {
-    ktl.sysInfo.searchTextInViewsAndInputs(search);    
+window.ktlSearch = function (search) {
+    ktl.sysInfo.ktlSearch(search);
 }
 
 function ktlCompare(a, operator, b) {
