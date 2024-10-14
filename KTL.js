@@ -3100,7 +3100,7 @@ function Ktl($, appInfo) {
                     } else
                         findFirstFieldInView();
 
-                    function findFirstFieldInView(){
+                    function findFirstFieldInView() {
                         const fieldSel = $('#' + viewId + ' [class*="field_"]:first');
                         if (fieldSel.length) {
                             var classes = fieldSel[0].classList.value;
@@ -6523,11 +6523,9 @@ function Ktl($, appInfo) {
 
         function summaryPostProcessing(view, data) {
             const viewId = view.key;
-
             const viewType = ktl.views.getViewType(viewId);
-            const dbg = false; //Temporary flag to enable tracing and debugging.
 
-            if (ktl.views.viewHasSummary(viewId) || ktl.views.viewHasGroups(viewId)) {
+            if (ktl.views.viewHasSummary(viewId)) {
                 /* This code is needed for keywords that may require summary data to achieve their task.
 
                 Since the summaries are rendered "a bit later" than the rest of the grid data,
@@ -6547,10 +6545,8 @@ function Ktl($, appInfo) {
                             if (Knack.views[viewId].ktlCtxPostRender) {
                                 try {
                                     Knack.views[viewId].ktlCtxPostRender.original.call(this, ...arguments);
-
-                                    setTimeout(() => { //Need this for some reason, otherwise it doesnt' work.
-                                        finalizeSummaryPostProcessing(view, data);
-                                    }, 0);
+                                    ktl.views.fixTableRowsAlignment(viewId);
+                                    finalizeSummaryPostProcessing(view, data);
                                 }
                                 catch (e) {
                                     console.log('Exception in ktlCtxPostRender.original.call:', viewId, e);
@@ -6571,16 +6567,14 @@ function Ktl($, appInfo) {
                             Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
                         }
                     }
-                } else {
+                } else { //Grid
                     const originalPostRender = Knack.views[viewId].postRender;
                     const ktlPostRender = function () {
                         if (Knack.views[viewId].ktlPostRender) {
                             try {
                                 Knack.views[viewId].ktlPostRender.original.call(this, ...arguments);
-
-                                setTimeout(() => { //Need this for some reason, otherwise it doesnt' work.
-                                    finalizeSummaryPostProcessing(view, data);
-                                }, 0);
+                                ktl.views.fixTableRowsAlignment(viewId);
+                                finalizeSummaryPostProcessing(view, data);
                             }
                             catch (e) {
                                 console.log('Exception in ktlPostRender.original.call:', viewId, e);
@@ -6808,9 +6802,6 @@ function Ktl($, appInfo) {
 
             try {
                 const viewId = view.key;
-                if (viewId === 'view_589')
-                    console.log('ktlProcessKeywords');
-
                 var keywords = ktlKeywords[viewId];
                 if (keywords && !$.isEmptyObject(keywords)) {
                     //This section is for keywords that are only supported by views.
@@ -7425,7 +7416,7 @@ function Ktl($, appInfo) {
             let viewHeight = 800;
 
             const selector = `kn-report-${report.this.slug}-${report.index + 1}`;
-            const rowCount = $('#'+selector).find('tr').length;
+            const rowCount = $('#' + selector).find('tr').length;
 
             if (!keywords[_sth] || !rowCount)
                 return;
@@ -7440,7 +7431,7 @@ function Ktl($, appInfo) {
 
 
             ktl.views.stickTableHeader(selector, viewHeight);
-            $(`#${selector} .kn-report-rendered`).find('th').css({'background': 'white'});
+            $(`#${selector} .kn-report-rendered`).find('th').css({ 'background': 'white' });
         }
 
         function stickyReportTableColumns(report, keywords) {
@@ -12190,123 +12181,86 @@ function Ktl($, appInfo) {
             },
 
             //Restores proper cell alignment due to Bulk Ops, summaries, groups and hidden/removed columns.
-            fixTableRowsAlignment: function (viewId) {
-                return new Promise(function (resolve) {
-                    if (!viewId || document.querySelector('#' + viewId + ' tr.kn-tr-nodata'))
-                        return resolve();
+            fixTableRowsAlignment: async function (viewId) {
+                if (!viewId || document.querySelector(`#${viewId} tr.kn-tr-nodata`)) return;
 
-                    var viewObj = ktl.views.getView(viewId);
-                    if (!viewObj)
-                        return resolve();
+                const viewObj = ktl.views.getView(viewId);
+                if (!viewObj) return;
 
-                    const columns = (viewObj.results && viewObj.results.columns) || viewObj.columns;
-                    const groupingCount = columns.reduce(function (count, col) {
-                        return count + (col.grouping ? 1 : 0);
-                    }, 0);
+                const bulkOpsActive = ktl.bulkOps.getBulkOpsActive(viewId);
+                const bulkOpsOffset = bulkOpsActive ? 1 : 0;
 
+                await fixSummarySection(viewId);
 
-                    if (ktl.bulkOps.getBulkOpsActive(viewId)) {
-                        // For summary lines, prepend a space if Bulk Ops are enabled.
-                        fixSummarySection().then(function () {
-                            if (groupingCount) {
-                                const sel = '#' + viewId + ' tr.kn-table-group';
-                                ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT)
-                                    .then(function () {
-                                        $(sel).each(function () {
-                                            if (!$(this).find('td').hasClass('blankCell'))
-                                                $(this).prepend(`<td class="blankCell" style="border-top: 1px solid #dadada;"></td>`);
-                                        });
-                                        resolve(); // Resolve here after processing all group rows
-                                    })
-                                    .catch(function (e) {
-                                        ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e);
-                                        resolve(); // Ensure resolve is called even on failure
-                                    });
-                            } else {
-                                resolve(); // Resolve immediately if no grouping found
-                            }
+                const columns = (viewObj.results && viewObj.results.columns) || viewObj.columns;
+                const groupingCount = columns.reduce((count, col) => count + (col.grouping ? 1 : 0), 0);
+                if (groupingCount) {
+                    try {
+                        const headers = $(`#${viewId} thead tr th:visible`).length;
+                        const sel = `#${viewId} tr.kn-table-group`;
+                        await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
+                        $(sel).each(function () {
+                            if (bulkOpsActive)
+                                $(this).find('td').css('padding-left', '45px');
+                            $(this).find('td').attr('colspan', headers);
                         });
-                    } else {
-                        fixSummarySection().then(resolve);
+                    } catch (e) {
+                        ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e);
                     }
+                }
 
-                    function fixSummarySection() {
-                        return new Promise(function (resolve) {
-                            if (ktl.views.viewHasSummary(viewId)) {
-                                const sel = '#' + viewId + ' tr.kn-table-totals';
-                                ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT)
-                                    .then(function () {
-                                        const totalRows = $(sel);
-                                        if (!$('#' + viewId + ' tr.kn-table-totals td')[0].classList.contains('blankCell')) {
-                                            var headers = $('#' + viewId + ' thead tr th:visible').length;
-                                            var totals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])').length;
+                async function fixSummarySection(viewId) {
+                    if (!ktl.views.viewHasSummary(viewId)) return;
 
-                                            if (headers > totals) {
-                                                for (var i = totalRows.length - 1; i >= 0; i--) {
-                                                    var row = totalRows[i];
-                                                    $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                                                }
-                                            }
-
-                                            fixSummaryRows().then(resolve);
-                                        } else {
-                                            resolve(); // Resolve if no fixes needed
-                                        }
-                                    })
-                                    .catch(function (e) { resolve(); }); // Ensure resolve is called even on failure
-                            } else {
-                                resolve(); // Resolve immediately if no summary found
+                    const sel = `#${viewId} tr.kn-table-totals`;
+                    try {
+                        await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
+                        const totalRows = $(sel);
+                        if (!$(`#${viewId} tr.kn-table-totals td`)[0].classList.contains('blankCell')) {
+                            const headers = $(`#${viewId} thead tr th:visible`);
+                            const totals = $(`#${viewId} tr.kn-table-totals:first`).children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])');
+                            if (headers.length > totals.length) {
+                                for (let i = totalRows.length - 1; i >= 0; i--) {
+                                    const row = totalRows[i];
+                                    $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                }
                             }
-                        });
-                    }
 
-                    function fixSummaryRows() {
-                        return new Promise(function (resolve) {
-                            if (!ktl.views.viewHasSummary(viewId))
-                                return resolve();
-
-                            var headers = $('#' + viewId + ' thead tr th:is([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])');
-                            if (headers.length) {
-                                const visibielHeaders = $('#' + viewId + ' thead tr th:visible');
-                                const visibleTotals = $('#' + viewId + ' tr.kn-table-totals:first').children('td:visible');
-                                if (visibielHeaders.length < visibleTotals.length) {
-                                    headers.get().reverse().forEach((el, ix) => {
-                                        $('#' + viewId + ' tr.kn-table-totals td:nth-child(' + (el.cellIndex) + ')').addClass('ktlDisplayNone_hc');
+                            const hiddenHeaders = $(`#${viewId} thead tr th:is([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])`);
+                            if (hiddenHeaders.length) {
+                                const visibleHeaders = $(`#${viewId} thead tr th:visible`);
+                                const visibleTotals = $(`#${viewId} tr.kn-table-totals:first`).children('td:visible');
+                                if (visibleHeaders.length < visibleTotals.length) {
+                                    hiddenHeaders.get().reverse().forEach((el, ix) => {
+                                        $(`#${viewId} tr.kn-table-totals td:nth-child(${el.cellIndex + 1})`).addClass('ktlDisplayNone_hc');
                                     });
                                 }
 
-                                //Repositions the summary labels if they've been hidden.
-                                const moveSummaryLabels = (viewId) => {
-                                    const summaryLabel = Knack.views[viewId].model.view.totals[0].label;
-                                    const summaryCell = $(`#${viewId} tr.kn-table-totals:first td:visible`).filter(function () {
+                                const summaryLabel = Knack.views[viewId].model.view.totals[0].label;
+                                const summaryCell = $(`#${viewId} tr.kn-table-totals:first td:visible`).filter(function () {
+                                    return $(this).text().trim().startsWith(summaryLabel);
+                                });
+                                if (!summaryCell.length) {
+                                    const hiddenSummaryCell = $(`#${viewId} tr.kn-table-totals:first td.ktlDisplayNone_hc`).filter(function () {
                                         return $(this).text().trim().startsWith(summaryLabel);
                                     });
-
-                                    if (!summaryCell.length) {
-                                        const hiddenSummaryCell = $(`#${viewId} tr.kn-table-totals:first td.ktlDisplayNone_hc`).filter(function () {
-                                            return $(this).text().trim().startsWith(summaryLabel);
+                                    if (hiddenSummaryCell.length) {
+                                        const originalSummaryColumn = hiddenSummaryCell[0].cellIndex;
+                                        const newSummaryColumnIndex = $(`#${viewId} tr.kn-table-totals:first td:not(.blankCell)`).filter(function () {
+                                            return $(this).text().trim().replace(/\u00a0/g, '') === '';
+                                        }).first()[0].cellIndex;
+                                        $(`#${viewId} tr.kn-table-totals`).each((ix, summaryRow) => {
+                                            const cellContent = $(summaryRow).find(`td:nth-child(${originalSummaryColumn + 1})`)[0].innerHTML;
+                                            $(summaryRow).find(`td:nth-child(${newSummaryColumnIndex + 1})`)[0].innerHTML = cellContent;
                                         });
-
-                                        if (hiddenSummaryCell.length) {
-                                            const originalSummaryColumn = hiddenSummaryCell[0].cellIndex;
-                                            const newSummaryColumnIndex = $(`#${viewId} tr.kn-table-totals:first td:not(.blankCell)`).filter(function () {
-                                                return $(this).text().trim().replace(/\u00a0/g, '') === ''
-                                            }).first()[0].cellIndex;
-
-                                            $(`#${viewId} tr.kn-table-totals`).each((ix, summaryRow) => {
-                                                const cellContent = $(summaryRow).find(`td:nth-child(${originalSummaryColumn + 1})`)[0].innerHTML;
-                                                $(summaryRow).find(`td:nth-child(${newSummaryColumnIndex + 1})`)[0].innerHTML = cellContent;
-                                            });
-                                        }
                                     }
-                                };
-
-                                moveSummaryLabels(viewId);
+                                }
                             }
-                            resolve(); // Resolve after processing summary rows
-                        });
+                        }
+                    } catch (e) {
+                        // Error handled silently
                     }
-                });
+                }
             },
 
             addTimeStampToHeader: function (viewId, keywords, fontStyle = 'color: gray; font-weight: bold; font-size:x-large') {
@@ -14554,6 +14508,8 @@ function Ktl($, appInfo) {
                     $('#' + viewId + ' tbody tr').each(function () {
                         if (this.id && !this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
                             $(this).prepend('<td><input type="checkbox"></td>');
+                        } else if (this.classList.contains('kn-table-totals')) {
+                            $(this).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
                         }
                     });
 
@@ -16407,14 +16363,14 @@ function Ktl($, appInfo) {
                                 })
                         }
                     } else if (event.key === 'Escape') {
-                        if($('#dbgWndId:visible').length)
-                        ktl.debugWnd.showDebugWnd(false);
-                    else if ($('#resultWndId:visible').length)
-                        $('#resultWndId').hide();
-                    else if ($('#devToolSearchDivId:visible').length)
-                        $('#devToolSearchDivId').hide();
-                    else
-                        $('#devBtnsDivId').hide();
+                        if ($('#dbgWndId:visible').length)
+                            ktl.debugWnd.showDebugWnd(false);
+                        else if ($('#resultWndId:visible').length)
+                            $('#resultWndId').hide();
+                        else if ($('#devToolSearchDivId:visible').length)
+                            $('#devToolSearchDivId').hide();
+                        else
+                            $('#devBtnsDivId').hide();
 
                     }
                 });
@@ -18324,6 +18280,8 @@ function Ktl($, appInfo) {
                 $('#' + viewId + ' tbody tr').each(function () {
                     if (this.id && !this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
                         $(this).prepend('<td><input type="checkbox"></td>');
+                    } else if (this.classList.contains('kn-table-totals')) {
+                        //Check if needed... $(this).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
                     }
                 });
 
@@ -19512,7 +19470,7 @@ function Ktl($, appInfo) {
                                     columnGroups.forEach(({ columns: groupColumns }) => {
                                         if (groupColumns) {
                                             groupColumns.forEach(col => {
-                                                col.forEach(({ copy = '', name = '' , link_text = ''}) => {
+                                                col.forEach(({ copy = '', name = '', link_text = '' }) => {
                                                     if (
                                                         checkTextInContent(copy, 'details copy') ||
                                                         checkTextInContent(name, 'details name') ||
