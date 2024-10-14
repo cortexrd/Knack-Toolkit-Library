@@ -6544,7 +6544,7 @@ function Ktl($, appInfo) {
                             if (Knack.views[viewId].ktlCtxPostRender) {
                                 try {
                                     Knack.views[viewId].ktlCtxPostRender.original.call(this, ...arguments);
-                                    ktl.views.fixTableRowsAlignment(viewId);
+                                    //ktl.views.fixTableRowsAlignment(viewId);
                                     finalizeSummaryPostProcessing(view, data);
                                 }
                                 catch (e) {
@@ -6572,7 +6572,7 @@ function Ktl($, appInfo) {
                         if (Knack.views[viewId].ktlPostRender) {
                             try {
                                 Knack.views[viewId].ktlPostRender.original.call(this, ...arguments);
-                                ktl.views.fixTableRowsAlignment(viewId);
+                                //ktl.views.fixTableRowsAlignment(viewId);
                                 finalizeSummaryPostProcessing(view, data);
                             }
                             catch (e) {
@@ -6611,13 +6611,21 @@ function Ktl($, appInfo) {
                     keywords._rc && ktl.views.removeColumns(view, ktlKeywords[viewId], false);
                 }
 
-                if (['table', 'search'].includes(viewType) && ktl.views.viewHasSummary(viewId)) {
-                    ktlProcessKeywords(view, data);
-                } else {
-                    ktl.bulkOps.prepareBulkOps(view, data);
-                    ktl.views.fixTableRowsAlignment(viewId);
-                    ktlProcessKeywords(view, data);
-                }
+                //if (!['table', 'search'].includes(viewType)) {
+                //}
+                ktl.bulkOps.prepareBulkOps(view, data);
+                ktl.views.fixTableRowsAlignment(viewId);
+                ktlProcessKeywords(view, data);
+
+            //    if (['table', 'search'].includes(viewType) && ktl.views.viewHasSummary(viewId)) {
+            //        //ktl.bulkOps.prepareBulkOps(view, data);
+            //        ktl.views.fixTableRowsAlignment(viewId);
+            //        ktlProcessKeywords(view, data);
+            //    } else {
+            //        ktl.bulkOps.prepareBulkOps(view, data);
+            //        ktl.views.fixTableRowsAlignment(viewId);
+            //        ktlProcessKeywords(view, data);
+            //    }
             }
         }
 
@@ -12189,8 +12197,8 @@ function Ktl($, appInfo) {
                 const viewObj = ktl.views.getView(viewId);
                 if (!viewObj) return;
 
-                console.log('fixTableRowsAlignment', viewId);
-                ktl.core.logCaller(6);
+                //console.log('fixTableRowsAlignment', viewId);
+                //ktl.core.logCaller(6);
 
                 const bulkOpsActive = ktl.bulkOps.getBulkOpsActive(viewId);
                 const bulkOpsOffset = bulkOpsActive ? 1 : 0;
