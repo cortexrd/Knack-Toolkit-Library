@@ -6544,7 +6544,6 @@ function Ktl($, appInfo) {
                             if (Knack.views[viewId].ktlCtxPostRender) {
                                 try {
                                     Knack.views[viewId].ktlCtxPostRender.original.call(this, ...arguments);
-                                    //ktl.views.fixTableRowsAlignment(viewId);
                                     finalizeSummaryPostProcessing(view, data);
                                 }
                                 catch (e) {
@@ -6571,9 +6570,14 @@ function Ktl($, appInfo) {
                     const ktlPostRender = function () {
                         if (Knack.views[viewId].ktlPostRender) {
                             try {
-                                Knack.views[viewId].ktlPostRender.original.call(this, ...arguments);
-                                //ktl.views.fixTableRowsAlignment(viewId);
-                                finalizeSummaryPostProcessing(view, data);
+                                //For girds, we need to ignore these lines if called from postRenderViews.
+                                //Otherwise, the double-call causes a bad layout. Let the view render call execute them.
+                                const error = new Error();
+                                const skip = error.stack.includes('postRenderViews');
+                                if (!skip) {
+                                    Knack.views[viewId].ktlPostRender.original.call(this, ...arguments);
+                                    finalizeSummaryPostProcessing(view, data);
+                                }
                             }
                             catch (e) {
                                 console.log('Exception in ktlPostRender.original.call:', viewId, e);
@@ -6598,10 +6602,6 @@ function Ktl($, appInfo) {
                 finalizeSummaryPostProcessing(view, data);
             }
 
-            if (viewType === 'search' && Knack.views[viewId].model.results_model) {
-                Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender();
-            }
-
             function finalizeSummaryPostProcessing(view, data) {
                 const viewId = view.key;
 
@@ -6611,21 +6611,9 @@ function Ktl($, appInfo) {
                     keywords._rc && ktl.views.removeColumns(view, ktlKeywords[viewId], false);
                 }
 
-                //if (!['table', 'search'].includes(viewType)) {
-                //}
                 ktl.bulkOps.prepareBulkOps(view, data);
                 ktl.views.fixTableRowsAlignment(viewId);
                 ktlProcessKeywords(view, data);
-
-            //    if (['table', 'search'].includes(viewType) && ktl.views.viewHasSummary(viewId)) {
-            //        //ktl.bulkOps.prepareBulkOps(view, data);
-            //        ktl.views.fixTableRowsAlignment(viewId);
-            //        ktlProcessKeywords(view, data);
-            //    } else {
-            //        ktl.bulkOps.prepareBulkOps(view, data);
-            //        ktl.views.fixTableRowsAlignment(viewId);
-            //        ktlProcessKeywords(view, data);
-            //    }
             }
         }
 
@@ -12197,81 +12185,81 @@ function Ktl($, appInfo) {
                 const viewObj = ktl.views.getView(viewId);
                 if (!viewObj) return;
 
-                //console.log('fixTableRowsAlignment', viewId);
-                //ktl.core.logCaller(6);
-
                 const bulkOpsActive = ktl.bulkOps.getBulkOpsActive(viewId);
-                const bulkOpsOffset = bulkOpsActive ? 1 : 0;
 
-                await fixSummarySection(viewId);
+                if (ktl.views.viewHasSummary(viewId)) {
+                    const sel = `#${viewId} tr.kn-table-totals`;
+                    try {
+                        await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
+                        if (bulkOpsActive) {
+                            //Insert blankCells at first column for each summary row.
+                            const totalRows = $(sel);
+                            if (!$(`#${viewId} tr.kn-table-totals td`)[0].classList.contains('blankCell')) {
+                                const headers = $(`#${viewId} thead tr th:visible`);
+                                const totals = $(`#${viewId} tr.kn-table-totals:first`).children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])');
+                                if (headers.length > totals.length) {
+                                    for (let i = totalRows.length - 1; i >= 0; i--) {
+                                        const row = totalRows[i];
+                                        $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                                    }
+                                }
+                            }
+                        }
 
+                        //Hide summary columns to match hidden columns.
+                        const hiddenHeaders = $(`#${viewId} thead tr th:is([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])`);
+                        if (hiddenHeaders.length) {
+                            const visibleHeaders = $(`#${viewId} thead tr th:visible`);
+                            const visibleTotals = $(`#${viewId} tr.kn-table-totals:first`).children('td:visible');
+                            if (visibleHeaders.length < visibleTotals.length) {
+                                hiddenHeaders.forEach((el, ix) => {
+                                    $(`#${viewId} tr.kn-table-totals td:nth-child(${el.cellIndex + 1})`).addClass('ktlDisplayNone_hc');
+                                });
+                            }
+
+                            //Reposition summay labels that might have been hidden. Use the first blank column.
+                            const summaryLabel = Knack.views[viewId].model.view.totals[0].label;
+                            const summaryCell = $(`#${viewId} tr.kn-table-totals:first td:visible`).filter(function () {
+                                return $(this).text().trim().startsWith(summaryLabel);
+                            });
+
+                            if (!summaryCell.length) {
+                                const hiddenSummaryCell = $(`#${viewId} tr.kn-table-totals:first td.ktlDisplayNone_hc`).filter(function () {
+                                    return $(this).text().trim().startsWith(summaryLabel);
+                                });
+                                if (hiddenSummaryCell.length) {
+                                    const originalSummaryColumn = hiddenSummaryCell[0].cellIndex;
+                                    const newSummaryColumnIndex = $(`#${viewId} tr.kn-table-totals:first td:not(.blankCell)`).filter(function () {
+                                        return $(this).text().trim().replace(/\u00a0/g, '') === '';
+                                    }).first()[0].cellIndex;
+                                    $(`#${viewId} tr.kn-table-totals`).each((ix, summaryRow) => {
+                                        const cellContent = $(summaryRow).find(`td:nth-child(${originalSummaryColumn + 1})`)[0].innerHTML;
+                                        $(summaryRow).find(`td:nth-child(${newSummaryColumnIndex + 1})`)[0].innerHTML = cellContent;
+                                    });
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Error handled silently
+                    }
+                }
+
+                //Adjust grouping rows by adding a left-padding if Bulk Ops are enabled,
+                //and extending them to the right, match the new number of headers.
                 const columns = (viewObj.results && viewObj.results.columns) || viewObj.columns;
                 const groupingCount = columns.reduce((count, col) => count + (col.grouping ? 1 : 0), 0);
                 if (groupingCount) {
                     try {
-                        const headers = $(`#${viewId} thead tr th:visible`).length;
                         const sel = `#${viewId} tr.kn-table-group`;
                         await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
+                        const headers = $(`#${viewId} thead tr th:visible`).length;
                         $(sel).each(function () {
                             if (bulkOpsActive)
                                 $(this).find('td').css('padding-left', '45px');
                             $(this).find('td').attr('colspan', headers);
                         });
                     } catch (e) {
-                        ktl.log.clog('purple', 'Failed waiting for table groups.', viewId, e);
-                    }
-                }
-
-                async function fixSummarySection(viewId) {
-                    if (!ktl.views.viewHasSummary(viewId)) return;
-
-                    const sel = `#${viewId} tr.kn-table-totals`;
-                    try {
-                        await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
-                        const totalRows = $(sel);
-                        if (!$(`#${viewId} tr.kn-table-totals td`)[0].classList.contains('blankCell')) {
-                            const headers = $(`#${viewId} thead tr th:visible`);
-                            const totals = $(`#${viewId} tr.kn-table-totals:first`).children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])');
-                            if (headers.length > totals.length) {
-                                for (let i = totalRows.length - 1; i >= 0; i--) {
-                                    const row = totalRows[i];
-                                    $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                                }
-                            }
-
-                            const hiddenHeaders = $(`#${viewId} thead tr th:is([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])`);
-                            if (hiddenHeaders.length) {
-                                const visibleHeaders = $(`#${viewId} thead tr th:visible`);
-                                const visibleTotals = $(`#${viewId} tr.kn-table-totals:first`).children('td:visible');
-                                if (visibleHeaders.length < visibleTotals.length) {
-                                    hiddenHeaders.get().reverse().forEach((el, ix) => {
-                                        $(`#${viewId} tr.kn-table-totals td:nth-child(${el.cellIndex + 1})`).addClass('ktlDisplayNone_hc');
-                                    });
-                                }
-
-                                const summaryLabel = Knack.views[viewId].model.view.totals[0].label;
-                                const summaryCell = $(`#${viewId} tr.kn-table-totals:first td:visible`).filter(function () {
-                                    return $(this).text().trim().startsWith(summaryLabel);
-                                });
-                                if (!summaryCell.length) {
-                                    const hiddenSummaryCell = $(`#${viewId} tr.kn-table-totals:first td.ktlDisplayNone_hc`).filter(function () {
-                                        return $(this).text().trim().startsWith(summaryLabel);
-                                    });
-                                    if (hiddenSummaryCell.length) {
-                                        const originalSummaryColumn = hiddenSummaryCell[0].cellIndex;
-                                        const newSummaryColumnIndex = $(`#${viewId} tr.kn-table-totals:first td:not(.blankCell)`).filter(function () {
-                                            return $(this).text().trim().replace(/\u00a0/g, '') === '';
-                                        }).first()[0].cellIndex;
-                                        $(`#${viewId} tr.kn-table-totals`).each((ix, summaryRow) => {
-                                            const cellContent = $(summaryRow).find(`td:nth-child(${originalSummaryColumn + 1})`)[0].innerHTML;
-                                            $(summaryRow).find(`td:nth-child(${newSummaryColumnIndex + 1})`)[0].innerHTML = cellContent;
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        // Error handled silently
+                        //Ignore since may happen with Search views without initial data.
                     }
                 }
             },
@@ -15226,8 +15214,8 @@ function Ktl($, appInfo) {
                 if (!ktl.account.isDeveloper() && !ktl.core.isKiosk())
                     keywords._km && ktl.core.kioskMode(true);
                 keywords._hv && ktl.views.hideView(viewId, keywords);
-                keywords._hc && ktl.views.hideColumns(viewObj, keywords, false);
-                keywords._rc && ktl.views.removeColumns(viewObj, keywords, false);
+                //keywords._hc && ktl.views.hideColumns(viewObj, keywords, false);
+                //keywords._rc && ktl.views.removeColumns(viewObj, keywords, false);
                 keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
                 keywords._style && ktl.views.setStyle(viewId, keywords);
             }
