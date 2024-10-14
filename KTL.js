@@ -6484,50 +6484,39 @@ function Ktl($, appInfo) {
             const viewId = view.key;
             const viewType = ktl.views.getViewType(viewId);
 
-            if (['table', 'search'].includes(viewType)) {
-                if (ktl.views.viewHasSummary(viewId)) {
-                    const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
-                    const headers = document.querySelectorAll('#' + viewId + ' thead th');
-                    var summaryObj = {};
-                    for (var t = 0; t < totals.length; t++) {
-                        const row = totals[t];
-                        const td = row.querySelectorAll('td');
-                        var summaryType = '';
-                        for (var col = 0; col < td.length; col++) {
-                            if (headers[col]) {
-                                const txt = td[col].textContent.trim();
-                                const fieldId = headers[col].className.split(' ')[0];
-                                const val = ktl.core.extractNumericValue(txt, fieldId);
-                                if (txt !== '' && val === undefined) {
-                                    //Found a summary type, ex: "Avg".
-                                    summaryType = txt;
-                                    summaryObj[summaryType] = {};
-                                } else if (summaryType && val) {
-                                    var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
-                                    if (colHeader)
-                                        summaryObj[summaryType][colHeader] = val;
-                                }
+            //Capture Summary values and notify other views that may need them.
+            if (['table', 'search'].includes(viewType) && ktl.views.viewHasSummary(viewId)) {
+                const totals = document.querySelectorAll('#' + viewId + ' .kn-table-totals');
+                const headers = document.querySelectorAll('#' + viewId + ' thead th');
+                var summaryObj = {};
+                for (var t = 0; t < totals.length; t++) {
+                    const row = totals[t];
+                    const td = row.querySelectorAll('td');
+                    var summaryType = '';
+                    for (var col = 0; col < td.length; col++) {
+                        if (headers[col]) {
+                            const txt = td[col].textContent.trim();
+                            const fieldId = headers[col].className.split(' ')[0];
+                            const val = ktl.core.extractNumericValue(txt, fieldId);
+                            if (txt !== '' && val === undefined) {
+                                //Found a summary type, ex: "Avg".
+                                summaryType = txt;
+                                summaryObj[summaryType] = {};
+                            } else if (summaryType && val) {
+                                var colHeader = document.querySelectorAll('#' + viewId + ' th')[col].textContent.trim();
+                                if (colHeader)
+                                    summaryObj[summaryType][colHeader] = val;
                             }
                         }
                     }
-
-                    if (ktlKeywords[viewId])
-                        ktlKeywords[viewId].summary = summaryObj;
-                    else
-                        ktlKeywords[viewId] = { summary: summaryObj };
-
-                    $(document).trigger(`KTL.summaryReady.${viewId}`);
-
-                    const keywords = ktlKeywords[viewId];
-                    if (keywords) {
-                        keywords._hc && ktl.views.hideColumns(view, ktlKeywords[viewId]);
-                        keywords._rc && ktl.views.removeColumns(view, ktlKeywords[viewId]);
-                    }
-
-                    ktl.bulkOps.prepareBulkOps(view, data);
-                    ktl.views.fixTableRowsAlignment(viewId);
-                    ktlProcessKeywords(view, data);
                 }
+
+                if (ktlKeywords[viewId])
+                    ktlKeywords[viewId].summary = summaryObj;
+                else
+                    ktlKeywords[viewId] = { summary: summaryObj };
+
+                $(document).trigger(`KTL.summaryReady.${viewId}`);
             }
         })
 
@@ -6605,7 +6594,7 @@ function Ktl($, appInfo) {
                         Knack.views[viewId].postRender = Knack.views[viewId].ktlPostRender.ktlPost;
                     }
                 }
-            } else {
+            } else { //View without Summary
                 finalizeSummaryPostProcessing(view, data);
             }
 
@@ -6618,12 +6607,12 @@ function Ktl($, appInfo) {
 
                 const keywords = ktlKeywords[viewId];
                 if (keywords) {
-                    keywords._hc && ktl.views.hideColumns(view, ktlKeywords[viewId]);
-                    keywords._rc && ktl.views.removeColumns(view, ktlKeywords[viewId]);
+                    keywords._hc && ktl.views.hideColumns(view, ktlKeywords[viewId], false);
+                    keywords._rc && ktl.views.removeColumns(view, ktlKeywords[viewId], false);
                 }
 
                 if (['table', 'search'].includes(viewType) && ktl.views.viewHasSummary(viewId)) {
-                    //Skip: Already done in records render.
+                    ktlProcessKeywords(view, data);
                 } else {
                     ktl.bulkOps.prepareBulkOps(view, data);
                     ktl.views.fixTableRowsAlignment(viewId);
@@ -6635,7 +6624,10 @@ function Ktl($, appInfo) {
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
 
-            summaryPostProcessing(view, data);
+            if (view.type === 'table' || view.type === 'search')
+                summaryPostProcessing(view, data);
+            else
+                ktlProcessKeywords(view, data);
 
             ktl.views.addViewId(view);
 
@@ -12197,6 +12189,9 @@ function Ktl($, appInfo) {
                 const viewObj = ktl.views.getView(viewId);
                 if (!viewObj) return;
 
+                console.log('fixTableRowsAlignment', viewId);
+                ktl.core.logCaller(6);
+
                 const bulkOpsActive = ktl.bulkOps.getBulkOpsActive(viewId);
                 const bulkOpsOffset = bulkOpsActive ? 1 : 0;
 
@@ -12677,7 +12672,7 @@ function Ktl($, appInfo) {
                 - headers: must be an array of strings of column headers.
             */
             //////////////////////////////////////////////////////////////////
-            hideTableColumns: function (viewId = '', fields = [], headers = []) {
+            hideTableColumns: function (viewId = '', fields = [], headers = [], fixRows = true) {
                 if (!viewId) {
                     ktl.log.clog('purple', 'Called hideTableColumns with invalid parameters.');
                     return;
@@ -12701,7 +12696,9 @@ function Ktl($, appInfo) {
                         }
                     }
                 });
-                ktl.views.fixTableRowsAlignment(viewId);
+
+                if (fixRows)
+                    ktl.views.fixTableRowsAlignment(viewId);
             },
 
             /*//////////////////////////////////////////////////////////////////
@@ -12713,7 +12710,7 @@ function Ktl($, appInfo) {
                 - headers: must be an array of strings of column headers.
             */
             //////////////////////////////////////////////////////////////////
-            unhideTableColumns: function (viewId = '', fields = [], headers = []) {
+            unhideTableColumns: function (viewId = '', fields = [], headers = [], fixRows = true) {
                 if (!viewId) {
                     ktl.log.clog('purple', 'Called unhideTableColumns with invalid parameters.');
                     return;
@@ -12735,7 +12732,8 @@ function Ktl($, appInfo) {
                     }
                 });
 
-                ktl.views.fixTableRowsAlignment(viewId);
+                if (fixRows)
+                    ktl.views.fixTableRowsAlignment(viewId);
             },
 
             /*//////////////////////////////////////////////////////////////////
@@ -12747,7 +12745,7 @@ function Ktl($, appInfo) {
                 - headers: must be an array of strings of column headers.
             */
             //////////////////////////////////////////////////////////////////
-            removeTableColumns: function (viewId = '', fields = [], headers = []) {
+            removeTableColumns: function (viewId = '', fields = [], headers = [], fixRows = true) {
                 if (typeof fields === "boolean")
                     return ktl.views.removeTableColumnsDeprecated(...arguments);
 
@@ -12785,7 +12783,8 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                ktl.views.fixTableRowsAlignment(viewId);
+                if (fixRows)
+                    ktl.views.fixTableRowsAlignment(viewId);
             },
 
             /*//////////////////////////////////////////////////////////////////
@@ -12796,7 +12795,7 @@ function Ktl($, appInfo) {
                 - columnsArray: must be an array of 1-based integers, ex: [5, 2, 1] to remove 1st, 2nd and 5th columns.  Order MUST be decreasing.
             */
             //////////////////////////////////////////////////////////////////
-            removeTableColumnsByIndex: function (viewId = '', columnIndexes = []) {
+            removeTableColumnsByIndex: function (viewId = '', columnIndexes = [], fixRows = true) {
                 if (!viewId) {
                     ktl.log.clog('purple', 'Called removeTableColumnsByIndex with invalid parameters.');
                     return;
@@ -12821,7 +12820,8 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                ktl.views.fixTableRowsAlignment(viewId);
+                if (fixRows)
+                    ktl.views.fixTableRowsAlignment(viewId);
             },
 
             /*//////////////////////////////////////////////////////////////////
@@ -12839,7 +12839,7 @@ function Ktl($, appInfo) {
                 You may use both arrays at same time, but columnsArray has precedence.
             */
             //////////////////////////////////////////////////////////////////
-            removeTableColumnsDeprecated: function (viewId = '', remove = true, columnsAr = [], fieldsAr = [], headersAr = []) {
+            removeTableColumnsDeprecated: function (viewId = '', remove = true, columnsAr = [], fieldsAr = [], headersAr = [], fixRows = true) {
                 console.warn('Deprecated function call. Update to use removeTableColumns(viewId, fields, headers or hideTableColumns(viewId, fields, headers) or removeTableColumnsByIndex(viewId, columnIndexes)')
                 if (!viewId ||
                     ((fieldsAr && fieldsAr.length === 0) && (columnsAr && columnsAr.length === 0)) && (headersAr && headersAr.length === 0)) {
@@ -12871,7 +12871,8 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                ktl.views.fixTableRowsAlignment(viewId);
+                if (fixRows)
+                    ktl.views.fixTableRowsAlignment(viewId);
             },
 
             //Pass a list of field IDs and returns the first found.
@@ -13493,7 +13494,7 @@ function Ktl($, appInfo) {
                 });
             },
 
-            removeColumns: function (view = {}, keywords = {}) {
+            removeColumns: function (view = {}, keywords = {}, fixRows = true) {
                 const kw = '_rc';
                 const viewId = view.key;
 
@@ -13522,13 +13523,13 @@ function Ktl($, appInfo) {
                         ktl.views.validateKtlCond(keyword.options, {}, viewId)
                             .then(valid => {
                                 if (valid)
-                                    ktl.views.removeTableColumns(viewId, fields, headers);
+                                    ktl.views.removeTableColumns(viewId, fields, headers, fixRows);
                             })
                     }
                 });
             },
 
-            hideColumns: function (view = {}, keywords = {}) {
+            hideColumns: function (view = {}, keywords = {}, fixRows = true) {
                 const kw = '_hc';
                 const viewId = view.key;
 
@@ -13553,15 +13554,15 @@ function Ktl($, appInfo) {
                         return fieldId && keyword.params[0].includes(fieldId);
                     });
 
-                    const hide = () => ktl.views.hideTableColumns(viewId, fields, headers);
-                    const unhide = () => ktl.views.unhideTableColumns(viewId, fields, headers);
+                    const hide = () => ktl.views.hideTableColumns(viewId, fields, headers, fixRows);
+                    const unhide = () => ktl.views.unhideTableColumns(viewId, fields, headers, fixRows);
 
                     if (fields.length || headers.length)
                         ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
                 });
             },
 
-            hideUnhideValidateKtlCond: function (options = {}, hide, unhide) {
+            hideUnhideValidateKtlCond: function (options = {}, hide, unhide, ) {
                 return new Promise(function (resolve) {
                     hide();
 
@@ -15217,8 +15218,8 @@ function Ktl($, appInfo) {
                 if (!ktl.account.isDeveloper() && !ktl.core.isKiosk())
                     keywords._km && ktl.core.kioskMode(true);
                 keywords._hv && ktl.views.hideView(viewId, keywords);
-                keywords._hc && ktl.views.hideColumns(viewObj, keywords);
-                keywords._rc && ktl.views.removeColumns(viewObj, keywords);
+                keywords._hc && ktl.views.hideColumns(viewObj, keywords, false);
+                keywords._rc && ktl.views.removeColumns(viewObj, keywords, false);
                 keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
                 keywords._style && ktl.views.setStyle(viewId, keywords);
             }
