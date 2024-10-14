@@ -912,7 +912,8 @@ function Ktl($, appInfo) {
             // Selects all text from an element.
             // Omit el param to de-select.
             selectElementContents: function (el = null) {
-                var body = document.body, range, sel;
+                const body = document.body;
+                let range, sel;
 
                 if (document.createRange && window.getSelection) {
                     sel = window.getSelection();
@@ -920,39 +921,48 @@ function Ktl($, appInfo) {
 
                     if (el === null) return;  // If el is null, remove selection and exit the function
 
-                    // Call helper function to replace <a> tags with their text content
+                    // Temporarily remove a.ktlShrinkLink elements
+                    const shrinkLinkElements = $(el).find('a.ktlShrinkLink').detach();
+
+                    // Replace other <a> tags with their text content
                     replaceLinksWithText(el);
 
                     range = document.createRange();
                     try {
                         range.selectNodeContents(el);
-                        sel.addRange(range);
                     } catch (e) {
                         range.selectNode(el);
-                        sel.addRange(range);
                     }
+                    sel.addRange(range);
+
+                    // Reattach a.ktlShrinkLink elements
+                    $(el).append(shrinkLinkElements);
                 } else if (body.createTextRange) {
                     if (el === null) {
                         document.selection.empty(); // For IE, remove selection and exit function if el is null
                         return;
                     }
 
-                    // Call helper function to replace <a> tags with their text content
+                    // Temporarily remove a.ktlShrinkLink elements
+                    const shrinkLinkElements = $(el).find('a.ktlShrinkLink').detach();
+
+                    // Replace other <a> tags with their text content
                     replaceLinksWithText(el);
 
                     range = body.createTextRange();
                     range.moveToElementText(el);
                     range.select();
+
+                    // Reattach a.ktlShrinkLink elements
+                    $(el).append(shrinkLinkElements);
                 }
 
-                // Helper function to replace <a> tags with their text content
+                // Helper function to replace <a> tags with their text content, ignoring those with the class 'ktlShrinkLink'
                 function replaceLinksWithText(el) {
-                    var links = el.getElementsByTagName('a');
-                    for (var i = links.length - 1; i >= 0; i--) {
-                        var link = links[i];
-                        var text = document.createTextNode(link.textContent);
-                        link.parentNode.replaceChild(text, link);
-                    }
+                    $(el).find('a').not('.ktlShrinkLink').each(function () {
+                        const text = document.createTextNode($(this).text());
+                        $(this).replaceWith(text);
+                    });
                 }
             },
 
@@ -14204,39 +14214,46 @@ function Ktl($, appInfo) {
 
                     if (viewType === 'table' || viewType === 'search') {
                         viewKtlButtonsDiv = $(`#${viewId} .table-keyword-search`);
-                        viewKtlButtonsDiv.css('display', 'inline-flex')
+                        viewKtlButtonsDiv.css('display', 'inline-flex');
                         copyToClipboard.css('margin-left', '10%').appendTo(viewKtlButtonsDiv);
                     }
+
                     if (!viewKtlButtonsDiv || !viewKtlButtonsDiv.length) {
-                        viewKtlButtonsDiv = $(`#${viewId}.kn-table .kn-records-nav, #${viewId} .kn-list-content, #${viewId}.kn-details section`);
+                        viewKtlButtonsDiv = $(`#${viewId}.kn-table .kn-records-nav, #${viewId} .kn-list-content, #${viewId} .kn-details section`);
                         viewKtlButtonsDiv.css({ 'flex-direction': 'column' });
                         copyToClipboard.css('margin-left', '8px').prependTo(viewKtlButtonsDiv);
                     }
 
                     copyToClipboard.on('click', function () {
-                        if (viewType === 'table' || viewType === 'search')
-                            ktl.core.selectElementContents(document.querySelector('#' + viewId + ' .kn-table-wrapper'));
-                        else if (viewType === 'details')
-                            ktl.core.selectElementContents(document.querySelector('#' + viewId + '.kn-details section'));
-                        else if (viewType === 'list') {
-                            ktl.core.selectElementContents(document.querySelector('#' + viewId + '.kn-list .columns'));
-                        }
-                        else {
-                            console.log('copyToClipboard error.  Unsupported view type:', viewId);
+                        const selectors = {
+                            table: `#${viewId} .kn-table-wrapper`,
+                            search: `#${viewId} .kn-table-wrapper`,
+                            details: `#${viewId}.kn-details section`,
+                            list: `#${viewId}.kn-list .columns`
+                        };
+
+                        const selector = selectors[viewType];
+                        if (!selector) {
+                            console.log('copyToClipboard error. Unsupported view type:', viewId);
                             return;
                         }
 
+                        ktl.core.selectElementContents(document.querySelector(selector));
+
                         try {
-                            var successful = document.execCommand('copy');
-                            var msg = successful ? `${viewType.charAt(0).toUpperCase() + viewType.slice(1)} copied to clipboard` : 'Error copying table to clipboard';
+                            const successful = document.execCommand('copy');
+                            const msg = successful ? `${capitalize(viewType)} copied to clipboard` : 'Error copying to clipboard';
                             ktl.core.timedPopup(msg, successful ? 'success' : 'error', 1000);
                         } catch (err) {
                             ktl.core.timedPopup('Unable to copy', 'error', 2000);
                         } finally {
                             ktl.core.selectElementContents();
                         }
-
                     });
+
+                    function capitalize(str) {
+                        return str.charAt(0).toUpperCase() + str.slice(1);
+                    }
                 }
 
                 var copyIsDisabled = false;
