@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.28.7';
+    const KTL_VERSION = '0.28.8';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -35,7 +35,7 @@ function Ktl($, appInfo) {
 
     var ktl = this;
 
-    const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency'];
+    const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency', 'timer'];
 
     //KEC stands for "KTL Event Code".  Next:  KEC_1026
 
@@ -2420,8 +2420,8 @@ function Ktl($, appInfo) {
                 }
             })
 
-            //Date and Time fields
-            $(`#${viewId} .kn-input-date_time`).on('change', function (e) {
+            //Date/Time and Timer fields
+            $(`#${viewId} .kn-input-date_time, #${viewId} .kn-input-timer`).on('change', function (e) {
                 processFieldChanged({ text: e.target.value, e: e });
             });
 
@@ -3775,7 +3775,7 @@ function Ktl($, appInfo) {
 
             if (!subField) {
                 if (typeof data === 'string') {
-                    if (data === 'Select' && (fieldType === 'connection' || fieldType === 'user_roles'))
+                    if ((data === 'Select' || data === 'Select:') && (fieldType === 'connection' || fieldType === 'user_roles'))
                         data = ''; //Do not save the placeholder 'Select';
                 } else { //Object
                     data = JSON.stringify(data);
@@ -3784,12 +3784,13 @@ function Ktl($, appInfo) {
                 if (!data)
                     delete formDataObj[viewId][fieldId];
                 else {
-                    if (fieldType === 'date_time') {
+                    if (fieldType === 'date_time' || fieldType === 'timer') {
                         const fieldRootSelector = `#${viewId}-${fieldId}`;
-                        const dateTimeFieldsSuffixes = [``, `-time`, `-time-to`, `-to`];
+                        const dateTimeFieldsSuffixes = [`-time`, `-time-to`, `-to`, `-date-from`, `-time-from`, `-date-to`, ``];
                         for (const fieldSuffix of dateTimeFieldsSuffixes) {
-                            if ($(`${fieldRootSelector}${fieldSuffix}`).length)
+                            if ($(`${fieldRootSelector}${fieldSuffix}`).length) {
                                 formDataObj[viewId][`${fieldId}${fieldSuffix}`] = $(`${fieldRootSelector}${fieldSuffix}`).val();
+                            }
                         }
                     } else
                         formDataObj[viewId][fieldId] = data;
@@ -3911,7 +3912,6 @@ function Ktl($, appInfo) {
                         currentViews[view.key] = view.key;
                         formDataObj[view.key] = viewData;
 
-                        //Object.keys(formDataObj[view.key]).forEach(fieldId => {
                         const keys = Object.keys(formDataObj[view.key]);
                         for (const fieldKey of keys) {
                             const fieldId = fieldKey.match(/field_\d+/)[0];
@@ -3925,7 +3925,7 @@ function Ktl($, appInfo) {
 
                             var subField = '';
                             var fieldType = field.attributes.type;
-                            var fieldText = formDataObj[view.key][fieldId];
+                            var fieldText = formDataObj[view.key][fieldKey] || formDataObj[view.key][fieldId]; //fieldKey is required for Date/Time suffixes.
 
                             if (fieldType === 'rich_text') {
                                 $(`#${view.key} #${fieldId}`).data('redactor').code.set(fieldText);
@@ -3938,15 +3938,17 @@ function Ktl($, appInfo) {
                                         return;
                                     }
 
-                                    const el = document.querySelector(`#${view.key} [data-input-id=${fieldId}] #${subField}.input`) //Must be first.
-                                        || document.querySelector(`#${view.key} [data-input-id=${fieldId}] input`)
-                                        || document.querySelector(`#${view.key} [data-input-id=${fieldId}] .kn-textarea`);
-
-                                    if (el) {
-                                        //The condition !el.value means 'Write value only if currently empty'
-                                        //and prevents overwriting fields just populated by code elsewhere.
-                                        !el.value && ($(el).val(fieldText));
+                                    let el;
+                                    if (fieldType === 'date_time' || fieldType === 'timer')
+                                        el = document.querySelector(`#${viewId}-${fieldKey}`);
+                                    else {
+                                        el = document.querySelector(`#${view.key} [data-input-id=${fieldId}] #${subField}.input`) //Must be first.
+                                            || document.querySelector(`#${view.key} [data-input-id=${fieldId}] input`)
+                                            || document.querySelector(`#${view.key} [data-input-id=${fieldId}] .kn-textarea`);
                                     }
+
+                                    if (el)
+                                        $(el).val(fieldText);
                                 }
 
                                 if (typeof fieldText === 'object') {
@@ -3960,7 +3962,7 @@ function Ktl($, appInfo) {
                                     })
                                 } else {
                                     setFieldText();
-                                    delete formDataObj[view.key][fieldId];
+                                    delete formDataObj[view.key][fieldKey];
                                 }
                             } else if (fieldType === 'connection') {
                                 if (typeof fieldText === 'object') {
@@ -4036,7 +4038,7 @@ function Ktl($, appInfo) {
                                 ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
                             }
 
-                            delete formDataObj[view.key][fieldId];
+                            delete formDataObj[view.key][fieldKey];
                         };
 
                         clearTimeout(pfTimeout);
