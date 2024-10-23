@@ -15063,13 +15063,23 @@ function Ktl($, appInfo) {
 
             getTableRows: function (viewId, callback, includeHeader = false, includeGroup = false) {
                 if (!viewId) return;
-                const viewElement = $(`#${viewId}`);
-                let tableRows = viewElement.find('table tbody tr:not(.kn-table-group)');
 
-                if (includeHeader) tableRows = tableRows.add(viewElement.find('table thead tr'));
+                const tableElement = $(`#${viewId} table`);
+                let tableRows = tableElement.find('tbody tr:not(.kn-table-group)');
 
-                if (includeGroup) tableRows = tableRows.add(viewElement.find('table tbody tr.kn-table-group'));
+                // Include header rows if specified
+                if (includeHeader) {
+                    const headerRows = tableElement.find('thead tr');
+                    tableRows = tableRows.add(headerRows);
+                }
 
+                // Include group rows if specified
+                if (includeGroup) {
+                    const groupRows = tableElement.find('tbody tr.kn-table-group');
+                    tableRows = tableRows.add(groupRows);
+                }
+
+                // Iterate over each row and execute the callback
                 tableRows.each((index, row) => {
                     callback(index, $(row));
                 });
