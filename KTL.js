@@ -15061,6 +15061,30 @@ function Ktl($, appInfo) {
                     subscriber.callback(viewId, evt, ...subscriber.additionalParameters);
             },
 
+            getTableRows: function (viewId, callback, includeHeader = false, includeGroup = false) {
+                if (!viewId) return;
+
+                const tableElement = $(`#${viewId} table`);
+                let tableRows = tableElement.find('tbody tr:not(.kn-table-group)');
+
+                // Include header rows if specified
+                if (includeHeader) {
+                    const headerRows = tableElement.find('thead tr');
+                    tableRows = tableRows.add(headerRows);
+                }
+
+                // Include group rows if specified
+                if (includeGroup) {
+                    const groupRows = tableElement.find('tbody tr.kn-table-group');
+                    tableRows = tableRows.add(groupRows);
+                }
+
+                // Iterate over each row and execute the callback
+                tableRows.each((index, row) => {
+                    callback(index, $(row));
+                });
+            }
+
         } //return
     })(); //Views feature
 
