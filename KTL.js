@@ -8649,31 +8649,33 @@ function Ktl($, appInfo) {
                 if (!ktl.core.hasRoleAccess(options)) return;
             }
 
+            let numParents = 1;
+            let buttonLabel = 'Go Back';
+
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                const numParents = keywords[kw][0].params[0][0] || 1;
+                numParents = keywords[kw][0].params[0][0] || 1;
                 if (isNaN(numParents) || numParents < 1 || numParents > 10) {
                     ktl.log.clog('purple', `_parent has an illegal level value: ${numParents} in ${viewId}.  Value must be between 1 and 10.`);
                     return;
                 }
+                buttonLabel = keywords[kw][0].params[0][1] || 'Go Back';
+            }
 
-                if (viewType === 'form') {
-                    $(document).bindFirst('knack-form-submit.' + viewId, () => {
-                        const url = ktl.core.findParentURL(window.location.href, numParents);
-                        url && (window.location.href = url);
-                    })
-                } else if (viewType === 'menu') {
-                    const buttonLabel = keywords[kw][0].params[0][1] || 'Go Back';
-
-                    ktl.systemColors.getSystemColors()
-                        .then((sc) => {
-                            const sysColors = sc;
-                            var gotoParentBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .menu-links__list'), buttonLabel, `color:${sysColors.links.rgb}`, ['menu-links__list-item', 'knMenuLink', 'knMenuLink--button', 'knMenuLink--filled', 'knMenuLink--size-medium'], 'ktlGotoParent-' + viewId);
-                            gotoParentBtn.addEventListener('click', function (e) {
-                                const url = ktl.core.findParentURL(window.location.href, numParents);
-                                url && (window.location.href = url);
-                            })
-                        })
-                }
+            if (viewType === 'form') {
+                $(document).bindFirst(`knack-form-submit.${viewId}`, () => {
+                    const url = ktl.core.findParentURL(window.location.href, numParents);
+                    url && (window.location.href = url);
+                });
+            } else if (viewType === 'menu') {
+                ktl.systemColors.getSystemColors()
+                    .then((sc) => {
+                        const sysColors = sc;
+                        const gotoParentBtn = $(ktl.fields.addButton($(`#${viewId} .menu-links__list`), buttonLabel, `color:${sysColors.links.rgb}`, ['menu-links__list-item', 'knMenuLink', 'knMenuLink--button', 'knMenuLink--filled', 'knMenuLink--size-medium'], 'ktlGotoParent-' + viewId));
+                        gotoParentBtn.on('click', function (e) {
+                            const url = ktl.core.findParentURL(window.location.href, numParents);
+                            url && (window.location.href = url);
+                        });
+                    });
             }
         }
 
