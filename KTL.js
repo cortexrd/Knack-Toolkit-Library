@@ -21372,7 +21372,7 @@ window.ktlUniversalSearch = function (search) {
     ktl.sysInfo.universalSearch(search);
 }
 
-window.findEmails = function (excludeEmails) {
+window.ktlFindEmails = function (excludeEmails) {
     ktl.core.findEmails(excludeEmails);
 }
 
