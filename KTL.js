@@ -2283,6 +2283,32 @@ function Ktl($, appInfo) {
 
                 return alignValues(sortedObject);
             },
+
+            //Will show all objects and the number of fields each have, sorted by decreasing order of fields.
+            tablesAndFieldCounts: function () {
+                const objectData = Knack.objects.models
+                    .map(function (object) {
+                        const connectionCount = object.fields.models.filter(function (field) {
+                            return field.attributes.type === 'connection';
+                        }).length;
+                        return {
+                            name: object.attributes.name,
+                            fieldCount: object.fields.length,
+                            connectionCount: connectionCount
+                        };
+                    })
+                    .sort(function (a, b) {
+                        return a.fieldCount - b.fieldCount;
+                    });
+                const maxNameLength = Math.max(...objectData.map(obj => obj.name.length), 'Object Name'.length);
+                const maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), 'Total Fields'.length);
+                const maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), 'Connections'.length);
+                const output = `Objects sorted by field count (ascending):
+${'Object Name'.padEnd(maxNameLength)} | ${'Total Fields'.padStart(maxFieldCountLength)} | ${'Connections'.padStart(maxConnectionCountLength)}
+${'-'.repeat(maxNameLength + 1)}|${'-'.repeat(maxFieldCountLength + 2)}|${'-'.repeat(maxConnectionCountLength + 1)}
+${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.toString().padStart(maxFieldCountLength)} | ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
+                console.log(output);
+            },
         }
     })(); //Core
 
@@ -19498,32 +19524,6 @@ function Ktl($, appInfo) {
                 return cfg;
             },
 
-            //Will show all objects and the number of fields each have, sorted by decreasing order of fields.
-            tablesAndFieldCounts: function () {
-                const objectData = Knack.objects.models
-                    .map(function (object) {
-                        const connectionCount = object.fields.models.filter(function (field) {
-                            return field.attributes.type === 'connection';
-                        }).length;
-                        return {
-                            name: object.attributes.name,
-                            fieldCount: object.fields.length,
-                            connectionCount: connectionCount
-                        };
-                    })
-                    .sort(function (a, b) {
-                        return a.fieldCount - b.fieldCount;
-                    });
-                const maxNameLength = Math.max(...objectData.map(obj => obj.name.length), 'Object Name'.length);
-                const maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), 'Total Fields'.length);
-                const maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), 'Connections'.length);
-                const output = `Objects sorted by field count (ascending):
-${'Object Name'.padEnd(maxNameLength)} | ${'Total Fields'.padStart(maxFieldCountLength)} | ${'Connections'.padStart(maxConnectionCountLength)}
-${'-'.repeat(maxNameLength + 1)}|${'-'.repeat(maxFieldCountLength + 2)}|${'-'.repeat(maxConnectionCountLength + 1)}
-${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.toString().padStart(maxFieldCountLength)} | ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
-                console.log(output);
-            },
-
             universalSearch: function (textToFind) {
                 // Check if Knack and scenes are defined
                 if (!Knack || !Knack.scenes || !Knack.scenes.models) {
@@ -21364,7 +21364,7 @@ window.ktlKeywordsCount = function () {
 }
 
 window.ktlTablesAndFieldCounts = function () {
-    ktl.sysInfo.tablesAndFieldCounts();
+    ktl.core.tablesAndFieldCounts();
     console.log('Count of Tables:', Knack.objects.length);
 }
 
