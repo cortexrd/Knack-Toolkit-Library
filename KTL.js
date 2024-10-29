@@ -19499,7 +19499,7 @@ function Ktl($, appInfo) {
             },
 
             //Will show all objects and the number of fields each have, sorted by decreasing order of fields.
-            objectsAndFieldCounts: function () {
+            tablesAndFieldCounts: function () {
                 const objectData = Knack.objects.models
                     .map(function (object) {
                         const connectionCount = object.fields.models.filter(function (field) {
@@ -19524,7 +19524,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 console.log(output);
             },
 
-            ktlSearch: function (textToFind) {
+            universalSearch: function (textToFind) {
                 // Check if Knack and scenes are defined
                 if (!Knack || !Knack.scenes || !Knack.scenes.models) {
                     console.error('Knack scenes are not defined');
@@ -21346,30 +21346,30 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
 };
 
 //Global helper functions.
-window.ktlkw = function (param) {
-    ktl.sysInfo.findAllKeywords(param);
+window.ktlFindAllKeywords = function (search = '') {
+    ktl.sysInfo.findAllKeywords(search);
 }
 
-window.ktlpause = function () {
-    ktl.views.autoRefresh(false);
+window.ktlPauseAutoRefresh = function (pause = true) {
+    ktl.views.autoRefresh(!pause);
 }
 
-window.kw2str = function (depth = 10) {
+window.ktlKeywordsToString = function (depth = 10) {
     ktl.sysInfo.keywordsToString(depth);
 }
 
-window.kwcount = function () {
+window.ktlKeywordsCount = function () {
     const kwCount = ktl.sysInfo.countKeywords(ktlKeywords);
     console.log('Count of each KTL Keywords:\n\n', kwCount);
 }
 
-window.objectsAndFieldCounts = function () {
-    ktl.sysInfo.objectsAndFieldCounts();
-    console.log('Count of objects:', Knack.objects.length);
+window.ktlTablesAndFieldCounts = function () {
+    ktl.sysInfo.tablesAndFieldCounts();
+    console.log('Count of Tables:', Knack.objects.length);
 }
 
-window.ktlSearch = function (search) {
-    ktl.sysInfo.ktlSearch(search);
+window.ktlUniversalSearch = function (search) {
+    ktl.sysInfo.universalSearch(search);
 }
 
 window.findEmails = function (excludeEmails) {
