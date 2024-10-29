@@ -2222,6 +2222,20 @@ function Ktl($, appInfo) {
 
                 return result;
             },
+
+            keywordsToString: function (depth = 10) {
+                const stringifiedKeywords = ktl.core.objectToString(ktlKeywords, depth);
+                console.log(stringifiedKeywords);
+                const numberOfProperties = ktl.core.countOwnPropertiesRecursively(ktlKeywords, depth);
+                console.log('Stringified keywords length, as currently displayed: ', stringifiedKeywords.length);
+                console.log('Number of properties: ', numberOfProperties);
+                if (depth >= 2) {
+                    const pattern = /"_([a-zA-Z])/g;
+                    const matches = stringifiedKeywords.match(pattern);
+                    const count = matches ? matches.length : 0;
+                    console.log('Number of Keywords: ', count);
+                }
+            },
         }
     })(); //Core
 
@@ -19437,20 +19451,6 @@ function Ktl($, appInfo) {
                 return cfg;
             },
 
-            keywordsToString: function (depth = 10) {
-                const stringifiedKeywords = ktl.core.objectToString(ktlKeywords, depth);
-                console.log(stringifiedKeywords);
-                const numberOfProperties = ktl.core.countOwnPropertiesRecursively(ktlKeywords, depth);
-                console.log('Stringified keywords length, as currently displayed: ', stringifiedKeywords.length);
-                console.log('Number of properties: ', numberOfProperties);
-                if (depth >= 2) {
-                    const pattern = /"_([a-zA-Z])/g;
-                    const matches = stringifiedKeywords.match(pattern);
-                    const count = matches ? matches.length : 0;
-                    console.log('Number of Keywords: ', count);
-                }
-            },
-
             countKeywords: function (obj) {
                 const propertyCount = {};
                 let totalKeywords = 0;
@@ -21355,7 +21355,7 @@ window.ktlPauseAutoRefresh = function (pause = true) {
 }
 
 window.ktlKeywordsToString = function (depth = 10) {
-    ktl.sysInfo.keywordsToString(depth);
+    ktl.core.keywordsToString(depth);
 }
 
 window.ktlKeywordsCount = function () {
