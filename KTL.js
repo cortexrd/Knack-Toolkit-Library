@@ -2236,6 +2236,53 @@ function Ktl($, appInfo) {
                     console.log('Number of Keywords: ', count);
                 }
             },
+
+            countKeywords: function (obj) {
+                const propertyCount = {};
+                let totalKeywords = 0;
+
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        const subObj = obj[key];
+                        for (const subKey in subObj) {
+                            // Check if the property starts with an underscore followed by at least one letter
+                            if (/^_[a-zA-Z]/.test(subKey)) {
+                                if (!propertyCount[subKey]) {
+                                    propertyCount[subKey] = 0;
+                                }
+                                propertyCount[subKey]++;
+                                totalKeywords++;
+                            }
+                        }
+                    }
+                }
+
+                // Convert to sorted array
+                const sortedProperties = Object.keys(propertyCount).map(key => {
+                    return { key, count: propertyCount[key] };
+                }).sort((a, b) => b.count - a.count);
+
+                // Create a new object with sorted properties
+                const sortedObject = {};
+                sortedProperties.forEach(item => {
+                    sortedObject[item.key] = item.count;
+                });
+
+                // Add the total keyword count
+                sortedObject["Total keywords"] = totalKeywords;
+
+                function alignValues(obj) {
+                    const longestKeyLength = Math.max(...Object.keys(obj).map(key => key.length));
+                    const formattedEntries = Object.entries(obj).map(([key, value]) => {
+                        const padding = ' '.repeat(longestKeyLength - key.length);
+                        return `"${key}":${padding} ${value}`;
+                    });
+
+                    return `{\n  ${formattedEntries.join(',\n  ')}\n}`;
+                }
+
+                return alignValues(sortedObject);
+            },
         }
     })(); //Core
 
@@ -19451,53 +19498,6 @@ function Ktl($, appInfo) {
                 return cfg;
             },
 
-            countKeywords: function (obj) {
-                const propertyCount = {};
-                let totalKeywords = 0;
-
-                for (const key in obj) {
-                    if (obj.hasOwnProperty(key)) {
-                        const subObj = obj[key];
-                        for (const subKey in subObj) {
-                            // Check if the property starts with an underscore followed by at least one letter
-                            if (/^_[a-zA-Z]/.test(subKey)) {
-                                if (!propertyCount[subKey]) {
-                                    propertyCount[subKey] = 0;
-                                }
-                                propertyCount[subKey]++;
-                                totalKeywords++;
-                            }
-                        }
-                    }
-                }
-
-                // Convert to sorted array
-                const sortedProperties = Object.keys(propertyCount).map(key => {
-                    return { key, count: propertyCount[key] };
-                }).sort((a, b) => b.count - a.count);
-
-                // Create a new object with sorted properties
-                const sortedObject = {};
-                sortedProperties.forEach(item => {
-                    sortedObject[item.key] = item.count;
-                });
-
-                // Add the total keyword count
-                sortedObject["Total keywords"] = totalKeywords;
-
-                function alignValues(obj) {
-                    const longestKeyLength = Math.max(...Object.keys(obj).map(key => key.length));
-                    const formattedEntries = Object.entries(obj).map(([key, value]) => {
-                        const padding = ' '.repeat(longestKeyLength - key.length);
-                        return `"${key}":${padding} ${value}`;
-                    });
-
-                    return `{\n  ${formattedEntries.join(',\n  ')}\n}`;
-                }
-
-                return alignValues(sortedObject);
-            },
-
             //Will show all objects and the number of fields each have, sorted by decreasing order of fields.
             tablesAndFieldCounts: function () {
                 const objectData = Knack.objects.models
@@ -21359,7 +21359,7 @@ window.ktlKeywordsToString = function (depth = 10) {
 }
 
 window.ktlKeywordsCount = function () {
-    const kwCount = ktl.sysInfo.countKeywords(ktlKeywords);
+    const kwCount = ktl.core.countKeywords(ktlKeywords);
     console.log('Count of each KTL Keywords:\n\n', kwCount);
 }
 
