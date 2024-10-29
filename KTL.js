@@ -19445,9 +19445,9 @@ function Ktl($, appInfo) {
                 const maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), 'Total Fields'.length);
                 const maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), 'Connections'.length);
                 const output = `Objects sorted by field count (ascending):
-                    ${'Object Name'.padEnd(maxNameLength)} : ${'Total Fields'.padStart(maxFieldCountLength)} : ${'Connections'.padStart(maxConnectionCountLength)}
-                    ${'-'.repeat(maxNameLength)}:${'-'.repeat(maxFieldCountLength + 1)}:${'-'.repeat(maxConnectionCountLength + 1)}
-                    ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} : ${obj.fieldCount.toString().padStart(maxFieldCountLength)} : ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
+${'Object Name'.padEnd(maxNameLength)} | ${'Total Fields'.padStart(maxFieldCountLength)} | ${'Connections'.padStart(maxConnectionCountLength)}
+${'-'.repeat(maxNameLength + 1)}|${'-'.repeat(maxFieldCountLength + 2)}|${'-'.repeat(maxConnectionCountLength + 1)}
+${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.toString().padStart(maxFieldCountLength)} | ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
                 console.log(output);
             },
 
