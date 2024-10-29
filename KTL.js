@@ -2309,6 +2309,112 @@ ${'-'.repeat(maxNameLength + 1)}|${'-'.repeat(maxFieldCountLength + 2)}|${'-'.re
 ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.toString().padStart(maxFieldCountLength)} | ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
                 console.log(output);
             },
+
+            universalSearch: function (textToFind) {
+                // Check if Knack and scenes are defined
+                if (!Knack || !Knack.scenes || !Knack.scenes.models) {
+                    console.error('Knack scenes are not defined');
+                    return;
+                }
+                let textFound = false;
+
+                // Loop through each scene in Knack.scenes.models
+                Knack.scenes.models.forEach(scene => {
+                    const views = scene.views && scene.views.models;
+                    if (!views) {
+                        console.warn('Scene views are not defined for scene:', scene);
+                        return;
+                    }
+
+                    // Loop through each view in scene.views.models
+                    views.forEach(view => {
+                        const { attributes = {} } = view;
+                        const { title = '', description = '', rules, type = '', content = '', groups, columns, key } = attributes;
+
+                        const checkTextInContent = (text, context) => {
+                            if (text.toLowerCase().includes(textToFind.toLowerCase())) {
+                                console.log(`Found text: ${textToFind} in ${context}:`, key, text);
+                                textFound = true;
+                                return true;
+                            }
+                            return false;
+                        };
+
+                        // Check title and description
+                        if (checkTextInContent(title, 'title') || checkTextInContent(description, 'description')) {
+                            return;
+                        }
+
+                        // Check submit rules
+                        const submitRules = rules && rules.submits;
+                        if (submitRules) {
+                            submitRules.forEach(({ message = '' }) => {
+                                if (checkTextInContent(message, 'submit rule')) {
+                                    return;
+                                }
+                            });
+                        }
+
+                        const emails = rules && rules.emails
+                        if (emails) {
+                            emails.forEach(({ email: { message = '', subject = '' } }) => {
+                                if (checkTextInContent(message, 'email message') || checkTextInContent(subject, 'email subject')) {
+                                    return;
+                                }
+                            });
+                        }
+
+                        // Check columns in list or details view
+                        if ((type === 'list' || type === 'details') && columns) {
+                            columns.forEach(({ groups: columnGroups }) => {
+                                if (columnGroups) {
+                                    columnGroups.forEach(({ columns: groupColumns }) => {
+                                        if (groupColumns) {
+                                            groupColumns.forEach(col => {
+                                                col.forEach(({ copy = '', name = '', link_text = '' }) => {
+                                                    if (
+                                                        checkTextInContent(copy, 'details copy') ||
+                                                        checkTextInContent(name, 'details name') ||
+                                                        checkTextInContent(link_text, 'details link text')
+                                                    ) {
+                                                        return;
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
+                        // Check rich text content
+                        if (type === 'rich_text' && checkTextInContent(content, 'rich text view')) {
+                            return;
+                        }
+
+                        // Check groups, columns, and inputs
+                        if (groups) {
+                            groups.forEach(({ columns: groupColumns }) => {
+                                if (groupColumns) {
+                                    groupColumns.forEach(({ inputs }) => {
+                                        if (inputs) {
+                                            inputs.forEach(({ label = '', instructions = '', copy = '' }) => {
+                                                if (checkTextInContent(label, 'input label') || checkTextInContent(instructions, 'input instructions') || checkTextInContent(copy, 'input copy')) {
+                                                    return;
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+
+                if (!textFound) {
+                    ktl.log.clog('green', `${textToFind} is not found in rich_text view any view Description, Title, Rules, Inputs, Emails, Detail Labels`);
+                }
+            },
         }
     })(); //Core
 
@@ -19524,112 +19630,6 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 return cfg;
             },
 
-            universalSearch: function (textToFind) {
-                // Check if Knack and scenes are defined
-                if (!Knack || !Knack.scenes || !Knack.scenes.models) {
-                    console.error('Knack scenes are not defined');
-                    return;
-                }
-                let textFound = false;
-
-                // Loop through each scene in Knack.scenes.models
-                Knack.scenes.models.forEach(scene => {
-                    const views = scene.views && scene.views.models;
-                    if (!views) {
-                        console.warn('Scene views are not defined for scene:', scene);
-                        return;
-                    }
-
-                    // Loop through each view in scene.views.models
-                    views.forEach(view => {
-                        const { attributes = {} } = view;
-                        const { title = '', description = '', rules, type = '', content = '', groups, columns, key } = attributes;
-
-                        const checkTextInContent = (text, context) => {
-                            if (text.toLowerCase().includes(textToFind.toLowerCase())) {
-                                console.log(`Found text: ${textToFind} in ${context}:`, key, text);
-                                textFound = true;
-                                return true;
-                            }
-                            return false;
-                        };
-
-                        // Check title and description
-                        if (checkTextInContent(title, 'title') || checkTextInContent(description, 'description')) {
-                            return;
-                        }
-
-                        // Check submit rules
-                        const submitRules = rules && rules.submits;
-                        if (submitRules) {
-                            submitRules.forEach(({ message = '' }) => {
-                                if (checkTextInContent(message, 'submit rule')) {
-                                    return;
-                                }
-                            });
-                        }
-
-                        const emails = rules && rules.emails
-                        if (emails) {
-                            emails.forEach(({ email: { message = '', subject = '' } }) => {
-                                if (checkTextInContent(message, 'email message') || checkTextInContent(subject, 'email subject')) {
-                                    return;
-                                }
-                            });
-                        }
-
-                        // Check columns in list or details view
-                        if ((type === 'list' || type === 'details') && columns) {
-                            columns.forEach(({ groups: columnGroups }) => {
-                                if (columnGroups) {
-                                    columnGroups.forEach(({ columns: groupColumns }) => {
-                                        if (groupColumns) {
-                                            groupColumns.forEach(col => {
-                                                col.forEach(({ copy = '', name = '', link_text = '' }) => {
-                                                    if (
-                                                        checkTextInContent(copy, 'details copy') ||
-                                                        checkTextInContent(name, 'details name') ||
-                                                        checkTextInContent(link_text, 'details link text')
-                                                    ) {
-                                                        return;
-                                                    }
-                                                });
-                                            });
-                                        }
-                                    });
-                                }
-                            });
-                        }
-
-                        // Check rich text content
-                        if (type === 'rich_text' && checkTextInContent(content, 'rich text view')) {
-                            return;
-                        }
-
-                        // Check groups, columns, and inputs
-                        if (groups) {
-                            groups.forEach(({ columns: groupColumns }) => {
-                                if (groupColumns) {
-                                    groupColumns.forEach(({ inputs }) => {
-                                        if (inputs) {
-                                            inputs.forEach(({ label = '', instructions = '', copy = '' }) => {
-                                                if (checkTextInContent(label, 'input label') || checkTextInContent(instructions, 'input instructions') || checkTextInContent(copy, 'input copy')) {
-                                                    return;
-                                                }
-                                            });
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    });
-                });
-
-                if (!textFound) {
-                    ktl.log.clog('green', `${textToFind} is not found in rich_text view any view Description, Title, Rules, Inputs, Emails, Detail Labels`);
-                }
-            },
-
             getLinuxDeviceInfo: function () {
                 return new Promise(function (resolve, reject) {
                     const sys = ktl.sysInfo.getSysInfo();
@@ -21369,7 +21369,7 @@ window.ktlTablesAndFieldCounts = function () {
 }
 
 window.ktlUniversalSearch = function (search) {
-    ktl.sysInfo.universalSearch(search);
+    ktl.core.universalSearch(search);
 }
 
 window.ktlFindEmails = function (excludeEmails) {
