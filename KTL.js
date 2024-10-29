@@ -2055,6 +2055,76 @@ function Ktl($, appInfo) {
                 const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
                 return formattedInteger + decimalPart;
             },
+
+            findEmails: function (excludeEmails = []) {
+                const normalizedExcludeEmails = excludeEmails.map(email => email.toLowerCase().trim());
+                const emailsFound = [];
+
+                if (!Knack?.scenes?.models) {
+                    console.log('No scenes found');
+                    return emailsFound;
+                }
+
+                Knack.scenes.models.forEach((scene, sceneIndex) => {
+                    if (!scene?.attributes?.views) {
+                        console.log(`Scene ${sceneIndex}: No views found`);
+                        return;
+                    }
+
+                    scene.attributes.views.forEach((view, viewIndex) => {
+                        if (!view?.rules?.emails) {
+                            //console.log(`Scene ${sceneIndex}, View ${viewIndex}: No email rules found`);
+                            return;
+                        }
+
+                        view.rules.emails.forEach((emailRule, ruleIndex) => {
+                            if (!emailRule?.email?.recipients) {
+                                console.log(`Scene ${sceneIndex}, View ${viewIndex}, Email Rule ${ruleIndex}: No recipients found`);
+                                return;
+                            }
+
+                            emailRule.email.recipients.forEach((recipient, recipientIndex) => {
+                                if (recipient?.email) {
+                                    const normalizedEmail = recipient.email.toLowerCase().trim();
+
+                                    // Check if email should be excluded
+                                    if (!normalizedExcludeEmails.includes(normalizedEmail)) {
+                                        emailsFound.push({
+                                            email: recipient.email,
+                                            location: {
+                                                scene: sceneIndex,
+                                                view: viewIndex,
+                                                emailRule: ruleIndex,
+                                                recipient: recipientIndex
+                                            }
+                                        });
+                                    }
+                                }
+                            });
+                        });
+                    });
+                });
+
+                if (emailsFound.length === 0) {
+                    console.log('No non-excluded emails found in the application');
+                    return emailsFound;
+                }
+
+                console.log('\nEmails found (excluding specified emails):');
+                emailsFound.forEach(entry => {
+                    console.log(`\nEmail: ${entry.email}`);
+                    console.log(`Location: Scene ${entry.location.scene}, View ${entry.location.view}, ` +
+                        `Email Rule ${entry.location.emailRule}, Recipient ${entry.location.recipient}`);
+                });
+
+                // Log excluded emails count
+                const totalEmailsFound = emailsFound.length;
+                const excludedCount = excludeEmails.length;
+                console.log(`\nTotal emails found: ${totalEmailsFound}`);
+                console.log(`Emails excluded: ${excludedCount}`);
+
+                return emailsFound;
+            },
         }
     })(); //Core
 
@@ -21297,6 +21367,10 @@ window.objectsAndFieldCounts = function () {
 
 window.ktlSearch = function (search) {
     ktl.sysInfo.ktlSearch(search);
+}
+
+window.findEmails = function (excludeEmails) {
+    ktl.core.findEmails(excludeEmails);
 }
 
 function ktlCompare(a, operator, b) {
