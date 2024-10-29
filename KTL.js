@@ -2066,12 +2066,14 @@ function Ktl($, appInfo) {
                 }
 
                 Knack.scenes.models.forEach((scene, sceneIndex) => {
+                    const sceneId = scene?.attributes?.key;
                     if (!scene?.attributes?.views) {
-                        console.log(`Scene ${sceneIndex}: No views found`);
+                        console.log(`Scene ${sceneId}: No views found`);
                         return;
                     }
 
                     scene.attributes.views.forEach((view, viewIndex) => {
+                        const viewId = view?.key;
                         if (!view?.rules?.emails) {
                             //console.log(`Scene ${sceneIndex}, View ${viewIndex}: No email rules found`);
                             return;
@@ -2079,21 +2081,19 @@ function Ktl($, appInfo) {
 
                         view.rules.emails.forEach((emailRule, ruleIndex) => {
                             if (!emailRule?.email?.recipients) {
-                                console.log(`Scene ${sceneIndex}, View ${viewIndex}, Email Rule ${ruleIndex}: No recipients found`);
+                                console.log(`Scene ${sceneId}, View ${viewId}, Email Rule ${ruleIndex}: No recipients found`);
                                 return;
                             }
 
                             emailRule.email.recipients.forEach((recipient, recipientIndex) => {
                                 if (recipient?.email) {
                                     const normalizedEmail = recipient.email.toLowerCase().trim();
-
-                                    // Check if email should be excluded
                                     if (!normalizedExcludeEmails.includes(normalizedEmail)) {
                                         emailsFound.push({
                                             email: recipient.email,
                                             location: {
-                                                scene: sceneIndex,
-                                                view: viewIndex,
+                                                scene: sceneId,
+                                                view: viewId,
                                                 emailRule: ruleIndex,
                                                 recipient: recipientIndex
                                             }
@@ -2110,11 +2110,14 @@ function Ktl($, appInfo) {
                     return emailsFound;
                 }
 
+                // Find the length of the longest email for padding
+                const maxEmailLength = Math.max(...emailsFound.map(entry => entry.email.length));
+
                 console.log('\nEmails found (excluding specified emails):');
                 emailsFound.forEach(entry => {
-                    console.log(`\nEmail: ${entry.email}`);
-                    console.log(`Location: Scene ${entry.location.scene}, View ${entry.location.view}, ` +
-                        `Email Rule ${entry.location.emailRule}, Recipient ${entry.location.recipient}`);
+                    const paddedEmail = entry.email.padEnd(maxEmailLength);
+                    console.log(`${paddedEmail}    Scene: ${entry.location.scene}, View: ${entry.location.view}, ` +
+                        `Rule: ${entry.location.emailRule}, Recipient: ${entry.location.recipient}`);
                 });
 
                 // Log excluded emails count
