@@ -2284,7 +2284,7 @@ function Ktl($, appInfo) {
                 return alignValues(sortedObject);
             },
 
-            //Will show all objects and the number of fields each have, sorted by decreasing order of fields.
+            //Will show all tables and the number of fields each have, sorted by decreasing order of fields.
             tablesAndFieldCounts: function () {
                 const objectData = Knack.objects.models
                     .map(function (object) {
@@ -16540,9 +16540,9 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                                 }
                                             }
                                         } else if (query === 'kw') {
-                                            kwResults = ktl.sysInfo.findAllKeywords();
+                                            kwResults = ktl.core.findAllKeywords();
                                         } else {
-                                            kwResults = ktl.sysInfo.findAllKeywords(query);
+                                            kwResults = ktl.core.findAllKeywords(query);
                                         }
 
                                         if (builderUrl || appUrl || kwResults) {
