@@ -2332,8 +2332,39 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         const { title = '', description = '', rules, type = '', content = '', groups, columns, key } = attributes;
 
                         const checkTextInContent = (text, context) => {
+                            const maxLength = 50;
                             if (text.toLowerCase().includes(textToFind.toLowerCase())) {
-                                console.log(`Found text: ${textToFind} in ${context}:`, key, text);
+
+                                let truncatedText = text;
+                                if (text.length > maxLength) {
+                                    truncatedText = text.substring(0, maxLength);
+                                    const fullText = text;
+
+                                    // Create a span element to show the truncated text
+                                    const span = document.createElement('span');
+                                    span.textContent = fullText;
+
+                                    // // Create a button element to show the full text
+                                    // const button = document.createElement('button');
+                                    // button.textContent = '...';
+                                    // button.style.border = 'none';
+                                    // button.style.background = 'none';
+                                    // button.style.color = 'blue';
+                                    // button.style.cursor = 'pointer';
+
+                                    // // Add an event listener to the button to show the full text
+                                    // button.addEventListener('click', () => {
+                                    //     alert(`Full text: ${fullText}`);
+                                    // });
+
+                                    // // Append the button to the span
+                                    // span.appendChild(button);
+
+                                    // Log the span element to the console
+                                    console.log(`Found text in ${context}:`, span);
+                                } else {
+                                    console.log(`Found text: ${truncatedText} in ${context}:`);
+                                }
                                 textFound = true;
                                 return true;
                             }
