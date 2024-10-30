@@ -11324,7 +11324,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 $(headerRow).addClass('ktl_vrh');
 
                 // Add new column with icon to click on to view record history.
-                const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktl_vrh")`));
+                const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktl_vrh, .kn-table-group")`));
                 for (const row of rows) {
                     if ($(row).hasClass('kn-table-totals')) {
                         $(row).append('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); //Fix alignemnt for Summaries.
