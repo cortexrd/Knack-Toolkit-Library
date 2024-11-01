@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.28.8';
+    const KTL_VERSION = '0.29.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -15469,6 +15469,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
         var autoFocus = null;
         var spinnerWatchDogTimeout = null;
         var idleWatchDogTimeout = null;
+        let appIsIdle = false;
         var processMutation = null;
 
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -15727,6 +15728,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     versionDisplayName,
                     ktlKioskButtons,
                     processMutation,
+                    appIsIdle,
                 }
             },
 
@@ -16056,6 +16058,14 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
             resetIdleWatchdog: function () {
                 if (ktl.scenes.isiFrameWnd() || !ktl.core.getCfg().enabled.idleWatchDog) return;
 
+                if (appIsIdle) {
+                    appIsIdle = false;
+
+                    //Future improvement: stop auto refresh when idle and restart upon activity based on app criteria.
+                    //This is to save on "hidden" or uncounted API calls.
+                    //ktl.views.autoRefresh();
+                }
+
                 clearTimeout(idleWatchDogTimer);
                 let idleWatchDogDelay = ktl.scenes.getCfg().idleWatchDogDelay;
                 if (idleWatchDogDelay > 0) {
@@ -16069,6 +16079,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
             },
 
             idleWatchDogTimeout: function () {
+                appIsIdle = true;
                 idleWatchDogTimeout && idleWatchDogTimeout();
             },
 
@@ -18020,14 +18031,15 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
         const SEND_RETRIES = 5;
         const MSG_EXP_DELAY = 10000; //Time between req and ack.  Typically less than 5 seconds.
 
-        var lastMsgId = 0;
-        var msgQueue = {};
-        var heartbeatInterval = null;
-        var procMsgInterval = null;
-        var processFailedMessages = null; //Process failed app-specific messages.
-        var processAppMsg = null; //Process app-specific messages.
-        var sendAppMsg = null; //To tx/rx app-specific messages to/from iFrames or child windows.
-        var processServerErrors = null; //Process server-related errors like 401, 403, 500, and all others.
+        let lastMsgId = 0;
+        let msgQueue = {};
+        let heartbeatIntervalId = null;
+        let heartbeatIntervalDelay = ONE_MINUTE_DELAY;
+        let procMsgInterval = null;
+        let processFailedMessages = null; //Process failed app-specific messages.
+        let processAppMsg = null; //Process app-specific messages.
+        let sendAppMsg = null; //To tx/rx app-specific messages to/from iFrames or child windows.
+        let processServerErrors = null; //Process server-related errors like 401, 403, 500, and all others.
 
         function Msg(type, subtype, src, dst, id, data, expiration, retryCnt = SEND_RETRIES) {
             this.msgType = type;
@@ -18044,7 +18056,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
 
         window.addEventListener('message', (event) => {
             try {
-                var msgId = event.data.msgId; //Keep a copy for ack.
+                let msgId = event.data.msgId; //Keep a copy for ack.
 
                 if (event.data.msgSubType === 'req') {
                     ktl.userPrefs.getUserPrefs().showExtraDebugInfo && ktl.log.clog('darkcyan', 'REQ: ' + event.data.msgType + ', ' + event.data.msgSubType + ', ' + msgId + ', ' + event.data.src + ', ' + event.data.dst + ', ' + event.data.retryCnt);
@@ -18256,6 +18268,13 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 cfgObj.processAppMsg && (processAppMsg = cfgObj.processAppMsg);
                 cfgObj.sendAppMsg && (sendAppMsg = cfgObj.sendAppMsg);
                 cfgObj.processServerErrors && (processServerErrors = cfgObj.processServerErrors);
+                cfgObj.heartbeatIntervalDelay && (heartbeatIntervalDelay = cfgObj.heartbeatIntervalDelay);
+            },
+
+            getCfg: function () {
+                return {
+                    heartbeatIntervalDelay,
+                };
             },
 
             send: function (msgType = '', msgSubType = '', src = '', dst = '', msgId = 0, msgData = null) {
@@ -18288,7 +18307,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
             //For KTL internal use.
             startHeartbeat: function (run = true) {
                 if (!run) {
-                    clearInterval(heartbeatInterval);
+                    clearInterval(heartbeatIntervalId);
                     ktl.wndMsg.removeAllMsgOfType('heartbeatMsg');
                     return;
                 }
@@ -18298,8 +18317,17 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 //For example, in an industrial production line, where each device has its own account,
                 //the Sysop can be notified by email if a device goes down for any reason.
                 sendHB(); //Send first HB immediately.
-                clearInterval(heartbeatInterval);
-                heartbeatInterval = setInterval(function () { sendHB(); }, ONE_MINUTE_DELAY);
+                clearInterval(heartbeatIntervalId);
+
+                //console.log('heartbeatIntervalDelay =', heartbeatIntervalDelay);
+
+                if (heartbeatIntervalDelay > 0) {
+                    heartbeatIntervalId = setInterval(function () {
+                        //console.log('sendHB');
+                        sendHB();
+                    }, heartbeatIntervalDelay);
+                }
+
                 function sendHB() {
                     ktl.wndMsg.send('heartbeatMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
                 };
@@ -20032,7 +20060,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
         }
 
         function refreshRecords(data) {
-            const DEVICE_OFFLINE_DELAY = ONE_MINUTE_DELAY * 3;
+            const DEVICE_OFFLINE_DELAY = ktl.wndMsg.getCfg().heartbeatIntervalDelay * 3; //Add a grace period of three times HB interval.
             const recordsToUpdate = [];
             const acctUtcHbFldId = ktl.iFrameWnd.getCfg().acctUtcHbFld;
             const nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
