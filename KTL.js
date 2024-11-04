@@ -2321,19 +2321,38 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 // Loop through each scene in Knack.scenes.models
                 Knack.scenes.models.forEach(scene => {
                     const views = scene.views && scene.views.models;
+                    // console.log(scene)
                     if (!views) {
                         console.warn('Scene views are not defined for scene:', scene);
                         return;
                     }
 
                     // Loop through each view in scene.views.models
-                    views.forEach(view => {
+                                        views.forEach(view => {
                         const { attributes = {} } = view;
                         const { title = '', description = '', rules, type = '', content = '', groups, columns, key } = attributes;
 
-                        const checkTextInContent = (text, context) => {
+                        const contextObj = { sceneId: scene.attributes.key, viewId: key, url: '' };
+
+                        const checkTextInContent = (text, context, contextObj) => {
+                            const maxLength = 50;
                             if (text.toLowerCase().includes(textToFind.toLowerCase())) {
-                                console.log(`Found text: ${textToFind} in ${context}:`, key, text);
+                                let truncatedText = text;
+                                if (text.length > maxLength) {
+                                    truncatedText = text.substring(0, maxLength) + '...';
+                                }
+                                const fullText = text;
+
+                                const span = document.createElement('span');
+                                span.textContent = fullText;
+
+                                const link = document.createElement('a');
+                                const linkUrl = `https://builder.knack.com/arcproject/noahs-place/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
+                                link.href = linkUrl;
+
+                                console.log(`Found text: ${truncatedText} in ${context}:`, span);
+                                console.log(`%cClick here to open the builder link: ${linkUrl}`, 'color: blue; cursor: pointer;');
+
                                 textFound = true;
                                 return true;
                             }
@@ -2341,7 +2360,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         };
 
                         // Check title and description
-                        if (checkTextInContent(title, 'title') || checkTextInContent(description, 'description')) {
+                        if (checkTextInContent(title, 'title', { ...contextObj, url: `/${type}` }) || checkTextInContent(description, 'description', { ...contextObj, url: `/${type}` })) {
                             return;
                         }
 
@@ -2349,16 +2368,26 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         const submitRules = rules && rules.submits;
                         if (submitRules) {
                             submitRules.forEach(({ message = '' }) => {
-                                if (checkTextInContent(message, 'submit rule')) {
+                                const submitObj = { ...contextObj, url: '/form/rules/submit' };
+                                if (checkTextInContent(message, 'submit rule', submitObj)) {
                                     return;
                                 }
                             });
                         }
 
-                        const emails = rules && rules.emails
+                        // Check email rules
+                        const emails = rules && rules.emails;
                         if (emails) {
-                            emails.forEach(({ email: { message = '', subject = '' } }) => {
-                                if (checkTextInContent(message, 'email message') || checkTextInContent(subject, 'email subject')) {
+                            emails.forEach(({ email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] } }) => {
+                                const emailObj = { ...contextObj, url: '/form/emails' };
+                                recipients.forEach(({ email = '' }) => {
+                                    if (checkTextInContent(email, 'email recipient', emailObj)) {
+                                        return;
+                                    }
+                                });
+
+                                if (checkTextInContent(message, 'email message', emailObj) || checkTextInContent(subject, 'email subject', emailObj) ||
+                                    checkTextInContent(from_name, 'email from name', emailObj) || checkTextInContent(from_email, 'email from email', emailObj)) {
                                     return;
                                 }
                             });
@@ -2373,9 +2402,9 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                             groupColumns.forEach(col => {
                                                 col.forEach(({ copy = '', name = '', link_text = '' }) => {
                                                     if (
-                                                        checkTextInContent(copy, 'details copy') ||
-                                                        checkTextInContent(name, 'details name') ||
-                                                        checkTextInContent(link_text, 'details link text')
+                                                        checkTextInContent(copy, 'details copy', { ...contextObj, url: `/${type}` }) ||
+                                                        checkTextInContent(name, 'details name', { ...contextObj, url: `/${type}` }) ||
+                                                        checkTextInContent(link_text, 'details link text', { ...contextObj, url: `/${type}` })
                                                     ) {
                                                         return;
                                                     }
@@ -2388,18 +2417,20 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         }
 
                         // Check rich text content
-                        if (type === 'rich_text' && checkTextInContent(content, 'rich text view')) {
+                        if (type === 'rich_text' && checkTextInContent(content, 'rich text view', { ...contextObj, url: `/${type}` })) {
                             return;
                         }
 
                         // Check groups, columns, and inputs
                         if (groups) {
-                            groups.forEach(({ columns: groupColumns }) => {
+                            groups.forEach(({ columns: groupColumns }, groupIndex) => {
                                 if (groupColumns) {
-                                    groupColumns.forEach(({ inputs }) => {
+                                    groupColumns.forEach(({ inputs }, colIndex) => {
+                                        console.log(inputs);
                                         if (inputs) {
-                                            inputs.forEach(({ label = '', instructions = '', copy = '' }) => {
-                                                if (checkTextInContent(label, 'input label') || checkTextInContent(instructions, 'input instructions') || checkTextInContent(copy, 'input copy')) {
+                                            inputs.forEach(({ label = '', instructions = '', copy = '', field = '' }, index) => {
+                                                const inputObj = { ...contextObj, url: `/form/inputs/rows/${groupIndex}/columns/${colIndex}/inputs/${index}` };
+                                                if (checkTextInContent(label, 'input label', inputObj) || checkTextInContent(instructions, 'input instructions', inputObj) || checkTextInContent(copy, 'input copy', inputObj)) {
                                                     return;
                                                 }
                                             });
@@ -11293,7 +11324,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 $(headerRow).addClass('ktl_vrh');
 
                 // Add new column with icon to click on to view record history.
-                const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktl_vrh")`));
+                const rows = Array.from($(`#${viewId} .kn-table tbody tr:not(".ktl_vrh, .kn-table-group")`));
                 for (const row of rows) {
                     if ($(row).hasClass('kn-table-totals')) {
                         $(row).append('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>'); //Fix alignemnt for Summaries.
