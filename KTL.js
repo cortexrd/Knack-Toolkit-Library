@@ -19834,6 +19834,14 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
             dynamicTableDiv.style['border-width'] = '5px';
             dynamicTableDiv.style.overflow = 'scroll';
 
+            ktl.systemColors.getSystemColors().then(sc => {
+                if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
+                    dynamicTableDiv.classList.remove('knTable--rowHover');
+                    dynamicTableDiv.classList.add('ktlTable--rowHover');
+                }
+            })
+
+
             $('#knack-dist_1 > div.kn-scenes.kn-section').prepend(dynamicTableDiv);
 
             ktl.views.refreshView(SYSOP_DASHBOARD_ACCOUNT_LOGS);
