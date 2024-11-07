@@ -2321,14 +2321,13 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 // Loop through each scene in Knack.scenes.models
                 Knack.scenes.models.forEach(scene => {
                     const views = scene.views && scene.views.models;
-                    // console.log(scene)
                     if (!views) {
                         console.warn('Scene views are not defined for scene:', scene);
                         return;
                     }
 
                     // Loop through each view in scene.views.models
-                                        views.forEach(view => {
+                    views.forEach(view => {
                         const { attributes = {} } = view;
                         const { title = '', description = '', rules, type = '', content = '', groups, columns, key } = attributes;
 
@@ -2347,7 +2346,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                 span.textContent = fullText;
 
                                 const link = document.createElement('a');
-                                const linkUrl = `https://builder.knack.com/arcproject/noahs-place/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
+                                const linkUrl = `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
                                 link.href = linkUrl;
 
                                 console.log(`Found text: ${truncatedText} in ${context}:`, span);
@@ -2426,7 +2425,6 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                             groups.forEach(({ columns: groupColumns }, groupIndex) => {
                                 if (groupColumns) {
                                     groupColumns.forEach(({ inputs }, colIndex) => {
-                                        console.log(inputs);
                                         if (inputs) {
                                             inputs.forEach(({ label = '', instructions = '', copy = '', field = '' }, index) => {
                                                 const inputObj = { ...contextObj, url: `/form/inputs/rows/${groupIndex}/columns/${colIndex}/inputs/${index}` };
