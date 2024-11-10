@@ -15809,8 +15809,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         var backBtn;
 
                         //Find the first bar that exists, in this top-down order priority.
-                        var kioskButtonsParentDivSel = '#' + viewId + ' .kn-submit, .kn-submit';
-                        var kioskButtonsParentDiv = document.querySelector(kioskButtonsParentDivSel);
+                        var kioskButtonsParentDivSel = `#${viewId} .kn-submit, .kn-submit`;
+                        var kioskButtonsParentDiv = document.querySelector('.kn-modal .kn-submit') || document.querySelector(kioskButtonsParentDivSel);
                         if (!kioskButtonsParentDiv) {
                             //Happens with pages without a Submit button.  Ex: When you only have a table.
                             //Then, try with kn-title or kn-records-nav div.
