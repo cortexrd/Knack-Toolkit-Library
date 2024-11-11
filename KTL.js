@@ -45,6 +45,34 @@ function Ktl($, appInfo) {
     const ktlKeywords = {};
     window.ktlKeywords = ktlKeywords;
 
+    //Temporary debug code to detect DOM changes.
+    //Uncomment to use momentarily, then comment back when done.
+    //window.addEventListener('load', () => {
+    //    const observer = new MutationObserver((mutations) => {
+    //        mutations.forEach((mutation) => {
+    //            //Example: when style changes for a given element.
+    //            if (mutation.type === 'attributes' &&
+    //                mutation.attributeName === 'style' &&
+    //                mutation.target.classList.contains('kn-scene')) {
+
+    //                if (mutation.target.style.display === 'block') {
+    //                    console.log('Style change found!', mutation.target.id, mutation.target.style.display, mutation.target.style);
+    //                }
+    //            }
+    //        });
+    //    });
+
+    //    setTimeout(() => {
+    //        const sceneElement = document.querySelector('[id^=kn-scene_]');
+    //        if (sceneElement) {
+    //            observer.observe(sceneElement, {
+    //                attributes: true,
+    //                attributeFilter: ['style']
+    //            });
+    //        }
+    //    }, 100);
+    //});
+
     function getKeywordsStartIndex(text = '') {
         return text.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
     }
@@ -6950,7 +6978,13 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                             }
 
                             Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
-                            Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender();
+                            ktl.core.waitSelector('.kn-scene', 20000, 'visible')
+                                .then(function () {
+                                    Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender();
+                                })
+                                .catch(function () {
+                                    ktl.log.clog('red', 'ERROR in summaryPostProcessing (search view) - timeout waiting for .kn-scene becoming visible.');
+                                })
                         } else { //When data has changed, but the functions remain the same.
                             Knack.views[viewId].ktlCtxPostRender.ktlCtxPost = ktlCtxPostRender;
                             Knack.views[viewId].model.results_model.data._events.reset[0].context.postRender = Knack.views[viewId].ktlCtxPostRender.ktlCtxPost;
@@ -6983,7 +7017,13 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         }
 
                         Knack.views[viewId].postRender = Knack.views[viewId].ktlPostRender.ktlPost;
-                        Knack.views[viewId].postRender();
+                        ktl.core.waitSelector('.kn-scene', 20000, 'visible')
+                            .then(function () {
+                                Knack.views[viewId].postRender();
+                            })
+                            .catch(function () {
+                                ktl.log.clog('red', 'ERROR in summaryPostProcessing (grid view) - timeout waiting for .kn-scene becoming visible.');
+                            })
                     } else { //When data has changed, but the functions remain the same.
                         Knack.views[viewId].ktlPostRender.ktlPost = ktlPostRender;
                         Knack.views[viewId].postRender = Knack.views[viewId].ktlPostRender.ktlPost;
@@ -7010,7 +7050,6 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
-
             if (view.type === 'table' || view.type === 'search')
                 summaryPostProcessing(view, data);
             else
