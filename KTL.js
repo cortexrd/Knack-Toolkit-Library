@@ -15809,8 +15809,9 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         var backBtn;
 
                         //Find the first bar that exists, in this top-down order priority.
-                        var kioskButtonsParentDivSel = `#${viewId} .kn-submit, .kn-submit`;
-                        var kioskButtonsParentDiv = document.querySelector('.kn-modal .kn-submit') || document.querySelector(kioskButtonsParentDivSel);
+                        const isModal = Knack.router.scene_view.model.attributes.modal;
+                        var kioskButtonsParentDivSel = isModal ? `.kn-modal .kn-submit` : `#${viewId} .kn-submit, .kn-submit`;
+                        var kioskButtonsParentDiv = document.querySelector(kioskButtonsParentDivSel);
                         if (!kioskButtonsParentDiv) {
                             //Happens with pages without a Submit button.  Ex: When you only have a table.
                             //Then, try with kn-title or kn-records-nav div.
@@ -15823,7 +15824,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         }
 
                         for (var kioskBtn in ktlKioskButtons) {
-                            if (kioskBtn === 'ADD_MESSAGING' && !ktlKioskButtons.ADD_MESSAGING.scenesToExclude.includes(Knack.router.current_scene_key)) {
+                            if (!isModal && kioskBtn === 'ADD_MESSAGING' && !ktlKioskButtons.ADD_MESSAGING.scenesToExclude.includes(Knack.router.current_scene_key)) {
                                 messagingBtn = document.getElementById(ktlKioskButtons.ADD_MESSAGING.id);
                                 if (!messagingBtn) {
                                     messagingBtn = document.createElement('BUTTON');
@@ -15837,7 +15838,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                         ktl.storage.lsRemoveItem(ktl.const.LS_SYSOP_MSG_UNREAD);
                                     });
                                 }
-                            } else if (kioskBtn === 'ADD_REFRESH') {
+                            } else if (!isModal && kioskBtn === 'ADD_REFRESH') {
                                 if (!document.getElementById(ktlKioskButtons.ADD_REFRESH.id)) {
                                     refreshBtn = document.createElement('BUTTON');
                                     refreshBtn.classList.add('kn-button', 'ktlSmallKioskButtons');
@@ -15850,7 +15851,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                         ktlKioskButtons.ADD_REFRESH.href();
                                     });
                                 }
-                            } else if (kioskBtn === 'ADD_BACK' || kioskBtn === 'ADD_DONE') {
+                            } else if (!isModal && (kioskBtn === 'ADD_BACK' || kioskBtn === 'ADD_DONE')) {
                                 var btnKey;
                                 if (keywords._kb)
                                     btnKey = 'ADD_BACK';
@@ -15941,7 +15942,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                             }
                         } //for in loop
 
-                        var kioskButtonsDiv = document.querySelector('.kioskButtonsDiv');
+                        const kioskButtonsDivSelector = isModal ? '.kn-modal .kioskButtonsDiv' : '.kioskButtonsDiv';
+                        var kioskButtonsDiv = document.querySelector(kioskButtonsDivSelector);
                         if (!kioskButtonsDiv) {
                             kioskButtonsDiv = document.createElement('div');
                             kioskButtonsDiv.setAttribute('class', 'kioskButtonsDiv');
@@ -15953,7 +15955,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                 .catch(function () { })
                         }
 
-                        var knMenuBar = document.querySelector('.kn-menu'); //Get first menu in page.
+                        const menuSelector = isModal ? `.kn-modal .kn-menu` : `.kn-menu`;
+                        var knMenuBar = document.querySelector(menuSelector); //Get first menu in page.
                         if (knMenuBar) {
                             var menuSel = '#' + knMenuBar.id + '.kn-menu .control';
                             ktl.core.waitSelector(menuSel, 15000, 'visible')
@@ -15961,11 +15964,11 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                     ktl.core.hideSelector('#' + knMenuBar.id);
                                     var menuCopy = knMenuBar.cloneNode(true);
                                     menuCopy.id += '_copy';
-                                    $('.kioskButtonsDiv').prepend($(menuCopy));
+                                    $(kioskButtonsDivSelector).prepend($(menuCopy));
                                     ktl.core.hideSelector('#' + menuCopy.id, true);
 
                                     $('.kn-submit').css({ 'display': 'inline-flex', 'width': '100%' });
-                                    $('.kn-menu').css({ 'display': 'inline-flex', 'margin-right': '30px' });
+                                    $(menuSelector).css({ 'display': 'inline-flex', 'margin-right': '30px' });
                                     applyStyle(); //Need to apply once again due to random additional delay.
                                 })
                                 .catch(function () {
