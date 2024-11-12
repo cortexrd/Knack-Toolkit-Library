@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.29.0';
+    const KTL_VERSION = '0.29.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -31,7 +31,7 @@ function Ktl($, appInfo) {
     const LOCAL_SERVER_PORT = '3000';
 
     const builderUrl = `https://builder.knack.com/`;
-    const baseURL = `${builderUrl}${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}`;
+    const baseURL = `${builderUrl}${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}`;
 
     var ktl = this;
 
@@ -2193,7 +2193,7 @@ function Ktl($, appInfo) {
                                         const viewId = attr.key;
                                         if (viewId === kwKey) {
                                             const sceneId = attr.scene.key;
-                                            builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/${attr.type}`;
+                                            builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${attr.type}`;
                                             const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
                                             appUrl = `${Knack.url_base}#${slug}`;
                                             console.log(`Builder: ${builderUrl}`);
@@ -2210,7 +2210,7 @@ function Ktl($, appInfo) {
                         } else if (kwKey.startsWith('scene_')) {
                             for (const scene of Knack.scenes.models) {
                                 if (kwKey === scene.attributes.key) {
-                                    builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${kwKey}`;
+                                    builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${kwKey}`;
                                     console.log(`Builder URL = ${builderUrl}`);
                                     result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                                     result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
@@ -2219,7 +2219,7 @@ function Ktl($, appInfo) {
                             }
                         } else if (kwKey.startsWith('field_')) {
                             const objectId = Knack.objects.getField(kwKey).attributes.object_key;
-                            builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${kwKey}/settings`;
+                            builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${objectId}/fields/${kwKey}/settings`;
                             console.log(`Builder URL = ${builderUrl}`);
                             result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                         }
@@ -15699,7 +15699,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
 
         function addMenuTitleToTab() {
             var page = ktl.core.getMenuInfo().page;
-            (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
+            (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.slug + ' - ' + page); //Add menu to browser's tab.
         }
 
         function addFooter(footerSlug) {
@@ -16590,7 +16590,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                             if (field && field.id) {
                                                 const fieldId = field.id;
                                                 const objectId = Knack.objects.getField(fieldId).attributes.object_key;
-                                                builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/schema/list/objects/${objectId}/fields/${fieldId}/settings`;
+                                                builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${objectId}/fields/${fieldId}/settings`;
                                             }
                                         } else if (query.startsWith('view_')) {
                                             for (var s = 0; s < Knack.scenes.models.length && !builderUrl; s++) {
@@ -16602,7 +16602,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                                         const viewId = attr.key;
                                                         if (viewId === query) {
                                                             const sceneId = attr.scene.key;
-                                                            builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${sceneId}/views/${viewId}/${attr.type}`;
+                                                            builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${attr.type}`;
                                                             const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
                                                             appUrl = `${Knack.url_base}#${slug}`;
                                                             console.log('Open in App:', appUrl);
@@ -16614,7 +16614,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                         } else if (query.startsWith('scene_')) {
                                             for (var t = 0; t < Knack.scenes.models.length; t++) {
                                                 if (query === Knack.scenes.models[t].attributes.key) {
-                                                    builderUrl = `https://builder.knack.com/${Knack.mixpanel_track.account}/${Knack.mixpanel_track.app}/pages/${query}`;
+                                                    builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${query}`;
                                                     const slug = Knack.scenes.getByKey(query).attributes.slug;
                                                     appUrl = `${Knack.url_base}#${slug}`;
                                                     console.log('Open in App:', appUrl);
