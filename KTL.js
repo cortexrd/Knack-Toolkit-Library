@@ -1814,9 +1814,9 @@ function Ktl($, appInfo) {
                 try {
                     for (let key in obj) {
                         if (key === keyToFind) {
-                            if (exactMatch && obj[key].trim() === keyValue)
+                            if (exactMatch && obj[key] && obj[key].trim() === keyValue)
                                 return obj[keyNameToReturn] || obj;
-                            else if (!exactMatch && obj[key].trim().includes(keyValue))
+                            else if (!exactMatch && obj[key] && obj[key].trim().includes(keyValue))
                                 return obj[keyNameToReturn] || obj;
                         } else if (typeof obj[key] === 'object') {
                             let found = this.findKeyWithValueInObject(obj[key], keyToFind, keyValue, keyNameToReturn, exactMatch, maxDepth, currentDepth + 1);
@@ -15699,7 +15699,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
 
         function addMenuTitleToTab() {
             var page = ktl.core.getMenuInfo().page;
-            (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.slug + ' - ' + page); //Add menu to browser's tab.
+            (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
         }
 
         function addFooter(footerSlug) {
