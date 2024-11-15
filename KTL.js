@@ -522,7 +522,8 @@ function Ktl($, appInfo) {
                         url: apiURL,
                         type: requestType,
                         crossDomain: true,
-                        retryLimit: 4, //Make this configurable by app,
+                        retryLimit: 4, //Make this configurable by app
+                        retryDelay: 500,
                         headers: {
                             'Authorization': Knack.getUserToken(),
                             'X-Knack-Application-Id': Knack.application_id,
@@ -541,33 +542,32 @@ function Ktl($, appInfo) {
                             else {
                                 ktl.views.refreshViewArray(viewsToRefresh)
                                     .then(function () { resolve(data); })
-                                    .catch(() => { })
+                                    .catch(() => { });
                             }
                         },
                         error: function (response /*jqXHR*/) {
-                            //Example of the data format in response:
-                            //{"readyState":4,"responseText":"{"errors":[{"field":"field_57","type":"required","message":"Store is required."}]}","status":400,"statusText":"error"}
-
                             ktl.log.clog('purple', 'knAPI error:');
                             console.log('retries:', this.retryLimit, '\nresponse:', response);
 
                             let unrecoverableError = false;
-                            if ([400 /*Add more as we find them.*/].includes(response.status))
+                            if ([400 /* Add more as we find them */].includes(response.status))
                                 unrecoverableError = true;
 
                             if (!unrecoverableError && this.retryLimit-- > 0) {
                                 var ajaxParams = this; //Backup 'this' otherwise this will become the Window object in the setTimeout.
+                                let delay = ajaxParams.retryDelay;
+                                ajaxParams.retryDelay *= 2; //Exponential backoff
                                 setTimeout(function () {
                                     $.ajax(ajaxParams);
-                                }, 500);
+                                }, delay);
                                 return;
-                            } else { //All retries have failed, log this.
+                            } else { // All retries have failed, log this.
                                 showSpinner && Knack.hideSpinner();
 
                                 response.caller = 'knAPI';
                                 response.viewId = viewId;
 
-                                //Process critical failures by forcing a logout or hard reset.
+                                // Process critical failures by forcing a logout or hard reset.
                                 ktl.wndMsg.ktlProcessServerErrors({
                                     reason: 'KNACK_API_ERROR',
                                     status: response.status,
