@@ -1360,6 +1360,14 @@ function Ktl($, appInfo) {
                             })
                         } else
                             resolve();
+                    } else if (libName === 'QRScanner') {
+                        //QR and Barcode scanning library comes from here: https://github.com/mebjas/html5-qrcode
+                        if (typeof Html5Qrcode !== 'function') {
+                            LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'], function () {
+                                (typeof Html5Qrcode === 'function') ? resolve() : reject('Cannot find Html5Qrcode library.');
+                            })
+                        } else
+                            resolve();
                     }
                 })
             },
@@ -3649,7 +3657,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 const kw = '_bcr';
                 if (!viewId || !keywords[kw]) return;
 
-                const options = keywords[kw][0].options;
+                const options = keywords[kw].length && keywords[kw][0].options;
                 if (!ktl.core.hasRoleAccess(options)) return;
 
                 let prefix;
@@ -3847,6 +3855,175 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         addToQueue(barcodeText);
                         //console.log('addToQueue:', viewId, barcodeText);
                     })
+                }
+            },
+
+            barcodeReaderManual: function (viewId, keywords) {
+                const kw = '_bcrm';
+                if (!viewId || !keywords[kw]) return;
+
+                const barcodeFields = [];
+                if (keywords[kw].length) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+
+                    if (keywords[kw].length === 1) {
+                        const fields = keywords[kw][0].params[0];
+                        for (const field of fields) {
+                            const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                            const fieldType = this.getFieldType(fieldId);
+                            if (TEXT_DATA_TYPES.includes(fieldType))
+                                barcodeFields.push(fieldId);
+                        }
+                    }
+                } else {
+                    console.log('no params');
+                }
+
+                ktl.core.loadLib('QRScanner')
+                    .then(() => { scannerReady(); })
+                    .catch(reason => { console.log('Html5Qrcode error:', reason); });
+
+                function scannerReady() {
+                    let readerDiv = document.getElementById('reader');
+                    if (!readerDiv) {
+                        readerDiv = document.createElement('div');
+                        readerDiv.id = 'reader';
+                        readerDiv.className = 'hidden';
+                        document.body.appendChild(readerDiv);
+                    }
+
+                    const html5QrCode = new Html5Qrcode("reader");
+                    let currentInput = null;
+                    let isScanning = false;
+
+                    function addScanButton(inputContainer, fieldId) {
+                        const controlDiv = inputContainer.querySelector('.control');
+                        const inputElement = controlDiv.querySelector('input');
+
+                        const wrapperDiv = document.createElement('div');
+                        wrapperDiv.style.display = 'flex';
+                        wrapperDiv.style.gap = '8px';
+                        wrapperDiv.style.alignItems = 'center';
+
+                        controlDiv.removeChild(inputElement);
+                        wrapperDiv.appendChild(inputElement);
+
+                        const button = document.createElement('button');
+                        button.id = `scanButton_${fieldId}`;
+                        button.type = 'button';
+
+                        const icon = document.createElement('i');
+                        icon.className = 'fa fa-qrcode fa-lg';
+                        button.appendChild(icon);
+
+                        Object.assign(button.style, {
+                            height: '34px',
+                            width: '34px',
+                            padding: '0',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            backgroundColor: '#f8f8f8',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            marginLeft: '2px',
+                            marginRight: '2px'
+                        });
+
+                        wrapperDiv.appendChild(button);
+                        controlDiv.insertBefore(wrapperDiv, controlDiv.firstChild);
+
+                        return button;
+                    }
+
+                    barcodeFields.forEach(fieldId => {
+                        const element = document.querySelector(`#kn-input-${fieldId}`);
+                        if (element) {
+                            const scanButton = addScanButton(element, `${fieldId}`);
+                            scanButton.addEventListener('click', async () => {
+                                if (!isScanning) {
+                                    startScanning(`${fieldId}`, scanButton);
+                                } else {
+                                    stopScanning();
+                                }
+                            });
+                        }
+                    });
+
+                    async function startScanning(inputId, buttonElement) {
+                        currentInput = document.getElementById(inputId);
+                        if (!currentInput) {
+                            console.error('Input element not found:', inputId);
+                            return;
+                        }
+
+                        readerDiv.classList.remove('hidden');
+                        buttonElement.classList.add('scanning-active');
+                        isScanning = true;
+
+                        try {
+                            await html5QrCode.start(
+                                { facingMode: "environment" },
+                                {
+                                    fps: 10,
+                                    qrbox: { width: 250, height: 250 }
+                                },
+                                (decodedText) => {
+                                    currentInput.value = decodedText;
+                                    stopScanning();
+                                },
+                                (error) => { }
+                            );
+                        } catch (err) {
+                            console.error("Error starting scanner:", err);
+                            stopScanning();
+                        }
+                    }
+
+                    function stopScanning() {
+                        html5QrCode.stop().then(() => {
+                            readerDiv.classList.add('hidden');
+                            document.querySelectorAll('[id^="scanButton_"]').forEach(button => {
+                                button.classList.remove('scanning-active');
+                            });
+                            isScanning = false;
+                            currentInput = null;
+                        });
+                    }
+
+                    const style = document.createElement('style');
+                    style.textContent = `
+            #reader {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 1000;
+                background: white;
+                padding: 20px;
+                border: 1px solid #ccc;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            #reader.hidden {
+                display: none;
+            }
+            #reader video {
+                max-width: 100%;
+            }
+
+            @keyframes scanningBlink {
+                    0% { background-color: #f8f8f8; }
+                    50% { background-color: #90EE90; }  /* Light green */
+                    100% { background-color: #f8f8f8; }
+                }
+                .scanning-active {
+                    animation: scanningBlink 0.5s ease-in-out infinite;
+                }
+`;
+                    document.head.appendChild(style);
                 }
             },
 
@@ -7253,6 +7430,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     keywords._nsg && noSortingOnGrid(viewId, keywords);
                     keywords._bcg && ktl.fields.barcodeGenerator(viewId, keywords, data);
                     keywords._bcr && ktl.fields.barcodeReader(viewId, keywords);
+                    keywords._bcrm && ktl.fields.barcodeReaderManual(viewId, keywords);
                     keywords._trk && ktl.views.truncateText(view, keywords);
                     (keywords._oln || keywords._ols) && ktl.views.openLink(viewId, keywords);
                     keywords._copy && ktl.views.copyToClipboard(viewId, keywords);
