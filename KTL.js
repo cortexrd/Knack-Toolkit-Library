@@ -3877,7 +3877,22 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         }
                     }
                 } else {
-                    console.log('no params');
+                    //No field parameters: Use all form's input fields.
+                    const formElement = document.querySelector(`#${viewId} form`);
+                    if (!formElement) {
+                        console.warn(`No form found in view ${viewId}`);
+                        return;
+                    }
+
+                    const inputContainers = formElement.querySelectorAll('.kn-input');
+                    inputContainers.forEach(container => {
+                        const dataInputId = container.getAttribute('data-input-id');
+                        if (dataInputId) {
+                            const input = container.querySelector('input[type="text"], input[type="number"]');
+                            if (input)
+                                barcodeFields.push(dataInputId);
+                        }
+                    });
                 }
 
                 ktl.core.loadLib('QRScanner')
@@ -3901,6 +3916,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         const controlDiv = inputContainer.querySelector('.control');
                         const inputElement = controlDiv.querySelector('input');
 
+                        const inputHeight = window.getComputedStyle(inputElement).height;
+
                         const wrapperDiv = document.createElement('div');
                         wrapperDiv.style.display = 'flex';
                         wrapperDiv.style.gap = '8px';
@@ -3918,8 +3935,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         button.appendChild(icon);
 
                         Object.assign(button.style, {
-                            height: '34px',
-                            width: '34px',
+                            height: inputHeight,
+                            width: inputHeight,
                             padding: '0',
                             border: '1px solid #ccc',
                             borderRadius: '4px',
