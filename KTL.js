@@ -3858,7 +3858,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 }
             },
 
-            barcodeReaderManual: function (viewId, keywords) {
+            barcodeReaderManual: async function (viewId, keywords) {
                 const kw = '_bcrm';
                 if (!viewId || !keywords[kw]) return;
 
@@ -3895,11 +3895,15 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     });
                 }
 
-                ktl.core.loadLib('QRScanner')
-                    .then(() => { scannerReady(); })
-                    .catch(reason => { console.log('Html5Qrcode error:', reason); });
+                try {
+                    await ktl.core.loadLib('QRScanner');
+                    initializeScanner();
+                } catch (error) {
+                    console.log('Html5Qrcode error:', error);
+                    return;
+                }
 
-                function scannerReady() {
+                function initializeScanner() {
                     let readerDiv = document.getElementById('reader');
                     if (!readerDiv) {
                         readerDiv = document.createElement('div');
@@ -3959,12 +3963,12 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     barcodeFields.forEach(fieldId => {
                         const element = document.querySelector(`#kn-input-${fieldId}`);
                         if (element) {
-                            const scanButton = addScanButton(element, `${fieldId}`);
+                            const scanButton = addScanButton(element, fieldId);
                             scanButton.addEventListener('click', async () => {
                                 if (!isScanning) {
-                                    startScanning(`${fieldId}`, scanButton);
+                                    await startScanning(fieldId, scanButton);
                                 } else {
-                                    stopScanning();
+                                    await stopScanning();
                                 }
                             });
                         }
@@ -4000,15 +4004,14 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         }
                     }
 
-                    function stopScanning() {
-                        html5QrCode.stop().then(() => {
-                            readerDiv.classList.add('hidden');
-                            document.querySelectorAll('[id^="scanButton_"]').forEach(button => {
-                                button.classList.remove('scanning-active');
-                            });
-                            isScanning = false;
-                            currentInput = null;
+                    async function stopScanning() {
+                        await html5QrCode.stop();
+                        readerDiv.classList.add('hidden');
+                        document.querySelectorAll('[id^="scanButton_"]').forEach(button => {
+                            button.classList.remove('scanning-active');
                         });
+                        isScanning = false;
+                        currentInput = null;
                     }
 
                     const style = document.createElement('style');
@@ -4032,14 +4035,14 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
             }
 
             @keyframes scanningBlink {
-                    0% { background-color: #f8f8f8; }
-                    50% { background-color: #90EE90; }  /* Light green */
-                    100% { background-color: #f8f8f8; }
-                }
-                .scanning-active {
-                    animation: scanningBlink 0.5s ease-in-out infinite;
-                }
-`;
+                0% { background-color: #f8f8f8; }
+                50% { background-color: #90EE90; }
+                100% { background-color: #f8f8f8; }
+            }
+            .scanning-active {
+                animation: scanningBlink 0.5s ease-in-out infinite;
+            }
+        `;
                     document.head.appendChild(style);
                 }
             },
