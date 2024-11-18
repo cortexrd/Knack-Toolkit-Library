@@ -12050,6 +12050,10 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         if (keywordsArray.length) {
                             ktl.views.stickTableHeader(viewId);
                         }
+                        // Check for .kn-input-signature before triggering renderSignatures
+                        if ($('.kn-input-signature').length && Knack.views[viewId] && typeof Knack.views[viewId].renderSignatures === 'function') {
+                            Knack.views[viewId].renderSignatures();
+                        }
                     });
                     arrowSelector.removeClass('ktlDown').addClass('ktlUp');
                     buttonSelector.addClass('ktlActive');
