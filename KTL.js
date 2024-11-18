@@ -5435,6 +5435,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
         let allowUserFilters = null; //Callback to your app to allow user filters based on specific conditions.
         let viewToRefreshAfterFilterChg = null;  //This is necessary to remember the viewId to refresh after we exit filter editing.
         let publicFiltersLocked = true; //To prevent accidental modifications of public filters.
+        let autoHideButtons = false;
+        let monochromeButtons = false;
 
         var touchTimeout;
         var contextMenuFilterEnabled = true;
@@ -6300,6 +6302,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.allowUserFilters && (allowUserFilters = cfgObj.allowUserFilters);
+                cfgObj.autoHideButtons && (autoHideButtons = cfgObj.autoHideButtons);
+                cfgObj.monochromeButtons && (monochromeButtons = cfgObj.monochromeButtons);
             },
 
             getCfg: function () {
@@ -6352,7 +6356,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
 
                     /////////////////////////////
                     //Save Filter button - always create, but enable/disable depending on filter state.
-                    var saveFilterButton = ktl.fields.addButton(filterCtrlDiv, 'Save Filter', FILTER_BTN_STYLE + '; background-color: #ece6a6',
+                    var saveFilterButton = ktl.fields.addButton(filterCtrlDiv, 'Save Filter', FILTER_BTN_STYLE + (monochromeButtons ? '' : '; background-color: #ece6a6'),
                         ['kn-button', 'is-small'],
                         filterDivId + '_' + SAVE_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
 
@@ -6362,7 +6366,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     saveFilterButton.addEventListener('click', e => { ktl.userFilters.saveFilter(filterDivId); });
 
                     //Stop Filters button - to temove all active filters button for this view.  Always create, but enable/disable depending on filter state.
-                    var stopFilterButton = ktl.fields.addButton(filterCtrlDiv, 'Stop Filter', FILTER_BTN_STYLE + '; background-color: #e0cccc',
+                    var stopFilterButton = ktl.fields.addButton(filterCtrlDiv, 'Stop Filter', FILTER_BTN_STYLE + (monochromeButtons ? '' : '; background-color: #e0cccc'),
                         ['kn-button', 'is-small'],
                         filterDivId + '_' + STOP_FILTER_BTN + '_' + FILTER_BTN_SUFFIX);
 
@@ -6373,7 +6377,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
 
                     //Lock Public Filters button - to disable public Filters' automatic updates and triggering constant uploads.
                     if (Knack.getUserRoleNames().includes('Public Filters')) {
-                        var lockPublicFiltersButton = ktl.fields.addButton(filterCtrlDiv, 'Lock Filters', FILTER_BTN_STYLE + '; background-color: #b3d0bd',
+                        var lockPublicFiltersButton = ktl.fields.addButton(filterCtrlDiv, 'Lock Filters', FILTER_BTN_STYLE + (monochromeButtons ? '' : '; background-color: #b3d0bd'),
                             ['kn-button', 'is-small'],
                             filterDivId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX);
 
@@ -6396,10 +6400,19 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     createFilterButtons(filterDivId, fltBtnsDivId);
 
                     //Enable/disable control buttons (Only save in this case)
+                    let filterInUse = false;
                     if (document.querySelector('#' + filterDivId + ' .kn-tag-filter')) { //Is there an active filter from "Add filters"?
                         saveFilterButton.removeAttribute('disabled');
                         stopFilterButton.removeAttribute('disabled');
+                        filterInUse = true;
                     }
+
+                    if (!filterInUse && autoHideButtons === true) {
+                        saveFilterButton.classList.add('ktlHidden');
+                        stopFilterButton.classList.add('ktlHidden');
+                        lockPublicFiltersButton.classList.add('ktlHidden');
+                    }
+
                 })
             },
 
