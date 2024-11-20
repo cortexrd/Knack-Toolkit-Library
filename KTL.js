@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.29.2';
+    const KTL_VERSION = '0.29.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -6379,8 +6379,9 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     stopFilterButton.addEventListener('click', e => { onStopFilterBtnClicked(e, filterDivId); });
 
                     //Lock Public Filters button - to disable public Filters' automatic updates and triggering constant uploads.
+                    let lockPublicFiltersButton;
                     if (Knack.getUserRoleNames().includes('Public Filters')) {
-                        var lockPublicFiltersButton = ktl.fields.addButton(filterCtrlDiv, 'Lock Filters', FILTER_BTN_STYLE + (monochromeButtons ? '' : '; background-color: #b3d0bd'),
+                        lockPublicFiltersButton = ktl.fields.addButton(filterCtrlDiv, 'Lock Filters', FILTER_BTN_STYLE + (monochromeButtons ? '' : '; background-color: #b3d0bd'),
                             ['kn-button', 'is-small'],
                             filterDivId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX);
 
@@ -6413,7 +6414,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     if (!filterInUse && autoHideButtons === true) {
                         saveFilterButton.classList.add('ktlHidden');
                         stopFilterButton.classList.add('ktlHidden');
-                        lockPublicFiltersButton.classList.add('ktlHidden');
+                        lockPublicFiltersButton && lockPublicFiltersButton.classList.add('ktlHidden');
                     }
 
                 })
@@ -12519,8 +12520,10 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                         if (['details', 'table' /*more types?*/].includes(viewType)) {
                                             //*** TODO:  Determine what is relevant and what is the exact sequence in Knack's code.
 
-                                            if (viewType !== 'table')
+                                            if (viewType !== 'table') {
                                                 Knack.views[viewId].render();
+                                                Knack.views[viewId].postRender && Knack.views[viewId].postRender();
+                                            }
 
                                             Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
                                         }
