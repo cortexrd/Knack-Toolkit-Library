@@ -12046,8 +12046,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     }
                 } else {
                     hiddenSection.slideDown(delay, () => {
-                        const keywordsArray = ktl.core.getKeywordsByType(viewId, '_sth');
-                        if (keywordsArray.length) {
+                        const keywordsArray = Object.entries(ktlKeywords[viewId]).filter(([keyword]) => keyword.startsWith('_')) // remove non-keyword entries
+                        if (keywordsArray.length && keywordsArray.some(([keyword]) => keyword === '_sth')) {
                             ktl.views.stickTableHeader(viewId);
                         }
 
@@ -15619,8 +15619,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 })
             },
 
-            //Will return the KTL add-ons div for this view, and create it if doesn't exist.
-            //This is where we add all KTL-related buttons and indicators.
+            // Will return the KTL add-ons div for this view, and create it if it doesn't exist.
+            // This is where we add all KTL-related buttons and indicators.
             getKtlAddOnsDiv: function (viewId) {
                 if (!viewId) return;
 
@@ -15628,42 +15628,44 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 if (!ktlAddonsDiv) {
                     ktlAddonsDiv = document.createElement('div');
 
-                    var prepend = false;
-                    var searchFound = false;
+                    let prepend = false;
+                    let searchFound = false;
 
-                    var div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`);
-                    if (div) {
-                        searchFound = true;
-                    } else
-                        div = document.querySelector(`#${viewId} .kn-submit.control`); //For search views.
+                    let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
+                              document.querySelector(`#${viewId} .kn-submit.control`);
 
-                    const viewHeader = document.querySelector(`#${viewId} .view-header`);
-                    if (!div)
-                        div = viewHeader;
+                    const keywordsArray = Object.entries(ktlKeywords[viewId]).filter(([keyword]) => keyword.startsWith('_'));
+                    const viewHasHSV = keywordsArray.length && keywordsArray.some(([keyword]) => keyword === '_hsv');
+                    if (!div && viewHasHSV) {
+                        div = document.querySelector(`#${viewId} .kn-records-nav`);
+                        prepend = true;
+                    }
 
                     if (!div) {
-                        div = document.querySelector('#' + viewId);
-                        if (!div) return; //Support other layout options as we go.
+                        div = document.querySelector(`#${viewId} .view-header`);
+                    }
+
+                    if (!div) {
+                        div = document.querySelector(`#${viewId}`);
+                        if (!div) return; // Support other layout options as we go.
                         prepend = true;
                     }
 
                     ktlAddonsDiv.classList.add('ktlAddonsDiv');
 
+                    // Adjust styles based on conditions
                     if (searchFound) {
-                        if (Knack.isMobile())
+                        if (Knack.isMobile()) {
                             $(ktlAddonsDiv).css('margin-top', '2%');
-                        else {
+                        } else {
                             ktlAddonsDiv.classList.add('ktlAddonsWithSearchDiv');
-                            document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`).style.display = 'inline-flex'; //Otherwise, we get the buttons on a row below Search bar.
+                            document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`).style.display = 'inline-flex'; // Otherwise, we get the buttons on a row below Search bar.
                         }
                     }
 
                     $(ktlAddonsDiv).css('margin-bottom', '1.1em');
 
-                    if (prepend)
-                        $(div).prepend(ktlAddonsDiv);
-                    else
-                        ktl.core.insertAfter(ktlAddonsDiv, div);
+                    prepend ? $(div).prepend(ktlAddonsDiv) : ktl.core.insertAfter(ktlAddonsDiv, div);
                 }
 
                 return ktlAddonsDiv;
@@ -19006,35 +19008,48 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
         }
 
         function addBulkOpsButtons(view, data) {
-            if (document.querySelector('#' + view.key + ' .bulkOpsControlsDiv')) return;
+            const viewId = view.key;
+            if (document.querySelector(`#${viewId} .bulkOpsControlsDiv`)) return;
 
-            var prepend = false;
-            var searchFound = false;
+            let prepend = false;
+            let searchFound = false;
 
-            var div = document.querySelector('#' + view.key + ' .table-keyword-search .control.has-addons');
-            if (div) {
-                searchFound = true;
-            } else
-                div = document.querySelector('#' + view.key + ' .kn-submit.control'); //For search views.
+            let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
+                        document.querySelector(`#${viewId} .kn-submit.control`);
 
-            if (!div)
-                div = document.querySelector('#' + view.key + ' .view-header');
-
-            if (!div) {
-                div = document.querySelector('#' + view.key);
-                if (!div) return; //Support other layout options as we go.
+            // Check for _hsv keyword
+            const keywordsArray = Object.entries(ktlKeywords[viewId]).filter(([keyword]) => keyword.startsWith('_'));
+            const viewHasHSV = keywordsArray.length && keywordsArray.some(([keyword]) => keyword === '_hsv');
+            if (!div && viewHasHSV) {
+                div = document.querySelector(`#${viewId} .kn-records-nav`);
                 prepend = true;
             }
 
-            var bulkOpsControlsDiv = document.createElement('div');
+            if (!div) {
+                div = document.querySelector(`#${viewId} .view-header`);
+            }
+
+            // Fallback to view element if no div or header found
+            if (!div) {
+                div = document.querySelector(`#${viewId}`);
+                if (!div) return; // Support other layout options as we go.
+                prepend = true;
+            }
+
+            const bulkOpsControlsDiv = document.createElement('div');
             bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv');
-            bulkOpsControlsDiv.setAttribute('id', 'bulkOpsControlsDiv-' + view.key);
+            bulkOpsControlsDiv.setAttribute('id', `bulkOpsControlsDiv-${viewId}`);
 
             if (searchFound) {
-                if (Knack.isMobile())
+                if (Knack.isMobile()) {
                     $(bulkOpsControlsDiv).css('margin-top', '2%');
-                else
+                } else {
                     bulkOpsControlsDiv.classList.add('bulkOpsControlsWithSearchDiv');
+                }
+            }
+
+            if (viewHasHSV) {
+                $(bulkOpsControlsDiv).css('margin-bottom', '20px');
             }
 
             prepend ? $(div).prepend(bulkOpsControlsDiv) : $(div).append(bulkOpsControlsDiv);
