@@ -2092,6 +2092,13 @@ function Ktl($, appInfo) {
                 return formattedInteger + decimalPart;
             },
 
+            checkIfViewHasKeyword: function (viewId, keyword) {
+                if (!viewId || !keyword) return false;
+                if (!ktlKeywords[viewId] || typeof ktlKeywords[viewId] !== 'object') return false;
+
+                return Object.keys(ktlKeywords[viewId]).includes(keyword);
+            },
+
             findEmails: function (excludeEmails = []) {
                 const normalizedExcludeEmails = excludeEmails.map(email => email.toLowerCase().trim());
                 const emailsFound = [];
@@ -2340,9 +2347,9 @@ function Ktl($, appInfo) {
                 const maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), 'Total Fields'.length);
                 const maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), 'Connections'.length);
                 const output = `Objects sorted by field count (ascending):
-${'Object Name'.padEnd(maxNameLength)} | ${'Total Fields'.padStart(maxFieldCountLength)} | ${'Connections'.padStart(maxConnectionCountLength)}
-${'-'.repeat(maxNameLength + 1)}|${'-'.repeat(maxFieldCountLength + 2)}|${'-'.repeat(maxConnectionCountLength + 1)}
-${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.toString().padStart(maxFieldCountLength)} | ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
+                    ${'Object Name'.padEnd(maxNameLength)} | ${'Total Fields'.padStart(maxFieldCountLength)} | ${'Connections'.padStart(maxConnectionCountLength)}
+                    ${'-'.repeat(maxNameLength + 1)}|${'-'.repeat(maxFieldCountLength + 2)}|${'-'.repeat(maxConnectionCountLength + 1)}
+                    ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.toString().padStart(maxFieldCountLength)} | ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
                 console.log(output);
             },
 
@@ -12047,8 +12054,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     }
                 } else {
                     hiddenSection.slideDown(delay, () => {
-                        const keywordsArray = Object.entries(ktlKeywords[viewId]).filter(([keyword]) => keyword.startsWith('_')) // remove non-keyword entries
-                        if (keywordsArray.length && keywordsArray.some(([keyword]) => keyword === '_sth')) {
+                        const viewHasSTH = ktl.core.checkIfViewHasKeyword(viewId, '_sth');
+                        if (viewHasSTH) {
                             ktl.views.stickTableHeader(viewId);
                         }
 
@@ -15637,8 +15644,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
                               document.querySelector(`#${viewId} .kn-submit.control`);
 
-                    const keywordsArray = Object.entries(ktlKeywords[viewId]).filter(([keyword]) => keyword.startsWith('_'));
-                    const viewHasHSV = keywordsArray.length && keywordsArray.some(([keyword]) => keyword === '_hsv');
+                    const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
                     if (!div && viewHasHSV) {
                         div = document.querySelector(`#${viewId} .kn-records-nav`);
                         prepend = true;
@@ -19021,8 +19027,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         document.querySelector(`#${viewId} .kn-submit.control`);
 
             // Check for _hsv keyword
-            const keywordsArray = Object.entries(ktlKeywords[viewId]).filter(([keyword]) => keyword.startsWith('_'));
-            const viewHasHSV = keywordsArray.length && keywordsArray.some(([keyword]) => keyword === '_hsv');
+            const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
             if (!div && viewHasHSV) {
                 div = document.querySelector(`#${viewId} .kn-records-nav`);
                 prepend = true;
