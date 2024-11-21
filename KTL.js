@@ -12713,9 +12713,8 @@ function Ktl($, appInfo) {
                     view.addClass('ktlHidden_hv');
                 else {
                     keywordsArray.forEach((keyword, index) => {
-                        if (keyword.options.ktlRoles) {
-                            const roles = keyword.options.ktlRoles.split(',').map((role) => role.trim());
-                            if (ktl.account.matchUserRoles(roles))
+                        if (keyword.options) {
+                            if (ktl.core.hasRoleAccess(keyword.options))
                                 view.addClass('ktlHidden_hv_' + index);
                         }
 
@@ -12752,9 +12751,8 @@ function Ktl($, appInfo) {
                     $('#' + viewId).remove();
                 else {
                     keywordsArray.forEach(keyword => {
-                        if (keyword.options.ktlRoles) {
-                            const roles = keyword.options.ktlRoles.split(',').map((role) => role.trim());
-                            if (ktl.account.matchUserRoles(roles))
+                        if (keyword.options) {
+                            if (ktl.core.hasRoleAccess(keyword.options))
                                 $('#' + viewId).remove();
                         }
 
