@@ -2475,6 +2475,7 @@ function Ktl($, appInfo) {
                             });
                         }
                     });
+                });
 
                 if (!textFound) {
                     ktl.log.clog('green', `${textToFind} is not found in any Rich Text View, any View Description, Title, Name, Rules, Inputs, Emails, Detail Labels, Detail Links`);
