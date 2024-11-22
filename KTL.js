@@ -2092,6 +2092,13 @@ function Ktl($, appInfo) {
                 return formattedInteger + decimalPart;
             },
 
+            checkIfViewHasKeyword: function (viewId, keyword) {
+                if (!viewId || !keyword) return false;
+                if (!ktlKeywords[viewId] || typeof ktlKeywords[viewId] !== 'object') return false;
+
+                return Object.keys(ktlKeywords[viewId]).includes(keyword);
+            },
+
             findEmails: function (excludeEmails = []) {
                 const normalizedExcludeEmails = excludeEmails.map(email => email.toLowerCase().trim());
                 const emailsFound = [];
@@ -2340,9 +2347,9 @@ function Ktl($, appInfo) {
                 const maxFieldCountLength = Math.max(...objectData.map(obj => obj.fieldCount.toString().length), 'Total Fields'.length);
                 const maxConnectionCountLength = Math.max(...objectData.map(obj => obj.connectionCount.toString().length), 'Connections'.length);
                 const output = `Objects sorted by field count (ascending):
-${'Object Name'.padEnd(maxNameLength)} | ${'Total Fields'.padStart(maxFieldCountLength)} | ${'Connections'.padStart(maxConnectionCountLength)}
-${'-'.repeat(maxNameLength + 1)}|${'-'.repeat(maxFieldCountLength + 2)}|${'-'.repeat(maxConnectionCountLength + 1)}
-${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.toString().padStart(maxFieldCountLength)} | ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
+                    ${'Object Name'.padEnd(maxNameLength)} | ${'Total Fields'.padStart(maxFieldCountLength)} | ${'Connections'.padStart(maxConnectionCountLength)}
+                    ${'-'.repeat(maxNameLength + 1)}|${'-'.repeat(maxFieldCountLength + 2)}|${'-'.repeat(maxConnectionCountLength + 1)}
+                    ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.toString().padStart(maxFieldCountLength)} | ${obj.connectionCount.toString().padStart(maxConnectionCountLength)}`).join('\n')}`;
                 console.log(output);
             },
 
@@ -2365,7 +2372,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     // Loop through each view in scene.views.models
                     views.forEach(view => {
                         const { attributes = {} } = view;
-                        const { title = '', description = '', rules, type = '', content = '', groups, columns, key } = attributes;
+                        const { title = '', description = '', rules, type = '', content = '', name = '', groups, columns, key } = attributes;
 
                         const contextObj = { sceneId: scene.attributes.key, viewId: key, url: '' };
 
@@ -2374,7 +2381,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                             if (text.toLowerCase().includes(textToFind.toLowerCase())) {
                                 let truncatedText = text;
                                 if (text.length > maxLength) {
-                                    truncatedText = text.substring(0, maxLength) + '...';
+                                    truncatedText = `${text.substring(0, maxLength)}...`;
                                 }
                                 const fullText = text;
 
@@ -2394,37 +2401,35 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                             return false;
                         };
 
-                        // Check title and description
-                        if (checkTextInContent(title, 'title', { ...contextObj, url: `/${type}` }) || checkTextInContent(description, 'description', { ...contextObj, url: `/${type}` })) {
-                            return;
-                        }
+                        // Helper function to check rules
+                        const checkRules = (rules, context, url) => {
+                            if (rules) {
+                                rules.forEach(({ message = '' }) => {
+                                    const ruleObj = { ...contextObj, url };
+                                    checkTextInContent(message, context, ruleObj);
+                                });
+                            }
+                        };
+
+                        // Check title, description, and name
+                        checkTextInContent(name, 'name', { ...contextObj, url: `/${type}` });
+                        checkTextInContent(title, 'title', { ...contextObj, url: `/${type}` });
+                        checkTextInContent(description, 'description', { ...contextObj, url: `/${type}` });
 
                         // Check submit rules
-                        const submitRules = rules && rules.submits;
-                        if (submitRules) {
-                            submitRules.forEach(({ message = '' }) => {
-                                const submitObj = { ...contextObj, url: '/form/rules/submit' };
-                                if (checkTextInContent(message, 'submit rule', submitObj)) {
-                                    return;
-                                }
-                            });
-                        }
+                        checkRules(rules && rules.submits, 'submit rule', '/form/rules/submit');
 
                         // Check email rules
-                        const emails = rules && rules.emails;
-                        if (emails) {
-                            emails.forEach(({ email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] } }) => {
+                        if (rules && rules.emails) {
+                            rules.emails.forEach(({ email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] } }) => {
                                 const emailObj = { ...contextObj, url: '/form/emails' };
                                 recipients.forEach(({ email = '' }) => {
-                                    if (checkTextInContent(email, 'email recipient', emailObj)) {
-                                        return;
-                                    }
+                                    checkTextInContent(email, 'email recipient', emailObj);
                                 });
-
-                                if (checkTextInContent(message, 'email message', emailObj) || checkTextInContent(subject, 'email subject', emailObj) ||
-                                    checkTextInContent(from_name, 'email from name', emailObj) || checkTextInContent(from_email, 'email from email', emailObj)) {
-                                    return;
-                                }
+                                checkTextInContent(message, 'email message', emailObj);
+                                checkTextInContent(subject, 'email subject', emailObj);
+                                checkTextInContent(from_name, 'email from name', emailObj);
+                                checkTextInContent(from_email, 'email from email', emailObj);
                             });
                         }
 
@@ -2436,13 +2441,9 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                         if (groupColumns) {
                                             groupColumns.forEach(col => {
                                                 col.forEach(({ copy = '', name = '', link_text = '' }) => {
-                                                    if (
-                                                        checkTextInContent(copy, 'details copy', { ...contextObj, url: `/${type}` }) ||
-                                                        checkTextInContent(name, 'details name', { ...contextObj, url: `/${type}` }) ||
-                                                        checkTextInContent(link_text, 'details link text', { ...contextObj, url: `/${type}` })
-                                                    ) {
-                                                        return;
-                                                    }
+                                                    checkTextInContent(copy, 'details copy', { ...contextObj, url: `/${type}` });
+                                                    checkTextInContent(name, 'details name', { ...contextObj, url: `/${type}` });
+                                                    checkTextInContent(link_text, 'details link text', { ...contextObj, url: `/${type}` });
                                                 });
                                             });
                                         }
@@ -2452,8 +2453,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                         }
 
                         // Check rich text content
-                        if (type === 'rich_text' && checkTextInContent(content, 'rich text view', { ...contextObj, url: `/${type}` })) {
-                            return;
+                        if (type === 'rich_text') {
+                            checkTextInContent(content, 'rich text view', { ...contextObj, url: `/${type}` });
                         }
 
                         // Check groups, columns, and inputs
@@ -2464,9 +2465,9 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                                         if (inputs) {
                                             inputs.forEach(({ label = '', instructions = '', copy = '', field = '' }, index) => {
                                                 const inputObj = { ...contextObj, url: `/form/inputs/rows/${groupIndex}/columns/${colIndex}/inputs/${index}` };
-                                                if (checkTextInContent(label, 'input label', inputObj) || checkTextInContent(instructions, 'input instructions', inputObj) || checkTextInContent(copy, 'input copy', inputObj)) {
-                                                    return;
-                                                }
+                                                checkTextInContent(label, 'input label', inputObj);
+                                                checkTextInContent(instructions, 'input instructions', inputObj);
+                                                checkTextInContent(copy, 'input copy', inputObj);
                                             });
                                         }
                                     });
@@ -2477,7 +2478,7 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 });
 
                 if (!textFound) {
-                    ktl.log.clog('green', `${textToFind} is not found in rich_text view any view Description, Title, Rules, Inputs, Emails, Detail Labels`);
+                    ktl.log.clog('green', `${textToFind} is not found in any Rich Text View, any View Description, Title, Name, Rules, Inputs, Emails, Detail Labels, Detail Links`);
                 }
             },
         }
@@ -12047,8 +12048,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     }
                 } else {
                     hiddenSection.slideDown(delay, () => {
-                        const keywordsArray = ktl.core.getKeywordsByType(viewId, '_sth');
-                        if (keywordsArray.length) {
+                        const viewHasSTH = ktl.core.checkIfViewHasKeyword(viewId, '_sth');
+                        if (viewHasSTH) {
                             ktl.views.stickTableHeader(viewId);
                         }
 
@@ -12706,9 +12707,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     view.addClass('ktlHidden_hv');
                 else {
                     keywordsArray.forEach((keyword, index) => {
-                        if (keyword.options.ktlRoles) {
-                            const roles = keyword.options.ktlRoles.split(',').map((role) => role.trim());
-                            if (ktl.account.matchUserRoles(roles))
+                        if (keyword.options) {
+                            if (ktl.core.hasRoleAccess(keyword.options))
                                 view.addClass('ktlHidden_hv_' + index);
                         }
 
@@ -12745,9 +12745,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                     $('#' + viewId).remove();
                 else {
                     keywordsArray.forEach(keyword => {
-                        if (keyword.options.ktlRoles) {
-                            const roles = keyword.options.ktlRoles.split(',').map((role) => role.trim());
-                            if (ktl.account.matchUserRoles(roles))
+                        if (keyword.options) {
+                            if (ktl.core.hasRoleAccess(keyword.options))
                                 $('#' + viewId).remove();
                         }
 
@@ -15622,8 +15621,8 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 })
             },
 
-            //Will return the KTL add-ons div for this view, and create it if doesn't exist.
-            //This is where we add all KTL-related buttons and indicators.
+            // Will return the KTL add-ons div for this view, and create it if it doesn't exist.
+            // This is where we add all KTL-related buttons and indicators.
             getKtlAddOnsDiv: function (viewId) {
                 if (!viewId) return;
 
@@ -15631,42 +15630,43 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
                 if (!ktlAddonsDiv) {
                     ktlAddonsDiv = document.createElement('div');
 
-                    var prepend = false;
-                    var searchFound = false;
+                    let prepend = false;
+                    let searchFound = false;
 
-                    var div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`);
-                    if (div) {
-                        searchFound = true;
-                    } else
-                        div = document.querySelector(`#${viewId} .kn-submit.control`); //For search views.
+                    let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
+                              document.querySelector(`#${viewId} .kn-submit.control`);
 
-                    const viewHeader = document.querySelector(`#${viewId} .view-header`);
-                    if (!div)
-                        div = viewHeader;
+                    const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
+                    if (!div && viewHasHSV) {
+                        div = document.querySelector(`#${viewId} .kn-records-nav`);
+                        prepend = true;
+                    }
 
                     if (!div) {
-                        div = document.querySelector('#' + viewId);
-                        if (!div) return; //Support other layout options as we go.
+                        div = document.querySelector(`#${viewId} .view-header`);
+                    }
+
+                    if (!div) {
+                        div = document.querySelector(`#${viewId}`);
+                        if (!div) return; // Support other layout options as we go.
                         prepend = true;
                     }
 
                     ktlAddonsDiv.classList.add('ktlAddonsDiv');
 
+                    // Adjust styles based on conditions
                     if (searchFound) {
-                        if (Knack.isMobile())
+                        if (Knack.isMobile()) {
                             $(ktlAddonsDiv).css('margin-top', '2%');
-                        else {
+                        } else {
                             ktlAddonsDiv.classList.add('ktlAddonsWithSearchDiv');
-                            document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`).style.display = 'inline-flex'; //Otherwise, we get the buttons on a row below Search bar.
+                            document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`).style.display = 'inline-flex'; // Otherwise, we get the buttons on a row below Search bar.
                         }
                     }
 
                     $(ktlAddonsDiv).css('margin-bottom', '1.1em');
 
-                    if (prepend)
-                        $(div).prepend(ktlAddonsDiv);
-                    else
-                        ktl.core.insertAfter(ktlAddonsDiv, div);
+                    prepend ? $(div).prepend(ktlAddonsDiv) : ktl.core.insertAfter(ktlAddonsDiv, div);
                 }
 
                 return ktlAddonsDiv;
@@ -19009,35 +19009,47 @@ ${objectData.map(obj => `${obj.name.padEnd(maxNameLength)} | ${obj.fieldCount.to
         }
 
         function addBulkOpsButtons(view, data) {
-            if (document.querySelector('#' + view.key + ' .bulkOpsControlsDiv')) return;
+            const viewId = view.key;
+            if (document.querySelector(`#${viewId} .bulkOpsControlsDiv`)) return;
 
-            var prepend = false;
-            var searchFound = false;
+            let prepend = false;
+            let searchFound = false;
 
-            var div = document.querySelector('#' + view.key + ' .table-keyword-search .control.has-addons');
-            if (div) {
-                searchFound = true;
-            } else
-                div = document.querySelector('#' + view.key + ' .kn-submit.control'); //For search views.
+            let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
+                        document.querySelector(`#${viewId} .kn-submit.control`);
 
-            if (!div)
-                div = document.querySelector('#' + view.key + ' .view-header');
-
-            if (!div) {
-                div = document.querySelector('#' + view.key);
-                if (!div) return; //Support other layout options as we go.
+            // Check for _hsv keyword
+            const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
+            if (!div && viewHasHSV) {
+                div = document.querySelector(`#${viewId} .kn-records-nav`);
                 prepend = true;
             }
 
-            var bulkOpsControlsDiv = document.createElement('div');
+            if (!div) {
+                div = document.querySelector(`#${viewId} .view-header`);
+            }
+
+            // Fallback to view element if no div or header found
+            if (!div) {
+                div = document.querySelector(`#${viewId}`);
+                if (!div) return; // Support other layout options as we go.
+                prepend = true;
+            }
+
+            const bulkOpsControlsDiv = document.createElement('div');
             bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv');
-            bulkOpsControlsDiv.setAttribute('id', 'bulkOpsControlsDiv-' + view.key);
+            bulkOpsControlsDiv.setAttribute('id', `bulkOpsControlsDiv-${viewId}`);
 
             if (searchFound) {
-                if (Knack.isMobile())
+                if (Knack.isMobile()) {
                     $(bulkOpsControlsDiv).css('margin-top', '2%');
-                else
+                } else {
                     bulkOpsControlsDiv.classList.add('bulkOpsControlsWithSearchDiv');
+                }
+            }
+
+            if (viewHasHSV) {
+                $(bulkOpsControlsDiv).css('margin-bottom', '20px');
             }
 
             prepend ? $(div).prepend(bulkOpsControlsDiv) : $(div).append(bulkOpsControlsDiv);
