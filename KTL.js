@@ -2441,8 +2441,8 @@ function Ktl($, appInfo) {
                                         if (groupColumns) {
                                             groupColumns.forEach(col => {
                                                 col.forEach(({ copy = '', name = '', link_text = '' }) => {
-                                                    checkTextInContent(copy, 'details copy', { ...contextObj, url: `/${type}` }) ||
-                                                    checkTextInContent(name, 'details name', { ...contextObj, url: `/${type}` }) ||
+                                                    checkTextInContent(copy, 'details copy', { ...contextObj, url: `/${type}` });
+                                                    checkTextInContent(name, 'details name', { ...contextObj, url: `/${type}` });
                                                     checkTextInContent(link_text, 'details link text', { ...contextObj, url: `/${type}` });
                                                 });
                                             });
