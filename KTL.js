@@ -2372,7 +2372,7 @@ function Ktl($, appInfo) {
                     // Loop through each view in scene.views.models
                     views.forEach(view => {
                         const { attributes = {} } = view;
-                        const { title = '', description = '', rules, type = '', content = '', groups, columns, key } = attributes;
+                        const { title = '', description = '', rules, type = '', content = '', name = '', groups, columns, key } = attributes;
 
                         const contextObj = { sceneId: scene.attributes.key, viewId: key, url: '' };
 
@@ -2381,7 +2381,7 @@ function Ktl($, appInfo) {
                             if (text.toLowerCase().includes(textToFind.toLowerCase())) {
                                 let truncatedText = text;
                                 if (text.length > maxLength) {
-                                    truncatedText = text.substring(0, maxLength) + '...';
+                                    truncatedText = `${text.substring(0, maxLength)}...`;
                                 }
                                 const fullText = text;
 
@@ -2401,37 +2401,35 @@ function Ktl($, appInfo) {
                             return false;
                         };
 
-                        // Check title and description
-                        if (checkTextInContent(title, 'title', { ...contextObj, url: `/${type}` }) || checkTextInContent(description, 'description', { ...contextObj, url: `/${type}` })) {
-                            return;
-                        }
+                        // Helper function to check rules
+                        const checkRules = (rules, context, url) => {
+                            if (rules) {
+                                rules.forEach(({ message = '' }) => {
+                                    const ruleObj = { ...contextObj, url };
+                                    checkTextInContent(message, context, ruleObj);
+                                });
+                            }
+                        };
+
+                        // Check title, description, and name
+                        checkTextInContent(name, 'name', { ...contextObj, url: `/${type}` });
+                        checkTextInContent(title, 'title', { ...contextObj, url: `/${type}` });
+                        checkTextInContent(description, 'description', { ...contextObj, url: `/${type}` });
 
                         // Check submit rules
-                        const submitRules = rules && rules.submits;
-                        if (submitRules) {
-                            submitRules.forEach(({ message = '' }) => {
-                                const submitObj = { ...contextObj, url: '/form/rules/submit' };
-                                if (checkTextInContent(message, 'submit rule', submitObj)) {
-                                    return;
-                                }
-                            });
-                        }
+                        checkRules(rules && rules.submits, 'submit rule', '/form/rules/submit');
 
                         // Check email rules
-                        const emails = rules && rules.emails;
-                        if (emails) {
-                            emails.forEach(({ email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] } }) => {
+                        if (rules && rules.emails) {
+                            rules.emails.forEach(({ email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] } }) => {
                                 const emailObj = { ...contextObj, url: '/form/emails' };
                                 recipients.forEach(({ email = '' }) => {
-                                    if (checkTextInContent(email, 'email recipient', emailObj)) {
-                                        return;
-                                    }
+                                    checkTextInContent(email, 'email recipient', emailObj);
                                 });
-
-                                if (checkTextInContent(message, 'email message', emailObj) || checkTextInContent(subject, 'email subject', emailObj) ||
-                                    checkTextInContent(from_name, 'email from name', emailObj) || checkTextInContent(from_email, 'email from email', emailObj)) {
-                                    return;
-                                }
+                                checkTextInContent(message, 'email message', emailObj);
+                                checkTextInContent(subject, 'email subject', emailObj);
+                                checkTextInContent(from_name, 'email from name', emailObj);
+                                checkTextInContent(from_email, 'email from email', emailObj);
                             });
                         }
 
@@ -2443,13 +2441,9 @@ function Ktl($, appInfo) {
                                         if (groupColumns) {
                                             groupColumns.forEach(col => {
                                                 col.forEach(({ copy = '', name = '', link_text = '' }) => {
-                                                    if (
-                                                        checkTextInContent(copy, 'details copy', { ...contextObj, url: `/${type}` }) ||
-                                                        checkTextInContent(name, 'details name', { ...contextObj, url: `/${type}` }) ||
-                                                        checkTextInContent(link_text, 'details link text', { ...contextObj, url: `/${type}` })
-                                                    ) {
-                                                        return;
-                                                    }
+                                                    checkTextInContent(copy, 'details copy', { ...contextObj, url: `/${type}` }) ||
+                                                    checkTextInContent(name, 'details name', { ...contextObj, url: `/${type}` }) ||
+                                                    checkTextInContent(link_text, 'details link text', { ...contextObj, url: `/${type}` });
                                                 });
                                             });
                                         }
@@ -2459,8 +2453,8 @@ function Ktl($, appInfo) {
                         }
 
                         // Check rich text content
-                        if (type === 'rich_text' && checkTextInContent(content, 'rich text view', { ...contextObj, url: `/${type}` })) {
-                            return;
+                        if (type === 'rich_text') {
+                            checkTextInContent(content, 'rich text view', { ...contextObj, url: `/${type}` });
                         }
 
                         // Check groups, columns, and inputs
@@ -2471,9 +2465,9 @@ function Ktl($, appInfo) {
                                         if (inputs) {
                                             inputs.forEach(({ label = '', instructions = '', copy = '', field = '' }, index) => {
                                                 const inputObj = { ...contextObj, url: `/form/inputs/rows/${groupIndex}/columns/${colIndex}/inputs/${index}` };
-                                                if (checkTextInContent(label, 'input label', inputObj) || checkTextInContent(instructions, 'input instructions', inputObj) || checkTextInContent(copy, 'input copy', inputObj)) {
-                                                    return;
-                                                }
+                                                checkTextInContent(label, 'input label', inputObj);
+                                                checkTextInContent(instructions, 'input instructions', inputObj);
+                                                checkTextInContent(copy, 'input copy', inputObj);
                                             });
                                         }
                                     });
@@ -2481,10 +2475,9 @@ function Ktl($, appInfo) {
                             });
                         }
                     });
-                });
 
                 if (!textFound) {
-                    ktl.log.clog('green', `${textToFind} is not found in rich_text view any view Description, Title, Rules, Inputs, Emails, Detail Labels`);
+                    ktl.log.clog('green', `${textToFind} is not found in any Rich Text View, any View Description, Title, Name, Rules, Inputs, Emails, Detail Labels, Detail Links`);
                 }
             },
         }
