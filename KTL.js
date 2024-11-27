@@ -4093,7 +4093,7 @@ function Ktl($, appInfo) {
                         const options = kwInstance.options;
                         if (!ktl.core.hasRoleAccess(options)) return;
 
-                        $('#' + viewId).addClass(`ktlHidden_hf_${instanceCount}`);
+                        $('#' + viewId).addClass(`ktlHidden_hf_viewTemp_${instanceCount}`);
 
                         var elementsArray = [];
                         const kwFields = kwInstance.params[0];
@@ -4135,10 +4135,11 @@ function Ktl($, appInfo) {
 
                             ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
                                 .then(() => {
-                                    $('#' + viewId).removeClass(`ktlHidden_hf_${instanceCount}`);
+                                    $('#' + viewId).removeClass(`ktlHidden_hf_viewTemp_${instanceCount}`);
                                 })
-                        } else
-                            $('#' + viewId).removeClass(`ktlHidden_hf_${instanceCount}`);
+                        } else {
+                            $('#' + viewId).removeClass(`ktlHidden_hf_viewTemp_${instanceCount}`);
+                        }
                     }
                 }
             },
@@ -14247,7 +14248,7 @@ function Ktl($, appInfo) {
                     if (field.startsWith('$(')) {
                         const selector = ktl.core.extractJQuerySelector(field, viewId);
                         ktl.core.waitSelector(selector, 10000).then(() => {
-                            const fieldValue = $(selector)[0].textContent.trim();
+                            const fieldValue = $(selector).is('input') ? $(selector)[0].value.trim() : $(selector)[0].textContent.trim();
                             if (!fieldValue || !ktlCompare(fieldValue, operator, value))
                                 unhide();
 
@@ -14295,7 +14296,7 @@ function Ktl($, appInfo) {
                             if (viewType === 'details')
                                 selector += ' .' + fieldId + ' .kn-detail-body';
                             else if (viewType === 'form') {
-                                selector += ' input#' + fieldId;
+                                selector += ` [data-input-id=${fieldId}]`;
                             }
                         }
 
