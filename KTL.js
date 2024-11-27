@@ -11994,7 +11994,7 @@ function Ktl($, appInfo) {
                 viewElement.find('.ktlHideShowSection').append(shrinkLinkHTML);
             }
 
-            const description = viewElement.find('.kn-description');
+            const description = viewElement.find('.view-header .kn-description');
             if (description.text().trim() !== '') {
                 description.detach().prependTo(`.${hideShowId}`);
             }
