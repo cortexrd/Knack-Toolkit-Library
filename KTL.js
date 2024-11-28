@@ -618,7 +618,7 @@ function Ktl($, appInfo) {
                                 }
 
                                 // Process time
-                                let isoTime;
+                                let isoTime = '00:00:00';
                                 if (timeStr) {
                                     if (timeFormat === 'HH MM (military)' || timeFormat === 'HH:MM') {
                                         const [hours, minutes] = timeStr.replace('(military)', '').trim().split(':');
