@@ -518,6 +518,8 @@ function Ktl($, appInfo) {
                     //console.log('apiURL =', apiURL);
                     //console.log('knAPI - viewId: ', viewId, ', recId:', recId, ', requestType', requestType);
 
+                    const apiDataIso = convertDateTimeToIso(apiData);
+
                     $.ajax({
                         url: apiURL,
                         type: requestType,
@@ -530,7 +532,7 @@ function Ktl($, appInfo) {
                             'X-Knack-REST-API-Key': 'knack',
                             'Content-Type': 'application/json',
                         },
-                        data: JSON.stringify(apiData),
+                        data: JSON.stringify(apiDataIso),
                         success: function (data) {
                             showSpinner && Knack.hideSpinner();
 
@@ -580,6 +582,71 @@ function Ktl($, appInfo) {
                             }
                         },
                     });
+
+                    //This is to accomodate the Knack change that occurred on Nov 27, 2024
+                    //Date/Time fields must always have the ISO format in API calls, regardless of the Builder's format.
+                    //See Issue #416:  https://github.com/cortexrd/Knack-Toolkit-Library/issues/416
+                    function convertDateTimeToIso(apiData) {
+                        const apiDataIso = { ...apiData };
+                        for (const fieldId in apiDataIso) {
+                            const fieldType = ktl.fields.getFieldType(fieldId);
+                            if (fieldType === 'date_time') {
+                                const dateTime = apiDataIso[fieldId];
+                                if (!dateTime)
+                                    continue;
+                                let [dateStr, timeStr] = dateTime.split(' ');
+                                const format = Knack.objects.getField(fieldId).attributes.format;
+                                const dateFormat = format.date_format;
+                                const timeFormat = format.time_format;
+
+                                // Process date
+                                let isoDate;
+                                if (dateFormat === 'mm/dd/yyyy') {
+                                    const [month, day, year] = dateStr.split('/');
+                                    isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                } else if (dateFormat === 'dd/mm/yyyy') {
+                                    const [day, month, year] = dateStr.split('/');
+                                    isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                } else if (dateFormat === 'M D, yyyy') {
+                                    const months = {
+                                        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                                        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+                                    };
+                                    const [month, dayYear] = dateStr.split(' ');
+                                    const [day, year] = dayYear.replace(',', '').split(' ');
+                                    isoDate = `${year}-${months[month]}-${day.padStart(2, '0')}`;
+                                }
+
+                                // Process time
+                                let isoTime;
+                                if (timeStr) {
+                                    if (timeFormat === 'HH MM (military)' || timeFormat === 'HH:MM') {
+                                        const [hours, minutes] = timeStr.replace('(military)', '').trim().split(':');
+                                        isoTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+                                    } else if (timeFormat === 'HH:MM am' && (timeStr.includes('am') || timeStr.includes('pm'))) {
+                                        let [time, meridiem] = timeStr.split(' ');
+                                        let [hours, minutes] = time.split(':');
+                                        hours = parseInt(hours);
+
+                                        // Convert to 24-hour format
+                                        if (meridiem.toLowerCase() === 'pm' && hours < 12) {
+                                            hours += 12;
+                                        } else if (meridiem.toLowerCase() === 'am' && hours === 12) {
+                                            hours = 0;
+                                        }
+
+                                        isoTime = `${hours.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+                                    } else {
+                                        isoTime = timeStr;
+                                    }
+                                }
+
+                                apiDataIso[fieldId] = `${isoDate}T${isoTime}Z`;
+                                //console.log('Updated d/t:', apiDataIso[fieldId]);
+                            }
+                        }
+                        return apiDataIso;
+                    }
                 });
             },
 
