@@ -12121,11 +12121,14 @@ function Ktl($, appInfo) {
                             ktl.views.stickTableHeader(viewId);
                         }
 
-                        if (viewElement.find('.kn-input-signature').length && Knack.views[viewId] && typeof Knack.views[viewId].renderSignatures === 'function') {
+                        const signatureElements = viewElement.find('.kn-input-signature');
+                        const tableGroupCell = viewElement.find('.kn-table-group td');
+
+                        if (signatureElements.length && Knack.views[viewId] && typeof Knack.views[viewId].renderSignatures === 'function') {
                             Knack.views[viewId].renderSignatures();
                         }
 
-                        if (viewElement.find('.kn-table-group td').attr('colspan') === '0' && Knack.views[viewId] && typeof Knack.views[viewId].render === 'function') {
+                        if (tableGroupCell.attr('colspan') === '0' && Knack.views[viewId] && typeof Knack.views[viewId].render === 'function') {
                             Knack.views[viewId].render();
                         }
 
