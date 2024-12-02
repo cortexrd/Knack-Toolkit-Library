@@ -5624,6 +5624,7 @@ function Ktl($, appInfo) {
             }
         }
 
+        //Linked Filters _lf feature - BEGIN
         function linkFilters(viewTitles, masterView) {
             const masterViewId = masterView.key;
             const linkedViewIds = ktl.views.convertViewTitlesToViewIds(viewTitles, masterViewId);
@@ -5638,11 +5639,19 @@ function Ktl($, appInfo) {
                         });
                     } else if (masterView.type === 'table') {
                         const srchVal = $(`#${masterViewId} .table-keyword-search input`).val() || '';
+
+                        let sort = masterView.source.sort[0].field + '|' + masterView.source.sort[0].order;
+                        let rows_per_page = masterView.rows_per_page;
+
+                        if (!masterView.filters.rules.length) {
+                            rows_per_page = Knack.scenes._byId[Knack.getCurrentScene().slug].views._byId[linkedViewId].attributes.rows_per_page;
+                        }
+
                         applyUserFilterToTableView(
                             linkedViewId,
                             srchVal,
-                            masterView.rows_per_page,
-                            masterView.source.sort[0].field + '|' + masterView.source.sort[0].order,
+                            rows_per_page,
+                            sort,
                             masterView.filters);
                     }
                 });
@@ -5650,8 +5659,6 @@ function Ktl($, appInfo) {
         }
 
         $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
-            //Linked Filters _lf feature
-
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             const masterViewId = view.key;
@@ -5666,9 +5673,8 @@ function Ktl($, appInfo) {
             linkFilters(keywords._lf[0].params[0], Knack.models[masterViewId].view);
         });
 
-
+        //Linked Filters _lf feature, Report Subviews
         $(document).on('knack-records-render.report', function (e, view, data) {
-            //Linked Filters _lf feature, Report Subviews
 
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
@@ -5713,6 +5719,7 @@ function Ktl($, appInfo) {
                 });
             });
         });
+        //Linked Filters _lf feature - END
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             //Linked Searches _ls feature
