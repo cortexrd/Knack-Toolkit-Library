@@ -8411,8 +8411,7 @@ function Ktl($, appInfo) {
                             return fieldId;
                         });
                     } else if (viewType === 'form') {
-                        //console.log('form');
-                        //fieldIds = ['field_521'];
+                        fieldIds = Array.from(document.querySelectorAll(`#${viewId} [data-input-id]`)).map(el => el.getAttribute('data-input-id'));
                     } else { //Grids, Searches and Lists.
                         fieldIds = Knack.views[viewId].model.view.fields.filter(f => !!f).map((f) => f.key);
                     }
@@ -8824,6 +8823,8 @@ function Ktl($, appInfo) {
                             targetSel = '#' + targetViewId + ' [data-record-id="' + record.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
                         else if (viewType === 'details')
                             targetSel = '#' + targetViewId + ' .' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
+                        else if (viewType === 'form')
+                            targetSel = `#${viewId} [data-input-id=${targetFieldId}].kn-read-only`; //Limitation: we can only select the whole field, including label.
                     }
 
                     if (targetSel.endsWith(','))
