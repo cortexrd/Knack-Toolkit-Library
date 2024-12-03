@@ -12129,9 +12129,18 @@ function Ktl($, appInfo) {
                             ktl.views.stickTableHeader(viewId);
                         }
 
-                        if ($('.kn-input-signature').length && Knack.views[viewId] && typeof Knack.views[viewId].renderSignatures === 'function') {
+                        const signatureElements = viewElement.find('.kn-input-signature');
+                        const tableGroupCell = viewElement.find('.kn-table-group td');
+
+                        if (signatureElements.length && Knack.views[viewId] && typeof Knack.views[viewId].renderSignatures === 'function') {
                             Knack.views[viewId].renderSignatures();
                         }
+
+                        if (tableGroupCell.attr('colspan') === '0' && Knack.views[viewId] && typeof Knack.views[viewId].render === 'function') {
+                            Knack.views[viewId].render();
+                        }
+
+                        $(document).trigger('KTL.hideShowView.Opened', { viewId });
                     });
                     arrowSelector.removeClass('ktlDown').addClass('ktlUp');
                     buttonSelector.addClass('ktlActive');
