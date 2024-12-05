@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.29.4';
+    const KTL_VERSION = '0.29.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -591,58 +591,61 @@ function Ktl($, appInfo) {
                         for (const fieldId in apiDataIso) {
                             const fieldType = ktl.fields.getFieldType(fieldId);
                             if (fieldType === 'date_time') {
-                                const dateTime = apiDataIso[fieldId];
-                                if (!dateTime)
+                                let dateTime = apiDataIso[fieldId];
+                                if (typeof apiDataIso[fieldId] === 'object' && apiDataIso[fieldId].iso_timestamp) {
                                     continue;
-                                let [dateStr, timeStr] = dateTime.split(' ');
-                                const format = Knack.objects.getField(fieldId).attributes.format;
-                                const dateFormat = format.date_format;
-                                const timeFormat = format.time_format;
+                                } else {
+                                    if (!dateTime)
+                                        continue;
+                                    let [dateStr, timeStr] = dateTime.split(' ');
+                                    const format = Knack.objects.getField(fieldId).attributes.format;
+                                    const dateFormat = format.date_format;
+                                    const timeFormat = format.time_format;
 
-                                // Process date
-                                let isoDate;
-                                if (dateFormat === 'mm/dd/yyyy') {
-                                    const [month, day, year] = dateStr.split('/');
-                                    isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                                } else if (dateFormat === 'dd/mm/yyyy') {
-                                    const [day, month, year] = dateStr.split('/');
-                                    isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                                } else if (dateFormat === 'M D, yyyy') {
-                                    const months = {
-                                        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-                                        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-                                    };
-                                    const [month, dayYear] = dateStr.split(' ');
-                                    const [day, year] = dayYear.replace(',', '').split(' ');
-                                    isoDate = `${year}-${months[month]}-${day.padStart(2, '0')}`;
-                                }
-
-                                // Process time
-                                let isoTime = '00:00:00';
-                                if (timeStr) {
-                                    if (timeFormat === 'HH MM (military)' || timeFormat === 'HH:MM') {
-                                        const [hours, minutes] = timeStr.replace('(military)', '').trim().split(':');
-                                        isoTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
-                                    } else if (timeFormat === 'HH:MM am' && (timeStr.includes('am') || timeStr.includes('pm'))) {
-                                        let [time, meridiem] = timeStr.split(' ');
-                                        let [hours, minutes] = time.split(':');
-                                        hours = parseInt(hours);
-
-                                        // Convert to 24-hour format
-                                        if (meridiem.toLowerCase() === 'pm' && hours < 12) {
-                                            hours += 12;
-                                        } else if (meridiem.toLowerCase() === 'am' && hours === 12) {
-                                            hours = 0;
-                                        }
-
-                                        isoTime = `${hours.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
-                                    } else {
-                                        isoTime = timeStr;
+                                    // Process date
+                                    let isoDate;
+                                    if (dateFormat === 'mm/dd/yyyy') {
+                                        const [month, day, year] = dateStr.split('/');
+                                        isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                    } else if (dateFormat === 'dd/mm/yyyy') {
+                                        const [day, month, year] = dateStr.split('/');
+                                        isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                    } else if (dateFormat === 'M D, yyyy') {
+                                        const months = {
+                                            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                                            'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+                                        };
+                                        const [month, dayYear] = dateStr.split(' ');
+                                        const [day, year] = dayYear.replace(',', '').split(' ');
+                                        isoDate = `${year}-${months[month]}-${day.padStart(2, '0')}`;
                                     }
-                                }
 
-                                apiDataIso[fieldId] = `${isoDate}T${isoTime}Z`;
-                                //console.log('Updated d/t:', apiDataIso[fieldId]);
+                                    // Process time
+                                    let isoTime = '00:00:00';
+                                    if (timeStr) {
+                                        if (timeFormat === 'HH MM (military)' || timeFormat === 'HH:MM') {
+                                            const [hours, minutes] = timeStr.replace('(military)', '').trim().split(':');
+                                            isoTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+                                        } else if (timeFormat === 'HH:MM am' && (timeStr.includes('am') || timeStr.includes('pm'))) {
+                                            let [time, meridiem] = timeStr.split(' ');
+                                            let [hours, minutes] = time.split(':');
+                                            hours = parseInt(hours);
+
+                                            // Convert to 24-hour format
+                                            if (meridiem.toLowerCase() === 'pm' && hours < 12) {
+                                                hours += 12;
+                                            } else if (meridiem.toLowerCase() === 'am' && hours === 12) {
+                                                hours = 0;
+                                            }
+
+                                            isoTime = `${hours.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+                                        } else {
+                                            isoTime = timeStr;
+                                        }
+                                    }
+
+                                    apiDataIso[fieldId] = `${isoDate}T${isoTime}Z`;
+                                }
                             }
                         }
                         return apiDataIso;
