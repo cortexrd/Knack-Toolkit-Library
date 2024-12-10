@@ -11760,21 +11760,23 @@ function Ktl($, appInfo) {
             const viewId = view.key;
             let fieldsAr = [];
 
-            // Process fields keywords
+                        // Process fields keywords
             const fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             if (!$.isEmptyObject(fieldsWithKwObj)) {
                 const fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                 const foundKwObj = {};
                 for (const fieldId of fieldsWithKwAr) {
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId][kw]) {
+                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId][kw] && foundKwObj[fieldId][kw][0]) {
                         const options = foundKwObj[fieldId][kw][0].options;
-                        if (ktl.core.hasRoleAccess(options)) {
+                        if (options && ktl.core.hasRoleAccess(options)) {
                             const valid = await ktl.views.validateKtlCond(options, {}, viewId);
                             if (valid && !fieldsAr.includes(fieldId)) {
                                 fieldsAr.push(fieldId);
                             }
                         }
+                    } else {
+                        fieldsAr.push(fieldId);
                     }
                 }
             }
@@ -11784,12 +11786,16 @@ function Ktl($, appInfo) {
             if (keywords && keywords[kw] && keywords[kw].length) {
                 const kwList = ktl.core.getKeywordsByType(viewId, kw);
                 for (const kwInstance of kwList) {
-                    const options = kwInstance.options;
-                    if (ktl.core.hasRoleAccess(options)) {
-                        const valid = await ktl.views.validateKtlCond(options, {}, viewId);
-                        if (valid) {
-                            fieldsAr.push(...kwInstance.params[0]);
+                    if (kwInstance && kwInstance.options) {
+                        const options = kwInstance.options;
+                        if (options && ktl.core.hasRoleAccess(options)) {
+                            const valid = await ktl.views.validateKtlCond(options, {}, viewId);
+                            if (valid) {
+                                fieldsAr.push(...kwInstance.params[0]);
+                            }
                         }
+                    } else {
+                        fieldsAr.push(...kwInstance.params[0]);
                     }
                 }
             }
