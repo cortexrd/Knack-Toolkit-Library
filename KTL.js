@@ -11760,23 +11760,25 @@ function Ktl($, appInfo) {
             const viewId = view.key;
             let fieldsAr = [];
 
-                        // Process fields keywords
+            // Process fields keywords
             const fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             if (!$.isEmptyObject(fieldsWithKwObj)) {
                 const fieldsWithKwAr = Object.keys(fieldsWithKwObj);
                 const foundKwObj = {};
                 for (const fieldId of fieldsWithKwAr) {
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId][kw] && foundKwObj[fieldId][kw][0]) {
-                        const options = foundKwObj[fieldId][kw][0].options;
-                        if (options && ktl.core.hasRoleAccess(options)) {
-                            const valid = await ktl.views.validateKtlCond(options, {}, viewId);
-                            if (valid && !fieldsAr.includes(fieldId)) {
-                                fieldsAr.push(fieldId);
+                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId][kw]) {
+                        if (foundKwObj[fieldId][kw][0] && foundKwObj[fieldId][kw][0].options) {
+                            const options = foundKwObj[fieldId][kw][0].options;
+                            if (options && ktl.core.hasRoleAccess(options)) {
+                                const valid = await ktl.views.validateKtlCond(options, {}, viewId);
+                                if (valid && !fieldsAr.includes(fieldId)) {
+                                    fieldsAr.push(fieldId);
+                                }
                             }
+                        } else {
+                            fieldsAr.push(fieldId);
                         }
-                    } else {
-                        fieldsAr.push(fieldId);
                     }
                 }
             }
@@ -11786,21 +11788,22 @@ function Ktl($, appInfo) {
             if (keywords && keywords[kw] && keywords[kw].length) {
                 const kwList = ktl.core.getKeywordsByType(viewId, kw);
                 for (const kwInstance of kwList) {
-                    if (kwInstance && kwInstance.options) {
-                        const options = kwInstance.options;
-                        if (options && ktl.core.hasRoleAccess(options)) {
-                            const valid = await ktl.views.validateKtlCond(options, {}, viewId);
-                            if (valid) {
-                                fieldsAr.push(...kwInstance.params[0]);
+                    if (kwInstance) {
+                        if (kwInstance.options) {
+                            const options = kwInstance.options;
+                            if (options && ktl.core.hasRoleAccess(options)) {
+                                const valid = await ktl.views.validateKtlCond(options, {}, viewId);
+                                if (valid) {
+                                    fieldsAr.push(...kwInstance.params[0]);
+                                }
                             }
+                        } else {
+                            fieldsAr.push(...kwInstance.params[0]);
                         }
-                    } else {
-                        fieldsAr.push(...kwInstance.params[0]);
                     }
                 }
             }
 
-            // Process the fields in fieldsAr
             if (!fieldsAr.length) return;
 
             // Add other Required fields as set by the Builder.
