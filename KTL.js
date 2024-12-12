@@ -11282,9 +11282,6 @@ function Ktl($, appInfo) {
         }
 
         //Record History Feature - BEGIN
-
-        const viewData_arh = {};
-
         const viewRecordHistoryViewId = ktl.core.getViewIdByTitle('View Record History');
         const recordHistoryObject = ktl.core.getObjectIdByName('Record History');
         const recordHistoryFieldIds = {
@@ -11379,6 +11376,7 @@ function Ktl($, appInfo) {
                 }
             }
 
+            let viewData = {};
             let changeLog = {};
             let recordId;
             let identifier;
@@ -11577,15 +11575,15 @@ function Ktl($, appInfo) {
             function updateDataAndLogDeltas(viewId, record) {
                 recordId = record.id;
 
-                const lastData = viewData_arh[recordId];
+                const lastData = viewData[recordId];
                 if (lastData !== undefined)
                     compareNewAndLastData(viewId, record, lastData);
 
                 if (view.action === 'create' || view.action === 'insert')
-                    viewData_arh[recordId] = {};
+                    viewData[recordId] = {};
                 else {
                     if (view.type === 'form')
-                        viewData_arh[recordId] = JSON.parse(JSON.stringify(record));
+                        viewData[recordId] = JSON.parse(JSON.stringify(record));
                 }
 
                 logAllChanges();
@@ -11607,7 +11605,7 @@ function Ktl($, appInfo) {
                                 record = record[0];
                         }
 
-                        viewData_arh[recordId] = JSON.parse(JSON.stringify(record));
+                        viewData[recordId] = JSON.parse(JSON.stringify(record));
                     }
                 });
             }
@@ -11755,7 +11753,6 @@ function Ktl($, appInfo) {
                 }
             });
         });
-
         //Record History Feature - END
 
         async function fieldIsRequired(view) {
