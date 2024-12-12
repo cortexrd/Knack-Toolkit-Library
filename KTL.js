@@ -11519,6 +11519,12 @@ function Ktl($, appInfo) {
             }
 
             function getNestedValue(obj, path) {
+                if (obj[path] !== undefined && typeof obj[path] !== 'object')
+                    return obj[path];
+
+                if (Array.isArray(obj[path]) && !obj[path].length)
+                    return [];
+
                 const value = path.split('.').reduce((current, key) =>
                     (current && current[key] !== undefined) ? current[key] : undefined, obj);
 
@@ -14284,7 +14290,7 @@ function Ktl($, appInfo) {
                 });
             },
 
-            hideUnhideValidateKtlCond: function (options = {}, hide, unhide, ) {
+            hideUnhideValidateKtlCond: function (options = {}, hide, unhide,) {
                 return new Promise(function (resolve) {
                     hide();
 
@@ -15209,7 +15215,7 @@ function Ktl($, appInfo) {
                 var viewObj = ktl.views.getView(viewId);
                 if (viewObj) {
                     if (viewObj.type === 'search') {
-                        if (Knack.views[viewId].model.results_model)
+                        if (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.view.totals)
                             return Knack.views[viewId].model.results_model.view.totals.length;
                         else
                             return 0;
@@ -15711,7 +15717,7 @@ function Ktl($, appInfo) {
                     let searchFound = false;
 
                     let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
-                              document.querySelector(`#${viewId} .kn-submit.control`);
+                        document.querySelector(`#${viewId} .kn-submit.control`);
 
                     const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
                     if (!div && viewHasHSV) {
@@ -19093,7 +19099,7 @@ function Ktl($, appInfo) {
             let searchFound = false;
 
             let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
-                        document.querySelector(`#${viewId} .kn-submit.control`);
+                document.querySelector(`#${viewId} .kn-submit.control`);
 
             // Check for _hsv keyword
             const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
