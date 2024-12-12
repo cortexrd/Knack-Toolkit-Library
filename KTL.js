@@ -2842,11 +2842,11 @@ function Ktl($, appInfo) {
             if (viewId) {
                 ktl.fields.fieldSetAsNumeric(viewId, e.target.closest('.kn-input'));
 
-                //Turn-off auto complete for Kiosks. Users are annoyed by the dropdown that blocks the Submit button.
-                if (e.target.classList.contains('input')) {
+                if (e.target.classList.contains('input') || e.target.classList.contains('kn-textarea')) {
                     if (ktl.core.getCfg().enabled.selTextOnFocus)
                         $(e.target).select();
 
+                    //Turn-off auto complete for Kiosks. Users are annoyed by the dropdown that blocks the Submit button.
                     if (ktl.core.isKiosk())
                         e.target.setAttribute('autocomplete', 'off');
                 }
