@@ -2169,8 +2169,21 @@ function Ktl($, appInfo) {
                 return Object.keys(ktlKeywords[viewId]).includes(keyword);
             },
 
-            findEmails: function (excludeEmails = []) {
-                const normalizedExcludeEmails = excludeEmails.map(email => email.toLowerCase().trim());
+            findEmails: function (emailsString = '') {
+                const processEmails = str => {
+                    if (!str.trim()) return { include: [], exclude: [] };
+                    return str.split(',').reduce((acc, email) => {
+                        email = email.trim();
+                        if (email.startsWith('-')) {
+                            acc.exclude.push(email.slice(1).toLowerCase());
+                        } else {
+                            acc.include.push(email.toLowerCase());
+                        }
+                        return acc;
+                    }, { include: [], exclude: [] });
+                };
+
+                const { include, exclude } = processEmails(emailsString);
                 const emailsFound = [];
 
                 if (!Knack?.scenes?.models) {
@@ -2178,19 +2191,16 @@ function Ktl($, appInfo) {
                     return emailsFound;
                 }
 
-                Knack.scenes.models.forEach((scene, sceneIndex) => {
+                Knack.scenes.models.forEach((scene) => {
                     const sceneId = scene?.attributes?.key;
                     if (!scene?.attributes?.views) {
                         console.log(`Scene ${sceneId}: No views found`);
                         return;
                     }
 
-                    scene.attributes.views.forEach((view, viewIndex) => {
+                    scene.attributes.views.forEach((view) => {
                         const viewId = view?.key;
-                        if (!view?.rules?.emails) {
-                            //console.log(`Scene ${sceneIndex}, View ${viewIndex}: No email rules found`);
-                            return;
-                        }
+                        if (!view?.rules?.emails) return;
 
                         view.rules.emails.forEach((emailRule, ruleIndex) => {
                             if (!emailRule?.email?.recipients) {
@@ -2199,45 +2209,32 @@ function Ktl($, appInfo) {
                             }
 
                             emailRule.email.recipients.forEach((recipient, recipientIndex) => {
-                                if (recipient?.email) {
-                                    const normalizedEmail = recipient.email.toLowerCase().trim();
-                                    if (!normalizedExcludeEmails.includes(normalizedEmail)) {
-                                        emailsFound.push({
-                                            email: recipient.email,
-                                            location: {
-                                                scene: sceneId,
-                                                view: viewId,
-                                                emailRule: ruleIndex,
-                                                recipient: recipientIndex
-                                            }
-                                        });
-                                    }
-                                }
+                                if (!recipient?.email) return;
+
+                                const normalizedEmail = recipient.email.toLowerCase();
+                                if (exclude.includes(normalizedEmail)) return;
+                                if (include.length && !include.includes(normalizedEmail)) return;
+
+                                emailsFound.push({
+                                    email: recipient.email,
+                                    location: { scene: sceneId, view: viewId, emailRule: ruleIndex, recipient: recipientIndex }
+                                });
                             });
                         });
                     });
                 });
 
-                if (emailsFound.length === 0) {
-                    console.log('No non-excluded emails found in the application');
-                    return emailsFound;
-                }
-
-                // Find the length of the longest email for padding
                 const maxEmailLength = Math.max(...emailsFound.map(entry => entry.email.length));
-
-                console.log('\nEmails found (excluding specified emails):');
+                console.log('\nEmails found:');
                 emailsFound.forEach(entry => {
                     const paddedEmail = entry.email.padEnd(maxEmailLength);
                     console.log(`${paddedEmail}    Scene: ${entry.location.scene}, View: ${entry.location.view}, ` +
                         `Rule: ${entry.location.emailRule}, Recipient: ${entry.location.recipient}`);
                 });
 
-                // Log excluded emails count
-                const totalEmailsFound = emailsFound.length;
-                const excludedCount = excludeEmails.length;
-                console.log(`\nTotal emails found: ${totalEmailsFound}`);
-                console.log(`Emails excluded: ${excludedCount}`);
+                console.log(`\nEmails excluded: ${exclude.length}`);
+                console.log(`Emails included: ${include.length}`);
+                console.log(`Total emails found: ${emailsFound.length}`);
 
                 return emailsFound;
             },
@@ -11391,20 +11388,6 @@ function Ktl($, appInfo) {
                 formActionText = 'Added';
             }
 
-            $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
-                //$.blockUI({ message: '', overlayCSS: { backgroundColor: '#fff', opacity: 0, } });
-
-                identifier = record[identifierFieldId];
-                updateDataAndLogDeltas(viewId, record);
-
-                $(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, (event, view, data) => {
-                    //$.unblockUI();
-                });
-
-            })
-
-            const sceneId = ktl.scenes.getSceneKeyFromViewId(viewId);
-
             function addFieldChanges(viewId, fieldId, fieldName, oldValue, newValue) {
                 if (includeFields.length && !includeFields.includes(fieldId))
                     return;
@@ -11422,7 +11405,7 @@ function Ktl($, appInfo) {
                         [recordHistoryFieldIds.object_name]: Knack.objects._byId[sourceObjectId].attributes.name,
                         [recordHistoryFieldIds.view_id]: viewId,
                         [recordHistoryFieldIds.app_url]: window.location.href,
-                        [recordHistoryFieldIds.builder_url]: `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`,
+                        [recordHistoryFieldIds.builder_url]: `${baseURL}/pages/${ktl.scenes.getSceneKeyFromViewId(viewId)}/views/${viewId}/${viewType}`,
                         [recordHistoryFieldIds.builder_history]: '',
                         [recordHistoryFieldIds.expiry]: '',
                     };
@@ -11588,6 +11571,18 @@ function Ktl($, appInfo) {
 
                 logAllChanges();
             }
+
+
+            $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
+                //$.blockUI({ message: '', overlayCSS: { backgroundColor: '#fff', opacity: 0, } });
+
+                identifier = record[identifierFieldId];
+                updateDataAndLogDeltas(viewId, record);
+
+                //$(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, (event, view, data) => {
+                    //$.unblockUI();
+                //});
+            })
 
             if (viewType === 'form')
                 updateDataAndLogDeltas(viewId, data);
