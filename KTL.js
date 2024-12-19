@@ -2232,8 +2232,8 @@ function Ktl($, appInfo) {
                         `Rule: ${entry.location.emailRule}, Recipient: ${entry.location.recipient}`);
                 });
 
-                console.log(`\nEmails excluded: ${exclude.length}`);
-                console.log(`Emails included: ${include.length}`);
+                exclude.length && console.log(`\nEmails excluded: ${exclude.length}`);
+                include.length && console.log(`Emails included: ${include.length}`);
                 console.log(`Total emails found: ${emailsFound.length}`);
 
                 return emailsFound;
@@ -12977,9 +12977,16 @@ function Ktl($, appInfo) {
                         const sel = `#${viewId} tr.kn-table-group`;
                         await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
                         const headers = $(`#${viewId} thead tr th:visible`).length;
+
                         $(sel).each(function () {
-                            if (bulkOpsActive)
-                                $(this).find('td').css('padding-left', '45px');
+                            if (bulkOpsActive) {
+                                const newStyle = `padding-left : 20px !important`;
+                                const tdSel = `${sel} td`;
+                                const mergedStyles = ktl.core.mergeStyles(document.querySelector(tdSel).style.cssText, newStyle);
+                                const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
+                                $(tdSel).attr('style', mergedStyleString);
+                            }
+
                             $(this).find('td').attr('colspan', headers);
                         });
                     } catch (e) {
