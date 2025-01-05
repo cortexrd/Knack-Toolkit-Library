@@ -7590,6 +7590,7 @@ function Ktl($, appInfo) {
                 labelText(view, keywords);
                 removeConnectionPicker(viewId);
                 setCharacterLimit(view, keywords);
+                addCharacterCount(view, keywords);
 
                 iterateViewReports(view, (report, keywords) => {
                     if (keywords) {
@@ -12016,11 +12017,11 @@ function Ktl($, appInfo) {
 
 
             const fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-            const foundKwObj = {};
 
             for (const fieldId of fieldsWithKwAr) {
                 if (!TEXT_DATA_TYPES.includes(ktl.fields.getFieldType(fieldId))) continue;
 
+                const foundKwObj = {};
                 ktl.fields.getFieldKeywords(fieldId, foundKwObj);
                 if ($.isEmptyObject(foundKwObj) || !foundKwObj[fieldId][kw]) continue;
 
@@ -12053,8 +12054,8 @@ function Ktl($, appInfo) {
                                     <circle class="background-circle" r="40" cx="50" cy="50" />
                                     <circle class="progress-circle" r="40" cx="50" cy="50" stroke-dashoffset="100" />
                                 </svg>
-                                <div class="char-count">
-                                    <span class="char-count-number">0</span>/${characterLimit}${recommendedText}
+                                <div class="char-limit">
+                                    <span class="char-limit-number">0</span>/${characterLimit}${recommendedText}
                                 </div>
                             </div>
                         </div>
@@ -12066,7 +12067,7 @@ function Ktl($, appInfo) {
                     const totalCharCount = inputElement.toArray().reduce((acc, input) => acc + $(input).val().length, 0);
                     const circleTextWrapper = controlElement.find('.circle-text-wrapper');
                     const progressCircle = circleTextWrapper.find('.progress-circle');
-                    const charCountNumber = circleTextWrapper.find('.char-count-number');
+                    const charCountNumber = circleTextWrapper.find('.char-limit-number');
                     const backgroundCircle = circleTextWrapper.find('.background-circle');
 
                     circleTextWrapper.toggle(totalCharCount > 0);
@@ -12090,6 +12091,49 @@ function Ktl($, appInfo) {
 
                 inputElement.off('input.KTL_cl').on('input.KTL_cl', updateCharacterCount);
                 updateCharacterCount();
+            }
+        }
+
+        function addCharacterCount({ key: viewId }, keywords) {
+            const kw = '_cc';
+            if (!(viewId && keywords)) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType !== 'form') return;
+
+            const fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            if ($.isEmptyObject(fieldsWithKwObj)) return;
+
+
+            const fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+            const viewElement = $(`#${viewId}`);
+
+            for (const fieldId of fieldsWithKwAr) {
+                if (!TEXT_DATA_TYPES.includes(ktl.fields.getFieldType(fieldId))) continue;
+
+                const foundKwObj = {};
+                ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                const keywordObj = foundKwObj[fieldId][kw];
+                if (!keywordObj || (keywordObj && keywordObj[0].options && !ktl.core.hasRoleAccess(keywordObj[0].options))) continue;
+
+                const inputElement = viewElement.find(`[data-input-id="${fieldId}"] input, [data-input-id="${fieldId}"] textarea`);
+                if (!inputElement.length) continue;
+
+                const controlElement = inputElement.closest('.control');
+                if (!controlElement.length) continue;
+
+                if (!controlElement.find('.char-count').length) {
+                    controlElement.append(`
+                        <div class="char-count">
+                            <span class="char-count-number">0</span>
+                        </div>
+                    `);
+                }
+
+                inputElement.off('input.KTL_cc').on('input.KTL_cc', () => {
+                    const totalCharCount = inputElement.toArray().reduce((acc, input) => acc + $(input).val().length, 0);
+                    controlElement.find('.char-count-number').text(totalCharCount);
+                });
             }
         }
 
