@@ -12041,10 +12041,7 @@ function Ktl($, appInfo) {
                 const isMaximum = maxOrRecommended === 'max';
                 const controlElement = inputElement.closest('.control');
 
-                if (!controlElement.length) {
-                    console.warn('No control element found');
-                    continue;
-                }
+                if (!controlElement.length) continue;
 
                 if (!controlElement.find('.input-circle-container').length) {
                     const recommendedText = ` (${isMaximum ? 'maximum' : 'recommended maximum'} characters)`;
