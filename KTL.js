@@ -12114,7 +12114,7 @@ function Ktl($, appInfo) {
                 const foundKwObj = {};
                 ktl.fields.getFieldKeywords(fieldId, foundKwObj);
                 const keywordObj = foundKwObj[fieldId][kw];
-                if (!keywordObj || (keywordObj && keywordObj[0].options && !ktl.core.hasRoleAccess(keywordObj[0].options))) continue;
+                if (!keywordObj || (keywordObj[0] && keywordObj[0].options && !ktl.core.hasRoleAccess(keywordObj[0].options))) continue;
 
                 const inputElement = viewElement.find(`[data-input-id="${fieldId}"] input, [data-input-id="${fieldId}"] textarea`);
                 if (!inputElement.length) continue;

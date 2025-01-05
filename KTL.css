@@ -466,11 +466,21 @@ a.ktlSortDisabled {
         stroke-dasharray: 100;
     }
 
-    .char-count {
+    .char-limit {
         margin-left: 5px;
         font-size: 14px;
         color: black;
     }
+
+.char-count {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+	font-size: 16px;
+	margin-right: 10px;
+	margin-top: 3px;
+	color: black;
+}
 
 /************ User Filters **************/
 .activeFilter {
