@@ -872,7 +872,7 @@
     <div id="popupContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
 
     <script>
-        const KTL_CONGURATOR_VERSION = '1.1.0';
+        const KTL_CONGURATOR_VERSION = '1.2.0';
         const documentationBaseURL = 'https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Customizing-Features';
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -1144,7 +1144,7 @@
             };
 
             let includeLoaderCode = (includeLoader ? `KnackInitAsync = function ($, callback) { // Load the Knack Toolkit Library (KTL)
-    (window.LazyLoad = LazyLoad) && LazyLoad.js(['https://ctrnd.s3.amazonaws.com/Lib/KTL/KTL_Start.js'], () => {
+    (window.LazyLoad = LazyLoad) && LazyLoad.js([\`https://ctrnd.s3.amazonaws.com/Lib/KTL/KTL_Start.js?\${Date.now()}\`], () => {
         loadKtl($, callback, (typeof KnackApp === 'function' ? KnackApp : null), '' /*KTL version, leave blank to get latest*/, 'full'/*min or full*/);
     })
 };
