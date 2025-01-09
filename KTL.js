@@ -5901,12 +5901,28 @@ function Ktl($, appInfo) {
             kwList.forEach(kwInstance => { execKw(kwInstance); })
 
             function execKw(kwInstance) {
+                let hideButton = false || !ktl.account.checkUserRolesMatch(['Public Filters']); //Always hide dpf if user doesn't have the Public Filters role.
+                let hideFiltering = false;
+                if (kwInstance.params.length === 1) {
+                    if (kwInstance.params[0].length >= 2) {
+                        if (kwInstance.params[0][1] === 'hh')
+                            hideFiltering = true;
+                        else if (kwInstance.params[0][1] === 'h')
+                            hideButton = true;
+                    }
+                }
+
                 const publicFilterName = kwInstance.params[0][0];
                 if (publicFilterName) {
-                    if (kwInstance.params[0][0].length > 1) {
-                        const hidden = (kwInstance.params[0][1] === 'h');
-                        if (hidden)
-                            $('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(publicFilterName)).addClass('ktlHidden');
+                    const buttonSelector = $(`#${viewId} .filterBtn.public:textEquals('${publicFilterName}')`);
+                    if (buttonSelector.length) {
+                        if (hideButton) {
+                            buttonSelector.addClass('ktlDisplayNone');
+                        } else if (hideFiltering) {
+                            $(`#${viewId} .kn-filters-nav`).addClass('ktlDisplayNone');
+                            $(`#${viewId} .kn-filters`).addClass('ktlDisplayNone');
+                            $(`#${viewId} .filterCtrlDiv`).addClass('ktlDisplayNone');
+                        }
                     }
                 }
             }
@@ -5917,8 +5933,7 @@ function Ktl($, appInfo) {
 
             //Public Filters first
             createFltBtns(filterDivId, getPublicFilters()[filterDivId], getFilter(filterDivId, '', LS_UFP).index);
-            if (!Knack.getUserRoleNames().includes('Public Filters'))
-                hideDefaultPublicFilter(filterDivId);
+            hideDefaultPublicFilter(filterDivId);
 
             //User Filters second
             createFltBtns(filterDivId, getUserFilters()[filterDivId], getFilter(filterDivId, '', LS_UF).index);
@@ -6821,9 +6836,12 @@ function Ktl($, appInfo) {
                     var activeFilterIndex = filter.index;
                     if (activeFilterIndex >= 0) {
                         const activeFilter = filter.filterSrc[viewId].filters[activeFilterIndex];
-                        if (activeFilter)
+                        if (activeFilter) {
                             applyUserFilterToTableView(viewId, activeFilter.search, activeFilter.perPage, activeFilter.sort, JSON.parse(activeFilter.filterString));
-                        else
+                            if (activeFilter.public) {
+                                hideDefaultPublicFilter(viewId);
+                            }
+                        } else
                             $(document).trigger('KTL.filterApplied', viewId);
                     } else
                         applyDefaultPublicFilter(viewId); //No active filter, apply _dpf if any.
@@ -11580,7 +11598,7 @@ function Ktl($, appInfo) {
                 updateDataAndLogDeltas(viewId, record);
 
                 //$(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, (event, view, data) => {
-                    //$.unblockUI();
+                //$.unblockUI();
                 //});
             })
 
