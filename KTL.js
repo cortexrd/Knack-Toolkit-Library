@@ -12146,11 +12146,12 @@ function Ktl($, appInfo) {
                         </div>
                     `);
                 }
-
+                const charCountDiv = controlElement.find('.char-count');
                 inputElement.off('input.KTL_cc').on('input.KTL_cc', () => {
                     const totalCharCount = inputElement.toArray().reduce((acc, input) => acc + $(input).val().length, 0);
-                    controlElement.find('.char-count-number').text(totalCharCount);
-                });
+                    charCountDiv.toggle(totalCharCount > 0);
+                    charCountDiv.find('.char-count-number').text(totalCharCount);
+                }).trigger('input.KTL_cc');
             }
         }
 
