@@ -438,6 +438,50 @@ a.ktlSortDisabled {
 		margin-top: 0px;
 	}
 
+/************ Character Limit **************/
+.input-circle-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+    .input-wrapper {
+        width: 100%;
+    }
+
+    .circle-text-wrapper {
+        display: flex;
+        align-items: center;
+        margin-top: 10px;
+    }
+
+    .circle-progress {
+        width: 20px;
+        height: 20px;
+    }
+
+    .circle-progress circle {
+        fill: none;
+        stroke-width: 4;
+        stroke-dasharray: 100;
+    }
+
+    .char-limit {
+        margin-left: 5px;
+        font-size: 14px;
+        color: black;
+    }
+
+.char-count {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+	font-size: 16px;
+	margin-right: 10px;
+	margin-top: 3px;
+	color: black;
+}
+
 /************ User Filters **************/
 .activeFilter {
 	outline: double;
