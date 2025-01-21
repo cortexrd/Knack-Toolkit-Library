@@ -10218,8 +10218,14 @@ function Ktl($, appInfo) {
                                             } else {
                                                 const data = srcRecord.attributes[`${srcFieldId}_raw`];
                                                 if (data) {
-                                                    if (Array.isArray(data) && data.length)
+                                                    if (Array.isArray(data)) {
+                                                        if (data.length)
+                                                            apiData[dstFieldId] = data;
+                                                        else
+                                                            ktl.log.clog('_cpyfrom enountered invalid data:', data);
+                                                    } else {
                                                         apiData[dstFieldId] = data;
+                                                    }
                                                 }
                                             }
                                         }
