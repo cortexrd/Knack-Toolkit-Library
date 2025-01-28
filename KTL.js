@@ -3089,7 +3089,7 @@ function Ktl($, appInfo) {
                         //Change the input field to see a numeric virtual keyboard style on mobile devices.
                         if (cfg.convertNumToTel) {
                             const element = document.querySelector(`#${viewId} input[name=${fieldId}]`);
-                            element && element.setAttribute('inputmode', 'numeric');
+                            element && element.setAttribute('inputmode', 'decimal');
                         }
                     }
                 }
