@@ -7781,7 +7781,7 @@ function Ktl($, appInfo) {
             var viewId = e.target.closest('.kn-view');
             viewId = viewId ? viewId.id : null;
 
-            if (viewId && e.target.closest('#' + viewId + ' .kn-button.is-primary') && !ktl.scenes.isiFrameWnd())
+            if (viewId && e.target.closest('#' + viewId + ' .kn-button.is-primary') && !e.target.closest('#' + viewId + ' .kn-message') && !ktl.scenes.isiFrameWnd())
                 ktl.views.preprocessSubmit(viewId, e);
         })
 
