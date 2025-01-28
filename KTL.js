@@ -1641,10 +1641,10 @@ function Ktl($, appInfo) {
                 if (value === '') return '0'; //Blanks are considered as zero, for enforceNumeric.
 
                 //Convert commas to universal format.
-                if (fieldAttributes.format.mark_decimal === 'comma')
+                if (fieldAttributes.format && fieldAttributes.format.mark_decimal === 'comma')
                     value = value.replace(/,(?=[^,]*$)/, '.');
 
-                if (fieldAttributes.format.mark_thousands === 'comma')
+                if (fieldAttributes.format && fieldAttributes.format.mark_thousands === 'comma')
                     value = value.replace(/,/g, '');
 
                 numericValue = ktl.core.parseNumericValue(value);
@@ -9230,12 +9230,13 @@ function Ktl($, appInfo) {
                     columns.forEach(col => {
                         var align = col.align;
                         const columnHeaderText = col.header.replace(/<br\s*\/?>/gi, '');
-                        const colElem = $(`#${view.key} thead th:textEquals("${columnHeaderText}")`);
+                        const colElem = $(`#${view.key} thead th:textEquals(${columnHeaderText})`);
+
                         if (colElem.length) {
                             const currentAlignment = colElem[0].style.textAlign || 'left';
                             if (align && (currentAlignment !== align)) {
-                                $(`#${view.key} thead th:textEquals("${columnHeaderText}")`).css('text-align', align);
-                                $(`#${view.key} thead th:textEquals("${columnHeaderText}") .table-fixed-label`).css('display', 'inline-flex');
+                                $(`#${view.key} thead th:textEquals(${columnHeaderText})`).css('text-align', align);
+                                $(`#${view.key} thead th:textEquals(${columnHeaderText}) .table-fixed-label`).css('display', 'inline-flex');
                             }
                         }
                     })
