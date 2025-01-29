@@ -21228,11 +21228,10 @@ function Ktl($, appInfo) {
         })
 
         function load() {
+            if (keyboardLoaded) return;
+
             LazyLoad.css(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css'], function () {
                 LazyLoad.js(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js'], function () {
-                    if (keyboardLoaded)
-                        return;
-
                     keyboardLoaded = true;
                     const Keyboard = window.SimpleKeyboard.default;
                     let target;
@@ -21448,7 +21447,7 @@ function Ktl($, appInfo) {
 
                         const fieldId = $(target).closest('[data-input-id]').attr('data-input-id') || 0;
 
-                        if ($(target).attr('type') === 'tel' || $(target).attr('type') === 'number' || ktl.fields.shouldBeNumeric(fieldId))
+                        if ($(target).attr('type') === 'tel' || $(target).attr('type') === 'number' || Knack.objects.getField(fieldId).attributes.type === 'number' || ktl.fields.shouldBeNumeric(fieldId))
                             keyboard.setOptions({ layoutName: 'numeric' });
                         else
                             keyboard.setOptions({ layoutName: 'default' });
