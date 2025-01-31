@@ -11963,56 +11963,58 @@ function Ktl($, appInfo) {
             function validateNonEmptyTextField(field) {
                 if (!field) return;
 
-                if (typeof field === 'string' && field.startsWith('field_')) {
-                    field = Knack.objects.getField(field).attributes;
-                }
+                // Get field attributes if string ID provided
+                const fieldAttrs = typeof field === 'string' && field.startsWith('field_')
+                    ? Knack.objects.getField(field)?.attributes
+                    : field;
 
-                if (!field) return;
+                if (!fieldAttrs) return;
 
-                const fieldId = field.key;
+                const fieldId = fieldAttrs.key;
+                const $field = $(`#${viewId} [data-input-id='${fieldId}']`);
 
-                if (field.type === 'rich_text') {
-                    const richTextObject = $(`#${viewId} #${fieldId}`).closest('.redactor-box').find('.redactor-editor');
-                    if (richTextObject.length) {
-                        const text = richTextObject[0].innerHTML.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
-                        if (text === '' || text === '\u200B')
-                            $(richTextObject).addClass('ktlNotValid_empty');
-                        else
-                            $(richTextObject).removeClass('ktlNotValid_empty');
-                    }
-                } if (field.type === 'multiple_choice') {
-                    const element = $('#' + viewId + ' [name="' + fieldId + '"]');
-                    if (element.length) {
-                        let selectedText;
-                        if (Knack.objects.getField(`${fieldId}`).attributes.format.type === 'single') {
-                            selectedText = element.val();
-                            if (selectedText === '')
-                                element.addClass('ktlNotValid_empty');
-                            else
-                                element.removeClass('ktlNotValid_empty');
+                const fieldValidators = {
+                    rich_text() {
+                        const $richText = $(`#${viewId} #${fieldId}`).closest('.redactor-box').find('.redactor-editor');
+                        if (!$richText.length) return;
+
+                        const text = $richText[0].innerHTML.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
+                        $richText.toggleClass('ktlNotValid_empty', !text || text === '\u200B');
+                    },
+
+                    multiple_choice() {
+                        const $element = $(`#${viewId} [name="${fieldId}"]`);
+                        if (!$element.length) return;
+
+                        const isSingle = Knack.objects.getField(fieldId).attributes.format.type === 'single';
+
+                        if (isSingle) {
+                            $element.toggleClass('ktlNotValid_empty', !$element.val());
                         } else {
-                            selectedText = $(`#${viewId} [name="${fieldId}"] option:selected`);
-                            if (!selectedText.length) {
-                                $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
-                                $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).addClass('ktlNotValid_empty');
-                            } else {
-                                $((`#${viewId}_${fieldId}_chzn input`)).removeClass('ktlNotValid_empty');
-                                $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).removeClass('ktlNotValid_empty');
-                            }
+                            const hasSelection = $(`#${viewId} [name="${fieldId}"] option:selected`).length > 0;
+                            const $container = $(`#${viewId}_${fieldId}_chzn`);
+                            $container.find('input, .chzn-choices')
+                                .toggleClass('ktlNotValid_empty', !hasSelection);
                         }
+                    },
+
+                    default() {
+                        if (!fieldAttrs.name) return;
+                        $(field).toggleClass('ktlNotValid_empty', !field.value);
                     }
-                } else {
-                    const fieldName = field.name;
-                    if (!fieldName) return;
+                };
 
-                    if (field.value === '')
-                        $(field).addClass('ktlNotValid_empty');
-                    else
-                        $(field).removeClass('ktlNotValid_empty');
+                try {
+                    // Execute validator for field type or default
+                    (fieldValidators[fieldAttrs.type] || fieldValidators.default)();
+
+                    // Update visibility and button state
+                    removeRequestedAttributeOnVisibleFields(viewId);
+                    const hasVisibleEmpty = $(`#${viewId} .ktlNotValid_empty:visible`).length > 0;
+                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !hasVisibleEmpty);
+                } catch (error) {
+                    console.error(`Error validating field ${fieldId}:`, error);
                 }
-
-                removeRequestedAttributeOnVisibleFields(viewId);
-                ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
             }
 
             $(document).on('KTL.fieldValueChanged', (event, params) => {
