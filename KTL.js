@@ -11971,7 +11971,6 @@ function Ktl($, appInfo) {
                 if (!fieldAttrs) return;
 
                 const fieldId = fieldAttrs.key;
-                const field = $(`#${viewId} [data-input-id='${fieldId}']`);
 
                 const fieldValidators = {
                     rich_text() {
