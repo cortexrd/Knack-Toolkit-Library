@@ -12017,14 +12017,22 @@ function Ktl($, appInfo) {
                 if (eventViewId === viewId && fieldsAr.includes(fieldId)) {
                     validateNonEmptyTextField(e.target || fieldId);
                 }
-            })
+            });
 
-            removeRequestedAttributeOnVisibleFields(viewId);
-            ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+            $(document)
+                .off('input.ktl_all change.ktl_all')
+                .on('input.ktl_all change.ktl_all', `#${viewId} input, #${viewId} textarea, #${viewId} select`, () => {
+                removeRequestedAttributeOnVisibleFields(viewId);
+                ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+            });
 
             function removeRequestedAttributeOnVisibleFields(viewId) {
-                $(`#${viewId} .ktlNotValid_empty:not(:visible)`).replaceClass('ktlNotValid_empty', 'dis_ktlNotValid_empty');
-                $(`#${viewId} .dis_ktlNotValid_empty:visible`).replaceClass('dis_ktlNotValid_empty', 'ktlNotValid_empty');
+                $(`#${viewId} .ktlNotValid_empty:not(:visible)`).each(function () {
+                    $(this).removeClass('ktlNotValid_empty').addClass('dis_ktlNotValid_empty');
+                });
+                $(`#${viewId} .dis_ktlNotValid_empty:visible`).each(function() {
+                    $(this).removeClass('dis_ktlNotValid_empty').addClass('ktlNotValid_empty');
+                });
             }
         }
 
