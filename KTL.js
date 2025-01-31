@@ -12019,6 +12019,8 @@ function Ktl($, appInfo) {
                 }
             });
 
+            //To Do:  This is a fix for the issue where the required fields are dependant on a non required field
+            // Tidy up the rest of the code.
             $(document)
                 .off('input.ktl_all change.ktl_all')
                 .on('input.ktl_all change.ktl_all', `#${viewId} input, #${viewId} textarea, #${viewId} select`, () => {
