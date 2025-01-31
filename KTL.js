@@ -11988,7 +11988,7 @@ function Ktl($, appInfo) {
                         const isSingle = Knack.objects.getField(fieldId).attributes.format.type === 'single';
 
                         if (isSingle) {
-                            element.toggleClass('ktlNotValid_empty', $element.val());
+                            element.toggleClass('ktlNotValid_empty', element.val());
                         } else {
                             const hasSelection = $(`#${viewId} [name="${fieldId}"] option:selected`).length > 0;
                             const container = $(`#${viewId}_${fieldId}_chzn`);
