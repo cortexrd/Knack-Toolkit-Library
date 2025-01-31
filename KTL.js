@@ -11971,29 +11971,29 @@ function Ktl($, appInfo) {
                 if (!fieldAttrs) return;
 
                 const fieldId = fieldAttrs.key;
-                const $field = $(`#${viewId} [data-input-id='${fieldId}']`);
+                const field = $(`#${viewId} [data-input-id='${fieldId}']`);
 
                 const fieldValidators = {
                     rich_text() {
-                        const $richText = $(`#${viewId} #${fieldId}`).closest('.redactor-box').find('.redactor-editor');
-                        if (!$richText.length) return;
+                        const richText = $(`#${viewId} #${fieldId}`).closest('.redactor-box').find('.redactor-editor');
+                        if (!richText.length) return;
 
-                        const text = $richText[0].innerHTML.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
-                        $richText.toggleClass('ktlNotValid_empty', !text || text === '\u200B');
+                        const text = richText[0].innerHTML.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
+                        richText.toggleClass('ktlNotValid_empty', !text || text === '\u200B');
                     },
 
                     multiple_choice() {
-                        const $element = $(`#${viewId} [name="${fieldId}"]`);
-                        if (!$element.length) return;
+                        const element = $(`#${viewId} [name="${fieldId}"]`);
+                        if (!element.length) return;
 
                         const isSingle = Knack.objects.getField(fieldId).attributes.format.type === 'single';
 
                         if (isSingle) {
-                            $element.toggleClass('ktlNotValid_empty', !$element.val());
+                            element.toggleClass('ktlNotValid_empty', $element.val());
                         } else {
                             const hasSelection = $(`#${viewId} [name="${fieldId}"] option:selected`).length > 0;
-                            const $container = $(`#${viewId}_${fieldId}_chzn`);
-                            $container.find('input, .chzn-choices')
+                            const container = $(`#${viewId}_${fieldId}_chzn`);
+                            container.find('input, .chzn-choices')
                                 .toggleClass('ktlNotValid_empty', !hasSelection);
                         }
                     },
