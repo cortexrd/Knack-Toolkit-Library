@@ -11849,38 +11849,30 @@ function Ktl($, appInfo) {
 
                 const fieldType = ktl.fields.getFieldType(fieldId);
                 if (TEXT_DATA_TYPES.includes(fieldType)) {
-                    const inputField = $(`#${viewId} [data-input-id='${fieldId}'] input`);
+                    const inputField = $(`#${viewId} [data-input-id='${fieldId}'] input:not([type="hidden"]):not([name="street2"]):not([name="middle"])`);
                     if (inputField.length) {
-                        for (const field of Array.from(inputField)) {
-                            if (field.type !== 'hidden' && field.name !== 'street2' && field.name !== 'middle') {
-                                validateNonEmptyTextField(field);
-                                inputField.off('input.ktl_req change.ktl_req').on('input.ktl_req change.ktl_req', function (e) {
-                                    if (this.type !== 'hidden' && this.name !== 'street2' && this.name !== 'middle') {
-                                        validateNonEmptyTextField(this);
+                        // Single bind for input/change
+                        inputField.off('input.ktl_req change.ktl_req').on('input.ktl_req change.ktl_req', function() {
+                            validateNonEmptyTextField(this);
 
-                                        // For Street sub-field, check all other address sub-fields in case auto-complete is used.
-                                        if (this.name === 'street') {
-                                            const subFields = document.querySelectorAll(`[data-input-id="${fieldId}"] input:not([type="hidden"])`);
-
-                                            setTimeout(() => { // Leave enough time for auto-complete to fill the fields.
-                                                for (const subField of subFields) {
-                                                    if (subField.type !== 'hidden' && subField.name !== 'street2') {
-                                                        validateNonEmptyTextField(subField);
-                                                    }
-                                                }
-                                            }, 300);
-                                        }
-                                    }
-                                });
+                            if (this.name === 'street') {
+                                // Delay for auto-complete
+                                setTimeout(() => {
+                                    const subFields = document.querySelectorAll(`[data-input-id="${fieldId}"] input:not([type="hidden"]):not([name="street2"])`);
+                                    subFields.forEach(subField => validateNonEmptyTextField(subField));
+                                }, 300);
                             }
-                        }
+                        });
+
+                        // Initial validation pass
+                        inputField.each((_, el) => validateNonEmptyTextField(el));
                     } else {
                         const paragraphText = $(`#${viewId} [data-input-id='${fieldId}'] .kn-textarea`);
                         if (paragraphText.length) {
-                            validateNonEmptyTextField(paragraphText[0]);
-                            paragraphText.off('input.ktl_req').on('input.ktl_req', function () {
+                            paragraphText.off('input.ktl_req').on('input.ktl_req', function() {
                                 validateNonEmptyTextField(this);
                             });
+                            validateNonEmptyTextField(paragraphText[0]);
                         }
                     }
                 } else if (fieldType === 'connection') {
@@ -11931,29 +11923,40 @@ function Ktl($, appInfo) {
 
             function validateNonEmptyDropdown(viewId, fieldId) {
                 setTimeout(() => {
-                    if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-single`)) {
-                        // Single-selection dropdowns
-                        let selectedText = 'Select';
-                        const selector = $(`#${viewId}_${fieldId}_chzn .result-selected`);
-                        if (selector.length)
-                            selectedText = selector[0].textContent;
-                        if (document.querySelector(`#${viewId} #kn-input-${fieldId} .kn-required`) && (selectedText === 'Select' || selectedText === 'Select...'))
-                            $(`#${viewId}_${fieldId}_chzn .chzn-single`).addClass('ktlNotValid_empty');
-                        else
-                            $(`#${viewId}_${fieldId}_chzn .chzn-single`).removeClass('ktlNotValid_empty');
-                    } else if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-multi`)) {
-                        // Multi-selection dropdowns
-                        if (document.querySelector(`#${viewId} #kn-input-${fieldId} .kn-required`) && !document.querySelector(`#${viewId}_${fieldId}_chzn .result-selected`)) {
-                            $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
-                            $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).addClass('ktlNotValid_empty');
+                    const isRequired = $(`#${viewId} #kn-input-${fieldId} .kn-required`).length > 0;
+                    const singleContainer = $(`#${viewId}_${fieldId}_chzn.chzn-container-single`);
+                    const multiContainer = $(`#${viewId}_${fieldId}_chzn.chzn-container-multi`);
+
+                    if (singleContainer.length) {
+                        // Single-selection dropdown
+                        const selected = $(`#${viewId}_${fieldId}_chzn .result-selected`);
+                        const selectedText = selected.length ? selected[0].textContent.trim() : 'Select';
+
+                        if (isRequired && (selectedText === 'Select' || selectedText === 'Select...')) {
+                            singleContainer.find('.chzn-single').addClass('ktlNotValid_empty');
                         } else {
-                            $((`#${viewId}_${fieldId}_chzn input`)).removeClass('ktlNotValid_empty');
-                            $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).removeClass('ktlNotValid_empty');
+                            singleContainer.find('.chzn-single').removeClass('ktlNotValid_empty');
+                        }
+
+                    } else if (multiContainer.length) {
+                        // Multi-selection dropdown
+                        const hasSelection = $(`#${viewId}_${fieldId}_chzn .result-selected`).length > 0;
+                        const inputs = multiContainer.find('input');
+                        const choices = multiContainer.find('.chzn-choices');
+
+                        if (isRequired && !hasSelection) {
+                            inputs.addClass('ktlNotValid_empty');
+                            choices.addClass('ktlNotValid_empty');
+                        } else {
+                            inputs.removeClass('ktlNotValid_empty');
+                            choices.removeClass('ktlNotValid_empty');
                         }
                     }
 
+                    // Clean up hidden fields and update the submit button state
                     removeRequestedAttributeOnVisibleFields(viewId);
-                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+                    const anyEmpty = $(`#${viewId} .ktlNotValid_empty:visible`).length > 0;
+                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !anyEmpty);
                 }, 200);
             }
 
