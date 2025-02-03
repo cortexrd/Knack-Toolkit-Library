@@ -166,8 +166,8 @@ th .fa-caret-left {
 
 
 .ktlNotValid,
-[class^="ktlNotValid_"],
-[class*=" ktlNotValid_"] {
+[class^="ktlNotValid_"]:not(.kn-radio, .kn-checkbox),
+[class*=" ktlNotValid_"]:not(.kn-radio, .kn-checkbox) {
 	background-color: #fdb0b0 !important; /* Same pinkish color as Knack error */
 }
 
