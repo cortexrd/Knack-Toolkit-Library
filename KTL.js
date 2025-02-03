@@ -11776,111 +11776,135 @@ function Ktl($, appInfo) {
         //Record History Feature - END
 
         async function fieldIsRequired(view) {
-            if (!view || ktl.scenes.isiFrameWnd()) return;
-            if (view.type !== 'form') return;
+            // Ensure the view exists, is not in an iFrame and is a form
+            if (!view || ktl.scenes.isiFrameWnd() || view.type !== 'form') return;
 
-            const kw = '_req';
             const viewId = view.key;
-            let fieldsAr = [];
+            const requiredKeyword = '_req';
+            const requiredFields = new Set();
 
-            // Process fields keywords
-            const fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
-            if (!$.isEmptyObject(fieldsWithKwObj)) {
-                const fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                const foundKwObj = {};
-                for (const fieldId of fieldsWithKwAr) {
-                    ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId][kw]) {
-                        if (foundKwObj[fieldId][kw][0] && foundKwObj[fieldId][kw][0].options) {
-                            const options = foundKwObj[fieldId][kw][0].options;
-                            if (options && ktl.core.hasRoleAccess(options)) {
-                                const valid = await ktl.views.validateKtlCond(options, {}, viewId);
-                                if (valid && !fieldsAr.includes(fieldId)) {
-                                    fieldsAr.push(fieldId);
+            /**
+             * Process field keywords.
+             * For each field, if the required keyword is present and (if applicable) passes role
+             * and condition checks, add the field to the required fields set.
+             */
+            async function processFieldKeywords() {
+                const fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+                if (!$.isEmptyObject(fieldsWithKwObj)) {
+                    const fieldIds = Object.keys(fieldsWithKwObj);
+                    const fieldPromises = fieldIds.map(async (fieldId) => {
+                        let foundKwObj = {};
+                        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                        if (foundKwObj[fieldId]?.[requiredKeyword]) {
+                            const reqEntry = foundKwObj[fieldId][requiredKeyword][0];
+                            if (reqEntry && reqEntry.options) {
+                                const options = reqEntry.options;
+                                if (options && ktl.core.hasRoleAccess(options)) {
+                                    const valid = await ktl.views.validateKtlCond(options, {}, viewId);
+                                    if (valid) {
+                                        requiredFields.add(fieldId);
+                                    }
                                 }
+                            } else {
+                                requiredFields.add(fieldId);
                             }
-                        } else {
-                            fieldsAr.push(fieldId);
                         }
-                    }
+                    });
+                    await Promise.all(fieldPromises);
                 }
             }
 
-            // Process view keyword
-            const keywords = ktlKeywords[viewId];
-            if (keywords && keywords[kw] && keywords[kw].length) {
-                const kwList = ktl.core.getKeywordsByType(viewId, kw);
-                for (const kwInstance of kwList) {
-                    if (kwInstance) {
-                        if (kwInstance.options) {
-                            const options = kwInstance.options;
-                            if (options && ktl.core.hasRoleAccess(options)) {
-                                const valid = await ktl.views.validateKtlCond(options, {}, viewId);
-                                if (valid) {
-                                    fieldsAr.push(...kwInstance.params[0]);
+            /**
+             * Process view keywords.
+             * This looks for required fields specified at the view level and applies similar role
+             * and condition checks as for individual fields.
+             */
+            async function processViewKeywords() {
+                const keywords = ktlKeywords[viewId];
+                if (keywords && keywords[requiredKeyword] && keywords[requiredKeyword].length) {
+                    const kwList = ktl.core.getKeywordsByType(viewId, requiredKeyword);
+                    const kwPromises = kwList.map(async (kwInstance) => {
+                        if (kwInstance) {
+                            if (kwInstance.options) {
+                                const options = kwInstance.options;
+                                if (options && ktl.core.hasRoleAccess(options)) {
+                                    const valid = await ktl.views.validateKtlCond(options, {}, viewId);
+                                    if (valid) {
+                                        (kwInstance.params[0] || []).forEach((field) => requiredFields.add(field));
+                                    }
                                 }
+                            } else {
+                                (kwInstance.params[0] || []).forEach((field) => requiredFields.add(field));
                             }
-                        } else {
-                            fieldsAr.push(...kwInstance.params[0]);
                         }
-                    }
+                    });
+                    await Promise.all(kwPromises);
                 }
             }
 
-            if (!fieldsAr.length) return;
-
-            // Add other Required fields as set by the Builder.
-            const inputFields = Knack.views[viewId].getInputs();
-            for (const inputField of inputFields) {
-                if (inputField.field && inputField.field.required && !fieldsAr.includes(inputField.field.key))
-                    fieldsAr.push(inputField.field.key);
+            /**
+             * Add builder-defined required fields.
+             * These fields are declared as required in the form builder.
+             */
+            function addBuilderRequiredFields() {
+                const inputFields = Knack.views[viewId].getInputs();
+                inputFields.forEach((inputField) => {
+                    if (inputField.field && inputField.field.required) {
+                        requiredFields.add(inputField.field.key);
+                    }
+                });
             }
 
-            fieldsAr = fieldsAr.map(field =>
+            // Execute asynchronous keyword processing in parallel and add builder fields
+            await Promise.all([processFieldKeywords(), processViewKeywords()]);
+
+            if (requiredFields.size === 0) return;
+            addBuilderRequiredFields();
+
+            const requiredFieldArray = Array.from(requiredFields).map((field) =>
                 field && field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
             );
 
-            for (const fieldId of fieldsAr) {
-                const labelSpan = $(`#${viewId} [data-input-id='${fieldId}'] .kn-label span`);
-                if (labelSpan.length > 0 && !document.querySelector(`#${viewId} [data-input-id='${fieldId}'] .kn-required`)) {
+            const viewContainer = $(`#${viewId}`);
+
+            // For each required field, attach the asterisk indicator and bind the appropriate validation events.
+            requiredFieldArray.forEach((fieldId) => {
+                const fieldContainer = viewContainer.find(`[data-input-id='${fieldId}']`);
+                const labelSpan = fieldContainer.find('.kn-label span');
+                // Add the required asterisk if it is not already present
+                if (labelSpan.length && fieldContainer.find('.kn-required').length === 0) {
                     labelSpan.after('<span class="kn-required">*</span>');
                     labelSpan.css('margin-right', '4px');
                 }
 
                 const fieldType = ktl.fields.getFieldType(fieldId);
+
                 if (TEXT_DATA_TYPES.includes(fieldType)) {
-                    const inputField = $(`#${viewId} [data-input-id='${fieldId}'] input`);
+                    const inputField = fieldContainer.find(
+                        'input:not([type="hidden"]):not([name="street2"]):not([name="middle"])'
+                    );
                     if (inputField.length) {
-                        for (const field of Array.from(inputField)) {
-                            if (field.type !== 'hidden' && field.name !== 'street2' && field.name !== 'middle') {
-                                validateNonEmptyTextField(field);
-                                inputField.off('input.ktl_req change.ktl_req').on('input.ktl_req change.ktl_req', function (e) {
-                                    if (this.type !== 'hidden' && this.name !== 'street2' && this.name !== 'middle') {
-                                        validateNonEmptyTextField(this);
-
-                                        // For Street sub-field, check all other address sub-fields in case auto-complete is used.
-                                        if (this.name === 'street') {
-                                            const subFields = document.querySelectorAll(`[data-input-id="${fieldId}"] input:not([type="hidden"])`);
-
-                                            setTimeout(() => { // Leave enough time for auto-complete to fill the fields.
-                                                for (const subField of subFields) {
-                                                    if (subField.type !== 'hidden' && subField.name !== 'street2') {
-                                                        validateNonEmptyTextField(subField);
-                                                    }
-                                                }
-                                            }, 300);
-                                        }
-                                    }
-                                });
-                            }
-                        }
-                    } else {
-                        const paragraphText = $(`#${viewId} [data-input-id='${fieldId}'] .kn-textarea`);
-                        if (paragraphText.length) {
-                            validateNonEmptyTextField(paragraphText[0]);
-                            paragraphText.off('input.ktl_req').on('input.ktl_req', function () {
-                                validateNonEmptyTextField(this);
+                        // Bind input/change event for text-based fields
+                        inputField.off('input.ktl_req change.ktl_req')
+                            .on('input.ktl_req change.ktl_req', function () {
+                                validateNonEmptyTextField(viewContainer, this);
+                                if (this.name === 'street') {
+                                    // Allow a delay for auto-complete to complete
+                                    setTimeout(() => {
+                                        const subFields = fieldContainer.find('input:not([type="hidden"]):not([name="street2"])').toArray();
+                                        subFields.forEach((subField) => validateNonEmptyTextField(viewContainer, subField));
+                                    }, 300);
+                                }
                             });
+                        // Initial validation pass
+                        inputField.each((_, el) => validateNonEmptyTextField(viewContainer, el));
+                    } else {
+                        const textarea = fieldContainer.find('.kn-textarea');
+                        if (textarea.length) {
+                            textarea.off('input.ktl_req').on('input.ktl_req', function () {
+                                validateNonEmptyTextField(viewContainer, this);
+                            });
+                            validateNonEmptyTextField(viewContainer, textarea[0]);
                         }
                     }
                 } else if (fieldType === 'connection') {
@@ -11890,141 +11914,187 @@ function Ktl($, appInfo) {
                     const signatureSelector = `#${viewId} [data-input-id='${fieldId}'] .jSignature`;
                     ktl.core.waitSelector(signatureSelector, 10000, 'visible')
                         .then(() => {
-                            $(signatureSelector).addClass('ktlNotValid_empty');
-
-                            // Check upon mouse up...
+                            const signatureElem = $(signatureSelector);
+                            signatureElem.addClass('ktlNotValid_empty');
+                            // Bind a global mouseup event to revalidate the signature field when the user interacts with it
                             $(document).off('mouseup.ktl_signature').on('mouseup.ktl_signature', () => {
                                 setTimeout(() => {
-                                    const lastStrokeButton = `#${viewId} input[value="Undo last stroke"]`;
-                                    if ($(lastStrokeButton).length && $(lastStrokeButton).is(':visible'))
-                                        $(signatureSelector).removeClass('ktlNotValid_empty');
-                                    else
-                                        $(signatureSelector).addClass('ktlNotValid_empty');
-
-                                    removeRequestedAttributeOnVisibleFields(viewId);
-                                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+                                    const lastStrokeButton = $(`#${viewId} input[value="Undo last stroke"]`);
+                                    if (lastStrokeButton.length && lastStrokeButton.is(':visible')) {
+                                        signatureElem.removeClass('ktlNotValid_empty');
+                                    } else {
+                                        signatureElem.addClass('ktlNotValid_empty');
+                                    }
+                                    removeRequestedAttributeOnVisibleFields(viewContainer);
+                                    ktl.views.updateSubmitButtonState(
+                                        viewId,
+                                        'requiredFieldEmpty',
+                                        !document.querySelector(`#${viewId} .ktlNotValid_empty`)
+                                    );
                                 }, 100);
                             });
                         })
-                        .catch(() => { })
-                } else if (fieldType === 'rich_text') {
-                    validateNonEmptyTextField(fieldId);
-                } else if (fieldType === 'multiple_choice') {
-                    validateNonEmptyTextField(fieldId);
+                        .catch(() => { /* Handle errors or timeouts silently */ });
+                } else if (fieldType === 'rich_text' || fieldType === 'multiple_choice') {
+                    validateNonEmptyTextField(viewContainer, fieldId);
                 } else if (fieldType === 'boolean') {
                     console.log('_req - Unsupported field type:', fieldType);
-                } else
+                } else {
                     console.log('_req - Unsupported field type:', fieldType);
-            }
+                }
+            });
 
-            // Dropdown selectors.
+            // Bind an event handler for dropdown changes using event delegation
             $(document).on('KTL.dropDownValueChanged', (event, params) => {
-                const { viewId: eventViewId, fieldId, records } = params;
-                if (eventViewId === viewId && fieldsAr.includes(fieldId)) {
-                    $(`#${viewId} .search-choice-close`).off('click.ktl_removeoption').bindFirst('click.ktl_removeoption', function (e) {
-                        validateNonEmptyDropdown(viewId, fieldId);
-                    })
-
+                const { viewId: eventViewId, fieldId } = params;
+                if (eventViewId === viewId && requiredFieldArray.includes(fieldId)) {
+                    $(`#${viewId} .search-choice-close`)
+                        .off('click.ktl_removeoption')
+                        .bindFirst('click.ktl_removeoption', function () {
+                            validateNonEmptyDropdown(viewId, fieldId);
+                        });
                     validateNonEmptyDropdown(viewId, fieldId);
                 }
-            })
+            });
 
+            /**
+             * Validate a dropdown field to ensure a valid selection has been made.
+             */
             function validateNonEmptyDropdown(viewId, fieldId) {
                 setTimeout(() => {
-                    if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-single`)) {
-                        // Single-selection dropdowns
-                        let selectedText = 'Select';
-                        const selector = $(`#${viewId}_${fieldId}_chzn .result-selected`);
-                        if (selector.length)
-                            selectedText = selector[0].textContent;
-                        if (document.querySelector(`#${viewId} #kn-input-${fieldId} .kn-required`) && (selectedText === 'Select' || selectedText === 'Select...'))
-                            $(`#${viewId}_${fieldId}_chzn .chzn-single`).addClass('ktlNotValid_empty');
-                        else
-                            $(`#${viewId}_${fieldId}_chzn .chzn-single`).removeClass('ktlNotValid_empty');
-                    } else if (document.querySelector(`#${viewId}_${fieldId}_chzn.chzn-container-multi`)) {
-                        // Multi-selection dropdowns
-                        if (document.querySelector(`#${viewId} #kn-input-${fieldId} .kn-required`) && !document.querySelector(`#${viewId}_${fieldId}_chzn .result-selected`)) {
-                            $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
-                            $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).addClass('ktlNotValid_empty');
+                    const isRequired = $(`#${viewId} #kn-input-${fieldId} .kn-required`).length > 0;
+                    const singleContainer = $(`#${viewId}_${fieldId}_chzn.chzn-container-single`);
+                    const multiContainer = $(`#${viewId}_${fieldId}_chzn.chzn-container-multi`);
+
+                    if (singleContainer.length) {
+                        const selected = $(`#${viewId}_${fieldId}_chzn .result-selected`);
+                        const selectedText = selected.length ? selected[0].textContent.trim() : 'Select';
+                        if (isRequired && (selectedText === 'Select' || selectedText === 'Select...')) {
+                            singleContainer.find('.chzn-single').addClass('ktlNotValid_empty');
                         } else {
-                            $((`#${viewId}_${fieldId}_chzn input`)).removeClass('ktlNotValid_empty');
-                            $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).removeClass('ktlNotValid_empty');
+                            singleContainer.find('.chzn-single').removeClass('ktlNotValid_empty');
+                        }
+                    } else if (multiContainer.length) {
+                        const hasSelection = $(`#${viewId}_${fieldId}_chzn .result-selected`).length > 0;
+                        const inputs = multiContainer.find('input');
+                        const choices = multiContainer.find('.chzn-choices');
+                        if (isRequired && !hasSelection) {
+                            inputs.addClass('ktlNotValid_empty');
+                            choices.addClass('ktlNotValid_empty');
+                        } else {
+                            inputs.removeClass('ktlNotValid_empty');
+                            choices.removeClass('ktlNotValid_empty');
                         }
                     }
 
-                    removeRequestedAttributeOnVisibleFields(viewId);
-                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+                    removeRequestedAttributeOnVisibleFields(viewContainer);
+                    const anyEmpty = $(`#${viewId} .ktlNotValid_empty:visible`).length > 0;
+                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !anyEmpty);
                 }, 200);
             }
 
-            function validateNonEmptyTextField(field) {
+            /**
+             * Validate text-based fields such as rich text and multiple choice.
+             * @param {object|string} field - The field element or field identifier.
+             */
+            function validateNonEmptyTextField(viewContainer, field) {
                 if (!field) return;
 
-                if (typeof field === 'string' && field.startsWith('field_')) {
-                    field = Knack.objects.getField(field).attributes;
+                // Get field attributes if a string ID is provided
+                const fieldAttrs = (typeof field === 'string' && field.startsWith('field_'))
+                    ? Knack.objects.getField(field) && Knack.objects.getField(field).attributes
+                    : field;
+
+                if (!fieldAttrs) {
+                    console.warn('Field attributes not found for field:', field);
+                    return;
                 }
 
-                if (!field) return;
+                const { key: fieldId, type: fieldType, name, format } = fieldAttrs;
 
-                const fieldId = field.key;
-
-                if (field.type === 'rich_text') {
-                    const richTextObject = $(`#${viewId} #${fieldId}`).closest('.redactor-box').find('.redactor-editor');
-                    if (richTextObject.length) {
-                        const text = richTextObject[0].innerHTML.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
-                        if (text === '' || text === '\u200B')
-                            $(richTextObject).addClass('ktlNotValid_empty');
-                        else
-                            $(richTextObject).removeClass('ktlNotValid_empty');
-                    }
-                } if (field.type === 'multiple_choice') {
-                    const element = $('#' + viewId + ' [name="' + fieldId + '"]');
-                    if (element.length) {
-                        let selectedText;
-                        if (Knack.objects.getField(`${fieldId}`).attributes.format.type === 'single') {
-                            selectedText = element.val();
-                            if (selectedText === '')
-                                element.addClass('ktlNotValid_empty');
-                            else
-                                element.removeClass('ktlNotValid_empty');
-                        } else {
-                            selectedText = $(`#${viewId} [name="${fieldId}"] option:selected`);
-                            if (!selectedText.length) {
-                                $((`#${viewId}_${fieldId}_chzn input`)).addClass('ktlNotValid_empty');
-                                $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).addClass('ktlNotValid_empty');
-                            } else {
-                                $((`#${viewId}_${fieldId}_chzn input`)).removeClass('ktlNotValid_empty');
-                                $((`#${viewId}_${fieldId}_chzn .chzn-choices`)).removeClass('ktlNotValid_empty');
+                try {
+                    switch (fieldType) {
+                        case 'rich_text': {
+                            const richText = viewContainer.find(`#${fieldId}`)
+                                .closest('.redactor-box')
+                                .find('.redactor-editor');
+                            if (richText.length) {
+                                // Remove <p> and <br> tags and trim whitespace.
+                                const text = richText.html().replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
+                                richText.toggleClass('ktlNotValid_empty', !text || text === '\u200B');
                             }
+                            break;
+                        }
+                        case 'multiple_choice': {
+                            const element = viewContainer.find(`[name="${fieldId}"]`);
+                            if (element.length) {
+                                const multiChoiceType = format && format.type;
+                                if (multiChoiceType === 'single') {
+                                    element.toggleClass('ktlNotValid_empty', !element.val());
+                                } else if (multiChoiceType === 'checkboxes') {
+                                    const hasSelection = viewContainer.find(`[name="${fieldId}"]:checked`).length > 0;
+                                    element.closest('.kn-checkbox').toggleClass('ktlNotValid_empty', !hasSelection);
+                                } else {
+                                    // For multi-select dropdowns
+                                    const hasSelection = viewContainer.find(`[name="${fieldId}"] option:selected`).length > 0;
+                                    const container = $(`#${viewId}_${fieldId}_chzn`);
+                                    container.find('input, .chzn-choices').toggleClass('ktlNotValid_empty', !hasSelection);
+                                }
+                            } else {
+                                const hasSelection = viewContainer.find(`[name="${viewId}-${fieldId}"]:checked`).length > 0;
+                                const radioElement = viewContainer.find(`[name="${viewId}-${fieldId}"]`);
+                                radioElement.closest('.kn-radio').toggleClass('ktlNotValid_empty', !hasSelection);
+                            }
+                            break;
+                        }
+                        default: {
+                            // Generic case for other text-based fields
+                            const fieldElem = viewContainer.find(field);
+                            fieldElem.toggleClass('ktlNotValid_empty', !fieldElem.val());
+                            break;
                         }
                     }
-                } else {
-                    const fieldName = field.name;
-                    if (!fieldName) return;
 
-                    if (field.value === '')
-                        $(field).addClass('ktlNotValid_empty');
-                    else
-                        $(field).removeClass('ktlNotValid_empty');
+                    removeRequestedAttributeOnVisibleFields(viewContainer);
+                    // Check if any visible element is still marked as not valid
+                    const hasVisibleEmpty = viewContainer.find(`.ktlNotValid_empty:visible`).length > 0;
+                    ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !hasVisibleEmpty);
+                } catch (error) {
+                    console.error(`Error validating field ${fieldId}:`, error);
                 }
-
-                removeRequestedAttributeOnVisibleFields(viewId);
-                ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
             }
 
+            // Listen for individual field value changes and revalidate as necessary.
             $(document).on('KTL.fieldValueChanged', (event, params) => {
-                const { viewId: eventViewId, fieldId, text, e } = params;
-                if (eventViewId === viewId && fieldsAr.includes(fieldId)) {
-                    validateNonEmptyTextField(e.target || fieldId);
+                const { viewId: eventViewId, fieldId, e } = params;
+                if (eventViewId === viewId && requiredFieldArray.includes(fieldId)) {
+                    validateNonEmptyTextField(viewContainer, e.target || fieldId);
                 }
-            })
+            });
 
-            removeRequestedAttributeOnVisibleFields(viewId);
-            ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !document.querySelector(`#${viewId} .ktlNotValid_empty`));
+            // Global event delegation for all inputs, textareas and selects within the view.
+            $(document)
+                .off('input.ktl_all change.ktl_all', `#${viewId} input, #${viewId} textarea, #${viewId} select`)
+                .on('input.ktl_all change.ktl_all', `#${viewId} input, #${viewId} textarea, #${viewId} select`, () => {
+                    console.log('input.ktl_all change.ktl_all');
+                    removeRequestedAttributeOnVisibleFields(viewContainer);
+                    ktl.views.updateSubmitButtonState(
+                        viewId,
+                        'requiredFieldEmpty',
+                        !document.querySelector(`#${viewId} .ktlNotValid_empty`)
+                    );
+                });
 
-            function removeRequestedAttributeOnVisibleFields(viewId) {
-                $(`#${viewId} .ktlNotValid_empty:not(:visible)`).replaceClass('ktlNotValid_empty', 'dis_ktlNotValid_empty');
-                $(`#${viewId} .dis_ktlNotValid_empty:visible`).replaceClass('dis_ktlNotValid_empty', 'ktlNotValid_empty');
+            /**
+             * Remove validation classes from hidden elements and ensure visible fields are correctly marked.
+             */
+            function removeRequestedAttributeOnVisibleFields(viewContainer) {
+                viewContainer.find(`.ktlNotValid_empty:not(:visible)`).each(function () {
+                    $(this).removeClass('ktlNotValid_empty').addClass('dis_ktlNotValid_empty');
+                });
+                viewContainer.find(`.dis_ktlNotValid_empty:visible`).each(function () {
+                    $(this).removeClass('dis_ktlNotValid_empty').addClass('ktlNotValid_empty');
+                });
             }
         }
 
