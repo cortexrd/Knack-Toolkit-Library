@@ -11861,7 +11861,6 @@ function Ktl($, appInfo) {
 
             if (requiredFields.size === 0) return;
 
-            // Normalise field identifiers. If a field does not start with 'field_', convert it.
             const requiredFieldArray = Array.from(requiredFields).map((field) =>
                 field && field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
             );
@@ -11987,7 +11986,7 @@ function Ktl($, appInfo) {
                             choices.removeClass('ktlNotValid_empty');
                         }
                     }
-                    // Clean up hidden fields and update the submit button state
+
                     removeRequestedAttributeOnVisibleFields(viewContainer);
                     const anyEmpty = $(`#${viewId} .ktlNotValid_empty:visible`).length > 0;
                     ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !anyEmpty);
@@ -12042,7 +12041,6 @@ function Ktl($, appInfo) {
                                     container.find('input, .chzn-choices').toggleClass('ktlNotValid_empty', !hasSelection);
                                 }
                             } else {
-                                // Fallback if radio elements follow a different naming pattern.
                                 const hasSelection = viewContainer.find(`[name="${viewId}-${fieldId}"]:checked`).length > 0;
                                 const radioElement = viewContainer.find(`[name="${viewId}-${fieldId}"]`);
                                 radioElement.closest('.kn-radio').toggleClass('ktlNotValid_empty', !hasSelection);
@@ -12056,7 +12054,7 @@ function Ktl($, appInfo) {
                             break;
                         }
                     }
-                    // Remove 'required' attribute from visible fields
+
                     removeRequestedAttributeOnVisibleFields(viewContainer);
                     // Check if any visible element is still marked as not valid
                     const hasVisibleEmpty = viewContainer.find(`.ktlNotValid_empty:visible`).length > 0;
