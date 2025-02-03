@@ -11857,9 +11857,9 @@ function Ktl($, appInfo) {
 
             // Execute asynchronous keyword processing in parallel and add builder fields
             await Promise.all([processFieldKeywords(), processViewKeywords()]);
-            addBuilderRequiredFields();
 
             if (requiredFields.size === 0) return;
+            addBuilderRequiredFields();
 
             const requiredFieldArray = Array.from(requiredFields).map((field) =>
                 field && field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
