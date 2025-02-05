@@ -12352,8 +12352,8 @@ function Ktl($, appInfo) {
                             Knack.views[viewId].renderSignatures();
                         }
 
-                        if (tableGroupCell.length && tableGroupCell.attr('colspan') === '0') {
-                            const numOfVisibleColumns = viewElement.find('th:visible').length;
+                        const numOfVisibleColumns = viewElement.find('th:visible').length;
+                        if (tableGroupCell.length && parseInt(tableGroupCell.attr('colspan')) !== numOfVisibleColumns) {
                             tableGroupCell.attr('colspan', numOfVisibleColumns);
                         }
 
