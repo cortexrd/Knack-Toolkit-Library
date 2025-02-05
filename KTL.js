@@ -11917,9 +11917,9 @@ function Ktl($, appInfo) {
                             const signatureElem = $(signatureSelector);
                             signatureElem.addClass('ktlNotValid_empty');
                             // Bind a global mouseup event to revalidate the signature field when the user interacts with it
-                            $(document).off('mouseup.ktl_signature').on('mouseup.ktl_signature', () => {
+                            $(signatureElem).closest('.kn-input').off('mouseup.ktl_signature').on('mouseup.ktl_signature', () => {
                                 setTimeout(() => {
-                                    const lastStrokeButton = $(`#${viewId} input[value="Undo last stroke"]`);
+                                    const lastStrokeButton = viewContainer.find(`[data-input-id='${fieldId}'] input[value="Undo last stroke"]`);
                                     if (lastStrokeButton.length && lastStrokeButton.is(':visible')) {
                                         signatureElem.removeClass('ktlNotValid_empty');
                                     } else {
@@ -12353,8 +12353,9 @@ function Ktl($, appInfo) {
                             Knack.views[viewId].renderSignatures();
                         }
 
-                        if (tableGroupCell.attr('colspan') === '0' && Knack.views[viewId] && typeof Knack.views[viewId].render === 'function') {
-                            Knack.views[viewId].render();
+                        if (tableGroupCell.length && tableGroupCell.attr('colspan') === '0') {
+                            const numOfVisibleColumns = viewElement.find('th:visible').length;
+                            tableGroupCell.attr('colspan', numOfVisibleColumns);
                         }
 
                         $(document).trigger('KTL.hideShowView.Opened', { viewId });
