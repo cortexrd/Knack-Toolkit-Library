@@ -12076,7 +12076,6 @@ function Ktl($, appInfo) {
             $(document)
                 .off('input.ktl_all change.ktl_all', `#${viewId} input, #${viewId} textarea, #${viewId} select`)
                 .on('input.ktl_all change.ktl_all', `#${viewId} input, #${viewId} textarea, #${viewId} select`, () => {
-                    console.log('input.ktl_all change.ktl_all');
                     removeRequestedAttributeOnVisibleFields(viewContainer);
                     ktl.views.updateSubmitButtonState(
                         viewId,
