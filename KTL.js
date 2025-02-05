@@ -21517,7 +21517,7 @@ function Ktl($, appInfo) {
 
                         const fieldId = $(target).closest('[data-input-id]').attr('data-input-id') || 0;
 
-                        if ($(target).attr('type') === 'tel' || $(target).attr('type') === 'number' || Knack.objects.getField(fieldId).attributes.type === 'number' || ktl.fields.shouldBeNumeric(fieldId))
+                        if ($(target).attr('type') === 'tel' || $(target).attr('type') === 'number' || (Knack.objects.getField(fieldId) && Knack.objects.getField(fieldId).attributes.type === 'number') || ktl.fields.shouldBeNumeric(fieldId))
                             keyboard.setOptions({ layoutName: 'numeric' });
                         else
                             keyboard.setOptions({ layoutName: 'default' });
