@@ -7605,7 +7605,7 @@ function Ktl($, appInfo) {
                 addRecordHistory(view, keywords, data);
                 labelText(view, keywords);
                 removeConnectionPicker(viewId);
-                setCharacterLimit(view, keywords);
+                setCharacterLimit(view);
                 addCharacterCount(view, keywords);
 
                 iterateViewReports(view, (report, keywords) => {
@@ -12097,9 +12097,9 @@ function Ktl($, appInfo) {
             }
         }
 
-        function setCharacterLimit({ key: viewId }, keywords) {
+        function setCharacterLimit({ key: viewId }) {
             const kw = '_cl';
-            if (!(viewId && keywords)) return;
+            if (!(viewId)) return;
 
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'form') return;
