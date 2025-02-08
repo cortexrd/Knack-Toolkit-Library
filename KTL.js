@@ -13214,7 +13214,8 @@ function Ktl($, appInfo) {
                                 $(tdSel).attr('style', mergedStyleString);
                             }
 
-                            $(this).find('td').attr('colspan', headers);
+                            if ($(this).find('td').length === 1) //Fixed issue #442, where some users add extra td cells to groups.
+                                $(this).find('td').attr('colspan', headers);
                         });
                     } catch (e) {
                         //Ignore since may happen with Search views without initial data.
