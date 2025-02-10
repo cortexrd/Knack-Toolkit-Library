@@ -12805,6 +12805,9 @@ function Ktl($, appInfo) {
                                     if (viewType === 'search') {
                                         //Do not call render() in search views because it erases the top form section.
                                         Knack.views[viewId].renderResults && Knack.views[viewId].renderResults();
+                                    } else if (viewType === 'calendar') {
+                                        Knack.views[viewId].renderRecords();
+                                        Knack.hideSpinner();
                                     } else {
                                         Knack.views[viewId].render();
                                     }
