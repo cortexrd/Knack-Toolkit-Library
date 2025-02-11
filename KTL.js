@@ -2426,6 +2426,36 @@ function Ktl($, appInfo) {
                 }
                 let textFound = false;
 
+                const checkTextInContent = (text, context, contextObj, isObject = false) => {
+                    const maxLength = 50;
+                    if (text.toLowerCase().includes(textToFind.toLowerCase())) {
+                        let truncatedText = text;
+                        if (text.length > maxLength) {
+                            truncatedText = `${text.substring(0, maxLength)}...`;
+                        }
+                        const fullText = text;
+
+                        const span = document.createElement('span');
+                        span.textContent = fullText;
+
+                        const link = document.createElement('a');
+                        let linkUrl = ''
+                        if (!isObject) {
+                            linkUrl = `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
+                        } else {
+                            linkUrl = `${baseURL}${contextObj.url}`;
+                        }
+                        link.href = linkUrl;
+
+                        console.log(`Found text: ${truncatedText} in ${context}:`, span);
+                        console.log(`%cClick here to open the builder link: ${linkUrl}`, 'color: blue; cursor: pointer;');
+
+                        textFound = true;
+                        return true;
+                    }
+                    return false;
+                };
+
                 // Loop through each scene in Knack.scenes.models
                 Knack.scenes.models.forEach(scene => {
                     const views = scene.views && scene.views.models;
@@ -2437,34 +2467,16 @@ function Ktl($, appInfo) {
                     // Loop through each view in scene.views.models
                     views.forEach(view => {
                         const { attributes = {} } = view;
-                        const { title = '', description = '', rules, type = '', content = '', name = '', groups, columns, key } = attributes;
+                        const { title = '', description = '', rules, links = '', type = '', content = '', name = '', groups, columns, key } = attributes;
 
                         const contextObj = { sceneId: scene.attributes.key, viewId: key, url: '' };
 
-                        const checkTextInContent = (text, context, contextObj) => {
-                            const maxLength = 50;
-                            if (text.toLowerCase().includes(textToFind.toLowerCase())) {
-                                let truncatedText = text;
-                                if (text.length > maxLength) {
-                                    truncatedText = `${text.substring(0, maxLength)}...`;
-                                }
-                                const fullText = text;
-
-                                const span = document.createElement('span');
-                                span.textContent = fullText;
-
-                                const link = document.createElement('a');
-                                const linkUrl = `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
-                                link.href = linkUrl;
-
-                                console.log(`Found text: ${truncatedText} in ${context}:`, span);
-                                console.log(`%cClick here to open the builder link: ${linkUrl}`, 'color: blue; cursor: pointer;');
-
-                                textFound = true;
-                                return true;
-                            }
-                            return false;
-                        };
+                        if (links){
+                            links.forEach(({ name = '', scene = '' }) => {
+                                checkTextInContent(name, 'link name', { ...contextObj, url: `/${type}` });
+                                checkTextInContent(scene, 'link scene', { ...contextObj, url: `/${type}` });
+                            });
+                        }
 
                         // Helper function to check rules
                         const checkRules = (rules, context, url) => {
@@ -2539,6 +2551,21 @@ function Ktl($, appInfo) {
                                 }
                             });
                         }
+                    });
+                });
+
+                Knack.objects.models.forEach(object => {
+                    const { id: objectId, tasks, attributes} = object;
+
+                    tasks.models.forEach(task => {
+                        const {id: taskId, attributes: {action: {email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] }}}} = task;
+                        checkTextInContent(message, 'task email message', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        checkTextInContent(subject, 'task email subject', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        checkTextInContent(from_name, 'task email from name', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        checkTextInContent(from_email, 'task email from email', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        recipients.forEach(({ email = '' }) => {
+                            checkTextInContent(email, 'task email recipient', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        });
                     });
                 });
 
