@@ -2426,6 +2426,36 @@ function Ktl($, appInfo) {
                 }
                 let textFound = false;
 
+                const checkTextInContent = (text, context, contextObj, isObject = false) => {
+                    const maxLength = 50;
+                    if (text.toLowerCase().includes(textToFind.toLowerCase())) {
+                        let truncatedText = text;
+                        if (text.length > maxLength) {
+                            truncatedText = `${text.substring(0, maxLength)}...`;
+                        }
+                        const fullText = text;
+
+                        const span = document.createElement('span');
+                        span.textContent = fullText;
+
+                        const link = document.createElement('a');
+                        let linkUrl = ''
+                        if (!isObject) {
+                            linkUrl = `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
+                        } else {
+                            linkUrl = `${baseURL}${contextObj.url}`;
+                        }
+                        link.href = linkUrl;
+
+                        console.log(`Found text: ${truncatedText} in ${context}:`, span);
+                        console.log(`%cClick here to open the builder link: ${linkUrl}`, 'color: blue; cursor: pointer;');
+
+                        textFound = true;
+                        return true;
+                    }
+                    return false;
+                };
+
                 // Loop through each scene in Knack.scenes.models
                 Knack.scenes.models.forEach(scene => {
                     const views = scene.views && scene.views.models;
@@ -2437,34 +2467,16 @@ function Ktl($, appInfo) {
                     // Loop through each view in scene.views.models
                     views.forEach(view => {
                         const { attributes = {} } = view;
-                        const { title = '', description = '', rules, type = '', content = '', name = '', groups, columns, key } = attributes;
+                        const { title = '', description = '', rules, links = '', type = '', content = '', name = '', groups, columns, key } = attributes;
 
                         const contextObj = { sceneId: scene.attributes.key, viewId: key, url: '' };
 
-                        const checkTextInContent = (text, context, contextObj) => {
-                            const maxLength = 50;
-                            if (text.toLowerCase().includes(textToFind.toLowerCase())) {
-                                let truncatedText = text;
-                                if (text.length > maxLength) {
-                                    truncatedText = `${text.substring(0, maxLength)}...`;
-                                }
-                                const fullText = text;
-
-                                const span = document.createElement('span');
-                                span.textContent = fullText;
-
-                                const link = document.createElement('a');
-                                const linkUrl = `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
-                                link.href = linkUrl;
-
-                                console.log(`Found text: ${truncatedText} in ${context}:`, span);
-                                console.log(`%cClick here to open the builder link: ${linkUrl}`, 'color: blue; cursor: pointer;');
-
-                                textFound = true;
-                                return true;
-                            }
-                            return false;
-                        };
+                        if (links){
+                            links.forEach(({ name = '', scene = '' }) => {
+                                checkTextInContent(name, 'link name', { ...contextObj, url: `/${type}` });
+                                checkTextInContent(scene, 'link scene', { ...contextObj, url: `/${type}` });
+                            });
+                        }
 
                         // Helper function to check rules
                         const checkRules = (rules, context, url) => {
@@ -2539,6 +2551,21 @@ function Ktl($, appInfo) {
                                 }
                             });
                         }
+                    });
+                });
+
+                Knack.objects.models.forEach(object => {
+                    const { id: objectId, tasks, attributes} = object;
+
+                    tasks.models.forEach(task => {
+                        const {id: taskId, attributes: {action: {email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] }}}} = task;
+                        checkTextInContent(message, 'task email message', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        checkTextInContent(subject, 'task email subject', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        checkTextInContent(from_name, 'task email from name', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        checkTextInContent(from_email, 'task email from email', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        recipients.forEach(({ email = '' }) => {
+                            checkTextInContent(email, 'task email recipient', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        });
                     });
                 });
 
@@ -4425,70 +4452,109 @@ function Ktl($, appInfo) {
             $(document).trigger('KTL.fieldValueChanged', { viewId: viewId, fieldId: fieldId, text: inputValue, e: {} });
         }
 
-        //Save data for a given view and field.
-        function saveFormData(data, viewId = '', fieldId = '', subField = '') {
-            //console.log('saveFormData', data, viewId, fieldId, subField);
-            if (!pfIsInitialized || !fieldId || !viewId || !viewId.startsWith('view_')) return; //Exclude connection-form-view and any other not-applicable view types.
+        function saveFormData(data, viewId, fieldId, subField) {
+            // Guard clauses
+            if (!pfIsInitialized || !fieldId || !viewId || !viewId.startsWith('view_')) return;
 
             const fieldType = ktl.fields.getFieldType(fieldId);
             if (!fieldType || fieldType === 'password') return;
 
-            //Ignore modal scenes, since they cause confusion when being closed without submit (Issue #326)
-            //Except if _rlv is used (Issue #370)
-            if (Knack.router.scene_view.model.attributes.modal && (!ktlKeywords[viewId] || (ktlKeywords[viewId] && !ktlKeywords[viewId]._rlv))) return;
+            // Check for modal scenes and _rlv keyword
+            const sceneView = Knack.router.scene_view;
+            if (!sceneView || !sceneView.model || !sceneView.model.attributes) return;
 
-            var view = Knack.router.scene_view.model.views._byId[viewId];
-            if (!view) return;
-            var viewAttr = view.attributes;
-            if (!viewAttr) return;
+            if (sceneView.model.attributes.modal) {
+                if (!ktlKeywords[viewId] || !ktlKeywords[viewId]._rlv) return;
+            }
 
-            var action = viewAttr.action;
-            if (fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')/*Add only, not Edit or any other type*/)
-                return;
+            const view = sceneView.model.views._byId[viewId];
+            if (!view || !view.attributes) return;
+            const viewAttr = view.attributes;
 
-            var formDataObj = {};
-            var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
-            if (formDataObjStr)
-                formDataObj = JSON.parse(formDataObjStr);
+            let expiryDate = null;
 
-            //console.log('saveFormData: formDataObj =', formDataObj);
-            formDataObj[viewId] = formDataObj[viewId] ? formDataObj[viewId] : {};
+            // Process expiry parameters if they exist
+            if (ktlKeywords[viewId] &&
+                ktlKeywords[viewId]._rlv &&
+                ktlKeywords[viewId]._rlv.length > 0 &&
+                ktlKeywords[viewId]._rlv[0] &&
+                ktlKeywords[viewId]._rlv[0].params) {
 
+                const expiryParams = ktlKeywords[viewId]._rlv[0].params[1];
+                if (expiryParams && expiryParams[0] === 'expiry') {
+                    const [_, expiryHours = 24] = expiryParams;
+                    const now = new Date();
+                    expiryDate = new Date(
+                        now.getTime() + (parseInt(expiryHours) * 60 * 60 * 1000)
+                    );
+                }
+            }
+
+            // Check action type
+            const action = viewAttr.action;
+            if (fieldsToExclude.includes(fieldId) || (action !== 'insert' && action !== 'create')) return;
+
+            // Get existing data from storage
+            let formDataObj = {};
+            const formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
+            if (formDataObjStr) {
+                try {
+                    formDataObj = JSON.parse(formDataObjStr);
+                } catch (err) {
+                    console.error('Error parsing form data:', err);
+                    return;
+                }
+            }
+
+            // Initialize view data if needed
+            formDataObj[viewId] = formDataObj[viewId] || {};
+
+            expiryDate && (formDataObj[viewId].expiryDate = expiryDate);
+
+            // Handle main field data
             if (!subField) {
                 if (typeof data === 'string') {
-                    if ((data === 'Select' || data === 'Select:') && (fieldType === 'connection' || fieldType === 'user_roles'))
-                        data = ''; //Do not save the placeholder 'Select';
-                } else { //Object
+                    if ((data === 'Select' || data === 'Select:') &&
+                        (fieldType === 'connection' || fieldType === 'user_roles')) {
+                        data = '';
+                    }
+                } else {
                     data = JSON.stringify(data);
                 }
 
-                if (!data)
+                if (!data) {
                     delete formDataObj[viewId][fieldId];
-                else {
-                    if (fieldType === 'date_time' || fieldType === 'timer') {
-                        const fieldRootSelector = `#${viewId}-${fieldId}`;
-                        const dateTimeFieldsSuffixes = [`-time`, `-time-to`, `-to`, `-date-from`, `-time-from`, `-date-to`, ``];
-                        for (const fieldSuffix of dateTimeFieldsSuffixes) {
-                            if ($(`${fieldRootSelector}${fieldSuffix}`).length) {
-                                formDataObj[viewId][`${fieldId}${fieldSuffix}`] = $(`${fieldRootSelector}${fieldSuffix}`).val();
-                            }
+                } else if (fieldType === 'date_time' || fieldType === 'timer') {
+                    const fieldRootSelector = `#${viewId}-${fieldId}`;
+                    const dateTimeFieldsSuffixes = [
+                        '-time', '-time-to', '-to', '-date-from',
+                        '-time-from', '-date-to', ''
+                    ];
+                    dateTimeFieldsSuffixes.forEach((fieldSuffix) => {
+                        const element = $(`${fieldRootSelector}${fieldSuffix}`);
+                        if (element.length) {
+                            formDataObj[viewId][`${fieldId}${fieldSuffix}`] = element.val();
                         }
-                    } else
-                        formDataObj[viewId][fieldId] = data;
+                    });
+                } else {
+                    formDataObj[viewId][fieldId] = data;
                 }
-            } else { //Some field types like Name and Address have sub-fields.
-                formDataObj[viewId][fieldId] = formDataObj[viewId][fieldId] ? formDataObj[viewId][fieldId] : {};
+            } else {
+                // Handle subfield data
+                formDataObj[viewId][fieldId] = formDataObj[viewId][fieldId] || {};
                 formDataObj[viewId][fieldId][subField] = data;
             }
 
-            if ($.isEmptyObject(formDataObj[viewId]))
-                delete (formDataObj[viewId]);
+            // Cleanup empty objects
+            if (Object.keys(formDataObj[viewId]).length === 0) {
+                delete formDataObj[viewId];
+            }
 
-            if ($.isEmptyObject(formDataObj))
+            // Save or remove data
+            if (Object.keys(formDataObj).length === 0) {
                 ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA);
-            else {
-                formDataObjStr = JSON.stringify(formDataObj);
-                ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, formDataObjStr);
+            } else {
+                ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
             }
 
             currentViews[viewId] = viewId;
@@ -4593,20 +4659,28 @@ function Ktl($, appInfo) {
                         currentViews[view.key] = view.key;
                         formDataObj[view.key] = viewData;
 
-                        const keys = Object.keys(formDataObj[view.key]);
+                        if (formDataObj[view.key] && formDataObj[view.key].expiryDate && new Date(formDataObj[view.key].expiryDate) < new Date()) {
+                            delete formDataObj[view.key];
+                            ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
+                            return resolve();
+                        }
+
+                        const keys = Object.keys(formDataObj[view.key]).filter(key => key !== 'expiryDate');
                         for (const fieldKey of keys) {
-                            const fieldId = fieldKey.match(/field_\d+/)[0];
+                            const fieldIdMatch = fieldKey.match(/field_\d+/);
+                            const fieldId = fieldIdMatch ? fieldIdMatch[0] : null;
+
                             if (fieldsToExclude.includes(fieldId)) {
                                 ktl.log.clog('purple', 'Skipped field for PF: ' + fieldId);
                                 continue; //JIC - should never happen since fieldsToExclude are never saved in the first place.
                             }
 
-                            const field = Knack.objects.getField(fieldId);
+                            const field = fieldId ? Knack.objects.getField(fieldId) : null;
                             if (!field) continue;
 
-                            var subField = '';
-                            var fieldType = field.attributes.type;
-                            var fieldText = formDataObj[view.key][fieldKey] || formDataObj[view.key][fieldId]; //fieldKey is required for Date/Time suffixes.
+                            let subField = '';
+                            const fieldType = field.attributes.type;
+                            const fieldText = formDataObj[view.key][fieldKey] || formDataObj[view.key][fieldId]; //fieldKey is required for Date/Time suffixes.
 
                             if (fieldType === 'rich_text') {
                                 $(`#${view.key} #${fieldId}`).data('redactor').code.set(fieldText);
@@ -4623,9 +4697,11 @@ function Ktl($, appInfo) {
                                     if (fieldType === 'date_time' || fieldType === 'timer')
                                         el = document.querySelector(`#${viewId}-${fieldKey}`);
                                     else {
-                                        el = document.querySelector(`#${view.key} [data-input-id=${fieldId}] #${subField}.input`) //Must be first.
-                                            || document.querySelector(`#${view.key} [data-input-id=${fieldId}] input`)
-                                            || document.querySelector(`#${view.key} [data-input-id=${fieldId}] .kn-textarea`);
+                                        const selector1 = `#${view.key} [data-input-id=${fieldId}] #${subField}.input`;
+                                        const selector2 = `#${view.key} [data-input-id=${fieldId}] input`;
+                                        const selector3 = `#${view.key} [data-input-id=${fieldId}] .kn-textarea`;
+
+                                        el = document.querySelector(selector1) || document.querySelector(selector2) || document.querySelector(selector3);
                                     }
 
                                     if (el)
@@ -4635,7 +4711,7 @@ function Ktl($, appInfo) {
                                 if (typeof fieldText === 'object') {
                                     //If we have an object instead of plain text, we need to recurse into it for each sub-field.
                                     //Ex: name and address field types.
-                                    var allSubFields = Object.keys(formDataObj[view.key][fieldId]);
+                                    const allSubFields = Object.keys(formDataObj[view.key][fieldId]);
                                     allSubFields.forEach(function (eachSubField) {
                                         fieldText = formDataObj[view.key][fieldId][eachSubField];
                                         setFieldText(eachSubField);
@@ -4690,7 +4766,7 @@ function Ktl($, appInfo) {
                                 } else if (field.attributes.format.type === 'radios') {
                                     $(`#${view.key} #kn-input-${fieldId} [value="${fieldText}"]`).click();
                                 } else if (field.attributes.format.type === 'checkboxes') {
-                                    var options = JSON.parse(fieldText);
+                                    const options = JSON.parse(fieldText);
                                     Object.keys(options).forEach(key => {
                                         const option = $(`#${view.key} [data-input-id="${fieldId}"] input[value="${key}"]`).first();
                                         if (options[key] != option.prop('checked')) {
@@ -4732,36 +4808,87 @@ function Ktl($, appInfo) {
 
         //Remove all saved data for this view after a submit
         //If changing scene, erase for all previous scene's views.
-        //If viewId is empty, erase all current scene's views.
+        /** Erases form data from storage for a specific view or all views in current scene
+         * @param {string} viewId - Optional view ID. If not provided, erases data for all views in current scene */
         function eraseFormData(viewId) {
+            // Handle single view case
             if (viewId) {
-                var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
-                if (formDataObjStr) {
-                    var formDataObj = JSON.parse(formDataObjStr);
+                const formData = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
+                let expiryDate = null;
+                if (!formData) return;
 
-                    //Process Reload Last Values _rlv
-                    if (ktlKeywords[viewId] && ktlKeywords[viewId]._rlv) {
-                        if (ktlKeywords[viewId]._rlv.length && ktlKeywords[viewId]._rlv[0].params[0].length) {
-                            const rlvFields = ktlKeywords[viewId]._rlv[0].params[0];
-                            const rlvFieldsId = rlvFields.map(field => field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field));
+                try {
+                    const formDataObj = JSON.parse(formData);
+                    if (!formDataObj[viewId]) return;
 
-                            Object.keys(formDataObj[viewId]).forEach(persistentFieldId => {
-                                if (!rlvFieldsId.includes(persistentFieldId)) {
-                                    delete formDataObj[viewId][persistentFieldId];
+                    // Handle _rlv (Reload Last Values) keyword
+                    if (ktlKeywords[viewId] &&
+                        ktlKeywords[viewId]._rlv &&
+                        ktlKeywords[viewId]._rlv[0] &&
+                        ktlKeywords[viewId]._rlv[0].params &&
+                        ktlKeywords[viewId]._rlv[0].params[0] &&
+                        ktlKeywords[viewId]._rlv[0].params[0].length) {
+
+                            // Check expiry date first
+                            const expiryKey = Object.keys(formDataObj[viewId]).filter(key => key === 'expiryDate')[0];
+                            if (expiryKey) {
+                                const now = new Date();
+                                const expiryDate = new Date(formDataObj[viewId][expiryKey]);
+                                if (expiryDate < now) {
+                                    console.log('expired in eraseFormData', expiryDate);
+                                    delete formDataObj[viewId];
+                                    ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
+                                    return;
                                 }
-                            });
-                        }
-                    } else
-                        delete formDataObj[viewId];
+                            }
 
+                            const expiryParams = ktlKeywords[viewId]._rlv[0].params[1];
+                            if (expiryParams && expiryParams[0] === 'expiry') {
+                                const [_, expiryHours = 24] = expiryParams;
+                                const now = new Date();
+                                expiryDate = new Date(
+                                    now.getTime() + (parseInt(expiryHours) * 60 * 60 * 1000)
+                                );
+                            }
+
+                            // Get fields to preserve
+                            const rlvFields = ktlKeywords[viewId]._rlv[0].params[0];
+                            const rlvFieldsId = rlvFields.map(field =>
+                                field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+                            );
+
+
+                            // Only delete fields not in rlvFieldsId
+                            Object.keys(formDataObj[viewId])
+                                .filter(fieldId => !rlvFieldsId.includes(fieldId))
+                                .forEach(fieldId => delete formDataObj[viewId][fieldId]);
+
+
+                    } else {
+                        // No _rlv - delete entire view data
+                        delete formDataObj[viewId];
+                    }
+                    expiryDate && (formDataObj[viewId].expiryDate = expiryDate);
+                    // Save updated form data
                     ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
+                } catch (err) {
+                    console.error('Error processing form data:', err);
                 }
-            } else {
-                Knack.router.scene_view.model.views.models.forEach(function (eachView) {
-                    var view = eachView.attributes;
-                    eraseFormData(view.key);
-                })
+                return;
             }
+
+            // Handle all views case
+            const sceneView = Knack.router.scene_view;
+            if (!sceneView || !sceneView.model || !sceneView.model.views || !sceneView.model.views.models) return;
+
+            const views = sceneView.model.views.models;
+            if (!views.length) return;
+
+            views.forEach(view => {
+                if (view && view.attributes && view.attributes.key) {
+                    eraseFormData(view.attributes.key);
+                }
+            });
         }
 
         return {
