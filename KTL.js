@@ -2419,160 +2419,142 @@ function Ktl($, appInfo) {
             },
 
             universalSearch: function (textToFind) {
-                // Check if Knack and scenes are defined
+                // Input validation
+                if (!textToFind) {
+                    console.error('Search text is required');
+                    return;
+                }
+
                 if (!Knack || !Knack.scenes || !Knack.scenes.models) {
                     console.error('Knack scenes are not defined');
                     return;
                 }
+
                 let textFound = false;
+                const searchTerm = textToFind.toLowerCase();
 
+                // Helper function to check content
                 const checkTextInContent = (text, context, contextObj, isObject = false) => {
+                    if (!text || typeof text !== 'string') return false;
+
+                    if (!text.toLowerCase().includes(searchTerm)) return false;
+
                     const maxLength = 50;
-                    if (text.toLowerCase().includes(textToFind.toLowerCase())) {
-                        let truncatedText = text;
-                        if (text.length > maxLength) {
-                            truncatedText = `${text.substring(0, maxLength)}...`;
-                        }
-                        const fullText = text;
+                    const truncatedText = text.length > maxLength ?
+                        `${text.substring(0, maxLength)}...` : text;
 
-                        const span = document.createElement('span');
-                        span.textContent = fullText;
+                    const linkUrl = isObject ?
+                        `${baseURL}${contextObj.url}` :
+                        `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
 
-                        const link = document.createElement('a');
-                        let linkUrl = ''
-                        if (!isObject) {
-                            linkUrl = `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
-                        } else {
-                            linkUrl = `${baseURL}${contextObj.url}`;
-                        }
-                        link.href = linkUrl;
+                    const span = document.createElement('span');
+                    span.textContent = text;
 
-                        console.log(`Found text: ${truncatedText} in ${context}:`, span);
-                        console.log(`%cClick here to open the builder link: ${linkUrl}`, 'color: blue; cursor: pointer;');
+                    console.log(`Found text: ${truncatedText} in ${context}:`, span);
+                    console.log(`%cClick here to open the builder link: ${linkUrl}`, 'color: blue; cursor: pointer;');
 
-                        textFound = true;
-                        return true;
-                    }
-                    return false;
+                    textFound = true;
+                    return true;
                 };
 
-                // Loop through each scene in Knack.scenes.models
+                // Helper function to check email content
+                const checkEmailContent = (email, contextObj, isObject = false) => {
+                    if (!email) return;
+
+                    const {
+                        message = '',
+                        subject = '',
+                        from_name = '',
+                        from_email = '',
+                        recipients = []
+                    } = email;
+
+                    if (recipients && Array.isArray(recipients)) {
+                        recipients.forEach(recipient => {
+                            const email = recipient.email || '';
+                            checkTextInContent(email, 'email recipient', contextObj, isObject);
+                        });
+                    }
+
+                    checkTextInContent(message, 'email message', contextObj, isObject);
+                    checkTextInContent(subject, 'email subject', contextObj, isObject);
+                    checkTextInContent(from_name, 'email from name', contextObj, isObject);
+                    checkTextInContent(from_email, 'email from email', contextObj, isObject);
+                };
+
+                // Process scenes and views
                 Knack.scenes.models.forEach(scene => {
-                    const views = scene.views && scene.views.models;
-                    if (!views) {
-                        console.warn('Scene views are not defined for scene:', scene);
+                    if (!scene.views || !scene.views.models) {
+                        console.warn('No views found in scene:', scene);
                         return;
                     }
 
-                    // Loop through each view in scene.views.models
-                    views.forEach(view => {
-                        const { attributes = {} } = view;
-                        const { title = '', description = '', rules, links = '', type = '', content = '', name = '', groups, columns, key } = attributes;
+                    scene.views.models.forEach(view => {
+                        if (!view || !view.attributes) return;
 
-                        const contextObj = { sceneId: scene.attributes.key, viewId: key, url: '' };
-
-                        if (links){
-                            links.forEach(({ name = '', scene = '' }) => {
-                                checkTextInContent(name, 'link name', { ...contextObj, url: `/${type}` });
-                                checkTextInContent(scene, 'link scene', { ...contextObj, url: `/${type}` });
-                            });
-                        }
-
-                        // Helper function to check rules
-                        const checkRules = (rules, context, url) => {
-                            if (rules) {
-                                rules.forEach(({ message = '' }) => {
-                                    const ruleObj = { ...contextObj, url };
-                                    checkTextInContent(message, context, ruleObj);
-                                });
-                            }
+                        const { attributes } = view;
+                        const contextObj = {
+                            sceneId: scene.attributes.key,
+                            viewId: attributes.key,
+                            url: ''
                         };
 
-                        // Check title, description, and name
-                        checkTextInContent(name, 'name', { ...contextObj, url: `/${type}` });
-                        checkTextInContent(title, 'title', { ...contextObj, url: `/${type}` });
-                        checkTextInContent(description, 'description', { ...contextObj, url: `/${type}` });
+                        // Check basic view attributes
+                        checkTextInContent(attributes.name, 'name', {...contextObj, url: `/${attributes.type}`});
+                        checkTextInContent(attributes.title, 'title', {...contextObj, url: `/${attributes.type}`});
+                        checkTextInContent(attributes.description, 'description', {...contextObj, url: `/${attributes.type}`});
 
-                        // Check submit rules
-                        checkRules(rules && rules.submits, 'submit rule', '/form/rules/submit');
-
-                        // Check email rules
-                        if (rules && rules.emails) {
-                            rules.emails.forEach(({ email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] } }) => {
-                                const emailObj = { ...contextObj, url: '/form/emails' };
-                                recipients.forEach(({ email = '' }) => {
-                                    checkTextInContent(email, 'email recipient', emailObj);
+                        // Check rules and emails
+                        if (attributes.rules) {
+                            if (attributes.rules.submits) {
+                                attributes.rules.submits.forEach(rule => {
+                                    checkTextInContent(rule.message || '', 'submit rule', {...contextObj, url: '/form/rules/submit'});
                                 });
-                                checkTextInContent(message, 'email message', emailObj);
-                                checkTextInContent(subject, 'email subject', emailObj);
-                                checkTextInContent(from_name, 'email from name', emailObj);
-                                checkTextInContent(from_email, 'email from email', emailObj);
-                            });
-                        }
+                            }
 
-                        // Check columns in list or details view
-                        if ((type === 'list' || type === 'details') && columns) {
-                            columns.forEach(({ groups: columnGroups }) => {
-                                if (columnGroups) {
-                                    columnGroups.forEach(({ columns: groupColumns }) => {
-                                        if (groupColumns) {
-                                            groupColumns.forEach(col => {
-                                                col.forEach(({ copy = '', name = '', link_text = '' }) => {
-                                                    checkTextInContent(copy, 'details copy', { ...contextObj, url: `/${type}` });
-                                                    checkTextInContent(name, 'details name', { ...contextObj, url: `/${type}` });
-                                                    checkTextInContent(link_text, 'details link text', { ...contextObj, url: `/${type}` });
-                                                });
-                                            });
-                                        }
-                                    });
-                                }
-                            });
+                            if (attributes.rules.emails) {
+                                attributes.rules.emails.forEach(rule => {
+                                    if (rule.email) {
+                                        checkEmailContent(rule.email, {...contextObj, url: '/form/emails'});
+                                    }
+                                });
+                            }
                         }
 
                         // Check rich text content
-                        if (type === 'rich_text') {
-                            checkTextInContent(content, 'rich text view', { ...contextObj, url: `/${type}` });
-                        }
-
-                        // Check groups, columns, and inputs
-                        if (groups) {
-                            groups.forEach(({ columns: groupColumns }, groupIndex) => {
-                                if (groupColumns) {
-                                    groupColumns.forEach(({ inputs }, colIndex) => {
-                                        if (inputs) {
-                                            inputs.forEach(({ label = '', instructions = '', copy = '', field = '' }, index) => {
-                                                const inputObj = { ...contextObj, url: `/form/inputs/rows/${groupIndex}/columns/${colIndex}/inputs/${index}` };
-                                                checkTextInContent(label, 'input label', inputObj);
-                                                checkTextInContent(instructions, 'input instructions', inputObj);
-                                                checkTextInContent(copy, 'input copy', inputObj);
-                                            });
-                                        }
-                                    });
-                                }
-                            });
+                        if (attributes.type === 'rich_text') {
+                            checkTextInContent(attributes.content || '', 'rich text view', {...contextObj, url: `/${attributes.type}`});
                         }
                     });
                 });
 
-                Knack.objects.models.forEach(object => {
-                    const { id: objectId, tasks, attributes} = object;
+                // Check tasks
+                if (Knack.objects && Knack.objects.models) {
+                    Knack.objects.models.forEach(object => {
+                        if (!object || !object.tasks || !object.tasks.models) return;
 
-                    tasks.models.forEach(task => {
-                        const {id: taskId, attributes: {action: {email: { message = '', subject = '', from_name = '', from_email = '', recipients = [] }}}} = task;
-                        checkTextInContent(message, 'task email message', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
-                        checkTextInContent(subject, 'task email subject', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
-                        checkTextInContent(from_name, 'task email from name', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
-                        checkTextInContent(from_email, 'task email from email', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
-                        recipients.forEach(({ email = '' }) => {
-                            checkTextInContent(email, 'task email recipient', { url: `/tasks/objects/${objectId}/${taskId}/task` }, true);
+                        object.tasks.models.forEach(task => {
+                            if (!task || !task.attributes || !task.attributes.action) return;
+
+                            const { id: taskId, attributes: { action } } = task;
+
+                            if (action.email) {
+                                const contextObj = {
+                                    url: `/tasks/objects/${object.id}/${taskId}/task`
+                                };
+                                checkEmailContent(action.email, contextObj, true);
+                            }
                         });
                     });
-                });
+                }
 
                 if (!textFound) {
-                    ktl.log.clog('green', `${textToFind} is not found in any Rich Text View, any View Description, Title, Name, Rules, Inputs, Emails, Detail Labels, Detail Links`);
+                    ktl.log.clog('green',
+                        `No matches found for "${textToFind}" in views, descriptions, titles, rules, inputs, or emails`
+                    );
                 }
             },
+
         }
     })(); //Core
 
