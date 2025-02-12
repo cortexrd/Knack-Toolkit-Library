@@ -2458,7 +2458,7 @@ function Ktl($, appInfo) {
                 };
 
                 // Helper function to check email content
-                const checkEmailContent = (email, contextObj, isObject) => {
+                const checkEmailContent = (email, contextObj, isObject = false) => {
                     if (!email) return;
 
                     const {
