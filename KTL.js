@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.29.12';
+    const KTL_VERSION = '0.29.13';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5177,46 +5177,52 @@ function Ktl($, appInfo) {
                     var newLightness = 1.0;
                     var newRGB = '';
 
-                    //User Filter buttons
-                    newSaturation = 0.6;
-                    newLightness = 0.9;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.filterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-
-                    newSaturation = 0.5;
-                    newLightness = 0.9;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.activeFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-
                     //Unused for now
                     newSaturation = 1.0;
                     newLightness = 0.3;
                     newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.borderClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                    sysColors.borderClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                    //User Filter buttons
+                    newSaturation = 0.6;
+                    newLightness = 0.9;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.filterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                    newSaturation = 0.6;
+                    newLightness = 0.9;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.activeFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                     //Public Filters
-                    newSaturation = 0.4;
+                    newSaturation = 0.8;
                     newLightness = 0.8;
                     newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.publicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                    sysColors.publicFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                    newSaturation = 0.4;
-                    newLightness = 0.7;
+                    newSaturation = 0.8;
+                    newLightness = 0.8;
                     newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.activePublicFilterBtnClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
+                    sysColors.activePublicFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                     //Just a generic pale washed-out color for various items.
                     newSaturation = 0.2;
                     newLightness = 0.7;
                     newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.paleLowSatClr = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ')';
-                    sysColors.paleLowSatClrTransparent = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.5)';
+                    sysColors.paleLowSatClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                    sysColors.paleLowSatClrTransparent = `${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}`;
+
+                    //Just a generic dark saturated color for highlighted buttons and available for other items.
+                    newSaturation = 0.8;
+                    newLightness = 0.5;
+                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    sysColors.darkHighSatClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                     newSaturation = 0.6;
                     newLightness = 0.7;
                     newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.inlineEditBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.1)';
-                    sysColors.tableRowHoverBkgColor = 'rgb(' + newRGB[0] + ',' + newRGB[1] + ',' + newRGB[2] + ', 0.2)';
+                    sysColors.inlineEditBkgColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.1)`;
+                    sysColors.tableRowHoverBkgColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.2)`;
 
                     document.documentElement.style.setProperty('--ktlInlineEditableCellsBgColor', sysColors.inlineEditBkgColor);
                     document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
@@ -5224,6 +5230,11 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', sysColors.header.rgb + '44');
                     document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', sysColors.header.rgb + '77');
                     document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
+
+                    document.documentElement.style.setProperty('--filterBtnClr', sysColors.filterBtnClr);
+                    document.documentElement.style.setProperty('--publicFilterBtnClr', sysColors.publicFilterBtnClr);                    
+                    document.documentElement.style.setProperty('--ktlActivePublicFilterBtnClr', sysColors.activePublicFilterBtnClr);
+                    document.documentElement.style.setProperty('--ktlActiveFilterBorderClr', sysColors.darkHighSatClr);
 
                     systemColorsReady = true;
                     $(document).trigger('KTL.systemColorsReady');
