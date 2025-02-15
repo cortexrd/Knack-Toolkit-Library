@@ -6830,8 +6830,11 @@ function Ktl($, appInfo) {
                     views.forEach(function (viewId) {
                         if (viewId.startsWith('view_') && document.querySelector('#' + viewId)) {
                             ktl.userFilters.addFilterButtons(viewId);
-                            var filterBtn = document.querySelector('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(getActiveFilterName(viewId)));
-                            filterBtn && filterBtn.click();
+                            const filterBtn = document.querySelector('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(getActiveFilterName(viewId)));
+                            if (filterBtn)
+                                filterBtn.click();
+                            else
+                                ktl.views.refreshView(viewId);
                         }
                     })
 
@@ -6887,8 +6890,11 @@ function Ktl($, appInfo) {
                     views.forEach(function (viewId) {
                         if (viewId.startsWith('view_') && document.querySelector('#' + viewId)) {
                             ktl.userFilters.addFilterButtons(viewId);
-                            var filterBtn = document.querySelector('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(getActiveFilterName(viewId)));
-                            filterBtn && filterBtn.click();
+                            const filterBtn = document.querySelector('#' + viewId + '_' + FILTER_BTN_SUFFIX + '_' + ktl.core.getCleanId(getActiveFilterName(viewId)));
+                            if (filterBtn)
+                                filterBtn.click();
+                            else
+                                ktl.views.refreshView(viewId);
                         }
                     })
 
