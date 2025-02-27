@@ -4662,7 +4662,7 @@ function Ktl($, appInfo) {
 
                             let subField = '';
                             const fieldType = field.attributes.type;
-                            const fieldText = formDataObj[view.key][fieldKey] || formDataObj[view.key][fieldId]; //fieldKey is required for Date/Time suffixes.
+                            let fieldText = formDataObj[view.key][fieldKey] || formDataObj[view.key][fieldId]; //fieldKey is required for Date/Time suffixes.
 
                             if (fieldType === 'rich_text') {
                                 $(`#${view.key} #${fieldId}`).data('redactor').code.set(fieldText);
