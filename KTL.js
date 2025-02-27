@@ -592,7 +592,7 @@ function Ktl($, appInfo) {
                                 if (dateTime instanceof Date) {
                                     apiDataIso[fieldId] = dateTime.toISOString();
                                     continue;
-                                }git checkout -b my-new-branch
+                                }
                                 let dateTime = apiDataIso[fieldId];
                                 if (typeof apiDataIso[fieldId] === 'object' && apiDataIso[fieldId].iso_timestamp) {
                                     continue;
