@@ -11226,7 +11226,11 @@ function Ktl($, appInfo) {
                                     const srcText = srcCell.html();
                                     const destCell = $(row).find(`td:nth-child(${destinationColumnIndex + 1}) span`).last();;
                                     if (destCell.length) {
-                                        $(destCell).html(srcText);
+                                        if ($(destCell).find('a').length) {
+                                            $(destCell).find('a').text(srcText);
+                                        } else {
+                                            $(destCell).text(srcText);
+                                        }
                                     }
                                 }
                             });
