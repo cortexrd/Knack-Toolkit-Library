@@ -589,6 +589,10 @@ function Ktl($, appInfo) {
                         for (const fieldId in apiDataIso) {
                             const fieldType = ktl.fields.getFieldType(fieldId);
                             if (fieldType === 'date_time') {
+                                if (dateTime instanceof Date) {
+                                    apiDataIso[fieldId] = dateTime.toISOString();
+                                    continue;
+                                }git checkout -b my-new-branch
                                 let dateTime = apiDataIso[fieldId];
                                 if (typeof apiDataIso[fieldId] === 'object' && apiDataIso[fieldId].iso_timestamp) {
                                     continue;
