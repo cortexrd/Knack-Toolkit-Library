@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.29.13';
+    const KTL_VERSION = '0.29.14';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -589,11 +589,11 @@ function Ktl($, appInfo) {
                         for (const fieldId in apiDataIso) {
                             const fieldType = ktl.fields.getFieldType(fieldId);
                             if (fieldType === 'date_time') {
+                                let dateTime = apiDataIso[fieldId];
                                 if (dateTime instanceof Date) {
                                     apiDataIso[fieldId] = dateTime.toISOString();
                                     continue;
                                 }
-                                let dateTime = apiDataIso[fieldId];
                                 if (typeof apiDataIso[fieldId] === 'object' && apiDataIso[fieldId].iso_timestamp) {
                                     continue;
                                 } else {
