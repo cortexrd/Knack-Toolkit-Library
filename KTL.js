@@ -590,6 +590,11 @@ function Ktl($, appInfo) {
                             const fieldType = ktl.fields.getFieldType(fieldId);
                             if (fieldType === 'date_time') {
                                 let dateTime = apiDataIso[fieldId];
+                                // If it's already a Date object, convert it directly
+                                if (dateTime instanceof Date) {
+                                    apiDataIso[fieldId] = dateTime.toISOString();
+                                    continue;
+                                }
                                 if (typeof apiDataIso[fieldId] === 'object' && apiDataIso[fieldId].iso_timestamp) {
                                     continue;
                                 } else {
