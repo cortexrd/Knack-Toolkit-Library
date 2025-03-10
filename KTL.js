@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.29.14';
+    const KTL_VERSION = '0.29.15';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -442,6 +442,7 @@ function Ktl($, appInfo) {
                 cfgObj.devOptionsPin && (cfg.devOptionsPin = cfgObj.devOptionsPin);
                 cfgObj.devDebugCode && (cfg.devDebugCode = cfgObj.devDebugCode);
                 cfgObj.isKiosk && (isKiosk = cfgObj.isKiosk);
+                cfgObj.forceVirtualKeyboard && (cfg.forceVirtualKeyboard = cfgObj.forceVirtualKeyboard);
 
                 if (cfgObj.popupStyle !== undefined) {
                     if (!cfg.popupStyle)
@@ -21726,7 +21727,7 @@ function Ktl($, appInfo) {
 
                 //Only for Linux systems without a built-in VK, like Raspberry PI 4.
                 const sys = ktl.sysInfo.getSysInfo();
-                if (sys.os === 'Linux' /*&& sys.processor.includes('arm')*/ || ktl.core.getCfg().enabled.forceVirtualKeyboard !== undefined)
+                if (sys.os === 'Linux' /*&& sys.processor.includes('arm')*/ || ktl.core.getCfg().forceVirtualKeyboard !== undefined)
                     load();
                 else
                     ktl.core.setCfg({ enabled: { virtualKeyboard: false } });
