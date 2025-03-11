@@ -14971,9 +14971,8 @@ function Ktl($, appInfo) {
             getView: function (viewId) {
                 if (!viewId) return;
                 let view = Knack.views[viewId];
-                if (view)
+                if (view && view.model)
                     return view.model.view;
-                //return (view.model.results_model && view.model.results_model.view) ? view.model.results_model.view : view.model.view;
                 else {
                     const scenes = Knack.scenes.models;
                     for (const scene of scenes) {
