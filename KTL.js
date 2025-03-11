@@ -165,7 +165,7 @@ function Ktl($, appInfo) {
             ktlKeywords[view.id] = viewKwObj;
 
             //Add scene keywords.
-            if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom || viewKwObj._nswd)
+            if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom || viewKwObj._nswd || viewKwObj._kn)
                 ktlKeywords[scene.attributes.key] = viewKwObj;
             else if (viewKwObj._footer)
                 ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
@@ -16502,10 +16502,11 @@ function Ktl($, appInfo) {
                     if (typeof Knack.views[viewId] === 'undefined' || typeof Knack.views[viewId].model.view.title === 'undefined')
                         return;
 
+                    if (ktlKeywords[Knack.router.current_scene_key] && ktlKeywords[Knack.router.current_scene_key]._kn)
+                        return;
+
                     var keywords = ktlKeywords[viewId];
                     if (!keywords) return;
-                    if (keywords._kn)
-                        return;
 
                     if (keywords._kr) {
                         var messagingBtn;
