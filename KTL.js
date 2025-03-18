@@ -8152,7 +8152,6 @@ function Ktl($, appInfo) {
 
                         const replacements = {
                             '{br}': '<br>',
-                            '{n}': '\n',
                             '{strong}': '<strong>',
                             '{/strong}': '</strong>',
                             '{em}': '<em>',
