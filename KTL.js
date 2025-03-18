@@ -5237,7 +5237,7 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
 
                     document.documentElement.style.setProperty('--filterBtnClr', sysColors.filterBtnClr);
-                    document.documentElement.style.setProperty('--publicFilterBtnClr', sysColors.publicFilterBtnClr);                    
+                    document.documentElement.style.setProperty('--publicFilterBtnClr', sysColors.publicFilterBtnClr);
                     document.documentElement.style.setProperty('--ktlActivePublicFilterBtnClr', sysColors.activePublicFilterBtnClr);
                     document.documentElement.style.setProperty('--ktlActiveFilterBorderClr', sysColors.darkHighSatClr);
 
@@ -8145,7 +8145,26 @@ function Ktl($, appInfo) {
 
                 for (let i = 0; i < paramGroups.length; i += 2) {
                     const [firstParam, [viewOptionTxt, ttipIcon]] = paramGroups.slice(i, i + 2);
-                    const ttipText = firstParam.map(item => item.trim()).join(', ');
+                    const ttipText = (() => {
+                        const baseText = firstParam
+                            .map(item => item.trim())
+                            .join(', ');
+
+                        const replacements = {
+                            '{br}': '<br>',
+                            '{n}': '\n',
+                            '{strong}': '<strong>',
+                            '{/strong}': '</strong>',
+                            '{em}': '<em>',
+                            '{/em}': '</em>',
+                            '{hr}': '<hr>',
+                        };
+
+                        return Object.entries(replacements).reduce(
+                            (text, [pattern, replacement]) => text.replaceAll(pattern, replacement),
+                            baseText
+                        );
+                    })();
                     const tooltipIcon = ttipIcon || 'fa-question-circle';
 
                     ['f', 'l', 'd', 't'].forEach(option => {
