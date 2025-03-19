@@ -8145,9 +8145,7 @@ function Ktl($, appInfo) {
 
                 for (let i = 0; i < paramGroups.length; i += 2) {
                     const [firstParam, [viewOptionTxt, ttipIcon]] = paramGroups.slice(i, i + 2);
-                    const ttipText = firstParam
-                            .map(item => item.trim())
-                            .join(', ');
+                    const ttipText = firstParam.map(item => item.trim()).join(', ');
                     const tooltipIcon = ttipIcon || 'fa-question-circle';
 
                     ['f', 'l', 'd', 't'].forEach(option => {
