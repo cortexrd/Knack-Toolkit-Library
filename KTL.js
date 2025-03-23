@@ -8145,25 +8145,7 @@ function Ktl($, appInfo) {
 
                 for (let i = 0; i < paramGroups.length; i += 2) {
                     const [firstParam, [viewOptionTxt, ttipIcon]] = paramGroups.slice(i, i + 2);
-                    const ttipText = (() => {
-                        const baseText = firstParam
-                            .map(item => item.trim())
-                            .join(', ');
-
-                        const replacements = {
-                            '{br}': '<br>',
-                            '{strong}': '<strong>',
-                            '{/strong}': '</strong>',
-                            '{em}': '<em>',
-                            '{/em}': '</em>',
-                            '{hr}': '<hr>',
-                        };
-
-                        return Object.entries(replacements).reduce(
-                            (text, [pattern, replacement]) => text.replaceAll(pattern, replacement),
-                            baseText
-                        );
-                    })();
+                    const ttipText = firstParam.map(item => item.trim()).join(', ');
                     const tooltipIcon = ttipIcon || 'fa-question-circle';
 
                     ['f', 'l', 'd', 't'].forEach(option => {
@@ -15669,10 +15651,26 @@ function Ktl($, appInfo) {
                     }
                 }
 
+                const ttipText = (() => {
+                    const replacements = {
+                        '{br}': '<br>',
+                        '{strong}': '<strong>',
+                        '{/strong}': '</strong>',
+                        '{em}': '<em>',
+                        '{/em}': '</em>',
+                        '{hr}': '<hr>',
+                    };
+
+                    return Object.entries(replacements).reduce(
+                        (text, [pattern, replacement]) => text.replaceAll(pattern, replacement),
+                        tooltipText
+                    );
+                })();
+
                 $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
                     const icon = $(this);
 
-                    const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${tooltipText}</div>`).appendTo('body');
+                    const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${ttipText}</div>`).appendTo('body');
                     const tooltipWidth = tooltipElement.outerWidth();
                     const tooltipHeight = tooltipElement.outerHeight();
 
