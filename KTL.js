@@ -7378,7 +7378,6 @@ function Ktl($, appInfo) {
                     keywords._stc && stickyReportTableColumns(report, keywords);
                 }
             });
-
         });
 
         function summaryPostProcessing(view, data) {
