@@ -7371,7 +7371,14 @@ function Ktl($, appInfo) {
 
                 $(document).trigger(`KTL.summaryReady.${viewId}`);
             }
-        })
+
+            iterateViewReports(view, (report, keywords) => {
+                if (keywords) {
+                    keywords._sth && stickyReportTableHeader(report, keywords);
+                    keywords._stc && stickyReportTableColumns(report, keywords);
+                }
+            });
+        });
 
         function summaryPostProcessing(view, data) {
             const viewId = view.key;
