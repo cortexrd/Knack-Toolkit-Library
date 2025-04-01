@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.30.0';
+    const KTL_VERSION = '0.30.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -18194,15 +18194,30 @@ function Ktl($, appInfo) {
                 if (sys.os === 'Linux' /*&& sys.processor.includes('arm')*/) {
                     ktl.sysInfo.getLinuxDeviceInfo()
                         .then(svrResponse => {
-                            if (svrResponse.deviceInfo.email && svrResponse.deviceInfo.email !== '' && svrResponse.deviceInfo.password && svrResponse.deviceInfo.password !== '') {
-                                console.log('Found credentials from IoT Server.  Logging in now...');
-                                $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
-                                $('#email').val(svrResponse.deviceInfo.email);
-                                $('#password').val(svrResponse.deviceInfo.password);
-                                $('.remember input')[0].checked = true;
+                            let credentials = null;
 
-                                //Do not use form submit. Must be click below, otherwise waitLoginOutcome is never called.
-                                //$('#' + viewId + ' form').submit();
+                            if (svrResponse.deviceInfo.displays) {
+                                //Get current URL to determine which display we're on.
+                                const currentURL = window.location.href;
+                                for (const displayKey in svrResponse.deviceInfo.displays) {
+                                    const display = svrResponse.deviceInfo.displays[displayKey];
+                                    if (display.URL && currentURL.includes(display.URL)) {
+                                        if (display.email && display.password) {
+                                            credentials = {
+                                                email: display.email,
+                                                password: display.password
+                                            };
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (credentials) {
+                                $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
+                                $('#email').val(credentials.email);
+                                $('#password').val(credentials.password);
+                                $('.remember input')[0].checked = true;
                                 $('.kn-login-form .kn-button.is-primary').click();
                             } else {
                                 getAutoLoginInfoFromLocalStorage();
@@ -18212,8 +18227,11 @@ function Ktl($, appInfo) {
                             console.log('getDeviceInfo in autoLogin failed, reason:', JSON.stringify(reason));
                             getAutoLoginInfoFromLocalStorage();
                         })
+                } else {
+                    getAutoLoginInfoFromLocalStorage();
                 }
 
+                //Legacy method, from encrypted localStorage.
                 function getAutoLoginInfoFromLocalStorage() {
                     var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
                     if (loginInfo) {
