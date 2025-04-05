@@ -11918,11 +11918,11 @@ function Ktl($, appInfo) {
         //Record History Feature - END
 
         async function fieldIsRequired(view) {
-            // Ensure the view exists, is not in an iFrame and is a form
-            if (!view || ktl.scenes.isiFrameWnd() || view.type !== 'form') return;
+            // Ensure the view exists and is a form
+            if (!view || view.type !== 'form') return;
 
             const viewId = view.key;
-            const requiredKeyword = '_req';
+            const kw = '_req';
             const requiredFields = new Set();
 
             /**
@@ -11937,8 +11937,8 @@ function Ktl($, appInfo) {
                     const fieldPromises = fieldIds.map(async (fieldId) => {
                         let foundKwObj = {};
                         ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                        if (foundKwObj[fieldId]?.[requiredKeyword]) {
-                            const reqEntry = foundKwObj[fieldId][requiredKeyword][0];
+                        if (foundKwObj[fieldId]?.[kw]) {
+                            const reqEntry = foundKwObj[fieldId][kw][0];
                             if (reqEntry && reqEntry.options) {
                                 const options = reqEntry.options;
                                 if (options && ktl.core.hasRoleAccess(options)) {
@@ -11963,8 +11963,8 @@ function Ktl($, appInfo) {
              */
             async function processViewKeywords() {
                 const keywords = ktlKeywords[viewId];
-                if (keywords && keywords[requiredKeyword] && keywords[requiredKeyword].length) {
-                    const kwList = ktl.core.getKeywordsByType(viewId, requiredKeyword);
+                if (keywords && keywords[kw] && keywords[kw].length) {
+                    const kwList = ktl.core.getKeywordsByType(viewId, kw);
                     const kwPromises = kwList.map(async (kwInstance) => {
                         if (kwInstance) {
                             if (kwInstance.options) {
