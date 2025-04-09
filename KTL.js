@@ -11578,7 +11578,7 @@ function Ktl($, appInfo) {
                     };
                 }
 
-                if (view.action === 'create' || view.action === 'insert') {
+                if (formActionText === 'Added' || formActionText === 'Deleted') {
                     const formattedNewValue = formatValue(newValue);
                     if (formattedNewValue)
                         changeLog[viewId][recordHistoryFieldIds.changes] += `${fieldName} (${fieldId}):\n\t${formattedNewValue}\n\n`;
@@ -11727,7 +11727,7 @@ function Ktl($, appInfo) {
 
                 recordId = record.id;
 
-                if (view.action === 'create' || view.action === 'insert') {
+                if (formActionText === 'Added' || formActionText === 'Deleted') {
                     compareNewAndLastData(viewId, record, {});
                 } else {
                     const lastData = viewData[recordId];
@@ -11773,6 +11773,12 @@ function Ktl($, appInfo) {
                     }
                 });
             }
+
+            $(document).off(`knack-record-delete.${viewId}.ktl_arh`).on(`knack-record-delete.${viewId}.ktl_arh`, function (event, view, record) {
+                formActionText = 'Deleted';
+                identifier = record[identifierFieldId];
+                updateDataAndLogDeltas(viewId, record);
+            });
         }
 
         function viewRecordHistory(viewId, keywords) {
