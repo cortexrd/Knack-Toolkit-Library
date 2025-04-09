@@ -171,15 +171,11 @@ function Ktl($, appInfo) {
                 ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
             else if (viewKwObj._loh) {
                 const logOutHere = scene.attributes.slug;
-                ktlKeywords.ktlLogOutHere = logOutHere;
-                $(document).on('click', '.kn-log-out', e => {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    $('.kn-scene').addClass('ktlHidden');
-                    window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + logOutHere;
-                    ktl.account.logout();
-                    setTimeout(() => { $('.kn-scene').removeClass('ktlHidden'); }, 100);
-                })
+                if (logOutHere) {
+                    Knack.user.bind('logout', function () {
+                        window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + logOutHere;
+                    });
+                }
             }
         }
     };
@@ -7663,9 +7659,11 @@ function Ktl($, appInfo) {
 
             if (view.scene && (view.scene.key !== Knack.router.scene_view.model.attributes.key)) {
                 const isLoginPage = document.querySelector('.kn-login');
-                if (isLoginPage && isLoginPage.id && ktlKeywords[isLoginPage.id] && ktlKeywords[isLoginPage.id]._al) {
-                    ktl.account.autoLogin(view.key);
-                    return;
+                if (isLoginPage) {
+                    if (isLoginPage.id && ktlKeywords[isLoginPage.id] && ktlKeywords[isLoginPage.id]._al) {
+                        ktl.account.autoLogin(view.key);
+                        return;
+                    }
                 }
             }
 
