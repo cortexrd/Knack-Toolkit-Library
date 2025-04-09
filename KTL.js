@@ -11723,15 +11723,17 @@ function Ktl($, appInfo) {
             }
 
             function updateDataAndLogDeltas(viewId, record) {
+                if (!record.id) return;
+
                 recordId = record.id;
 
-                const lastData = viewData[recordId];
-                if (lastData !== undefined)
-                    compareNewAndLastData(viewId, record, lastData);
+                if (view.action === 'create' || view.action === 'insert') {
+                    compareNewAndLastData(viewId, record, {});
+                } else {
+                    const lastData = viewData[recordId];
+                    if (lastData !== undefined)
+                        compareNewAndLastData(viewId, record, lastData);
 
-                if (view.action === 'create' || view.action === 'insert')
-                    viewData[recordId] = {};
-                else {
                     if (view.type === 'form')
                         viewData[recordId] = JSON.parse(JSON.stringify(record));
                 }
