@@ -1671,8 +1671,6 @@ function Ktl($, appInfo) {
 
                 numericValue = ktl.core.parseNumericValue(value);
 
-                console.log(`extractNumericValue(${fieldId}): ${value} => ${numericValue}`);
-
                 if (isNaN(numericValue))
                     return;
 
@@ -8999,7 +8997,7 @@ function Ktl($, appInfo) {
                         if (viewType === 'list')
                             targetSel = '#' + targetViewId + ' [data-record-id="' + record.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
                         else if (viewType === 'details')
-                            targetSel = '#' + targetViewId + ' .' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
+                            targetSel = '#' + targetViewId + ' .' + (propagate ? targetFieldId : `${targetFieldId} .kn-detail-body${span}`);
                         else if (viewType === 'form')
                             targetSel = `#${viewId} [data-input-id=${targetFieldId}].kn-read-only`; //Limitation: we can only select the whole field, including label.
                     }
@@ -9054,6 +9052,14 @@ function Ktl($, appInfo) {
                                 //Merge current and new styles.
                                 const currentStyle = $(targetSel).attr('style');
                                 $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                //Merge current and new styles.
+                                if ((viewType === 'list' || viewType === 'details') && $(targetSel).find('h1, h2').length > 0) {
+                                    const lastSpan = $(targetSel).find('span').last();
+                                    if (lastSpan.length) {
+                                        const currentStyle = lastSpan.attr('style');
+                                        lastSpan.attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                    }
+                                }
                                 if (isRating) {
                                     const ratingValue = Number($(`${targetSel} [id]`)[0].value);
                                     if (fgColor) {
@@ -22263,8 +22269,7 @@ function ktlCompare(a, operator, b) {
 
     const numA = Number(a);
     const numB = Number(b);
-    console.log(`Comparing ${a} ${operator} ${b}`);
-    console.log(`numA: ${numA}, numB: ${numB}`);
+
     if ((operator === 'is' || operator === 'eq') && a === b)
         conditionMatches = true;
     else if ((operator === 'not' || operator === 'neq') && a !== b)
