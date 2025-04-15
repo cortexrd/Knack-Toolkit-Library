@@ -1569,28 +1569,47 @@ function Ktl($, appInfo) {
             },
 
             parseNumericValue: function (textValue) {
-                let value = textValue;
-                if (value.match(/[^$,.£€\ \d-]/))
+                // Handle empty or null values
+                if (!textValue && textValue !== 0) return 0;
+
+                let value = textValue.toString();
+
+                // First, extract all possible numeric patterns from the string
+                // This regex looks for numbers with optional decimal parts and negative signs
+                const numericRegex = /-?\d+(?:[.,]\d+)?/;
+                const matches = value.match(numericRegex);
+
+                if (!matches || matches.length === 0) {
                     return NaN;
-
-                // Check if the value starts with a negative sign followed by a currency symbol
-                if (value.startsWith('-') && ['$', '£', '€'].includes(value[1]))
-                    value = `-${value.slice(2)}`; // remove currency symbol and keep the negative sign
-                else if (value && ['$', '£', '€'].includes(value[0]))
-                    value = value.slice(1); // remove currency symbol
-
-                value = value.replace(new RegExp("\\ ", 'g'), ''); //remove spaces
-                const commasCount = [...value.matchAll(new RegExp('\\,', 'g'))].length;
-                const dotsCount = [...value.matchAll(new RegExp('\\.', 'g'))].length;
-                if (commasCount > 1) { // expecting thousands separated by commas
-                    value = value.replace(new RegExp("\\,", 'g'), '');
-                } else if (dotsCount === 1) { // expecting decimals separated by dot
-                    value = value.replace(new RegExp("\\,", 'g'), ''); // remove comma
-                } else if (commasCount === 1 && dotsCount === 0 && value.split(',')[0].length > 3) { // expecting comma separating decimals
-                    value = value.replace(/,/g, '.');
-                } else { // expecting thousand separated by comma without decimals
-                    value = value.replace(new RegExp("\\,", 'g'), '');
                 }
+
+                // Use the first match as our numeric value
+                value = matches[0];
+
+                // Handle comma/dot format determination
+                const commasCount = (value.match(/,/g) || []).length;
+                const dotsCount = (value.match(/\./g) || []).length;
+
+                if (commasCount > 1) {
+                    // Multiple commas indicates thousands separators
+                    value = value.replace(/,/g, '');
+                } else if (dotsCount === 1) {
+                    // Single dot is likely a decimal point - remove any commas
+                    value = value.replace(/,/g, '');
+                } else if (commasCount === 1 && dotsCount === 0) {
+                    // Single comma could be a decimal separator or thousands separator
+                    const commaPos = value.indexOf(',');
+                    const digitsAfterComma = value.length - commaPos - 1;
+
+                    // If comma is near the end (1-3 digits after), treat as decimal separator
+                    if (digitsAfterComma > 0 && digitsAfterComma <= 3) {
+                        value = value.replace(',', '.');
+                    } else {
+                        // Otherwise treat as thousands separator
+                        value = value.replace(',', '');
+                    }
+                }
+
                 return parseFloat(value);
             },
 
@@ -8978,7 +8997,7 @@ function Ktl($, appInfo) {
                         if (viewType === 'list')
                             targetSel = '#' + targetViewId + ' [data-record-id="' + record.id + '"]' + (propagate ? ' .kn-detail-body' + span : ' .' + targetFieldId + ' .kn-detail-body' + span);
                         else if (viewType === 'details')
-                            targetSel = '#' + targetViewId + ' .' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span);
+                            targetSel = '#' + targetViewId + ' .' + (propagate ? targetFieldId : `${targetFieldId} .kn-detail-body${span}`);
                         else if (viewType === 'form')
                             targetSel = `#${viewId} [data-input-id=${targetFieldId}].kn-read-only`; //Limitation: we can only select the whole field, including label.
                     }
@@ -9033,6 +9052,14 @@ function Ktl($, appInfo) {
                                 //Merge current and new styles.
                                 const currentStyle = $(targetSel).attr('style');
                                 $(targetSel).attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                //Merge current and new styles.
+                                if ((viewType === 'list' || viewType === 'details') && $(targetSel).find('h1, h2').length > 0) {
+                                    const lastSpan = $(targetSel).find('span').last();
+                                    if (lastSpan.length) {
+                                        const currentStyle = lastSpan.attr('style');
+                                        lastSpan.attr('style', (currentStyle ? currentStyle + '; ' : '') + style);
+                                    }
+                                }
                                 if (isRating) {
                                     const ratingValue = Number($(`${targetSel} [id]`)[0].value);
                                     if (fgColor) {
