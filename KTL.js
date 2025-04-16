@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.30.2';
+    const KTL_VERSION = '0.30.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -5778,7 +5778,7 @@ function Ktl($, appInfo) {
         }
 
         $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
-            if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
+            if ((ktl.scenes.isiFrameWnd())) return;
 
             const masterViewId = view.key;
             const keywords = ktlKeywords[masterViewId];
@@ -5794,8 +5794,7 @@ function Ktl($, appInfo) {
 
         //Linked Filters _lf feature, Report Subviews
         $(document).on('knack-records-render.report', function (e, view, data) {
-
-            if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
+            if ((ktl.scenes.isiFrameWnd())) return;
 
             const applyFilters = (keyword, index) => {
                 if (!keyword._lf) return;

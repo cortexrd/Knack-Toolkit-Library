@@ -10,7 +10,7 @@
 
 var callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.30.2';
+    const KTL_LATEST_JS_VERSION = '0.30.4';
     const KTL_LATEST_CSS_VERSION = '0.7.14';
 
     var cssVersion = KTL_LATEST_CSS_VERSION;
@@ -40,7 +40,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         localStorage.setItem(lsShortName + 'ktlCode', ktlCode);
     }
 
-    //Cleanup legacy and update to new naming: dev -> local 
+    //Cleanup legacy and update to new naming: dev -> local
     const legacyDev = localStorage.getItem(lsShortName + 'dev');
     if (legacyDev !== null) {
         localStorage.removeItem(lsShortName + 'dev');
