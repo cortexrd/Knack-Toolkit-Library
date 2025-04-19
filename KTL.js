@@ -7503,12 +7503,17 @@ function Ktl($, appInfo) {
             }
         }
 
+        $(document).on('knack-records-render.any', function (e, view, data) {
+            if (view.type === 'report')
+                ktlProcessKeywords(view, data);
+        })
+
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
             if (view.type === 'table' || view.type === 'search')
                 summaryPostProcessing(view, data);
-            else
-                ktlProcessKeywords(view, data);
+            else if (view.type !== 'report')
+                ktlProcessKeywords(view, data); //Fixes issue #488.  Maybe we should move ktlProcessKeywords to records render instead?
 
             ktl.views.addViewId(view);
 
