@@ -771,6 +771,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	overflow: hidden;
 	text-overflow: ellipsis;
 	display: inline-block;
+	vertical-align: bottom;
 }
 
 .ktlClickableCell {
