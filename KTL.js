@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.30.5';
+    const KTL_VERSION = '0.30.6';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -4152,7 +4152,7 @@ function Ktl($, appInfo) {
             hideFields: function (viewId, keywords) {
                 if (!viewId || !keywords) return;
 
-                if (!$('#' + viewId).children().length) {
+                if ($('.kn-modal').length && !$('#' + viewId).children().length) {
                     // Issue #458
                     // View not rendered yet: Need special processing for modals, where hidden fields are briefly shown before the kw is applied.
                     $('.kn-modal').addClass('ktlHidden_viewTemp_modal');
@@ -4189,6 +4189,8 @@ function Ktl($, appInfo) {
                     for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
                         execKw(kwList[kwIdx], kwIdx);
                     }
+
+                    $('.kn-modal').removeClass('ktlHidden_viewTemp_modal');
 
                     function execKw(kwInstance, instanceCount) {
                         const options = kwInstance.options;
@@ -4237,13 +4239,13 @@ function Ktl($, appInfo) {
                             ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
                                 .then(() => {
                                     $('#' + viewId).removeClass(`ktlHidden_hf_viewTemp_${instanceCount}`);
-                                    $('.kn-modal').removeClass('ktlHidden_viewTemp_modal');
                                 })
                         } else {
                             $('#' + viewId).removeClass(`ktlHidden_hf_viewTemp_${instanceCount}`);
-                            $('.kn-modal').removeClass('ktlHidden_viewTemp_modal');
                         }
                     }
+                } else {
+                    $('.kn-modal').removeClass('ktlHidden_viewTemp_modal');
                 }
             },
 
