@@ -5907,7 +5907,7 @@ function Ktl($, appInfo) {
             $(`#${view.key} .table-keyword-search`).on('submit', updateTables);
         });
 
-        $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list', function (e, view, data) {
+        $(document).on('knack-records-render.report knack-records-render.table knack-records-render.list knack-records-render.calendar', function (e, view, data) {
             if ((ktl.scenes.isiFrameWnd()) || !ktl.core.getCfg().enabled.userFilters) return;
 
             const viewId = view.key;
@@ -15304,6 +15304,44 @@ function Ktl($, appInfo) {
 
                 if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                     var perPage = keywords[kw][0].params[0][0];
+
+                    let inserted = false;
+
+                    // Parse and validate perPage value between 1-2000
+                    perPage = parseInt(perPage, 10);
+                    if (isNaN(perPage) || perPage < 1) perPage = 10;
+                    if (perPage > 2000) perPage = 2000;
+
+                    // Check if value exists in dropdown and add if needed
+                    const $select = $('#' + viewId + ' select[name="limit"]');
+                    if ($select.length) {
+                        let optionExists = false;
+                        $select.find('option').each(function () {
+                            if (parseInt($(this).val(), 10) === perPage) {
+                                optionExists = true;
+                                return false;
+                            }
+                        });
+
+                        if (!optionExists) {
+                            // Add new option at appropriate position
+                            const $options = $select.find('option');
+
+                            $options.each(function (idx) {
+                                const val = parseInt($(this).val(), 10);
+                                if (!isNaN(val) && perPage < val) {
+                                    $(`<option value="${perPage}">${perPage} per page</option>`).insertBefore($(this));
+                                    inserted = true;
+                                    return false;
+                                }
+                            });
+
+                            if (!inserted) {
+                                $select.append(`<option value="${perPage}">${perPage} per page</option>`);
+                            }
+                        }
+                    }
+
                     var href = window.location.href;
                     if (!href.includes(viewId + '_per_page=')) {
                         $('#' + viewId).addClass('ktlHidden_dr');
@@ -15329,7 +15367,7 @@ function Ktl($, appInfo) {
                         Knack.router.navigate(Knack.getSceneHash() + "?" + Knack.getQueryString(i), false);
                         Knack.setHashVars();
 
-                        if (document.querySelector('.kn-view.kn-table.' + viewId + ' .kn-table-wrapper')) { //This is to support Search views, otherwise you get an error on first render.
+                        if (document.querySelector('.kn-view.kn-table.' + viewId + ' .kn-table-wrapper')) {
                             Knack.models[viewId].fetch({
                                 success: () => {
                                     Knack.hideSpinner();
@@ -15338,6 +15376,26 @@ function Ktl($, appInfo) {
                             });
                         } else
                             $('#' + viewId).removeClass('ktlHidden_dr');
+                    }
+
+
+                    if ($select.length) {
+                        function getPerPageFromURL() {
+                            const url = window.location.href;
+                            const regex = new RegExp(`${viewId}_per_page=(\\d+)`);
+                            const match = url.match(regex);
+
+                            if (match && match[1]) {
+                                return parseInt(match[1], 10);
+                            }
+
+                            return null;
+                        }
+
+                        const currentPerPage = getPerPageFromURL();
+                        if (currentPerPage && currentPerPage === perPage) {
+                            $select.val(perPage.toString());
+                        }
                     }
                 }
             },
