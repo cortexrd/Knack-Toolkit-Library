@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.30.4';
+    const KTL_VERSION = '0.30.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -4152,6 +4152,13 @@ function Ktl($, appInfo) {
             hideFields: function (viewId, keywords) {
                 if (!viewId || !keywords) return;
 
+                if (!$('#' + viewId).children().length) {
+                    // Issue #458
+                    // View not rendered yet: Need special processing for modals, where hidden fields are briefly shown before the kw is applied.
+                    $('.kn-modal').addClass('ktlHidden_viewTemp_modal');
+                    return;
+                }
+
                 const kw = '_hf';
 
                 //Process fields keyword
@@ -4230,9 +4237,11 @@ function Ktl($, appInfo) {
                             ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
                                 .then(() => {
                                     $('#' + viewId).removeClass(`ktlHidden_hf_viewTemp_${instanceCount}`);
+                                    $('.kn-modal').removeClass('ktlHidden_viewTemp_modal');
                                 })
                         } else {
                             $('#' + viewId).removeClass(`ktlHidden_hf_viewTemp_${instanceCount}`);
+                            $('.kn-modal').removeClass('ktlHidden_viewTemp_modal');
                         }
                     }
                 }
@@ -7507,6 +7516,11 @@ function Ktl($, appInfo) {
             if (view.type === 'report')
                 ktlProcessKeywords(view, data);
         })
+
+        //$(document).on('knack-modal-render', function (e, view, data) {
+            //Called before view render.  Can be useful some day.
+            //console.log('render modal', view);
+        //})
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
@@ -16370,7 +16384,7 @@ function Ktl($, appInfo) {
                     .catch(() => { })
 
                 for (const view of Knack.router.scene_view.model.attributes.views) {
-                    $(document).on('knack-view-init.' + view.key, function (event, view) {
+                    $(document).off('knack-view-init.' + view.key).on('knack-view-init.' + view.key, function (event, view) {
                         $(document).trigger('KTL.preprocessView', view);
                     })
                 }
