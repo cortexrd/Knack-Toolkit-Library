@@ -417,21 +417,6 @@ function Ktl($, appInfo) {
         })
 
         return {
-            waitDefaultConfigurationReady: function () {
-                return new Promise(function (resolve, reject) {
-                    if (defaultConfigurationReady) return resolve();
-
-                    $(document).on('KTL.DefaultConfigReady', () => {
-                        clearTimeout(failsafeTimeout);
-                        return resolve();
-                    })
-
-                    const failsafeTimeout = setTimeout(function () {
-                        reject();
-                    }, 10000);
-                })
-            },
-
             setCfg: function (cfgObj = {}) {
                 cfgObj.developerNames && (cfg.developerNames = cfgObj.developerNames);
                 cfgObj.developerEmail && (cfg.developerEmail = cfgObj.developerEmail);
@@ -20456,9 +20441,10 @@ function Ktl($, appInfo) {
                     return;
                 }
 
-                var wdLoopTimeout;
+                let wdLoopTimeoutId;
 
-                var simulateCrash = false; //Just for temporary testing during development.
+                let simulateCrash = false; //Just for temporary testing during development.
+                let incompletePageFound = false; //Will become true if parts of the page are missing.
 
                 if (cfg.recoveryWatchdogEnabled) {
                     $(document).one('click', resetWdOntouch);
@@ -20486,7 +20472,7 @@ function Ktl($, appInfo) {
                     function resetRecoveryWatchdog(wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
                         function recoveryWdLoop() {
                             if (!simulateCrash) {
-                                clearTimeout(wdLoopTimeout);
+                                clearTimeout(wdLoopTimeoutId);
                                 ktl.sysInfo.sendRecoveryWdHeartbeat(wdTimeoutDelay)
                                     .then(svrResponse => {
                                         if (svrResponse.deviceInfo) {
@@ -20515,12 +20501,12 @@ function Ktl($, appInfo) {
 
                                             if (!$('#additionalInfoDiv').length) {
                                                 const vbDiv = document.querySelector('#addVersionInfoDiv');
-                                                var additionalInfoDiv = document.createElement('div');
+                                                const additionalInfoDiv = document.createElement('div');
                                                 additionalInfoDiv.setAttribute('id', 'additionalInfoDiv');
                                                 vbDiv.appendChild(additionalInfoDiv);
 
-                                                var sourceDiv = document.getElementById('verButtonId');
-                                                var targetDiv = document.getElementById('additionalInfoDiv');
+                                                const sourceDiv = document.getElementById('verButtonId');
+                                                const targetDiv = document.getElementById('additionalInfoDiv');
 
                                                 targetDiv.style.cssText = sourceDiv.style.cssText;
                                                 $('#addVersionInfoDiv').css('display', 'flex');
@@ -20540,7 +20526,7 @@ function Ktl($, appInfo) {
                                         wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY;
                                     })
                                     .finally(() => {
-                                        wdLoopTimeout = setTimeout(recoveryWdLoop, wdTimeoutDelay / WD_SAFETY_MARGIN * 1000);
+                                        wdLoopTimeoutId = setTimeout(recoveryWdLoop, wdTimeoutDelay / WD_SAFETY_MARGIN * 1000);
                                     });
                             }
                         }
@@ -20550,12 +20536,12 @@ function Ktl($, appInfo) {
 
                             if (!$('#additionalInfoDiv').length) {
                                 const vbDiv = document.querySelector('#addVersionInfoDiv');
-                                var additionalInfoDiv = document.createElement('div');
+                                const additionalInfoDiv = document.createElement('div');
                                 additionalInfoDiv.setAttribute('id', 'additionalInfoDiv');
                                 vbDiv.appendChild(additionalInfoDiv);
 
-                                var sourceDiv = document.getElementById('verButtonId');
-                                var targetDiv = document.getElementById('additionalInfoDiv');
+                                const sourceDiv = document.getElementById('verButtonId');
+                                const targetDiv = document.getElementById('additionalInfoDiv');
 
                                 targetDiv.style.cssText = sourceDiv.style.cssText;
                                 $('#addVersionInfoDiv').css('display', 'flex');
