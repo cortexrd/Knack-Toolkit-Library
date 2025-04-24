@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.30.6';
+    const KTL_VERSION = '0.30.7';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -37,7 +37,7 @@ function Ktl($, appInfo) {
 
     const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency', 'timer'];
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1026
+    //KEC stands for "KTL Event Code".  Next:  KEC_1027
 
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
@@ -20425,9 +20425,123 @@ function Ktl($, appInfo) {
         $(document).on('KTL.DefaultConfigReady', () => {
             if (ktl.scenes.isiFrameWnd()) return;
 
+            /**
+             * Page Integrity Monitor
+             *
+             * Continuously checks HTML structure to detect partial page loads
+             * or server errors. Auto-retries 3 times at 5s intervals before
+             * forcing page reload. Solves unattended kiosk devices hanging
+             * on white screens or incomplete views.
+             */
+            let retryCount = 0;
+            const MAX_RETRIES = 3;
+            const RETRY_INTERVAL = 5000;
+            const MONITOR_INTERVAL = 30000; // Check every 30 seconds
+            let monitorIntervalId = null;
+
+            function monitorPageIntegrity() {
+                clearInterval(monitorIntervalId);
+                monitorIntervalId = setInterval(() => {
+                    checkPageLoaded();
+                }, MONITOR_INTERVAL);
+
+                //console.log(`Page monitoring started. Checking every ${MONITOR_INTERVAL / 1000} seconds`);
+            }
+
+            function checkPageLoaded() {
+                //console.log('checkPageLoaded');
+                if (!document.querySelector('#knack-body') || !document.querySelector('#knack-dist_1') || !document.querySelector('.kn-scene')) {
+                    handleRetry('Basic page elements not loaded');
+                    return false;
+                }
+
+                try {
+                    // Make sure Knack router is initialized
+                    if (!Knack.router || !Knack.router.scene_view || !Knack.router.scene_view.model || !Knack.router.scene_view.model.views) {
+                        handleRetry('Knack router not initialized');
+                        return false;
+                    }
+
+                    let allOk = true;
+                    let viewsToCheck = [];
+                    let reason = '';
+
+                    for (const view of Knack.router.scene_view.model.views.models) {
+                        const viewId = view.id;
+                        viewsToCheck.push(viewId);
+
+                        const viewSelector = `#${viewId}`;
+                        const viewElement = document.querySelector(viewSelector);
+
+                        if (!viewElement || viewElement.children.length === 0) {
+                            allOk = false;
+                            reason = `View ${viewId} not properly loaded`;
+                            break;
+                        } else {
+                            //The view is there, but check if the basic elements are present.
+                            const viewType = view.attributes.type;
+                            if (viewType === 'table' && !viewElement.querySelector('tbody tr')) {
+                                allOk = false;
+                                reason = `Grid has no rows: ${viewId}`;
+                                break;
+                            } else if (viewType === 'details') {
+                                //Check if there's supposed to be at least one field and if it's there.
+                                if (Knack.views[viewId]?.model?.view?.columns[0]?.groups[0]?.columns[0]?.length > 0) {
+                                    if (!document.querySelector(`#${viewId} .kn-detail-body`)) {
+                                        allOk = false;
+                                        reason = `Details view has no field: ${viewId}`;
+                                        break;
+                                    }
+                                }
+                            } else if (viewType === 'form' && !viewElement.querySelector(`#${viewId} button[type="submit"]`)) {
+                                allOk = false;
+                                reason = `Form has no submit button: ${viewId}`;
+                                break;
+                            }
+
+                            //TODO: add mode view types as needed.
+                        }
+                    }
+
+                    if (!allOk) {
+                        handleRetry(reason);
+                        return false;
+                    }
+
+                    retryCount = 0;
+                    return true;
+                } catch (e) {
+                    console.error(`Error validating views: ${e.message}`);
+                    handleRetry(`Error: ${e.message}`);
+                    return false;
+                }
+            }
+
+            function handleRetry(reason) {
+                retryCount++;
+                console.log(`${reason}. Retry ${retryCount}/${MAX_RETRIES} in ${RETRY_INTERVAL / 1000} seconds`);
+
+                if (retryCount >= MAX_RETRIES) {
+                    console.log("Max retries reached. Refreshing page...");
+                    ktl.log.addLog(ktl.const.LS_SERVER_ERROR, `KEC_1026 - Server Error: Incomplete page found: ${reason}`);
+                    window.location.reload();
+                }
+
+                setTimeout(() => {
+                    const checkResult = checkPageLoaded();
+                    if (checkResult) {
+                        console.log("Page loaded successfully after retry");
+                    }
+                }, RETRY_INTERVAL);
+            }
+            ////////////////////////////////////////////////////////////
+
             this.recoveryWatchdog = (function () {
-                //Check if we're running Android with Kiosk Browser app,
-                //or Linux - based(ex: Raspberry PI 4) and enable the Recovery Watchdog.
+                monitorPageIntegrity();
+
+                //For embedded devices...
+                // Check if we're running Android with Kiosk Browser app,
+                // or Linux - based(ex: Raspberry PI 4) and enable the Recovery Watchdog.
                 let deviceIsCompatibleWithRecoveryWd = false;
                 if (typeof Android !== 'undefined' && typeof Android.resetWatchdog === 'function') {
                     deviceIsCompatibleWithRecoveryWd = true;
@@ -20444,7 +20558,6 @@ function Ktl($, appInfo) {
                 let wdLoopTimeoutId;
 
                 let simulateCrash = false; //Just for temporary testing during development.
-                let incompletePageFound = false; //Will become true if parts of the page are missing.
 
                 if (cfg.recoveryWatchdogEnabled) {
                     $(document).one('click', resetWdOntouch);
