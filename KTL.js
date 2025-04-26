@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.30.7';
+    const KTL_VERSION = '0.30.11';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2825,6 +2825,8 @@ function Ktl($, appInfo) {
         })
 
         document.addEventListener('click', function (e) {
+            if (!e?.target || !e?.target?.closest) return;
+
             //Work in progress:  When user clicks on a cell for inline editing, provide a method to change its style, to make it wider for example.
             if (e.target.classList) {
                 if (e.target.closest('.cell-editable .cell-edit')) {
@@ -2836,7 +2838,7 @@ function Ktl($, appInfo) {
         })
 
         document.addEventListener('focus', function (e) {
-            if (!e.target) return;
+            if (!e?.target || !e?.target?.closest) return;
 
             let viewId = e.target.closest('.kn-view');
             if (viewId)
@@ -20468,6 +20470,9 @@ function Ktl($, appInfo) {
 
                     for (const view of Knack.router.scene_view.model.views.models) {
                         const viewId = view.id;
+                        if (viewId && !Knack.views[viewId]) //Check to be sure it's not a "dead" view that remains in the Builder.  That's a bug in Knack.
+                            continue;
+
                         viewsToCheck.push(viewId);
 
                         const viewSelector = `#${viewId}`;
@@ -20479,13 +20484,17 @@ function Ktl($, appInfo) {
                             break;
                         } else {
                             //The view is there, but check if the basic elements are present.
-                            const viewType = view.attributes.type;
+                            const viewType = view?.attributes?.type;
                             if (viewType === 'table' && !viewElement.querySelector('tbody tr')) {
                                 allOk = false;
                                 reason = `Grid has no rows: ${viewId}`;
                                 break;
                             } else if (viewType === 'details') {
                                 //Check if there's supposed to be at least one field and if it's there.
+
+                                if (Knack.views[viewId]?.model?.view?.hide_fields === true)
+                                    break; //No point validating fields since we can't rely on anything when that flag is enabled.
+
                                 if (Knack.views[viewId]?.model?.view?.columns[0]?.groups[0]?.columns[0]?.length > 0) {
                                     if (!document.querySelector(`#${viewId} .kn-detail-body`)) {
                                         allOk = false;
@@ -20537,7 +20546,8 @@ function Ktl($, appInfo) {
             ////////////////////////////////////////////////////////////
 
             this.recoveryWatchdog = (function () {
-                monitorPageIntegrity();
+                if (cfg.pageIntegrityWatchdogEnabled)
+                    monitorPageIntegrity();
 
                 //For embedded devices...
                 // Check if we're running Android with Kiosk Browser app,
@@ -20680,6 +20690,7 @@ function Ktl($, appInfo) {
 
             setCfg: function (cfgObj = {}) {
                 cfgObj.recoveryWatchdogEnabled && (cfg.recoveryWatchdogEnabled = cfgObj.recoveryWatchdogEnabled);
+                cfgObj.pageIntegrityWatchdogEnabled && (cfg.pageIntegrityWatchdogEnabled = cfgObj.pageIntegrityWatchdogEnabled);
             },
 
             getCfg: function () {
