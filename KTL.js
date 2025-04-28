@@ -4142,7 +4142,7 @@ function Ktl($, appInfo) {
                 if ($('.kn-modal').length && !$('#' + viewId).children().length) {
                     // Issue #458
                     // View not rendered yet: Need special processing for modals, where hidden fields are briefly shown before the kw is applied.
-                    $('.kn-modal').addClass('ktlHidden_viewTemp_modal');
+                    $('.kn-modal .kn-scene').addClass('ktlHidden_viewTemp_modal');
                     return;
                 }
 
@@ -4177,7 +4177,7 @@ function Ktl($, appInfo) {
                         execKw(kwList[kwIdx], kwIdx);
                     }
 
-                    $('.kn-modal').removeClass('ktlHidden_viewTemp_modal');
+                    $('.kn-modal .kn-scene').removeClass('ktlHidden_viewTemp_modal');
 
                     function execKw(kwInstance, instanceCount) {
                         const options = kwInstance.options;
@@ -4232,7 +4232,7 @@ function Ktl($, appInfo) {
                         }
                     }
                 } else {
-                    $('.kn-modal').removeClass('ktlHidden_viewTemp_modal');
+                    $('.kn-modal .kn-scene').removeClass('ktlHidden_viewTemp_modal');
                 }
             },
 
