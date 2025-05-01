@@ -1,6 +1,6 @@
 # Knack Toolkit Library Changelog
 
-Changes after version 0.27.10
+Changelog for Knack Toolkit Library
 
 
 ## 0.30.12    *2025-04-29*
