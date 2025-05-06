@@ -3092,8 +3092,8 @@ function Ktl($, appInfo) {
                 if (!viewId || !field) return;
 
                 var fieldAttr = field.attributes['data-input-id'] || field.attributes.id;
-                var fieldId = fieldAttr.value;
-                if (!fieldId.startsWith('field_')) return;
+                var fieldId = fieldAttr && fieldAttr.value;
+                if (!fieldId || !fieldId.startsWith('field_')) return;
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 const fieldType = ktl.fields.getFieldType(fieldId);
                 if ((fieldType && fieldType !== 'rating' && numericFieldTypes.includes(fieldType)) || fieldDesc.includes('_num') || fieldDesc.includes('_int') || textAsNumeric.includes(fieldId)) {
@@ -15210,15 +15210,21 @@ function Ktl($, appInfo) {
                                 $(selector).each(function() {
                                     const $span = $(this);
                                     const fullText = $span.text().trim();
+                                    const $tdParent = $span.closest('td');
 
-                                    // Add title attribute with the full text for tooltip on hover
-                                    $span.closest('td').attr('title', fullText);
+                                    // Only add title if it doesn't already exist or is different from fullText
+                                    const existingTitle = $tdParent.attr('title');
+                                    if (!existingTitle || existingTitle !== fullText) {
+                                        $tdParent.attr('title', fullText);
+                                    }
 
-                                    // Apply truncation styles
-                                    $span.addClass('ktlTruncateCellText')
-                                         .css({
-                                             'max-width': widthAmount + 'px',
-                                         });
+                                    // Apply truncation styles if not already applied
+                                    if (!$span.hasClass('ktlTruncateCellText')) {
+                                        $span.addClass('ktlTruncateCellText')
+                                             .css({
+                                                 'max-width': widthAmount + 'px',
+                                             });
+                                    }
                                 });
                             }
                         });
