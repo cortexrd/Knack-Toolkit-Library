@@ -15177,41 +15177,53 @@ function Ktl($, appInfo) {
 
             truncateText: function (view, keywords) {
                 const kw = '_trk';
-                if (!view || !keywords || (keywords && !keywords[kw])) return;
+                if (!view || !keywords || !keywords[kw]) return;
 
                 if (keywords[kw].length && keywords[kw][0].options) {
                     const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
+                const viewId = view.key;
                 const viewType = view.type;
+
                 if (viewType === 'table') {
-                    var columns = view.columns;
+                    const columns = view.columns;
                     if (!columns) return;
 
                     try {
                         columns.forEach(col => {
-                            var widthType = col.width.type;
-                            var widthUnits = col.width.units;
-                            if (widthType === 'custom' && widthUnits === 'px') {
-                                var widthAmount = col.width.amount;
+                            // Only process columns with custom width in pixels
+                            if (col.width && col.width.type === 'custom' &&
+                                col.width.units === 'px' && col.type === 'field' && col.field) {
 
-                                if (col.type === 'field') {
-                                    if (col.field) {
-                                        var fieldId = col.field.key;
-                                        //Remove anything after field_xxx, like pseudo selectors with colon.
-                                        var extractedField = fieldId.match(/field_\d+/);
-                                        if (extractedField) {
-                                            fieldId = extractedField[0];
-                                            $('#' + view.key + ' td.' + fieldId + ' span').addClass('ktlTruncateCellText');
-                                            $('#' + view.key + ' td.' + fieldId + ' span').css('max-width', widthAmount + 'px');
-                                        }
-                                    }
-                                }
+                                const widthAmount = col.width.amount;
+                                const fieldId = col.field.key;
+
+                                // Extract the base field_xxx ID
+                                const fieldMatch = fieldId.match(/field_\d+/);
+                                if (!fieldMatch) return;
+
+                                const baseFieldId = fieldMatch[0];
+                                const selector = '#' + viewId + ' td.' + baseFieldId + ' span';
+
+                                $(selector).each(function() {
+                                    const $span = $(this);
+                                    const fullText = $span.text().trim();
+
+                                    // Add title attribute with the full text for tooltip on hover
+                                    $span.closest('td').attr('title', fullText);
+
+                                    // Apply truncation styles
+                                    $span.addClass('ktlTruncateCellText')
+                                         .css({
+                                             'max-width': widthAmount + 'px',
+                                         });
+                                });
                             }
-                        })
+                        });
                     } catch (e) {
-                        console.log('truncateText error:', e);
+                        console.error('Error in truncateText:', e);
                     }
                 }
             },
