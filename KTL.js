@@ -14704,9 +14704,6 @@ function Ktl($, appInfo) {
                         return paramsToCheck.includes(header);
                     });
 
-                    // Single line to clean up duplicate logging
-                    console.log("Processed headers:", headers);
-
                     const fields = columns.map(col => (col.id || (col.field && col.field.key))).filter(fieldId => {
                         return fieldId && keyword.params[0].includes(fieldId);
                     });
