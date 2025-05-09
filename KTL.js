@@ -13832,13 +13832,20 @@ function Ktl($, appInfo) {
                 const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? model.results_model.view.columns : model.view.columns;
 
                 columns.forEach(col => {
-                    const header = col.header.trim();
-                    if (headers.includes(header) || fields.includes(col.id)) {
-                        const thead = $(`#${viewId} thead tr th:textEquals("${header}"):not(.ktlDisplayNone_hc)`);
-                        if (thead.length) {
-                            const cellIndex = thead[0].cellIndex;
-                            thead.addClass('ktlDisplayNone_hc');
-                            $(`#${viewId} tbody tr:not(.kn-table-group) > td:nth-child(${cellIndex + 1}):not(td tr > td)`).addClass('ktlDisplayNone_hc');
+                    const headerText = col.header.trim().replace(/<[^>]*>/g, '');
+
+                    if (headers.includes(headerText) || fields.includes(col.id)) {
+                        // Find the column header by text content, ignoring HTML
+                        const thElements = $(`#${viewId} thead tr th`).filter(function() {
+                            const cellText = $(this).text().trim();
+                            return cellText === headerText;
+                        });
+
+                        if (thElements.length) {
+                            const cellIndex = thElements[0].cellIndex;
+                            thElements.addClass('ktlDisplayNone_hc');
+                            $(`#${viewId} tbody tr:not(.kn-table-group) > td:nth-child(${cellIndex + 1}):not(td tr > td)`)
+                                .addClass('ktlDisplayNone_hc');
                         }
                     }
                 });
@@ -14692,8 +14699,15 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(keyword.options))
                         return;
 
-                    const headers = columns.map(col => col.header.trim()).filter(header => {
-                        return keyword.params[0].includes(header);
+                    const headers = columns.map(col => {
+                        // First trim whitespace and strip HTML tags
+                        return col.header.trim().replace(/<[^>]*>/g, '');
+                    }).filter(header => {
+                        // Strip HTML from parameters for accurate comparison
+                        const paramsToCheck = keyword.params[0].map(param =>
+                            param.replace(/<[^>]*>/g, '').trim()
+                        );
+                        return paramsToCheck.includes(header);
                     });
 
                     const fields = columns.map(col => (col.id || (col.field && col.field.key))).filter(fieldId => {
