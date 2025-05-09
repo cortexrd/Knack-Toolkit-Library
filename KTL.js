@@ -1760,14 +1760,20 @@ function Ktl($, appInfo) {
             //Ex2: $("li.menu-links__list-item:contains('Prev. Stay Info')")
             //MUST NOT include any backslashes for escaped characters like \' for quotes.
             extractJQuerySelector: function (selector, viewId) {
-                if ((selector.startsWith("$('") && selector.endsWith("')"))
-                    || (selector.startsWith('$("') && selector.endsWith('")'))
-                    || (selector.startsWith('$(`') && selector.endsWith('`)'))) {
-                    let extractedSelector = selector.substring(3, selector.length - 2);
-                    extractedSelector = extractedSelector.replace(/\$\{viewId\}/g, viewId);
-
-                    return extractedSelector;
+                const match = selector.match(/\$\(['"`](.*?)['"`]\)/);
+                if (match) {
+                    // Find the actual content by searching for the first $ and last )
+                    const start = selector.indexOf('$(');
+                    const end = selector.lastIndexOf(')');
+                    if (start >= 0 && end > start) {
+                        let extractedSelector = selector.substring(start + 2, end);
+                        // Remove the first and last quote/backtick
+                        extractedSelector = extractedSelector.substring(1, extractedSelector.length - 1);
+                        extractedSelector = extractedSelector.replace(/\$\{viewId\}/g, viewId);
+                        return extractedSelector;
+                    }
                 }
+                return null;
             },
 
             //Currently used to enter a password for Dev Tools Popup
@@ -14921,7 +14927,7 @@ function Ktl($, appInfo) {
                                     selector += ' .' + fieldId + ' .kn-detail-body';
                             } else if (viewType === 'form') {
                                 if (fieldId)
-                                    selector += ' input#' + fieldId;
+                                    selector += ` [data-input-id=${fieldId}] input`;
                             } else if (viewType === 'table' || viewType === 'search' || viewType === 'list') {
                                 if (!fieldId) {
                                     const actionLink = $(`#${viewId} tr[id="${recordObj.id}"] .kn-action-link:textEquals("${field}")`);
@@ -14990,16 +14996,21 @@ function Ktl($, appInfo) {
                             return resolve(false);
                         } else {
                             ktl.core.waitSelector(selector, 10000).then(() => {
+                                const fieldType = ktl.fields.getFieldType(fieldId);
+
                                 let fieldValue;
                                 if (ktl.views.getViewType(viewId) === 'form') {
-                                    fieldValue = $(selector).val();
+                                    if (fieldType === 'boolean') {
+                                        fieldValue = ($(selector)[0].checked).toString();
+                                    } else {
+                                        fieldValue = $(selector).val();
+                                    }
                                     $(selector).off('keyup.ktlHc').on('keyup.ktlHc', (event) => {
                                         return resolve(ktlCompare(event.target.value, operator, value));
                                     })
                                 } else
                                     fieldValue = $(selector)[0].textContent.trim();
 
-                                const fieldType = ktl.fields.getFieldType(fieldId);
                                 if (fieldType && numericFieldTypes.includes(fieldType))
                                     fieldValue = ktl.core.extractNumericValue(fieldValue, fieldId);
 
