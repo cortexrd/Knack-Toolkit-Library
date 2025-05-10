@@ -12928,12 +12928,24 @@ function Ktl($, appInfo) {
             refreshView: function (viewId) {
                 return new Promise(function (resolve) {
                     if (viewId && document.querySelector(`#${viewId}`)) {
-                        var view = Knack.router.scene_view.model.views._byId[viewId];
-                        if (!view || !view.attributes)
-                            return resolve();
+                        let viewAttributes;
+                        let view = Knack.router.scene_view.model.views._byId[viewId];
+                        if (view && view.attributes) {
+                            viewAttributes = view.attributes;
+                        } else {
+                            //If view is not found in the model, it may be in the views array.
+                            const knackViews = Knack.views[viewId];
+                            if (knackViews) {
+                                viewAttributes = knackViews?.model?.view;
+                            }
 
-                        var viewType = view.attributes.type;
-                        var formAction = view.attributes.action;
+                            if (!viewAttributes) {
+                                return resolve();
+                            }
+                        }
+
+                        var viewType = viewAttributes.type;
+                        var formAction = viewAttributes.action;
                         var triggerChange = (formAction === 'insert' || formAction === 'create') ? false : true;
 
                         let scrollLeft;
@@ -12948,8 +12960,10 @@ function Ktl($, appInfo) {
                             $("#kn-loading-spinner").addClass('ktlHidden');
                             $(document).trigger('KTL.preprocessView', Knack.views[viewId]);
 
-                            if (view && ['search', 'form', 'rich_text', 'menu', 'calendar' /*more types?*/].includes(viewType)) {
-                                if (viewType === 'form') {
+                            if (['search', 'form', 'rich_text', 'menu', 'calendar', 'login' /*more types?*/].includes(viewType)) {
+                                if (viewType === 'login') {
+                                    ktlProcessKeywords(viewAttributes);
+                                } else if (viewType === 'form') {
                                     if (formAction !== 'insert' && formAction !== 'create') {
                                         //This code causes an unintentional submit event.  Had to replace it with code below until a solution is found.
                                         //The intention is to update the Edit Form with most recent server data, in case it's been changed elsewhere.
@@ -12960,7 +12974,7 @@ function Ktl($, appInfo) {
 
                                                 setTimeout(() => {
                                                     $(document).trigger('KTL.loadFormData', viewId);
-                                                    ktlProcessKeywords(view.attributes);
+                                                    ktlProcessKeywords(viewAttributes);
                                                 }, 1000);
                                             },
                                             error: function (model, response, options) {
@@ -12972,14 +12986,14 @@ function Ktl($, appInfo) {
                                         Knack.views[viewId].render();
                                         setTimeout(() => {
                                             $(document).trigger('KTL.loadFormData', viewId);
-                                            ktlProcessKeywords(view.attributes);
+                                            ktlProcessKeywords(viewAttributes);
                                         }, 1000);
                                     } else {
                                         Knack.views[viewId].render();
 
                                         setTimeout(() => {
                                             $(document).trigger('KTL.loadFormData', viewId);
-                                            ktlProcessKeywords(view.attributes);
+                                            ktlProcessKeywords(viewAttributes);
                                         }, 1000);
                                     }
                                 } else {
@@ -20414,8 +20428,6 @@ function Ktl($, appInfo) {
 
             if (navigator.userAgent.includes('T2lite'))
                 sysInfo.model = 'T2Lite';
-            else if (navigator.userAgent.includes('D1-G'))
-                sysInfo.model = 'D1-G';
 
             if (navigator.userAgent.includes('x64'))
                 sysInfo.processor = 'x64';
@@ -20522,6 +20534,9 @@ function Ktl($, appInfo) {
                         const viewElement = document.querySelector(viewSelector);
 
                         if (!viewElement || viewElement.children.length === 0) {
+                            if (document.querySelector('.kn-login'))
+                                return true; //Ignore login pages.
+
                             allOk = false;
                             reason = `View ${viewId} not properly loaded`;
                             break;
