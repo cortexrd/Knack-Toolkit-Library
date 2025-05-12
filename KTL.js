@@ -7775,6 +7775,7 @@ function Ktl($, appInfo) {
                 removeConnectionPicker(viewId);
                 setCharacterLimit(view);
                 addCharacterCount(view, keywords);
+                addSelectAllOption(viewId);
 
                 iterateViewReports(view, (report, keywords) => {
                     if (keywords) {
@@ -9132,6 +9133,48 @@ function Ktl($, appInfo) {
                 })
             }
         } //cfv feature
+
+
+        /////////////////////////////////////////////////////////////////////////////////
+        function addSelectAllOption(viewId) {
+            const kw = '_sa';
+            if (!viewId || ktl.views.getViewType(viewId) !== 'form') return;
+
+            const fields = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            Object.entries(fields)
+                .filter(([_, keywords]) => Object.keys(keywords).includes(kw))
+                .forEach(([id]) => {
+                    const jqField = $(`#${viewId} [data-input-id="${id}"] select`);
+
+                    if (!jqField.length) return;
+                    const selectAllOption = $('<option>', {
+                        value: 1,
+                        text: 'Select All'
+                    })
+
+                    jqField.prepend(selectAllOption).trigger("liszt:updated");
+                    $(`#${viewId} [data-input-id="${id}"] .chzn-results`).bindFirst('mouseup', function (event) {
+                        const target = $(event.target);
+
+                        if (!target.hasClass("active-result") )return;
+
+                        if( target.text() === 'Select All') {
+                            event.stopPropagation();
+                            event.stopImmediatePropagation();
+                            selectAllOption.siblings('option').prop('selected', true);
+                            selectAllOption.text('Clear All');
+                            jqField.trigger("liszt:updated");
+                        } else if( target.text() === 'Clear All') {
+                            event.stopPropagation();
+                            event.stopImmediatePropagation();
+                            selectAllOption.siblings('option').prop('selected', false);
+                            selectAllOption.text('Select All');
+                            jqField.trigger("liszt:updated");
+                        }
+
+                    });
+                });
+        } //addSelectAllOption feature
 
         //For KTL internal use.
         //Quick Toggle supports both named colors and hex style like #FF08 (RGBA).
