@@ -13845,21 +13845,33 @@ function Ktl($, appInfo) {
                 const model = (view && view.model);
                 const columns = (model.results_model && model.results_model.view && model.results_model.view.columns.length) ? model.results_model.view.columns : model.view.columns;
 
-                columns.forEach(col => {
-                    const headerText = col.header.trim().replace(/<[^>]*>/g, '');
+                columns.forEach((col, index) => {
+                    let cellIndex;
 
-                    if (headers.includes(headerText) || fields.includes(col.id)) {
-                        // Find the column header by text content, ignoring HTML
-                        const thElements = $(`#${viewId} thead tr th`).filter(function() {
-                            const cellText = $(this).text().trim();
-                            return cellText === headerText;
-                        });
+                    if (fields.includes(col.id)) {
+                        cellIndex = index;
 
-                        if (thElements.length) {
-                            const cellIndex = thElements[0].cellIndex;
-                            thElements.addClass('ktlDisplayNone_hc');
-                            $(`#${viewId} tbody tr:not(.kn-table-group) > td:nth-child(${cellIndex + 1}):not(td tr > td)`)
-                                .addClass('ktlDisplayNone_hc');
+                        $(`#${viewId} thead th:nth-child(${cellIndex + 1})`)
+                            .addClass('ktlDisplayNone_hc');
+
+                        $(`#${viewId} tbody tr:not(.kn-table-group) > td:nth-child(${cellIndex + 1}):not(td tr > td)`)
+                            .addClass('ktlDisplayNone_hc');
+                    } else {
+                        const headerText = col.header.trim().replace(/<[^>]*>/g, '');
+                        if (headers.includes(headerText)) {
+                            // Find the column header by text content, ignoring HTML
+                            const headerElement = $(`#${viewId} thead tr th`).filter(function () {
+                                const cellText = $(this).text().trim();
+                                return cellText === headerText;
+                            });
+
+                            if (headerElement.length) {
+                                headerElement.addClass('ktlDisplayNone_hc');
+
+                                const cellIndex = headerElement[0].cellIndex;
+                                $(`#${viewId} tbody tr:not(.kn-table-group) > td:nth-child(${cellIndex + 1}):not(td tr > td)`)
+                                    .addClass('ktlDisplayNone_hc');
+                            }
                         }
                     }
                 });
@@ -14728,7 +14740,7 @@ function Ktl($, appInfo) {
                         return fieldId && keyword.params[0].includes(fieldId);
                     });
 
-                    const hide = () => ktl.views.hideTableColumns(viewId, fields, headers, fixRows);
+                    const hide = (fixRows) => ktl.views.hideTableColumns(viewId, fields, headers, fixRows);
                     const unhide = () => ktl.views.unhideTableColumns(viewId, fields, headers, fixRows);
 
                     if (fields.length || headers.length)
@@ -14736,9 +14748,9 @@ function Ktl($, appInfo) {
                 });
             },
 
-            hideUnhideValidateKtlCond: function (options = {}, hide, unhide,) {
+            hideUnhideValidateKtlCond: function (options = {}, hide, unhide, fixRows) {
                 return new Promise(function (resolve) {
-                    hide();
+                    hide(fixRows);
 
                     if (!options.ktlCond) return resolve();
 
