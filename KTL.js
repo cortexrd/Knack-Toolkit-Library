@@ -9145,11 +9145,15 @@ function Ktl($, appInfo) {
                 .filter(([_, keywords]) => Object.keys(keywords).includes(kw))
                 .forEach(([id]) => {
                     const jqField = $(`#${viewId} [data-input-id="${id}"] select`);
+                    const chznResults = $(`#${viewId} [data-input-id="${id}"] .chzn-results`);
+
+                    const allSelected = chznResults.find(`li.result-selected`).length == chznResults.find(`li`).length;
 
                     if (!jqField.length) return;
+
                     const selectAllOption = $('<option>', {
                         value: 1,
-                        text: 'Select All'
+                        text: (allSelected) ? 'Clear All' : 'Select All'
                     })
 
                     jqField.prepend(selectAllOption).trigger("liszt:updated");
@@ -9161,15 +9165,27 @@ function Ktl($, appInfo) {
                         if( target.text() === 'Select All') {
                             event.stopPropagation();
                             event.stopImmediatePropagation();
-                            selectAllOption.siblings('option').prop('selected', true);
+
+                            const records = selectAllOption.siblings('option')
+                                .prop('selected', true)
+                                .map((index, option) => {return { text: option.innerText , id: option.value};}).get();
+
+
                             selectAllOption.text('Clear All');
                             jqField.trigger("liszt:updated");
+
+                            ktl.persistentForm.ktlOnSelectValueChanged({ viewId, fieldId: id, records: records });
                         } else if( target.text() === 'Clear All') {
                             event.stopPropagation();
                             event.stopImmediatePropagation();
-                            selectAllOption.siblings('option').prop('selected', false);
+
+                            selectAllOption.siblings('option')
+                                .prop('selected', false)
+
                             selectAllOption.text('Select All');
                             jqField.trigger("liszt:updated");
+
+                            ktl.persistentForm.ktlOnSelectValueChanged({ viewId, fieldId: id, records: [] });
                         }
 
                     });
