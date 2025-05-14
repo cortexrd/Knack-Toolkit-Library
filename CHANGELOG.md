@@ -1,5 +1,24 @@
 # Knack Toolkit Library Changelog
 
+
+## 0.30.13    *2025-05-09*
+
+- V-bump
+- Filters column headers by text content, when headers contain HTML elements. (#504)
+  - * Filters column headers by text content.
+  - Updates the column header filtering logic to handle HTML tags within the header text.
+  - It now correctly identifies the column by comparing the plain text content, improving accuracy when headers contain HTML elements.
+  - * Removed Logs
+- Fixed extractJQuerySelector when jQuery string ends with anything else than closing parentheses.
+  - This happens with <br>.
+  - Fixed validateKtlCond when used with checkboxes in a form.
+- Add title attrinute to _trk which allows you to hover over the td and display the text.  Styling left as default so users can apply there own styles in their CSS (#503)
+  - * Add title attrinute to _trk which allows you to hover over the td and display the text.  Styling left as default so users can apply there own styles in their CSS
+  - * Added a check to make sure we don't keep adding titles if one already exists
+- ChangeLog generator now automatically finds most recent tag.
+- Automatic creation of the CHANGELOG.md file using Javascript script.
+- Cleanup in GIT ignored files and folders.
+
 Changelog for Knack Toolkit Library
 
 
