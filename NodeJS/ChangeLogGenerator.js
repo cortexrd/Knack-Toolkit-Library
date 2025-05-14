@@ -7,6 +7,8 @@ const scriptDir = path.dirname(__filename);
 const repoDir = path.resolve(scriptDir, '..');
 const changelogPath = path.join(repoDir, 'CHANGELOG.md');
 
+const EOL = '\n'; // Force LF line endings regardless of platform
+
 console.log(`Working in repository: ${repoDir}`);
 console.log(`Using changelog: ${changelogPath}`);
 
@@ -142,7 +144,9 @@ try {
     }
 
     // Write updated changelog
-    fs.writeFileSync(changelogPath, updatedChangelog);
+    updatedChangelog = updatedChangelog.replace(/\r\n/g, EOL);
+    fs.writeFileSync(changelogPath, updatedChangelog, { encoding: 'utf8' });
+
     console.log(`Changelog updated with ${relevantTags.length} new tags.`);
 
 } catch (error) {
