@@ -10,7 +10,7 @@
   - It now correctly identifies the column by comparing the plain text content, improving accuracy when headers contain HTML elements.
   - * Removed Logs
 - Fixed extractJQuerySelector when jQuery string ends with anything else than closing parentheses.
-  - This happens with <br>.
+  - This happens with \<br\>.
   - Fixed validateKtlCond when used with checkboxes in a form.
 - Add title attrinute to _trk which allows you to hover over the td and display the text.  Styling left as default so users can apply there own styles in their CSS (#503)
   - * Add title attrinute to _trk which allows you to hover over the td and display the text.  Styling left as default so users can apply there own styles in their CSS
