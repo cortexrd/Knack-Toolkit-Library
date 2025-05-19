@@ -176,6 +176,20 @@ function Ktl($, appInfo) {
                         window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + logOutHere;
                     });
                 }
+            } else if (viewKwObj._bm) {
+                if (!ktlKeywords.ktlAppBookmarks) {
+                    ktlKeywords.ktlAppBookmarks = [];
+                }
+
+                if (viewKwObj._bm?.[0]?.params?.[0]?.[0] === 'all') {
+                    if (!ktlKeywords.ktlAppBookmarks.includes('all')) {
+                        ktlKeywords.ktlAppBookmarks.push('all');
+                    }
+                } else {
+                    if (!ktlKeywords.ktlAppBookmarks.includes(scene.attributes.key)) {
+                        ktlKeywords.ktlAppBookmarks.push(scene.attributes.key);
+                    }
+                }
             }
         }
     };
@@ -16504,7 +16518,8 @@ function Ktl($, appInfo) {
                 ktl.storage.lsSetItem('APP_KTL_VERSIONS', APP_KTL_VERSIONS);
             }
 
-            addFooter(ktlKeywords.ktlAppFooter);
+            addFooter();
+            addBookmarks();
 
             onSceneRender && onSceneRender(event, scene, appInfo);
 
@@ -16616,7 +16631,8 @@ function Ktl($, appInfo) {
             (ktl.core.getCfg().enabled.showMenuInTitle && page) && (document.title = Knack.app.attributes.name + ' - ' + page); //Add menu to browser's tab.
         }
 
-        function addFooter(footerSlug) {
+        function addFooter() {
+            const footerSlug = ktlKeywords.ktlAppFooter;
             if (!footerSlug) return;
             const footerHTML = Knack.scenes._byId[footerSlug].views.models[0].attributes.content;
 
@@ -16630,6 +16646,195 @@ function Ktl($, appInfo) {
 
             if (!document.getElementById('ktlFooter'))
                 document.body.appendChild(footerElement);
+        }
+
+        function addBookmarks() {
+            if (!ktlKeywords.ktlAppBookmarks || !Array.isArray(ktlKeywords.ktlAppBookmarks)) return;
+
+            const bookmarkScenes = ktlKeywords.ktlAppBookmarks;
+            if (!bookmarkScenes) return;
+
+            if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk()) return;
+
+            const pageUrl = window.location.href;
+            const sceneKey = Knack.router.current_scene_key;
+            const sceneName = (Knack.scenes._byId[Knack.router.current_scene] ? Knack.scenes._byId[Knack.router.current_scene].attributes.name : 'Unnamed Page');
+
+            const userPrefs = ktl.userPrefs.getUserPrefs();
+            const bookmarks = userPrefs.bookmarks || {};
+            const isBookmarked = !!bookmarks[sceneKey];
+
+            const bookmarkIcon = $('<a href="#" class="bookmark-toggle" style="display: inline-flex; align-items: center; text-decoration: none; color: inherit;">' +
+                '<span class="icon" style="font-size: 16px;">' +
+                '<i class="fa ' + (isBookmarked ? 'fa-bookmark' : 'fa-bookmark-o') + '" title="' + (isBookmarked ? 'Remove bookmark' : 'Add bookmark') + '"></i>' +
+                '</span>' +
+                '</a>');
+
+            // Handle different placements for mobile vs desktop
+            if (Knack.isMobile()) {
+                // For mobile devices - add to header
+                const mobileContainer = $('#kn-app-mobile-container');
+                if (mobileContainer.length) {
+                    // Create a container for the bookmark icon in the header
+                    const bookmarkContainer = $('<div class="mobile-bookmark-toggle" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);"></div>');
+                    bookmarkContainer.append(bookmarkIcon);
+                    mobileContainer.append(bookmarkContainer);
+                }
+            } else {
+                // For desktop - insert after logout link
+                if ($('.kn-log-out').length > 0) {
+                    bookmarkIcon.css('margin-left', '10px');
+                    $('.kn-log-out').after(bookmarkIcon);
+                }
+            }
+
+            // Handle click event on bookmark icon
+            $('.bookmark-toggle').on('click', function (e) {
+                e.preventDefault();
+                const icon = $(this).find('i');
+                const userPrefsObj = ktl.userPrefs.getUserPrefs(); // Get latest version
+                let bookmarks = userPrefsObj.bookmarks || {};
+
+                if (icon.hasClass('fa-bookmark-o')) {
+                    // Add bookmark
+                    icon.removeClass('fa-bookmark-o').addClass('fa-bookmark');
+                    icon.attr('title', 'Remove bookmark');
+
+                    // Show feedback message
+                    ktl.core.timedPopup('Bookmark added', 'success', 1500);
+
+                    // Add to bookmarks in user preferences
+                    bookmarks[sceneKey] = {
+                        url: pageUrl,
+                        name: sceneName,
+                        timestamp: new Date().toISOString()
+                    };
+                } else {
+                    // Remove bookmark
+                    icon.removeClass('fa-bookmark').addClass('fa-bookmark-o');
+                    icon.attr('title', 'Add bookmark');
+
+                    // Show feedback message
+                    ktl.core.timedPopup('Bookmark removed', 'warning', 1500);
+
+                    // Remove from bookmarks in user preferences
+                    delete bookmarks[sceneKey];
+                }
+
+                // Update user preferences with the new bookmarks
+                userPrefsObj.bookmarks = bookmarks;
+
+                // Save updated user preferences to localStorage
+                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+
+                // Send a message to trigger sync with Knack database
+                ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+
+                return false;
+            });
+
+            // Add bookmarks to applicable scenes
+            if (bookmarkScenes.includes(sceneKey) || bookmarkScenes.includes('all')) {
+                // Function to add individual bookmark buttons
+                (function addBookmarkButtons() {
+                    const sceneElement = document.querySelector('.kn-scene');
+                    if (!sceneElement) return;
+
+                    // Get user bookmarks
+                    const userPrefs = ktl.userPrefs.getUserPrefs();
+                    const bookmarks = userPrefs.bookmarks || {};
+                    const bookmarkCount = Object.keys(bookmarks).length;
+
+                    // Create a container for bookmark buttons
+                    const bookmarksContainer = document.createElement('div');
+                    bookmarksContainer.className = 'bookmarks-container';
+                    bookmarksContainer.style.marginTop = '20px';
+                    bookmarksContainer.style.display = 'flex';
+                    bookmarksContainer.style.flexWrap = 'wrap';
+                    bookmarksContainer.style.gap = '10px';
+
+                    // Add a header for the bookmarks section
+                    const header = document.createElement('div');
+                    header.style.width = '100%';
+                    header.style.marginBottom = '10px';
+                    header.style.fontWeight = 'bold';
+                    header.style.fontSize = '16px';
+                    header.innerHTML = '<i class="fa fa-bookmark" style="vertical-align: middle;"></i> My Bookmarks';
+                    bookmarksContainer.appendChild(header);
+
+                    if (bookmarkCount > 0) {
+                        // Sort bookmarks by name
+                        const sortedBookmarks = Object.values(bookmarks).sort((a, b) =>
+                            a.name.localeCompare(b.name)
+                        );
+
+                        // Add a button for each bookmark
+                        sortedBookmarks.forEach(bookmark => {
+                            createBookmarkButton(bookmark, bookmarksContainer);
+                        });
+                    } else {
+                        // Show helper text when no bookmarks exist
+                        const helperText = document.createElement('div');
+                        helperText.style.padding = '15px';
+                        helperText.style.backgroundColor = '#f8f8f8';
+                        helperText.style.borderRadius = '4px';
+                        helperText.style.color = '#555';
+                        helperText.style.width = '100%';
+                        helperText.innerHTML = 'You can add bookmarks by clicking the <i class="fa fa-bookmark-o" style="vertical-align: middle;"></i> icon at the top-right of each page.';
+                        bookmarksContainer.appendChild(helperText);
+                    }
+
+                    // Add the bookmarks container to the page
+                    sceneElement.appendChild(bookmarksContainer);
+                })();
+
+                // Helper function to create a styled bookmark button
+                function createBookmarkButton(bookmark, container) {
+                    ktl.systemColors.getSystemColors()
+                        .then((sysColors) => {
+                            // Create bookmark button
+                            const button = document.createElement('a');
+                            button.className = 'kn-button bookmark-button';
+                            button.href = bookmark.url;
+                            button.style.display = 'inline-flex';
+                            button.style.alignItems = 'center';
+                            button.style.padding = '8px 12px';
+                            button.style.borderRadius = '4px';
+                            button.style.textDecoration = 'none';
+                            button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+                            // Apply system colors
+                            let buttonBackgroundColor;
+                            const newSaturation = 0.3;
+                            const newLightness = 0.6;
+                            const newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                            buttonBackgroundColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                            button.style.backgroundColor = buttonBackgroundColor;
+                            button.style.color = sysColors.buttonText.rgb;
+
+                            // Add icon
+                            const iconSpan = document.createElement('span');
+                            iconSpan.className = 'icon is-small';
+                            iconSpan.style.marginRight = '8px';
+                            const icon = document.createElement('i');
+                            icon.className = 'fa fa-bookmark';
+                            iconSpan.appendChild(icon);
+                            button.appendChild(iconSpan);
+
+                            // Add text
+                            const textSpan = document.createElement('span');
+                            textSpan.textContent = bookmark.name;
+                            button.appendChild(textSpan);
+
+                            // Add to container
+                            container.appendChild(button);
+                        })
+                        .catch(function (reason) {
+                            console.log('Bookmarks - error loading colors:', reason);
+                        });
+                }
+            }
         }
 
         function showHiddenElemements() {
@@ -17326,8 +17531,7 @@ function Ktl($, appInfo) {
                                     userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                                     ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
                                     ktl.scenes.renderViews();
-                                    if (ktl.core.getCfg().enabled.iFrameWnd && ktl.iFrameWnd.getiFrameWnd())
-                                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                                    ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
                                 })
 
                                 let showHiddenElements = (ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true) === 'true');
@@ -18126,7 +18330,9 @@ function Ktl($, appInfo) {
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             try {
-                if (view.key === ktl.iFrameWnd.getCfg().curUserPrefsViewId) {
+                const viewId = view.key;
+
+                if (viewId === ktl.iFrameWnd.getCfg().curUserPrefsViewId) {
                     var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                     var prefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
                     if (!prefsViewId || !acctPrefsFld) {
@@ -18170,7 +18376,7 @@ function Ktl($, appInfo) {
                         document.querySelector('#' + prefsViewId + ' .kn-button.is-primary').click();
                         ktl.log.clog('green', 'Uploading default prefs to cloud');
                     }
-                } else if (view.key === ktl.userPrefs.getCfg().myUserPrefsViewId) { //Form for user to update his own prefs
+                } else if (viewId === ktl.userPrefs.getCfg().myUserPrefsViewId) { //Form for user to update his own prefs
                     var allow = allowShowPrefs ? allowShowPrefs() : {};
                     if ($.isEmptyObject(allow)) {
                         ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
@@ -18225,6 +18431,11 @@ function Ktl($, appInfo) {
                         var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                         $('#' + acctPrefsFld).val(JSON.stringify(userPrefsTmp));
                     }
+
+                    //On Submit, also update local copy.
+                    $(document).off('knack-form-submit.' + viewId).on('knack-form-submit.' + viewId, function (event, view, record) {
+                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsTmp));
+                    })
                 }
             }
             catch (e) {
@@ -19110,6 +19321,7 @@ function Ktl($, appInfo) {
                                 }
                             }, ONE_HOUR_DELAY);
                             break;
+
                         case 'heartbeatMsg':
                             var viewId = ktl.iFrameWnd.getCfg().hbViewId;
                             var fieldId = ktl.iFrameWnd.getCfg().acctUtcHbFld;
@@ -19193,20 +19405,24 @@ function Ktl($, appInfo) {
                                 ktl.userPrefs.ktlApplyUserPrefs();
                             }
                             break;
+
                         case 'userFiltersNeedDownloadMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadUserFilters(event.data.msgData);
                             break;
+
                         case 'publicFiltersNeedDownloadMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.userFilters.downloadPublicFilters(event.data.msgData);
                             break;
+
                         case 'swVersionsDifferentMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.core.timedPopup(Knack.getUserAttributes().name + ' - Versions are different!  Please refresh and Broadcast new version.', 'warning', 4000);
                             break;
+
                         case 'activityMsg':
-                            ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
+                            ktl.wndMsg.send(event.data.msgType, 'ack', IFRAME_WND_ID, ktl.const.MSG_APP, msgId);
                             var viewId = ktl.iFrameWnd.getCfg().hbViewId;
                             var fieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
                             if (viewId && fieldId) {
@@ -19219,10 +19435,12 @@ function Ktl($, appInfo) {
                                 field && (field.value = time);
                             }
                             break;
+
                         case 'logoutMsg':
                             ktl.wndMsg.send(event.data.msgType, 'ack', ktl.const.MSG_APP, IFRAME_WND_ID, msgId);
                             ktl.account.logout();
                             break;
+
                         default:
                             processAppMsg && processAppMsg(event);
                             break;
@@ -19315,6 +19533,15 @@ function Ktl($, appInfo) {
                     return;
                 }
 
+                //Don't send the message when the iFrameWnd is the destination but it doesn't exists.
+                if (src === ktl.const.MSG_APP && dst === IFRAME_WND_ID && msgSubType === 'req' && !ktl.iFrameWnd.getiFrameWnd()) return;
+
+                let messageRecipient;
+                if (src === ktl.const.MSG_APP && dst === IFRAME_WND_ID)
+                    messageRecipient = ktl.iFrameWnd.getiFrameWnd().contentWindow;
+                else if (src === IFRAME_WND_ID && dst === ktl.const.MSG_APP)
+                    messageRecipient = parent;
+
                 var msg = new Msg(msgType, msgSubType, src, dst, msgId, msgData);
 
                 if (msgSubType === 'req') {
@@ -19327,14 +19554,11 @@ function Ktl($, appInfo) {
                     //ktl.log.objSnapshot('msgQueue', msgQueue);
                 }
 
-                if (src === ktl.const.MSG_APP && dst === IFRAME_WND_ID && ktl.iFrameWnd.getiFrameWnd())
-                    ktl.iFrameWnd.getiFrameWnd().contentWindow.postMessage(msg, '*');
-                else if (src === IFRAME_WND_ID && dst === ktl.const.MSG_APP)
-                    parent.postMessage(msg, '*');
+                if (messageRecipient)
+                    messageRecipient.postMessage(msg, '*');
                 else
                     sendAppMsg && sendAppMsg(msg);
             },
-
 
             //For KTL internal use.
             startHeartbeat: function (run = true) {
