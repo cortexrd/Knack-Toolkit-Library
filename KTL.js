@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.30.13';
+    const KTL_VERSION = '0.31.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -181,14 +181,21 @@ function Ktl($, appInfo) {
                     ktlKeywords.ktlAppBookmarks = [];
                 }
 
-                if (viewKwObj._bm?.[0]?.params?.[0]?.[0] === 'all') {
-                    if (!ktlKeywords.ktlAppBookmarks.includes('all')) {
-                        ktlKeywords.ktlAppBookmarks.push('all');
-                    }
+                const bookmarkElement = {
+                    scene: '',
+                    position: 'bottom'
+                };
+
+                if (viewKwObj._bm?.[0]?.params?.[0].includes('all')) {
+                    bookmarkElement.scene = 'all';
+                    if (viewKwObj._bm?.[0]?.params?.[0].includes('top'))
+                        bookmarkElement.position = 'top';
+                    ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
                 } else {
-                    if (!ktlKeywords.ktlAppBookmarks.includes(scene.attributes.key)) {
-                        ktlKeywords.ktlAppBookmarks.push(scene.attributes.key);
-                    }
+                    bookmarkElement.scene = scene.attributes.key;
+                    if (viewKwObj._bm?.[0]?.params?.[0].includes('top'))
+                        bookmarkElement.position = 'top';
+                    ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
                 }
             }
         }
@@ -16648,194 +16655,209 @@ function Ktl($, appInfo) {
                 document.body.appendChild(footerElement);
         }
 
+        //Add Bookmarks - BEGIN
+        let bookmarksPosition = 'bottom';
+
         function addBookmarks() {
-            if (!ktlKeywords.ktlAppBookmarks || !Array.isArray(ktlKeywords.ktlAppBookmarks)) return;
-
-            const bookmarkScenes = ktlKeywords.ktlAppBookmarks;
-            if (!bookmarkScenes) return;
-
             if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk()) return;
 
-            const pageUrl = window.location.href;
             const sceneKey = Knack.router.current_scene_key;
-            const sceneName = (Knack.scenes._byId[Knack.router.current_scene] ? Knack.scenes._byId[Knack.router.current_scene].attributes.name : 'Unnamed Page');
-
             const userPrefs = ktl.userPrefs.getUserPrefs();
             const bookmarks = userPrefs.bookmarks || {};
             const isBookmarked = !!bookmarks[sceneKey];
 
+            addBookmarkToggle(isBookmarked);
+
+            if (ktlKeywords.ktlAppBookmarks && Array.isArray(ktlKeywords.ktlAppBookmarks)) {
+                const showOnAll = ktlKeywords.ktlAppBookmarks.some(bookmark => bookmark.scene === 'all');
+                const thisSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === sceneKey);
+
+                if (showOnAll || thisSceneBookmark) {
+                    if (thisSceneBookmark) {
+                        bookmarksPosition = thisSceneBookmark.position || 'bottom';
+                    } else if (showOnAll) {
+                        const allSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === 'all');
+                        bookmarksPosition = allSceneBookmark ? allSceneBookmark.position : 'bottom';
+                    }
+
+                    addBookmarksList(bookmarks);
+                }
+            }
+        }
+
+        function addBookmarkToggle(isBookmarked) {
             const bookmarkIcon = $('<a href="#" class="bookmark-toggle" style="display: inline-flex; align-items: center; text-decoration: none; color: inherit;">' +
-                '<span class="icon" style="font-size: 16px;">' +
+                '<span class="icon" style="font-size: 16px; margin-left: 10px;">' +
                 '<i class="fa ' + (isBookmarked ? 'fa-bookmark' : 'fa-bookmark-o') + '" title="' + (isBookmarked ? 'Remove bookmark' : 'Add bookmark') + '"></i>' +
                 '</span>' +
                 '</a>');
 
-            // Handle different placements for mobile vs desktop
+            // Handle placement based on device type
             if (Knack.isMobile()) {
-                // For mobile devices - add to header
+                // For mobile - add to header
                 const mobileContainer = $('#kn-app-mobile-container');
                 if (mobileContainer.length) {
-                    // Create a container for the bookmark icon in the header
+                    $('.mobile-bookmark-toggle').remove();
                     const bookmarkContainer = $('<div class="mobile-bookmark-toggle" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);"></div>');
                     bookmarkContainer.append(bookmarkIcon);
                     mobileContainer.append(bookmarkContainer);
                 }
             } else {
                 // For desktop - insert after logout link
+                $('.bookmark-toggle').remove();
                 if ($('.kn-log-out').length > 0) {
-                    bookmarkIcon.css('margin-left', '10px');
                     $('.kn-log-out').after(bookmarkIcon);
                 }
             }
 
-            // Handle click event on bookmark icon
-            $('.bookmark-toggle').on('click', function (e) {
-                e.preventDefault();
-                const icon = $(this).find('i');
-                const userPrefsObj = ktl.userPrefs.getUserPrefs(); // Get latest version
-                let bookmarks = userPrefsObj.bookmarks || {};
+            $('.bookmark-toggle').on('click', handleBookmarkToggle);
+        }
 
-                if (icon.hasClass('fa-bookmark-o')) {
-                    // Add bookmark
-                    icon.removeClass('fa-bookmark-o').addClass('fa-bookmark');
-                    icon.attr('title', 'Remove bookmark');
+        function handleBookmarkToggle(e) {
+            e.preventDefault();
 
-                    // Show feedback message
-                    ktl.core.timedPopup('Bookmark added', 'success', 1500);
+            const sceneKey = Knack.router.current_scene_key;
+            const sceneName = (Knack.scenes._byId[Knack.router.current_scene] ?
+                Knack.scenes._byId[Knack.router.current_scene].attributes.name : 'Unnamed Page');
+            const pageUrl = window.location.href;
+            const icon = $(this).find('i');
 
-                    // Add to bookmarks in user preferences
-                    bookmarks[sceneKey] = {
-                        url: pageUrl,
-                        name: sceneName,
-                        timestamp: new Date().toISOString()
-                    };
+            const userPrefsObj = ktl.userPrefs.getUserPrefs();
+            let bookmarks = userPrefsObj.bookmarks || {};
+
+            if (icon.hasClass('fa-bookmark-o')) {
+                icon.removeClass('fa-bookmark-o').addClass('fa-bookmark');
+                icon.attr('title', 'Remove bookmark');
+
+                ktl.core.timedPopup('Bookmark added', 'success', 1500);
+
+                bookmarks[sceneKey] = {
+                    url: pageUrl,
+                    name: sceneName
+                };
+            } else {
+                icon.removeClass('fa-bookmark').addClass('fa-bookmark-o');
+                icon.attr('title', 'Add bookmark');
+                ktl.core.timedPopup('Bookmark removed', 'warning', 1500);
+                delete bookmarks[sceneKey];
+            }
+
+            userPrefsObj.bookmarks = bookmarks;
+            userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+            ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+            ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+
+            refreshBookmarksList(bookmarks);
+
+            return false;
+        }
+
+        function addBookmarksList(bookmarks) {
+            $('.ktl-bookmarks-container').remove();
+
+            const bookmarksContainer = document.createElement('div');
+            bookmarksContainer.className = 'ktl-bookmarks-container';
+            bookmarksContainer.style.marginTop = '20px';
+            bookmarksContainer.style.marginBottom = '20px';
+            bookmarksContainer.style.display = 'flex';
+            bookmarksContainer.style.flexDirection = 'column';
+            bookmarksContainer.style.alignItems = 'flex-start';
+            bookmarksContainer.style.width = '100%';
+
+            const header = document.createElement('div');
+            header.style.width = '100%';
+            header.style.marginBottom = '10px';
+            header.style.fontWeight = 'bold';
+            header.style.fontSize = '16px';
+            header.innerHTML = '<i class="fa fa-bookmark" style="vertical-align: middle; margin-right: 5px;"></i> My Bookmarks';
+            bookmarksContainer.appendChild(header);
+
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'ktl-bookmark-buttons';
+            buttonsContainer.style.display = 'flex';
+            buttonsContainer.style.flexWrap = 'wrap';
+            buttonsContainer.style.gap = '10px';
+            buttonsContainer.style.width = '100%';
+            bookmarksContainer.appendChild(buttonsContainer);
+
+            const bookmarkCount = Object.keys(bookmarks).length;
+
+            if (bookmarkCount > 0) {
+                const sortedBookmarks = Object.values(bookmarks).sort((a, b) =>
+                    a.name.localeCompare(b.name)
+                );
+
+                sortedBookmarks.forEach(bookmark => {
+                    createBookmarkButton(bookmark, buttonsContainer);
+                });
+            } else {
+                const helperText = document.createElement('div');
+                helperText.style.padding = '15px';
+                helperText.style.backgroundColor = '#f8f8f8';
+                helperText.style.borderRadius = '4px';
+                helperText.style.color = '#555';
+                helperText.style.width = '100%';
+                helperText.innerHTML = 'You can add bookmarks by clicking the <i class="fa fa-bookmark-o" style="vertical-align: middle;"></i> icon at the top-right of each page.';
+                buttonsContainer.appendChild(helperText);
+            }
+
+            const sceneContent = document.querySelector('.kn-scene');
+            if (sceneContent) {
+                if (bookmarksPosition === 'top') {
+                    sceneContent.insertBefore(bookmarksContainer, sceneContent.firstChild);
                 } else {
-                    // Remove bookmark
-                    icon.removeClass('fa-bookmark').addClass('fa-bookmark-o');
-                    icon.attr('title', 'Add bookmark');
-
-                    // Show feedback message
-                    ktl.core.timedPopup('Bookmark removed', 'warning', 1500);
-
-                    // Remove from bookmarks in user preferences
-                    delete bookmarks[sceneKey];
-                }
-
-                // Update user preferences with the new bookmarks
-                userPrefsObj.bookmarks = bookmarks;
-
-                // Save updated user preferences to localStorage
-                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
-
-                // Send a message to trigger sync with Knack database
-                ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
-
-                return false;
-            });
-
-            // Add bookmarks to applicable scenes
-            if (bookmarkScenes.includes(sceneKey) || bookmarkScenes.includes('all')) {
-                // Function to add individual bookmark buttons
-                (function addBookmarkButtons() {
-                    const sceneElement = document.querySelector('.kn-scene');
-                    if (!sceneElement) return;
-
-                    // Get user bookmarks
-                    const userPrefs = ktl.userPrefs.getUserPrefs();
-                    const bookmarks = userPrefs.bookmarks || {};
-                    const bookmarkCount = Object.keys(bookmarks).length;
-
-                    // Create a container for bookmark buttons
-                    const bookmarksContainer = document.createElement('div');
-                    bookmarksContainer.className = 'bookmarks-container';
-                    bookmarksContainer.style.marginTop = '20px';
-                    bookmarksContainer.style.display = 'flex';
-                    bookmarksContainer.style.flexWrap = 'wrap';
-                    bookmarksContainer.style.gap = '10px';
-
-                    // Add a header for the bookmarks section
-                    const header = document.createElement('div');
-                    header.style.width = '100%';
-                    header.style.marginBottom = '10px';
-                    header.style.fontWeight = 'bold';
-                    header.style.fontSize = '16px';
-                    header.innerHTML = '<i class="fa fa-bookmark" style="vertical-align: middle;"></i> My Bookmarks';
-                    bookmarksContainer.appendChild(header);
-
-                    if (bookmarkCount > 0) {
-                        // Sort bookmarks by name
-                        const sortedBookmarks = Object.values(bookmarks).sort((a, b) =>
-                            a.name.localeCompare(b.name)
-                        );
-
-                        // Add a button for each bookmark
-                        sortedBookmarks.forEach(bookmark => {
-                            createBookmarkButton(bookmark, bookmarksContainer);
-                        });
-                    } else {
-                        // Show helper text when no bookmarks exist
-                        const helperText = document.createElement('div');
-                        helperText.style.padding = '15px';
-                        helperText.style.backgroundColor = '#f8f8f8';
-                        helperText.style.borderRadius = '4px';
-                        helperText.style.color = '#555';
-                        helperText.style.width = '100%';
-                        helperText.innerHTML = 'You can add bookmarks by clicking the <i class="fa fa-bookmark-o" style="vertical-align: middle;"></i> icon at the top-right of each page.';
-                        bookmarksContainer.appendChild(helperText);
-                    }
-
-                    // Add the bookmarks container to the page
-                    sceneElement.appendChild(bookmarksContainer);
-                })();
-
-                // Helper function to create a styled bookmark button
-                function createBookmarkButton(bookmark, container) {
-                    ktl.systemColors.getSystemColors()
-                        .then((sysColors) => {
-                            // Create bookmark button
-                            const button = document.createElement('a');
-                            button.className = 'kn-button bookmark-button';
-                            button.href = bookmark.url;
-                            button.style.display = 'inline-flex';
-                            button.style.alignItems = 'center';
-                            button.style.padding = '8px 12px';
-                            button.style.borderRadius = '4px';
-                            button.style.textDecoration = 'none';
-                            button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-
-                            // Apply system colors
-                            let buttonBackgroundColor;
-                            const newSaturation = 0.3;
-                            const newLightness = 0.6;
-                            const newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                            buttonBackgroundColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-                            button.style.backgroundColor = buttonBackgroundColor;
-                            button.style.color = sysColors.buttonText.rgb;
-
-                            // Add icon
-                            const iconSpan = document.createElement('span');
-                            iconSpan.className = 'icon is-small';
-                            iconSpan.style.marginRight = '8px';
-                            const icon = document.createElement('i');
-                            icon.className = 'fa fa-bookmark';
-                            iconSpan.appendChild(icon);
-                            button.appendChild(iconSpan);
-
-                            // Add text
-                            const textSpan = document.createElement('span');
-                            textSpan.textContent = bookmark.name;
-                            button.appendChild(textSpan);
-
-                            // Add to container
-                            container.appendChild(button);
-                        })
-                        .catch(function (reason) {
-                            console.log('Bookmarks - error loading colors:', reason);
-                        });
+                    sceneContent.appendChild(bookmarksContainer);
                 }
             }
         }
+
+        function createBookmarkButton(bookmark, container) {
+            ktl.systemColors.getSystemColors()
+                .then((sysColors) => {
+                    const button = document.createElement('a');
+                    button.className = 'kn-button bookmark-button';
+                    button.href = bookmark.url;
+                    button.style.display = 'inline-flex';
+                    button.style.alignItems = 'center';
+                    button.style.padding = '8px 12px';
+                    button.style.borderRadius = '4px';
+                    button.style.textDecoration = 'none';
+                    button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+                    const newSaturation = 0.3;
+                    const newLightness = 0.6;
+                    const newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+                    const buttonBackgroundColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                    button.style.backgroundColor = buttonBackgroundColor;
+                    button.style.color = sysColors.buttonText.rgb;
+
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className = 'icon is-small';
+                    iconSpan.style.marginRight = '8px';
+                    const icon = document.createElement('i');
+                    icon.className = 'fa fa-bookmark';
+                    iconSpan.appendChild(icon);
+                    button.appendChild(iconSpan);
+
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = bookmark.name;
+                    button.appendChild(textSpan);
+
+                    container.appendChild(button);
+                })
+                .catch(function (reason) {
+                    console.log('Bookmarks - error loading colors:', reason);
+                });
+        }
+
+        function refreshBookmarksList(bookmarks) {
+            const container = document.querySelector('.ktl-bookmarks-container');
+            if (container) {
+                container.remove();
+                addBookmarksList(bookmarks);
+            }
+        }
+        //Add Bookmarks - END
 
         function showHiddenElemements() {
             $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
