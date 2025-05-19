@@ -3,6 +3,29 @@
 
 ## 0.30.13    *2025-05-09*
 
+
+## 0.31.0    *2025-05-19*
+
+- Add Bookmarks _bm improvements.
+  - Added keyword parameter to support top or bottom positioning of bookmark container.
+  - Default is bottom of page.
+- New keywords:  _bm for Add Bookmarks
+  - Several improvements and fixes regarding User Preferences:  real-time updates and backwards message acknowledgement.
+  - Prevent sending messages to iFrameWnd when it's the destination but doesn't exists.
+- Get rid of LF vs CRLF warning in GitHub.
+  - Now always Unix-Style LF only.
+  - Note to all developers on Window...
+  - Run these two lines in a cmd.exe prompt:
+  - git config --global core.autocrlf false
+  - git config --global core.eol lf
+- Update CHANGELOG.md
+- Changes for 0.30.13
+- Feature / Dropdown Select All (#505)
+  - * Feature / Dropdown Select All
+  - * Add persistent form support.
+- Fixed issue #501, _hc causing shift in headers.
+  - Involved a fix in the hideTableColumns function, where the field ID and headers must be processed separately.
+- refreshView - added support for login pages.
 - V-bump
 - Filters column headers by text content, when headers contain HTML elements. (#504)
   - * Filters column headers by text content.
