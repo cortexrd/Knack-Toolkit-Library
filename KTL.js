@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.31.1';
+    const KTL_VERSION = '0.31.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -183,20 +183,25 @@ function Ktl($, appInfo) {
 
                 const bookmarkElement = {
                     scene: '',
-                    position: 'bottom'
+                    position: 'bottom',
+                    options: {}
                 };
 
-                if (viewKwObj._bm?.[0]?.params?.[0].includes('all')) {
+                if (viewKwObj._bm?.[0]?.params?.[0]?.includes('all')) {
                     bookmarkElement.scene = 'all';
-                    if (viewKwObj._bm?.[0]?.params?.[0].includes('top'))
-                        bookmarkElement.position = 'top';
-                    ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
                 } else {
                     bookmarkElement.scene = scene.attributes.key;
-                    if (viewKwObj._bm?.[0]?.params?.[0].includes('top'))
-                        bookmarkElement.position = 'top';
-                    ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
                 }
+
+                if (viewKwObj._bm?.[0]?.params?.[0]?.includes('top'))
+                    bookmarkElement.position = 'top';
+
+                const options = viewKwObj._bm?.[0]?.options;
+                if (options) {
+                    bookmarkElement.options = options;
+                }
+
+                ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
             }
         }
     };
@@ -16659,35 +16664,35 @@ function Ktl($, appInfo) {
         let bookmarksPosition = 'bottom';
 
         function addBookmarks() {
-            if (!ktlKeywords.ktlAppBookmarks || ktl.scenes.isiFrameWnd() || ktl.core.isKiosk()) return;
+            if (!ktlKeywords.ktlAppBookmarks || !Array.isArray(ktlKeywords.ktlAppBookmarks) || ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() || !ktl.account.isLoggedIn()) return;
 
             const sceneKey = Knack.router.current_scene_key;
             const userPrefs = ktl.userPrefs.getUserPrefs();
             const bookmarks = userPrefs.bookmarks || {};
             const isBookmarked = !!bookmarks[sceneKey];
 
-            addBookmarkToggle(isBookmarked);
+            const showOnAll = ktlKeywords.ktlAppBookmarks.some(bookmark => bookmark.scene === 'all');
+            const thisSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === sceneKey);
 
-            if (ktlKeywords.ktlAppBookmarks && Array.isArray(ktlKeywords.ktlAppBookmarks)) {
-                const showOnAll = ktlKeywords.ktlAppBookmarks.some(bookmark => bookmark.scene === 'all');
-                const thisSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === sceneKey);
+            if (showOnAll || thisSceneBookmark) {
+                if (!ktl.core.hasRoleAccess(thisSceneBookmark?.options)) return;
 
-                if (showOnAll || thisSceneBookmark) {
-                    if (thisSceneBookmark) {
-                        bookmarksPosition = thisSceneBookmark.position || 'bottom';
-                    } else if (showOnAll) {
-                        const allSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === 'all');
-                        bookmarksPosition = allSceneBookmark ? allSceneBookmark.position : 'bottom';
-                    }
+                addBookmarkToggle(isBookmarked);
 
-                    addBookmarksList(bookmarks);
+                if (thisSceneBookmark) {
+                    bookmarksPosition = thisSceneBookmark.position || 'bottom';
+                } else if (showOnAll) {
+                    const allSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === 'all');
+                    bookmarksPosition = allSceneBookmark ? allSceneBookmark.position : 'bottom';
                 }
+
+                addBookmarksList(bookmarks);
             }
         }
 
         function addBookmarkToggle(isBookmarked) {
-            const bookmarkIcon = $('<a href="#" class="bookmark-toggle" style="display: inline-flex; align-items: center; text-decoration: none; color: inherit;">' +
-                '<span class="icon" style="font-size: 16px; margin-left: 10px;">' +
+            const bookmarkIcon = $('<a href="#" class="ktlBookmarkToggle" style="display: inline-flex; align-items: center; text-decoration: none; color: inherit;">' +
+                '<span class="icon" style="font-size: 16px; margin-left: 15px;">' +
                 '<i class="fa ' + (isBookmarked ? 'fa-bookmark' : 'fa-bookmark-o') + '" title="' + (isBookmarked ? 'Remove bookmark' : 'Add bookmark') + '"></i>' +
                 '</span>' +
                 '</a>');
@@ -16697,20 +16702,20 @@ function Ktl($, appInfo) {
                 // For mobile - add to header
                 const mobileContainer = $('#kn-app-mobile-container');
                 if (mobileContainer.length) {
-                    $('.mobile-bookmark-toggle').remove();
-                    const bookmarkContainer = $('<div class="mobile-bookmark-toggle" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);"></div>');
+                    $('.ktlMobileBookmarkToggle').remove();
+                    const bookmarkContainer = $('<div class="ktlMobileBookmarkToggle" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);"></div>');
                     bookmarkContainer.append(bookmarkIcon);
                     mobileContainer.append(bookmarkContainer);
                 }
             } else {
                 // For desktop - insert after logout link
-                $('.bookmark-toggle').remove();
+                $('.ktlBookmarkToggle').remove();
                 if ($('.kn-log-out').length > 0) {
                     $('.kn-log-out').after(bookmarkIcon);
                 }
             }
 
-            $('.bookmark-toggle').on('click', handleBookmarkToggle);
+            $('.ktlBookmarkToggle').on('click', handleBookmarkToggle);
         }
 
         function handleBookmarkToggle(e) {
