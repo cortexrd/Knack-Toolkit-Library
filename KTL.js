@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.31.0';
+    const KTL_VERSION = '0.31.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -16659,7 +16659,7 @@ function Ktl($, appInfo) {
         let bookmarksPosition = 'bottom';
 
         function addBookmarks() {
-            if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk()) return;
+            if (!ktlKeywords.ktlAppBookmarks || ktl.scenes.isiFrameWnd() || ktl.core.isKiosk()) return;
 
             const sceneKey = Knack.router.current_scene_key;
             const userPrefs = ktl.userPrefs.getUserPrefs();
@@ -16753,10 +16753,10 @@ function Ktl($, appInfo) {
         }
 
         function addBookmarksList(bookmarks) {
-            $('.ktl-bookmarks-container').remove();
+            $('.ktlBookmarksContainer').remove();
 
             const bookmarksContainer = document.createElement('div');
-            bookmarksContainer.className = 'ktl-bookmarks-container';
+            bookmarksContainer.className = 'ktlBookmarksContainer';
             bookmarksContainer.style.marginTop = '20px';
             bookmarksContainer.style.marginBottom = '20px';
             bookmarksContainer.style.display = 'flex';
@@ -16765,6 +16765,7 @@ function Ktl($, appInfo) {
             bookmarksContainer.style.width = '100%';
 
             const header = document.createElement('div');
+            header.className = 'ktlBookmarksHeader';
             header.style.width = '100%';
             header.style.marginBottom = '10px';
             header.style.fontWeight = 'bold';
@@ -16773,7 +16774,7 @@ function Ktl($, appInfo) {
             bookmarksContainer.appendChild(header);
 
             const buttonsContainer = document.createElement('div');
-            buttonsContainer.className = 'ktl-bookmark-buttons';
+            buttonsContainer.className = 'ktlBookmarksButtons';
             buttonsContainer.style.display = 'flex';
             buttonsContainer.style.flexWrap = 'wrap';
             buttonsContainer.style.gap = '10px';
@@ -16815,7 +16816,7 @@ function Ktl($, appInfo) {
             ktl.systemColors.getSystemColors()
                 .then((sysColors) => {
                     const button = document.createElement('a');
-                    button.className = 'kn-button bookmark-button';
+                    button.className = 'kn-button ktlBookmarkButton';
                     button.href = bookmark.url;
                     button.style.display = 'inline-flex';
                     button.style.alignItems = 'center';
@@ -16851,7 +16852,7 @@ function Ktl($, appInfo) {
         }
 
         function refreshBookmarksList(bookmarks) {
-            const container = document.querySelector('.ktl-bookmarks-container');
+            const container = document.querySelector('.ktlBookmarksContainer');
             if (container) {
                 container.remove();
                 addBookmarksList(bookmarks);
