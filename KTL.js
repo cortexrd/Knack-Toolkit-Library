@@ -16559,6 +16559,12 @@ function Ktl($, appInfo) {
                 return;
             }
 
+            if (Knack.isMobile()) {
+                $('body').addClass('ktlIsMobile');
+            } else {
+                $('body').removeClass('ktlIsMobile');
+            }
+
             //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
             if (!ktl.scenes.isiFrameWnd()) {
                 ktl.core.waitSelector('.view-column', 5000) //Needed otherwise we miss them once in a while.
