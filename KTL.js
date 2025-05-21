@@ -2281,7 +2281,6 @@ function Ktl($, appInfo) {
             findAllKeywords: function (search = '') {
                 let result = '';
                 const st = window.performance.now();
-                search && console.log(`Searching all keywords for: ${search}`);
                 const regex = new RegExp(search, 'i');
 
                 let builderUrl;
@@ -2328,7 +2327,7 @@ function Ktl($, appInfo) {
                             for (const scene of Knack.scenes.models) {
                                 if (kwKey === scene.attributes.key) {
                                     builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${kwKey}`;
-                                    console.log(`Builder URL = ${builderUrl}`);
+                                    console.log(`Builder: ${builderUrl}`);
                                     result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                                     result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
                                     break;
@@ -2337,7 +2336,7 @@ function Ktl($, appInfo) {
                         } else if (kwKey.startsWith('field_')) {
                             const objectId = Knack.objects.getField(kwKey).attributes.object_key;
                             builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${objectId}/fields/${kwKey}/settings`;
-                            console.log(`Builder URL = ${builderUrl}`);
+                            console.log(`Builder: ${builderUrl}`);
                             result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                         }
 
@@ -2592,6 +2591,79 @@ function Ktl($, appInfo) {
                 }
             },
 
+            //Parameter examples:
+            // for most views: 'table', 'search', 'details', 'list', 'form', 'calendar', 'map' and more
+            // for reports: 'report/table', 'report/pie', 'report/line', 'report/area' and more
+            findViewsByType: function (viewType) {
+                let result = '';
+                const st = window.performance.now();
+
+                const [parentType, childType] = viewType.includes('/') ? viewType.split('/') : [viewType, null];
+                let count = 0;
+
+                for (var s = 0; s < Knack.scenes.models.length; s++) {
+                    var views = Knack.scenes.models[s].views;
+                    for (var v = 0; v < views.models.length; v++) {
+                        let view = views.models[v];
+                        if (view) {
+                            const attr = view.attributes;
+                            let found = false;
+
+                            // Check regular views
+                            if (!childType && attr.type === parentType) {
+                                found = true;
+                            }
+
+                            // Check for report/type structure
+                            if (childType && attr.type === parentType) {
+                                if (view?.attributes?.rows) {
+                                    for (var r = 0; r < view.attributes.rows.length; r++) {
+                                        var row = view.attributes.rows[r];
+                                        if (row.reports) {
+                                            for (var rp = 0; rp < row.reports.length; rp++) {
+                                                if (row.reports[rp].type === childType) {
+                                                    found = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (found) break;
+                                    }
+                                }
+                            }
+
+                            if (found) {
+                                count++;
+                                const sceneId = attr.scene.key;
+                                const viewId = attr.key;
+                                const builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${attr.type}`;
+                                const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                const appUrl = `${Knack.url_base}#${slug}`;
+
+                                console.log(`Builder: ${builderUrl}`);
+                                console.log(`App: ${appUrl}`);
+                                console.log(`${viewId}: ${attr.title ? attr.title : '<no title>'}\n\n`);
+
+                                result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
+                                result += `${viewId} (${attr.type}): ${attr.title ? `${attr.title}<br>` : '<no title><br>'}`;
+                                result += `<br>`;
+                            }
+                        }
+                    }
+                }
+
+                if (count === 0) {
+                    result = `<em>No views found with type: ${viewType}</em>`;
+                } else {
+                    result = `<strong>Found ${count} view(s) of type: ${viewType}</strong><br><br>` + result;
+                }
+
+                const en = window.performance.now();
+                console.log(`Finding views by type took ${Math.trunc(en - st)} ms`);
+
+                return result;
+            },
         }
     })(); //Core
 
@@ -8626,7 +8698,8 @@ function Ktl($, appInfo) {
                     } else if (viewType === 'form') {
                         fieldIds = Array.from(document.querySelectorAll(`#${viewId} [data-input-id]`)).map(el => el.getAttribute('data-input-id'));
                     } else { //Grids, Searches and Lists.
-                        fieldIds = Knack.views[viewId].model.view.fields.filter(f => !!f).map((f) => f.key);
+                        const model = Knack.views[viewId].model.results_model || Knack.views[viewId].model;
+                        fieldIds = model.view.fields.filter(f => !!f).map((f) => f.key);
                     }
 
                     cfvScanGroups(fieldIds, params, options);
@@ -17768,6 +17841,9 @@ function Ktl($, appInfo) {
                                                     break;
                                                 }
                                             }
+                                        } else if (query.startsWith('type:')) {
+                                            const viewType = query.split(':')[1];
+                                            kwResults = ktl.core.findViewsByType(viewType);
                                         } else if (query === 'kw') {
                                             kwResults = ktl.core.findAllKeywords();
                                         } else {
