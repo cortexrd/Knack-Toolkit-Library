@@ -1,6 +1,14 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.31.3    *2025-05-21*
+
+- V-bump
+- Added class ktlIsMobile to body.
+- Fixed issue #507: _cfv added support for search views.
+  - Added findViewsByType utility to find all views by type, including reports: charts, pivot tables, etc.
+- Update CHANGELOG.md
+
 ## 0.31.2    *2025-05-20*
 
 - Bookmarks _bm - added support for ktlRoles.
