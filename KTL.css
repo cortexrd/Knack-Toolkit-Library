@@ -7,12 +7,9 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.7.14 */
+/* KTL CSS version: 0.7.15 */
 
 /************ General Settings **************/
-:root {
-}
-
 #verButtonId {
 	opacity: var(--viBarOpacity);
 	z-index: 10; /*Need to be visible with sticky headers*/
@@ -286,8 +283,7 @@ a.ktlSortDisabled {
 /* Bookmarks Container */
 .ktlBookmarksContainer {
 	position: relative;
-    margin-top: 20px;
-    margin-bottom: 20px;
+    margin: 20px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;

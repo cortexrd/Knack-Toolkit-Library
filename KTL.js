@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.31.3';
+    const KTL_VERSION = '0.31.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -16893,7 +16893,7 @@ function Ktl($, appInfo) {
                 buttonsContainer.appendChild(helperText);
             }
 
-            const sceneContent = document.querySelector('.kn-scene');
+            const sceneContent = document.querySelector('.kn-scenes');
             if (sceneContent) {
                 if (bookmarksPosition === 'top') {
                     sceneContent.insertBefore(bookmarksContainer, sceneContent.firstChild);
