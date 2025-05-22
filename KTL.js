@@ -16757,28 +16757,14 @@ function Ktl($, appInfo) {
 
             const bookmarksContainer = document.createElement('div');
             bookmarksContainer.className = 'ktlBookmarksContainer';
-            bookmarksContainer.style.marginTop = '20px';
-            bookmarksContainer.style.marginBottom = '20px';
-            bookmarksContainer.style.display = 'flex';
-            bookmarksContainer.style.flexDirection = 'column';
-            bookmarksContainer.style.alignItems = 'flex-start';
-            bookmarksContainer.style.width = '100%';
 
             const header = document.createElement('div');
             header.className = 'ktlBookmarksHeader';
-            header.style.width = '100%';
-            header.style.marginBottom = '10px';
-            header.style.fontWeight = 'bold';
-            header.style.fontSize = '16px';
             header.innerHTML = '<i class="fa fa-bookmark" style="vertical-align: middle; margin-right: 5px;"></i> My Bookmarks';
             bookmarksContainer.appendChild(header);
 
             const buttonsContainer = document.createElement('div');
             buttonsContainer.className = 'ktlBookmarksButtons';
-            buttonsContainer.style.display = 'flex';
-            buttonsContainer.style.flexWrap = 'wrap';
-            buttonsContainer.style.gap = '10px';
-            buttonsContainer.style.width = '100%';
             bookmarksContainer.appendChild(buttonsContainer);
 
             const bookmarkCount = Object.keys(bookmarks).length;
@@ -16793,11 +16779,7 @@ function Ktl($, appInfo) {
                 });
             } else {
                 const helperText = document.createElement('div');
-                helperText.style.padding = '15px';
-                helperText.style.backgroundColor = '#f8f8f8';
-                helperText.style.borderRadius = '4px';
-                helperText.style.color = '#555';
-                helperText.style.width = '100%';
+                helperText.className = 'ktlBookmarksHelperText';
                 helperText.innerHTML = 'You can add bookmarks by clicking the <i class="fa fa-bookmark-o" style="vertical-align: middle;"></i> icon at the top-right of each page.';
                 buttonsContainer.appendChild(helperText);
             }
@@ -16818,32 +16800,27 @@ function Ktl($, appInfo) {
                     const button = document.createElement('a');
                     button.className = 'kn-button ktlBookmarkButton';
                     button.href = bookmark.url;
-                    button.style.display = 'inline-flex';
-                    button.style.alignItems = 'center';
-                    button.style.padding = '8px 12px';
-                    button.style.borderRadius = '4px';
-                    button.style.textDecoration = 'none';
-                    button.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-
+        
+                    // Only dynamic styles remain here:
                     const newSaturation = 0.3;
                     const newLightness = 0.6;
                     const newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
                     const buttonBackgroundColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
                     button.style.backgroundColor = buttonBackgroundColor;
                     button.style.color = sysColors.buttonText.rgb;
-
+        
                     const iconSpan = document.createElement('span');
                     iconSpan.className = 'icon is-small';
-                    iconSpan.style.marginRight = '8px';
+                    // No inline style here
                     const icon = document.createElement('i');
                     icon.className = 'fa fa-bookmark';
                     iconSpan.appendChild(icon);
                     button.appendChild(iconSpan);
-
+        
                     const textSpan = document.createElement('span');
                     textSpan.textContent = bookmark.name;
                     button.appendChild(textSpan);
-
+        
                     container.appendChild(button);
                 })
                 .catch(function (reason) {

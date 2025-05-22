@@ -282,6 +282,56 @@ a.ktlSortDisabled {
 	pointer-events: all;
 }
 
+/************Bookmarks **************/
+/* Bookmarks Container */
+.ktlBookmarksContainer {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+
+/* Bookmarks Header */
+.ktlBookmarksHeader {
+    width: 100%;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Bookmarks Buttons Container */
+.ktlBookmarksButtons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Helper Text */
+.ktlBookmarksHelperText {
+    padding: 15px;
+    background-color: #f8f8f8;
+    border-radius: 4px;
+    color: #555;
+    width: 100%;
+}
+
+.ktlBookmarkButton {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin: 2px 4px;
+}
+
+.ktlBookmarkButton .icon.is-small {
+    margin-right: 8px;
+}
+
 /************ Tooltips **************/
 .tooltip {
 	position: relative;
