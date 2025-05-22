@@ -1,46 +1,64 @@
 # Knack Toolkit Library Changelog
 
 
-## 0.31.0    *2025-05-19*
-
-- Add Bookmarks _bm improvements.
-  - Added keyword parameter to support top or bottom positioning of bookmark container.
-  - Default is bottom of page.
-- New keywords:  _bm for Add Bookmarks
-  - Several improvements and fixes regarding User Preferences:  real-time updates and backwards message acknowledgement.
-  - Prevent sending messages to iFrameWnd when it's the destination but doesn't exists.
-- Get rid of LF vs CRLF warning in GitHub.
-  - Now always Unix-Style LF only.
-  - Note to all developers on Window...
-  - Run these two lines in a cmd.exe prompt:
-  - git config --global core.autocrlf false
-  - git config --global core.eol lf
-- Update CHANGELOG.md
-- Changes for 0.30.13
-- Feature / Dropdown Select All (#505)
-  - * Feature / Dropdown Select All
-  - * Add persistent form support.
-- Fixed issue #501, _hc causing shift in headers.
-  - Involved a fix in the hideTableColumns function, where the field ID and headers must be processed separately.
-- refreshView - added support for login pages.
-
-## 0.30.13    *2025-05-09*
+## 0.31.3    *2025-05-21*
 
 - V-bump
-- Filters column headers by text content, when headers contain HTML elements. (#504)
-  - * Filters column headers by text content.
-  - Updates the column header filtering logic to handle HTML tags within the header text.
-  - It now correctly identifies the column by comparing the plain text content, improving accuracy when headers contain HTML elements.
-  - * Removed Logs
-- Fixed extractJQuerySelector when jQuery string ends with anything else than closing parentheses.
-  - This happens with <br>.
-  - Fixed validateKtlCond when used with checkboxes in a form.
-- Add title attrinute to _trk which allows you to hover over the td and display the text.  Styling left as default so users can apply there own styles in their CSS (#503)
-  - * Add title attrinute to _trk which allows you to hover over the td and display the text.  Styling left as default so users can apply there own styles in their CSS
-  - * Added a check to make sure we don't keep adding titles if one already exists
-- ChangeLog generator now automatically finds most recent tag.
-- Automatic creation of the CHANGELOG.md file using Javascript script.
-- Cleanup in GIT ignored files and folders.
+- Added class ktlIsMobile to body.
+- Fixed issue #507: _cfv added support for search views.
+  - Added findViewsByType utility to find all views by type, including reports: charts, pivot tables, etc.
+- Update CHANGELOG.md
+
+## 0.31.2    *2025-05-20*
+
+- Bookmarks _bm - added support for ktlRoles.
+  - Changed all classes to start by ktl and use camel case like all others.
+
+## 0.31.1 *2025-05-20*
+
+-   Bookmarks feature - added class for header
+    -   No more icon for page if feature is not enabled.
+    -   Renamed classes to match existing KTL naming convention.
+-   Update for 0.31.0
+-   Changelogs for 0.31.0
+-   Add Bookmarks \_bm improvements.
+    -   Added keyword parameter to support top or bottom positioning of bookmark container.
+    -   Default is bottom of page.
+-   New keywords: \_bm for Add Bookmarks
+    -   Several improvements and fixes regarding User Preferences: real-time updates and backwards message acknowledgement.
+    -   Prevent sending messages to iFrameWnd when it's the destination but doesn't exists.
+-   Get rid of LF vs CRLF warning in GitHub.
+    -   Now always Unix-Style LF only.
+    -   Note to all developers on Window...
+    -   Run these two lines in a cmd.exe prompt:
+    -   git config --global core.autocrlf false
+    -   git config --global core.eol lf
+-   Update CHANGELOG.md
+-   Changes for 0.30.13
+-   Feature / Dropdown Select All (\#505)
+    -   Feature / Dropdown Select All
+    -   Add persistent form support.
+-   Fixed issue \#501, \_hc causing shift in headers.
+    -   Involved a fix in the hideTableColumns function, where the field ID and headers must be processed separately.
+-   refreshView - added support for login pages.
+
+## 0.30.13 *2025-05-09*
+
+-   V-bump
+-   Filters column headers by text content, when headers contain HTML elements. (\#504)
+    -   Filters column headers by text content.
+    -   Updates the column header filtering logic to handle HTML tags within the header text.
+    -   It now correctly identifies the column by comparing the plain text content, improving accuracy when headers contain HTML elements.
+    -   Removed Logs
+-   Fixed extractJQuerySelector when jQuery string ends with anything else than closing parentheses.
+    -   This happens with .
+    -   Fixed validateKtlCond when used with checkboxes in a form.
+-   Add title attrinute to \_trk which allows you to hover over the td and display the text. Styling left as default so users can apply there own styles in their CSS (\#503)
+    -   Add title attrinute to \_trk which allows you to hover over the td and display the text. Styling left as default so users can apply there own styles in their CSS
+    -   Added a check to make sure we don't keep adding titles if one already exists
+-   ChangeLog generator now automatically finds most recent tag.
+-   Automatic creation of the CHANGELOG.md file using Javascript script.
+-   Cleanup in GIT ignored files and folders.
 
 ## 0.30.12 *2025-04-29*
 

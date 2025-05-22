@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.31.1';
+    const KTL_VERSION = '0.31.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -185,23 +185,27 @@ function Ktl($, appInfo) {
                     scene: '',
                     position: 'bottom',
                     min: false,
+                    options: {}
                 };
 
-                if (viewKwObj._bm?.[0]?.params?.[0].includes('all')) {
+                if (viewKwObj._bm?.[0]?.params?.[0]?.includes('all')) {
                     bookmarkElement.scene = 'all';
-                    if (viewKwObj._bm?.[0]?.params?.[0].includes('top'))
-                        bookmarkElement.position = 'top';
-                        if (viewKwObj._bm?.[0]?.params?.[0].includes('min'))
-                            bookmarkElement.min = true;
-                    ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
                 } else {
                     bookmarkElement.scene = scene.attributes.key;
-                    if (viewKwObj._bm?.[0]?.params?.[0].includes('top'))
-                        bookmarkElement.position = 'top';
-                        if (viewKwObj._bm?.[0]?.params?.[0].includes('min'))
-                            bookmarkElement.min = true;
-                    ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
                 }
+
+                if (viewKwObj._bm?.[0]?.params?.[0]?.includes('top'))
+                    bookmarkElement.position = 'top';
+
+                if (viewKwObj._bm?.[0]?.params?.[0].includes('min'))
+                    bookmarkElement.min = true;
+
+                const options = viewKwObj._bm?.[0]?.options;
+                if (options) {
+                    bookmarkElement.options = options;
+                }
+
+                ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
             }
         }
     };
@@ -2281,7 +2285,6 @@ function Ktl($, appInfo) {
             findAllKeywords: function (search = '') {
                 let result = '';
                 const st = window.performance.now();
-                search && console.log(`Searching all keywords for: ${search}`);
                 const regex = new RegExp(search, 'i');
 
                 let builderUrl;
@@ -2328,7 +2331,7 @@ function Ktl($, appInfo) {
                             for (const scene of Knack.scenes.models) {
                                 if (kwKey === scene.attributes.key) {
                                     builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${kwKey}`;
-                                    console.log(`Builder URL = ${builderUrl}`);
+                                    console.log(`Builder: ${builderUrl}`);
                                     result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                                     result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
                                     break;
@@ -2337,7 +2340,7 @@ function Ktl($, appInfo) {
                         } else if (kwKey.startsWith('field_')) {
                             const objectId = Knack.objects.getField(kwKey).attributes.object_key;
                             builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${objectId}/fields/${kwKey}/settings`;
-                            console.log(`Builder URL = ${builderUrl}`);
+                            console.log(`Builder: ${builderUrl}`);
                             result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                         }
 
@@ -2592,6 +2595,79 @@ function Ktl($, appInfo) {
                 }
             },
 
+            //Parameter examples:
+            // for most views: 'table', 'search', 'details', 'list', 'form', 'calendar', 'map' and more
+            // for reports: 'report/table', 'report/pie', 'report/line', 'report/area' and more
+            findViewsByType: function (viewType) {
+                let result = '';
+                const st = window.performance.now();
+
+                const [parentType, childType] = viewType.includes('/') ? viewType.split('/') : [viewType, null];
+                let count = 0;
+
+                for (var s = 0; s < Knack.scenes.models.length; s++) {
+                    var views = Knack.scenes.models[s].views;
+                    for (var v = 0; v < views.models.length; v++) {
+                        let view = views.models[v];
+                        if (view) {
+                            const attr = view.attributes;
+                            let found = false;
+
+                            // Check regular views
+                            if (!childType && attr.type === parentType) {
+                                found = true;
+                            }
+
+                            // Check for report/type structure
+                            if (childType && attr.type === parentType) {
+                                if (view?.attributes?.rows) {
+                                    for (var r = 0; r < view.attributes.rows.length; r++) {
+                                        var row = view.attributes.rows[r];
+                                        if (row.reports) {
+                                            for (var rp = 0; rp < row.reports.length; rp++) {
+                                                if (row.reports[rp].type === childType) {
+                                                    found = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (found) break;
+                                    }
+                                }
+                            }
+
+                            if (found) {
+                                count++;
+                                const sceneId = attr.scene.key;
+                                const viewId = attr.key;
+                                const builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${attr.type}`;
+                                const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                const appUrl = `${Knack.url_base}#${slug}`;
+
+                                console.log(`Builder: ${builderUrl}`);
+                                console.log(`App: ${appUrl}`);
+                                console.log(`${viewId}: ${attr.title ? attr.title : '<no title>'}\n\n`);
+
+                                result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
+                                result += `${viewId} (${attr.type}): ${attr.title ? `${attr.title}<br>` : '<no title><br>'}`;
+                                result += `<br>`;
+                            }
+                        }
+                    }
+                }
+
+                if (count === 0) {
+                    result = `<em>No views found with type: ${viewType}</em>`;
+                } else {
+                    result = `<strong>Found ${count} view(s) of type: ${viewType}</strong><br><br>` + result;
+                }
+
+                const en = window.performance.now();
+                console.log(`Finding views by type took ${Math.trunc(en - st)} ms`);
+
+                return result;
+            },
         }
     })(); //Core
 
@@ -8626,7 +8702,8 @@ function Ktl($, appInfo) {
                     } else if (viewType === 'form') {
                         fieldIds = Array.from(document.querySelectorAll(`#${viewId} [data-input-id]`)).map(el => el.getAttribute('data-input-id'));
                     } else { //Grids, Searches and Lists.
-                        fieldIds = Knack.views[viewId].model.view.fields.filter(f => !!f).map((f) => f.key);
+                        const model = Knack.views[viewId].model.results_model || Knack.views[viewId].model;
+                        fieldIds = model.view.fields.filter(f => !!f).map((f) => f.key);
                     }
 
                     cfvScanGroups(fieldIds, params, options);
@@ -16486,6 +16563,12 @@ function Ktl($, appInfo) {
                 return;
             }
 
+            if (Knack.isMobile()) {
+                $('body').addClass('ktlIsMobile');
+            } else {
+                $('body').removeClass('ktlIsMobile');
+            }
+
             //Remove empty columns because it ruins the layout. Happens too often but not sure why (KTL or Knack?).
             if (!ktl.scenes.isiFrameWnd()) {
                 ktl.core.waitSelector('.view-column', 5000) //Needed otherwise we miss them once in a while.
@@ -16662,37 +16745,40 @@ function Ktl($, appInfo) {
 
         //Add Bookmarks - BEGIN
         let bookmarksPosition = 'bottom';
+        let bookmarksMinEnabled = true; // default to true
 
         function addBookmarks() {
-            if (!ktlKeywords.ktlAppBookmarks || ktl.scenes.isiFrameWnd() || ktl.core.isKiosk()) return;
+            if (!ktlKeywords.ktlAppBookmarks || !Array.isArray(ktlKeywords.ktlAppBookmarks) || ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() || !ktl.account.isLoggedIn()) return;
 
             const sceneKey = Knack.router.current_scene_key;
             const userPrefs = ktl.userPrefs.getUserPrefs();
             const bookmarks = userPrefs.bookmarks || {};
             const isBookmarked = !!bookmarks[sceneKey];
 
-            addBookmarkToggle(isBookmarked);
+            const showOnAll = ktlKeywords.ktlAppBookmarks.some(bookmark => bookmark.scene === 'all');
+            const thisSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === sceneKey);
+            const allSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === 'all');
 
-            if (ktlKeywords.ktlAppBookmarks && Array.isArray(ktlKeywords.ktlAppBookmarks)) {
-                const showOnAll = ktlKeywords.ktlAppBookmarks.some(bookmark => bookmark.scene === 'all');
-                const thisSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === sceneKey);
+            if (showOnAll || thisSceneBookmark) {
+                if (!ktl.core.hasRoleAccess(thisSceneBookmark?.options)) return;
 
-                if (showOnAll || thisSceneBookmark) {
-                    if (thisSceneBookmark) {
-                        bookmarksPosition = thisSceneBookmark.position || 'bottom';
-                    } else if (showOnAll) {
-                        const allSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === 'all');
-                        bookmarksPosition = allSceneBookmark ? allSceneBookmark.position : 'bottom';
-                    }
+                addBookmarkToggle(isBookmarked);
 
-                    addBookmarksList(bookmarks);
+                if (thisSceneBookmark) {
+                    bookmarksPosition = thisSceneBookmark.position || 'bottom';
+                    bookmarksMinEnabled = thisSceneBookmark.min !== false; // true unless explicitly false
+                } else if (showOnAll) {
+                    bookmarksPosition = allSceneBookmark ? allSceneBookmark.position : 'bottom';
+                    bookmarksMinEnabled = allSceneBookmark ? allSceneBookmark.min !== false : true;
                 }
+
+                addBookmarksList(bookmarks);
             }
         }
 
         function addBookmarkToggle(isBookmarked) {
-            const bookmarkIcon = $('<a href="#" class="bookmark-toggle" style="display: inline-flex; align-items: center; text-decoration: none; color: inherit;">' +
-                '<span class="icon" style="font-size: 16px; margin-left: 10px;">' +
+            const bookmarkIcon = $('<a href="#" class="ktlBookmarkToggle" style="display: inline-flex; align-items: center; text-decoration: none; color: inherit;">' +
+                '<span class="icon" style="font-size: 16px; margin-left: 15px;">' +
                 '<i class="fa ' + (isBookmarked ? 'fa-bookmark' : 'fa-bookmark-o') + '" title="' + (isBookmarked ? 'Remove bookmark' : 'Add bookmark') + '"></i>' +
                 '</span>' +
                 '</a>');
@@ -16702,20 +16788,20 @@ function Ktl($, appInfo) {
                 // For mobile - add to header
                 const mobileContainer = $('#kn-app-mobile-container');
                 if (mobileContainer.length) {
-                    $('.mobile-bookmark-toggle').remove();
-                    const bookmarkContainer = $('<div class="mobile-bookmark-toggle" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);"></div>');
+                    $('.ktlMobileBookmarkToggle').remove();
+                    const bookmarkContainer = $('<div class="ktlMobileBookmarkToggle" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);"></div>');
                     bookmarkContainer.append(bookmarkIcon);
                     mobileContainer.append(bookmarkContainer);
                 }
             } else {
                 // For desktop - insert after logout link
-                $('.bookmark-toggle').remove();
+                $('.ktlBookmarkToggle').remove();
                 if ($('.kn-log-out').length > 0) {
                     $('.kn-log-out').after(bookmarkIcon);
                 }
             }
 
-            $('.bookmark-toggle').on('click', handleBookmarkToggle);
+            $('.ktlBookmarkToggle').on('click', handleBookmarkToggle);
         }
 
         function handleBookmarkToggle(e) {
@@ -16772,31 +16858,31 @@ function Ktl($, appInfo) {
             buttonsContainer.className = 'ktlBookmarksButtons';
             bookmarksContainer.appendChild(buttonsContainer);
 
-            // Minimize button (top right)
-            const minimizeBtn = document.createElement('button');
-            minimizeBtn.className = 'ktlBookmarksMinBtn';
-            minimizeBtn.title = 'Minimize bookmarks';
-            minimizeBtn.setAttribute('aria-label', 'Minimize bookmarks');
-            minimizeBtn.innerHTML = '<i class="fa fa-minus"></i>';
+            // Only add minimize button if bookmarksMinEnabled is true
+            if (bookmarksMinEnabled) {
+                const minimizeBtn = document.createElement('button');
+                minimizeBtn.className = 'ktlBookmarksMinBtn';
+                minimizeBtn.title = 'Minimize bookmarks';
+                minimizeBtn.setAttribute('aria-label', 'Minimize bookmarks');
+                minimizeBtn.innerHTML = '<i class="fa fa-minus"></i>';
 
-            // Restore minimized state from userPrefs
-            const userPrefsObj = ktl.userPrefs.getUserPrefs();
-            if (userPrefsObj.bookmarksMinimized) {
-                bookmarksContainer.classList.add('ktlBookmarksMinimized');
-                minimizeBtn.innerHTML = '<i class="fa fa-plus"></i>';
+                // Restore minimized state from userPrefs
+                const userPrefsObj = ktl.userPrefs.getUserPrefs();
+                if (userPrefsObj.bookmarksMinimized) {
+                    bookmarksContainer.classList.add('ktlBookmarksMinimized');
+                    minimizeBtn.innerHTML = '<i class="fa fa-plus"></i>';
+                }
+
+                minimizeBtn.addEventListener('click', function () {
+                    const minimized = bookmarksContainer.classList.toggle('ktlBookmarksMinimized');
+                    minimizeBtn.innerHTML = minimized ? '<i class="fa fa-plus"></i>' : '<i class="fa fa-minus"></i>';
+                    userPrefsObj.bookmarksMinimized = minimized;
+                    userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                });
+
+                bookmarksHeader.appendChild(minimizeBtn);
             }
-
-            // Minimize/expand logic with persistence
-            minimizeBtn.addEventListener('click', function () {
-                const minimized = bookmarksContainer.classList.toggle('ktlBookmarksMinimized');
-                minimizeBtn.innerHTML = minimized ? '<i class="fa fa-plus"></i>' : '<i class="fa fa-minus"></i>';
-                // Persist state
-                userPrefsObj.bookmarksMinimized = minimized;
-                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
-            });
-
-            bookmarksHeader.appendChild(minimizeBtn);
 
             const bookmarkCount = Object.keys(bookmarks).length;
 
@@ -16831,7 +16917,7 @@ function Ktl($, appInfo) {
                     const button = document.createElement('a');
                     button.className = 'kn-button ktlBookmarkButton';
                     button.href = bookmark.url;
-        
+
                     // Only dynamic styles remain here:
                     const newSaturation = 0.3;
                     const newLightness = 0.6;
@@ -16845,18 +16931,18 @@ function Ktl($, appInfo) {
                         e.preventDefault();
                         showBookmarkContextMenu(e, bookmark, button);
                     });
-        
+
                     const iconSpan = document.createElement('span');
                     iconSpan.className = 'icon is-small';
                     const icon = document.createElement('i');
                     icon.className = 'fa fa-bookmark';
                     iconSpan.appendChild(icon);
                     button.appendChild(iconSpan);
-        
+
                     const textSpan = document.createElement('span');
                     textSpan.textContent = bookmark.name;
                     button.appendChild(textSpan);
-        
+
                     container.appendChild(button);
                 })
                 .catch(function (reason) {
@@ -17862,6 +17948,9 @@ function Ktl($, appInfo) {
                                                     break;
                                                 }
                                             }
+                                        } else if (query.startsWith('type:')) {
+                                            const viewType = query.split(':')[1];
+                                            kwResults = ktl.core.findViewsByType(viewType);
                                         } else if (query === 'kw') {
                                             kwResults = ktl.core.findAllKeywords();
                                         } else {
