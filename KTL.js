@@ -183,18 +183,23 @@ function Ktl($, appInfo) {
 
                 const bookmarkElement = {
                     scene: '',
-                    position: 'bottom'
+                    position: 'bottom',
+                    min: false,
                 };
 
                 if (viewKwObj._bm?.[0]?.params?.[0].includes('all')) {
                     bookmarkElement.scene = 'all';
                     if (viewKwObj._bm?.[0]?.params?.[0].includes('top'))
                         bookmarkElement.position = 'top';
+                        if (viewKwObj._bm?.[0]?.params?.[0].includes('min'))
+                            bookmarkElement.min = true;
                     ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
                 } else {
                     bookmarkElement.scene = scene.attributes.key;
                     if (viewKwObj._bm?.[0]?.params?.[0].includes('top'))
                         bookmarkElement.position = 'top';
+                        if (viewKwObj._bm?.[0]?.params?.[0].includes('min'))
+                            bookmarkElement.min = true;
                     ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
                 }
             }
@@ -16758,14 +16763,40 @@ function Ktl($, appInfo) {
             const bookmarksContainer = document.createElement('div');
             bookmarksContainer.className = 'ktlBookmarksContainer';
 
-            const header = document.createElement('div');
-            header.className = 'ktlBookmarksHeader';
-            header.innerHTML = '<i class="fa fa-bookmark" style="vertical-align: middle; margin-right: 5px;"></i> My Bookmarks';
-            bookmarksContainer.appendChild(header);
+            const bookmarksHeader = document.createElement('div');
+            bookmarksHeader.className = 'ktlBookmarksHeader';
+            bookmarksHeader.innerHTML = '<i class="fa fa-bookmark" style="vertical-align: middle; margin-right: 5px;"></i> My Bookmarks';
+            bookmarksContainer.appendChild(bookmarksHeader);
 
             const buttonsContainer = document.createElement('div');
             buttonsContainer.className = 'ktlBookmarksButtons';
             bookmarksContainer.appendChild(buttonsContainer);
+
+            // Minimize button (top right)
+            const minimizeBtn = document.createElement('button');
+            minimizeBtn.className = 'ktlBookmarksMinBtn';
+            minimizeBtn.title = 'Minimize bookmarks';
+            minimizeBtn.setAttribute('aria-label', 'Minimize bookmarks');
+            minimizeBtn.innerHTML = '<i class="fa fa-minus"></i>';
+
+            // Restore minimized state from userPrefs
+            const userPrefsObj = ktl.userPrefs.getUserPrefs();
+            if (userPrefsObj.bookmarksMinimized) {
+                bookmarksContainer.classList.add('ktlBookmarksMinimized');
+                minimizeBtn.innerHTML = '<i class="fa fa-plus"></i>';
+            }
+
+            // Minimize/expand logic with persistence
+            minimizeBtn.addEventListener('click', function () {
+                const minimized = bookmarksContainer.classList.toggle('ktlBookmarksMinimized');
+                minimizeBtn.innerHTML = minimized ? '<i class="fa fa-plus"></i>' : '<i class="fa fa-minus"></i>';
+                // Persist state
+                userPrefsObj.bookmarksMinimized = minimized;
+                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+            });
+
+            bookmarksHeader.appendChild(minimizeBtn);
 
             const bookmarkCount = Object.keys(bookmarks).length;
 
@@ -16808,10 +16839,15 @@ function Ktl($, appInfo) {
                     const buttonBackgroundColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
                     button.style.backgroundColor = buttonBackgroundColor;
                     button.style.color = sysColors.buttonText.rgb;
+
+                    // Add context menu (right-click) handler
+                    button.addEventListener('contextmenu', function(e) {
+                        e.preventDefault();
+                        showBookmarkContextMenu(e, bookmark, button);
+                    });
         
                     const iconSpan = document.createElement('span');
                     iconSpan.className = 'icon is-small';
-                    // No inline style here
                     const icon = document.createElement('i');
                     icon.className = 'fa fa-bookmark';
                     iconSpan.appendChild(icon);
@@ -16826,6 +16862,92 @@ function Ktl($, appInfo) {
                 .catch(function (reason) {
                     console.log('Bookmarks - error loading colors:', reason);
                 });
+        }
+
+        function showBookmarkContextMenu(e, bookmark, button) {
+            // Remove any existing menu
+            document.querySelectorAll('.ktlBookmarkMenu').forEach(menu => menu.remove());
+
+            const menu = document.createElement('div');
+            menu.className = 'ktlBookmarkMenu';
+            menu.style.position = 'fixed';
+            menu.style.left = `${e.clientX}px`;
+            menu.style.top = `${e.clientY}px`;
+
+            // Edit option
+            const editOption = document.createElement('div');
+            editOption.textContent = 'Rename';
+            editOption.className = 'ktlBookmarkMenuItem';
+            editOption.addEventListener('click', function() {
+                handleEditBookmark(bookmark);
+                menu.remove();
+            });
+            menu.appendChild(editOption);
+
+
+            // Delete option
+            const deleteOption = document.createElement('div');
+            deleteOption.textContent = 'Delete';
+            deleteOption.className = 'ktlBookmarkMenuItem';
+            deleteOption.addEventListener('click', function() {
+                handleDeleteBookmark(bookmark);
+                menu.remove();
+            });
+            menu.appendChild(deleteOption);
+
+            // Remove menu on click elsewhere
+            document.addEventListener('click', function onDocClick() {
+                menu.remove();
+                document.removeEventListener('click', onDocClick);
+            });
+
+            document.body.appendChild(menu);
+            window.addEventListener('scroll', removeMenu, { once: true });
+            window.addEventListener('resize', removeMenu, { once: true });
+
+            function removeMenu() {
+                menu.remove();
+                window.removeEventListener('scroll', removeMenu);
+                window.removeEventListener('resize', removeMenu);
+            }
+        }
+
+        function handleDeleteBookmark(bookmark) {
+            const userPrefsObj = ktl.userPrefs.getUserPrefs();
+            let bookmarks = userPrefsObj.bookmarks || {};
+
+            // Find the key for this bookmark
+            const keyToDelete = Object.keys(bookmarks).find(key => bookmarks[key].url === bookmark.url);
+            if (keyToDelete) {
+                delete bookmarks[keyToDelete];
+                userPrefsObj.bookmarks = bookmarks;
+                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                refreshBookmarksList(bookmarks);
+                ktl.core.timedPopup('Bookmark deleted', 'warning', 1500);
+            }
+        }
+
+        function handleEditBookmark(bookmark) {
+            const userPrefsObj = ktl.userPrefs.getUserPrefs();
+            let bookmarks = userPrefsObj.bookmarks || {};
+
+            // Find the key for this bookmark
+            const keyToEdit = Object.keys(bookmarks).find(key => bookmarks[key].url === bookmark.url);
+            if (keyToEdit) {
+                const currentName = bookmarks[keyToEdit].name || '';
+                const newName = prompt('Rename bookmark:', currentName);
+                if (newName && newName.trim() && newName !== currentName) {
+                    bookmarks[keyToEdit].name = newName.trim();
+                    userPrefsObj.bookmarks = bookmarks;
+                    userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                    ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                    refreshBookmarksList(bookmarks);
+                    ktl.core.timedPopup('Bookmark renamed', 'success', 1500);
+                }
+            }
         }
 
         function refreshBookmarksList(bookmarks) {

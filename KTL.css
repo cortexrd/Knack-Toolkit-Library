@@ -285,12 +285,28 @@ a.ktlSortDisabled {
 /************Bookmarks **************/
 /* Bookmarks Container */
 .ktlBookmarksContainer {
+	position: relative;
     margin-top: 20px;
     margin-bottom: 20px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     width: 100%;
+	min-width: 260px;
+	max-width: fit-content;
+	transition: max-height 0.2s, opacity 0.2s;
+    overflow: hidden;
+}
+
+/* Minimized state: only header visible, buttons hidden */
+.ktlBookmarksContainer.ktlBookmarksMinimized {
+    max-height: 40px !important;
+    opacity: 0.7;
+    min-width: 200px;
+}
+
+.ktlBookmarksContainer.ktlBookmarksMinimized .ktlBookmarksButtons {
+    display: none !important;
 }
 
 /* Bookmarks Header */
@@ -303,10 +319,21 @@ a.ktlSortDisabled {
 
 /* Bookmarks Buttons Container */
 .ktlBookmarksButtons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    width: 100%;
+	width: 100%;
+    max-height: 130px;   /* adjust as needed for your button size */
+    overflow-y: auto;
+}
+
+/* Minimize Button */
+.ktlBookmarksMinBtn {
+    position: absolute;
+    top: 2px;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    z-index: 2001;
 }
 
 /* Helper Text */
@@ -321,7 +348,7 @@ a.ktlSortDisabled {
 .ktlBookmarkButton {
     display: inline-flex;
     align-items: center;
-    padding: 8px 12px;
+    padding: 5px 8px;
     border-radius: 4px;
     text-decoration: none;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -332,6 +359,21 @@ a.ktlSortDisabled {
     margin-right: 8px;
 }
 
+/* Context Menu for Bookmarks */
+.ktlBookmarkMenu {
+    font-size: 13px;
+    min-width: 120px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+	padding: 3px 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 9999;
+}
+
+.ktlBookmarkMenu > div:hover {
+    background: #f0f0f0;
+}
 /************ Tooltips **************/
 .tooltip {
 	position: relative;
