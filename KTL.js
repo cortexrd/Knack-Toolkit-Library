@@ -16974,20 +16974,18 @@ function Ktl($, appInfo) {
             menu.appendChild(deleteOption);
 
             // Remove menu on click elsewhere
-            document.addEventListener('click', function onDocClick() {
-                menu.remove();
-                document.removeEventListener('click', onDocClick);
-            });
-
+            function removeMenu() {
+                if (menu && menu.parentNode) {
+                    menu.remove();
+                    document.removeEventListener('click', removeMenu);
+                    window.removeEventListener('scroll', removeMenu);
+                    window.removeEventListener('resize', removeMenu);
+                }
+            }
+            document.addEventListener('click', removeMenu);
             document.body.appendChild(menu);
             window.addEventListener('scroll', removeMenu, { once: true });
             window.addEventListener('resize', removeMenu, { once: true });
-
-            function removeMenu() {
-                menu.remove();
-                window.removeEventListener('scroll', removeMenu);
-                window.removeEventListener('resize', removeMenu);
-            }
         }
 
         function handleDeleteBookmark(bookmark) {
