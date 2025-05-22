@@ -16748,32 +16748,24 @@ function Ktl($, appInfo) {
         let bookmarksMinEnabled = true; // default to true
 
         function addBookmarks() {
-            if (!ktlKeywords.ktlAppBookmarks || !Array.isArray(ktlKeywords.ktlAppBookmarks) || ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() || !ktl.account.isLoggedIn()) return;
+            const bookmarksArr = ktlKeywords.ktlAppBookmarks;
+            if (!Array.isArray(bookmarksArr) || ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() || !ktl.account.isLoggedIn()) return;
 
             const sceneKey = Knack.router.current_scene_key;
             const userPrefs = ktl.userPrefs.getUserPrefs();
             const bookmarks = userPrefs.bookmarks || {};
             const isBookmarked = !!bookmarks[sceneKey];
 
-            const showOnAll = ktlKeywords.ktlAppBookmarks.some(bookmark => bookmark.scene === 'all');
-            const thisSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === sceneKey);
-            const allSceneBookmark = ktlKeywords.ktlAppBookmarks.find(bookmark => bookmark.scene === 'all');
+            const thisSceneBookmark = bookmarksArr.find(b => b.scene === sceneKey);
+            const allSceneBookmark = bookmarksArr.find(b => b.scene === 'all');
+            const bookmarkConfig = thisSceneBookmark || allSceneBookmark;
 
-            if (showOnAll || thisSceneBookmark) {
-                if (!ktl.core.hasRoleAccess(thisSceneBookmark?.options)) return;
+            if (!bookmarkConfig || !ktl.core.hasRoleAccess(bookmarkConfig.options)) return;
 
-                addBookmarkToggle(isBookmarked);
-
-                if (thisSceneBookmark) {
-                    bookmarksPosition = thisSceneBookmark.position || 'bottom';
-                    bookmarksMinEnabled = thisSceneBookmark.min !== false; // true unless explicitly false
-                } else if (showOnAll) {
-                    bookmarksPosition = allSceneBookmark ? allSceneBookmark.position : 'bottom';
-                    bookmarksMinEnabled = allSceneBookmark ? allSceneBookmark.min !== false : true;
-                }
-
-                addBookmarksList(bookmarks);
-            }
+            bookmarksPosition = bookmarkConfig.position || 'bottom';
+            bookmarksMinEnabled = bookmarkConfig.min !== false;
+            addBookmarkToggle(isBookmarked);
+            addBookmarksList(bookmarks);
         }
 
         function addBookmarkToggle(isBookmarked) {
@@ -16858,42 +16850,42 @@ function Ktl($, appInfo) {
             buttonsContainer.className = 'ktlBookmarksButtons';
             bookmarksContainer.appendChild(buttonsContainer);
 
-            // Only add minimize button if bookmarksMinEnabled is true
+            const userPrefsObj = ktl.userPrefs.getUserPrefs();
+
+            // Helper to update minimized state in DOM and storage
+            function setMinimizedState(minimized) {
+                bookmarksContainer.classList.toggle('ktlBookmarksMinimized', minimized);
+                userPrefsObj.bookmarksMinimized = minimized;
+                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+            }
+
+            let minimized = !!userPrefsObj.bookmarksMinimized && bookmarksMinEnabled;
+            setMinimizedState(minimized);
+
             if (bookmarksMinEnabled) {
                 const minimizeBtn = document.createElement('button');
                 minimizeBtn.className = 'ktlBookmarksMinBtn';
                 minimizeBtn.title = 'Minimize bookmarks';
                 minimizeBtn.setAttribute('aria-label', 'Minimize bookmarks');
-                minimizeBtn.innerHTML = '<i class="fa fa-minus"></i>';
-
-                // Restore minimized state from userPrefs
-                const userPrefsObj = ktl.userPrefs.getUserPrefs();
-                if (userPrefsObj.bookmarksMinimized) {
-                    bookmarksContainer.classList.add('ktlBookmarksMinimized');
-                    minimizeBtn.innerHTML = '<i class="fa fa-plus"></i>';
-                }
+                minimizeBtn.innerHTML = minimized ? '<i class="fa fa-plus"></i>' : '<i class="fa fa-minus"></i>';
 
                 minimizeBtn.addEventListener('click', function () {
-                    const minimized = bookmarksContainer.classList.toggle('ktlBookmarksMinimized');
+                    minimized = !minimized;
+                    setMinimizedState(minimized);
                     minimizeBtn.innerHTML = minimized ? '<i class="fa fa-plus"></i>' : '<i class="fa fa-minus"></i>';
-                    userPrefsObj.bookmarksMinimized = minimized;
-                    userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
                 });
 
                 bookmarksHeader.appendChild(minimizeBtn);
+            } else {
+                // If minimize is not enabled, always ensure minimized state is false
+                if (userPrefsObj.bookmarksMinimized) setMinimizedState(false);
             }
 
-            const bookmarkCount = Object.keys(bookmarks).length;
-
-            if (bookmarkCount > 0) {
-                const sortedBookmarks = Object.values(bookmarks).sort((a, b) =>
-                    a.name.localeCompare(b.name)
-                );
-
-                sortedBookmarks.forEach(bookmark => {
-                    createBookmarkButton(bookmark, buttonsContainer);
-                });
+            const bookmarkEntries = Object.values(bookmarks);
+            if (bookmarkEntries.length > 0) {
+                bookmarkEntries.sort((a, b) => a.name.localeCompare(b.name))
+                    .forEach(bookmark => createBookmarkButton(bookmark, buttonsContainer));
             } else {
                 const helperText = document.createElement('div');
                 helperText.className = 'ktlBookmarksHelperText';
