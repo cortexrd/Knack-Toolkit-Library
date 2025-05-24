@@ -2668,6 +2668,160 @@ function Ktl($, appInfo) {
 
                 return result;
             },
+
+            selectOption: function (message = 'Are you sure?', optionsText = 'Yes,No') {
+                return new Promise((resolve) => {
+                    const options = optionsText.split(',').map(opt => opt.trim()).filter(opt => opt);
+                    if (options.length === 0) options.push('Yes', 'No');
+
+                    // Find unique shortcut keys
+                    const shortcuts = [];
+                    const usedKeys = new Set();
+
+                    options.forEach(option => {
+                        let shortcutKey = null;
+                        for (let i = 0; i < option.length; i++) {
+                            const char = option[i].toLowerCase();
+                            if (/[a-z]/.test(char) && !usedKeys.has(char)) {
+                                shortcutKey = char;
+                                usedKeys.add(char);
+                                break;
+                            }
+                        }
+                        shortcuts.push(shortcutKey);
+                    });
+
+                    const overlay = $('<div class="ktlConfirmOverlay"></div>');
+                    const buttonsHtml = options.map((option, index) => {
+                        const shortcut = shortcuts[index];
+                        let buttonText = option;
+
+                        if (shortcut) {
+                            const shortcutIndex = option.toLowerCase().indexOf(shortcut);
+                            buttonText = option.substring(0, shortcutIndex) +
+                                `<u>${option[shortcutIndex]}</u>` +
+                                option.substring(shortcutIndex + 1);
+                        }
+
+                        return `<button class="ktlConfirmOption" data-index="${index}">${buttonText}</button>`;
+                    }).join('');
+
+                    const dialog = $(`
+<div class="ktlConfirmDialog">
+  <div class="ktlConfirmMessage">${message}</div>
+  <div class="ktlConfirmButtons">
+      ${buttonsHtml}
+  </div>
+</div>
+`);
+
+                    // Add styles for hover effects
+                    if (!$('#ktlConfirmStyles').length) {
+                        $('head').append(`
+               <style id="ktlConfirmStyles">
+                   .ktlConfirmButtons button:hover {
+                       background-color: #e9ecef !important;
+                   }
+               </style>
+           `);
+                    }
+
+                    overlay.append(dialog);
+                    $('body').append(overlay);
+
+                    overlay.css({
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        zIndex: 10000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    });
+
+                    dialog.css({
+                        backgroundColor: 'white',
+                        padding: '30px',
+                        borderRadius: '8px',
+                        border: '1px solid #ddd',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                        textAlign: 'center',
+                        minWidth: '300px'
+                    });
+
+                    $('.ktlConfirmMessage').css({
+                        marginBottom: '20px',
+                        fontSize: '16px',
+                        color: '#333'
+                    });
+
+                    $('.ktlConfirmButtons').css({
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '12px'
+                    });
+
+                    $('.ktlConfirmButtons button').css({
+                        padding: '10px 20px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        backgroundColor: '#f8f9fa',
+                        transition: 'background-color 0.2s'
+                    });
+
+                    $('.ktlConfirmButtons button:first-child').css({
+                        border: '2px solid #999',
+                        backgroundColor: '#f0f0f0'
+                    });
+
+                    overlay.on('click', function (e) {
+                        if (e.target === this) {
+                            $(document).off('keydown.ktlConfirm');
+                            overlay.remove();
+                            resolve(-1);
+                        }
+                    });
+
+                    $('.ktlConfirmOption').on('click', function () {
+                        const index = parseInt($(this).data('index'));
+                        overlay.remove();
+                        resolve(index);
+                    });
+
+                    $(document).on('keydown.ktlConfirm', (e) => {
+                        const key = e.key.toLowerCase();
+
+                        if (key === 'escape') {
+                            $(document).off('keydown.ktlConfirm');
+                            overlay.remove();
+                            resolve(-1);
+                            return;
+                        }
+
+                        if (key === 'enter' && options.length === 2) {
+                            $(document).off('keydown.ktlConfirm');
+                            overlay.remove();
+                            resolve(0);
+                            return;
+                        }
+
+                        const shortcutIndex = shortcuts.indexOf(key);
+                        if (shortcutIndex !== -1) {
+                            $(document).off('keydown.ktlConfirm');
+                            overlay.remove();
+                            resolve(shortcutIndex);
+                        }
+                    });
+
+                    $('.ktlConfirmOption').first().focus();
+                });
+            },
+
         }
     })(); //Core
 
@@ -7857,6 +8011,7 @@ function Ktl($, appInfo) {
                     keywords._hsv && hideShowView(view, keywords);
                     keywords._cfdt && calculateFutureDateTime(viewId, keywords, data);
                     keywords._sfv && setFieldValue(viewId, keywords, data);
+                    keywords._ask && askConfirmation(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -13056,6 +13211,56 @@ function Ktl($, appInfo) {
                 .catch(function () { })
         }
 
+        function askConfirmation(view, keywords) {
+            const kw = '_ask';
+            if (!keywords[kw]) return;
+
+            const { key: viewId, type: viewType, columns } = view;
+
+            if (viewType === 'table' || viewType === 'search') {
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                if (keywords[kw][0] && keywords[kw][0].params) {
+                    const groups = keywords[kw][0].params;
+                    for (const group of groups) {
+                        if (group.length >= 1) {
+                            const actionLinkText = group[0].trim();
+                            if (!actionLinkText) return;
+
+                            let questionText = 'Are you sure?';
+                            let optionsText = 'Yes,No';
+
+                            if (group.length >= 2 && group[1].trim()) {
+                                questionText = group[1].trim();
+                            }
+                            if (group.length >= 4 && group[2].trim() && group[3].trim()) {
+                                optionsText = group[2].trim() + ',' + group[3].trim();
+                            }
+
+                            let isProcessing = false;
+
+                            $(`#${viewId} .kn-action-link:textEquals("${actionLinkText}")`).bindFirst('click', async function (e) {
+                                if (isProcessing) return;
+
+                                e.preventDefault();
+                                e.stopImmediatePropagation();
+
+                                const result = await ktl.core.selectOption(questionText, optionsText);
+                                if (result === 0) {
+                                    isProcessing = true;
+                                    $(this).trigger('click');
+                                    setTimeout(() => isProcessing = false, 1000);
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         //Views
         return {
             setCfg: function (cfgObj = {}) {
@@ -16530,7 +16735,7 @@ function Ktl($, appInfo) {
                 tableRows.each((index, row) => {
                     callback(index, $(row));
                 });
-            }
+            },
 
         } //return
     })(); //Views feature
