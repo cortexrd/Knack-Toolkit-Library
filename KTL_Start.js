@@ -86,7 +86,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                         if (cssFile)
                             cssFile.disabled = true;
                     }
-                    LazyLoad.css([appCSSFile]);
+                    LazyLoad.css([`${appCSSFile}?${new Date().valueOf()}`]);
                 }
             });
 
@@ -96,7 +96,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
             if (typeof window.ktlReady === 'function')
                 delete window.ktlReady;
 
-            LazyLoad.js([appJsFile], () => {
+            LazyLoad.js([`${appJsFile}?${new Date().valueOf()}`], () => {
                 if (typeof window.ktlReady !== 'function') {
                     var srcFileName = prompt(`Can't find source file with ktlReady:\n\n${appJsFile}\n\nWhat is file name (without .js)?\n\nLeave empty for none.`, Knack.app.attributes.name);
                     if (srcFileName === null) {
@@ -126,8 +126,8 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     var cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css' + bypassCacheSuffix;
     var ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js' + bypassCacheSuffix;
 
-    LazyLoad.css([cssFile], () => {
-        LazyLoad.js([ktlFile], () => {
+    LazyLoad.css([`${cssFile}?${new Date().valueOf()}`], () => {
+        LazyLoad.js([`${ktlFile}?${new Date().valueOf()}`], () => {
             if (typeof Ktl === 'function') {
                 LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + ((ktlVersion === 'dev' || ktlVersion === 'beta') ? '-' + ktlVersion : '') + '.js'], () => {
                     if (typeof KnackApp === 'function') {
