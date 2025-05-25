@@ -1,6 +1,15 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.32.1    *2025-05-25*
+
+- selectOption has been modified to accept ktlOther for user input text.
+  - Updated KTL Version selector to use selectOption.
+  - This solves the problem of not being able to use the virtual keyboard in kiosk devices to switch between KTL versions.
+- Added date value to bypass cache and force reloading latest code.
+- Update CHANGELOG.md
+- Update CHANGELOG.md
+
 ## 0.32.0    *2025-05-25*
 
 - V-bump
@@ -23,13 +32,13 @@
   - * Improves menu removal logic
 - Update CHANGELOG.md
 
-## 0.31.3    *2025-05-21*
+## 0.31.3 *2025-05-21*
 
-- V-bump
-- Added class ktlIsMobile to body.
-- Fixed issue #507: _cfv added support for search views.
-  - Added findViewsByType utility to find all views by type, including reports: charts, pivot tables, etc.
-- Update CHANGELOG.md
+-   V-bump
+-   Added class ktlIsMobile to body.
+-   Fixed issue \#507: \_cfv added support for search views.
+    -   Added findViewsByType utility to find all views by type, including reports: charts, pivot tables, etc.
+-   Update CHANGELOG.md
 
 ## 0.31.2 *2025-05-20*
 
