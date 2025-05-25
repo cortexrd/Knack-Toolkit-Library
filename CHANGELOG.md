@@ -3,6 +3,28 @@
 
 ## 0.31.3    *2025-05-21*
 
+
+## 0.32.0    *2025-05-25*
+
+- V-bump
+- Improvements / Better support of Radio Buttons and Checkboxes in KtlCond (#510)
+  - Enhance event handling for keyup and click on selector; improve checkbox logic in Ktl function.
+- New keyword:  _ask to confirm before clicking on an action link.
+  - Added the new selectOption popup for multiple selections.
+  - Works with _ask but can also be used in other contexts.
+- Fixed bookmarks list position,
+  - sometimes pushed to the right, instead of left-aligned,
+- Updates-to-ktlBookmarks (#509)
+  - * Moved fixed styles to CSS
+  - * Enhance bookmarks feature with minimized state and context menu options
+  - Enhances bookmarks with minimize and context menu
+  - Improves the bookmark functionality by adding a minimize/expand feature with persistent state, and a context menu for renaming and deleting bookmarks.
+  - The minimize feature allows users to reduce the visual footprint of the bookmarks, while the context menu provides quick access to edit and delete functions, improving the overall user experience.
+  - * Refactors bookmark initialization and state
+  - Simplifies bookmark initialization by consolidating logic for fetching bookmark configurations and applying them to the UI.
+  - It improves bookmark minimization by ensuring the minimized state is properly managed and persisted across sessions, regardless of whether the minimize feature is enabled. It also streamlines the process of adding bookmark buttons.
+  - * Improves menu removal logic
+- Update CHANGELOG.md
 - V-bump
 - Added class ktlIsMobile to body.
 - Fixed issue #507: _cfv added support for search views.
