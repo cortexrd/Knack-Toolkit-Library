@@ -15166,7 +15166,7 @@ function Ktl($, appInfo) {
                                     else
                                         unhide();
                                 }
-                                $(selector).off('keyup.ktlHc').on('keyup.ktlHc', update);
+                                $(selector).off('keyup.ktlHc click.ktlHc').on('keyup.ktlHc click.ktlHc', update);
                                 $(selector).one('change', update);
                             }
                         }).catch(() => {
@@ -15214,11 +15214,26 @@ function Ktl($, appInfo) {
                                 let fieldValue;
                                 if (ktl.views.getViewType(viewId) === 'form') {
                                     fieldValue = $(selector).val();
-                                    $(selector).off('keyup.ktlHc').on('keyup.ktlHc', (event) => {
-                                        if (ktlCompare(event.target.value, operator, value))
-                                            hide();
-                                        else
-                                            unhide();
+                                    $(selector).off('keyup.ktlHc click.ktlHc').on('keyup.ktlHc click.ktlHc', (event) => {
+                                        if (['DIV', 'LABEL', 'SPAN'].includes(event.target.nodeName))
+                                            return;
+
+                                        switch(event.target.type) {
+                                            case 'checkbox':
+                                                if (ktlCompare(event.target.value, operator, value)) {
+                                                    if(event.target.checked)
+                                                        hide();
+                                                    else
+                                                        unhide();
+                                                }
+                                                break;
+
+                                            default:
+                                                if (ktlCompare(event.target.value, operator, value))
+                                                    hide();
+                                                else
+                                                    unhide();
+                                        }
                                     })
                                 } else
                                     fieldValue = $(selector)[0].textContent.trim();
