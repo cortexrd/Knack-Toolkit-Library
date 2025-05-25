@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.32.0';
+    const KTL_VERSION = '0.32.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2674,11 +2674,13 @@ function Ktl($, appInfo) {
                     const options = optionsText.split(',').map(opt => opt.trim()).filter(opt => opt);
                     if (options.length === 0) options.push('Yes', 'No');
 
-                    // Find unique shortcut keys
+                    const hasOtherOption = options.some(opt => opt === 'ktlOther');
+                    const filteredOptions = options.filter(opt => opt !== 'ktlOther');
+
                     const shortcuts = [];
                     const usedKeys = new Set();
 
-                    options.forEach(option => {
+                    filteredOptions.forEach(option => {
                         let shortcutKey = null;
                         for (let i = 0; i < option.length; i++) {
                             const char = option[i].toLowerCase();
@@ -2691,8 +2693,21 @@ function Ktl($, appInfo) {
                         shortcuts.push(shortcutKey);
                     });
 
+                    if (hasOtherOption) {
+                        let otherShortcut = null;
+                        for (const char of 'other') {
+                            if (!usedKeys.has(char)) {
+                                otherShortcut = char;
+                                usedKeys.add(char);
+                                break;
+                            }
+                        }
+                        shortcuts.push(otherShortcut);
+                    }
+
                     const overlay = $('<div class="ktlConfirmOverlay"></div>');
-                    const buttonsHtml = options.map((option, index) => {
+
+                    const buttonsHtml = filteredOptions.map((option, index) => {
                         const shortcut = shortcuts[index];
                         let buttonText = option;
 
@@ -2706,21 +2721,66 @@ function Ktl($, appInfo) {
                         return `<button class="ktlConfirmOption" data-index="${index}">${buttonText}</button>`;
                     }).join('');
 
+                    let otherSection = '';
+                    if (hasOtherOption) {
+                        const otherShortcut = shortcuts[filteredOptions.length];
+                        let otherButtonText = 'Other';
+                        if (otherShortcut) {
+                            const shortcutIndex = 'other'.indexOf(otherShortcut);
+                            otherButtonText = 'Other'.substring(0, shortcutIndex) +
+                                `<u>${'Other'[shortcutIndex]}</u>` +
+                                'Other'.substring(shortcutIndex + 1);
+                        }
+
+                        otherSection = `
+                <div class="ktlOtherSection">
+                    <button class="ktlConfirmOption ktlOtherButton">${otherButtonText}</button>
+                    <input type="text" class="ktlOtherInput" placeholder="Enter custom value..." />
+                </div>
+            `;
+                    }
+
                     const dialog = $(`
 <div class="ktlConfirmDialog">
   <div class="ktlConfirmMessage">${message}</div>
   <div class="ktlConfirmButtons">
       ${buttonsHtml}
   </div>
+  ${otherSection}
 </div>
 `);
 
-                    // Add styles for hover effects
                     if (!$('#ktlConfirmStyles').length) {
                         $('head').append(`
                <style id="ktlConfirmStyles">
                    .ktlConfirmButtons button:hover {
                        background-color: #e9ecef !important;
+                   }
+                   .ktlOtherSection {
+                       margin-top: 15px;
+                       display: flex;
+                       align-items: center;
+                       gap: 10px;
+                       justify-content: center;
+                   }
+                   .ktlOtherButton {
+                       padding: 5px 10px !important;
+                       font-size: 14px !important;
+                       border: 1px solid #ccc !important;
+                       background-color: #f8f9fa !important;
+                       border-radius: 4px !important;
+                   }
+                   .ktlOtherInput {
+                       padding: 8px 12px;
+                       border: 1px solid #ccc;
+                       border-radius: 4px;
+                       font-size: 14px;
+                       min-width: 150px;
+                   }
+                   .ktlOtherInput:focus {
+                       outline: none;
+                       border-color: #007bff;
+                       box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
                    }
                </style>
            `);
@@ -2787,10 +2847,16 @@ function Ktl($, appInfo) {
                         }
                     });
 
-                    $('.ktlConfirmOption').on('click', function () {
+                    $('.ktlConfirmOption:not(.ktlOtherButton)').on('click', function () {
                         const index = parseInt($(this).data('index'));
                         overlay.remove();
                         resolve(index);
+                    });
+
+                    $('.ktlOtherButton').on('click', function () {
+                        const customValue = $('.ktlOtherInput').val().trim();
+                        overlay.remove();
+                        resolve(customValue || '');
                     });
 
                     $(document).on('keydown.ktlConfirm', (e) => {
@@ -2803,18 +2869,30 @@ function Ktl($, appInfo) {
                             return;
                         }
 
-                        if (key === 'enter' && options.length === 2) {
-                            $(document).off('keydown.ktlConfirm');
-                            overlay.remove();
-                            resolve(0);
-                            return;
+                        if (key === 'enter') {
+                            if (hasOtherOption && $('.ktlOtherInput').is(':focus')) {
+                                const customValue = $('.ktlOtherInput').val().trim();
+                                $(document).off('keydown.ktlConfirm');
+                                overlay.remove();
+                                resolve(customValue || '');
+                                return;
+                            } else if (filteredOptions.length === 2 && !hasOtherOption) {
+                                $(document).off('keydown.ktlConfirm');
+                                overlay.remove();
+                                resolve(0);
+                                return;
+                            }
                         }
 
                         const shortcutIndex = shortcuts.indexOf(key);
                         if (shortcutIndex !== -1) {
-                            $(document).off('keydown.ktlConfirm');
-                            overlay.remove();
-                            resolve(shortcutIndex);
+                            if (shortcutIndex === filteredOptions.length && hasOtherOption) {
+                                $('.ktlOtherInput').focus();
+                            } else {
+                                $(document).off('keydown.ktlConfirm');
+                                overlay.remove();
+                                resolve(shortcutIndex);
+                            }
                         }
                     });
 
@@ -17912,16 +17990,17 @@ function Ktl($, appInfo) {
                                 document.body.appendChild(devBtnsDiv);
 
                                 let ktlCode = ktl.storage.lsGetItem('ktlCode', true);
-                                ktl.fields.addButton(devBtnsDiv, 'KTL Code: ' + ktlCode, '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                ktl.fields.addButton(devBtnsDiv, 'KTL Code: ' + ktlCode, '', ['devBtn', 'kn-button']).addEventListener('click', async () => {
                                     //This forces loading a specific 'KTL-xyz.js' version code from CTRND's CDN, in Prod folder.
                                     //See 'ktlCode' in KTL_Start.js
-                                    let newKtlCode = prompt('Prod, Local, Dev, Beta or numbered version?\nType: p, l, d, b or version no.\nLeave empty for prod');
-                                    if (newKtlCode === null) return;
-                                    newKtlCode = newKtlCode.toLowerCase();
-                                    if (!newKtlCode || newKtlCode === 'p')
+
+                                    const newKtlCode = await ktl.core.selectOption('Select which KTL version to use - or a specific number', 'Prod, Beta, Dev, Local, ktlOther');
+                                    if (newKtlCode === -1) return;
+
+                                    if (newKtlCode === 0)
                                         ktl.core.switchKtlCode('prod');
                                     else {
-                                        if (newKtlCode === 'l') {
+                                        if (newKtlCode === 3) {
                                             //Only apply Local mode if NodeJS file server is running.
                                             ktl.core.checkLocalhostServer(3000)
                                                 .then(() => {
@@ -17932,9 +18011,9 @@ function Ktl($, appInfo) {
                                                     return;
                                                 })
                                         } else {
-                                            if (newKtlCode === 'b')
+                                            if (newKtlCode === 1)
                                                 ktlCode = 'beta';
-                                            else if (newKtlCode === 'd')
+                                            else if (newKtlCode === 2)
                                                 ktlCode = 'dev';
                                             else if (/^\d.*\./.test(newKtlCode))
                                                 ktlCode = newKtlCode;
