@@ -1,9 +1,6 @@
 # Knack Toolkit Library Changelog
 
 
-## 0.31.3    *2025-05-21*
-
-
 ## 0.32.0    *2025-05-25*
 
 - V-bump
@@ -25,16 +22,19 @@
   - It improves bookmark minimization by ensuring the minimized state is properly managed and persisted across sessions, regardless of whether the minimize feature is enabled. It also streamlines the process of adding bookmark buttons.
   - * Improves menu removal logic
 - Update CHANGELOG.md
+
+## 0.31.3    *2025-05-21*
+
 - V-bump
 - Added class ktlIsMobile to body.
 - Fixed issue #507: _cfv added support for search views.
   - Added findViewsByType utility to find all views by type, including reports: charts, pivot tables, etc.
 - Update CHANGELOG.md
 
-## 0.31.2    *2025-05-20*
+## 0.31.2 *2025-05-20*
 
-- Bookmarks _bm - added support for ktlRoles.
-  - Changed all classes to start by ktl and use camel case like all others.
+-   Bookmarks \_bm - added support for ktlRoles.
+    -   Changed all classes to start by ktl and use camel case like all others.
 
 ## 0.31.1 *2025-05-20*
 
