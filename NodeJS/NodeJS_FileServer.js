@@ -10,9 +10,10 @@ const root = process.argv[2] || path.join(process.cwd(), '..', '..');
 console.log(`Serving files from ${root}`);
 
 http.createServer(function (req, res) {
-    var url = root + req.url;
+    var url = decodeURI(req.url.split('?')[0]); // Decode first, strip query params
+    url = root + url;
     url = url.replace(/\\/g, '/');
-    url = decodeURI(url.trim());
+    url = url.trim();
 
     // Add CORS headers to allow requests from any origin
     res.setHeader('Access-Control-Allow-Origin', '*');
