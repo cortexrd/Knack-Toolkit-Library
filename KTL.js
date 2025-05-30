@@ -15731,7 +15731,7 @@ function Ktl($, appInfo) {
                                             const innerSpanTexts = addressSpans.map(function() {
                                                 return $(this).text().trim();
                                             }).get().filter(Boolean);
-                                            titleText = innerSpanTexts.length > 1 ? innerSpanTexts.join(', ') : innerSpanTexts.join('');
+                                            titleText = innerSpanTexts.join(', ');
                                         } else {
                                             // No child spans, use the span's own text
                                             titleText = $span.text().trim();
