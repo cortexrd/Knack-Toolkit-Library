@@ -29,7 +29,6 @@ try {
             console.log(`Found most recent tag in changelog: ${AFTER_TAG}`);
         } else {
             console.log('No tag found in existing changelog.');
-            // We'll handle this case below
         }
     } else {
         console.log('No existing changelog found. Will create new file.');
@@ -72,10 +71,9 @@ try {
     // Initialize new content
     let newContent = '';
 
-    // Process each tag
+    // Process each tag (newest first)
     for (let i = 0; i < relevantTags.length; i++) {
         const tag = relevantTags[i];
-        const nextTag = relevantTags[i + 1]; // Next in array = previous chronologically
         const tagDate = tagDates[tag];
 
         console.log(`Processing tag: ${tag}`);
@@ -83,18 +81,16 @@ try {
 
         // Get commits for this tag
         let command;
-        if (i === relevantTags.length - 1) {
-            // For the oldest relevant tag (one right after AFTER_TAG),
-            // get commits between AFTER_TAG and this tag
+        if (i === 0) {
+            // For the newest tag, get commits between the last changelog tag and this tag
             command = `git log ${AFTER_TAG}..${tag} --pretty=format:"%s%n%b%n===COMMIT_SEPARATOR==="`;
-        } else if (nextTag) {
-            // For tags in the middle, get commits between next tag and this tag
-            command = `git log ${nextTag}..${tag} --pretty=format:"%s%n%b%n===COMMIT_SEPARATOR==="`;
         } else {
-            // For newest tag, get commits between tag and HEAD
-            command = `git log ${tag}..HEAD --pretty=format:"%s%n%b%n===COMMIT_SEPARATOR==="`;
+            // For older tags, get commits between previous tag and this tag
+            const previousTag = relevantTags[i - 1];
+            command = `git log ${previousTag}..${tag} --pretty=format:"%s%n%b%n===COMMIT_SEPARATOR==="`;
         }
 
+        console.log(`Running command: ${command}`);
         const commitLog = execSync(command, { cwd: repoDir }).toString();
         const commits = commitLog.split('===COMMIT_SEPARATOR===').filter(Boolean);
 
@@ -105,14 +101,26 @@ try {
             continue;
         }
 
-        commits.forEach(commit => {
+        // Filter out "Update CHANGELOG.md" commits and process remaining commits
+        const filteredCommits = commits.filter(commit => {
+            const subject = commit.trim().split('\n')[0];
+            return !subject.includes('Update CHANGELOG.md');
+        });
+
+        console.log(`After filtering, ${filteredCommits.length} commits remain for tag ${tag}`);
+
+        if (filteredCommits.length === 0) {
+            newContent += `- No additional commits for this version\n`;
+            continue;
+        }
+
+        filteredCommits.forEach(commit => {
             const lines = commit.trim().split('\n');
             const subject = lines[0];
             newContent += `- ${subject}\n`;
 
             // Add remaining lines as sub-bullets, but filter out empty lines
             if (lines.length > 1) {
-                // Get consecutive empty lines (to remove them)
                 let lastLineWasEmpty = false;
                 lines.slice(1).forEach(line => {
                     const trimmedLine = line.trim();
@@ -120,8 +128,6 @@ try {
                         newContent += `  - ${trimmedLine}\n`;
                         lastLineWasEmpty = false;
                     } else if (!lastLineWasEmpty) {
-                        // Keep single empty lines to maintain paragraph structure
-                        // but skip consecutive empty lines
                         lastLineWasEmpty = true;
                     }
                 });
@@ -133,14 +139,21 @@ try {
     let updatedChangelog = '';
     if (existingChangelog) {
         // Get title and intro from existing changelog
-        const headerMatch = existingChangelog.match(/^(# .+?\n\n.+?\n\n)/s);
+        const headerMatch = existingChangelog.match(/^(# .+?\n\n)/s);
         const header = headerMatch ? headerMatch[1] : '# Knack Toolkit Library Changelog\n\n';
 
+        // Find where the existing content starts (after the header)
+        const existingContentStart = existingChangelog.indexOf('\n## ');
+        let existingContent = '';
+        if (existingContentStart !== -1) {
+            existingContent = existingChangelog.substring(existingContentStart);
+        }
+
         // Combine new content with existing changelog
-        updatedChangelog = header + newContent + existingChangelog.substring(header.length);
+        updatedChangelog = header + newContent + existingContent;
     } else {
         // Create a new changelog
-        updatedChangelog = '# Knack Toolkit Library Changelog\n\nChangelog for Knack Toolkit Library\n\n' + newContent;
+        updatedChangelog = '# Knack Toolkit Library Changelog\n\n' + newContent;
     }
 
     // Write updated changelog
