@@ -86,7 +86,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                         if (cssFile)
                             cssFile.disabled = true;
                     }
-                    LazyLoad.css([`${appCSSFile}?${new Date().valueOf()}`]);
+                    LazyLoad.css([`${appCSSFile}`]);
                 }
             });
 
@@ -96,7 +96,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
             if (typeof window.ktlReady === 'function')
                 delete window.ktlReady;
 
-            LazyLoad.js([`${appJsFile}?${new Date().valueOf()}`], () => {
+            LazyLoad.js([`${appJsFile}`], () => {
                 if (typeof window.ktlReady !== 'function') {
                     var srcFileName = prompt(`Can't find source file with ktlReady:\n\n${appJsFile}\n\nWhat is file name (without .js)?\n\nLeave empty for none.`, Knack.app.attributes.name);
                     if (srcFileName === null) {
