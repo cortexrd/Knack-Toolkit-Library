@@ -13301,39 +13301,58 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
 
-                if (keywords[kw][0] && keywords[kw][0].params) {
-                    const groups = keywords[kw][0].params;
-                    for (const group of groups) {
-                        if (group.length >= 1) {
-                            const actionLinkText = group[0].trim();
-                            if (!actionLinkText) return;
+                // Handle case with no parameters - apply to all action links
+                if (!keywords[kw][0] || !keywords[kw][0].params || keywords[kw][0].params.length === 0) {
+                    let isProcessing = false;
 
-                            let questionText = 'Are you sure?';
-                            let optionsText = 'Yes,No';
+                    $(`#${viewId} .kn-action-link`).bindFirst('click', async function (e) {
+                        if (isProcessing) return;
 
-                            if (group.length >= 2 && group[1].trim()) {
-                                questionText = group[1].trim();
-                            }
-                            if (group.length >= 4 && group[2].trim() && group[3].trim()) {
-                                optionsText = group[2].trim() + ',' + group[3].trim();
-                            }
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
 
-                            let isProcessing = false;
-
-                            $(`#${viewId} .kn-action-link:textEquals("${actionLinkText}")`).bindFirst('click', async function (e) {
-                                if (isProcessing) return;
-
-                                e.preventDefault();
-                                e.stopImmediatePropagation();
-
-                                const result = await ktl.core.selectOption(questionText, optionsText);
-                                if (result === 0) {
-                                    isProcessing = true;
-                                    $(this).trigger('click');
-                                    setTimeout(() => isProcessing = false, 1000);
-                                }
-                            });
+                        const result = await ktl.core.selectOption('Are you sure?', 'Yes,No');
+                        if (result === 0) {
+                            isProcessing = true;
+                            $(this).trigger('click');
+                            setTimeout(() => isProcessing = false, 1000);
                         }
+                    });
+                    return;
+                }
+
+                // Handle case with parameters - apply to specific action links
+                const groups = keywords[kw][0].params;
+                for (const group of groups) {
+                    if (group.length >= 1) {
+                        const actionLinkText = group[0].trim();
+                        if (!actionLinkText) return;
+
+                        let questionText = 'Are you sure?';
+                        let optionsText = 'Yes,No';
+
+                        if (group.length >= 2 && group[1].trim()) {
+                            questionText = group[1].trim();
+                        }
+                        if (group.length >= 4 && group[2].trim() && group[3].trim()) {
+                            optionsText = group[2].trim() + ',' + group[3].trim();
+                        }
+
+                        let isProcessing = false;
+
+                        $(`#${viewId} .kn-action-link:textEquals("${actionLinkText}")`).bindFirst('click', async function (e) {
+                            if (isProcessing) return;
+
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+
+                            const result = await ktl.core.selectOption(questionText, optionsText);
+                            if (result === 0) {
+                                isProcessing = true;
+                                $(this).trigger('click');
+                                setTimeout(() => isProcessing = false, 1000);
+                            }
+                        });
                     }
                 }
             }
