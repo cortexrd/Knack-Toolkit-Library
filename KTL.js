@@ -15721,25 +15721,28 @@ function Ktl($, appInfo) {
                                 $(selector).each(function() {
                                     const $span = $(this);
                                     const $tdParent = $span.closest('td');
-                                
-                                    // Only process the outer span (the one that contains all address spans)
+
                                     if ($span.parent().is('td')) {
                                         // Get all direct child spans (the addresses)
                                         const addressSpans = $span.children('span');
-                                        const innerSpanTexts = addressSpans.map(function() {
-                                            return $(this).text().trim();
-                                        }).get().filter(Boolean);
-                                
-                                        // Use comma if more than one, else just join as is
-                                        const allText = innerSpanTexts.length > 1 ? innerSpanTexts.join(', ') : innerSpanTexts.join('');
-                                
-                                        // Only add title if it doesn't already exist or is different from allText
+                                        let titleText = '';
+
+                                        if (addressSpans.length > 0) {
+                                            const innerSpanTexts = addressSpans.map(function() {
+                                                return $(this).text().trim();
+                                            }).get().filter(Boolean);
+                                            titleText = innerSpanTexts.length > 1 ? innerSpanTexts.join(', ') : innerSpanTexts.join('');
+                                        } else {
+                                            // No child spans, use the span's own text
+                                            titleText = $span.text().trim();
+                                        }
+
                                         const existingTitle = $tdParent.attr('title');
-                                        if (!existingTitle || existingTitle !== allText) {
-                                            $tdParent.attr('title', allText);
+                                        if (!existingTitle || existingTitle !== titleText) {
+                                            $tdParent.attr('title', titleText);
                                         }
                                     }
-                                
+
                                     // Apply truncation styles if not already applied
                                     if (!$span.hasClass('ktlTruncateCellText')) {
                                         $span.addClass('ktlTruncateCellText')
