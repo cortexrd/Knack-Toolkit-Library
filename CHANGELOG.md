@@ -1,52 +1,48 @@
 # Knack Toolkit Library Changelog
 
+## 0.32.2 *2025-05-30*
 
-## 0.32.2    *2025-05-30*
+-   V-Bump
+-   \_ask is now supported without parameters.
+    -   In this case, it applies the default confirmation popup to all action links in the view.
+-   Removed cache-busting dummy param when using code on local server.
+    -   Otherwise we need to re-open the file each time we refresh. The param was not useful in this case anyways.
+-   Updates cell title for nested spans (\#513)
+    -   Updates cell title for nested spans
+    -   Updates the title attribute for table cells containing nested spans, specifically addressing connection fields.
+    -   Instead of using the entire text content of the outer span, it now extracts and joins the text from the direct child spans, separated by commas if multiple spans are present. This ensures a more accurate and relevant title for connection fields.
+    -   Adjusted code to work for both types of td
+    -   Minor simplification
+    -   Improve variable names
+-   Updated the server to ignore the ? cache-busting parameter.
 
-- V-Bump
-- _ask is now supported without parameters.
-  - In this case, it applies the default confirmation popup to all action links in the view.
-- Removed cache-busting dummy param when using code on local server.
-  - Otherwise we need to re-open the file each time we refresh.  The param was not useful in this case anyways.
-- Updates cell title for nested spans (#513)
-  - * Updates cell title for nested spans
-  - Updates the title attribute for table cells containing nested spans, specifically addressing connection fields.
-  - Instead of using the entire text content of the outer span, it now extracts and joins the text from the direct child spans, separated by commas if multiple spans are present. This ensures a more accurate and relevant title for connection fields.
-  - * Adjusted code to work for both types of td
-  - * Minor simplification
-  - * Improve variable names
-- Updated the server to ignore the ? cache-busting parameter.
+## 0.32.1 *2025-05-25*
 
-## 0.32.1    *2025-05-25*
+-   selectOption has been modified to accept ktlOther for user input text.
+    -   Updated KTL Version selector to use selectOption.
+    -   This solves the problem of not being able to use the virtual keyboard in kiosk devices to switch between KTL versions.
+-   Added date value to bypass cache and force reloading latest code.
 
-- selectOption has been modified to accept ktlOther for user input text.
-  - Updated KTL Version selector to use selectOption.
-  - This solves the problem of not being able to use the virtual keyboard in kiosk devices to switch between KTL versions.
-- Added date value to bypass cache and force reloading latest code.
-- Update CHANGELOG.md
-- Update CHANGELOG.md
+## 0.32.0 *2025-05-25*
 
-## 0.32.0    *2025-05-25*
-
-- V-bump
-- Improvements / Better support of Radio Buttons and Checkboxes in KtlCond (#510)
-  - Enhance event handling for keyup and click on selector; improve checkbox logic in Ktl function.
-- New keyword:  _ask to confirm before clicking on an action link.
-  - Added the new selectOption popup for multiple selections.
-  - Works with _ask but can also be used in other contexts.
-- Fixed bookmarks list position,
-  - sometimes pushed to the right, instead of left-aligned,
-- Updates-to-ktlBookmarks (#509)
-  - * Moved fixed styles to CSS
-  - * Enhance bookmarks feature with minimized state and context menu options
-  - Enhances bookmarks with minimize and context menu
-  - Improves the bookmark functionality by adding a minimize/expand feature with persistent state, and a context menu for renaming and deleting bookmarks.
-  - The minimize feature allows users to reduce the visual footprint of the bookmarks, while the context menu provides quick access to edit and delete functions, improving the overall user experience.
-  - * Refactors bookmark initialization and state
-  - Simplifies bookmark initialization by consolidating logic for fetching bookmark configurations and applying them to the UI.
-  - It improves bookmark minimization by ensuring the minimized state is properly managed and persisted across sessions, regardless of whether the minimize feature is enabled. It also streamlines the process of adding bookmark buttons.
-  - * Improves menu removal logic
-- Update CHANGELOG.md
+-   V-bump
+-   Improvements / Better support of Radio Buttons and Checkboxes in KtlCond (\#510)
+    -   Enhance event handling for keyup and click on selector; improve checkbox logic in Ktl function.
+-   New keyword: \_ask to confirm before clicking on an action link.
+    -   Added the new selectOption popup for multiple selections.
+    -   Works with \_ask but can also be used in other contexts.
+-   Fixed bookmarks list position,
+    -   sometimes pushed to the right, instead of left-aligned,
+-   Updates-to-ktlBookmarks (\#509)
+    -   Moved fixed styles to CSS
+    -   Enhance bookmarks feature with minimized state and context menu options
+    -   Enhances bookmarks with minimize and context menu
+    -   Improves the bookmark functionality by adding a minimize/expand feature with persistent state, and a context menu for renaming and deleting bookmarks.
+    -   The minimize feature allows users to reduce the visual footprint of the bookmarks, while the context menu provides quick access to edit and delete functions, improving the overall user experience.
+    -   Refactors bookmark initialization and state
+    -   Simplifies bookmark initialization by consolidating logic for fetching bookmark configurations and applying them to the UI.
+    -   It improves bookmark minimization by ensuring the minimized state is properly managed and persisted across sessions, regardless of whether the minimize feature is enabled. It also streamlines the process of adding bookmark buttons.
+    -   Improves menu removal logic
 
 ## 0.31.3 *2025-05-21*
 
@@ -54,7 +50,6 @@
 -   Added class ktlIsMobile to body.
 -   Fixed issue \#507: \_cfv added support for search views.
     -   Added findViewsByType utility to find all views by type, including reports: charts, pivot tables, etc.
--   Update CHANGELOG.md
 
 ## 0.31.2 *2025-05-20*
 
@@ -80,7 +75,6 @@
     -   Run these two lines in a cmd.exe prompt:
     -   git config --global core.autocrlf false
     -   git config --global core.eol lf
--   Update CHANGELOG.md
 -   Changes for 0.30.13
 -   Feature / Dropdown Select All (\#505)
     -   Feature / Dropdown Select All
