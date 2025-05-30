@@ -15724,11 +15724,11 @@ function Ktl($, appInfo) {
 
                                     if ($span.parent().is('td')) {
                                         // Get all direct child spans (the addresses)
-                                        const addressSpans = $span.children('span');
+                                        const tdSpans = $span.children('span');
                                         let titleText = '';
 
-                                        if (addressSpans.length > 0) {
-                                            const innerSpanTexts = addressSpans.map(function() {
+                                        if (tdSpans.length > 0) {
+                                            const innerSpanTexts = tdSpans.map(function() {
                                                 return $(this).text().trim();
                                             }).get().filter(Boolean);
                                             titleText = innerSpanTexts.join(', ');
