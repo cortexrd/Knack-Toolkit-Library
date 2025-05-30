@@ -15720,21 +15720,35 @@ function Ktl($, appInfo) {
 
                                 $(selector).each(function() {
                                     const $span = $(this);
-                                    const fullText = $span.text().trim();
                                     const $tdParent = $span.closest('td');
 
-                                    // Only add title if it doesn't already exist or is different from fullText
-                                    const existingTitle = $tdParent.attr('title');
-                                    if (!existingTitle || existingTitle !== fullText) {
-                                        $tdParent.attr('title', fullText);
+                                    if ($span.parent().is('td')) {
+                                        // Get all direct child spans (the addresses)
+                                        const tdSpans = $span.children('span');
+                                        let titleText = '';
+
+                                        if (tdSpans.length > 0) {
+                                            const innerSpanTexts = tdSpans.map(function() {
+                                                return $(this).text().trim();
+                                            }).get().filter(Boolean);
+                                            titleText = innerSpanTexts.join(', ');
+                                        } else {
+                                            // No child spans, use the span's own text
+                                            titleText = $span.text().trim();
+                                        }
+
+                                        const existingTitle = $tdParent.attr('title');
+                                        if (!existingTitle || existingTitle !== titleText) {
+                                            $tdParent.attr('title', titleText);
+                                        }
                                     }
 
                                     // Apply truncation styles if not already applied
                                     if (!$span.hasClass('ktlTruncateCellText')) {
                                         $span.addClass('ktlTruncateCellText')
-                                             .css({
-                                                 'max-width': widthAmount + 'px',
-                                             });
+                                            .css({
+                                                'max-width': widthAmount + 'px',
+                                            });
                                     }
                                 });
                             }
