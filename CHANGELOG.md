@@ -1,6 +1,22 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.32.2    *2025-05-30*
+
+- V-Bump
+- _ask is now supported without parameters.
+  - In this case, it applies the default confirmation popup to all action links in the view.
+- Removed cache-busting dummy param when using code on local server.
+  - Otherwise we need to re-open the file each time we refresh.  The param was not useful in this case anyways.
+- Updates cell title for nested spans (#513)
+  - * Updates cell title for nested spans
+  - Updates the title attribute for table cells containing nested spans, specifically addressing connection fields.
+  - Instead of using the entire text content of the outer span, it now extracts and joins the text from the direct child spans, separated by commas if multiple spans are present. This ensures a more accurate and relevant title for connection fields.
+  - * Adjusted code to work for both types of td
+  - * Minor simplification
+  - * Improve variable names
+- Updated the server to ignore the ? cache-busting parameter.
+
 ## 0.32.1    *2025-05-25*
 
 - selectOption has been modified to accept ktlOther for user input text.
