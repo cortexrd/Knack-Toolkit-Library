@@ -101,10 +101,10 @@ try {
             continue;
         }
 
-        // Filter out "Update CHANGELOG.md" commits and process remaining commits
+        // Filter out "Update CHANGELOG.md" and "v-bump" commits and process remaining commits
         const filteredCommits = commits.filter(commit => {
-            const subject = commit.trim().split('\n')[0];
-            return !subject.includes('Update CHANGELOG.md');
+            const subject = commit.trim().split('\n')[0].toLowerCase();
+            return !subject.includes('update changelog.md') && !subject.includes('v-bump');
         });
 
         console.log(`After filtering, ${filteredCommits.length} commits remain for tag ${tag}`);
