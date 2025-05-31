@@ -2,7 +2,6 @@
 
 ## 0.32.2 *2025-05-30*
 
--   V-Bump
 -   \_ask is now supported without parameters.
     -   In this case, it applies the default confirmation popup to all action links in the view.
 -   Removed cache-busting dummy param when using code on local server.
@@ -25,7 +24,6 @@
 
 ## 0.32.0 *2025-05-25*
 
--   V-bump
 -   Improvements / Better support of Radio Buttons and Checkboxes in KtlCond (\#510)
     -   Enhance event handling for keyup and click on selector; improve checkbox logic in Ktl function.
 -   New keyword: \_ask to confirm before clicking on an action link.
@@ -46,7 +44,6 @@
 
 ## 0.31.3 *2025-05-21*
 
--   V-bump
 -   Added class ktlIsMobile to body.
 -   Fixed issue \#507: \_cfv added support for search views.
     -   Added findViewsByType utility to find all views by type, including reports: charts, pivot tables, etc.
@@ -85,7 +82,6 @@
 
 ## 0.30.13 *2025-05-09*
 
--   V-bump
 -   Filters column headers by text content, when headers contain HTML elements. (\#504)
     -   Filters column headers by text content.
     -   Updates the column header filtering logic to handle HTML tags within the header text.
@@ -103,7 +99,6 @@
 
 ## 0.30.12 *2025-04-29*
 
--   V-bump
 -   Issue \#495 modal flickering.
 
 ## 0.30.11 *2025-04-26*
@@ -129,7 +124,6 @@
 
 ## 0.30.5 *2025-04-20*
 
--   V-bump
 -   Fixed issue \#458 about \_hf in modals
     -   Fixed multiple triggers of KTL.preprocessView.
 -   Fixed issue \#488 about Pivot Report views and \_nf
@@ -151,7 +145,6 @@
 
 ## 0.30.2 *2025-04-01*
 
--   V-bump
 -   Merge branch 'dev' of https://github.com/cortexrd/Knack-Toolkit-Library into dev
 -   Fixe for reports (\#478)
     -   Fixe for reports
@@ -171,7 +164,6 @@
 
 ## 0.29.17 *2025-03-18*
 
--   V-bump
 -   Added some replacements for html tags to ttip: (\#468)
     -   Added some replacements for html tags to ttip:
     -   '{br}': '',
@@ -186,8 +178,7 @@
 
 ## 0.29.16 *2025-03-11*
 
--   V-bump
-    -   PR\#461
+-   PR\#461
 -   Added extra check for view.model (\#461)
 
 ## 0.29.15 *2025-03-10*
@@ -214,7 +205,6 @@
 
 ## 0.29.12 *2025-02-11*
 
--   V-bump
 -   Introduced Epiry optional variable to \_rlv (\#447)
     -   Introduced Epiry optional variable to \_rlv
     -   Made updates to code replacing var where possible.
@@ -227,7 +217,6 @@
 
 ## 0.29.11 *2025-02-08*
 
--   V-bump
 -   Changed from using Knack render() to manipulate the colspan directly (\#445)
     -   Changed from using Knack render() to manipulate the colspan directly
     -   This is an issue with grids and groupings.
@@ -237,7 +226,6 @@
 
 ## 0.29.10 *2025-02-04*
 
--   V-bump
 -   Merge branch 'dev' of https://github.com/cortexrd/Knack-Toolkit-Library into dev
 -   Fix/_req and non required fields (\#441)
     -   Refactor input event handling and visibility class management in KTL.js
@@ -255,7 +243,6 @@
 
 ## 0.29.9 *2025-01-29*
 
--   V-bump
 -   Virtual KB fix: now properly supports number fields.
     -   Optimized lib loading.
 -   Fixed virtualKeyboard and forceVirtualKeyboard flags.
@@ -268,18 +255,15 @@
 
 ## 0.29.8 *2025-01-21*
 
--   V-bump
 -   Fixed issue \#386
     -   \_cpyfrom not copying number fields.
 
 ## 0.29.7 *2025-01-09*
 
--   V-bump
 -   Updated Character Count Missed Commit (\#430)
 
 ## 0.29.6 *2025-01-09*
 
--   V-bump
 -   Added the cache-busting parameter.
 -   Added new feature Character limit (\#428)
     -   Added new feature Character limit
@@ -309,7 +293,6 @@
 
 ## 0.29.5 *2024-12-05*
 
--   V-bump
 -   Merge branch 'dev' of https://github.com/cortexrd/Knack-Toolkit-Library into dev
 -   Fixced issue \#420
 -   Fixed grid groups having colspan = 0 and added a triger to the open of the view (\#418)
@@ -321,7 +304,6 @@
 
 ## 0.29.4 *2024-11-27*
 
--   V-bump
 -   Proper init: let isoTime = '00:00:00';
 -   Fixed issue \#416
     -   Added convertDateTimeToIso just before API call.
@@ -342,7 +324,6 @@
 
 ## 0.29.3 *2024-11-20*
 
--   V-Bump
 -   Fixed jagged details view render.
     -   Fixed lockPublicFiltersButton undefined.
 -   Added dummy date parameter to bypass cache.
@@ -440,7 +421,6 @@
 
 ## 0.28.7 *2024-10-08*
 
--   V-bump
 -   Added addThousandsSeparators
     -   for manual number formatting.
     -   Fixed developerPopupTool close.
@@ -469,7 +449,6 @@
 
 ## 0.28.6 *2024-09-28*
 
--   V-bump
 -   Fix tables within td (\#374)
     -   Fix tables within td
     -   Minor change
@@ -496,7 +475,6 @@
 
 ## 0.28.5 *2024-09-20*
 
--   V-bump
 -   Fixed hscGlobal flag priority. Fixed \_hsc in Search views.
 -   Merge branch 'feature/sitcky-header&column-report-table' into dev
 -   \_afsg - fixed auto close
@@ -561,7 +539,6 @@
 
 ## 0.28.4 *2024-08-31*
 
--   V-bump
 -   Merge branch 'fix/barcode-reading' into dev
 -   Several improvements and fixes on barcode reading code.
 -   Removed return that prevented ktlProcessKeywords.
@@ -573,7 +550,6 @@
 -   Optimized developerPopupTool.
     -   No more debounce needed.
     -   No more long tasks and bad performance on large pages.
--   V-bump
 -   Fixed hideFields \_hf keyword when multi-instances.
     -   Added ktlBottomExtraSpaces when using Virtual Keyboard.
     -   Removed unused processBarcode function.
@@ -590,7 +566,6 @@
 
 ## 0.28.3 *2024-08-19*
 
--   V-bump
 -   Fixed addKeyToBarcode issues.
     -   Added barcodePrefixes for global prefixes on top of per keyword.
     -   Now selected text is not overwritten.
@@ -605,7 +580,7 @@
 
 ## 0.28.1 *2024-08-14*
 
--   V-bump and improved Search views support.
+-   Improved Search views support.
 -   Fixed issue \#338 with getAllFieldsWithKeywordsInView
     -   Fixed focus bug in Kiosk mode, using bad target.
     -   Fixed showHiddenElemements and hideHiddenElemements.
@@ -645,7 +620,6 @@
 
 ## 0.27.11 *2024-07-31*
 
--   V-bump
 -   \_cfdt - fixed undefined value bugs.
 -   \_cfdt now uses same offset syntax as Record History
     -   with d, h and m suffixes.
