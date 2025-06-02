@@ -17174,7 +17174,19 @@ function Ktl($, appInfo) {
 
             const bookmarksHeader = document.createElement('div');
             bookmarksHeader.className = 'ktlBookmarksHeader';
-            bookmarksHeader.innerHTML = '<i class="fa fa-bookmark" style="vertical-align: middle; margin-right: 5px;"></i> My Bookmarks';
+
+            // Add a clickable bookmark icon
+            const bookmarkIcon = document.createElement('i');
+            bookmarkIcon.className = 'fa fa-bookmark ktlBookmarksMainIcon';
+            bookmarkIcon.style.verticalAlign = 'middle';
+            bookmarkIcon.style.marginRight = '5px';
+            bookmarksHeader.appendChild(bookmarkIcon);
+
+            // Add header text
+            const headerText = document.createElement('span');
+            headerText.textContent = 'My Bookmarks';
+            bookmarksHeader.appendChild(headerText);
+
             bookmarksContainer.appendChild(bookmarksHeader);
 
             const buttonsContainer = document.createElement('div');
@@ -17183,36 +17195,49 @@ function Ktl($, appInfo) {
 
             const userPrefsObj = ktl.userPrefs.getUserPrefs();
 
-            // Helper to update minimized state in DOM and storage
+            // Helper to update minimized state in DOM, storage, and icon label
             function setMinimizedState(minimized) {
                 bookmarksContainer.classList.toggle('ktlBookmarksMinimized', minimized);
                 userPrefsObj.bookmarksMinimized = minimized;
                 userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                bookmarkIcon.title = minimized ? 'Show bookmarks list' : 'Minimize bookmarks list';
+                bookmarkIcon.setAttribute('aria-label', minimized ? 'Show bookmarks list' : 'Minimize bookmarks list');
             }
 
             let minimized = !!userPrefsObj.bookmarksMinimized && bookmarksMinEnabled;
             setMinimizedState(minimized);
 
-            if (bookmarksMinEnabled) {
-                const minimizeBtn = document.createElement('button');
+            // Only show the - icon when maximized
+            let minimizeBtn;
+            if (bookmarksMinEnabled && !minimized) {
+                minimizeBtn = document.createElement('button');
                 minimizeBtn.className = 'ktlBookmarksMinBtn';
                 minimizeBtn.title = 'Minimize bookmarks';
                 minimizeBtn.setAttribute('aria-label', 'Minimize bookmarks');
-                minimizeBtn.innerHTML = minimized ? '<i class="fa fa-plus"></i>' : '<i class="fa fa-minus"></i>';
-
+                minimizeBtn.innerHTML = '<i class="fa fa-minus"></i>';
                 minimizeBtn.addEventListener('click', function () {
-                    minimized = !minimized;
-                    setMinimizedState(minimized);
-                    minimizeBtn.innerHTML = minimized ? '<i class="fa fa-plus"></i>' : '<i class="fa fa-minus"></i>';
+                    minimized = true;
+                    setMinimizedState(true);
+                    minimizeBtn.remove();
                 });
-
                 bookmarksHeader.appendChild(minimizeBtn);
-            } else {
-                // If minimize is not enabled, always ensure minimized state is false
-                if (userPrefsObj.bookmarksMinimized) setMinimizedState(false);
             }
 
+            // Make the bookmark icon clickable to maximize when minimized
+            bookmarkIcon.style.cursor = 'pointer';
+            bookmarkIcon.onclick = function () {
+                if (minimized) {
+                    minimized = false;
+                    setMinimizedState(false);
+                    addBookmarksList(bookmarks); // re-render to show the - button
+                } else {
+                    minimized = true;
+                    setMinimizedState(true);
+                }
+            };
+
+            // Render bookmarks or helper text
             const bookmarkEntries = Object.values(bookmarks);
             if (bookmarkEntries.length > 0) {
                 bookmarkEntries.sort((a, b) => a.name.localeCompare(b.name))
