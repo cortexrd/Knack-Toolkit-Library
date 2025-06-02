@@ -17168,10 +17168,10 @@ function Ktl($, appInfo) {
 
         function addBookmarksList(bookmarks) {
             $('.ktlBookmarksContainer').remove();
-        
+
             const bookmarksContainer = document.createElement('div');
             bookmarksContainer.className = 'ktlBookmarksContainer';
-        
+
             const bookmarksHeader = document.createElement('div');
             bookmarksHeader.className = 'ktlBookmarksHeader';
             // Add a clickable bookmark icon
@@ -17180,20 +17180,20 @@ function Ktl($, appInfo) {
             bookmarkIcon.style.verticalAlign = 'middle';
             bookmarkIcon.style.marginRight = '5px';
             bookmarksHeader.appendChild(bookmarkIcon);
-        
+
             // Add header text
             const headerText = document.createElement('span');
             headerText.textContent = 'My Bookmarks';
             bookmarksHeader.appendChild(headerText);
-        
+
             bookmarksContainer.appendChild(bookmarksHeader);
-        
+
             const buttonsContainer = document.createElement('div');
             buttonsContainer.className = 'ktlBookmarksButtons';
             bookmarksContainer.appendChild(buttonsContainer);
-        
+
             const userPrefsObj = ktl.userPrefs.getUserPrefs();
-        
+
             // Helper to update minimized state in DOM and storage
             function setMinimizedState(minimized) {
                 bookmarksContainer.classList.toggle('ktlBookmarksMinimized', minimized);
@@ -17201,10 +17201,10 @@ function Ktl($, appInfo) {
                 userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
             }
-        
+
             let minimized = !!userPrefsObj.bookmarksMinimized && bookmarksMinEnabled;
             setMinimizedState(minimized);
-        
+
             // Only show the - icon when maximized
             let minimizeBtn;
             if (bookmarksMinEnabled && !minimized) {
@@ -17221,7 +17221,7 @@ function Ktl($, appInfo) {
                 });
                 bookmarksHeader.appendChild(minimizeBtn);
             }
-        
+
             // Make the bookmark icon clickable to maximize when minimized
             bookmarkIcon.style.cursor = 'pointer';
             bookmarkIcon.title = minimized ? 'Show bookmarks' : '';
@@ -17232,7 +17232,7 @@ function Ktl($, appInfo) {
                     addBookmarksList(bookmarks); // re-render to show the - button
                 }
             };
-        
+
             const bookmarkEntries = Object.values(bookmarks);
             if (bookmarkEntries.length > 0) {
                 bookmarkEntries.sort((a, b) => a.name.localeCompare(b.name))
@@ -17243,7 +17243,7 @@ function Ktl($, appInfo) {
                 helperText.innerHTML = 'You can add bookmarks by clicking the <i class="fa fa-bookmark-o" style="vertical-align: middle;"></i> icon at the top-right of each page.';
                 buttonsContainer.appendChild(helperText);
             }
-        
+
             const sceneContent = document.querySelector('.kn-scenes');
             if (sceneContent) {
                 if (bookmarksPosition === 'top') {
