@@ -17224,15 +17224,26 @@ function Ktl($, appInfo) {
 
             // Make the bookmark icon clickable to maximize when minimized
             bookmarkIcon.style.cursor = 'pointer';
-            bookmarkIcon.title = minimized ? 'Show bookmarks' : '';
+            bookmarkIcon.title = minimized ? 'Show bookmarks list' : 'Minimize bookmarks list';
+            bookmarkIcon.setAttribute('aria-label', minimized ? 'Show bookmarks list' : 'Minimize bookmarks list');
             bookmarkIcon.onclick = function () {
                 if (minimized) {
                     minimized = false;
                     setMinimizedState(false);
                     addBookmarksList(bookmarks); // re-render to show the - button
+                } else {
+                    minimized = true;
+                    setMinimizedState(true);
                 }
             };
-
+            // Update the title/aria-label after re-render
+            if (minimized) {
+                bookmarkIcon.title = 'Show bookmarks list';
+                bookmarkIcon.setAttribute('aria-label', 'Show bookmarks list');
+            } else {
+                bookmarkIcon.title = 'Minimize bookmarks list';
+                bookmarkIcon.setAttribute('aria-label', 'Minimize bookmarks list');
+            }
             const bookmarkEntries = Object.values(bookmarks);
             if (bookmarkEntries.length > 0) {
                 bookmarkEntries.sort((a, b) => a.name.localeCompare(b.name))
