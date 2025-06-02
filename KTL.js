@@ -17174,6 +17174,7 @@ function Ktl($, appInfo) {
 
             const bookmarksHeader = document.createElement('div');
             bookmarksHeader.className = 'ktlBookmarksHeader';
+
             // Add a clickable bookmark icon
             const bookmarkIcon = document.createElement('i');
             bookmarkIcon.className = 'fa fa-bookmark ktlBookmarksMainIcon';
@@ -17194,12 +17195,14 @@ function Ktl($, appInfo) {
 
             const userPrefsObj = ktl.userPrefs.getUserPrefs();
 
-            // Helper to update minimized state in DOM and storage
+            // Helper to update minimized state in DOM, storage, and icon label
             function setMinimizedState(minimized) {
                 bookmarksContainer.classList.toggle('ktlBookmarksMinimized', minimized);
                 userPrefsObj.bookmarksMinimized = minimized;
                 userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                bookmarkIcon.title = minimized ? 'Show bookmarks list' : 'Minimize bookmarks list';
+                bookmarkIcon.setAttribute('aria-label', minimized ? 'Show bookmarks list' : 'Minimize bookmarks list');
             }
 
             let minimized = !!userPrefsObj.bookmarksMinimized && bookmarksMinEnabled;
@@ -17216,7 +17219,6 @@ function Ktl($, appInfo) {
                 minimizeBtn.addEventListener('click', function () {
                     minimized = true;
                     setMinimizedState(true);
-                    // Remove the button when minimized
                     minimizeBtn.remove();
                 });
                 bookmarksHeader.appendChild(minimizeBtn);
@@ -17224,8 +17226,6 @@ function Ktl($, appInfo) {
 
             // Make the bookmark icon clickable to maximize when minimized
             bookmarkIcon.style.cursor = 'pointer';
-            bookmarkIcon.title = minimized ? 'Show bookmarks list' : 'Minimize bookmarks list';
-            bookmarkIcon.setAttribute('aria-label', minimized ? 'Show bookmarks list' : 'Minimize bookmarks list');
             bookmarkIcon.onclick = function () {
                 if (minimized) {
                     minimized = false;
@@ -17236,14 +17236,8 @@ function Ktl($, appInfo) {
                     setMinimizedState(true);
                 }
             };
-            // Update the title/aria-label after re-render
-            if (minimized) {
-                bookmarkIcon.title = 'Show bookmarks list';
-                bookmarkIcon.setAttribute('aria-label', 'Show bookmarks list');
-            } else {
-                bookmarkIcon.title = 'Minimize bookmarks list';
-                bookmarkIcon.setAttribute('aria-label', 'Minimize bookmarks list');
-            }
+
+            // Render bookmarks or helper text
             const bookmarkEntries = Object.values(bookmarks);
             if (bookmarkEntries.length > 0) {
                 bookmarkEntries.sort((a, b) => a.name.localeCompare(b.name))
