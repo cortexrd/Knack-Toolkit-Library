@@ -284,23 +284,33 @@ a.ktlSortDisabled {
 .ktlBookmarksContainer {
 	position: relative;
     margin: 20px;
+	padding: 5px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     width: 100%;
 	min-width: 260px;
 	max-width: fit-content;
-	transition: max-height 0.2s, opacity 0.2s;
+	transition: max-height 0.25s cubic-bezier(.4,0,.2,1), opacity 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     overflow: hidden;
 }
 
 /* Minimized state: only header visible, buttons hidden */
 .ktlBookmarksContainer.ktlBookmarksMinimized {
-    max-height: 40px !important;
+    max-height: 48px !important;
+	padding: 0;
+	margin: 0 0 0 20px;
     opacity: 0.7;
-    min-width: 200px;
+    min-width: 0;
+    width: fit-content;
+    box-shadow: none;
+	border-radius: 0;
+	background: none;
 }
 
+.ktlBookmarksContainer.ktlBookmarksMinimized .ktlBookmarksHeader span,
+.ktlBookmarksContainer.ktlBookmarksMinimized .ktlBookmarksMinBtn,
 .ktlBookmarksContainer.ktlBookmarksMinimized .ktlBookmarksButtons {
     display: none !important;
 }
@@ -353,6 +363,16 @@ a.ktlSortDisabled {
 
 .ktlBookmarkButton .icon.is-small {
     margin-right: 8px;
+}
+
+.ktlBookmarksMainIcon {
+    font-size: 1.5em;
+    color: #4d4d4d;
+    transition: color 0.2s;
+}
+
+.ktlBookmarksMainIcon:hover {
+    color: #1b1b1b;
 }
 
 /* Context Menu for Bookmarks */
