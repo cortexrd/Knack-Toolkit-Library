@@ -116,18 +116,19 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     LazyLoad.js(['https://cdnjs.cloudflare.com/ajax/libs/jquery.blockUI/2.70/jquery.blockUI.min.js']);
     LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']); //Docs: https://github.com/SortableJS/Sortable#readme
 
-    let bypassCacheSuffix = '';
     if (ktlVersion === 'dev' || ktlVersion === 'beta') {
         fullCode = 'full';
         cssVersion = ktlVersion;
-        //bypassCacheSuffix = `?v=${new Date().getTime()}`; //Append this to end of filename to force loading new code without requiring Ctrl+F5.
     }
+
+    //Append this to end of filename to force loading new code without requiring Ctrl+F5.
+    let bypassCacheSuffix = ktlCode !== 'local' ? `?v=${new Date().getTime()}` : '';
 
     var cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css' + bypassCacheSuffix;
     var ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js' + bypassCacheSuffix;
 
-    LazyLoad.css([`${cssFile}?${new Date().valueOf()}`], () => {
-        LazyLoad.js([`${ktlFile}?${new Date().valueOf()}`], () => {
+    LazyLoad.css([`${cssFile}`], () => {
+        LazyLoad.js([`${ktlFile}`], () => {
             if (typeof Ktl === 'function') {
                 LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + ((ktlVersion === 'dev' || ktlVersion === 'beta') ? '-' + ktlVersion : '') + '.js'], () => {
                     if (typeof KnackApp === 'function') {
