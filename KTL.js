@@ -21718,8 +21718,9 @@ function Ktl($, appInfo) {
                             reject('Recovery WD startup error: ' + xhr.responseText);
                         }, STARTUP_WD_TIMEOUT_DELAY * 1000);
 
+                        const displayId = (window.screenX || window.screenLeft || 0) === 0 ? 'Display1' : 'Display2';
                         const xhr = new XMLHttpRequest();
-                        xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/watchdog?wdTimeoutDelay=' + wdTimeoutDelay, true);
+                        xhr.open('GET', `http://localhost:${LOCAL_SERVER_PORT}/watchdog?wdTimeoutDelay=${wdTimeoutDelay}&displayId=${displayId}`, true);
                         xhr.onreadystatechange = function () {
                             //console.log('Server response:', xhr.readyState, xhr.status, xhr.statusText, xhr.responseText);
                             if (xhr.readyState === 4 && xhr.status === 200) {
