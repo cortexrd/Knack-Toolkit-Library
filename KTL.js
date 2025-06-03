@@ -16265,7 +16265,7 @@ function Ktl($, appInfo) {
 
                 //Only add checkboxes if there's data and checkboxes not yet added.
                 var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
-                if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table th:nth-child(1) input[type=checkbox]')) {
+                if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table td:nth-child(1) input[type=checkbox]')) {
                     if (withMaster) { // Add the master checkbox to to the header to select/unselect all
                         $('#' + viewId + ' .kn-table thead tr').prepend('<th style="width: 24px;"><input type="checkbox"></th>');
                         $('#' + viewId + ' .kn-table thead input:first').addClass('masterSelector');
@@ -16729,24 +16729,29 @@ function Ktl($, appInfo) {
                     if (!viewId || !Knack.views[viewId])
                         return reject();
 
-                    if (Knack.views[viewId].record
-                        || (Knack.views[viewId].model.data && Knack.views[viewId].model.data.total_records > 0)
-                        || document.querySelector(`#${viewId} .kn-tr-nodata`)) {
-                        return resolve();
+                    const getData = () => {
+                        return Knack.views[viewId].record ||
+                            Knack.views[viewId].model.data?.models ||
+                            null;
+                    };
+
+                    const data = getData();
+                    if (data || document.querySelector(`#${viewId} .kn-tr-nodata`)) {
+                        return resolve(data || []);
                     }
 
                     const itv = setInterval(() => {
-                        if (Knack.views[viewId].record
-                            || (Knack.views[viewId].model.data && Knack.views[viewId].model.data.total_records > 0)
-                            || document.querySelector(`#${viewId} .kn-tr-nodata`)) {
+                        const data = getData();
+                        if (data || document.querySelector(`#${viewId} .kn-tr-nodata`)) {
                             clearInterval(itv);
-                            return resolve();
+                            clearTimeout(timeout);
+                            return resolve(data || []);
                         }
                     }, 100);
 
-                    setTimeout(() => { //Failsafe
+                    const timeout = setTimeout(() => {
                         clearInterval(itv);
-                        reject();
+                        resolve([]);
                     }, 60000);
                 })
             },
