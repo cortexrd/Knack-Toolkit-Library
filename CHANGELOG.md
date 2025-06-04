@@ -1,5 +1,30 @@
 # Knack Toolkit Library Changelog
 
+
+## 0.32.3    *2025-06-04*
+
+- Added support for Linux kiosks with dual monitor setup.
+  - Now each app instance has its own heartbeat and timeout.
+- Fixed addCheckboxesToTable:  now checks 1st row for existing checkbox
+  - instead of header, since master checkbox may not exist in some user-specific scenarios.
+  - Ex: unanimity check lists.
+  - waitViewDataReady now returns view data instead of nothing.
+- Always bypass cache in local dev mode.
+- Merge branch 'dev' of https://github.com/cortexrd/Knack-Toolkit-Library into dev
+- Improves bookmark display and minimize functionality (#515)
+  - * Improves bookmark display and minimize functionality
+  - Enhances the bookmark display with styling improvements and an interactive bookmark icon.
+  - The bookmark list can now be re-opened by clicking on the bookmark icon, improving the user experience. Updates minimize functionality to remove the minimize button when the list is minimized, and it's re-rendered when maximized.
+  - * Removed whitespace from code
+  - * Removed duplicate padding
+  - * Improves bookmark icon accessibility
+  - Enhances the bookmark icon by adding descriptive titles and aria-labels that dynamically update based on the minimized state.
+  - This improves accessibility for users who rely on screen readers or other assistive technologies, providing a better understanding of the bookmark icon's function.
+  - * Improved/Simplified the add bookmarks list function
+- Removed obsolete files.
+- Fixed algorithm to find last tag
+  - and ignore all commits having comment: Update CHANGELOG.md
+
 ## 0.32.2 *2025-05-30*
 
 -   \_ask is now supported without parameters.
