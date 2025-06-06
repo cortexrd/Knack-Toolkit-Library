@@ -10389,17 +10389,17 @@ function Ktl($, appInfo) {
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
                 let maxIndexRenumber = Number.MAX_SAFE_INTEGER;
-                let noDragElements = [];
-                let noDragFieldId;
+                let applyButtonLabel;
+                let applyButton;
+                let draggedRecId;
+                let hasApplyParam = false;
 
                 for (const group of params) {
                     if (group.length === 2 && group[0] === 'lte')
                         maxIndexRenumber = Number(group[1]);
-                    else if (group.length >= 3 && group[0] === 'nodrag') {
-                        noDragFieldId = group[1];
-                        if (!noDragFieldId.startsWith('field_'))
-                            noDragFieldId = ktl.fields.getFieldIdFromLabel(viewId, noDragFieldId);
-                        noDragElements = group.slice(2);
+                    else if (group.length >= 1 && group[0] === 'apply') {
+                        hasApplyParam = true;
+                        applyButtonLabel = (group[1] && group[1].trim()) ? group[1] : 'Apply Reorder';
                     }
                 }
 
@@ -10417,24 +10417,26 @@ function Ktl($, appInfo) {
                                     row.classList.add(`dndGrp_${groupName}`);
                                 }
                             }
-
-                            if (noDragFieldId) {
-                                const fieldText = $(row).find(`.${noDragFieldId} span`)[0].innerText;
-                                if (noDragElements.includes(fieldText)) {
-                                    row.classList.add('ktlNotAllowed', 'ktlNotAllowedKeep');
-                                    $(row).find('td').css('cursor', 'unset');
-                                }
-                            }
                         }
 
+                        checkAndProcessBlanks();
                         processDndSort();
                     })
                     .catch(() => { })
 
+                function checkAndProcessBlanks() {
+                    const sortCells = document.querySelectorAll(`#${viewId} tbody tr .${sortFieldId}`);
+                    for (const cell of sortCells) {
+                        if (!cell.innerText || cell.innerText.trim() === '') {
+                            processReorder();
+                            return;
+                        }
+                    }
+                }
+
                 function processDndSort() {
                     $(`#${viewId} tbody tr:not(.kn-table-group):not(.kn-table-totals):not(.ktlNotAllowed)`).addClass(`ktlDragAndDrop`);
 
-                    let draggedRecId;
                     let initialGroup;
 
                     const dndDiv = document.querySelector(`#${viewId} tbody`);
@@ -10486,85 +10488,116 @@ function Ktl($, appInfo) {
                             $(`#${viewId} tbody tr.ktlNotAllowed:not(.ktlNotAllowedKeep)`).removeClass('ktlNotAllowed');
 
                             if (evt.oldIndex !== evt.newIndex) {
-                                ktl.core.infoPopup();
-                                ktl.views.autoRefresh(false);
-                                ktl.scenes.spinnerWatchdog(false);
-                                $.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
-
-                                var recIdArray = [];
-                                var idx;
-                                let newData;
-
-                                if (viewHasGrouping)
-                                    newData = document.querySelectorAll(`#${viewId} tbody tr.${initialGroup} .${sortFieldId}`);
-                                else
-                                    newData = document.querySelectorAll(`#${viewId} tbody tr .${sortFieldId}`);
-
-                                for (idx = 0; idx < newData.length; idx++) {
-                                    const sortValue = Number(newData[idx].innerText);
-                                    if (sortValue !== (idx + 1)) {
-                                        const recId = newData[idx].closest('tr').id;
-                                        if (sortValue <= maxIndexRenumber || recId === draggedRecId) {
-                                            var recData = {};
-                                            recData[sortFieldId] = idx + 1;
-                                            recData.recId = recId;
-                                            recIdArray.push(recData);
-                                        }
+                                const sortCells = document.querySelectorAll(`#${viewId} tbody tr .${sortFieldId}`);
+                                let hasBlankSortValues = false;
+                                for (const cell of sortCells) {
+                                    if (!cell.innerText || cell.innerText.trim() === '') {
+                                        hasBlankSortValues = true;
+                                        break;
                                     }
                                 }
 
-                                var arrayLen = recIdArray.length;
-                                idx = 0;
-                                var countDone = 0;
-                                var apiData = {};
-
-                                var itv = setInterval(() => {
-                                    if (idx < arrayLen) {
-                                        apiData[sortFieldId] = recIdArray[idx][sortFieldId];
-                                        const recId = recIdArray[idx].recId;
-                                        updateRecord(recId, apiData);
-                                        idx++;
-                                    } else
-                                        clearInterval(itv);
-                                }, 150);
-
-                                function updateRecord(recId, apiData) {
-                                    showProgress();
-                                    ktl.core.knAPI(viewId, recId, apiData, 'PUT')
-                                        .then(function () {
-                                            if (++countDone === recIdArray.length) {
-                                                recIdArray = [];
-                                                Knack.showSpinner();
-                                                ktl.core.removeInfoPopup();
-
-                                                ktl.views.refreshView(viewId).then(function () {
-                                                    ktl.core.removeTimedPopup();
-                                                    ktl.scenes.spinnerWatchdog();
-                                                    ktl.views.autoRefresh();
-                                                    Knack.hideSpinner();
-                                                    $.unblockUI();
-                                                    ktl.core.timedPopup('Rows Reordered successfully', 'success', 1000);
-                                                })
-                                            } else
-                                                showProgress();
-                                        })
-                                        .catch(function (reason) {
-                                            ktl.core.removeInfoPopup();
-                                            ktl.core.removeTimedPopup();
-                                            Knack.hideSpinner();
-                                            ktl.scenes.spinnerWatchdog();
-                                            ktl.views.autoRefresh();
-                                            $.unblockUI();
-                                            alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
-                                        })
-
-                                    function showProgress() {
-                                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' Lines.    Records left: ' + (arrayLen - countDone));
-                                    }
+                                if (hasApplyParam && !hasBlankSortValues) {
+                                    createApplyButton();
+                                } else {
+                                    processReorder();
                                 }
                             }
                         }
                     })
+                }
+
+                function createApplyButton() {
+                    if (applyButton) return;
+
+                    let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+                    let buttonId = ktl.core.getCleanId(applyButtonLabel);
+                    applyButton = ktl.fields.addButton(ktlAddonsDiv, applyButtonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonId}-${viewId}`);
+
+                    $(applyButton).off('click').on('click', function () {
+                        processReorder();
+                        applyButton.remove();
+                        applyButton = null;
+                    });
+                }
+
+                function processReorder() {
+                    ktl.core.infoPopup();
+                    ktl.views.autoRefresh(false);
+                    ktl.scenes.spinnerWatchdog(false);
+                    $.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
+
+                    var recIdArray = [];
+                    var idx;
+                    let newData;
+
+                    if (viewHasGrouping)
+                        newData = document.querySelectorAll(`#${viewId} tbody tr.${initialGroup} .${sortFieldId}`);
+                    else
+                        newData = document.querySelectorAll(`#${viewId} tbody tr .${sortFieldId}`);
+
+                    for (idx = 0; idx < newData.length; idx++) {
+                        const sortValue = Number(newData[idx].innerText);
+                        if (sortValue !== (idx + 1)) {
+                            const recId = newData[idx].closest('tr').id;
+                            if (sortValue <= maxIndexRenumber || recId === draggedRecId) {
+                                var recData = {};
+                                recData[sortFieldId] = idx + 1;
+                                recData.recId = recId;
+                                recIdArray.push(recData);
+                            }
+                        }
+                    }
+
+                    var arrayLen = recIdArray.length;
+                    idx = 0;
+                    var countDone = 0;
+                    var apiData = {};
+
+                    var itv = setInterval(() => {
+                        if (idx < arrayLen) {
+                            apiData[sortFieldId] = recIdArray[idx][sortFieldId];
+                            const recId = recIdArray[idx].recId;
+                            updateRecord(recId, apiData);
+                            idx++;
+                        } else
+                            clearInterval(itv);
+                    }, 150);
+
+                    function updateRecord(recId, apiData) {
+                        showProgress();
+                        ktl.core.knAPI(viewId, recId, apiData, 'PUT')
+                            .then(function () {
+                                if (++countDone === recIdArray.length) {
+                                    recIdArray = [];
+                                    Knack.showSpinner();
+                                    ktl.core.removeInfoPopup();
+
+                                    ktl.views.refreshView(viewId).then(function () {
+                                        ktl.core.removeTimedPopup();
+                                        ktl.scenes.spinnerWatchdog();
+                                        ktl.views.autoRefresh();
+                                        Knack.hideSpinner();
+                                        $.unblockUI();
+                                        ktl.core.timedPopup('Rows Reordered successfully', 'success', 1000);
+                                    })
+                                } else
+                                    showProgress();
+                            })
+                            .catch(function (reason) {
+                                ktl.core.removeInfoPopup();
+                                ktl.core.removeTimedPopup();
+                                Knack.hideSpinner();
+                                ktl.scenes.spinnerWatchdog();
+                                ktl.views.autoRefresh();
+                                $.unblockUI();
+                                alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
+                            })
+
+                        function showProgress() {
+                            ktl.core.setInfoPopupText('Updating ' + arrayLen + ' Lines.    Records left: ' + (arrayLen - countDone));
+                        }
+                    }
                 }
             }
         }
