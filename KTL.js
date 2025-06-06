@@ -17304,53 +17304,57 @@ function Ktl($, appInfo) {
         function showBookmarkContextMenu(e, bookmark, button) {
             // Remove any existing menu
             document.querySelectorAll('.ktlBookmarkMenu').forEach(menu => menu.remove());
-        
+
             const menu = document.createElement('div');
             menu.className = 'ktlBookmarkMenu';
             menu.style.position = 'fixed';
             menu.style.left = `${e.clientX}px`;
             menu.style.top = `${e.clientY}px`;
-        
+
             // Edit option
             const editOption = document.createElement('div');
             editOption.textContent = 'Rename';
             editOption.className = 'ktlBookmarkMenuItem';
+            editOption.setAttribute('aria-label', 'Rename bookmark');
             editOption.addEventListener('click', function() {
                 handleEditBookmark(bookmark);
                 menu.remove();
             });
             menu.appendChild(editOption);
-        
+
             // Delete option
             const deleteOption = document.createElement('div');
             deleteOption.textContent = 'Delete';
             deleteOption.className = 'ktlBookmarkMenuItem';
+            deleteOption.setAttribute('aria-label', 'Delete bookmark');
             deleteOption.addEventListener('click', function() {
                 handleDeleteBookmark(bookmark);
                 menu.remove();
             });
             menu.appendChild(deleteOption);
-        
+
             // --- Open in New Tab ---
             const openTabOption = document.createElement('div');
             openTabOption.textContent = 'Open in New Tab';
             openTabOption.className = 'ktlBookmarkMenuItem';
+            openTabOption.setAttribute('aria-label', 'Open bookmark in new tab');
             openTabOption.addEventListener('click', function() {
                 window.open(bookmark.url, '_blank');
                 menu.remove();
             });
             menu.appendChild(openTabOption);
-        
+
             // --- Open in New Window ---
             const openWindowOption = document.createElement('div');
             openWindowOption.textContent = 'Open in New Window';
             openWindowOption.className = 'ktlBookmarkMenuItem';
+            openWindowOption.setAttribute('aria-label', 'Open bookmark in new window');
             openWindowOption.addEventListener('click', function() {
                 window.open(bookmark.url, '_blank', 'noopener,noreferrer,width=1000,height=800');
                 menu.remove();
             });
             menu.appendChild(openWindowOption);
-        
+
             // Remove menu on click elsewhere
             function removeMenu() {
                 if (menu && menu.parentNode) {
