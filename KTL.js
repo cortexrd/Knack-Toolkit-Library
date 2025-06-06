@@ -17198,19 +17198,17 @@ function Ktl($, appInfo) {
             buttonsContainer.className = 'ktlBookmarksButtons';
             bookmarksContainer.appendChild(buttonsContainer);
 
-            const userPrefsObj = ktl.userPrefs.getUserPrefs();
-
-            // Helper to update minimized state in DOM, storage, and icon label
             function setMinimizedState(minimized) {
                 bookmarksContainer.classList.toggle('ktlBookmarksMinimized', minimized);
-                userPrefsObj.bookmarksMinimized = minimized;
-                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+
+                const bookmarksState = minimized ? 'min' : 'max';
+                ktl.storage.lsSetItem('bookmarksState', bookmarksState);
+
                 bookmarkIcon.title = minimized ? 'Show bookmarks list' : 'Minimize bookmarks list';
                 bookmarkIcon.setAttribute('aria-label', minimized ? 'Show bookmarks list' : 'Minimize bookmarks list');
             }
 
-            let minimized = !!userPrefsObj.bookmarksMinimized && bookmarksMinEnabled;
+            let minimized = (ktl.storage.lsGetItem('bookmarksState') === 'min') && bookmarksMinEnabled;
             setMinimizedState(minimized);
 
             // Only show the - icon when maximized
@@ -17306,13 +17304,13 @@ function Ktl($, appInfo) {
         function showBookmarkContextMenu(e, bookmark, button) {
             // Remove any existing menu
             document.querySelectorAll('.ktlBookmarkMenu').forEach(menu => menu.remove());
-
+        
             const menu = document.createElement('div');
             menu.className = 'ktlBookmarkMenu';
             menu.style.position = 'fixed';
             menu.style.left = `${e.clientX}px`;
             menu.style.top = `${e.clientY}px`;
-
+        
             // Edit option
             const editOption = document.createElement('div');
             editOption.textContent = 'Rename';
@@ -17322,8 +17320,7 @@ function Ktl($, appInfo) {
                 menu.remove();
             });
             menu.appendChild(editOption);
-
-
+        
             // Delete option
             const deleteOption = document.createElement('div');
             deleteOption.textContent = 'Delete';
@@ -17333,7 +17330,27 @@ function Ktl($, appInfo) {
                 menu.remove();
             });
             menu.appendChild(deleteOption);
-
+        
+            // --- Open in New Tab ---
+            const openTabOption = document.createElement('div');
+            openTabOption.textContent = 'Open in New Tab';
+            openTabOption.className = 'ktlBookmarkMenuItem';
+            openTabOption.addEventListener('click', function() {
+                window.open(bookmark.url, '_blank');
+                menu.remove();
+            });
+            menu.appendChild(openTabOption);
+        
+            // --- Open in New Window ---
+            const openWindowOption = document.createElement('div');
+            openWindowOption.textContent = 'Open in New Window';
+            openWindowOption.className = 'ktlBookmarkMenuItem';
+            openWindowOption.addEventListener('click', function() {
+                window.open(bookmark.url, '_blank', 'noopener,noreferrer,width=1000,height=800');
+                menu.remove();
+            });
+            menu.appendChild(openWindowOption);
+        
             // Remove menu on click elsewhere
             function removeMenu() {
                 if (menu && menu.parentNode) {
