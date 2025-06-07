@@ -16799,7 +16799,6 @@ function Ktl($, appInfo) {
                     ktlAddonsDiv = document.createElement('div');
 
                     let prepend = false;
-                    let searchFound = false;
 
                     let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
                         document.querySelector(`#${viewId} .kn-submit.control`);
@@ -16821,19 +16820,7 @@ function Ktl($, appInfo) {
                     }
 
                     ktlAddonsDiv.classList.add('ktlAddonsDiv');
-
-                    // Adjust styles based on conditions
-                    if (searchFound) {
-                        if (Knack.isMobile()) {
-                            $(ktlAddonsDiv).css('margin-top', '2%');
-                        } else {
-                            ktlAddonsDiv.classList.add('ktlAddonsWithSearchDiv');
-                            document.querySelector(`#${viewId} .table-keyword-search .control.has-addons, #${viewId} .kn-submit.control`).style.display = 'inline-flex'; // Otherwise, we get the buttons on a row below Search bar.
-                        }
-                    }
-
                     $(ktlAddonsDiv).css('margin-bottom', '1.1em');
-
                     prepend ? $(div).prepend(ktlAddonsDiv) : ktl.core.insertAfter(ktlAddonsDiv, div);
                 }
 
