@@ -20596,47 +20596,18 @@ function Ktl($, appInfo) {
             const viewId = view.key;
             if (document.querySelector(`#${viewId} .bulkOpsControlsDiv`)) return;
 
-            let prepend = false;
-            let searchFound = false;
-
-            let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
-                document.querySelector(`#${viewId} .kn-submit.control`);
-
-            // Check for _hsv keyword
-            const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
-            if (!div && viewHasHSV) {
-                div = document.querySelector(`#${viewId} .kn-records-nav`);
-                prepend = true;
-            }
-
-            if (!div) {
-                div = document.querySelector(`#${viewId} .view-header`);
-            }
-
-            // Fallback to view element if no div or header found
-            if (!div) {
-                div = document.querySelector(`#${viewId}`);
-                if (!div) return; // Support other layout options as we go.
-                prepend = true;
-            }
+            const ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
 
             const bulkOpsControlsDiv = document.createElement('div');
             bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv');
             bulkOpsControlsDiv.setAttribute('id', `bulkOpsControlsDiv-${viewId}`);
 
-            if (searchFound) {
-                if (Knack.isMobile()) {
-                    $(bulkOpsControlsDiv).css('margin-top', '2%');
-                } else {
-                    bulkOpsControlsDiv.classList.add('bulkOpsControlsWithSearchDiv');
-                }
-            }
-
+            const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
             if (viewHasHSV) {
                 $(bulkOpsControlsDiv).css('margin-bottom', '20px');
             }
 
-            prepend ? $(div).prepend(bulkOpsControlsDiv) : $(div).append(bulkOpsControlsDiv);
+            ktlAddonsDiv.appendChild(bulkOpsControlsDiv);
 
             if (data.length) {
                 addBulkDeleteButtons(view, data);
