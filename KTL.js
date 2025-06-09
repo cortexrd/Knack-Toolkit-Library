@@ -4658,10 +4658,12 @@ function Ktl($, appInfo) {
             const elementsToObserve = document.querySelectorAll(`#${viewId} .redactor-box`);
             const observer = new MutationObserver((records, observer) => {
                 if (!pfIsInitialized) return;
-
-                const editor = $(records.find(record => $(record.target).closest('.redactor-editor').length).target).closest('.redactor-editor');
-                if (editor) {
-                    formContentHasChanged(editor[0]);
+                const foundRecord = records.find(record => record.target && $(record.target).closest('.redactor-editor').length);
+                if (foundRecord) {
+                    const editor = $(foundRecord.target).closest('.redactor-editor');
+                    if (editor.length && editor[0]) {
+                        formContentHasChanged(editor[0]);
+                    }
                 }
             });
 
