@@ -1,6 +1,23 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.32.4    *2025-06-11*
+
+- Added a check for the redactor editor that stops an error from occuring when a class is added to Knacks redactor editor (#518)
+- Removed obsolete dead code in getKtlAddOnsDiv.
+- Modified addBulkOpsButtons to use getKtlAddOnsDiv.
+- Improves bookmark context menu and state handling (#517)
+  - * Improves bookmark context menu and state handling
+  - Adds "Open in New Tab" and "Open in New Window" options to the bookmark context menu for enhanced usability.
+  - Simplifies bookmark minimized state management by directly storing the state ('min' or 'max') in local storage instead of the entire user preferences object.
+  - * Adds accessibility labels to bookmark menu items
+  - Improves accessibility by adding aria-label attributes to the bookmark menu items (Rename, Delete, Open in New Tab, Open in New Window).
+  - This provides screen readers with more information about the purpose of each menu item.
+- _dnd - Adding support for apply button.
+  - Add the Apply Reorder button, with optional label.
+  - Added checkAndProcessBlanks to automatically fill the blank sort values.
+  - Now using getKtlAddOnsDiv
+
 ## 0.32.3    *2025-06-04*
 
 - Added support for Linux kiosks with dual monitor setup.
