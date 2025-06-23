@@ -339,7 +339,6 @@ a.ktlSortDisabled {
     border: none;
     cursor: pointer;
     font-size: 16px;
-    z-index: 2001;
 }
 
 /* Helper Text */
@@ -754,8 +753,10 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 @media print {
-	#addVersionInfoDiv, .bulkEditCb {
-		display: none;
+	#addVersionInfoDiv,
+	.bulkEditCb,
+	.ktlBookmarksContainer {
+		display: none !important;
 	}
 
 	.cell-editable td.cell-edit {
