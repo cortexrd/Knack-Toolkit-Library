@@ -339,7 +339,6 @@ a.ktlSortDisabled {
     border: none;
     cursor: pointer;
     font-size: 16px;
-    z-index: 10;
 }
 
 /* Helper Text */
