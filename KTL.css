@@ -756,7 +756,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 	#addVersionInfoDiv,
 	.bulkEditCb,
 	.ktlBookmarksContainer {
-		display: none;
+		display: none !important;
 	}
 
 	.cell-editable td.cell-edit {
