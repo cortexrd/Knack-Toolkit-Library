@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.32.4';
+    const KTL_VERSION = '0.32.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -21448,7 +21448,6 @@ function Ktl($, appInfo) {
                     }
                 }, RETRY_INTERVAL);
             }
-            ////////////////////////////////////////////////////////////
 
             this.recoveryWatchdog = (function () {
                 if (cfg.pageIntegrityWatchdogEnabled)
