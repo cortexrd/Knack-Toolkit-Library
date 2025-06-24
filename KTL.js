@@ -16894,9 +16894,11 @@ function Ktl($, appInfo) {
                 if (!viewId) return 0;
                 // Try to get the number of visible header columns first
                 let colspan = $(`#${viewId} thead tr th:visible`).length;
+
                 // If no headers are visible, fallback to visible cells in the first non-group row
                 if (colspan === 0) {
-                    colspan = $(`#${viewId} tbody tr:not(.kn-table-group):first td:visible`).length;
+                    const firstRow = $(`#${viewId} tbody tr:not(.kn-table-group):visible`).first();
+                    colspan = firstRow.find('td:visible').length;
                 }
                 return colspan;
             },
