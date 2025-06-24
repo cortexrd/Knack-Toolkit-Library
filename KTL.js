@@ -12970,7 +12970,7 @@ function Ktl($, appInfo) {
                             Knack.views[viewId].renderSignatures();
                         }
 
-                        const numOfVisibleColumns = viewElement.find('th:visible').length;
+                        const numOfVisibleColumns = ktl.views.getGridColspan(viewId);
                         if (tableGroupCell.length && parseInt(tableGroupCell.attr('colspan')) !== numOfVisibleColumns) {
                             tableGroupCell.attr('colspan', numOfVisibleColumns);
                         }
@@ -13850,9 +13850,9 @@ function Ktl($, appInfo) {
                             //Insert blankCells at first column for each summary row.
                             const totalRows = $(sel);
                             if (!$(`#${viewId} tr.kn-table-totals td`)[0].classList.contains('blankCell')) {
-                                const headers = $(`#${viewId} thead tr th:visible`);
+                                const visibleColumns = ktl.views.getGridColspan(viewId);
                                 const totals = $(`#${viewId} tr.kn-table-totals:first`).children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])');
-                                if (headers.length > totals.length) {
+                                if (visibleColumns > totals.length) {
                                     for (let i = totalRows.length - 1; i >= 0; i--) {
                                         const row = totalRows[i];
                                         $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
@@ -13864,9 +13864,9 @@ function Ktl($, appInfo) {
                         //Hide summary columns to match hidden columns.
                         const hiddenHeaders = $(`#${viewId} thead tr th:is([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])`);
                         if (hiddenHeaders.length) {
-                            const visibleHeaders = $(`#${viewId} thead tr th:visible`);
+                            const visibleColumns = ktl.views.getGridColspan(viewId);
                             const visibleTotals = $(`#${viewId} tr.kn-table-totals:first`).children('td:visible');
-                            if (visibleHeaders.length < visibleTotals.length) {
+                            if (visibleColumns < visibleTotals.length) {
                                 hiddenHeaders.forEach((el, ix) => {
                                     $(`#${viewId} tr.kn-table-totals td:nth-child(${el.cellIndex + 1})`).addClass('ktlDisplayNone_hc');
                                 });
@@ -13907,7 +13907,7 @@ function Ktl($, appInfo) {
                     try {
                         const sel = `#${viewId} tr.kn-table-group`;
                         await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
-                        const headers = $(`#${viewId} thead tr th:visible`).length;
+                        const visibleColumns = ktl.views.getGridColspan(viewId);
 
                         $(sel).each(function () {
                             if (bulkOpsActive) {
@@ -13919,7 +13919,7 @@ function Ktl($, appInfo) {
                             }
 
                             if ($(this).find('td').length === 1) //Fixed issue #442, where some users add extra td cells to groups.
-                                $(this).find('td').attr('colspan', headers);
+                                $(this).find('td').attr('colspan', visibleColumns);
                         });
                     } catch (e) {
                         //Ignore since may happen with Search views without initial data.
@@ -16888,6 +16888,19 @@ function Ktl($, appInfo) {
                 tableRows.each((index, row) => {
                     callback(index, $(row));
                 });
+            },
+
+            getGridColspan: function (viewId) {
+                if (!viewId) return 0;
+                // Try to get the number of visible header columns first
+                let colspan = $(`#${viewId} thead tr th:visible`).length;
+
+                // If no headers are visible, fallback to visible cells in the first non-group row
+                if (colspan === 0) {
+                    const firstRow = $(`#${viewId} tbody tr:not(.kn-table-group):visible`).first();
+                    colspan = firstRow.find('td:visible').length;
+                }
+                return colspan;
             },
 
         } //return
