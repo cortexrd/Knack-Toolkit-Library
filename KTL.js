@@ -3649,9 +3649,8 @@ function Ktl($, appInfo) {
             setUsingBarcode: function (using) { usingBarcodeReader = using; },
             getUsingBarcode: function () { return usingBarcodeReader; },
 
+            /////////////////////////////////////////////////////////////////////////////////////
             //TODO removeDropdownEntries: function...
-            /////////////////////////////////////////////////////////////////////////////////////
-            /////////////////////////////////////////////////////////////////////////////////////
             //Remove restricted entries from a dropdown.
             //In this case, only high-level SuperAdmin, Admin and Developer can change a role.
             //This works with regular dropdowns and within an inline editing table.
@@ -8903,7 +8902,6 @@ function Ktl($, appInfo) {
                 });
         }
 
-        /////////////////////////////////////////////////////////////////////////////////
         function colorizeFieldByValue(viewId, data) {
             const kw = '_cfv';
 
@@ -9433,7 +9431,6 @@ function Ktl($, appInfo) {
                 }
             }
 
-            ////////////////////////////////////////////////////////////
             //The reference value is the value against which we will compare the value of a record's field.
             //The refValSelString parameter can be a summary, or a fixed field/view value from a details view.
             function getReferenceValue(refValSelString, viewId) {
@@ -9472,8 +9469,6 @@ function Ktl($, appInfo) {
             }
         } //cfv feature
 
-
-        /////////////////////////////////////////////////////////////////////////////////
         async function addSelectAllOption(viewId) {
             const kw = '_sa';
             if (!viewId || ktl.views.getViewType(viewId) !== 'form') return;
@@ -14308,15 +14303,11 @@ function Ktl($, appInfo) {
                 })
             },
 
-            /*//////////////////////////////////////////////////////////////////
-            Hides any table's columns.
-
-            Input parameters:
-                - viewId: must be a view.key string, ex: 'view_123'
-                - fields: must be an array of strings of field ids.
-                - headers: must be an array of strings of column headers.
-            */
-            //////////////////////////////////////////////////////////////////
+            // Hides any table's columns.
+            // Input parameters:
+            //     - viewId: must be a view.key string, ex: 'view_123'
+            //     - fields: must be an array of strings of field ids.
+            //     - headers: must be an array of strings of column headers.
             hideTableColumns: function (viewId = '', fields = [], headers = [], fixRows = true) {
                 if (!viewId) {
                     ktl.log.clog('purple', 'Called hideTableColumns with invalid parameters.');
@@ -14365,15 +14356,11 @@ function Ktl($, appInfo) {
                     ktl.views.fixTableRowsAlignment(viewId);
             },
 
-            /*//////////////////////////////////////////////////////////////////
-            Unhides any table's columns.
-
-            Input parameters:
-                - viewId: must be a view.key string, ex: 'view_123'
-                - fields: must be an array of strings of field ids.
-                - headers: must be an array of strings of column headers.
-            */
-            //////////////////////////////////////////////////////////////////
+            // Unhides any table's columns.
+            // Input parameters:
+            //     - viewId: must be a view.key string, ex: 'view_123'
+            //     - fields: must be an array of strings of field ids.
+            //     - headers: must be an array of strings of column headers.
             unhideTableColumns: function (viewId = '', fields = [], headers = [], fixRows = true) {
                 if (!viewId) {
                     ktl.log.clog('purple', 'Called unhideTableColumns with invalid parameters.');
@@ -14400,15 +14387,11 @@ function Ktl($, appInfo) {
                     ktl.views.fixTableRowsAlignment(viewId);
             },
 
-            /*//////////////////////////////////////////////////////////////////
-            Removes any table's columns, including those with Action, Edit and Delete.
-
-            Input parameters:
-                - viewId: must be a view.key string, ex: 'view_123'
-                - fields: must be an array of strings of field ids.
-                - headers: must be an array of strings of column headers.
-            */
-            //////////////////////////////////////////////////////////////////
+            // Removes any table's columns, including those with Action, Edit and Delete.
+            // Input parameters:
+            //     - viewId: must be a view.key string, ex: 'view_123'
+            //     - fields: must be an array of strings of field ids.
+            //     - headers: must be an array of strings of column headers.
             removeTableColumns: function (viewId = '', fields = [], headers = [], fixRows = true) {
                 if (typeof fields === "boolean")
                     return ktl.views.removeTableColumnsDeprecated(...arguments);
@@ -14451,14 +14434,10 @@ function Ktl($, appInfo) {
                     ktl.views.fixTableRowsAlignment(viewId);
             },
 
-            /*//////////////////////////////////////////////////////////////////
-            Removes any table's columns by index, including those with Action, Edit and Delete.
-
-            Input parameters:
-                - viewId: must be a view.key string, ex: 'view_123'
-                - columnsArray: must be an array of 1-based integers, ex: [5, 2, 1] to remove 1st, 2nd and 5th columns.  Order MUST be decreasing.
-            */
-            //////////////////////////////////////////////////////////////////
+            // Removes any table's columns by index, including those with Action, Edit and Delete.
+            // Input parameters:
+            //     - viewId: must be a view.key string, ex: 'view_123'
+            //     - columnsArray: must be an array of 1-based integers, ex: [5, 2, 1] to remove 1st, 2nd and 5th columns.  Order MUST be decreasing.
             removeTableColumnsByIndex: function (viewId = '', columnIndexes = [], fixRows = true) {
                 if (!viewId) {
                     ktl.log.clog('purple', 'Called removeTableColumnsByIndex with invalid parameters.');
@@ -14488,21 +14467,18 @@ function Ktl($, appInfo) {
                     ktl.views.fixTableRowsAlignment(viewId);
             },
 
-            /*//////////////////////////////////////////////////////////////////
-            !!! Deprecated
-            Removes or hides any table's columns, including those
-            with Action, Edit and Delete.
+            // !!! Deprecated
+            // Removes or hides any table's columns, including those
+            // with Action, Edit and Delete.
 
-            Input parameters:
+            // Input parameters:
 
-                - viewId: must be a view.key string, ex: 'view_123'
-                - remove: true removes elements from DOM, false only hides them.  Useful to hide them when you need to access data, but not secure.
-                - columnsArray: must be an array of 1-based integers, ex: [5, 2, 1] to remove 1st, 2nd and 5th columns.  Order MUST be decreasing.
-                - fieldsArray: must be an array of strings, ex: ['field_XXX', 'field_YYY'].  Order is not important.
+            //     - viewId: must be a view.key string, ex: 'view_123'
+            //     - remove: true removes elements from DOM, false only hides them.  Useful to hide them when you need to access data, but not secure.
+            //     - columnsArray: must be an array of 1-based integers, ex: [5, 2, 1] to remove 1st, 2nd and 5th columns.  Order MUST be decreasing.
+            //     - fieldsArray: must be an array of strings, ex: ['field_XXX', 'field_YYY'].  Order is not important.
 
-                You may use both arrays at same time, but columnsArray has precedence.
-            */
-            //////////////////////////////////////////////////////////////////
+            //     You may use both arrays at same time, but columnsArray has precedence.
             removeTableColumnsDeprecated: function (viewId = '', remove = true, columnsAr = [], fieldsAr = [], headersAr = [], fixRows = true) {
                 console.warn('Deprecated function call. Update to use removeTableColumns(viewId, fields, headers or hideTableColumns(viewId, fields, headers) or removeTableColumnsByIndex(viewId, columnIndexes)')
                 if (!viewId ||
