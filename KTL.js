@@ -9474,9 +9474,11 @@ function Ktl($, appInfo) {
 
 
         /////////////////////////////////////////////////////////////////////////////////
-        function addSelectAllOption(viewId) {
+        async function addSelectAllOption(viewId) {
             const kw = '_sa';
             if (!viewId || ktl.views.getViewType(viewId) !== 'form') return;
+
+            await new Promise(resolve => setTimeout(resolve, 1000)); //Wait one second for the dropdown fields to populate.
 
             const fields = ktl.views.getAllFieldsWithKeywordsInView(viewId);
             Object.entries(fields)
@@ -13464,25 +13466,9 @@ function Ktl($, appInfo) {
                                     ktlProcessKeywords(viewAttributes);
                                 } else if (viewType === 'form') {
                                     if (formAction !== 'insert' && formAction !== 'create') {
-                                        //This code causes an unintentional submit event.  Had to replace it with code below until a solution is found.
-                                        //The intention is to update the Edit Form with most recent server data, in case it's been changed elsewhere.
-                                        /*
-                                        Knack.views[viewId].model.fetch({
-                                            success: function (model, response, options) {
-                                                Knack.views[viewId].render();
-
-                                                setTimeout(() => {
-                                                    $(document).trigger('KTL.loadFormData', viewId);
-                                                    ktlProcessKeywords(viewAttributes);
-                                                }, 1000);
-                                            },
-                                            error: function (model, response, options) {
-                                                console.log('tryRefresh error', viewId, response);
-                                            }
-                                        });
-                                        */
-                                        Knack.views[viewId].reloadForm(); //Reloads but with local data only, not from the server.
+                                        Knack.views[viewId].model.initInputs(); //Reload data from the server, not locally modified.
                                         Knack.views[viewId].render();
+
                                         setTimeout(() => {
                                             $(document).trigger('KTL.loadFormData', viewId);
                                             ktlProcessKeywords(viewAttributes);
