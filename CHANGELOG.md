@@ -1,6 +1,29 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.32.5    *2025-06-24*
+
+- Minor comments refactor
+- Fixed _as addSelectAllOption:  race condition
+- Improves table header column count logic (#527)
+  - * Fixes colspan calculation for table groups
+  - Addresses an issue where the colspan attribute of table group rows was not being calculated correctly when the table header was empty.
+  - It now uses the number of visible table data cells in row of the table body as a fallback when no visible header cells are available.
+  - * Improves table header column count logic
+  - Ensures accurate calculation of visible header columns
+  - when no headers are explicitly visible, by selecting the
+  - first visible row instead of relying on potentially
+  - invisible rows. This fixes an issue where the column
+  - count would be incorrectly reported as zero.
+- Improves print view and sort icon layering (#524)
+  - * Improves print view and sort icon layering
+  - Improves print view by hiding the bookmarks container, preventing it from being printed.
+  - Reduces the z-index of the bookmarks container. This prevents it from overlapping with other elements on the page.
+  - * The z-index was likely added previously to ensure proper layering,
+  - but it's no longer needed and can be safely removed.
+  - * Adds `!important` to the `display: none` rule for specific elements
+  - This ensures that these elements are reliably hidden, even if other styles try to override the `display` property.
+
 ## 0.32.4    *2025-06-11*
 
 - Added a check for the redactor editor that stops an error from occuring when a class is added to Knacks redactor editor (#518)
