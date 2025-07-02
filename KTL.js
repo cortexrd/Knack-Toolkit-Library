@@ -21510,9 +21510,8 @@ function Ktl($, appInfo) {
                                                 let sysInfo = ktl.sysInfo.getSysInfo();
                                                 sysInfo.keyboardDetected = deviceInfo.keyboardDetected;
 
-                                                //TODO: investigate why this doesn't work.  Goal: if service comes back (ex: manual restart), remove classes.
-                                                //if ($('#additionalInfoDiv').length)
-                                                //    $('#additionalInfoDiv').removeClass('ktlFlashingOnOff ktlOfflineStatus');
+                                                if ($('#additionalInfoDiv').length)
+                                                    $('#additionalInfoDiv').removeClass('ktlFlashingOnOff ktlOfflineStatus');
                                             }
                                         } else {
                                             //Force a kiosk-app update.
