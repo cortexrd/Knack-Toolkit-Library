@@ -13849,7 +13849,10 @@ function Ktl($, appInfo) {
                             const visibleTotals = $(`#${viewId} tr.kn-table-totals:first`).children('td:visible');
                             if (visibleColumns < visibleTotals.length) {
                                 hiddenHeaders.each((ix, el) => {
-                                    $(`#${viewId} tr.kn-table-totals td:nth-child(${el.cellIndex + 1})`).addClass('ktlDisplayNone_hc');
+                                    const cellIndex = el.cellIndex;
+                                    if (cellIndex >= 0) {
+                                        $view.find(`tr.kn-table-totals td:nth-child(${cellIndex + 1})`).addClass('ktlDisplayNone_hc');
+                                    }
                                 });
                             }
 
