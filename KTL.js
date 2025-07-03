@@ -13848,7 +13848,7 @@ function Ktl($, appInfo) {
                             const visibleColumns = ktl.views.getGridColspan(viewId);
                             const visibleTotals = $(`#${viewId} tr.kn-table-totals:first`).children('td:visible');
                             if (visibleColumns < visibleTotals.length) {
-                                hiddenHeaders.forEach((el, ix) => {
+                                hiddenHeaders.each((ix, el) => {
                                     $(`#${viewId} tr.kn-table-totals td:nth-child(${el.cellIndex + 1})`).addClass('ktlDisplayNone_hc');
                                 });
                             }
