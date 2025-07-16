@@ -1583,7 +1583,14 @@ function Ktl($, appInfo) {
                 // Handle empty or null values
                 if (!textValue && textValue !== 0) return 0;
 
-                let value = textValue.toString();
+
+                // Remove all currency and non-numeric symbols except minus, dot, and comma
+                let value = textValue.toString().replace(/[^\d.,-]/g, '');
+
+                // If the minus sign is not at the start but present, move it to the front
+                if (value.includes('-') && value[0] !== '-') {
+                    value = '-' + value.replace(/-/g, '');
+                }
 
                 // First, extract all possible numeric patterns from the string
                 // This regex looks for numbers with optional decimal parts and negative signs
@@ -9080,7 +9087,18 @@ function Ktl($, appInfo) {
 
                         if (cellSelector.length) {
                             const isRatingField = cellSelector.find('.kn-rating').length > 0; //Ratings must get their values differently, from the model.
-                            let cellText = isRatingField ? Knack.views[viewId].record[fieldId] : cellSelector[0].textContent.trim();
+                            let cellText;
+                            if (isRatingField) {
+                                cellText = Knack.views[viewId].record[fieldId];
+                            } else {
+                                // Try to get the innermost span's text (which should include the minus sign if present)
+                                const innerSpan = cellSelector[0].querySelector('span span');
+                                if (innerSpan && innerSpan.textContent.trim() !== '') {
+                                    cellText = innerSpan.textContent.trim();
+                                } else {
+                                    cellText = cellSelector[0].innerText.trim();
+                                }
+                            }
 
                             if (cellText !== '' && numericFieldTypes.includes(fieldType)) {
                                 cellText = ktl.core.extractNumericValue(cellText, fieldId);
