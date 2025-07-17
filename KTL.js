@@ -16344,6 +16344,12 @@ function Ktl($, appInfo) {
                         '{em}': '<em>',
                         '{/em}': '</em>',
                         '{hr}': '<hr>',
+                        '{ul}': '<ul>',
+                        '{/ul}': '</ul>',
+                        '{li}': '<li>',
+                        '{/li}': '</li>',
+                        '{ol}': '<ol>',
+                        '{/ol}': '</ol>',
                     };
 
                     return Object.entries(replacements).reduce(
