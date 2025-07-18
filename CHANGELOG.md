@@ -1,6 +1,23 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.32.6    *2025-07-18*
+
+- Improves numeric value extraction from formatted text (#531)
+  - * Improves numeric value extraction from formatted text
+  - Enhances parsing of numeric values by handling misplaced minus signs
+  - and removing non-numeric symbols more robustly. Improves cell text
+  - retrieval for numeric fields to better capture negative numbers and
+  - formatted values. Reduces errors with currency and special formats.
+  - * Adds support for ul, ol, and li markup replacements
+  - Expands the replacements mapping to handle unordered and ordered lists,
+  - as well as list items, improving HTML formatting flexibility for tooltips.
+- Fixed fixTableRowsAlignment: Added cellIndex validation.
+- Fixed
+  - hiddenHeaders.forEach is now hiddenHeaders.each and parameters were inverted.
+- Remove version info bar flashing yellow
+  - when kiosk's agent service comes back.
+
 ## 0.32.5    *2025-06-24*
 
 - Minor comments refactor
