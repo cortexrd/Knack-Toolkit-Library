@@ -1,6 +1,10 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.32.7    *2025-07-25*
+
+- Fixed kiosk issue, unable to auto-login.
+
 ## 0.32.6    *2025-07-18*
 
 - Improves numeric value extraction from formatted text (#531)
