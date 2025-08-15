@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.32.7';
+    const KTL_VERSION = '0.32.8';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -7861,6 +7861,14 @@ function Ktl($, appInfo) {
 
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
+
+            //If the user token has expired and the page contains a form view, we must log out the user right away to prevent further API failures.
+            if (view.type === 'form' && Knack.getUserToken() === undefined && Knack.views[viewId].model.view.scene.authenticated) {
+                ktl.core.timedPopup('Your log-in has expired. Please log back in to continue.', 'warning', 3000);
+                ktl.account.logout();
+                return;
+            }
+
             if (view.type === 'table' || view.type === 'search')
                 summaryPostProcessing(view, data);
             else if (view.type !== 'report')
@@ -9497,51 +9505,51 @@ function Ktl($, appInfo) {
             Object.entries(fields)
                 .filter(([_, keywords]) => Object.keys(keywords).includes(kw))
                 .forEach(([id]) => {
-                    const jqField = $(`#${viewId} [data-input-id="${id}"] select`);
-                    const chznResults = $(`#${viewId} [data-input-id="${id}"] .chzn-results`);
+                    $(`#${viewId} [data-input-id="${id}"] .chzn-container`).on('click', function () {
+                        const jqField = $(`#${viewId} [data-input-id="${id}"] select`);
+                        if (!jqField.length || !jqField.find('option').length || jqField.find('option[value="1"]').length > 0) return;
 
-                    const allSelected = chznResults.find(`li.result-selected`).length == chznResults.find(`li`).length;
+                        const chznResults = $(`#${viewId} [data-input-id="${id}"] .chzn-results`);
+                        const allSelected = chznResults.find(`li.result-selected`).length === chznResults.find(`li`).length;
 
-                    if (!jqField.length) return;
+                        const selectAllOption = $('<option>', {
+                            value: 1,
+                            text: (allSelected) ? 'Clear All' : 'Select All'
+                        })
 
-                    const selectAllOption = $('<option>', {
-                        value: 1,
-                        text: (allSelected) ? 'Clear All' : 'Select All'
+                        jqField.prepend(selectAllOption).trigger("liszt:updated");
+                        $(`#${viewId} [data-input-id="${id}"] .chzn-results`).bindFirst('mouseup', function (event) {
+                            const target = $(event.target);
+
+                            if (!target.hasClass("active-result")) return;
+
+                            if (target.text() === 'Select All') {
+                                event.stopPropagation();
+                                event.stopImmediatePropagation();
+
+                                const records = selectAllOption.siblings('option')
+                                    .prop('selected', true)
+                                    .map((index, option) => { return { text: option.innerText, id: option.value }; }).get();
+
+
+                                selectAllOption.text('Clear All');
+                                jqField.trigger("liszt:updated");
+
+                                ktl.persistentForm.ktlOnSelectValueChanged({ viewId, fieldId: id, records: records });
+                            } else if (target.text() === 'Clear All') {
+                                event.stopPropagation();
+                                event.stopImmediatePropagation();
+
+                                selectAllOption.siblings('option')
+                                    .prop('selected', false)
+
+                                selectAllOption.text('Select All');
+                                jqField.trigger("liszt:updated");
+
+                                ktl.persistentForm.ktlOnSelectValueChanged({ viewId, fieldId: id, records: [] });
+                            }
+                        });
                     })
-
-                    jqField.prepend(selectAllOption).trigger("liszt:updated");
-                    $(`#${viewId} [data-input-id="${id}"] .chzn-results`).bindFirst('mouseup', function (event) {
-                        const target = $(event.target);
-
-                        if (!target.hasClass("active-result") )return;
-
-                        if( target.text() === 'Select All') {
-                            event.stopPropagation();
-                            event.stopImmediatePropagation();
-
-                            const records = selectAllOption.siblings('option')
-                                .prop('selected', true)
-                                .map((index, option) => {return { text: option.innerText , id: option.value};}).get();
-
-
-                            selectAllOption.text('Clear All');
-                            jqField.trigger("liszt:updated");
-
-                            ktl.persistentForm.ktlOnSelectValueChanged({ viewId, fieldId: id, records: records });
-                        } else if( target.text() === 'Clear All') {
-                            event.stopPropagation();
-                            event.stopImmediatePropagation();
-
-                            selectAllOption.siblings('option')
-                                .prop('selected', false)
-
-                            selectAllOption.text('Select All');
-                            jqField.trigger("liszt:updated");
-
-                            ktl.persistentForm.ktlOnSelectValueChanged({ viewId, fieldId: id, records: [] });
-                        }
-
-                    });
                 });
         } //addSelectAllOption feature
 
@@ -20235,21 +20243,21 @@ function Ktl($, appInfo) {
                         if (typeof Android === 'object') {
                             ktl.debugWnd.lsLog('Error ' + msg.status);
                             setTimeout(() => {
-                                ktl.account.logout(); //Login has expired, force logout.
+                                ktl.account.logout();
                                 setTimeout(() => {
                                     Android.restartApplication();
                                 }, 1000);
                             }, 1000);
 
                             //    if (true || confirm(`A reboot is needed, do you want to do it now? (code ${msg.status})`)) {
-                            //        ktl.account.logout(); //Login has expired, force logout.
+                            //        ktl.account.logout();
                             //        setTimeout(() => {
                             //            Android.restartApplication();
                             //        }, 1500);
                             //    }
                         } else {
-                            ktl.core.timedPopup('Your log-in has expired. Please log back in to continue.', 'warning', 4000);
-                            ktl.account.logout(); //Login has expired, force logout.
+                            ktl.core.timedPopup('Your log-in has expired. Please log back in to continue.', 'warning', 3000);
+                            ktl.account.logout();
                         }
                     } else if (msg.status === 500) {
                         ktl.core.timedPopup('Error 500 has occurred - reloading page...', 'warning');
