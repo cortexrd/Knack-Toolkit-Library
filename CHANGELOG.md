@@ -1,6 +1,12 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.32.8    *2025-08-15*
+
+- Forced logout on token expiry to prevent API failures.
+  - Happens when user with an expired token submits a form that is followed by API calls that will fail.  This solves the issue by forcing a logout when a form exists in the page.
+  - Fixed _sa (Select All) in an Add form.
+
 ## 0.32.7    *2025-07-25*
 
 - Fixed kiosk issue, unable to auto-login.
