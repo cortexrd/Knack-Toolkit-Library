@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.32.8';
+    const KTL_VERSION = '0.32.9';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2293,6 +2293,7 @@ function Ktl($, appInfo) {
                 let result = '';
                 const st = window.performance.now();
                 const regex = new RegExp(search, 'i');
+                const lowRefreshInstances = []; // Track _ar instances < 60 seconds
 
                 let builderUrl;
                 let appUrl;
@@ -2358,6 +2359,21 @@ function Ktl($, appInfo) {
                                     kwInstanceStr = kwInstance.paramStr;
                                     console.log(`\t${search}=${kwInstanceStr}\n`);
                                     result += `   ${search}=${kwInstanceStr}<br>`;
+
+                                    // Check for _ar instances < 60 seconds
+                                    if (search === '_ar') {
+                                        const cleanParam = kwInstanceStr.replace(/[\[\]]/g, '');
+                                        const paramValue = parseInt(cleanParam);
+                                        if (!isNaN(paramValue) && paramValue < 60) {
+                                            lowRefreshInstances.push({
+                                                viewKey: kwKey,
+                                                paramStr: kwInstanceStr,
+                                                value: paramValue,
+                                                builderUrl: builderUrl,
+                                                appUrl: appUrl
+                                            });
+                                        }
+                                    }
                                 }
                             } else {
                                 console.log(`\t${search}=${kwInstanceStr}\n`);
@@ -2372,8 +2388,23 @@ function Ktl($, appInfo) {
                     }
                 }
 
+                // Add summary section for _ar instances < 60 seconds
+                if (search === '_ar' && lowRefreshInstances.length > 0) {
+                    result += `<br><hr><br><strong>⚠️ AUTO REFRESH INSTANCES BELOW 60 SECONDS (${lowRefreshInstances.length} found):</strong><br><br>`;
+                    console.log(`\n⚠️ AUTO REFRESH INSTANCES BELOW 60 SECONDS (${lowRefreshInstances.length} found):`);
+
+                    for (const instance of lowRefreshInstances) {
+                        result += `<strong>${instance.viewKey}</strong>: _ar=${instance.paramStr} (${instance.value}s)<br>`;
+                        if (instance.builderUrl) {
+                            result += `<a href="${instance.builderUrl}" target="_blank">Edit in Builder</a><br>`;
+                        }
+                        result += `<br>`;
+                        console.log(`${instance.viewKey}: _ar=${instance.paramStr}`);
+                    }
+                }
+
                 const en = window.performance.now();
-                console.log(`Finding all keywords took ${Math.trunc(en - st)} ms`);
+                console.log(`\nFinding all keywords took ${Math.trunc(en - st)} ms`);
 
                 return result;
             },
