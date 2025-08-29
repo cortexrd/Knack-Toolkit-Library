@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.32.9';
+    const KTL_VERSION = '0.33.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -135,6 +135,14 @@ function Ktl($, appInfo) {
 
             attributes.title = cleanUpKeywords(attributes.title);
             Object.assign(viewKwObj, viewKeywords, descriptionKeywords);
+        }
+
+        //Log an informational message if auto-refresh is set below the 60 seconds lower limit.
+        if (viewKwObj._ar && viewKwObj._ar.length && viewKwObj._ar[0].params[0].length) {
+            let intervalDelay = parseInt(viewKwObj._ar[0].params[0]);
+            if (intervalDelay < 60) {
+                console.log(`KTL Warning: Low Auto-Refresh interval found for view ${view.id}: ${intervalDelay} seconds. It has been capped to 60 seconds. Please use a value of 60 or more to avoid this message.`);
+            }
         }
 
         if (attributes.type === 'report') {
@@ -13686,7 +13694,7 @@ function Ktl($, appInfo) {
                             if (keywords._ar.length)
                                 intervalDelay = parseInt(keywords._ar[0].params[0]);
                             intervalDelay = isNaN(intervalDelay) ? 60 : intervalDelay;
-                            intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 5); //Restrain value between 5s and 24h.
+                            intervalDelay = Math.max(Math.min(intervalDelay, 86400 /*One day*/), 60); //Restrain value between 60s and 24h.
 
                             //Add view to auto refresh list.
                             if (!(viewId in autoRefreshViews)) {
