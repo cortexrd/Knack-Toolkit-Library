@@ -1942,14 +1942,15 @@ function Ktl($, appInfo) {
             //Iterates through an object to find a key with a specified value.  Returns the found key.
             findKeyWithValueInObject: function (obj, keyToFind, keyValue, keyNameToReturn, exactMatch = true, maxDepth = 20, currentDepth = 0) {
                 if (typeof obj !== 'object' || obj === null || currentDepth > maxDepth) return null;
-
                 try {
                     for (let key in obj) {
                         if (key === keyToFind) {
-                            if (exactMatch && obj[key] && obj[key].trim() === keyValue)
-                                return obj[keyNameToReturn] || obj;
-                            else if (!exactMatch && obj[key] && obj[key].trim().includes(keyValue))
-                                return obj[keyNameToReturn] || obj;
+                            if (obj[key] && typeof obj[key] === 'string') {
+                                if (exactMatch && obj[key].trim() === keyValue)
+                                    return obj[keyNameToReturn] || obj;
+                                else if (!exactMatch && obj[key].trim().includes(keyValue))
+                                    return obj[keyNameToReturn] || obj;
+                            }
                         } else if (typeof obj[key] === 'object') {
                             let found = this.findKeyWithValueInObject(obj[key], keyToFind, keyValue, keyNameToReturn, exactMatch, maxDepth, currentDepth + 1);
                             if (found !== null)
@@ -1959,13 +1960,14 @@ function Ktl($, appInfo) {
                 } catch (e) {
                     ktl.log.clog('purple', 'Error in findKeyWithValueInObject:', e);
                 }
-
                 return null;
             },
 
             findAllReferencesToThisScene: function (sceneId) {
                 let foundViewIds = [];
                 const scenes = Knack.scenes.models;
+                const targetSlug = Knack.scenes.getByKey(sceneId).attributes.slug;
+
                 for (const scene of scenes) {
                     var views = scene.views.models;
                     for (const view of views) {
@@ -1973,6 +1975,15 @@ function Ktl($, appInfo) {
                         if (found) {
                             const viewId = view.id;
                             if (viewId) {
+                                foundViewIds.push(viewId);
+                                console.log(viewId);
+                            }
+                        }
+
+                        let linkFound = ktl.core.findKeyWithValueInObject(view, 'scene', targetSlug, '', true, 4);
+                        if (linkFound) {
+                            const viewId = view.id;
+                            if (viewId && !foundViewIds.includes(viewId)) {
                                 foundViewIds.push(viewId);
                                 console.log(viewId);
                             }
