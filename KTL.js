@@ -22302,11 +22302,11 @@ function Ktl($, appInfo) {
                         const references = ktl.core.findAllReferencesToThisScene(text);
 
                         if (references.length === 0) {
-                            ktl.core.timedPopup(`No references found for ${text}`, 'error', 2000);
+                            ktl.core.timedPopup(`No references found for ${text}`, 'warning', 2000);
                             return;
                         }
 
-                        let kwResults = `<div style="margin: 10px 0;"><strong>Scene ${text} is referenced by:</strong></div>`;
+                        let kwResults = `Scene ${text} is referenced by:<br><br><br>`;
 
                         references.forEach(viewId => {
                             const scene = Knack.scenes.find(s => s.views.find(v => v.id === viewId));
@@ -22314,11 +22314,13 @@ function Ktl($, appInfo) {
                                 const view = scene.views._byId[viewId];
                                 const viewType = view.attributes.type;
                                 const sceneId = scene.attributes.key;
-                                const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
-                                kwResults += `<div style="margin: 5px 0;">
-                    <a href="${viewUrl}" target="_blank" style="text-decoration: underline;">${viewId}</a>
-                    (${viewType} in ${sceneId})
-                </div>`;
+                                const builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${viewType}`;
+                                const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                const appUrl = `${Knack.url_base}#${slug}`;
+
+                                 kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a>
+<a href="${appUrl}" target="_self">${appUrl}</a>
+${viewId} (${viewType})<br><br>`;
                             }
                         });
 
