@@ -22138,7 +22138,7 @@ function Ktl($, appInfo) {
                 resultWndHdr.setAttribute('id', 'resultWndIdheader');
                 resultWndHdr.classList.add('ktlDevToolsHeader');
                 resultWndHdr.style['background-color'] = sysColors.paleLowSatClr;
-                resultWndHdr.innerText = ':: Scene References ::';
+                resultWndHdr.innerText = ':: KTL Search Results ::';
                 resultWnd.appendChild(resultWndHdr);
 
                 const resultWndTextDiv = document.createElement('div');
