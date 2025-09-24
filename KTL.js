@@ -18294,6 +18294,7 @@ function Ktl($, appInfo) {
                                 searchBtn.addEventListener('click', () => {
                                     if ($('#devToolSearchDivId').length) {
                                         $('#devToolSearchDivId').show();
+                                        $('#resultWndId').show();
                                         $('#ktlDevToolsSearchInputId').focus();
                                         $('#ktlDevToolsSearchInputId').val(ktlDevToolsLastSearch);
                                         $('#ktlDevToolsSearchInputId').select();
@@ -18363,9 +18364,9 @@ function Ktl($, appInfo) {
 
                                         $('.ktlDevToolLink').remove();
 
-                                        var builderUrl;
-                                        var appUrl;
-                                        var kwResults;
+                                        let builderUrl;
+                                        let appUrl;
+                                        let kwResults = 'No results';
 
                                         if (query.startsWith('field_')) {
                                             const field = Knack.objects.getField(query);
@@ -18443,74 +18444,7 @@ function Ktl($, appInfo) {
                                             }
 
                                             if (kwResults) {
-                                                if ($('#resultWndId').length) {
-                                                    $('#resultWndId').show();
-                                                } else {
-                                                    const DEFAULT_TOP = 80;
-                                                    const DEFAULT_LEFT = 80;
-                                                    const DEFAULT_HEIGHT = window.innerHeight - 160;
-                                                    const DEFAULT_WIDTH = window.innerWidth - 80;
-
-                                                    var resultWnd = document.createElement('div');
-                                                    resultWnd.setAttribute('id', 'resultWndId');
-                                                    resultWnd.style.top = DEFAULT_TOP + 'px';
-                                                    resultWnd.style.left = DEFAULT_LEFT + 'px';
-                                                    resultWnd.style['z-index'] = 15;
-                                                    resultWnd.classList.add('devBtnsDiv', 'devToolSearchDiv');
-
-                                                    var resultWndHdr = document.createElement('div');
-                                                    resultWndHdr.setAttribute('id', 'resultWndIdheader');
-                                                    resultWndHdr.classList.add('ktlDevToolsHeader');
-                                                    resultWndHdr.style['background-color'] = sysColors.paleLowSatClr;
-                                                    resultWndHdr.innerText = ':: KTL Search Results ::';
-                                                    resultWnd.appendChild(resultWndHdr);
-
-                                                    resultWndText = document.createElement('div');
-                                                    resultWndText.setAttribute('id', 'resultWndTextId');
-                                                    resultWndText.classList.add('ktlConsoleDiv');
-                                                    resultWnd.appendChild(resultWndText);
-
-                                                    document.body.appendChild(resultWnd);
-
-                                                    resultWndText.innerHTML = kwResults;
-                                                    resultWndText.style.height = Math.min(resultWndText.clientHeight, DEFAULT_HEIGHT) + 'px';
-                                                    resultWndText.style.width = Math.min(resultWndText.clientWidth, DEFAULT_WIDTH) + 'px';
-
-                                                    const devToolStorageName = 'devToolSearchResult';
-                                                    ktl.core.addAppResizeSubscriber(ktl.core.ktlDevToolsAdjustPositionAndSave, resultWnd, devToolStorageName);
-                                                    ktl.core.enableSortableDrag(resultWnd, debounce((position) => {
-                                                        ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, { ...position });
-                                                    }));
-
-                                                    const resizeObserver = new ResizeObserver(debounce((entries) => {
-                                                        const entry = entries[0];
-                                                        if (entry && entry.target.offsetWidth && entry.target.offsetWidth) {
-                                                            ktl.storage.appendItemJSON(devToolStorageName, {
-                                                                width: entry.target.offsetWidth,
-                                                                height: entry.target.offsetHeight
-                                                            });
-                                                        }
-                                                    }));
-                                                    resizeObserver.observe(resultWndText);
-
-                                                    const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
-                                                    if (savedPosition) {
-                                                        resultWnd.style.left = (savedPosition.left || DEFAULT_LEFT) + 'px';
-                                                        resultWnd.style.top = (savedPosition.top || DEFAULT_TOP) + 'px';
-
-                                                        if (savedPosition.height && savedPosition.width) {
-                                                            resultWndText.style.height = savedPosition.height + 'px';
-                                                            resultWndText.style.width = savedPosition.width + 'px';
-                                                        }
-
-                                                        ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, savedPosition);
-                                                    } else {
-                                                        const position = ktl.core.centerElementOnScreen(resultWnd);
-                                                        ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, position);
-                                                    }
-                                                }
-
-                                                resultWndText.innerHTML = kwResults;
+                                                $(document).trigger('KTL.devPopupSetResultText', kwResults);
                                             }
                                         } else {
                                             console.log('Not found');
@@ -22184,6 +22118,96 @@ function Ktl($, appInfo) {
     this.developerPopupTool = function () {
         if (!ktl.core.getCfg().enabled.devInfoPopup || !ktl.account.isDeveloper()) return;
 
+        const createResultWindow = function () {
+            if ($('#resultWndId').length) return;
+
+            ktl.systemColors.getSystemColors().then((sysColors) => {
+                const DEFAULT_TOP = 80;
+                const DEFAULT_LEFT = 80;
+                const DEFAULT_HEIGHT = window.innerHeight - 160;
+                const DEFAULT_WIDTH = window.innerWidth - 80;
+
+                const resultWnd = document.createElement('div');
+                resultWnd.setAttribute('id', 'resultWndId');
+                resultWnd.style.top = DEFAULT_TOP + 'px';
+                resultWnd.style.left = DEFAULT_LEFT + 'px';
+                resultWnd.style['z-index'] = 2000; //Allow to be seen over modal dialogs.
+                resultWnd.classList.add('devBtnsDiv', 'devToolSearchDiv');
+
+                const resultWndHdr = document.createElement('div');
+                resultWndHdr.setAttribute('id', 'resultWndIdheader');
+                resultWndHdr.classList.add('ktlDevToolsHeader');
+                resultWndHdr.style['background-color'] = sysColors.paleLowSatClr;
+                resultWndHdr.innerText = ':: Scene References ::';
+                resultWnd.appendChild(resultWndHdr);
+
+                const resultWndTextDiv = document.createElement('div');
+                resultWndTextDiv.setAttribute('id', 'resultWndTextDivId');
+                resultWndTextDiv.classList.add('ktlConsoleDiv');
+                resultWnd.appendChild(resultWndTextDiv);
+
+                document.body.appendChild(resultWnd);
+
+                resultWndTextDiv.style.height = Math.min(resultWndTextDiv.clientHeight, DEFAULT_HEIGHT) + 'px';
+                resultWndTextDiv.style.width = Math.min(resultWndTextDiv.clientWidth, DEFAULT_WIDTH) + 'px';
+
+                const devToolStorageName = 'devToolSearchResult';
+                ktl.core.addAppResizeSubscriber(ktl.core.ktlDevToolsAdjustPositionAndSave, resultWnd, devToolStorageName);
+                ktl.core.enableSortableDrag(resultWnd, debounce((position) => {
+                    ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, { ...position });
+                }));
+
+                const resizeObserver = new ResizeObserver(debounce((entries) => {
+                    const entry = entries[0];
+                    if (entry && entry.target.offsetWidth && entry.target.offsetWidth) {
+                        ktl.storage.appendItemJSON(devToolStorageName, {
+                            width: entry.target.offsetWidth,
+                            height: entry.target.offsetHeight
+                        });
+                    }
+                }));
+                resizeObserver.observe(resultWndTextDiv);
+
+                const savedPosition = ktl.storage.getItemJSON(devToolStorageName);
+                if (savedPosition) {
+                    resultWnd.style.left = (savedPosition.left || DEFAULT_LEFT) + 'px';
+                    resultWnd.style.top = (savedPosition.top || DEFAULT_TOP) + 'px';
+
+                    if (savedPosition.height && savedPosition.width) {
+                        resultWndTextDiv.style.height = savedPosition.height + 'px';
+                        resultWndTextDiv.style.width = savedPosition.width + 'px';
+                    }
+
+                    ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, savedPosition);
+                } else {
+                    const position = ktl.core.centerElementOnScreen(resultWnd);
+                    ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, position);
+                }
+            });
+        };
+
+        const showHideResultWindow = function (show) {
+            const resultWnd = document.getElementById('resultWndId');
+            if (resultWnd) {
+                resultWnd.style.display = show ? 'block' : 'none';
+            }
+        };
+
+        const setResultWindowText = function (html) {
+            createResultWindow();
+            setTimeout(() => {
+                showHideResultWindow(true);
+                const resultWndTextDiv = document.getElementById('resultWndTextDivId');
+                if (resultWndTextDiv) {
+                    resultWndTextDiv.innerHTML = html;
+                }
+            }, 100);
+        };
+
+        $(document).on('KTL.devPopupSetResultText', (event, html) => {
+            setResultWindowText(html);
+        })
+
         const createPopup = function () {
             const container = document.createElement('div');
             const escSpan = document.createElement('span');
@@ -22271,6 +22295,38 @@ function Ktl($, appInfo) {
                 });
                 container.appendChild(copyLinkButton);
 
+                // Find all scene's references
+                if (text.startsWith('scene_')) {
+                    const sceneRefsButton = createButton('fa-sign-in');
+                    sceneRefsButton.addEventListener('click', () => {
+                        const references = ktl.core.findAllReferencesToThisScene(text);
+
+                        if (references.length === 0) {
+                            ktl.core.timedPopup(`No references found for ${text}`, 'error', 2000);
+                            return;
+                        }
+
+                        let kwResults = `<div style="margin: 10px 0;"><strong>Scene ${text} is referenced by:</strong></div>`;
+
+                        references.forEach(viewId => {
+                            const scene = Knack.scenes.find(s => s.views.find(v => v.id === viewId));
+                            if (scene) {
+                                const view = scene.views._byId[viewId];
+                                const viewType = view.attributes.type;
+                                const sceneId = scene.attributes.key;
+                                const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
+                                kwResults += `<div style="margin: 5px 0;">
+                    <a href="${viewUrl}" target="_blank" style="text-decoration: underline;">${viewId}</a>
+                    (${viewType} in ${sceneId})
+                </div>`;
+                            }
+                        });
+
+                        setResultWindowText(kwResults);
+                    });
+                    container.appendChild(sceneRefsButton);
+                }
+
                 const knackButton = createButton('fa-copy');
                 knackButton.href = url;
                 knackButton.target = '_blank';
@@ -22328,43 +22384,6 @@ function Ktl($, appInfo) {
             return line
         }
 
-        const appendSceneReferencesBlock = function (line, sceneId) {
-            //Disabled for now.  Induces too much latency when mousing the mouse around.
-            //Instead, we should always have the eye icon, and only do the search when clicked.
-            return;
-
-            const references = ktl.core.findAllReferencesToThisScene(sceneId);
-
-            if (references.length === 0)
-                return;
-
-            const button = createButton('fa-eye');
-            const container = document.createElement('div');
-            container.style.marginLeft = '0.5em';
-
-            container.appendChild(createTextLine('Referenced by'));
-
-            references.forEach(viewId => {
-                const viewType = Knack.scenes.find(s => s.views.find(v => v.id === viewId)).views._byId[viewId].attributes.type
-                const viewUrl = `${baseURL}/pages/${sceneId}/views/${viewId}/${viewType}`;
-                container.appendChild(createLine(`> ${viewId}`, viewUrl));
-            });
-
-            let jqContainer;
-
-            button.addEventListener('click', (event) => {
-                if (jqContainer)
-                    jqContainer.toggle();
-                else
-                    jqContainer = $(container).insertAfter($(event.target).parent());
-
-                const icon = $(event.currentTarget).children('i');
-                icon.toggleClass('fa-eye').toggleClass('fa-eye-slash');
-            });
-
-            line.appendChild(button);
-        }
-
         const defaultOptions = {
             content: function (element) {
                 const container = createPopup();
@@ -22372,9 +22391,6 @@ function Ktl($, appInfo) {
                 if (!document.querySelector('#kn-add-option')) {
                     const sceneId = $(element).closest('.kn-scene').attr('id').substring(3);
                     const line = createLineWithKeyword(sceneId, `${baseURL}/pages/${sceneId}`);
-
-                    appendSceneReferencesBlock(line, sceneId);
-
                     container.appendChild(line);
                 }
 
