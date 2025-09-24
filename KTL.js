@@ -13388,7 +13388,7 @@ function Ktl($, appInfo) {
                                         }
                                     } else if (fieldType === 'multiple_choice') {
                                         const format = Knack.objects.getField(fieldId).attributes.format.type;
-                                        if (format === 'radio')
+                                        if (format === 'radios')
                                             $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
                                         else if (format === 'checkboxes') {
                                             const options = group.slice(1);
@@ -14098,14 +14098,24 @@ function Ktl($, appInfo) {
             //    -> Typically used when scanning a barcode.  When manual entry, user wants to view results and choose.
             // showPopup: True will show a 2-second confirmation message, found or not found.
             // viewId: 'view_xyz' is used for Search Views, and optional for others.  If left empty, the first found field is used.
-            searchDropdown: function (srchTxt = '', fieldId = '', matchMode, showPopup = true, viewId = '', pfSaveForm = true) {
+            searchDropdown: function (srchTxt = '', fieldId = '', matchMode, showPopup = true, viewId = '', pfSaveForm = true, retryCount = 0) {
                 return new Promise(function (resolve, reject) {
                     if (!srchTxt || !fieldId) {
                         return reject('Empty parameters');
                     }
 
-                    if (dropdownSearching[fieldId])
-                        return reject(`Search already in progress: ${fieldId}, ${srchTxt}`);
+                    if (dropdownSearching[fieldId]) {
+                        if (retryCount < 25) { // Max 5 seconds (25 * 200ms)
+                            setTimeout(() => {
+                                ktl.views.searchDropdown(srchTxt, fieldId, matchMode, showPopup, viewId, pfSaveForm, retryCount + 1)
+                                    .then(resolve)
+                                    .catch(reject);
+                            }, 200);
+                            return;
+                        } else {
+                            return reject(`Search timeout after retries: ${fieldId}, ${srchTxt}`);
+                        }
+                    }
 
                     dropdownSearching[fieldId] = fieldId;
 
