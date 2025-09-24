@@ -129,8 +129,8 @@ function Ktl($, appInfo) {
                 //Note: When typing <br> in the description, builder converts it to <br />.
                 //Syntax looks like this while being typed: <br>_cls=params
                 //Syntax looks like this once we get here: <br />_cls=params
-                descriptionKeywords = getKeywords(attributes.description.replace(/<br \/>_/g, '_'));
-                attributes.description = cleanUpKeywords(attributes.description.replace(/<br \/>_/g, '_'));
+                descriptionKeywords = getKeywords(attributes.description.replace(/<br \/>_/g, '_').replace(/<br \/>\n/g, '\n'));
+                attributes.description = cleanUpKeywords(attributes.description.replace(/<br \/>_/g, '_').replace(/<br \/>\n/g, '\n'));
             }
 
             attributes.title = cleanUpKeywords(attributes.title);
@@ -9506,44 +9506,44 @@ function Ktl($, appInfo) {
                         })
                 }
             }
-
-            //The reference value is the value against which we will compare the value of a record's field.
-            //The refValSelString parameter can be a summary, or a fixed field/view value from a details view.
-            function getReferenceValue(refValSelString, viewId) {
-                return new Promise(function (resolve, reject) {
-                    if (refValSelString && refValSelString !== '') {
-                        var refValSelArray = ktl.core.splitAndTrimToArray(refValSelString);
-                        if (!refValSelArray.length) {
-                            reject('Called getReferenceValue with invalid parameter: ' + refValSelString);
-                            return;
-                        }
-
-                        if (refValSelArray[0] === 'ktlSummary') {
-                            if (refValSelArray.length >= 2) {
-                                //console.log('ktlSummary, rvSelAr =', rvSelAr);
-                                const summaryName = refValSelArray[1] ? refValSelArray[1] : '';
-                                const columnHeader = refValSelArray[2] ? refValSelArray[2] : '';
-                                const viewTitleOrId = (refValSelArray.length >= 3 && refValSelArray[3]) ? refValSelArray[3] : viewId;
-                                const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
-                                const summaryValue = readSummaryValue(viewTitleOrId, columnHeader, summaryName); //TODO: Promisify to support other views asynchronously.
-                                const refVal = ktl.core.extractNumericValue(summaryValue, fieldId);
-                                resolve(refVal);
-                            }
-                        } else {
-                            //ktlRefVal can be followed by a jQuery selector, or a field label/ID and optionally a view title/ID.
-                            ktl.core.getTextFromSelector(refValSelString, viewId)
-                                .then(refVal => {
-                                    //console.log('ktlRefVal found:', refVal, rvSel);
-                                    resolve(refVal);
-                                })
-                                .catch(reason => {
-                                    reject('Failed waiting for selector in getReferenceValue / getTextFromSelector in ' + viewId + '\nrvSel:' + refValSelString + '\nReason: ' + reason);
-                                })
-                        }
-                    }
-                })
-            }
         } //cfv feature
+
+        //The reference value is the value against which we will compare the value of a record's field.
+        //The refValSelString parameter can be a summary, or a fixed field/view value from a details view.
+        function getReferenceValue(refValSelString, viewId) {
+            return new Promise(function (resolve, reject) {
+                if (refValSelString && refValSelString !== '') {
+                    var refValSelArray = ktl.core.splitAndTrimToArray(refValSelString);
+                    if (!refValSelArray.length) {
+                        reject('Called getReferenceValue with invalid parameter: ' + refValSelString);
+                        return;
+                    }
+
+                    if (refValSelArray[0] === 'ktlSummary') {
+                        if (refValSelArray.length >= 2) {
+                            //console.log('ktlSummary, rvSelAr =', rvSelAr);
+                            const summaryName = refValSelArray[1] ? refValSelArray[1] : '';
+                            const columnHeader = refValSelArray[2] ? refValSelArray[2] : '';
+                            const viewTitleOrId = (refValSelArray.length >= 3 && refValSelArray[3]) ? refValSelArray[3] : viewId;
+                            const fieldId = ktl.fields.getFieldIdFromLabel(viewId, columnHeader);
+                            const summaryValue = readSummaryValue(viewTitleOrId, columnHeader, summaryName); //TODO: Promisify to support other views asynchronously.
+                            const refVal = ktl.core.extractNumericValue(summaryValue, fieldId);
+                            resolve(refVal);
+                        }
+                    } else {
+                        //ktlRefVal can be followed by a jQuery selector, or a field label/ID and optionally a view title/ID.
+                        ktl.core.getTextFromSelector(refValSelString, viewId)
+                            .then(refVal => {
+                                //console.log('ktlRefVal found:', refVal, rvSel);
+                                resolve(refVal);
+                            })
+                            .catch(reason => {
+                                reject('Failed waiting for selector in getReferenceValue / getTextFromSelector in ' + viewId + '\nrvSel:' + refValSelString + '\nReason: ' + reason);
+                            })
+                    }
+                }
+            })
+        }
 
         async function addSelectAllOption(viewId) {
             const kw = '_sa';
@@ -13272,7 +13272,7 @@ function Ktl($, appInfo) {
             }
         }
 
-        function setFieldValue(viewId, keywords, data) {
+        async function setFieldValue(viewId, keywords, data) {
             if (!viewId) return;
 
             const viewType = ktl.views.getViewType(viewId);
@@ -13280,121 +13280,136 @@ function Ktl($, appInfo) {
 
             const kw = '_sfv';
 
-            ktl.core.waitSelector(`#${viewId}.ktlPersistenFormLoadedView`, 20000)
-                .then(function () {
-                    if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
-                        const options = keywords[kw][0].options;
-                        if (!ktl.core.hasRoleAccess(options)) return;
-                        const groups = keywords[kw][0].params;
-                        for (const group of groups) {
-                            if (group.length) {
-                                if (group[0] === 'paramName') {
-                                } else {
-                                    //Check if param group's first string is a field and if so, apply defaults.
-                                    const field = group[0];
-                                    const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
-                                    if (fieldId) {
-                                        let selector;
-                                        const fieldType = ktl.fields.getFieldType(fieldId);
-                                        if (TEXT_DATA_TYPES.includes(fieldType)) {
-                                            selector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} .${fieldId} input`;
-                                            if ($(`${selector}`).length) {
-                                                $(`${selector}`).val(group[1]);
-                                                if (fieldType === 'date_time' && group.length >= 2)
-                                                    $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(group[2]);
-                                            }
-                                        } else if (fieldType === 'connection') {
-                                            selector = `#${viewId} #connection-picker-checkbox-${fieldId}`;
-                                            if ($(`${selector}`).length) {
-                                                ktl.core.waitSelector(`${selector} span:textEquals("loading...")`, 10000, 'none')
-                                                    .then(() => {
-                                                        if (group[1] === 'ktlAll') {
-                                                            $(`${selector} input`).each((idx, checkbox) => {
-                                                                checkbox.checked = false;
+            try {
+                await ktl.core.waitSelector(`#${viewId}.ktlPersistenFormLoadedView`, 20000);
+
+                const kwList = ktl.core.getKeywordsByType(viewId, kw);
+                kwList.forEach(kwInstance => { execKw(kwInstance); })
+
+                async function execKw(kwInstance) {
+                    const options = kwInstance.options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+
+                    if (!(kwInstance && kwInstance.params && kwInstance.params.length))
+                        return;
+
+                    const refVal = options?.ktlRefVal ? options.ktlRefVal : null;
+
+                    const groups = kwInstance.params;
+                    for (const group of groups) {
+                        if (group.length) {
+                            if (group[0] === 'dummyGroupName') {
+                                //Add specific processing here for named groups, if ever needed.
+                            } else {
+                                //Check if param group's first string is a field and if so, apply defaults.
+                                const field = group[0];
+                                const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
+                                if (fieldId) {
+                                    let selector;
+                                    const fieldType = ktl.fields.getFieldType(fieldId);
+                                    if (TEXT_DATA_TYPES.includes(fieldType)) {
+                                        selector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} .${fieldId} input`;
+                                        if ($(`${selector}`).length) {
+                                            $(`${selector}`).val(group[1]);
+                                            if (fieldType === 'date_time' && group.length >= 2)
+                                                $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(group[2]);
+                                        }
+                                    } else if (fieldType === 'connection') {
+                                        selector = `#${viewId} #connection-picker-checkbox-${fieldId}`;
+                                        if ($(`${selector}`).length) {
+                                            ktl.core.waitSelector(`${selector} span:textEquals("loading...")`, 10000, 'none')
+                                                .then(() => {
+                                                    if (group[1] === 'ktlAll') {
+                                                        $(`${selector} input`).each((idx, checkbox) => {
+                                                            checkbox.checked = false;
+                                                            checkbox.click();
+                                                        })
+                                                    } else {
+                                                        $(`${selector} input`).each((idx, checkbox) => {
+                                                            checkbox.checked = false;
+                                                            if (group.includes($(checkbox).parent().find('span').text()))
                                                                 checkbox.click();
-                                                            })
-                                                        } else {
-                                                            $(`${selector} input`).each((idx, checkbox) => {
-                                                                checkbox.checked = false;
-                                                                if (group.includes($(checkbox).parent().find('span').text()))
-                                                                    checkbox.click();
-                                                            })
-                                                        }
+                                                        })
+                                                    }
+                                                })
+                                                .catch(() => { })
+                                        } else {
+                                            selector = `#${viewId}_${fieldId}_chzn.chzn-container-single`;
+                                            if ($(`${selector}`).length) {
+                                                let text = group[1];
+                                                if (text === 'ktlRefVal' && group.length >= 2)
+                                                    text = await getReferenceValue(refVal);
+                                                ktl.views.searchDropdown(text, fieldId, 'exact', false, viewId)
+                                                    .then(function () {
+                                                        //console.log('found!');
                                                     })
-                                                    .catch(() => { })
+                                                    .catch(function (foundText) {
+                                                        console.log('error', foundText);
+                                                    })
                                             } else {
-                                                selector = `#${viewId}_${fieldId}_chzn.chzn-container-single`;
+                                                selector = `#${viewId}_${fieldId}_chzn.chzn-container-multi`;
                                                 if ($(`${selector}`).length) {
-                                                    ktl.views.searchDropdown(group[1], fieldId, 'exact', false, viewId)
-                                                        .then(function () {
-                                                            //console.log('found!');
-                                                        })
-                                                        .catch(function (foundText) {
-                                                            console.log('error', foundText);
-                                                        })
-                                                } else {
-                                                    selector = `#${viewId}_${fieldId}_chzn.chzn-container-multi`;
-                                                    if ($(`${selector}`).length) {
-                                                        const values = group.slice(1);
+                                                    const values = group.slice(1);
 
-                                                        const options = values.map(record => {
-                                                            const [label, id] = record.split(':');
-                                                            return { label, id };
-                                                        }).filter(v => (!!v.id && ktl.core.hasRecordIdFormat(v.id)));
+                                                    const options = values.map(record => {
+                                                        const [label, id] = record.split(':');
+                                                        return { label, id };
+                                                    }).filter(v => (!!v.id && ktl.core.hasRecordIdFormat(v.id)));
 
-                                                        if (options.length) {
-                                                            //Direct, quick populating of dropdown, with labels and record IDs.
-                                                            const input = $(`#${viewId}-${fieldId}`);
+                                                    if (options.length) {
+                                                        //Direct, quick populating of dropdown, with labels and record IDs.
+                                                        const input = $(`#${viewId}-${fieldId}`);
 
-                                                            options.forEach(option => {
-                                                                if (!input.find(`option[value="${option.id}"]`).length) {
-                                                                    input.append(`<option value="${option.id}">${option.label}</option>`);
-                                                                }
-                                                            });
+                                                        options.forEach(option => {
+                                                            if (!input.find(`option[value="${option.id}"]`).length) {
+                                                                input.append(`<option value="${option.id}">${option.label}</option>`);
+                                                            }
+                                                        });
 
-                                                            const values2 = input.val() || [];
-                                                            input.val([...values2, ...options.map(o => o.id)]).trigger("liszt:updated");
-                                                        } else {
-                                                            //Slow, sequential searches method.
-                                                            async function searchValuesInDropdown(values, fieldId, viewId) {
-                                                                for (const [index, value] of values.entries()) {
-                                                                    try {
-                                                                        await ktl.views.searchDropdown(value, fieldId, 'exact', false, viewId);
-                                                                        //console.log(`${index + 1} - found!`, value);
-                                                                    } catch (error) {
-                                                                        console.log(`${index + 1} - error`, error);
-                                                                    }
+                                                        const values2 = input.val() || [];
+                                                        input.val([...values2, ...options.map(o => o.id)]).trigger("liszt:updated");
+                                                    } else {
+                                                        //Slow, sequential searches method.
+                                                        async function searchValuesInDropdown(values, fieldId, viewId) {
+                                                            for (const [index, value] of values.entries()) {
+                                                                try {
+                                                                    await ktl.views.searchDropdown(value, fieldId, 'exact', false, viewId);
+                                                                    //console.log(`${index + 1} - found!`, value);
+                                                                } catch (error) {
+                                                                    console.log(`${index + 1} - error`, error);
                                                                 }
                                                             }
-
-                                                            searchValuesInDropdown(values, fieldId, viewId);
                                                         }
+
+                                                        searchValuesInDropdown(values, fieldId, viewId);
                                                     }
                                                 }
                                             }
-                                        } else if (fieldType === 'multiple_choice') {
-                                            const format = Knack.objects.getField(fieldId).attributes.format.type;
-                                            if (format === 'radio')
-                                                $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
-                                            else if (format === 'checkboxes') {
-                                                const options = group.slice(1);
-                                                for (const option of options) {
-                                                    $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`)[0].checked = false;
-                                                    $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`).click();
-                                                }
-                                            }
-                                        } else if (fieldType === 'boolean') {
-                                            $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
-                                        } else {
-                                            console.log('_sdfv found an unsupported field type:', fieldId, fieldType);
                                         }
+                                    } else if (fieldType === 'multiple_choice') {
+                                        const format = Knack.objects.getField(fieldId).attributes.format.type;
+                                        if (format === 'radio')
+                                            $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
+                                        else if (format === 'checkboxes') {
+                                            const options = group.slice(1);
+                                            for (const option of options) {
+                                                $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`)[0].checked = false;
+                                                $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`).click();
+                                            }
+                                        }
+                                    } else if (fieldType === 'boolean') {
+                                        $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
+                                    } else {
+                                        console.log('_sdfv found an unsupported field type:', fieldId, fieldType);
                                     }
                                 }
                             }
                         }
                     }
-                })
-                .catch(function () { })
+                }
+            } catch (err) {
+                ktl.log.clog('purple', 'Exception encountered in _sfv: ' + err);
+            }
         }
 
         function askConfirmation(view, keywords) {
@@ -16949,7 +16964,6 @@ function Ktl($, appInfo) {
                 }
                 return colspan;
             },
-
         } //return
     })(); //Views feature
 
