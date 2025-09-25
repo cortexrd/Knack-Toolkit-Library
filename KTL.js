@@ -13310,7 +13310,10 @@ function Ktl($, appInfo) {
                                     if (TEXT_DATA_TYPES.includes(fieldType)) {
                                         selector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} .${fieldId} input`;
                                         if ($(`${selector}`).length) {
-                                            $(`${selector}`).val(group[1]);
+                                            let text = group[1];
+                                            if (refVal)
+                                                text = await getReferenceValue(refVal);
+                                            $(`${selector}`).val(text);
                                             if (fieldType === 'date_time' && group.length >= 2)
                                                 $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(group[2]);
                                         }
@@ -13397,7 +13400,10 @@ function Ktl($, appInfo) {
                                                 $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`).click();
                                             }
                                         } else if (format === 'single') {
-                                            await ktl.views.searchDropdown(group[1], fieldId, 'exact', false, viewId);
+                                            let text = group[1];
+                                            if (refVal)
+                                                text = await getReferenceValue(refVal);
+                                            await ktl.views.searchDropdown(text, fieldId, 'exact', false, viewId);
                                         } else if (format === 'multi') {
                                             const selectElement = $(`#${viewId}-${fieldId}`);
                                             if (selectElement.length) {
@@ -13415,9 +13421,29 @@ function Ktl($, appInfo) {
                                             }
                                         }
                                     } else if (fieldType === 'boolean') {
-                                        $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
+                                        const format = Knack.objects.getField(fieldId).attributes.format.input;
+                                        if (format === 'dropdown') {
+                                            const selectElement = $(`#${viewId} #kn-input-${fieldId}`);
+                                            if (selectElement.length) {
+                                                selectElement.find(`option[value="${group[1]}"]`).prop('selected', true);
+                                            }
+                                        } else if (format === 'radios') {
+                                            $(`#${viewId} #kn-input-${fieldId} [value="${group[1]}"]`).click();
+                                        } else if (format === 'checkbox') {
+                                            const text = group[1].toLowerCase();
+                                            if (text === 'true' || text === 'yes' || text === 'on') {
+                                                $(`#${viewId} #kn-input-${fieldId} input`).click();
+                                            }
+                                        } else {
+                                            console.log('_sfv found an unsupported boolean format:', fieldId, format);
+                                        }
+                                    } else if (fieldType === 'checkbox') {
+                                        const text = group[1].toLowerCase();
+                                        if (text === 'true' || text === 'yes' || text === 'on') {
+                                            $(`#${viewId} #kn-input-${fieldId} input`).click();
+                                        }
                                     } else {
-                                        console.log('_sdfv found an unsupported field type:', fieldId, fieldType);
+                                        console.log('_sfv found an unsupported field type:', fieldId, fieldType);
                                     }
                                 }
                             }
