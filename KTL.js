@@ -13337,7 +13337,7 @@ function Ktl($, appInfo) {
                                             selector = `#${viewId}_${fieldId}_chzn.chzn-container-single`;
                                             if ($(`${selector}`).length) {
                                                 let text = group[1];
-                                                if (text === 'ktlRefVal' && group.length >= 2)
+                                                if (refVal)
                                                     text = await getReferenceValue(refVal);
                                                 ktl.views.searchDropdown(text, fieldId, 'exact', false, viewId)
                                                     .then(function () {
@@ -13395,6 +13395,23 @@ function Ktl($, appInfo) {
                                             for (const option of options) {
                                                 $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`)[0].checked = false;
                                                 $(`#${viewId} #kn-input-${fieldId} [value="${option}"]`).click();
+                                            }
+                                        } else if (format === 'single') {
+                                            await ktl.views.searchDropdown(group[1], fieldId, 'exact', false, viewId);
+                                        } else if (format === 'multi') {
+                                            const selectElement = $(`#${viewId}-${fieldId}`);
+                                            if (selectElement.length) {
+                                                if (group[1] === 'ktlAll') {
+                                                    selectElement.find('option').prop('selected', true);
+                                                } else {
+                                                    const options = group.slice(1);
+                                                    for (const option of options) {
+                                                        selectElement.find(`option[value="${option}"]`).prop('selected', true);
+                                                    }
+                                                }
+
+                                                selectElement.trigger('liszt:updated');
+                                                selectElement.trigger('change');
                                             }
                                         }
                                     } else if (fieldType === 'boolean') {
