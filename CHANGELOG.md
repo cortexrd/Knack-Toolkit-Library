@@ -1,6 +1,41 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.0    *2025-09-24*
+
+- setFieldValue, added support for dropdowns and ktlAll param.
+- Updated searchDropdown to support multiple concurrent searches.
+  - _sfv fixed radio buttons multiple choices.
+- Updated setFieldValue _sfv to support ktlRefVal
+  - Also added support for multiple instances.
+- Put back header as before :: KTL Search Results ::
+- Scene's reference, now more compact view.
+- Added utility to find all references to a scene
+  - New Icon in the Dev Popup Tool.
+  - New message to populate search results text: KTL.devPopupSetResultText
+  - Now Ctrl+Shift+F also re-opens last search results view.
+- Fixed bug in findKeyWithValueInObject
+  - Updated findAllReferencesToThisScene to find links in tables.
+- Fixed conflict between virtual keyboard and modal popups.
+  - User can now scroll the modal view to allow tying values without hiding overlapped fields.
+- _ar Auto-Refresh minimal value goes from 5 to 60 seconds.
+  - As per Knack's request, to reduce server load.
+  - Will show a log during keywords parsing.
+- Updated findAllKeywords to detect _ar with less than 60s
+  - Display summary section highlighting problematic views IDs.
+
+## 0.33.1    *2025-09-17*
+
+- No additional commits for this version
+
+## 0.33.0    *2025-08-29*
+
+- No additional commits for this version
+
+## 0.32.9    *2025-08-25*
+
+- No additional commits for this version
+
 ## 0.32.8    *2025-08-15*
 
 - Forced logout on token expiry to prevent API failures.
