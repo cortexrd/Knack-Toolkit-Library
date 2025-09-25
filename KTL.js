@@ -13437,11 +13437,6 @@ function Ktl($, appInfo) {
                                         } else {
                                             console.log('_sfv found an unsupported boolean format:', fieldId, format);
                                         }
-                                    } else if (fieldType === 'checkbox') {
-                                        const text = group[1].toLowerCase();
-                                        if (text === 'true' || text === 'yes' || text === 'on') {
-                                            $(`#${viewId} #kn-input-${fieldId} input`).click();
-                                        }
                                     } else {
                                         console.log('_sfv found an unsupported field type:', fieldId, fieldType);
                                     }
