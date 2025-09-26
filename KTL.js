@@ -19297,13 +19297,16 @@ function Ktl($, appInfo) {
                                 const currentURL = window.location.href;
                                 for (const displayKey in svrResponse.deviceInfo.displays) {
                                     const display = svrResponse.deviceInfo.displays[displayKey];
-                                    if (display.URL && currentURL.includes(display.URL.replace(/ --kiosk$/, ''))) {
-                                        if (display.email && display.password) {
-                                            credentials = {
-                                                email: display.email,
-                                                password: display.password
-                                            };
-                                            break;
+                                    if (display.URL) {
+                                        const urls = display.URL.replace(/ --kiosk$/, '').split(' ');
+                                        if (urls.some(url => url.trim() && currentURL.includes(url.trim()))) {
+                                            if (display.email && display.password) {
+                                                credentials = {
+                                                    email: display.email,
+                                                    password: display.password
+                                                };
+                                                break;
+                                            }
                                         }
                                     }
                                 }
