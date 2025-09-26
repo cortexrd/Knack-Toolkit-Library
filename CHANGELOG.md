@@ -1,6 +1,15 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.1    *2025-09-26*
+
+- Kiosk devices now properly handles autologin with multi-pages.
+- Fixed issue #543
+  - Again... setFieldValue now supports more field and format types.
+- Removed duplicate code
+- Fixed issue #543
+  - setFieldValue now supports more field and format types.
+
 ## 0.34.0    *2025-09-24*
 
 - setFieldValue, added support for dropdowns and ktlAll param.
