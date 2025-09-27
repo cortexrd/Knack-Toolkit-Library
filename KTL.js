@@ -2312,7 +2312,8 @@ function Ktl($, appInfo) {
                 let result = '';
                 const st = window.performance.now();
                 const regex = new RegExp(search, 'i');
-                const lowRefreshInstances = []; // Track _ar instances < 60 seconds
+                const lowRefreshInstances = [];  // Track _ar instances < 60 seconds
+                let foundItemsCount = 0;
 
                 let builderUrl;
                 let appUrl;
@@ -2348,7 +2349,7 @@ function Ktl($, appInfo) {
                                             console.log(`${kwKey}: ${attr.title ? attr.title : '<no title>'}`);
                                             result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                                             result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
-                                            result += `${kwKey}: ${attr.title ? `${attr.title}<br>` : '<no title><br>'}`;
+                                            result += `${kwKey}: ${attr.title ? attr.title : '<no title>'}<br>`;
                                             break;
                                         }
                                     }
@@ -2378,6 +2379,7 @@ function Ktl($, appInfo) {
                                     kwInstanceStr = kwInstance.paramStr;
                                     console.log(`\t${search}=${kwInstanceStr}\n`);
                                     result += `   ${search}=${kwInstanceStr}<br>`;
+                                    foundItemsCount++;
 
                                     // Check for _ar instances < 60 seconds
                                     if (search === '_ar') {
@@ -2407,7 +2409,6 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                // Add summary section for _ar instances < 60 seconds
                 if (search === '_ar' && lowRefreshInstances.length > 0) {
                     result += `<br><hr><br><strong>⚠️ AUTO REFRESH INSTANCES BELOW 60 SECONDS (${lowRefreshInstances.length} found):</strong><br><br>`;
                     console.log(`\n⚠️ AUTO REFRESH INSTANCES BELOW 60 SECONDS (${lowRefreshInstances.length} found):`);
@@ -2422,8 +2423,17 @@ function Ktl($, appInfo) {
                     }
                 }
 
+                result += `<br><hr><br>`;
+                if (isKeyword) {
+                    result += `<strong>Summary: ${foundItemsCount} items found</strong><br><br>`;
+                }
+
                 const en = window.performance.now();
                 console.log(`\nFinding all keywords took ${Math.trunc(en - st)} ms`);
+
+                if (isKeyword) {
+                    console.log(`\nSummary: ${foundItemsCount} items found`);
+                }
 
                 return result;
             },
