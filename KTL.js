@@ -8164,7 +8164,7 @@ function Ktl($, appInfo) {
                     keywords._vrh && viewRecordHistory(viewId, keywords);
                     keywords._hsv && hideShowView(view, keywords);
                     keywords._cfdt && calculateFutureDateTime(viewId, keywords, data);
-                    keywords._sfv && setFieldValue(viewId, keywords, data);
+                    keywords._sfv && setFieldValue(viewId, keywords);
                     keywords._ask && askConfirmation(view, keywords);
                 }
 
@@ -13282,13 +13282,14 @@ function Ktl($, appInfo) {
             }
         }
 
-        async function setFieldValue(viewId, keywords, data) {
+        async function setFieldValue(viewId, keywords) {
             if (!viewId) return;
 
             const viewType = ktl.views.getViewType(viewId);
             if (viewType !== 'form') return
 
             const kw = '_sfv';
+            if (!(viewId && keywords && keywords[kw])) return;
 
             try {
                 await ktl.core.waitSelector(`#${viewId}.ktlPersistenFormLoadedView`, 20000);
@@ -13312,17 +13313,35 @@ function Ktl($, appInfo) {
                             const fieldId = field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field);
                             if (fieldId) {
                                 let text = group[1];
-                                if (refVal)
-                                    text = await getReferenceValue(refVal);
+                                if (refVal) {
+                                    try {
+                                        text = await getReferenceValue(refVal);
+                                    } catch (error) {
+                                        console.error(`Error getting reference value for field ${fieldId}:`, error);
+                                        continue;
+                                    }
+                                }
 
                                 let selector;
                                 const fieldType = ktl.fields.getFieldType(fieldId);
                                 if (TEXT_DATA_TYPES.includes(fieldType)) {
+                                    //Some text fields are too complicated to support due to their nature: Sub-fields being merged in details views.  Ex: name and address
+                                    const SUPPORTED_TYPES = ['date_time', 'email', 'link', 'number', 'paragraph_text', 'phone', 'short_text', 'currency'];
+                                    if (!SUPPORTED_TYPES.includes(fieldType)) continue;
+
                                     selector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} .${fieldId} input`;
                                     if ($(`${selector}`).length) {
-                                        $(`${selector}`).val(text);
-                                        if (fieldType === 'date_time' && group.length >= 2)
-                                            $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(group[2]);
+                                        if (fieldType === 'date_time' && group.length >= 2) {
+                                            const dateTime = text.split(' ');
+                                            if (dateTime.length === 2) {
+                                                $(`#${viewId} [data-input-id="${fieldId}"] [name="date"]input`).val(dateTime[0]);
+                                                $(`#${viewId} [data-input-id="${fieldId}"] [name="time"]input`).val(dateTime[1]);
+                                            } else {
+                                                $(`#${viewId} [data-input-id="${fieldId}"] [name="date"]input`).val(dateTime[0]);
+                                            }
+                                        } else {
+                                            $(`${selector}`).val(text);
+                                        }
                                     }
                                 } else if (fieldType === 'connection') {
                                     selector = `#${viewId} #connection-picker-checkbox-${fieldId}`;
