@@ -1,6 +1,12 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.2    *2025-10-06*
+
+- setFieldValue improved date/time support.
+- Added local timestamp to log.
+- Added count of found items to findAllKeywords
+
 ## 0.34.1    *2025-09-26*
 
 - Kiosk devices now properly handles autologin with multi-pages.
