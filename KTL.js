@@ -8913,11 +8913,14 @@ function Ktl($, appInfo) {
 
                             if (isOptionBased) {
                                 option.remove();
-                                selector.trigger('liszt:updated');
                             } else {
                                 option.closest('.control').remove();
                             }
                         });
+
+                        if (isOptionBased) {
+                            selector.trigger('liszt:updated');
+                        }
                     });
             }
         }
@@ -18238,7 +18241,7 @@ function Ktl($, appInfo) {
 
                                 document.body.appendChild(devBtnsDiv);
 
-                                let ktlCode = ktl.storage.lsGetItem('ktlCode', true);
+                                let ktlCode = ktl.storage.lsGetItem('ktlCode', true) || 'prod';
                                 ktl.fields.addButton(devBtnsDiv, 'KTL Code: ' + ktlCode, '', ['devBtn', 'kn-button']).addEventListener('click', async () => {
                                     //This forces loading a specific 'KTL-xyz.js' version code from CTRND's CDN, in Prod folder.
                                     //See 'ktlCode' in KTL_Start.js
