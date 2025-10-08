@@ -21,7 +21,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.34.3';
+    const KTL_VERSION = '0.34.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1364,7 +1364,6 @@ function Ktl($, appInfo) {
 
                 ktl.storage.lsSetItem('ktlCode', ktlCode, true);
 
-                ktl.debugWnd.lsLog('Switching KTL code to: ' + ktlCode);
                 setTimeout(() => {
                     if (ktl.scenes.isiFrameWnd())
                         ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'MANUAL_REFRESH' });
@@ -4549,6 +4548,11 @@ function Ktl($, appInfo) {
                     // Issue #458
                     // View not rendered yet: Need special processing for modals, where hidden fields are briefly shown before the kw is applied.
                     $('.kn-modal .kn-scene').addClass('ktlHidden_viewTemp_modal');
+
+                    //Quick fix until we find an elegant solution to issue #537, which was caused by fixing issue #458.
+                    setTimeout(() => {
+                        $('.kn-modal .kn-scene').removeClass('ktlHidden_viewTemp_modal');
+                    }, 1000);
                     return;
                 }
 
