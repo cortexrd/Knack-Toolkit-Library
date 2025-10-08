@@ -1,6 +1,15 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.4    *2025-10-08*
+
+- Quick fix for issue #537
+- removeOption _ro fix.  Now triggers dropdown update only when finished.
+
+## 0.34.3    *2025-10-08*
+
+- No additional commits for this version
+
 ## 0.34.2    *2025-10-06*
 
 - setFieldValue improved date/time support.
