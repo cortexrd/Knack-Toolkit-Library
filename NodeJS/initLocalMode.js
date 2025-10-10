@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const root = 'C:\\code';
+const root = process.cwd();
 const repoBase = 'https://raw.githubusercontent.com/cortexrd/Knack-Toolkit-Library/dev';
 
 const files = [
