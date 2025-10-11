@@ -3182,16 +3182,31 @@ function Ktl($, appInfo) {
                     return;
                 }
 
-                //Inline editing: Leave just a bit of time for the chzn object to settle, then submit new cell-editor value.
-                if (document.querySelector('#cell-editor .chzn-container')) {
-                    e.preventDefault(); //Do not submit whole form.
-                    setTimeout(function () {
-                        $('#cell-editor > div.submit > a').trigger('click');
-                    }, 200);
-                } else if (document.querySelector('#cell-editor .kn-button[disabled=disabled]'))
-                    e.preventDefault();
+                //Inline editing special processing
+                if (document.querySelector(`#cell-editor .chzn-single-with-drop`)) {
+                    //Inline editing a Dropdown:  Do not submit the form, just close the dropdown.
+                    return;
+                } else {
+                    //Dropdown closed: Leave just a bit of time for the chzn object to settle, then submit new cell-editor value.
+                    if (document.querySelector('#cell-editor .chzn-container')) {
+                        e.preventDefault(); //Do not submit whole form.
+                        setTimeout(function () {
+                            $('#cell-editor > div.submit > a').trigger('click');
+                        }, 200);
+                    } else if (document.querySelector('#cell-editor .kn-button[disabled=disabled]'))
+                        e.preventDefault();
+                }
 
                 //Some inline edit field types do not Submit on Enter. This solves the problem.
+
+                if (e.target.type === 'text') {
+                    $('#cell-editor > div.submit > a').trigger('click');
+                    return;
+                } else if (e.target.type === 'select-one') {
+                    e.preventDefault();
+                    $('#cell-editor > div.submit > a').trigger('click');
+                    return;
+                }
 
                 //For Paragraph Text, user need to press Ctrl+Enter to Submit.
                 //This allows using the more natural Enter to add a line feed.
