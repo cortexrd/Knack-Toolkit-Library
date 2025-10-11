@@ -16,6 +16,7 @@ const FIVE_MINUTES_DELAY = ONE_MINUTE_DELAY * 5;
 const ONE_HOUR_DELAY = ONE_MINUTE_DELAY * 60;
 const SUMMARY_WAIT_TIMEOUT = 10000;
 const KNACK_RECORD_LENGTH = 24;
+const NO_RESULTS = 'No results';
 
 function Ktl($, appInfo) {
     if (window.ktl)
@@ -2422,7 +2423,9 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                result += `<br><hr><br>`;
+                if (result)
+                    result += `<br><hr><br>`;
+
                 if (isKeyword) {
                     result += `<strong>Summary: ${foundItemsCount} items found</strong><br><br>`;
                 }
@@ -2434,7 +2437,7 @@ function Ktl($, appInfo) {
                     console.log(`\nSummary: ${foundItemsCount} items found`);
                 }
 
-                return result;
+                return result || NO_RESULTS;
             },
 
             keywordsToString: function (depth = 10) {
@@ -14362,7 +14365,7 @@ function Ktl($, appInfo) {
                                         })
                                         .catch(() => {
                                             delete dropdownSearching[fieldId];
-                                            return reject('No results!');
+                                            return reject(NO_RESULTS);
                                         })
                                 } else { //Multi selection
                                     if (chznContainer.length) {
@@ -18399,7 +18402,7 @@ function Ktl($, appInfo) {
                                 searchBtn.addEventListener('click', () => {
                                     if ($('#devToolSearchDivId').length) {
                                         $('#devToolSearchDivId').show();
-                                        $('#resultWndId').show();
+                                        $(document).trigger('KTL.devPopupSetResultText', 'ktlShow');
                                         $('#ktlDevToolsSearchInputId').focus();
                                         $('#ktlDevToolsSearchInputId').val(ktlDevToolsLastSearch);
                                         $('#ktlDevToolsSearchInputId').select();
@@ -18471,7 +18474,7 @@ function Ktl($, appInfo) {
 
                                         let builderUrl;
                                         let appUrl;
-                                        let kwResults = 'No results';
+                                        let kwResults = NO_RESULTS;
 
                                         if (query.startsWith('field_')) {
                                             const field = Knack.objects.getField(query);
@@ -18479,6 +18482,7 @@ function Ktl($, appInfo) {
                                                 const fieldId = field.id;
                                                 const objectId = Knack.objects.getField(fieldId).attributes.object_key;
                                                 builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${objectId}/fields/${fieldId}/settings`;
+                                                console.log('Open in Builder:', builderUrl);
                                             }
                                         } else if (query.startsWith('view_')) {
                                             for (var s = 0; s < Knack.scenes.models.length && !builderUrl; s++) {
@@ -18493,6 +18497,7 @@ function Ktl($, appInfo) {
                                                             builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${attr.type}`;
                                                             const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
                                                             appUrl = `${Knack.url_base}#${slug}`;
+                                                            console.log('Open in Builder:', builderUrl);
                                                             console.log('Open in App:', appUrl);
                                                             break;
                                                         }
@@ -18505,6 +18510,7 @@ function Ktl($, appInfo) {
                                                     builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${query}`;
                                                     const slug = Knack.scenes.getByKey(query).attributes.slug;
                                                     appUrl = `${Knack.url_base}#${slug}`;
+                                                    console.log('Open in Builder:', builderUrl);
                                                     console.log('Open in App:', appUrl);
                                                     break;
                                                 }
@@ -18520,40 +18526,25 @@ function Ktl($, appInfo) {
 
                                         if (builderUrl || appUrl || kwResults) {
                                             if (builderUrl) {
-                                                console.log('Open in Builder:', builderUrl);
-                                                const builderLink = document.createElement('a');
-                                                builderLink.classList.add('is-small', 'ktlDevToolLink');
-                                                builderLink.style.margin = '1em 0em 1em 0em';
-                                                builderLink.style['text-decoration'] = 'none';
-                                                builderLink.href = builderUrl;
-                                                builderLink.target = '_blank';
-                                                builderLink.innerHTML = `Open "${query}" in Builder`;
-                                                devToolSearchDiv.appendChild(builderLink);
+                                                kwResults = kwResults === NO_RESULTS ? '' : kwResults;
+                                                kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                                kwResults += `Open "${query}" in Builder<br>`;
                                             }
 
                                             if (appUrl) {
-                                                console.log('App URL:', appUrl);
-                                                const appLink = document.createElement('a');
-                                                appLink.classList.add('is-small', 'ktlDevToolLink');
-                                                appLink.style.margin = '0em 0em 0.75em 0em';
-                                                appLink.style['text-decoration'] = 'none';
-                                                appLink.href = appUrl;
-                                                appLink.target = '_self';
-                                                appLink.innerHTML = `Open "${query}" in App`;
-                                                devToolSearchDiv.appendChild(appLink);
-                                                appLink.addEventListener('click', () => {
-                                                    setTimeout(() => {
-                                                        searchInput.focus();
-                                                    }, 1500);
-                                                })
+                                                kwResults = kwResults === NO_RESULTS ? '' : kwResults;
+                                                kwResults += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
+                                                kwResults += `Open "${query}" in App<br>`;
                                             }
 
                                             if (kwResults) {
-                                                $(document).trigger('KTL.devPopupSetResultText', kwResults);
+                                                //console.log(kwResults);
+                                                if (kwResults === NO_RESULTS) {
+                                                    searchInput.classList.add('ktlNotValid');
+                                                } else {
+                                                    $(document).trigger('KTL.devPopupSetResultText', kwResults);
+                                                }
                                             }
-                                        } else {
-                                            console.log('Not found');
-                                            searchInput.classList.add('ktlNotValid');
                                         }
                                     }
                                 })
@@ -18648,7 +18639,7 @@ function Ktl($, appInfo) {
                         if ($('#dbgWndId:visible').length)
                             ktl.debugWnd.showDebugWnd(false);
                         else if ($('#resultWndId:visible').length)
-                            $('#resultWndId').hide();
+                            $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
                         else if ($('#devToolSearchDivId:visible').length)
                             $('#devToolSearchDivId').hide();
                         else
@@ -18674,7 +18665,7 @@ function Ktl($, appInfo) {
                         if ($('#dbgWndId:visible').length)
                             ktl.debugWnd.showDebugWnd(false);
                         else if ($('#resultWndId:visible').length)
-                            $('#resultWndId').hide();
+                            $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
                         else if ($('#devToolSearchDivId:visible').length)
                             $('#devToolSearchDivId').hide();
                         else
@@ -22304,10 +22295,20 @@ function Ktl($, appInfo) {
         const setResultWindowText = function (html) {
             createResultWindow();
             setTimeout(() => {
-                showHideResultWindow(true);
+                if (html === 'ktlHide') {
+                    showHideResultWindow(false);
+                } else {
+                    showHideResultWindow(true);
+                }
+
                 const resultWndTextDiv = document.getElementById('resultWndTextDivId');
                 if (resultWndTextDiv) {
-                    resultWndTextDiv.innerHTML = html;
+                    const resultWndTextDiv = document.getElementById('resultWndTextDivId');
+                    if (resultWndTextDiv) {
+                        if (html !== 'ktlHide' && html !== 'ktlShow') {
+                            resultWndTextDiv.innerHTML = html;
+                        }
+                    }
                 }
             }, 100);
         };
