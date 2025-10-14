@@ -35,7 +35,10 @@ The Knack Toolkit Library (KTL) is an open-source collection of JavaScript utili
 
 For the few features that require API calls, everything is done to minimize their usage as much as possible. All calls are 100% view-based, so **your API key is never used**.
 
-Need a quick intro? [YouTube channel for introductory tutorials](https://www.youtube.com/@cortexrdinc.4479)
+Cortex R&D's YouTube channel: [YouTube channel for introductory tutorials](https://www.youtube.com/@cortexrdinc.4479)
+
+Carl Holmes' YouTube channel:  [CH Project Support](https://www.youtube.com/@chprojectsupport/search?query=ktl)  (remove the KTL search filter to see all his other great videos)
+
 
 # What are Keywords?
 
@@ -99,6 +102,7 @@ Example with two groups: \_cfv=[Column1,neq,,,red,,iu], [Column2,gte,100, yellow
 
 Need a quick intro?
 Cortex R&D's YouTube channel: [YouTube channel for introductory tutorials](https://www.youtube.com/@cortexrdinc.4479)
+
 Carl Holmes' YouTube channel:  [CH Project Support](https://www.youtube.com/@chprojectsupport/search?query=ktl)  (remove the KTL search filter to see all his other great videos)
 
 If you want to try/use the basic default setup version of the KTL, all you need to do is copy the **5 lines** of code from this file [**KTL_Loader.js**](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/KTL_Loader.js) at the **top** of the Javascript pane of the Builder. See the next section for the list of basic features.
