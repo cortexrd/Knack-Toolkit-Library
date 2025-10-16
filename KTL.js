@@ -23070,7 +23070,7 @@ ${viewId} (${viewType})<br><br>`;
                         capslockKeyPressed = false;
                         shiftKeyPressed = false;
 
-                        if (ktl.sysInfo.getSysInfo().keyboardDetected) {
+                        if (ktl.sysInfo.getSysInfo().keyboardDetected && !ktl.core.getCfg().forceVirtualKeyboard) {
                             $('.simple-keyboard').hide();
                         } else {
                             $('body').addClass('ktlBottomExtraSpaces');
