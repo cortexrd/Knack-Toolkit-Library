@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.34.4';
+    const KTL_VERSION = '0.34.5';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
