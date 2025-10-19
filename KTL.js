@@ -18635,19 +18635,14 @@ function Ktl($, appInfo) {
                 $(document).on('click', function (e) {
                     if (e.target.closest('.kn-content') || (e.target && e.target.id && e.target.id === 'knack-body')) {
                         $('#popupFormId').remove();
-
-                        if ($('#dbgWndId:visible').length)
-                            ktl.debugWnd.showDebugWnd(false);
-                        else if ($('#resultWndId:visible').length)
-                            $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
-                        else if ($('#devToolSearchDivId:visible').length)
-                            $('#devToolSearchDivId').hide();
-                        else
-                            $('#devBtnsDivId').hide();
+                        ktl.debugWnd.showDebugWnd(false);
+                        $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
+                        $('#devToolSearchDivId').hide();
+                        $('#devBtnsDivId').hide();
                     }
                 })
 
-                //Hotkey for Dev Popup and Search
+                //Hotkey for Dev Popup and Search: Ctrl+Shift+F to open search, Esc to close.
                 $(document).on('keydown.ktlDevPopup', function (event) {
                     if (event.shiftKey && event.ctrlKey) {
                         if (event.key === 'F') {
@@ -18662,15 +18657,10 @@ function Ktl($, appInfo) {
                                 })
                         }
                     } else if (event.key === 'Escape') {
-                        if ($('#dbgWndId:visible').length)
-                            ktl.debugWnd.showDebugWnd(false);
-                        else if ($('#resultWndId:visible').length)
-                            $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
-                        else if ($('#devToolSearchDivId:visible').length)
-                            $('#devToolSearchDivId').hide();
-                        else
-                            $('#devBtnsDivId').hide();
-
+                        ktl.debugWnd.showDebugWnd(false);
+                        $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
+                        $('#devToolSearchDivId').hide();
+                        $('#devBtnsDivId').hide();
                     }
                 });
             },
@@ -22245,6 +22235,7 @@ function Ktl($, appInfo) {
                 resultWndTextDiv.classList.add('ktlConsoleDiv');
                 resultWnd.appendChild(resultWndTextDiv);
 
+                resultWnd.style.display = 'none';
                 document.body.appendChild(resultWnd);
 
                 resultWndTextDiv.style.height = Math.min(resultWndTextDiv.clientHeight, DEFAULT_HEIGHT) + 'px';
