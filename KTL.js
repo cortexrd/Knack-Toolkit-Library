@@ -22844,10 +22844,10 @@ ${viewId} (${viewType})<br><br>`;
 
         function load() {
             if (keyboardLoaded) return;
+            keyboardLoaded = true;
 
             LazyLoad.css(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/css/index.css'], function () {
                 LazyLoad.js(['https://cdn.jsdelivr.net/npm/simple-keyboard@latest/build/index.js'], function () {
-                    keyboardLoaded = true;
                     const Keyboard = window.SimpleKeyboard.default;
                     let target;
 
@@ -22973,7 +22973,7 @@ ${viewId} (${viewType})<br><br>`;
 
                             if (button === "{escape}") {
                                 $(target).blur();
-                                $('.simple-keyboard').hide();
+                                $('#simple-keyboard').hide();
                                 keyboard.clearInput();
                                 target = null;
                             }
@@ -23071,7 +23071,7 @@ ${viewId} (${viewType})<br><br>`;
                         shiftKeyPressed = false;
 
                         if (ktl.sysInfo.getSysInfo().keyboardDetected && !ktl.core.getCfg().forceVirtualKeyboard) {
-                            $('.simple-keyboard').hide();
+                            $('#simple-keyboard').hide();
                         } else {
                             $('body').addClass('ktlBottomExtraSpaces');
                             $('.kn-modal .kn-scene').addClass('ktlBottomExtraSpaces');
@@ -23088,18 +23088,18 @@ ${viewId} (${viewType})<br><br>`;
                         }
 
                         $(target).on("remove", function () {
-                            $('.simple-keyboard').hide();
+                            $('#simple-keyboard').hide();
                             keyboard.clearInput();
                             target = null;
                         })
                     });
 
                     $(document).on('mousedown', event => {
-                        if ($(event.target).closest('.simple-keyboard').length == 0
-                            && $('.simple-keyboard:visible').length == 1
+                        if ($(event.target).closest('#simple-keyboard').length == 0
+                            && $('#simple-keyboard:visible').length == 1
                             && event.target != target) {
 
-                            $('.simple-keyboard').hide();
+                            $('#simple-keyboard').hide();
                             keyboard.clearInput();
                             target = null;
                         }
@@ -23124,9 +23124,9 @@ ${viewId} (${viewType})<br><br>`;
         return {
             show(visible = false) {
                 if (visible)
-                    $('.simple-keyboard').show();
+                    $('#simple-keyboard').show();
                 else
-                    $('.simple-keyboard').hide();
+                    $('#simple-keyboard').hide();
             },
 
             load: function () {
