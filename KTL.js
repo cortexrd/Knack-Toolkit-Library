@@ -8022,24 +8022,6 @@ function Ktl($, appInfo) {
 
             const keywords = ktlKeywords[view.key];
 
-            //_rcm Remove Confirmation Message
-            if (keywords && keywords._rcm) {
-                let delayBeforeRemovingMsg = 0;
-                if (keywords._rcm.length && keywords._rcm[0].params[0].length) {
-                    delayBeforeRemovingMsg = Number(keywords._rcm[0].params[0]);
-                    if (isNaN(delayBeforeRemovingMsg) || delayBeforeRemovingMsg < 0 || delayBeforeRemovingMsg > 3600000)
-                        delayBeforeRemovingMsg = 0;
-                }
-
-                ktl.core.waitSelector(`#${view.key} .kn-form-confirmation`, 30000)
-                    .then(() => {
-                        setTimeout(() => {
-                            $('#' + view.key + ' .kn-form-confirmation').addClass('ktlHidden');
-                        }, delayBeforeRemovingMsg);
-                    })
-                    .catch(() => { })
-            }
-
             //_hsr Highlight Submitted Record
             if (keywords && keywords._hsr) {
                 ktl.scenes.renderViews()
@@ -8188,6 +8170,7 @@ function Ktl($, appInfo) {
                     keywords._cfdt && calculateFutureDateTime(viewId, keywords, data);
                     keywords._sfv && setFieldValue(viewId, keywords);
                     keywords._ask && askConfirmation(view, keywords);
+                    keywords._rcm && removeConfirmationMessage(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -13500,7 +13483,7 @@ function Ktl($, appInfo) {
             const kw = '_ask';
             if (!keywords[kw]) return;
 
-            const { key: viewId, type: viewType, columns } = view;
+            const { key: viewId, type: viewType } = view;
 
             if (viewType === 'table' || viewType === 'search') {
                 if (keywords[kw].length && keywords[kw][0].options) {
@@ -13562,6 +13545,70 @@ function Ktl($, appInfo) {
                         });
                     }
                 }
+            }
+        }
+
+        function removeConfirmationMessage(view, keywords) {
+            const kw = '_rcm';
+            if (!keywords[kw]) return;
+
+            const { key: viewId, type: viewType } = view;
+
+            if (viewType === 'table' || viewType === 'search') {
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                if (!keywords[kw][0] || !keywords[kw][0].params || keywords[kw][0].params.length === 0) {
+                    $(`#${viewId} .kn-action-link`).on('click', async function (e) {
+                        await ktl.core.waitSelector('#toast-container');
+                        $('#toast-container').addClass('ktlHidden');
+                    });
+                    return;
+                }
+
+                const groups = keywords[kw][0].params;
+
+                if (groups.length === 1 && groups[0].length === 1) {
+                    const delay = parseInt(groups[0][0].trim());
+                    if (!isNaN(delay)) {
+                        $(`#${viewId} .kn-action-link`).on('click', async function (e) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            await ktl.core.waitSelector('#toast-container');
+                            $('#toast-container .toast-info:not(.ktlHidden)').addClass('ktlHidden');
+                        });
+                        return;
+                    }
+                }
+
+                for (const group of groups) {
+                    if (group.length === 2) {
+                        const delay = parseInt(group[0].trim());
+                        const actionLinkText = group[1].trim();
+
+                        if (isNaN(delay) || !actionLinkText) continue;
+
+                        $(`#${viewId} .kn-action-link:textEquals("${actionLinkText}")`).on('click', async function (e) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            await ktl.core.waitSelector('#toast-container');
+                            $('#toast-container .toast-info:not(.ktlHidden)').addClass('ktlHidden');
+                        });
+                    }
+                }
+            } else if (viewType === 'form') {
+                let delay = 0;
+                if (keywords[kw].length && keywords[kw][0].params[0].length) {
+                    delay = Number(keywords[kw][0].params[0]);
+                    if (isNaN(delay) || delay < 0 || delay > 3600000)
+                        delay = 0;
+                }
+
+                $(document).off(`knack-form-submit.${view.key}.ktl_rcm`).on(`knack-form-submit.${view.key}.ktl_rcm`, function (event, v, record) {
+                    setTimeout(() => {
+                        $('#' + view.key + ' .kn-form-confirmation').addClass('ktlHidden_rcm'); //_rcm required to avoid conflict with preprocessSubmit.
+                    }, delay);
+                });
             }
         }
 
