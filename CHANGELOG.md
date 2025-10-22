@@ -1,6 +1,31 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.6    *2025-10-21*
+
+- _rcm keyword updated
+  - Now supports grids and search views.
+  - Now supports 3 options: no param, delay only and delay per action link.
+  - Now supports multiple groups and roles
+- Fixed issue #545 - no more multiple instances of the search results.
+  - Also simplified the closure of all popups with a single click outside the windows or the Escape key.
+- Fixed double VK appearing on PI devices, when using _vk also.
+- Merge branch 'dev' of https://github.com/cortexrd/Knack-Toolkit-Library into dev
+- Fixed issue with kiosk device using barcode scanners.
+  - The _vk now works as expected and forces the use of VK even if the scanner is detected as a physical keyboard.
+- Added Carl's videos.
+- Added Carl's videos link.
+- Improved developer search tool.
+- Merge branch 'dev' of https://github.com/cortexrd/Knack-Toolkit-Library into dev
+- Fixed when Enter key is pressed in an inline edit.
+- Now runs on whatever is the root folder.
+- Create initLocalMode.js
+  - Utility to create all necessary files to start using the local development mode.
+
+## 0.34.5    *2025-10-19*
+
+- No additional commits for this version
+
 ## 0.34.4    *2025-10-08*
 
 - Quick fix for issue #537
