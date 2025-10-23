@@ -91,7 +91,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
             });
 
             //Replace JAVASCRIPT from Builder by local file.
-            delete KnackApp;
+            delete window.KnackApp;
 
             if (typeof window.ktlReady === 'function')
                 delete window.ktlReady;
@@ -131,8 +131,8 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         LazyLoad.js([`${ktlFile}`], () => {
             if (typeof Ktl === 'function') {
                 LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + ((ktlVersion === 'dev' || ktlVersion === 'beta') ? '-' + ktlVersion : '') + '.js'], () => {
-                    if (typeof KnackApp === 'function') {
-                        KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
+                    if (typeof window?.KnackApp === 'function') {
+                        window.KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
                     } else
                         alert('Error - KnackApp not found.');
 
