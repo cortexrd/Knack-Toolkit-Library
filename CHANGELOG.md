@@ -1,6 +1,17 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.7    *2025-10-26*
+
+- Improves sticky header scroll restoration and styling (#548)
+  - Persists and restores scroll positions for views with sticky headers,
+  - enhancing user experience when refreshing tables. Refactors sticky header
+  - and grouping styles to use dynamic CSS and ensures scroll restoration
+  - waits for stable content. Reduces UI glitches and improves maintainability.
+- Fixed issue with search results: multiple instances, unable to close.
+  - And zero size window.
+- Suppress VSCode error: 'delete' cannot be called on an identifier in strict mode.
+
 ## 0.34.6    *2025-10-21*
 
 - _rcm keyword updated
