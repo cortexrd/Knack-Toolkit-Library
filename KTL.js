@@ -18683,9 +18683,10 @@ function Ktl($, appInfo) {
                     if (e.target.closest('.kn-content') || (e.target && e.target.id && e.target.id === 'knack-body')) {
                         $('#popupFormId').remove();
                         ktl.debugWnd.showDebugWnd(false);
-                        $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
                         $('#devToolSearchDivId').hide();
                         $('#devBtnsDivId').hide();
+                        if (!e.target.closest('.fa-sign-in'))
+                            $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
                     }
                 })
 
@@ -22285,6 +22286,8 @@ function Ktl($, appInfo) {
                 resultWnd.style.display = 'none';
                 document.body.appendChild(resultWnd);
 
+                resultWndTextDiv.style.minWidth = '400px';
+                resultWndTextDiv.style.minHeight = '200px';
                 resultWndTextDiv.style.height = Math.min(resultWndTextDiv.clientHeight, DEFAULT_HEIGHT) + 'px';
                 resultWndTextDiv.style.width = Math.min(resultWndTextDiv.clientWidth, DEFAULT_WIDTH) + 'px';
 
