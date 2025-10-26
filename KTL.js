@@ -7747,7 +7747,10 @@ function Ktl($, appInfo) {
 
         const automatedBulkOpsQueue = {};
 
-        //TODO: Migrate all variables here.
+    // Persist scroll positions for views with sticky headers so we can restore after refresh
+    var stickyScrollPositions = {};
+
+    //TODO: Migrate all variables here.
         var cfg = {
             hscCollapsedColumnsWidth: '5',
             hscGlobal: false,
@@ -8688,14 +8691,16 @@ function Ktl($, appInfo) {
 
             const bulkOperationEnabled = isBulkOperationEnabled(keywords);
 
+            // If bulk ops UI is present we wait for it to be ready before applying
+            // the sticky header rules; otherwise apply immediately.
+            const applySticky = () => ktl.views.stickTableHeader(viewId, viewHeight);
+
             if (bulkOperationEnabled) {
                 ktl.core.waitSelector(`#bulkOpsControlsDiv-${viewId}`, 500)
-                    .catch(function () { })
-                    .finally(() => {
-                        ktl.views.stickTableHeader(viewId, viewHeight);
-                    });
+                    .catch(() => { /* ignore timeout, still try to apply */ })
+                    .finally(applySticky);
             } else {
-                ktl.views.stickTableHeader(viewId, viewHeight);
+                applySticky();
             }
         }
 
@@ -16766,39 +16771,104 @@ function Ktl($, appInfo) {
                 if (!Knack.app.attributes.design.regions.header.isLegacy)
                     $('.knHeader__menu-dropdown-list').css('z-index', '5');
 
-                $(`#${viewSelector} .kn-table-wrapper, #${viewSelector} .kn-report-rendered`)
-                    .css('height', viewHeight + 'px')
-                    .find('th')
-                    .css({ 'position': 'sticky', 'top': '-1px', 'z-index': '2' });
+                if (!viewSelector) return;
 
-                if (!cfg.stickGroupingsWithHeader)
+                const styleId = `ktl-sticky-styles-${viewSelector}`;
+                let styleEl = document.getElementById(styleId);
+
+                // Build base CSS text for this view
+                let cssText = '';
+                cssText += `#${viewSelector} .kn-table-wrapper, #${viewSelector} .kn-report-rendered { height: ${viewHeight}px; }\n`;
+                cssText += `#${viewSelector} th { position: sticky; top: -1px; z-index: 2; }\n`;
+
+                // Restore stored scroll and keep it updated
+                const restoreAndBind = () => {
+                    try {
+                        const wrapperEl = document.querySelector(`#${viewSelector} .kn-table-wrapper`) || document.querySelector(`#${viewSelector} .kn-report-rendered`);
+                        if (!wrapperEl) return;
+
+                        const savedScroll = stickyScrollPositions[viewSelector];
+
+                        // Retry restore until content stabilizes (exponential backoff)
+                        const attemptsMax = 6;
+                        let attempts = 0;
+                        const baseDelayMs = 50;
+                        const tryRestore = () => {
+                            attempts++;
+                            try {
+                                if (typeof savedScroll === 'number') {
+                                    const maxScroll = Math.max(0, wrapperEl.scrollHeight - wrapperEl.clientHeight);
+                                    const target = Math.min(savedScroll, maxScroll);
+                                    wrapperEl.scrollTop = target;
+                                }
+                            } catch (e) { /* ignore */ }
+
+                            const current = wrapperEl.scrollTop || 0;
+                            const desired = (typeof savedScroll === 'number') ? Math.min(savedScroll, Math.max(0, wrapperEl.scrollHeight - wrapperEl.clientHeight)) : current;
+
+                            if (Math.abs(current - desired) <= 2 || attempts >= attemptsMax) return;
+
+                            setTimeout(tryRestore, Math.pow(2, attempts) * baseDelayMs);
+                        };
+
+                        tryRestore();
+
+                        if (!wrapperEl.dataset || wrapperEl.dataset.ktlStickyScrollBound !== '1') {
+                            stickyScrollPositions[viewSelector] = typeof stickyScrollPositions[viewSelector] === 'number' ? stickyScrollPositions[viewSelector] : wrapperEl.scrollTop || 0;
+                            wrapperEl.addEventListener('scroll', function () {
+                                stickyScrollPositions[viewSelector] = wrapperEl.scrollTop;
+                            }, { passive: true });
+                            wrapperEl.dataset.ktlStickyScrollBound = '1';
+                        }
+                    } catch (e) { /* swallow */ }
+                };
+
+                // Helper to create/update style element and call restore
+                const upsertStyle = (text) => {
+                    if (styleEl) {
+                        styleEl.textContent = text;
+                    } else {
+                        styleEl = document.createElement('style');
+                        styleEl.id = styleId;
+                        styleEl.appendChild(document.createTextNode(text));
+                        document.head.appendChild(styleEl);
+                    }
+                    restoreAndBind();
+                };
+
+                // If grouping is disabled just inject base rules
+                if (!cfg.stickGroupingsWithHeader) {
+                    upsertStyle(cssText);
                     return;
+                }
 
+                // Compute grouping offsets when header row is present
                 ktl.core.waitSelector(`#${viewSelector} thead tr`).then(() => {
-                    const headerHeight = $(`#${viewSelector} thead tr`).outerHeight();
+                    const $theadTr = $(`#${viewSelector} thead tr`);
+                    const headerHeight = $theadTr.outerHeight() || 0;
                     let stickyTopOffset = headerHeight - 1;
 
-                    let groupLevels = new Set();
+                    const groupSet = new Set();
                     $(`#${viewSelector} tbody tr[class*='kn-group-level-']`).each(function () {
-                        if (this.className.includes('kn-group-level-')) {
-                            groupLevels.add(this.className.match(/kn-group-level-\d+/)[0]);
-                        }
+                        const m = this.className.match(/kn-group-level-\d+/);
+                        if (m) groupSet.add(m[0]);
                     });
 
-                    groupLevels.forEach(groupLevel => {
-                        const groupIndex = parseInt(groupLevel.split('-')[3], 10);
-                        const outerHeight = $(`.${groupLevel}`).outerHeight();
+                    const groups = Array.from(groupSet).map(name => ({ name, index: parseInt(name.split('-')[3], 10) }));
+                    groups.sort((a, b) => a.index - b.index);
 
-                        $(`#${viewSelector} tbody tr.${groupLevel}`).css({
-                            'position': 'sticky',
-                            'top': `${stickyTopOffset - (1 * groupIndex)}px`,
-                            'z-index': '4',
-                            'color': 'black',
-                        })
-                            .find('td')
-                            .css('background-color', '#c7c7c7');
+                    groups.forEach(g => {
+                        const outerHeight = $(`.${g.name}`).outerHeight() || 0;
+                        const topVal = stickyTopOffset - g.index;
+                        cssText += `#${viewSelector} tbody tr.${g.name} { position: sticky; top: ${topVal}px; z-index: 4; color: black; }\n`;
+                        cssText += `#${viewSelector} tbody tr.${g.name} td { background-color: #c7c7c7; }\n`;
                         stickyTopOffset += outerHeight;
                     });
+
+                    upsertStyle(cssText);
+                }).catch(() => {
+                    // header row not found - still inject base rules
+                    upsertStyle(cssText);
                 });
             },
 
