@@ -3324,32 +3324,42 @@ function Ktl($, appInfo) {
             });
 
             //Dropdowns
-            let chosenUpdateTimeout;
+            // Use per-select timeouts so rapid changes on different selects don't cancel each other.
+            const chosenUpdateTimeouts = {};
             $(`#${viewId} .chzn-select`).on('change', function (e) {
-                if ($(`.ktlPersistenFormLoadedScene`).length) {
-                    if (e.target.id && e.target.selectedOptions) {
-                        //This chosenUpdateTimeout is required to ignore the first undesired change event.
-                        //For some reason we get a first event with the current value, but we want the next one with the NEW changed value.
-                        //Maybe this is by design, to provide the before-and-after values that could be useful.
-                        clearTimeout(chosenUpdateTimeout);
-                        chosenUpdateTimeout = setTimeout(() => {
-                            const records = [...e.target.selectedOptions].map(option => {
-                                return {
-                                    text: option.innerText,
-                                    id: option.value
-                                }
-                            });
+                try {
+                    if (!$(`.ktlPersistenFormLoadedScene`).length) return;
+                    if (!e.target.id || !e.target.selectedOptions) return;
+
+                    const key = e.target.id;
+
+                    // Clear only the timeout associated with this select
+                    if (chosenUpdateTimeouts[key]) {
+                        clearTimeout(chosenUpdateTimeouts[key]);
+                    }
+
+                    chosenUpdateTimeouts[key] = setTimeout(() => {
+                        try {
+                            const records = [...e.target.selectedOptions].map(option => ({ text: option.innerText, id: option.value }));
 
                             const [targetViewId, fieldId] = e.target.id.split('-');
+
                             ktl.persistentForm.ktlOnSelectValueChanged({ viewId: targetViewId, fieldId: fieldId, records: records, e: e });
 
                             // Keep single record call for retro-compatibility of external code
                             if (e.target.selectedOptions[0])
                                 ktl.fields.onFieldValueChanged({ viewId: viewId, fieldId: fieldId, recId: e.target.selectedOptions[0].value, text: e.target.selectedOptions[0].innerText, e: e }); //Notify app of change
-                        }, 500);
-                    }
+                        } catch (err) {
+                            console.error('[KTL] Error processing dropdown change for', key, err);
+                        } finally {
+                            // Clean up the timeout reference
+                            delete chosenUpdateTimeouts[key];
+                        }
+                    }, 500);
+                } catch (outerErr) {
+                    console.error('[KTL] Dropdown change handler error', outerErr);
                 }
-            })
+            });
 
             //Date/Time and Timer fields
             $(`#${viewId} .kn-input-date_time, #${viewId} .kn-input-timer`).on('change', function (e) {
