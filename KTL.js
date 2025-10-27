@@ -3341,6 +3341,9 @@ function Ktl($, appInfo) {
                         delete chosenUpdateTimeouts[key];
                     }
 
+                    //This chosenUpdateTimeout is required to ignore the first undesired change event.
+                    //For some reason we get a first event with the current value, but we want the next one with the NEW changed value.
+                    //Maybe this is by design, to provide the before-and-after values that could be useful.
                     chosenUpdateTimeouts[key] = setTimeout(() => {
                         try {
                             const records = [...e.target.selectedOptions].map(option => ({ text: option.innerText, id: option.value }));
