@@ -3336,6 +3336,9 @@ function Ktl($, appInfo) {
                     // Clear only the timeout associated with this select
                     if (chosenUpdateTimeouts[key]) {
                         clearTimeout(chosenUpdateTimeouts[key]);
+                        // Remove the reference immediately to avoid leaving a stale entry
+                        // in case the handler exits before a new timeout is set.
+                        delete chosenUpdateTimeouts[key];
                     }
 
                     chosenUpdateTimeouts[key] = setTimeout(() => {
