@@ -1,6 +1,17 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.8    *2025-10-28*
+
+- Improves dropdown change handling with per-select debounce (#549)
+  - * Improves dropdown change handling with per-select debounce
+  - Uses individual timeouts for each dropdown to prevent rapid changes on different selects from interfering with each other. Adds error handling and cleans up timeout references to enhance reliability and maintainability of form value change detection.
+  - * Removes stale timeout references after clearing
+  - Deletes timeout entries immediately after clearing to prevent leaving behind stale references, reducing potential memory leaks and ensuring accurate timeout management.
+  - * Added back a deleted comment
+- Status Monitoring page improvements
+  - Hearbeat delay value comes from the account's User Prefs now, instead of one hard coded value for all.
+
 ## 0.34.7    *2025-10-26*
 
 - Improves sticky header scroll restoration and styling (#548)
