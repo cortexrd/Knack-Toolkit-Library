@@ -20375,6 +20375,10 @@ function Ktl($, appInfo) {
                     return;
                 }
 
+                function sendHB() {
+                    ktl.wndMsg.send('heartbeatMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
+                };
+
                 //Sends a Heartbeat every minute.
                 //This is mostly useful for monitoring the sanity of critical accounts.
                 //For example, in an industrial production line, where each device has its own account,
@@ -20391,9 +20395,13 @@ function Ktl($, appInfo) {
                     }, heartbeatIntervalDelay);
                 }
 
-                function sendHB() {
-                    ktl.wndMsg.send('heartbeatMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID);
-                };
+                const userPrefsObj = ktl.userPrefs.getUserPrefs();
+                if (userPrefsObj.heartbeatIntervalDelay !== heartbeatIntervalDelay) {
+                    userPrefsObj.heartbeatIntervalDelay = heartbeatIntervalDelay;
+                    userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                    ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                }
             },
 
             removeAllMsgOfType: function (msgType = '') {
@@ -22155,7 +22163,7 @@ function Ktl($, appInfo) {
     //====================================================
     //Status Monitoring feature
     this.statusMonitoring = (function () {
-        //Highlight all accounts with more than DEVICE_OFFLINE_DELAY minutes missed heartbeat.
+        //Highlight all accounts that have missed two heartbeats.
         //Terminals have more emphasis and regular accounts.
         //Custom CSS code takes care of colors.
 
@@ -22167,6 +22175,7 @@ function Ktl($, appInfo) {
         const localHeartBeatFieldId = ktl.iFrameWnd.getCfg().acctLocHbFld;
         const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
         const swVersionFieldId = ktl.iFrameWnd.getCfg().acctSwVersionFld;
+        const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
 
         const statusMonitoring = {
             online: [],
@@ -22237,7 +22246,6 @@ function Ktl($, appInfo) {
         }
 
         function refreshRecords(data) {
-            const DEVICE_OFFLINE_DELAY = ktl.wndMsg.getCfg().heartbeatIntervalDelay * 3; //Add a grace period of three times HB interval.
             const recordsToUpdate = [];
             const acctUtcHbFldId = ktl.iFrameWnd.getCfg().acctUtcHbFld;
             const nowUTC = Date.parse(ktl.core.getCurrentDateTime(true, false, false, true));
@@ -22246,21 +22254,30 @@ function Ktl($, appInfo) {
 
             data.forEach(rec => {
                 const record = rec.attributes;
-                const utcHeartBeatField = record[acctUtcHbFldId];
-                const onlineField = record[onlineStatusFieldId];
-                const diff = nowUTC - Date.parse(utcHeartBeatField);
 
-                //Take note of those who need their Online status to be updated.
-                if (isNaN(diff) || diff >= DEVICE_OFFLINE_DELAY) {
-                    if (onlineField !== 'No') // Yes or blank
-                        recordsToUpdate.push({ record: record, online: 'No' });
+                //Add a grace period of twice the HB interval.
+                try {
+                    const deviceOfflineDelay = JSON.parse((record[acctPrefsFld]).heartbeatIntervalDelay || 300000) * 2;
 
-                    statusMonitoring.offline.push(record);
-                } else {
-                    if (onlineField === 'No')
-                        recordsToUpdate.push({ record: record, online: 'Yes' });
+                    const utcHeartBeatField = record[acctUtcHbFldId];
+                    const onlineField = record[onlineStatusFieldId];
+                    const diff = nowUTC - Date.parse(utcHeartBeatField);
 
-                    statusMonitoring.online.push(record);
+                    //Take note of those who need their Online status to be updated.
+                    if (isNaN(diff) || diff >= deviceOfflineDelay) {
+                        if (onlineField !== 'No') // Yes or blank
+                            recordsToUpdate.push({ record: record, online: 'No' });
+
+                        statusMonitoring.offline.push(record);
+                    } else {
+                        if (onlineField === 'No')
+                            recordsToUpdate.push({ record: record, online: 'Yes' });
+
+                        statusMonitoring.online.push(record);
+                    }
+                } catch (e) {
+                    console.error('Status Monitoring - invalid JSON in User Preferences field for account ID:', record.id);
+                    return; //Skip this record.
                 }
             })
 
