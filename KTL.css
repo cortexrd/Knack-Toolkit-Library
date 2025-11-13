@@ -842,8 +842,7 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 
 /* To fix missing focused outline on dropdowns */
 .ktlFocusedOutline {
-    border: 2px;
-    border-style: solid;
+    box-shadow: 0 0 0 2px black;
     border-radius: 0.35em;
 }
 
