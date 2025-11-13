@@ -3264,26 +3264,33 @@ function Ktl($, appInfo) {
         document.addEventListener('focus', function (e) {
             if (!e?.target || !e?.target?.closest) return;
 
-            let viewId = e.target.closest('.kn-view');
+            const target = e.target;
+            let viewId = target.closest('.kn-view');
             if (viewId)
                 viewId = viewId.id;
             else {
-                if (e.target.closest('#cell-editor'))
+                if (target.closest('#cell-editor'))
                     viewId = 'cell-editor';
             }
 
             convertNumDone = false;
 
             if (viewId) {
-                ktl.fields.fieldSetAsNumeric(viewId, e.target.closest('.kn-input'));
+                ktl.fields.fieldSetAsNumeric(viewId, target.closest('.kn-input'));
 
-                if (e.target.classList.contains('input') || e.target.classList.contains('kn-textarea')) {
+                if (target.classList.contains('input') || target.classList.contains('kn-textarea')) {
                     if (ktl.core.getCfg().enabled.selTextOnFocus)
-                        $(e.target).select();
+                        $(target).select();
 
                     //Turn-off auto complete for Kiosks. Users are annoyed by the dropdown that blocks the Submit button.
                     if (ktl.core.isKiosk())
-                        e.target.setAttribute('autocomplete', 'off');
+                        target.setAttribute('autocomplete', 'off');
+                }
+
+                //Add focus outline that is missing for some dropdown types.
+                const isDropdown = $(target).closest('.chzn-drop').length > 0;
+                if (isDropdown) {
+                    $(target).closest('.control').addClass('ktlFocusedOutline');
                 }
             }
         }, true);
@@ -3387,6 +3394,9 @@ function Ktl($, appInfo) {
                     ktl.fields.onFieldValueChanged(p); //Notify app of change
                 } catch { /*ignore*/ }
             }
+
+            //Fix double tab required on some chzn-results elements.
+            $('.chzn-results').attr('tabindex', '-1'); //Prevent tabbing on the second internal element.
         })
 
         $(document).on('KTL.persistentForm.completed.scene', function (event, viewOrScene) {
@@ -8389,8 +8399,10 @@ function Ktl($, appInfo) {
 
         document.addEventListener('focusout', function (e) {
             try {
-                if ((e.target.form.classList[0].includes('table-keyword-search') || e.target.form.classList[0].includes('kn-search_form')) && $.isEmptyObject(autoRefreshViews))
+                if ((e.target?.form?.classList[0]?.includes('table-keyword-search') || e.target?.form?.classList[0]?.includes('kn-search_form')) && $.isEmptyObject(autoRefreshViews))
                     ktl.views.autoRefresh();
+
+                $(e.target)?.closest('.control')?.removeClass('ktlFocusedOutline');
             } catch { /*ignore*/ }
         }, true);
 
