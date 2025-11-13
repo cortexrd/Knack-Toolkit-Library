@@ -3396,7 +3396,9 @@ function Ktl($, appInfo) {
             }
 
             //Fix double tab required on some chzn-results elements.
-            $('.chzn-results').attr('tabindex', '-1'); //Prevent tabbing on the second internal element.
+            $('.chzn-results').attr('tabindex', '-1'); //Prevent tabbing on the second internal element...
+            $('.chzn-results *').attr('tabindex', '-1'); //...and all children of chzn-results
+            $('.kn-input.ktlHidden').find('input, textarea, select, a, .chzn-single').attr('tabindex', '-1'); //...and all focusable elements in hidden input fields
         })
 
         $(document).on('KTL.persistentForm.completed.scene', function (event, viewOrScene) {
