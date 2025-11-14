@@ -3307,7 +3307,7 @@ function Ktl($, appInfo) {
             // 2. Prevent tabbing into hidden fields (kn-input.ktlHidden)
             setTimeout(() => {
                 $('.chzn-results').attr('tabindex', '-1'); //Prevent tabbing on the second internal element...
-                $('.chzn-results *').attr('tabindex', '-1'); //...and all children of chzn-results
+                $('.chzn-results a, .chzn-results input').attr('tabindex', '-1'); //...and interactive children of chzn-results
                 $('.kn-input.ktlHidden').find('input, textarea, select, a, .chzn-single').attr('tabindex', '-1'); //...and all focusable elements in hidden input fields
             }, 1000);
         });
