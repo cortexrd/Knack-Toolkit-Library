@@ -3299,6 +3299,19 @@ function Ktl($, appInfo) {
             ktl.fields.enforceNumeric();
         })
 
+        $(document).on('knack-scene-render.any', function (event, scene) {
+            if (ktl.scenes.isiFrameWnd()) return;
+
+            //Fix Tab key motion, i.e. to move focus to next input field:
+            // 1. Double tab required on some chzn-results elements
+            // 2. Prevent tabbing into hidden fields (kn-input.ktlHidden)
+            setTimeout(() => {
+                $('.chzn-results').attr('tabindex', '-1'); //Prevent tabbing on the second internal element...
+                $('.chzn-results *').attr('tabindex', '-1'); //...and all children of chzn-results
+                $('.kn-input.ktlHidden').find('input, textarea, select, a, .chzn-single').attr('tabindex', '-1'); //...and all focusable elements in hidden input fields
+            }, 1000);
+        });
+
         //Add Change event handlers for Dropdowns, Calendars, etc.
         $(document).on('knack-view-render.any', function (event, view, data) {
             const viewId = view.key;
@@ -3394,11 +3407,6 @@ function Ktl($, appInfo) {
                     ktl.fields.onFieldValueChanged(p); //Notify app of change
                 } catch { /*ignore*/ }
             }
-
-            //Fix double tab required on some chzn-results elements.
-            $('.chzn-results').attr('tabindex', '-1'); //Prevent tabbing on the second internal element...
-            $('.chzn-results *').attr('tabindex', '-1'); //...and all children of chzn-results
-            $('.kn-input.ktlHidden').find('input, textarea, select, a, .chzn-single').attr('tabindex', '-1'); //...and all focusable elements in hidden input fields
         })
 
         $(document).on('KTL.persistentForm.completed.scene', function (event, viewOrScene) {
@@ -23038,7 +23046,7 @@ ${viewId} (${viewType})<br><br>`;
                                 '7 8 9',
                                 '4 5 6',
                                 '1 2 3',
-                                '. 0 -',
+                                '- 0 .',
                                 '{bksp} {enter}',
                                 '{arrowleft} {arrowright}'
                             ],
