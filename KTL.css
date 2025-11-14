@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.7.17 */
+/* KTL CSS version: 0.7.18 */
 
 /************ General Settings **************/
 #verButtonId {
@@ -933,6 +933,14 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 
 .hg-theme-default.hg-layout-numeric .hg-button {
 	width: auto !important;
+}
+
+.hg-theme-default.hg-layout-numeric .hg-button[data-skbtn="{bksp}"],
+.hg-theme-default.hg-layout-numeric .hg-button[data-skbtn="{enter}"],
+.hg-theme-default.hg-layout-numeric .hg-button[data-skbtn="{arrowleft}"],
+.hg-theme-default.hg-layout-numeric .hg-button[data-skbtn="{arrowright}"] {
+	flex: 1 1 50% !important;
+	max-width: 50% !important;
 }
 
 .hg-theme-default .hg-button.hg-standardBtn[data-skbtn=".com"],
