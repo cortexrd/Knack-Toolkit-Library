@@ -1,6 +1,20 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.10    *2025-11-14*
+
+- Fixed Tab key motion.  Improved numeric VK layout.
+- Improved symmetry of numeric virtual keyboard.
+- Fixed tabbing: prevent on hidden elements, including the complex dropdowns..
+- Dropdown outline now a shadow, which doesn't jitter form layout.
+- Fixed double tab required to move focus on some dropdowns.
+- Added ktlFocusedOutline  class.
+- Ignore .claude folder
+
+## 0.34.9    *2025-11-13*
+
+- No additional commits for this version
+
 ## 0.34.8    *2025-10-28*
 
 - Improves dropdown change handling with per-select debounce (#549)
