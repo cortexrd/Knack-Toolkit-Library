@@ -1345,7 +1345,7 @@ function Ktl($, appInfo) {
             },
 
             toggleMode: function () { //Formerly used to switch between Prod <=> Dev modes
-                ktl.log.clog('purple', 'toggleMode is deprecated.  Use switchKtlCode instead.');
+                ktl.log.clog('purple', 'Deprecated function called: toggleMode.  Use switchKtlCode instead.');
             },
 
             //Switch from Prod, Dev, Beta, Local, or x.yy.zz version.
@@ -8193,7 +8193,7 @@ function Ktl($, appInfo) {
                     keywords._mail && sendBulkEmails(viewId, keywords, data);
                     keywords._dnd && dragAndDrop(viewId, keywords);
                     keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
-                    keywords._scs && colorizeSortedColumn(viewId, keywords);
+                    keywords._scs && sortedColumnStyle(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
                     keywords._dv && disableView(view, keywords);
                     keywords._ro && removeOptions(view, keywords);
@@ -11096,6 +11096,11 @@ function Ktl($, appInfo) {
         }
 
         function colorizeSortedColumn(viewId, keywords) {
+            ktl.log.clog('purple', 'Deprecated function called: colorizeSortedColumn.  Use sortedColumnStyle instead.');
+            sortedColumnStyle(viewId, keywords);
+        }
+
+        function sortedColumnStyle(viewId, keywords) {
             const kw = '_scs';
             if (!(viewId && keywords && keywords[kw])) return;
 
@@ -14758,7 +14763,7 @@ function Ktl($, appInfo) {
 
             //     You may use both arrays at same time, but columnsArray has precedence.
             removeTableColumnsDeprecated: function (viewId = '', remove = true, columnsAr = [], fieldsAr = [], headersAr = [], fixRows = true) {
-                console.warn('Deprecated function call. Update to use removeTableColumns(viewId, fields, headers or hideTableColumns(viewId, fields, headers) or removeTableColumnsByIndex(viewId, columnIndexes)')
+                ktl.log.clog('purple', 'Deprecated function called: removeTableColumnsDeprecated.  Use removeTableColumns(viewId, fields, headers or hideTableColumns(viewId, fields, headers) or removeTableColumnsByIndex(viewId, columnIndexes) instead');
                 if (!viewId ||
                     ((fieldsAr && fieldsAr.length === 0) && (columnsAr && columnsAr.length === 0)) && (headersAr && headersAr.length === 0)) {
                     ktl.log.clog('purple', 'Called removeTableColumnsDeprecated with invalid parameters.');
@@ -18227,7 +18232,7 @@ function Ktl($, appInfo) {
             },
 
             findViewWithKeyword: function (keyword = '', excludeViewId = '') {
-                ktl.log.clog('purple', 'findViewWithKeyword is deprecated.  Use findViewWithKeywordInCurrentScene instead.');
+                ktl.log.clog('purple', 'Deprecated function called: findViewWithKeyword.  Use findViewWithKeywordInCurrentScene instead.');
                 return findViewWithKeywordInCurrentScene(keyword = '', excludeViewId = '');
             },
 
