@@ -8,19 +8,18 @@
  *  - if 'beta', will use /Prod/KTL-beta.js version, which is the candidate for next release
 */
 
-var callback;
+let callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     const KTL_LATEST_JS_VERSION = '0.34.10';
     const KTL_LATEST_CSS_VERSION = '0.7.18';
 
-    var cssVersion = KTL_LATEST_CSS_VERSION;
-    var prodFolder = 'Prod/';
-    var ktlSvr = 'https://ctrnd.s3.amazonaws.com/'; //CDN is Cortex R&D Inc server.
+    let cssVersion = KTL_LATEST_CSS_VERSION;
+    let prodFolder = 'Prod/';
+    let ktlSvr = 'https://ctrnd.s3.amazonaws.com/'; //CDN is Cortex R&D Inc server.
     window.$ = $;
     window.jQuery = $; //For BlockUI
     window.KnackApp = _KnackApp;
     callback = _callback;
-    ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
     const lsShortName = Knack.app.attributes.name.substr(0, 6).replace(/ /g, '') + '_' + app_id.substr(-4, 4) + '_';
 
     //Used to bypass KTL completely, typically to troubleshoot and isolate an issue.  Used with the KTL Developer Tools popup.
@@ -30,26 +29,15 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         return;
     }
 
-    let ktlCode = localStorage.getItem(lsShortName + 'ktlCode') || 'prod';
+    let ktlCode = localStorage.getItem(lsShortName + 'ktlCode');
 
-    //Cleanup legacy and update to new naming: remoteDev -> dev
-    const legacyRemoteDev = (localStorage.getItem(lsShortName + 'remoteDev') === 'true');
-    if (legacyRemoteDev) {
-        localStorage.removeItem(lsShortName + 'remoteDev');
-        ktlCode = 'dev';
-        localStorage.setItem(lsShortName + 'ktlCode', ktlCode);
+    if (ktlCode === 'prod') {
+        ktlVersion = KTL_LATEST_JS_VERSION; //Use case when numbered version doesn't exist anymore due to AWS archives monthly cleanup.
+    } else if (['dev', 'beta'].includes(ktlCode) || /^\d.*\./.test(ktlCode)) {
+        ktlVersion = ktlCode; //Use 'dev', 'beta', or specific version.
+    } else {
+        ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
     }
-
-    //Cleanup legacy and update to new naming: dev -> local
-    const legacyDev = localStorage.getItem(lsShortName + 'dev');
-    if (legacyDev !== null) {
-        localStorage.removeItem(lsShortName + 'dev');
-        ktlCode = 'local';
-        localStorage.setItem(lsShortName + 'ktlCode', ktlCode);
-    }
-
-    if (['dev', 'beta'].includes(ktlCode) || /^\d.*\./.test(ktlCode))
-        ktlVersion = ktlCode;
 
     if (ktlCode === 'local') {
         ktlVersion = '';
@@ -66,7 +54,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
             });
         }
 
-        var fileName = localStorage.getItem(lsShortName + 'fileName');
+        let fileName = localStorage.getItem(lsShortName + 'fileName');
         if (fileName !== 'NO_APP_FILE') {
             !fileName && (fileName = Knack.app.attributes.name);
             let appJsFile = ktlSvr + 'KnackApps/' + fileName + '/' + fileName + '.js';
@@ -98,7 +86,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
 
             LazyLoad.js([`${appJsFile}`], () => {
                 if (typeof window.ktlReady !== 'function') {
-                    var srcFileName = prompt(`Can't find source file with ktlReady:\n\n${appJsFile}\n\nWhat is file name (without .js)?\n\nLeave empty for none.`, Knack.app.attributes.name);
+                    let srcFileName = prompt(`Can't find source file with ktlReady:\n\n${appJsFile}\n\nWhat is file name (without .js)?\n\nLeave empty for none.`, Knack.app.attributes.name);
                     if (srcFileName === null) {
                         localStorage.removeItem(lsShortName + 'dev');
                         alert('Reverting to Prod mode.');
@@ -121,31 +109,39 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         cssVersion = ktlVersion;
     }
 
-    //Append this to end of filename to force loading new code without requiring Ctrl+F5.
-    let bypassCacheSuffix = ktlCode !== 'local' ? `?v=${new Date().getTime()}` : '';
+    function loadFilesAndRunApp() {
+        //Append this to end of filename to force loading new code without requiring Ctrl+F5.
+        let bypassCacheSuffix = ktlCode !== 'local' ? `?v=${new Date().getTime()}` : '';
 
-    var cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css' + bypassCacheSuffix;
-    var ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js' + bypassCacheSuffix;
+        let cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css' + bypassCacheSuffix;
+        let ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js' + bypassCacheSuffix;
 
-    LazyLoad.css([`${cssFile}`], () => {
-        LazyLoad.js([`${ktlFile}`], () => {
-            if (typeof Ktl === 'function') {
-                LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + ((ktlVersion === 'dev' || ktlVersion === 'beta') ? '-' + ktlVersion : '') + '.js'], () => {
-                    if (typeof window?.KnackApp === 'function') {
-                        window.KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
-                    } else
-                        alert('Error - KnackApp not found.');
+        LazyLoad.css([`${cssFile}`], () => {
+            LazyLoad.js([`${ktlFile}`], () => {
+                if (typeof Ktl === 'function') {
+                    LazyLoad.js([ktlSvr + 'Lib/KTL/KTL_Defaults' + ((ktlVersion === 'dev' || ktlVersion === 'beta') ? '-' + ktlVersion : '') + '.js'], () => {
+                        if (typeof window?.KnackApp === 'function') {
+                            window.KnackApp($, { ktlVersion: ktlVersion, lsShortName: lsShortName });
+                        } else
+                            alert('Error - KnackApp not found.');
 
-                    callback();
-                })
-            } else {
-                if (ktlCode === 'local') {
-                    alert('KTL not found');
+                        callback();
+                    })
                 } else {
-                    localStorage.setItem(lsShortName + 'ktlCode', 'prod');
-                    location.reload(true);
+                    if (ktlCode === 'local') {
+                        alert('KTL not found');
+                    } else {
+                        //localStorage.setItem(lsShortName + 'ktlCode', 'prod');
+                        //location.reload(true);
+
+                        //Reload KTL one more time with prod version
+                        ktlVersion = KTL_LATEST_JS_VERSION;
+                        loadFilesAndRunApp();
+                    }
                 }
-            }
-        })
-    });
+            })
+        });
+    }
+
+    loadFilesAndRunApp();
 }

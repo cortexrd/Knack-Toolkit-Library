@@ -1363,7 +1363,11 @@ function Ktl($, appInfo) {
                 if (currentKtlCode === ktlCode)
                     return;
 
-                ktl.storage.lsSetItem('ktlCode', ktlCode, true);
+                if (ktlCode = 'prod') {
+                    ktl.storage.lsRemoveItem('ktlCode', true);
+                } else {
+                    ktl.storage.lsSetItem('ktlCode', ktlCode, true);
+                }
 
                 setTimeout(() => {
                     if (ktl.scenes.isiFrameWnd())
