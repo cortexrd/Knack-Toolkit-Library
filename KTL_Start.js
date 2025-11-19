@@ -10,7 +10,7 @@
 
 let callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
-    const KTL_LATEST_JS_VERSION = '0.34.10';
+    const KTL_LATEST_JS_VERSION = '0.34.11';
     const KTL_LATEST_CSS_VERSION = '0.7.18';
 
     let cssVersion = KTL_LATEST_CSS_VERSION;
@@ -131,9 +131,6 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                     if (ktlCode === 'local') {
                         alert('KTL not found');
                     } else {
-                        //localStorage.setItem(lsShortName + 'ktlCode', 'prod');
-                        //location.reload(true);
-
                         //Reload KTL one more time with prod version
                         ktlVersion = KTL_LATEST_JS_VERSION;
                         loadFilesAndRunApp();
