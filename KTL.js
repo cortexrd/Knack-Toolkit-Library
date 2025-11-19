@@ -3204,9 +3204,9 @@ function Ktl($, appInfo) {
                         e.preventDefault();
                 }
 
-                //Some inline edit field types do not Submit on Enter. This solves the problem.
-
+                //Some inline edit field types do not Submit on Enter. These solve the problem.
                 if (e.target.type === 'text') {
+                    e.preventDefault();
                     $('#cell-editor > div.submit > a').trigger('click');
                     return;
                 } else if (e.target.type === 'select-one') {
@@ -12131,7 +12131,7 @@ function Ktl($, appInfo) {
                 for (const group of groups) {
                     if (group.length >= 2) {
                         if (group[0] === 'context') {
-                            context = (keywords[kw][0].paramStr.match(/\[context,([^[]*)\]/) || [])[1] || '';
+                            context = ((keywords[kw][0].paramStr.match(/\[context,([^[]*)\]/) || [])[1] || '').trim();
                         } else if (group[0] === 'include') {
                             const paramString = (keywords[kw][0].paramStr.match(/\[include,([^[]*)\]/) || [])[1] || '';
                             includeFields = ktl.core.splitAndTrimToArray(paramString);
@@ -12352,7 +12352,6 @@ function Ktl($, appInfo) {
                 logAllChanges();
             }
 
-
             $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
                 //$.blockUI({ message: '', overlayCSS: { backgroundColor: '#fff', opacity: 0, } });
 
@@ -12364,9 +12363,9 @@ function Ktl($, appInfo) {
                 //});
             })
 
-            if (viewType === 'form')
+            if (viewType === 'form') {
                 updateDataAndLogDeltas(viewId, data);
-            else {
+            } else {
                 $(document).off(`click.ktl_arh.${viewId}`).on(`click.ktl_arh.${viewId}`, `#${viewId} .cell-edit`, function (event) {
                     const row = event.target.closest('tr[id]');
                     if (row) {
