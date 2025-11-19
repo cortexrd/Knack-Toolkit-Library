@@ -1,6 +1,18 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.11    *2025-11-19*
+
+- Updated findEmails to include summary list of unique emails.
+- Updated switchKtlCode to support deleted old KTL code from AWS.
+- _arh: fixed double submit on inline edit of text fields.
+  - Removed leading and trailing spaces on context string.
+- Handle case where KTL version is old and not found on server.
+  - In such case, revert to latest version.
+  - Refactor var to let
+- Deprecation refactor on a few functions and logs.
+- Restrain tabbing prevention to interactive elements only.
+
 ## 0.34.10    *2025-11-14*
 
 - Fixed Tab key motion.  Improved numeric VK layout.
