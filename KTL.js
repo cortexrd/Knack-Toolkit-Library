@@ -2306,6 +2306,18 @@ function Ktl($, appInfo) {
                 include.length && console.log(`Emails included: ${include.length}`);
                 console.log(`Total emails found: ${emailsFound.length}`);
 
+                // Summary section with unique emails in alphabetical order
+                const uniqueEmails = [...new Set(emailsFound.map(entry => entry.email.toLowerCase()))].sort();
+                console.log('\n' + '='.repeat(60));
+                console.log('SUMMARY - Unique Emails (Alphabetical Order)');
+                console.log('='.repeat(60));
+                uniqueEmails.forEach(email => {
+                    console.log(email);
+                });
+                console.log('='.repeat(60));
+                console.log(`Total unique emails: ${uniqueEmails.length}`);
+                console.log('='.repeat(60));
+
                 return emailsFound;
             },
 
