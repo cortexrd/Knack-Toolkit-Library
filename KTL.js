@@ -1351,12 +1351,13 @@ function Ktl($, appInfo) {
             //Switch from Prod, Dev, Beta, Local, or x.yy.zz version.
             //If no param is supplied, will toggle between prod and local.
             switchKtlCode: function (ktlCode) {
-                const currentKtlCode = ktl.storage.lsGetItem('ktlCode', true);
+                const currentKtlCode = ktl.storage.lsGetItem('ktlCode', true) || 'prod';
 
+                //Toggle case.
                 if (!ktlCode) {
                     if (currentKtlCode === 'prod')
                         ktlCode = 'local';
-                    if (currentKtlCode === 'local')
+                    else if (currentKtlCode === 'local')
                         ktlCode = 'prod';
                 }
 
