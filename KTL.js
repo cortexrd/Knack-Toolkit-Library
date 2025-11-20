@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.34.11';
+    const KTL_VERSION = '0.34.12';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -1364,7 +1364,7 @@ function Ktl($, appInfo) {
                 if (currentKtlCode === ktlCode)
                     return;
 
-                if (ktlCode = 'prod') {
+                if (ktlCode === 'prod') {
                     ktl.storage.lsRemoveItem('ktlCode', true);
                 } else {
                     ktl.storage.lsSetItem('ktlCode', ktlCode, true);
