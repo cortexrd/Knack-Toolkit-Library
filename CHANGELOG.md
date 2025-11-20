@@ -1,6 +1,11 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.13    *2025-11-20*
+
+- Fixed issue #551 with _arh
+  - Put back lost Submit for on Enter key.
+
 ## 0.34.12    *2025-11-20*
 
 - Fixed typo in comparison.
