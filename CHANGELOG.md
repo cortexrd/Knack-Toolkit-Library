@@ -1,6 +1,11 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.12    *2025-11-20*
+
+- Fixed typo in comparison.
+  - V-bump.
+
 ## 0.34.11    *2025-11-19*
 
 - Updated findEmails to include summary list of unique emails.
