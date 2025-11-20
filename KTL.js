@@ -3219,10 +3219,13 @@ function Ktl($, appInfo) {
 
                 //Some inline edit field types do not Submit on Enter. These solve the problem.
                 if (e.target.type === 'text') {
-                    e.preventDefault();
-                    $('#cell-editor > div.submit > a').trigger('click');
-                    return;
+                    if ($('#cell-editor > div.submit > a').length) {
+                        e.preventDefault();
+                        $('#cell-editor > div.submit > a').trigger('click');
+                        return;
+                    }
                 } else if (e.target.type === 'select-one') {
+                    //Need to document this use case.
                     e.preventDefault();
                     $('#cell-editor > div.submit > a').trigger('click');
                     return;
@@ -12240,7 +12243,7 @@ function Ktl($, appInfo) {
 
             function compareNewAndLastData(viewId, newData, lastData, path = '') {
                 for (const key in newData) {
-                    if (key.endsWith('_raw')) {
+                    if (key.endsWith('_raw') && ($.isEmptyObject(lastData) || (!$.isEmptyObject(lastData) && lastData[key] !== undefined))) {
                         const fullPath = path ? `${path}.${key}` : key;
                         let oldValue = getNestedValue(lastData, fullPath);
                         let newValue = newData[key];
