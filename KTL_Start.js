@@ -31,12 +31,10 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
 
     let ktlCode = localStorage.getItem(lsShortName + 'ktlCode');
 
-    if (ktlCode === 'prod') {
-        ktlVersion = KTL_LATEST_JS_VERSION; //Use case when numbered version doesn't exist anymore due to AWS archives monthly cleanup.
+    if (ktlCode === null || ktlCode === 'prod') {
+        ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
     } else if (['dev', 'beta'].includes(ktlCode) || /^\d.*\./.test(ktlCode)) {
         ktlVersion = ktlCode; //Use 'dev', 'beta', or specific version.
-    } else {
-        ktlVersion = (ktlVersion ? ktlVersion : KTL_LATEST_JS_VERSION);
     }
 
     if (ktlCode === 'local') {
@@ -131,7 +129,8 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
                     if (ktlCode === 'local') {
                         alert('KTL not found');
                     } else {
-                        //Reload KTL one more time with prod version
+                        //Use case when numbered version doesn't exist anymore due to AWS archives monthly cleanup.
+                        //Reload KTL one more time, but with latest prod version.
                         ktlVersion = KTL_LATEST_JS_VERSION;
                         loadFilesAndRunApp();
                     }
