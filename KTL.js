@@ -18414,7 +18414,7 @@ function Ktl($, appInfo) {
                         })
                     }
 
-                    function submitKtlUsage() {
+                    async function submitKtlUsage() {
                         const _0x1a2b = (s) => atob(s);
                         const _cfg = {
                             a: _0x1a2b('NjkyOGUwZDEzOWVmMzE2Mzg4YzRhMjhi'),
@@ -18429,6 +18429,9 @@ function Ktl($, appInfo) {
                             alert('You must be logged in to send KTL usage statistics.');
                             return;
                         }
+
+                        const confirmation = await ktl.core.selectOption('Send KTL usage statistics to Cortex R&D?', 'Yes, No');
+                        if (confirmation !== 0) return;
 
                         ktl.core.timedPopup('Collecting KTL usage data...', 'success', 2000);
 
@@ -18462,8 +18465,6 @@ function Ktl($, appInfo) {
                             [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)
                         };
 
-                        ktl.core.timedPopup('Logging in to KTL Usage app...', 'success', 2000);
-
                         $.ajax({
                             url: `https://api.knack.com/v1/applications/${_cfg.a}/session`,
                             type: 'POST',
@@ -18472,7 +18473,6 @@ function Ktl($, appInfo) {
                             success: function (loginResp) {
                                 const token = loginResp.session.user.token;
 
-                                ktl.core.timedPopup('Submitting KTL usage data...', 'success', 2000);
 
                                 $.ajax({
                                     url: `https://api.knack.com/v1/pages/${_cfg.s}/records`,
@@ -18484,7 +18484,7 @@ function Ktl($, appInfo) {
                                     },
                                     data: JSON.stringify(usageData),
                                     success: function (resp) {
-                                        ktl.core.timedPopup('KTL usage statistics sent successfully!', 'success', 3000);
+                                        ktl.core.timedPopup('KTL usage statistics sent successfully - thank you!', 'success', 3000);
                                         console.log('KTL usage data submitted successfully', resp);
                                     },
                                     error: function (err) {
