@@ -18420,7 +18420,9 @@ function Ktl($, appInfo) {
                             a: _0x1a2b('NjkyOGUwZDEzOWVmMzE2Mzg4YzRhMjhi'),
                             e: _0x1a2b('a3RsdXNhZ2VAY3RybmQuY29t'),
                             p: _0x1a2b('ZlQ2NF81MmZnWSFwWFc='),
-                            s: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzQ=')
+                            s: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzQ='),
+                            c: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzE2'),
+                            sc: _0x1a2b('c2NlbmVfMw==')
                         };
                         const _0x4f2c = (n) => 'field_' + n;
 
@@ -18501,7 +18503,7 @@ function Ktl($, appInfo) {
                             [_0x4f2c(0x1e)]: Knack.app.attributes.account.product_plan.name,
                             [_0x4f2c(0x20)]: Knack.app.attributes.account.product_plan.level,
                             [_0x4f2c(0x22)]: ktlVersion,
-                            [_0x4f2c(0x23)]: new Date().toISOString(),
+                            [_0x4f2c(0x23)]: ktl.core.getCurrentDateTime(true, false, false, true),
                             [_0x4f2c(0x25)]: totalCount,
                             [_0x4f2c(0x26)]: JSON.stringify(keywordCounts),
                             [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)
@@ -18519,7 +18521,7 @@ function Ktl($, appInfo) {
                                 const filters = {
                                     match: 'and',
                                     rules: [{
-                                        field: _0x4f2c(0x13), // field_19 (App ID)
+                                        field: _0x4f2c(0x13),
                                         operator: 'is',
                                         value: Knack.app.attributes.id
                                     }]
@@ -18528,7 +18530,7 @@ function Ktl($, appInfo) {
                                 ktl.core.timedPopup('Checking for existing record...', 'success', 2000);
 
                                 $.ajax({
-                                    url: `https://api.knack.com/v1/pages/scene_3/views/view_16/records?filters=${encodeURIComponent(JSON.stringify(filters))}`,
+                                    url: `https://api.knack.com/v1/pages/${_cfg.c}/records?filters=${encodeURIComponent(JSON.stringify(filters))}`,
                                     type: 'GET',
                                     headers: {
                                         'X-Knack-Application-Id': _cfg.a,
@@ -18542,7 +18544,7 @@ function Ktl($, appInfo) {
                                         // If record exists, update it
                                         if (checkResp.records && checkResp.records.length > 0) {
                                             requestType = 'PUT';
-                                            apiUrl = `https://api.knack.com/v1/pages/scene_3/views/view_16/records/${checkResp.records[0].id}`;
+                                            apiUrl = `https://api.knack.com/v1/pages/${_cfg.c}/records/${checkResp.records[0].id}`;
                                             ktl.core.timedPopup('Updating existing record...', 'success', 2000);
                                         } else {
                                             ktl.core.timedPopup('Creating new record...', 'success', 2000);
