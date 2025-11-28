@@ -18501,6 +18501,7 @@ function Ktl($, appInfo) {
                             [_0x4f2c(0x1e)]: Knack.app.attributes.account.product_plan.name,
                             [_0x4f2c(0x20)]: Knack.app.attributes.account.product_plan.level,
                             [_0x4f2c(0x22)]: ktlVersion,
+                            [_0x4f2c(0x23)]: new Date().toISOString(),
                             [_0x4f2c(0x25)]: totalCount,
                             [_0x4f2c(0x26)]: JSON.stringify(keywordCounts),
                             [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)
@@ -18514,22 +18515,64 @@ function Ktl($, appInfo) {
                             success: function (loginResp) {
                                 const token = loginResp.session.user.token;
 
+                                // Check if record already exists for this app_id
+                                const filters = {
+                                    match: 'and',
+                                    rules: [{
+                                        field: _0x4f2c(0x13), // field_19 (App ID)
+                                        operator: 'is',
+                                        value: Knack.app.attributes.id
+                                    }]
+                                };
+
+                                ktl.core.timedPopup('Checking for existing record...', 'success', 2000);
 
                                 $.ajax({
-                                    url: `https://api.knack.com/v1/pages/${_cfg.s}/records`,
-                                    type: 'POST',
+                                    url: `https://api.knack.com/v1/pages/scene_3/views/view_16/records?filters=${encodeURIComponent(JSON.stringify(filters))}`,
+                                    type: 'GET',
                                     headers: {
                                         'X-Knack-Application-Id': _cfg.a,
                                         'Authorization': token,
                                         'Content-Type': 'application/json'
                                     },
-                                    data: JSON.stringify(usageData),
-                                    success: function (resp) {
-                                        ktl.core.timedPopup('KTL usage statistics sent successfully - thank you!', 'success', 3000);
+                                    success: function (checkResp) {
+                                        let requestType = 'POST';
+                                        let apiUrl = `https://api.knack.com/v1/pages/${_cfg.s}/records`;
+
+                                        // If record exists, update it
+                                        if (checkResp.records && checkResp.records.length > 0) {
+                                            requestType = 'PUT';
+                                            apiUrl = `https://api.knack.com/v1/pages/scene_3/views/view_16/records/${checkResp.records[0].id}`;
+                                            ktl.core.timedPopup('Updating existing record...', 'success', 2000);
+                                        } else {
+                                            ktl.core.timedPopup('Creating new record...', 'success', 2000);
+                                        }
+
+                                        // Submit or update the data
+                                        $.ajax({
+                                            url: apiUrl,
+                                            type: requestType,
+                                            headers: {
+                                                'X-Knack-Application-Id': _cfg.a,
+                                                'Authorization': token,
+                                                'Content-Type': 'application/json'
+                                            },
+                                            data: JSON.stringify(usageData),
+                                            success: function (resp) {
+                                                const message = requestType === 'PUT'
+                                                    ? 'KTL usage statistics updated successfully - thank you!'
+                                                    : 'KTL usage statistics sent successfully - thank you!';
+                                                ktl.core.timedPopup(message, 'success', 3000);
+                                            },
+                                            error: function (err) {
+                                                ktl.core.timedPopup('Error sending KTL usage data', 'error', 5000);
+                                                console.error('KTL usage submission failed', err);
+                                            }
+                                        });
                                     },
                                     error: function (err) {
-                                        ktl.core.timedPopup('Error sending KTL usage data', 'error', 5000);
-                                        console.error('KTL usage submission failed', err);
+                                        ktl.core.timedPopup('Error checking for existing record', 'error', 5000);
+                                        console.error('Record check failed', err);
                                     }
                                 });
                             },
