@@ -18414,6 +18414,92 @@ function Ktl($, appInfo) {
                         })
                     }
 
+                    function submitKtlUsage() {
+                        const _0x1a2b = (s) => atob(s);
+                        const _cfg = {
+                            a: _0x1a2b('NjkyOGUwZDEzOWVmMzE2Mzg4YzRhMjhi'),
+                            e: _0x1a2b('a3RsdXNhZ2VAY3RybmQuY29t'),
+                            p: _0x1a2b('ZlQ2NF81MmZnWSFwWFc='),
+                            s: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzQ=')
+                        };
+                        const _0x4f2c = (n) => 'field_' + n;
+
+                        if (!Knack.getUserAttributes() || !Knack.getUserAttributes().email) {
+                            console.error('User must be logged in to submit KTL usage statistics');
+                            alert('You must be logged in to send KTL usage statistics.');
+                            return;
+                        }
+
+                        ktl.core.timedPopup('Collecting KTL usage data...', 'success', 2000);
+
+                        const keywordCounts = {};
+                        let totalCount = 0;
+
+                        Object.keys(ktlKeywords).forEach(viewId => {
+                            const viewKeywords = ktlKeywords[viewId];
+                            Object.keys(viewKeywords).forEach(keyword => {
+                                if (keyword.startsWith('_')) {
+                                    keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
+                                    totalCount++;
+                                }
+                            });
+                        });
+
+                        const ktlVersion = APP_KTL_VERSIONS.split('-')[1].trim();
+
+                        const usageData = {
+                            [_0x4f2c(0x13)]: Knack.app.attributes.id,
+                            [_0x4f2c(0x16)]: Knack.app.attributes.name,
+                            [_0x4f2c(0x17)]: Knack.url_base,
+                            [_0x4f2c(0x19)]: Knack.getUserAttributes().email,
+                            [_0x4f2c(0x1a)]: Knack.getUserAttributes().id,
+                            [_0x4f2c(0x1c)]: Knack.app.attributes.settings.timezone,
+                            [_0x4f2c(0x1e)]: Knack.app.attributes.account.product_plan.name,
+                            [_0x4f2c(0x20)]: Knack.app.attributes.account.product_plan.level,
+                            [_0x4f2c(0x22)]: ktlVersion,
+                            [_0x4f2c(0x25)]: totalCount,
+                            [_0x4f2c(0x26)]: JSON.stringify(keywordCounts),
+                            [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)
+                        };
+
+                        ktl.core.timedPopup('Logging in to KTL Usage app...', 'success', 2000);
+
+                        $.ajax({
+                            url: `https://api.knack.com/v1/applications/${_cfg.a}/session`,
+                            type: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            data: JSON.stringify({ email: _cfg.e, password: _cfg.p }),
+                            success: function (loginResp) {
+                                const token = loginResp.session.user.token;
+
+                                ktl.core.timedPopup('Submitting KTL usage data...', 'success', 2000);
+
+                                $.ajax({
+                                    url: `https://api.knack.com/v1/pages/${_cfg.s}/records`,
+                                    type: 'POST',
+                                    headers: {
+                                        'X-Knack-Application-Id': _cfg.a,
+                                        'Authorization': token,
+                                        'Content-Type': 'application/json'
+                                    },
+                                    data: JSON.stringify(usageData),
+                                    success: function (resp) {
+                                        ktl.core.timedPopup('KTL usage statistics sent successfully!', 'success', 3000);
+                                        console.log('KTL usage data submitted successfully', resp);
+                                    },
+                                    error: function (err) {
+                                        ktl.core.timedPopup('Error sending KTL usage data', 'error', 5000);
+                                        console.error('KTL usage submission failed', err);
+                                    }
+                                });
+                            },
+                            error: function (err) {
+                                ktl.core.timedPopup('Login to KTL Usage app failed', 'error', 5000);
+                                console.error('KTL usage login failed', err);
+                            }
+                        });
+                    }
+
                     function showDevPopup() {
                         ktl.systemColors.getSystemColors()
                             .then((sc) => {
@@ -18727,6 +18813,14 @@ function Ktl($, appInfo) {
                                         }
                                     }
                                 })
+
+                                const sendKtlUsageBtn = ktl.fields.addButton(devBtnsDiv, 'Send KTL Usage', '', ['devBtn', 'kn-button']);
+                                sendKtlUsageBtn.addEventListener('click', () => {
+                                    submitKtlUsage();
+                                })
+                                if (!Knack.getUserAttributes() || !Knack.getUserAttributes().email || !ktl.account.isDeveloper()) {
+                                    sendKtlUsageBtn.setAttribute('disabled', 'true');
+                                }
 
                                 logoutBtn = ktl.fields.addButton(devBtnsDiv, '', '', ['devBtn', 'kn-button']);
                                 processLogoutBtn();
