@@ -18438,14 +18438,55 @@ function Ktl($, appInfo) {
                         const keywordCounts = {};
                         let totalCount = 0;
 
-                        Object.keys(ktlKeywords).forEach(viewId => {
-                            const viewKeywords = ktlKeywords[viewId];
-                            Object.keys(viewKeywords).forEach(keyword => {
-                                if (keyword.startsWith('_')) {
-                                    keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
-                                    totalCount++;
-                                }
-                            });
+                        // Helper function to find ktl-prefixed words in params/options
+                        const findKtlWords = (obj) => {
+                            const ktlWords = [];
+                            if (obj && typeof obj === 'object') {
+                                Object.keys(obj).forEach(key => {
+                                    if (key.startsWith('ktl')) {
+                                        ktlWords.push(key);
+                                    }
+                                    // Recursively search nested objects
+                                    if (typeof obj[key] === 'object' && obj[key] !== null) {
+                                        ktlWords.push(...findKtlWords(obj[key]));
+                                    }
+                                });
+                            }
+                            return ktlWords;
+                        };
+
+                        Object.keys(ktlKeywords).forEach(topLevelKey => {
+                            // Check if top-level key starts with 'ktl' (e.g., ktlAppBookmarks)
+                            if (topLevelKey.startsWith('ktl')) {
+                                keywordCounts[topLevelKey] = (keywordCounts[topLevelKey] || 0) + 1;
+                                totalCount++;
+                            }
+
+                            // Process nested keywords within this top-level key
+                            const nestedKeywords = ktlKeywords[topLevelKey];
+                            if (nestedKeywords && typeof nestedKeywords === 'object') {
+                                Object.keys(nestedKeywords).forEach(keyword => {
+                                    if (keyword.startsWith('_')) {
+                                        keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
+                                        totalCount++;
+
+                                        // Parse entries array for ktl-prefixed words in options
+                                        const entries = nestedKeywords[keyword];
+                                        if (Array.isArray(entries)) {
+                                            entries.forEach(entry => {
+                                                if (entry.options) {
+                                                    const ktlWords = findKtlWords(entry.options);
+                                                    // Count ktl-prefixed words as keywords
+                                                    ktlWords.forEach(ktlWord => {
+                                                        keywordCounts[ktlWord] = (keywordCounts[ktlWord] || 0) + 1;
+                                                        totalCount++;
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                            }
                         });
 
                         const ktlVersion = APP_KTL_VERSIONS.split('-')[1].trim();
@@ -18485,7 +18526,6 @@ function Ktl($, appInfo) {
                                     data: JSON.stringify(usageData),
                                     success: function (resp) {
                                         ktl.core.timedPopup('KTL usage statistics sent successfully - thank you!', 'success', 3000);
-                                        console.log('KTL usage data submitted successfully', resp);
                                     },
                                     error: function (err) {
                                         ktl.core.timedPopup('Error sending KTL usage data', 'error', 5000);
