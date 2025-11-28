@@ -1,6 +1,20 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.34.14    *2025-11-28*
+
+- KTL Usage, confirm before sending.
+- Merge branch 'ktl-usage' into dev
+- feat: Add keyboard shortcuts for copying View, Scene, Field, and Object IDs in dev popover (#552)
+  - Added keyboard shortcuts to the KTL Dev Popover for faster ID copying:
+  - - Press V to copy View ID
+  - - Press S to copy Scene ID
+  - - Press F to copy Field ID
+  - - Press O to copy Object ID
+  - These shortcuts only activate when the dev popover is visible and you're not typing in input fields. This improves developer efficiency when working with Knack's Builder.
+- Added the KTL Usage sender code in Dev Tools popup
+- Fixed accidental looping issue.
+
 ## 0.34.13    *2025-11-20*
 
 - Fixed issue #551 with _arh
