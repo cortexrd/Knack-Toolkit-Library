@@ -18437,60 +18437,6 @@ function Ktl($, appInfo) {
 
                         ktl.core.timedPopup('Collecting KTL usage data...', 'success', 2000);
 
-                        const keywordCounts = {};
-                        let totalCount = 0;
-
-                        // Helper function to find ktl-prefixed words in params/options
-                        const findKtlWords = (obj) => {
-                            const ktlWords = [];
-                            if (obj && typeof obj === 'object') {
-                                Object.keys(obj).forEach(key => {
-                                    if (key.startsWith('ktl')) {
-                                        ktlWords.push(key);
-                                    }
-                                    // Recursively search nested objects
-                                    if (typeof obj[key] === 'object' && obj[key] !== null) {
-                                        ktlWords.push(...findKtlWords(obj[key]));
-                                    }
-                                });
-                            }
-                            return ktlWords;
-                        };
-
-                        Object.keys(ktlKeywords).forEach(topLevelKey => {
-                            // Check if top-level key starts with 'ktl' (e.g., ktlAppBookmarks)
-                            if (topLevelKey.startsWith('ktl')) {
-                                keywordCounts[topLevelKey] = (keywordCounts[topLevelKey] || 0) + 1;
-                                totalCount++;
-                            }
-
-                            // Process nested keywords within this top-level key
-                            const nestedKeywords = ktlKeywords[topLevelKey];
-                            if (nestedKeywords && typeof nestedKeywords === 'object') {
-                                Object.keys(nestedKeywords).forEach(keyword => {
-                                    if (keyword.startsWith('_')) {
-                                        keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
-                                        totalCount++;
-
-                                        // Parse entries array for ktl-prefixed words in options
-                                        const entries = nestedKeywords[keyword];
-                                        if (Array.isArray(entries)) {
-                                            entries.forEach(entry => {
-                                                if (entry.options) {
-                                                    const ktlWords = findKtlWords(entry.options);
-                                                    // Count ktl-prefixed words as keywords
-                                                    ktlWords.forEach(ktlWord => {
-                                                        keywordCounts[ktlWord] = (keywordCounts[ktlWord] || 0) + 1;
-                                                        totalCount++;
-                                                    });
-                                                }
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        });
-
                         const ktlVersion = APP_KTL_VERSIONS.split('-')[1].trim();
 
                         const usageData = {
@@ -18504,9 +18450,9 @@ function Ktl($, appInfo) {
                             [_0x4f2c(0x20)]: Knack.app.attributes.account.product_plan.level,
                             [_0x4f2c(0x22)]: ktlVersion,
                             [_0x4f2c(0x23)]: ktl.core.getCurrentDateTime(true, false, false, true),
-                            [_0x4f2c(0x25)]: totalCount,
-                            [_0x4f2c(0x26)]: JSON.stringify(keywordCounts),
-                            [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)
+                            // [_0x4f2c(0x25)]: totalCount,  // No longer sent - computed in Discovery Hub from raw data
+                            // [_0x4f2c(0x26)]: JSON.stringify(keywordCounts),  // No longer sent - computed in Discovery Hub from raw data
+                            [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)  // Raw data - single source of truth
                         };
 
                         $.ajax({
