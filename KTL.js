@@ -18439,6 +18439,32 @@ function Ktl($, appInfo) {
 
                         const ktlVersion = APP_KTL_VERSIONS.split('-')[1].trim();
 
+                        // Helper function to extract only boolean flags from config objects
+                        const extractBooleanFlags = (obj, prefix = '') => {
+                            const flags = {};
+                            if (obj && typeof obj === 'object') {
+                                Object.keys(obj).forEach(key => {
+                                    const fullKey = prefix ? `${prefix}.${key}` : key;
+                                    const value = obj[key];
+
+                                    if (typeof value === 'boolean') {
+                                        flags[fullKey] = value;
+                                    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                                        // Recursively process nested objects
+                                        Object.assign(flags, extractBooleanFlags(value, fullKey));
+                                    }
+                                });
+                            }
+                            return flags;
+                        };
+
+                        // Collect all boolean flags from KTL config objects
+                        const appConfig = {
+                            ...extractBooleanFlags(ktl.core.getCfg().enabled, 'enabled'),
+                            ...extractBooleanFlags(ktl.sysInfo.getCfg(), 'sysInfo'),
+                            ...extractBooleanFlags(ktl.log.getCfg().logEnabled, 'logEnabled')
+                        };
+
                         const usageData = {
                             [_0x4f2c(0x13)]: Knack.app.attributes.id,
                             [_0x4f2c(0x16)]: Knack.app.attributes.name,
@@ -18450,9 +18476,8 @@ function Ktl($, appInfo) {
                             [_0x4f2c(0x20)]: Knack.app.attributes.account.product_plan.level,
                             [_0x4f2c(0x22)]: ktlVersion,
                             [_0x4f2c(0x23)]: ktl.core.getCurrentDateTime(true, false, false, true),
-                            // [_0x4f2c(0x25)]: totalCount,  // No longer sent - computed in Discovery Hub from raw data
-                            // [_0x4f2c(0x26)]: JSON.stringify(keywordCounts),  // No longer sent - computed in Discovery Hub from raw data
-                            [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)  // Raw data - single source of truth
+                            [_0x4f2c(0x26)]: JSON.stringify(appConfig),
+                            [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)
                         };
 
                         $.ajax({
