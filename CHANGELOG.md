@@ -1,6 +1,14 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.35.0    *2025-11-30*
+
+- No more total count field.  Replaced by App Config.
+- Migrated keyword count code to data collection side.
+- Now using UTC time
+- Updating existing KTL usage record with grid.
+- KTL Usage: added detection of other ktl-prefixed params and options.
+
 ## 0.34.14    *2025-11-28*
 
 - KTL Usage, confirm before sending.
