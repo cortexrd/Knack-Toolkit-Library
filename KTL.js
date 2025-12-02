@@ -4753,6 +4753,10 @@ function Ktl($, appInfo) {
     //Will automatically save and load form data to prevent losses after a refresh, power outage, network loss or other.
     this.persistentForm = (function () {
         const PERSISTENT_FORM_DATA = 'persistentForm';
+        const MAX_CONNECTION_HYDRATE_RETRIES = 6;
+        const CONNECTION_HYDRATE_RETRY_DELAY = 500;
+        const CONNECTION_EVENT_WAIT_TIMEOUT = 5000;
+        const connectionHydrationQueue = new Map();
         //To see all data types:  console.log(Knack.config);
 
         //Add fields and scenes to exclude from persistence in these arrays.
@@ -5071,19 +5075,42 @@ function Ktl($, appInfo) {
         //If a viewId is supplied, only this form will be processed, otherwise all forms in scene.
         //Also adds Change event handlers for dropdowns and calendars.   Eventually, support all object types.
         //After loading, re-validates numeric fields and highlights errors in pink.
-        let allViewsDone = [];
+        let viewLoadPromises = new Map();
+
+        function parsePersistentFormStorage() {
+            const storedData = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
+            if (!storedData) return null;
+
+            try {
+                return JSON.parse(storedData);
+            } catch (error) {
+                console.error('Persistent Form - unable to parse stored data, clearing cache.', error);
+                ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA);
+                return null;
+            }
+        }
+
+        function persistFormDataCache(data) {
+            if (!data || $.isEmptyObject(data)) {
+                ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA);
+            } else {
+                ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(data));
+            }
+        }
         function loadFormData(viewId) {
-            return new Promise(function (resolve) {
-                if (allViewsDone.length) return resolve(); //Prevent re-entry until finished.
+            function markViewLoaded(targetViewId) {
+                if (!targetViewId) return;
+                $(`#${targetViewId}`).addClass('ktlPersistenFormLoadedView');
+                $(document).trigger(`KTL.persistentForm.completed.view.${targetViewId}`, targetViewId);
+            }
 
-                var formDataObjStr = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
+            return new Promise((resolve) => {
+                const parsedFormData = parsePersistentFormStorage();
 
-                //If nothing to load, just skip the rest and declare the view and scene as loaded and ready for further processing.
-                if (!formDataObjStr || $.isEmptyObject(JSON.parse(formDataObjStr))) {
-                    ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA); //Wipe out if empty object, JIC.
+                if (!parsedFormData || $.isEmptyObject(parsedFormData)) {
+                    persistFormDataCache(null);
                     if (viewId) {
-                        $(`#${viewId}`).addClass('ktlPersistenFormLoadedView');
-                        $(document).trigger(`KTL.persistentForm.completed.view.${viewId}`, viewId);
+                        markViewLoaded(viewId);
                     } else {
                         $('.kn-scene').addClass('ktlPersistenFormLoadedScene');
                         $(document).trigger('KTL.persistentForm.completed.scene', [Knack.router.scene_view.model]);
@@ -5091,205 +5118,428 @@ function Ktl($, appInfo) {
                     return resolve();
                 }
 
-                const formDataObj = {};
                 currentViews = {};
 
-                if (viewId) {
-                    const view = Knack.router.scene_view.model.views._byId[viewId];
-                    if (view && view.attributes)
-                        loadDataForView(view.attributes)
-                            .then(() => {
-                                if (view.attributes.type === 'form' && (view.attributes.action === 'insert' || view.attributes.action === 'create')) {
-                                    $(`#${view.attributes.key}`).addClass('ktlPersistenFormLoadedView');
-                                    $(document).trigger(`KTL.persistentForm.completed.view.${view.attributes.key}`, view.attributes.key);
-                                    return resolve();
-                                }
-                            })
-                } else {
-                    //All views in scene.
-                    Knack.router.scene_view.model.views.models.map(model => model.attributes).forEach(view => {
-                        allViewsDone.push(
-                            loadDataForView(view)
-                                .then(() => {
-                                    if (view.type === 'form' && (view.action === 'insert' || view.action === 'create')) {
-                                        $(`#${view.key}`).addClass('ktlPersistenFormLoadedView');
-                                        $(document).trigger(`KTL.persistentForm.completed.view.${view.key}`, view.key);
-                                    }
-                                })
-                        );
-                    })
+                const targetViews = getTargetViews(viewId);
+                if (!targetViews.length) return resolve();
 
-                    Promise.all(allViewsDone)
-                        .then(() => {
-                            allViewsDone = [];
-                            resolve();
-                        })
+                const loadPromises = targetViews.map(viewAttr => ensureViewLoadPromise(viewAttr, parsedFormData, markViewLoaded));
+                Promise.all(loadPromises).then(() => resolve());
+            });
+
+            function getTargetViews(targetViewId) {
+                const sceneView = Knack.router.scene_view;
+                if (!sceneView || !sceneView.model || !sceneView.model.views) return [];
+
+                if (targetViewId) {
+                    const viewModel = sceneView.model.views._byId[targetViewId];
+                    return (viewModel && viewModel.attributes) ? [viewModel.attributes] : [];
                 }
 
-                function loadDataForView(view) {
-                    return new Promise(function (resolve) {
-                        if (view.type !== 'form') return resolve();
+                return sceneView.model.views.models
+                    .map(model => model && model.attributes)
+                    .filter(Boolean);
+            }
 
-                        //Add only, not Edit or any other type
-                        if (view.action != 'insert' && view.action != 'create')
-                            return resolve();
+            function ensureViewLoadPromise(viewAttr, parsedFormData, markLoaded) {
+                if (!viewAttr) return Promise.resolve();
 
-                        const viewData = JSON.parse(formDataObjStr)[view.key];
-                        if (!viewData) return resolve();
+                const existingLoad = viewLoadPromises.get(viewAttr.key);
+                if (existingLoad) return existingLoad;
 
-                        const pfTimeout = setTimeout(function () { //Failsafe
-                            console.log('loadDataForView timeout expired.', viewId, pfTimeout);
-                            return resolve();
-                        }, 20000);
+                const loadPromise = loadDataForView(viewAttr, parsedFormData)
+                    .then(() => {
+                        if (viewAttr.type === 'form' && (viewAttr.action === 'insert' || viewAttr.action === 'create')) {
+                            markLoaded(viewAttr.key);
+                        }
+                    })
+                    .finally(() => {
+                        viewLoadPromises.delete(viewAttr.key);
+                    });
 
-                        currentViews[view.key] = view.key;
-                        formDataObj[view.key] = viewData;
+                viewLoadPromises.set(viewAttr.key, loadPromise);
+                return loadPromise;
+            }
 
-                        if (formDataObj[view.key] && formDataObj[view.key].expiryDate && new Date(formDataObj[view.key].expiryDate) < new Date()) {
-                            delete formDataObj[view.key];
-                            ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
-                            return resolve();
+            function loadDataForView(viewAttr, parsedFormData) {
+                return new Promise((resolve) => {
+                    if (!viewAttr || viewAttr.type !== 'form') return resolve();
+                    if (viewAttr.action !== 'insert' && viewAttr.action !== 'create') return resolve();
+
+                    const storedViewData = parsedFormData[viewAttr.key];
+                    if (!storedViewData) return resolve();
+
+                    const pfTimeout = setTimeout(() => {
+                        console.log('loadDataForView timeout expired.', viewAttr.key);
+                        finish();
+                    }, 20000);
+
+                    let finished = false;
+                    const finish = () => {
+                        if (finished) return;
+                        finished = true;
+                        clearTimeout(pfTimeout);
+                        resolve();
+                    };
+
+                    currentViews[viewAttr.key] = viewAttr.key;
+
+                    const hasReloadLastValues = Boolean(ktlKeywords[viewAttr.key] && ktlKeywords[viewAttr.key]._rlv);
+
+                    if (storedViewData.expiryDate && new Date(storedViewData.expiryDate) < new Date()) {
+                        delete parsedFormData[viewAttr.key];
+                        persistFormDataCache(parsedFormData);
+                        return finish();
+                    }
+
+                    const targetViewId = viewAttr.key;
+                    const keys = Object.keys(storedViewData).filter(key => key !== 'expiryDate');
+                    for (const fieldKey of keys) {
+                        const fieldIdMatch = fieldKey.match(/field_\d+/);
+                        const fieldId = fieldIdMatch ? fieldIdMatch[0] : null;
+
+                        if (fieldsToExclude.includes(fieldId)) {
+                            ktl.log.clog('purple', 'Skipped field for PF: ' + fieldId);
+                            continue;
                         }
 
-                        const keys = Object.keys(formDataObj[view.key]).filter(key => key !== 'expiryDate');
-                        for (const fieldKey of keys) {
-                            const fieldIdMatch = fieldKey.match(/field_\d+/);
-                            const fieldId = fieldIdMatch ? fieldIdMatch[0] : null;
+                        const field = fieldId ? Knack.objects.getField(fieldId) : null;
+                        if (!field) continue;
 
-                            if (fieldsToExclude.includes(fieldId)) {
-                                ktl.log.clog('purple', 'Skipped field for PF: ' + fieldId);
-                                continue; //JIC - should never happen since fieldsToExclude are never saved in the first place.
-                            }
+                        const fieldType = field.attributes.type;
+                        let fieldValue = storedViewData[fieldKey] || storedViewData[fieldId];
 
-                            const field = fieldId ? Knack.objects.getField(fieldId) : null;
-                            if (!field) continue;
+                        if (fieldType === 'rich_text') {
+                            hydrateRichTextField({ fieldId, fieldValue, viewId: targetViewId });
+                        } else if (TEXT_DATA_TYPES.includes(fieldType)) {
+                            hydrateTextField({ fieldId, fieldKey, fieldValue, viewId: targetViewId, field, formDataObj: parsedFormData, preserveFieldData: hasReloadLastValues });
+                        } else if (fieldType === 'connection') {
+                            hydrateConnectionField({ fieldId, fieldValue, viewId: targetViewId, formDataObj: parsedFormData });
+                        } else if (fieldType === 'multiple_choice') {
+                            hydrateMultipleChoiceField({ fieldId, fieldValue, viewId: targetViewId, field });
+                        } else if (fieldType === 'boolean') {
+                            hydrateBooleanField({ fieldId, fieldValue, viewId: targetViewId, field });
+                        } else if (['password', 'file', 'image'].includes(fieldType)) {
+                            //Ignore.
+                        } else {
+                            ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
+                        }
 
-                            let subField = '';
-                            const fieldType = field.attributes.type;
-                            let fieldText = formDataObj[view.key][fieldKey] || formDataObj[view.key][fieldId]; //fieldKey is required for Date/Time suffixes.
+                        if (!hasReloadLastValues) {
+                            delete storedViewData[fieldKey];
+                        }
+                    }
 
-                            if (fieldType === 'rich_text') {
-                                $(`#${view.key} #${fieldId}`).data('redactor').code.set(fieldText);
-                            } else if (TEXT_DATA_TYPES.includes(fieldType)) {
-                                const setFieldText = (subField) => {
-                                    const selectElement = $(`#${view.key} [data-input-id=${fieldId}] select[name="${subField}"]`);
+                    if (!hasReloadLastValues) {
+                        delete parsedFormData[targetViewId];
+                    }
 
-                                    if (selectElement.length) {
-                                        selectElement.val(fieldText);
-                                        return;
-                                    }
+                    persistFormDataCache(parsedFormData);
+                    finish();
+                });
+            }
+        }
 
-                                    let el;
-                                    if (fieldType === 'date_time' || fieldType === 'timer')
-                                        el = document.querySelector(`#${viewId}-${fieldKey}`);
-                                    else {
-                                        const selector1 = `#${view.key} [data-input-id=${fieldId}] #${subField}.input`;
-                                        const selector2 = `#${view.key} [data-input-id=${fieldId}] input`;
-                                        const selector3 = `#${view.key} [data-input-id=${fieldId}] .kn-textarea`;
+        function hydrateRichTextField({ fieldId, fieldValue, viewId }) {
+            const editor = $(`#${viewId} #${fieldId}`);
+            if (!editor.length) return;
+            editor.data('redactor').code.set(fieldValue);
+        }
 
-                                        el = document.querySelector(selector1) || document.querySelector(selector2) || document.querySelector(selector3);
-                                    }
+        function hydrateTextField({ fieldId, fieldKey, fieldValue, viewId, field, formDataObj, preserveFieldData = false }) {
+            const viewElement = document.getElementById(viewId);
+            if (!viewElement) return;
+            const fieldContainer = viewElement.querySelector(`[data-input-id="${fieldId}"]`);
+            if (!fieldContainer) return;
 
-                                    if (el)
-                                        $(el).val(fieldText);
-                                }
-
-                                if (typeof fieldText === 'object') {
-                                    //If we have an object instead of plain text, we need to recurse into it for each sub-field.
-                                    //Ex: name and address field types.
-                                    const allSubFields = Object.keys(formDataObj[view.key][fieldId]);
-                                    allSubFields.forEach(function (eachSubField) {
-                                        fieldText = formDataObj[view.key][fieldId][eachSubField];
-                                        setFieldText(eachSubField);
-                                        delete formDataObj[view.key][fieldId][eachSubField];
-                                    })
-                                } else {
-                                    setFieldText();
-                                    delete formDataObj[view.key][fieldKey];
-                                }
-                            } else if (fieldType === 'connection') {
-                                if (typeof fieldText === 'object') {
-                                    subField = Object.keys(formDataObj[view.key][fieldId]);
-                                    fieldText = formDataObj[view.key][fieldId][subField];
-                                }
-
-                                if ($(`#${view.key}-${fieldId}`).hasClass('chzn-select')) {
-                                    const options = fieldText.split(';').map(record => {
-                                        const [label, id] = record.split(':');
-                                        return { label, id };
-                                    }).filter(v => !!v.id && ktl.core.hasRecordIdFormat(v.id));
-
-                                    const input = $(`#${view.key}-${fieldId}`);
-
-                                    options.forEach(option => {
-                                        if (!input.find(`option[value="${option.id}"]`).length) {
-                                            input.append(`<option value="${option.id}">${option.label}</option>`);
-                                        }
-                                    });
-
-                                    const values = input.val() || [];
-                                    input.val([...values, ...options.map(o => o.id)]).trigger("liszt:updated");
-                                } else if ($(`#${view.key} #connection-picker-radio-${fieldId}`).length) { // Radio buttons
-                                    $(`#${view.key} #connection-picker-radio-${fieldId} input[value="${fieldText}"]`).click();
-                                } else if ($(`#${view.key} #connection-picker-checkbox-${fieldId}`).length) { // Checkboxes
-                                    //Wait until finished loading.
-                                    ktl.core.waitSelector(`#${viewId} #connection-picker-checkbox-${fieldId} span:textEquals("loading...")`, 10000, 'none')
-                                        .then(() => {
-                                            const values = fieldText.split(',');
-                                            for (const value of values) {
-                                                if (!$(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${value}"]`)[0].checked)
-                                                    $(`#${view.key} #connection-picker-checkbox-${fieldId} input[value="${value}"]`).click();
-                                            }
-                                        })
-                                        .catch(() => { })
-                                }
-                            } else if (fieldType === 'multiple_choice') {
-                                if (typeof fieldText === 'object') {
-                                    Object.keys(formDataObj[view.key][fieldId]).forEach(subField => {
-                                        const value = formDataObj[view.key][fieldId][subField];
-                                        $(`#${subField}`).val(value);
-                                    })
-                                } else if (field.attributes.format.type === 'radios') {
-                                    $(`#${view.key} #kn-input-${fieldId} [value="${fieldText}"]`).click();
-                                } else if (field.attributes.format.type === 'checkboxes') {
-                                    const options = JSON.parse(fieldText);
-                                    Object.keys(options).forEach(key => {
-                                        const option = $(`#${view.key} [data-input-id="${fieldId}"] input[value="${key}"]`).first();
-                                        if (options[key] != option.prop('checked')) {
-                                            option.click();
-                                        }
-                                    })
-                                } else {
-                                    const values = $(`#${view.key}-${fieldId}`).val() || [];
-                                    const choices = fieldText.split(';').map(choice => choice.split(':')[0])
-                                    $(`#${view.key}-${fieldId}`).val([...values, ...choices]).trigger("liszt:updated");
-                                }
-                            } else if (fieldType === 'boolean') {
-                                if (field.attributes.format.input === 'checkbox') {
-                                    if (fieldText === 'true')
-                                        $(`#${view.key} [data-input-id="${fieldId}"] input`).first().click();
-                                } else if (field.attributes.format.input === 'radios')
-                                    $(`#${view.key} [data-input-id="${fieldId}"] input[value="${fieldText}"]`).first().click();
-                                else {
-                                    $(`#${view.key} [data-input-id="${fieldId}"] option`).removeAttr('selected');
-                                    $(`#${view.key} [data-input-id="${fieldId}"] option[value=${fieldText}]`).attr('selected', 'selected');
-                                    $(`#${view.key} select#${fieldId}.select`).trigger('change');
-                                }
-                            } else if (['password', 'file', 'image'].includes(fieldType)) {
-                                //Ignore.
-                            } else {
-                                ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
-                            }
-
-                            delete formDataObj[view.key][fieldKey];
-                        };
-
-                        clearTimeout(pfTimeout);
-                        delete formDataObj[view.key];
-                        return resolve();
-                    })
+            const setFieldText = (subField = '') => {
+                if (subField) {
+                    const selectElement = fieldContainer.querySelector(`select[name="${subField}"]`);
+                    if (selectElement) {
+                        selectElement.value = fieldValue;
+                        return;
+                    }
                 }
-            })
+
+                let element;
+                if (field.attributes.type === 'date_time' || field.attributes.type === 'timer') {
+                    element = document.querySelector(`#${viewId}-${fieldKey}`);
+                } else {
+                    if (subField) {
+                        const escapedSubField = escapeForAttribute(subField);
+                        element = fieldContainer.querySelector(`#${escapedSubField}.input`) ||
+                            fieldContainer.querySelector(`#${escapedSubField}`);
+                    }
+
+                    if (!element) {
+                        element = fieldContainer.querySelector('input') ||
+                            fieldContainer.querySelector('.kn-textarea');
+                    }
+                }
+
+                if (element) {
+                    if ('value' in element) {
+                        element.value = fieldValue;
+                    } else {
+                        element.textContent = fieldValue;
+                    }
+                }
+            };
+
+            if (typeof fieldValue === 'object') {
+                const subFields = Object.keys(formDataObj[viewId][fieldId] || {});
+                subFields.forEach(subField => {
+                    fieldValue = formDataObj[viewId][fieldId][subField];
+                    setFieldText(subField);
+                    if (!preserveFieldData) {
+                        delete formDataObj[viewId][fieldId][subField];
+                    }
+                });
+            } else {
+                setFieldText();
+                if (!preserveFieldData && formDataObj[viewId]) {
+                    delete formDataObj[viewId][fieldKey];
+                }
+            }
+        }
+
+        function hydrateConnectionField({ fieldId, fieldValue, viewId, formDataObj }) {
+            if (typeof fieldValue === 'object' && formDataObj[viewId] && formDataObj[viewId][fieldId]) {
+                const [subField] = Object.keys(formDataObj[viewId][fieldId]);
+                fieldValue = subField ? formDataObj[viewId][fieldId][subField] : '';
+            }
+
+            if (!fieldValue) return;
+
+            enqueueConnectionHydration({ fieldId, fieldValue, viewId });
+        }
+
+        function hydrateMultipleChoiceField({ fieldId, fieldValue, viewId, field }) {
+            if (typeof fieldValue === 'object') {
+                Object.keys(fieldValue).forEach(subField => {
+                    const element = document.getElementById(subField);
+                    if (element) element.value = fieldValue[subField];
+                });
+            } else if (field.attributes.format.type === 'radios') {
+                const radio = document.querySelector(`#${viewId} #kn-input-${fieldId} [value="${escapeForAttribute(fieldValue)}"]`);
+                radio && radio.click();
+            } else if (field.attributes.format.type === 'checkboxes') {
+                const options = JSON.parse(fieldValue);
+                Object.keys(options).forEach(key => {
+                    const option = document.querySelector(`#${viewId} [data-input-id="${fieldId}"] input[value="${escapeForAttribute(key)}"]`);
+                    if (option && option.checked !== Boolean(options[key])) option.click();
+                });
+            } else {
+                const values = $(`#${viewId}-${fieldId}`).val() || [];
+                const choices = fieldValue.split(';').map(choice => choice.split(':')[0])
+                $(`#${viewId}-${fieldId}`).val([...values, ...choices]).trigger("liszt:updated");
+            }
+        }
+
+        function hydrateBooleanField({ fieldId, fieldValue, viewId, field }) {
+            if (field.attributes.format.input === 'checkbox') {
+                const checkbox = document.querySelector(`#${viewId} [data-input-id="${fieldId}"] input`);
+                if (checkbox && fieldValue === 'true' && !checkbox.checked) checkbox.click();
+            } else if (field.attributes.format.input === 'radios') {
+                const radio = document.querySelector(`#${viewId} [data-input-id="${fieldId}"] input[value="${escapeForAttribute(fieldValue)}"]`);
+                radio && radio.click();
+            } else {
+                const selectElement = document.querySelector(`#${viewId} select#${fieldId}.select`);
+                if (selectElement) {
+                    selectElement.value = fieldValue;
+                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+
+        function applyConnectionFieldValue({ fieldId, fieldValue, viewId }) {
+            if (!fieldValue) return true;
+
+            const selectSelector = `#${viewId}-${fieldId}`;
+            const select = $(selectSelector);
+            if (select.length && select.hasClass('chzn-select')) {
+                const optionStrings = ktl.core.splitAndTrimToArray(fieldValue, ';');
+                const options = optionStrings.map(record => {
+                    const [label, id] = record.split(':');
+                    return { label, id };
+                }).filter(option => option.id && ktl.core.hasRecordIdFormat(option.id));
+
+                if (!options.length) return false;
+
+                options.forEach(option => {
+                    if (!select.find(`option[value="${option.id}"]`).length) {
+                        select.append(`<option value="${option.id}">${option.label}</option>`);
+                    }
+                });
+
+                const existingValue = select.val();
+                const currentValues = Array.isArray(existingValue)
+                    ? existingValue
+                    : (existingValue ? [existingValue] : []);
+
+                const mergedValues = [...new Set([...currentValues, ...options.map(o => o.id)])];
+
+                select.val(mergedValues).trigger('liszt:updated').trigger('change');
+
+                const appliedValues = select.val();
+                const appliedArray = Array.isArray(appliedValues)
+                    ? appliedValues
+                    : (appliedValues ? [appliedValues] : []);
+
+                return mergedValues.every(value => appliedArray.includes(value));
+            }
+
+            const radioContainer = document.querySelector(`#${viewId} #connection-picker-radio-${fieldId}`);
+            if (radioContainer) {
+                const radio = radioContainer.querySelector(`input[value="${escapeForAttribute(fieldValue)}"]`);
+                if (radio) {
+                    if (!radio.checked) radio.click();
+                    return radio.checked;
+                }
+                return false;
+            }
+
+            const checkboxContainer = document.querySelector(`#${viewId} #connection-picker-checkbox-${fieldId}`);
+            if (checkboxContainer) {
+                const values = fieldValue.split(',').map(value => value.trim()).filter(Boolean);
+                if (!values.length) return true;
+
+                let success = true;
+                values.forEach(value => {
+                    const checkbox = checkboxContainer.querySelector(`input[value="${escapeForAttribute(value)}"]`);
+                    if (checkbox) {
+                        if (!checkbox.checked) checkbox.click();
+                        success = success && checkbox.checked;
+                    } else {
+                        success = false;
+                    }
+                });
+
+                return success;
+            }
+
+            const nativeSelect = document.querySelector(selectSelector);
+            if (nativeSelect) {
+                nativeSelect.value = fieldValue;
+                nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                return nativeSelect.value === fieldValue;
+            }
+
+            return false;
+        }
+
+        function enqueueConnectionHydration({ fieldId, fieldValue, viewId }) {
+            if (!fieldValue || !viewId) return;
+
+            let state = connectionHydrationQueue.get(viewId);
+            if (!state) {
+                state = {
+                    pending: new Map(),
+                    handler: null,
+                    retryTimer: null,
+                };
+                connectionHydrationQueue.set(viewId, state);
+            }
+
+            state.pending.set(fieldId, {
+                fieldValue,
+                attempts: 0,
+                awaitingEvent: false,
+                eventDeadline: 0,
+            });
+
+            attachConnectionHydrationListener(viewId);
+            runPendingConnectionHydrations(viewId);
+        }
+
+        function runPendingConnectionHydrations(viewId, triggeredByEvent = false) {
+            const state = connectionHydrationQueue.get(viewId);
+            if (!state) return;
+
+            if (state.retryTimer) {
+                clearTimeout(state.retryTimer);
+                state.retryTimer = null;
+            }
+
+            let needsRetryTimer = false;
+
+            state.pending.forEach((entry, fieldId) => {
+                if (entry.awaitingEvent && !triggeredByEvent) {
+                    if (Date.now() >= entry.eventDeadline) {
+                        entry.awaitingEvent = false;
+                    } else {
+                        needsRetryTimer = true;
+                        return;
+                    }
+                }
+
+                const success = applyConnectionFieldValue({ fieldId, fieldValue: entry.fieldValue, viewId });
+                if (success) {
+                    if (triggeredByEvent) {
+                        state.pending.delete(fieldId);
+                    } else {
+                        entry.awaitingEvent = true;
+                        entry.eventDeadline = Date.now() + CONNECTION_EVENT_WAIT_TIMEOUT;
+                        entry.attempts = 0;
+                        needsRetryTimer = true;
+                    }
+                } else {
+                    entry.attempts += 1;
+                    if (entry.attempts >= MAX_CONNECTION_HYDRATE_RETRIES) {
+                        console.warn('Persistent Form - connection hydration exceeded retries', viewId, fieldId);
+                        state.pending.delete(fieldId);
+                    } else {
+                        needsRetryTimer = true;
+                    }
+                }
+            });
+
+            if (state.pending.size === 0) {
+                teardownConnectionHydrationState(viewId);
+                return;
+            }
+
+            if (needsRetryTimer && !state.retryTimer) {
+                state.retryTimer = setTimeout(() => {
+                    state.retryTimer = null;
+                    runPendingConnectionHydrations(viewId);
+                }, CONNECTION_HYDRATE_RETRY_DELAY);
+            }
+        }
+
+        function attachConnectionHydrationListener(viewId) {
+            const state = connectionHydrationQueue.get(viewId);
+            if (!state || state.handler) return;
+
+            const eventName = `knack-connections-load.${viewId}`;
+            const handler = () => {
+                setTimeout(() => runPendingConnectionHydrations(viewId, true), 0);
+            };
+
+            state.handler = handler;
+            $(document).on(eventName, handler);
+        }
+
+        function teardownConnectionHydrationState(viewId) {
+            const state = connectionHydrationQueue.get(viewId);
+            if (!state) return;
+
+            if (state.handler) {
+                $(document).off(`knack-connections-load.${viewId}`, state.handler);
+            }
+
+            if (state.retryTimer) {
+                clearTimeout(state.retryTimer);
+            }
+
+            connectionHydrationQueue.delete(viewId);
+        }
+
+        function escapeForAttribute(value = '') {
+            if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+                return CSS.escape(value);
+            }
+            return value.replace(/["\\]/g, '\\$&');
         }
 
         //Remove all saved data for this view after a submit
