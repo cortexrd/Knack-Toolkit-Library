@@ -3,6 +3,7 @@
 
 ## 0.35.0    *2025-11-30*
 
+- Official release of the KTL Discovery Hub
 - No more total count field.  Replaced by App Config.
 - Migrated keyword count code to data collection side.
 - Now using UTC time

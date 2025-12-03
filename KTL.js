@@ -3432,7 +3432,10 @@ function Ktl($, appInfo) {
         $(document).on('KTL.persistentForm.completed.scene', function (event, viewOrScene) {
             //This is required because when removing the last option from a multiple selection dropdown, the change event is not fired.
             $('.search-choice-close').off('click.ktl_removeoption').bindFirst('click.ktl_removeoption', function (e) {
-                const [viewId, fieldId] = $(e.target).closest('.kn-input').find('.chzn-select').attr('id').split('-');
+                const selectId = $(e.target).closest('.kn-input').find('.chzn-select').attr('id');
+                if (!selectId) return; // Skip if not a form input (e.g., search filters)
+
+                const [viewId, fieldId] = selectId.split('-');
 
                 setTimeout(() => {
                     const options = $(e.target).closest('.kn-input-connection').find('.chzn-select [value]').toArray();
