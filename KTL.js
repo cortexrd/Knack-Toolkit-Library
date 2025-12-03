@@ -4757,10 +4757,13 @@ function Ktl($, appInfo) {
     this.persistentForm = (function () {
         const PERSISTENT_FORM_DATA = 'persistentForm';
         const MAX_CONNECTION_HYDRATE_RETRIES = 6;
-        const CONNECTION_HYDRATE_RETRY_DELAY = 500;
+        const CONNECTION_HYDRATE_RETRY_DELAY_MIN = 100;
+        const CONNECTION_HYDRATE_RETRY_DELAY_MAX = 600;
+        const CONNECTION_HYDRATE_VERIFY_DELAY = 120;
         const FIELD_DEFINITION_CACHE = new Map();
         const CONNECTION_HYDRATION_QUEUE = new Map();
         const HYDRATING_VIEWS = new Set();
+        const PENDING_HYDRATION_SAVES = new Map();
         //To see all data types:  console.log(Knack.config);
 
         //Add fields and scenes to exclude from persistence in these arrays.
@@ -4783,6 +4786,8 @@ function Ktl($, appInfo) {
                     eraseFormData(viewId);
 
                 currentViews = {};
+                clearAllConnectionHydrationStates();
+                FIELD_DEFINITION_CACHE.clear();
             }
 
             ktl.fields.sceneConvertNumToTel().then(() => {
@@ -4946,7 +4951,10 @@ function Ktl($, appInfo) {
         function saveFormData(data, viewId, fieldId, subField) {
             // Guard clauses
             if (!pfIsInitialized || !fieldId || !viewId || !viewId.startsWith('view_')) return;
-            if (HYDRATING_VIEWS.has(viewId)) return;
+            if (HYDRATING_VIEWS.has(viewId)) {
+                queuePendingHydrationSave({ data, viewId, fieldId, subField });
+                return;
+            }
 
             const fieldType = ktl.fields.getFieldType(fieldId);
             if (!fieldType || fieldType === 'password') return;
@@ -5037,17 +5045,13 @@ function Ktl($, appInfo) {
                 formDataObj[viewId][fieldId][subField] = data;
             }
 
-            // Cleanup empty objects
+            // Cleanup empty view data
             if (Object.keys(formDataObj[viewId]).length === 0) {
                 delete formDataObj[viewId];
             }
 
-            // Save or remove data
-            if (Object.keys(formDataObj).length === 0) {
-                ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA);
-            } else {
-                ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
-            }
+            // Save or remove data via shared helper
+            persistFormDataCache(formDataObj);
 
             currentViews[viewId] = viewId;
 
@@ -5078,6 +5082,7 @@ function Ktl($, appInfo) {
         //Also adds Change event handlers for dropdowns and calendars.   Eventually, support all object types.
         //After loading, re-validates numeric fields and highlights errors in pink.
         let viewLoadPromises = new Map();
+        let formDataVersion = 0;
 
         function parsePersistentFormStorage() {
             const storedData = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
@@ -5115,12 +5120,13 @@ function Ktl($, appInfo) {
                 }
 
                 currentViews = {};
+                const versionToken = ++formDataVersion;
 
                 const targetViews = getTargetViews(viewId);
                 if (!targetViews.length) return resolve();
 
                 const loadPromises = targetViews.map(viewAttr =>
-                    ensureViewLoadPromise(viewAttr, parsedFormData, markViewLoaded)
+                    ensureViewLoadPromise(viewAttr, parsedFormData, markViewLoaded, versionToken)
                 );
 
                 Promise.all(loadPromises).then(() => {
@@ -5145,11 +5151,13 @@ function Ktl($, appInfo) {
                     .filter(Boolean);
             }
 
-            function ensureViewLoadPromise(viewAttr, parsedFormData, markLoaded) {
+            function ensureViewLoadPromise(viewAttr, parsedFormData, markLoaded, versionToken) {
                 if (!viewAttr) return Promise.resolve();
 
                 const existingLoad = viewLoadPromises.get(viewAttr.key);
-                if (existingLoad) return existingLoad;
+                if (existingLoad && existingLoad.version === versionToken) {
+                    return existingLoad.promise;
+                }
 
                 const loadPromise = loadDataForView(viewAttr, parsedFormData)
                     .then(() => {
@@ -5158,10 +5166,13 @@ function Ktl($, appInfo) {
                         }
                     })
                     .finally(() => {
-                        viewLoadPromises.delete(viewAttr.key);
+                        const cached = viewLoadPromises.get(viewAttr.key);
+                        if (cached && cached.promise === loadPromise) {
+                            viewLoadPromises.delete(viewAttr.key);
+                        }
                     });
 
-                viewLoadPromises.set(viewAttr.key, loadPromise);
+                viewLoadPromises.set(viewAttr.key, { promise: loadPromise, version: versionToken });
                 return loadPromise;
             }
         }
@@ -5191,7 +5202,9 @@ function Ktl($, appInfo) {
                 function finish() {
                     if (finished) return;
                     finished = true;
+                    teardownConnectionHydrationState(targetViewId);
                     HYDRATING_VIEWS.delete(targetViewId);
+                    flushPendingHydrationSaves(targetViewId);
                     clearTimeout(pfTimeout);
                     resolve();
                 }
@@ -5276,18 +5289,20 @@ function Ktl($, appInfo) {
                     } else {
                         ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
                     }
-
-                    if (!hasReloadLastValues) {
-                        delete storedViewData[fieldKey];
-                    }
                 }
 
-                if (!hasReloadLastValues) {
-                    delete parsedFormData[targetViewId];
-                }
+                Promise.resolve(waitForConnectionHydrationCompletion(targetViewId))
+                    .catch(error => {
+                        console.warn('Persistent Form - connection hydration wait failed', targetViewId, error);
+                    })
+                    .finally(() => {
+                        if (!hasReloadLastValues) {
+                            delete parsedFormData[targetViewId];
+                        }
 
-                persistFormDataCache(parsedFormData);
-                finish();
+                        persistFormDataCache(parsedFormData);
+                        finish();
+                    });
             });
         }
 
@@ -5415,8 +5430,22 @@ function Ktl($, appInfo) {
         function hydrateConnectionField({ fieldId, fieldValue, viewId, formDataObj }) {
             let normalizedValue = fieldValue;
             if (typeof normalizedValue === 'object' && formDataObj[viewId] && formDataObj[viewId][fieldId]) {
-                const [subField] = Object.keys(formDataObj[viewId][fieldId]);
-                normalizedValue = subField ? formDataObj[viewId][fieldId][subField] : '';
+                const fieldData = formDataObj[viewId][fieldId];
+                const subFields = Object.keys(fieldData);
+
+                if (subFields.length > 1) {
+                    console.warn('Persistent Form - multiple connection subfields detected', {
+                        viewId,
+                        fieldId,
+                        subFields,
+                    });
+                }
+
+                const aggregatedValues = subFields
+                    .map(subField => fieldData[subField])
+                    .filter(value => Boolean(value && String(value).trim().length));
+
+                normalizedValue = aggregatedValues.join(';');
             }
 
             if (!normalizedValue) return;
@@ -5438,7 +5467,15 @@ function Ktl($, appInfo) {
                     const options = JSON.parse(fieldValue);
                     Object.keys(options).forEach(key => {
                         const option = document.querySelector(`#${viewId} [data-input-id="${fieldId}"] input[value="${escapeForAttributeValue(key)}"]`);
-                        if (option && option.checked !== Boolean(options[key])) option.click();
+                        if (!option) return;
+
+                        const rawValue = options[key];
+                        const shouldBeChecked =
+                            typeof rawValue === 'boolean'
+                                ? rawValue
+                                : rawValue === 'true' || rawValue === 1 || rawValue === '1';
+
+                        if (option.checked !== shouldBeChecked) option.click();
                     });
                 } catch (error) {
                     console.warn('Persistent Form - invalid multiple choice data', fieldId, error);
@@ -5453,7 +5490,14 @@ function Ktl($, appInfo) {
         function hydrateBooleanField({ fieldId, fieldValue, viewId, field }) {
             if (field.attributes.format.input === 'checkbox') {
                 const checkbox = document.querySelector(`#${viewId} [data-input-id="${fieldId}"] input`);
-                if (checkbox && fieldValue === 'true' && !checkbox.checked) checkbox.click();
+                if (!checkbox) return;
+
+                const shouldBeChecked = normalizeBooleanValue(fieldValue);
+                if (shouldBeChecked === null) return;
+
+                if (checkbox.checked !== shouldBeChecked) {
+                    checkbox.click();
+                }
             } else if (field.attributes.format.input === 'radios') {
                 const radio = document.querySelector(`#${viewId} [data-input-id="${fieldId}"] input[value="${escapeForAttributeValue(fieldValue)}"]`);
                 radio && radio.click();
@@ -5544,6 +5588,9 @@ function Ktl($, appInfo) {
                     pending: new Map(),
                     handler: null,
                     retryTimer: null,
+                    retryDelayIndex: 0,
+                    completionPromise: null,
+                    resolveCompletion: null,
                 };
                 CONNECTION_HYDRATION_QUEUE.set(viewId, state);
             }
@@ -5551,6 +5598,8 @@ function Ktl($, appInfo) {
             state.pending.set(fieldId, {
                 fieldValue,
                 attempts: 0,
+                pendingVerification: false,
+                verificationTimer: null,
             });
 
             attachConnectionHydrationListener(viewId);
@@ -5569,10 +5618,12 @@ function Ktl($, appInfo) {
             let needsRetryTimer = false;
 
             state.pending.forEach((entry, fieldId) => {
+                if (entry.pendingVerification) return;
+
                 const success = applyConnectionFieldValue({ fieldId, fieldValue: entry.fieldValue, viewId });
                 if (success) {
-                    state.pending.delete(fieldId);
-                    return;
+                    entry.pendingVerification = true;
+                    scheduleConnectionHydrationVerification({ fieldId, viewId });
                 } else {
                     entry.attempts += 1;
                     if (entry.attempts >= MAX_CONNECTION_HYDRATE_RETRIES) {
@@ -5589,11 +5640,8 @@ function Ktl($, appInfo) {
                 return;
             }
 
-            if (needsRetryTimer && !state.retryTimer) {
-                state.retryTimer = setTimeout(() => {
-                    state.retryTimer = null;
-                    runPendingConnectionHydrations(viewId);
-                }, CONNECTION_HYDRATE_RETRY_DELAY);
+            if (needsRetryTimer) {
+                scheduleConnectionHydrationRetry(viewId);
             }
         }
 
@@ -5623,7 +5671,189 @@ function Ktl($, appInfo) {
                 clearTimeout(state.retryTimer);
             }
 
+            state.pending.forEach(entry => {
+                if (entry.verificationTimer) {
+                    clearTimeout(entry.verificationTimer);
+                }
+            });
+
+            state.retryDelayIndex = 0;
+
+            if (state.resolveCompletion) {
+                state.resolveCompletion();
+            }
+
             CONNECTION_HYDRATION_QUEUE.delete(viewId);
+        }
+
+        function scheduleConnectionHydrationRetry(viewId) {
+            const state = CONNECTION_HYDRATION_QUEUE.get(viewId);
+            if (!state || state.retryTimer) return;
+
+            const delay = Math.min(
+                CONNECTION_HYDRATE_RETRY_DELAY_MIN * Math.pow(2, state.retryDelayIndex),
+                CONNECTION_HYDRATE_RETRY_DELAY_MAX
+            );
+
+            state.retryDelayIndex = Math.min(state.retryDelayIndex + 1, 10);
+
+            state.retryTimer = setTimeout(() => {
+                state.retryTimer = null;
+                runPendingConnectionHydrations(viewId);
+            }, delay);
+        }
+
+        function scheduleConnectionHydrationVerification({ fieldId, viewId }) {
+            const state = CONNECTION_HYDRATION_QUEUE.get(viewId);
+            if (!state) return;
+
+            const entry = state.pending.get(fieldId);
+            if (!entry) return;
+
+            entry.verificationTimer = setTimeout(() => {
+                entry.pendingVerification = false;
+                entry.verificationTimer = null;
+
+                const verified = verifyConnectionHydration({ fieldId, fieldValue: entry.fieldValue, viewId });
+                if (verified) {
+                    state.pending.delete(fieldId);
+                    resetConnectionHydrationBackoff(state);
+                    if (state.pending.size === 0) {
+                        teardownConnectionHydrationState(viewId);
+                    }
+                } else {
+                    entry.attempts += 1;
+                    if (entry.attempts >= MAX_CONNECTION_HYDRATE_RETRIES) {
+                        console.warn('Persistent Form - connection hydration verification failed', viewId, fieldId);
+                        state.pending.delete(fieldId);
+                        if (state.pending.size === 0) {
+                            teardownConnectionHydrationState(viewId);
+                        }
+                    } else {
+                        scheduleConnectionHydrationRetry(viewId);
+                    }
+                }
+            }, CONNECTION_HYDRATE_VERIFY_DELAY);
+        }
+
+        function verifyConnectionHydration({ fieldId, fieldValue, viewId }) {
+            const selectSelector = `#${viewId}-${fieldId}`;
+            const select = $(selectSelector);
+            if (select.length && select.hasClass('chzn-select')) {
+                const expectedIds = parseConnectionOptionIds(fieldValue);
+                const appliedValues = select.val();
+                const appliedArray = Array.isArray(appliedValues)
+                    ? appliedValues.filter(Boolean)
+                    : (appliedValues ? [appliedValues] : []);
+                const appliedSet = new Set(appliedArray);
+                return expectedIds.every(id => appliedSet.has(id));
+            }
+
+            const radioContainer = document.querySelector(`#${viewId} #connection-picker-radio-${fieldId}`);
+            if (radioContainer) {
+                const radio = radioContainer.querySelector(`input[value="${escapeForAttributeValue(fieldValue)}"]`);
+                return Boolean(radio && radio.checked);
+            }
+
+            const checkboxContainer = document.querySelector(`#${viewId} #connection-picker-checkbox-${fieldId}`);
+            if (checkboxContainer) {
+                const expectedValues = ktl.core.splitAndTrimToArray(fieldValue, ',');
+                return expectedValues.every(value => {
+                    const checkbox = checkboxContainer.querySelector(`input[value="${escapeForAttributeValue(value)}"]`);
+                    return Boolean(checkbox && checkbox.checked);
+                });
+            }
+
+            return false;
+        }
+
+        function parseConnectionOptionIds(fieldValue = '') {
+            const optionStrings = ktl.core.splitAndTrimToArray(fieldValue, ';');
+            return optionStrings
+                .map(record => {
+                    const parts = record.split(':');
+                    return parts.length > 1 ? parts[1] : parts[0];
+                })
+                .filter(id => id && ktl.core.hasRecordIdFormat(id));
+        }
+
+        function normalizeBooleanValue(value) {
+            if (typeof value === 'boolean') {
+                return value;
+            }
+
+            if (typeof value === 'string') {
+                const lower = value.toLowerCase().trim();
+                if (lower === 'true') return true;
+                if (lower === 'false') return false;
+            }
+
+            if (value === 1 || value === '1') return true;
+            if (value === 0 || value === '0') return false;
+
+            return null;
+        }
+
+        function waitForConnectionHydrationCompletion(viewId) {
+            const state = CONNECTION_HYDRATION_QUEUE.get(viewId);
+            if (!state) return Promise.resolve();
+
+            if (!state.completionPromise) {
+                state.completionPromise = new Promise(resolve => {
+                    state.resolveCompletion = resolve;
+                });
+            }
+
+            return state.completionPromise;
+        }
+
+        function clearAllConnectionHydrationStates() {
+            CONNECTION_HYDRATION_QUEUE.forEach((_, viewId) => {
+                teardownConnectionHydrationState(viewId);
+            });
+        }
+
+        function resetConnectionHydrationBackoff(state) {
+            if (state) {
+                state.retryDelayIndex = 0;
+            }
+        }
+
+        function queuePendingHydrationSave({ data, viewId, fieldId, subField }) {
+            if (!viewId || !fieldId) return;
+
+            const queuedValue = clonePersistedValue(data);
+            const existingQueue = PENDING_HYDRATION_SAVES.get(viewId) || [];
+
+            existingQueue.push({
+                data: queuedValue,
+                fieldId,
+                subField: subField || '',
+            });
+
+            PENDING_HYDRATION_SAVES.set(viewId, existingQueue);
+        }
+
+        function flushPendingHydrationSaves(viewId) {
+            if (!viewId) return;
+            const queue = PENDING_HYDRATION_SAVES.get(viewId);
+            if (!queue || !queue.length) return;
+
+            PENDING_HYDRATION_SAVES.delete(viewId);
+
+            queue.forEach(entry => {
+                saveFormData(entry.data, viewId, entry.fieldId, entry.subField);
+            });
+        }
+
+        function clonePersistedValue(value) {
+            if (value === null || typeof value !== 'object') return value;
+            try {
+                return JSON.parse(JSON.stringify(value));
+            } catch (error) {
+                console.warn('Persistent Form - unable to clone pending save value', error);
+                return value;
+            }
         }
 
         function escapeForCssIdentifier(value = '') {
@@ -5648,6 +5878,7 @@ function Ktl($, appInfo) {
         function eraseFormData(viewId) {
             // Handle single view case
             if (viewId) {
+                PENDING_HYDRATION_SAVES.delete(viewId);
                 const formData = ktl.storage.lsGetItem(PERSISTENT_FORM_DATA);
                 let expiryDate = null;
                 if (!formData) return;
