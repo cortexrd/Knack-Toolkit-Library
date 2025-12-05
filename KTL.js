@@ -2464,10 +2464,22 @@ function Ktl($, appInfo) {
                 console.log('Stringified keywords length, as currently displayed: ', stringifiedKeywords.length);
                 console.log('Number of properties: ', numberOfProperties);
                 if (depth >= 2) {
-                    const pattern = /"_([a-zA-Z])/g;
-                    const matches = stringifiedKeywords.match(pattern);
-                    const count = matches ? matches.length : 0;
-                    console.log('Number of Keywords: ', count);
+                    // Count actual keyword instances (same logic as countKeywords)
+                    let totalKeywords = 0;
+                    for (const key in ktlKeywords) {
+                        if (ktlKeywords.hasOwnProperty(key)) {
+                            const subObj = ktlKeywords[key];
+                            for (const subKey in subObj) {
+                                if (/^_[a-zA-Z]/.test(subKey)) {
+                                    const instances = subObj[subKey];
+                                    // Empty arrays count as 1, non-empty arrays count by length
+                                    const instanceCount = Array.isArray(instances) && instances.length > 0 ? instances.length : 1;
+                                    totalKeywords += instanceCount;
+                                }
+                            }
+                        }
+                    }
+                    console.log('Number of Keywords: ', totalKeywords);
                 }
             },
 
@@ -2484,8 +2496,12 @@ function Ktl($, appInfo) {
                                 if (!propertyCount[subKey]) {
                                     propertyCount[subKey] = 0;
                                 }
-                                propertyCount[subKey]++;
-                                totalKeywords++;
+                                // Count each instance - keywords are stored as arrays
+                                const instances = subObj[subKey];
+                                // Empty arrays count as 1, non-empty arrays count by length
+                                const instanceCount = Array.isArray(instances) && instances.length > 0 ? instances.length : 1;
+                                propertyCount[subKey] += instanceCount;
+                                totalKeywords += instanceCount;
                             }
                         }
                     }
@@ -18423,8 +18439,10 @@ function Ktl($, appInfo) {
                             a: _0x1a2b('NjkyOGUwZDEzOWVmMzE2Mzg4YzRhMjhi'),
                             e: _0x1a2b('a3RsdXNhZ2VAY3RybmQuY29t'),
                             p: _0x1a2b('ZlQ2NF81MmZnWSFwWFc='),
-                            s: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzQ='),
-                            c: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzE2'),
+                            av: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzI4'),
+                            af: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzI5'),
+                            sf: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzMw'),
+                            sv: _0x1a2b('c2NlbmVfMy92aWV3cy92aWV3XzE2'),
                             sc: _0x1a2b('c2NlbmVfMw==')
                         };
                         const _0x4f2c = (n) => 'field_' + n;
@@ -18468,21 +18486,30 @@ function Ktl($, appInfo) {
                             ...extractBooleanFlags(ktl.log.getCfg().logEnabled, 'logEnabled')
                         };
 
-                        const usageData = {
-                            [_0x4f2c(0x13)]: Knack.app.attributes.id,
-                            [_0x4f2c(0x16)]: Knack.app.attributes.name,
-                            [_0x4f2c(0x17)]: Knack.url_base,
-                            [_0x4f2c(0x19)]: Knack.getUserAttributes().email,
-                            [_0x4f2c(0x1a)]: Knack.getUserAttributes().id,
-                            [_0x4f2c(0x1c)]: Knack.app.attributes.settings.timezone,
-                            [_0x4f2c(0x1e)]: Knack.app.attributes.account.product_plan.name,
-                            [_0x4f2c(0x20)]: Knack.app.attributes.account.product_plan.level,
-                            [_0x4f2c(0x22)]: ktlVersion,
+                        // App data - static metadata (Apps table)
+                        const appData = {
+                            [_0x4f2c(0x59)]: Knack.app.attributes.id,
+                            [_0x4f2c(0x5b)]: Knack.app.attributes.name,
+                            [_0x4f2c(0x5c)]: Knack.url_base,
+                            [_0x4f2c(0x5d)]: Knack.getUserAttributes().email,
+                            [_0x4f2c(0x5e)]: Knack.getUserAttributes().id,
+                            [_0x4f2c(0x5f)]: Knack.app.attributes.account.product_plan.name,
+                            [_0x4f2c(0x60)]: Knack.app.attributes.account.product_plan.level,
+                            [_0x4f2c(0x61)]: ktl.core.getCurrentDateTime(true, false, false, true),
+                            [_0x4f2c(0x62)]: ktl.core.getCurrentDateTime(true, false, false, true),
+                            [_0x4f2c(0x64)]: ktlVersion,
+                            [_0x4f2c(0x65)]: Knack.app.attributes.settings.timezone,
+                            [_0x4f2c(0x66)]: ''
+                        };
+
+                        // Submission data - changing usage data (Submissions table)
+                        const submissionData = {
                             [_0x4f2c(0x23)]: ktl.core.getCurrentDateTime(true, false, false, true),
                             [_0x4f2c(0x26)]: JSON.stringify(appConfig),
                             [_0x4f2c(0x28)]: JSON.stringify(ktlKeywords)
                         };
 
+                        //Remote login
                         $.ajax({
                             url: `https://api.knack.com/v1/applications/${_cfg.a}/session`,
                             type: 'POST',
@@ -18491,66 +18518,179 @@ function Ktl($, appInfo) {
                             success: function (loginResp) {
                                 const token = loginResp.session.user.token;
 
-                                // Check if record already exists for this app_id
-                                const filters = {
+                                // Filter to check if App exists
+                                const appFilters = {
                                     match: 'and',
                                     rules: [{
-                                        field: _0x4f2c(0x13),
+                                        field: _0x4f2c(0x59),
                                         operator: 'is',
                                         value: Knack.app.attributes.id
                                     }]
                                 };
 
-                                ktl.core.timedPopup('Checking for existing record...', 'success', 2000);
+                                ktl.core.timedPopup('Checking for existing App...', 'success', 2000);
 
+                                // Step 1: Check if App exists in Apps table (view_28)
                                 $.ajax({
-                                    url: `https://api.knack.com/v1/pages/${_cfg.c}/records?filters=${encodeURIComponent(JSON.stringify(filters))}`,
+                                    url: `https://api.knack.com/v1/pages/${_cfg.av}/records?filters=${encodeURIComponent(JSON.stringify(appFilters))}`,
                                     type: 'GET',
                                     headers: {
                                         'X-Knack-Application-Id': _cfg.a,
                                         'Authorization': token,
                                         'Content-Type': 'application/json'
                                     },
-                                    success: function (checkResp) {
-                                        let requestType = 'POST';
-                                        let apiUrl = `https://api.knack.com/v1/pages/${_cfg.s}/records`;
+                                    success: function (appCheckResp) {
+                                        let appRecordId = null;
 
-                                        // If record exists, update it
-                                        if (checkResp.records && checkResp.records.length > 0) {
-                                            requestType = 'PUT';
-                                            apiUrl = `https://api.knack.com/v1/pages/${_cfg.c}/records/${checkResp.records[0].id}`;
-                                            ktl.core.timedPopup('Updating existing record...', 'success', 2000);
+                                        if (appCheckResp.records && appCheckResp.records.length > 0) {
+                                            // App exists - update it
+                                            appRecordId = appCheckResp.records[0].id;
+                                            ktl.core.timedPopup('Updating existing App...', 'success', 2000);
+
+                                            // Step 2a: Update App metadata (refresh all fields in case of changes)
+                                            const appUpdateData = {
+                                                [_0x4f2c(0x5b)]: appData[_0x4f2c(0x5b)],
+                                                [_0x4f2c(0x5c)]: appData[_0x4f2c(0x5c)],
+                                                [_0x4f2c(0x5d)]: appData[_0x4f2c(0x5d)],
+                                                [_0x4f2c(0x5e)]: appData[_0x4f2c(0x5e)],
+                                                [_0x4f2c(0x5f)]: appData[_0x4f2c(0x5f)],
+                                                [_0x4f2c(0x60)]: appData[_0x4f2c(0x60)],
+                                                [_0x4f2c(0x62)]: appData[_0x4f2c(0x62)],
+                                                [_0x4f2c(0x64)]: appData[_0x4f2c(0x64)],
+                                                [_0x4f2c(0x65)]: appData[_0x4f2c(0x65)]
+                                            };
+
+                                            $.ajax({
+                                                url: `https://api.knack.com/v1/pages/${_cfg.av}/records/${appRecordId}`,
+                                                type: 'PUT',
+                                                headers: {
+                                                    'X-Knack-Application-Id': _cfg.a,
+                                                    'Authorization': token,
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                data: JSON.stringify(appUpdateData),
+                                                success: function () {
+                                                    // Proceed to update Submission
+                                                    updateSubmission(token, appRecordId);
+                                                },
+                                                error: function (err) {
+                                                    ktl.core.timedPopup('Error updating App record', 'error', 5000);
+                                                    console.error('App update failed', err);
+                                                }
+                                            });
                                         } else {
-                                            ktl.core.timedPopup('Creating new record...', 'success', 2000);
-                                        }
+                                            // App doesn't exist - create it
+                                            ktl.core.timedPopup('Creating new App...', 'success', 2000);
 
-                                        // Submit or update the data
-                                        $.ajax({
-                                            url: apiUrl,
-                                            type: requestType,
-                                            headers: {
-                                                'X-Knack-Application-Id': _cfg.a,
-                                                'Authorization': token,
-                                                'Content-Type': 'application/json'
-                                            },
-                                            data: JSON.stringify(usageData),
-                                            success: function (resp) {
-                                                const message = requestType === 'PUT'
-                                                    ? 'KTL usage statistics updated successfully - thank you!'
-                                                    : 'KTL usage statistics sent successfully - thank you!';
-                                                ktl.core.timedPopup(message, 'success', 3000);
-                                            },
-                                            error: function (err) {
-                                                ktl.core.timedPopup('Error sending KTL usage data', 'error', 5000);
-                                                console.error('KTL usage submission failed', err);
-                                            }
-                                        });
+                                            // Step 2b: Create App
+                                            $.ajax({
+                                                url: `https://api.knack.com/v1/pages/${_cfg.af}/records`,
+                                                type: 'POST',
+                                                headers: {
+                                                    'X-Knack-Application-Id': _cfg.a,
+                                                    'Authorization': token,
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                data: JSON.stringify(appData),
+                                                success: function (createResp) {
+                                                    appRecordId = createResp.record.id;
+                                                    ktl.core.timedPopup('App created successfully!', 'success', 2000);
+
+                                                    // Step 2c: Create connected Submission immediately
+                                                    ktl.core.timedPopup('Creating Submission...', 'success', 2000);
+                                                    const newSubmissionData = {
+                                                        [_0x4f2c(0x5a)]: appRecordId,
+                                                        ...submissionData
+                                                    };
+
+                                                    $.ajax({
+                                                        url: `https://api.knack.com/v1/pages/${_cfg.sf}/records`,
+                                                        type: 'POST',
+                                                        headers: {
+                                                            'X-Knack-Application-Id': _cfg.a,
+                                                            'Authorization': token,
+                                                            'Content-Type': 'application/json'
+                                                        },
+                                                        data: JSON.stringify(newSubmissionData),
+                                                        success: function () {
+                                                            ktl.core.timedPopup('KTL usage statistics submitted successfully - thank you!', 'success', 3000);
+                                                        },
+                                                        error: function (err) {
+                                                            ktl.core.timedPopup('Error creating Submission', 'error', 5000);
+                                                            console.error('Submission creation failed', err);
+                                                        }
+                                                    });
+                                                },
+                                                error: function (err) {
+                                                    ktl.core.timedPopup('Error creating App record', 'error', 5000);
+                                                    console.error('App creation failed', err);
+                                                }
+                                            });
+                                        }
                                     },
                                     error: function (err) {
-                                        ktl.core.timedPopup('Error checking for existing record', 'error', 5000);
-                                        console.error('Record check failed', err);
+                                        ktl.core.timedPopup('Error checking for existing App', 'error', 5000);
+                                        console.error('App check failed', err);
                                     }
                                 });
+
+                                // Helper function to update existing Submission
+                                function updateSubmission(token, appRecordId) {
+                                    ktl.core.timedPopup('Finding Submission...', 'success', 2000);
+
+                                    // Step 3: Find the Submission connected to this App
+                                    const submissionFilters = {
+                                        match: 'and',
+                                        rules: [{
+                                            field: _0x4f2c(0x5a),
+                                            operator: 'is',
+                                            value: appRecordId
+                                        }]
+                                    };
+
+                                    $.ajax({
+                                        url: `https://api.knack.com/v1/pages/${_cfg.sv}/records?filters=${encodeURIComponent(JSON.stringify(submissionFilters))}`,
+                                        type: 'GET',
+                                        headers: {
+                                            'X-Knack-Application-Id': _cfg.a,
+                                            'Authorization': token,
+                                            'Content-Type': 'application/json'
+                                        },
+                                        success: function (submissionResp) {
+                                            if (submissionResp.records && submissionResp.records.length > 0) {
+                                                const submissionRecordId = submissionResp.records[0].id;
+                                                ktl.core.timedPopup('Updating Submission...', 'success', 2000);
+
+                                                // Step 4: Update the Submission with usage data
+                                                $.ajax({
+                                                    url: `https://api.knack.com/v1/pages/${_cfg.sv}/records/${submissionRecordId}`,
+                                                    type: 'PUT',
+                                                    headers: {
+                                                        'X-Knack-Application-Id': _cfg.a,
+                                                        'Authorization': token,
+                                                        'Content-Type': 'application/json'
+                                                    },
+                                                    data: JSON.stringify(submissionData),
+                                                    success: function () {
+                                                        ktl.core.timedPopup('KTL usage statistics submitted successfully - thank you!', 'success', 3000);
+                                                    },
+                                                    error: function (err) {
+                                                        ktl.core.timedPopup('Error updating Submission', 'error', 5000);
+                                                        console.error('Submission update failed', err);
+                                                    }
+                                                });
+                                            } else {
+                                                // Submission not found - this shouldn't happen for existing Apps
+                                                ktl.core.timedPopup('Error: Submission not found', 'error', 5000);
+                                                console.error('No Submission found for App ID:', appRecordId);
+                                            }
+                                        },
+                                        error: function (err) {
+                                            ktl.core.timedPopup('Error finding Submission', 'error', 5000);
+                                            console.error('Submission lookup failed', err);
+                                        }
+                                    });
+                                }
                             },
                             error: function (err) {
                                 ktl.core.timedPopup('Login to KTL Usage app failed', 'error', 5000);
