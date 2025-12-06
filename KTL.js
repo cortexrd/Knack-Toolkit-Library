@@ -74,31 +74,46 @@ function Ktl($, appInfo) {
     //    }, 100);
     //});
 
+    // Helper functions for escaping double underscores
+    // Double underscores (__) are converted to single underscores (_) in display, but not parsed as keywords
+    const ESCAPED_UNDERSCORE_PLACEHOLDER = '\u0000KTLESC\u0000';
+
+    function escapeDoubleUnderscores(text = '') {
+        return text.replace(/__/g, ESCAPED_UNDERSCORE_PLACEHOLDER);
+    }
+
+    function unescapeDoubleUnderscores(text = '') {
+        return text.replace(new RegExp(ESCAPED_UNDERSCORE_PLACEHOLDER, 'g'), '_');
+    }
+
     function getKeywordsStartIndex(text = '') {
         return text.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
     }
 
     function cleanUpKeywords(text = '') {
-        const firstKeywordIndex = getKeywordsStartIndex(text);
+        const escaped = escapeDoubleUnderscores(text);
+        const firstKeywordIndex = getKeywordsStartIndex(escaped);
         if (firstKeywordIndex >= 0) {
-            return text.substring(0, firstKeywordIndex).trim();
+            return unescapeDoubleUnderscores(escaped.substring(0, firstKeywordIndex).trim());
         }
-        return text;
+        return unescapeDoubleUnderscores(escaped);
     }
 
     function getKeywords(text = '') {
-        const firstKeywordIndex = getKeywordsStartIndex(text);
+        const escaped = escapeDoubleUnderscores(text);
+        const firstKeywordIndex = getKeywordsStartIndex(escaped);
         if (firstKeywordIndex >= 0) {
-            return extractKeywords(text.substring(firstKeywordIndex).trim());
+            return extractKeywords(escaped.substring(firstKeywordIndex).trim());
         }
         return {};
     }
 
     function getKeywordsFromContent(content = '') {
-        const firstKeywordIndex = getKeywordsStartIndex(content);
+        const escaped = escapeDoubleUnderscores(content);
+        const firstKeywordIndex = getKeywordsStartIndex(escaped);
 
         if (firstKeywordIndex >= 0) {
-            let keywordsToParse = content.substring(firstKeywordIndex).trim();
+            let keywordsToParse = escaped.substring(firstKeywordIndex).trim();
 
             //Remove line breaks and paragraphs after first kw found.
             keywordsToParse = keywordsToParse.replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
