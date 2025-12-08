@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.35.0';
+    const KTL_VERSION = '0.35.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -19028,13 +19028,48 @@ function Ktl($, appInfo) {
                                     }
                                 })
 
-                                const sendKtlUsageBtn = ktl.fields.addButton(devBtnsDiv, 'Send KTL Usage', '', ['devBtn', 'kn-button']);
+                                // Create button with help icon inside
+                                const sendKtlUsageBtn = ktl.fields.addButton(devBtnsDiv, 'Send KTL Usage', '', ['devBtn', 'kn-button', 'devBtnWithHelp']);
                                 sendKtlUsageBtn.addEventListener('click', () => {
+                                    // Check KTL version - must be 0.35.1 or higher
+                                    const ktlVersion = window.APP_KTL_VERSIONS.split('-')[1].trim();
+                                    const versionParts = ktlVersion.split('.').map(Number);
+                                    const requiredVersion = [0, 35, 1];
+
+                                    let versionOk = false;
+                                    if (versionParts[0] > requiredVersion[0]) {
+                                        versionOk = true;
+                                    } else if (versionParts[0] === requiredVersion[0]) {
+                                        if (versionParts[1] > requiredVersion[1]) {
+                                            versionOk = true;
+                                        } else if (versionParts[1] === requiredVersion[1]) {
+                                            if (versionParts[2] >= requiredVersion[2]) {
+                                                versionOk = true;
+                                            }
+                                        }
+                                    }
+
+                                    if (!versionOk) {
+                                        ktl.core.selectOption('KTL version must be 0.35.1 or higher\nCurrent version: ' + ktlVersion, 'Close');
+                                        return;
+                                    }
+
                                     submitKtlUsage();
                                 })
                                 if (!Knack.getUserAttributes() || !Knack.getUserAttributes().email || !ktl.account.isDeveloper()) {
                                     sendKtlUsageBtn.setAttribute('disabled', 'true');
                                 }
+
+                                // Add help icon inside the button
+                                const helpIcon = document.createElement('span');
+                                helpIcon.classList.add('devBtnHelpIcon');
+                                helpIcon.textContent = '?';
+                                helpIcon.title = 'Learn more about KTL Usage and data privacy';
+                                helpIcon.addEventListener('click', (e) => {
+                                    e.stopPropagation(); // Prevent button click
+                                    window.open('https://ctrnd.knack.com/ktl-hub#home/', '_blank');
+                                });
+                                sendKtlUsageBtn.appendChild(helpIcon);
 
                                 logoutBtn = ktl.fields.addButton(devBtnsDiv, '', '', ['devBtn', 'kn-button']);
                                 processLogoutBtn();

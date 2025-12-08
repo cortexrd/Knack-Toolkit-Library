@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.7.18 */
+/* KTL CSS version: 0.8.0*/
 
 /************ General Settings **************/
 #verButtonId {
@@ -661,6 +661,34 @@ a.ktlSortDisabled {
 	height: 30px;
 	margin-bottom: 5px;
 	align-items: center !important;
+}
+
+.devBtnWithHelp {
+	position: relative;
+}
+
+.devBtnHelpIcon {
+	position: absolute;
+	right: 8px;
+	top: 50%;
+	transform: translateY(-50%);
+	cursor: pointer;
+	font-size: 16px;
+	font-weight: bold;
+	color: #ffffff;
+	background-color: rgba(0, 0, 0, 0.2);
+	border-radius: 50%;
+	width: 20px;
+	height: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+	transition: background-color 0.2s;
+}
+
+.devBtnHelpIcon:hover {
+	background-color: rgba(0, 0, 0, 0.4);
 }
 
 .ktlDevToolsHeader {
