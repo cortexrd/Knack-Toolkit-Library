@@ -79,7 +79,8 @@ function Ktl($, appInfo) {
     const ESCAPED_UNDERSCORE_PLACEHOLDER = '\u0000KTLESC\u0000';
 
     function escapeDoubleUnderscores(text = '') {
-        return text.replace(/__/g, ESCAPED_UNDERSCORE_PLACEHOLDER);
+        // Only escape __ at the beginning of a line, after whitespace, or after > (HTML tags), not in the middle of words
+        return text.replace(/(^|\s|>)__/gm, '$1' + ESCAPED_UNDERSCORE_PLACEHOLDER);
     }
 
     function unescapeDoubleUnderscores(text = '') {
@@ -87,7 +88,7 @@ function Ktl($, appInfo) {
     }
 
     function getKeywordsStartIndex(text = '') {
-        return text.toLowerCase().search(/(?:^|\s)(_[a-zA-Z0-9]\w*)/m);
+        return text.toLowerCase().search(/(?:^|\s|>)(_[a-zA-Z0-9]\w*)/m);
     }
 
     function cleanUpKeywords(text = '') {
@@ -3976,7 +3977,7 @@ function Ktl($, appInfo) {
                         keyToFind = 'label';
                         keyNameToReturn = 'id';
                         viewObjToScan = view;
-                    } else if (viewType === 'rich_text')
+                    } else if (['rich_text', 'menu'].includes(viewType))
                         return;
                     else
                         ktl.log.clog('purple', 'getFieldIdFromLabel - Unsupported view type', viewId, viewType);
