@@ -4796,6 +4796,11 @@ function Ktl($, appInfo) {
         const CONNECTION_HYDRATION_QUEUE = new Map();
         const HYDRATING_VIEWS = new Set();
         const PENDING_HYDRATION_SAVES = new Map();
+
+        const DATE_TIME_FIELD_SUFFIXES = [
+            '-time', '-time-to', '-to', '-date-from',
+            '-time-from', '-date-to', ''
+        ];
         //To see all data types:  console.log(Knack.config);
 
         //Add fields and scenes to exclude from persistence in these arrays.
@@ -4893,6 +4898,24 @@ function Ktl($, appInfo) {
 
             if ((event.type === 'focusout' && event.relatedTarget) || event.type === 'input')
                 debouncedFormContentHasChanged(event.target);
+        });
+
+        // Capture rating widget changes so they persist.
+        $(document).on('rated reset', '.rateit', function (event, value) {
+            if (!pfIsInitialized) return;
+
+            const view = this.closest('.kn-form.kn-view');
+            if (!view) return;
+
+            const viewId = view.id;
+            const knInput = this.closest('.kn-input');
+            if (!knInput) return;
+
+            const fieldId = knInput.getAttribute('data-input-id');
+            if (!fieldId) return;
+
+            const ratingValue = (typeof value === 'number') ? value : $(this).rateit('value');
+            saveFormData(ratingValue, viewId, fieldId, '');
         });
 
         $(document).on('click', function (e) {
@@ -5058,11 +5081,7 @@ function Ktl($, appInfo) {
                     delete formDataObj[viewId][fieldId];
                 } else if (fieldType === 'date_time' || fieldType === 'timer') {
                     const fieldRootSelector = `#${viewId}-${fieldId}`;
-                    const dateTimeFieldsSuffixes = [
-                        '-time', '-time-to', '-to', '-date-from',
-                        '-time-from', '-date-to', ''
-                    ];
-                    dateTimeFieldsSuffixes.forEach((fieldSuffix) => {
+                    DATE_TIME_FIELD_SUFFIXES.forEach((fieldSuffix) => {
                         const element = $(`${fieldRootSelector}${fieldSuffix}`);
                         if (element.length) {
                             formDataObj[viewId][`${fieldId}${fieldSuffix}`] = element.val();
@@ -5129,6 +5148,12 @@ function Ktl($, appInfo) {
             }
         }
 
+        function isStoredViewExpired(storedViewData) {
+            if (!storedViewData || !storedViewData.expiryDate) return false;
+            const expiryTime = Date.parse(storedViewData.expiryDate);
+            return !Number.isNaN(expiryTime) && expiryTime < Date.now();
+        }
+
         function persistFormDataCache(data) {
             if (!data || $.isEmptyObject(data)) {
                 ktl.storage.lsRemoveItem(PERSISTENT_FORM_DATA);
@@ -5141,20 +5166,12 @@ function Ktl($, appInfo) {
             return new Promise((resolve) => {
                 const parsedFormData = parsePersistentFormStorage();
 
-                if (!parsedFormData || $.isEmptyObject(parsedFormData)) {
-                    persistFormDataCache(null);
-                    if (viewId) {
-                        markViewLoaded(viewId);
-                    } else {
-                        markSceneLoaded();
-                    }
-                    return resolve();
-                }
+                if (handleEmptyStorage(parsedFormData, viewId)) return resolve();
 
                 currentViews = {};
                 const versionToken = ++formDataVersion;
 
-                const targetViews = getTargetViews(viewId);
+                const targetViews = resolveTargetViews(viewId);
                 if (!targetViews.length) return resolve();
 
                 const loadPromises = targetViews.map(viewAttr =>
@@ -5168,45 +5185,55 @@ function Ktl($, appInfo) {
                     resolve();
                 });
             });
+        }
 
-            function getTargetViews(targetViewId) {
-                const sceneView = Knack.router.scene_view;
-                if (!sceneView || !sceneView.model || !sceneView.model.views) return [];
+        function handleEmptyStorage(parsedFormData, viewId) {
+            if (parsedFormData && !$.isEmptyObject(parsedFormData)) return false;
 
-                if (targetViewId) {
-                    const viewModel = sceneView.model.views._byId[targetViewId];
-                    return (viewModel && viewModel.attributes) ? [viewModel.attributes] : [];
-                }
+            persistFormDataCache(null);
+            if (viewId) {
+                markViewLoaded(viewId);
+            } else {
+                markSceneLoaded();
+            }
+            return true;
+        }
 
-                return sceneView.model.views.models
-                    .map(model => model && model.attributes)
-                    .filter(Boolean);
+        function resolveTargetViews(targetViewId) {
+            const sceneView = Knack.router.scene_view;
+            if (!sceneView || !sceneView.model || !sceneView.model.views) return [];
+
+            if (targetViewId) {
+                const viewModel = sceneView.model.views._byId[targetViewId];
+                return (viewModel && viewModel.attributes) ? [viewModel.attributes] : [];
             }
 
-            function ensureViewLoadPromise(viewAttr, parsedFormData, markLoaded, versionToken) {
-                if (!viewAttr) return Promise.resolve();
+            return sceneView.model.views.models
+                .map(model => model && model.attributes)
+                .filter(Boolean);
+        }
 
-                const existingLoad = viewLoadPromises.get(viewAttr.key);
-                if (existingLoad && existingLoad.version === versionToken) {
-                    return existingLoad.promise;
-                }
+        function ensureViewLoadPromise(viewAttr, parsedFormData, markLoaded, versionToken) {
+            if (!viewAttr || !isInsertCreateForm(viewAttr)) return Promise.resolve();
 
-                const loadPromise = loadDataForView(viewAttr, parsedFormData)
-                    .then(() => {
-                        if (isInsertCreateForm(viewAttr)) {
-                            markLoaded(viewAttr.key);
-                        }
-                    })
-                    .finally(() => {
-                        const cached = viewLoadPromises.get(viewAttr.key);
-                        if (cached && cached.promise === loadPromise) {
-                            viewLoadPromises.delete(viewAttr.key);
-                        }
-                    });
-
-                viewLoadPromises.set(viewAttr.key, { promise: loadPromise, version: versionToken });
-                return loadPromise;
+            const existingLoad = viewLoadPromises.get(viewAttr.key);
+            if (existingLoad && existingLoad.version === versionToken) {
+                return existingLoad.promise;
             }
+
+            const loadPromise = loadDataForView(viewAttr, parsedFormData)
+                .then(() => {
+                    markLoaded(viewAttr.key);
+                })
+                .finally(() => {
+                    const cached = viewLoadPromises.get(viewAttr.key);
+                    if (cached && cached.promise === loadPromise) {
+                        viewLoadPromises.delete(viewAttr.key);
+                    }
+                });
+
+            viewLoadPromises.set(viewAttr.key, { promise: loadPromise, version: versionToken });
+            return loadPromise;
         }
 
         function loadDataForView(viewAttr, parsedFormData) {
@@ -5243,22 +5270,21 @@ function Ktl($, appInfo) {
 
                 currentViews[targetViewId] = targetViewId;
 
-                const hasReloadLastValues = Boolean(
-                    ktlKeywords[targetViewId] &&
-                    ktlKeywords[targetViewId]._rlv
-                );
-
-                if (storedViewData.expiryDate) {
-                    const nowTs = Date.now();
-                    const expiryTime = Date.parse(storedViewData.expiryDate);
-                    if (!Number.isNaN(expiryTime) && expiryTime < nowTs) {
-                        delete parsedFormData[targetViewId];
-                        persistFormDataCache(parsedFormData);
-                        return finish();
-                    }
+                if (isStoredViewExpired(storedViewData)) {
+                    delete parsedFormData[targetViewId];
+                    persistFormDataCache(parsedFormData);
+                    return finish();
                 }
 
                 const keys = Object.keys(storedViewData).filter(key => key !== 'expiryDate');
+
+                const hydrators = {
+                    rich_text: ({ fieldId, fieldValue }) => hydrateRichTextField({ fieldId, fieldValue, viewId: targetViewId }),
+                    connection: ({ fieldId, fieldValue }) => hydrateConnectionField({ fieldId, fieldValue, viewId: targetViewId, formDataObj: parsedFormData }),
+                    multiple_choice: ({ fieldId, fieldValue, field }) => hydrateMultipleChoiceField({ fieldId, fieldValue, viewId: targetViewId, field }),
+                    boolean: ({ fieldId, fieldValue, field }) => hydrateBooleanField({ fieldId, fieldValue, viewId: targetViewId, field }),
+                    rating: ({ fieldId, fieldValue }) => hydrateRatingField({ fieldId, fieldValue, viewId: targetViewId })
+                };
 
                 for (const fieldKey of keys) {
                     const fieldIdMatch = fieldKey.match(/field_\d+/);
@@ -5283,42 +5309,25 @@ function Ktl($, appInfo) {
                         continue;
                     }
 
-                    if (fieldType === 'rich_text') {
-                        hydrateRichTextField({ fieldId, fieldValue, viewId: targetViewId });
-                    } else if (TEXT_DATA_TYPES.includes(fieldType)) {
+                    if (TEXT_DATA_TYPES.includes(fieldType)) {
                         hydrateTextField({
                             fieldId,
                             fieldKey,
                             fieldValue,
                             viewId: targetViewId,
                             field,
-                            formDataObj: parsedFormData,
-                            preserveFieldData: hasReloadLastValues
-                        });
-                    } else if (fieldType === 'connection') {
-                        hydrateConnectionField({
-                            fieldId,
-                            fieldValue,
-                            viewId: targetViewId,
                             formDataObj: parsedFormData
                         });
-                    } else if (fieldType === 'multiple_choice') {
-                        hydrateMultipleChoiceField({
-                            fieldId,
-                            fieldValue,
-                            viewId: targetViewId,
-                            field
-                        });
-                    } else if (fieldType === 'boolean') {
-                        hydrateBooleanField({
-                            fieldId,
-                            fieldValue,
-                            viewId: targetViewId,
-                            field
-                        });
-                    } else if (['password', 'file', 'image'].includes(fieldType)) {
-                        // Ignore.
-                    } else {
+                        continue;
+                    }
+
+                    const hydrator = hydrators[fieldType];
+                    if (hydrator) {
+                        hydrator({ fieldId, fieldValue, field });
+                        continue;
+                    }
+
+                    if (!['password', 'file', 'image'].includes(fieldType)) {
                         ktl.log.clog('purple', 'Unsupported field type: ' + fieldId + ', ' + fieldType);
                     }
                 }
@@ -5328,10 +5337,8 @@ function Ktl($, appInfo) {
                         console.warn('Persistent Form - connection hydration wait failed', targetViewId, error);
                     })
                     .finally(() => {
-                        if (!hasReloadLastValues) {
-                            delete parsedFormData[targetViewId];
-                        }
-
+                        // Keep cached data so the form can survive multiple refreshes;
+                        // cache is still cleared on submit, scene change, or expiry.
                         persistFormDataCache(parsedFormData);
                         finish();
                     });
@@ -5389,8 +5396,7 @@ function Ktl($, appInfo) {
             fieldValue,
             viewId,
             field,
-            formDataObj,
-            preserveFieldData = false
+            formDataObj
         }) {
             const viewElement = document.getElementById(viewId);
             if (!viewElement) return;
@@ -5410,7 +5416,7 @@ function Ktl($, appInfo) {
                 let element;
 
                 if (field.attributes.type === 'date_time' || field.attributes.type === 'timer') {
-                    element = document.getElementById(`${viewId}-${fieldKey}`);
+                    element = getDateTimeElement({ viewId, fieldId, fieldKey });
                 } else {
                     if (subField) {
                         const escapedSubField = escapeForCssIdentifier(subField);
@@ -5447,16 +5453,22 @@ function Ktl($, appInfo) {
                 subFields.forEach(subField => {
                     const currentValue = fieldData[subField];
                     setFieldText(currentValue, subField);
-                    if (!preserveFieldData) {
-                        delete fieldData[subField];
-                    }
                 });
             } else {
                 setFieldText(fieldValue);
-                if (!preserveFieldData && formDataObj[viewId]) {
-                    delete formDataObj[viewId][fieldKey];
-                }
             }
+        }
+
+        function getDateTimeElement({ viewId, fieldId, fieldKey }) {
+            const directId = document.getElementById(`${viewId}-${fieldKey}`);
+            if (directId) return directId;
+
+            for (const suffix of DATE_TIME_FIELD_SUFFIXES) {
+                const el = document.getElementById(`${viewId}-${fieldId}${suffix}`);
+                if (el) return el;
+            }
+
+            return null;
         }
 
         function hydrateConnectionField({ fieldId, fieldValue, viewId, formDataObj }) {
@@ -5539,6 +5551,21 @@ function Ktl($, appInfo) {
                     selectElement.value = fieldValue;
                     selectElement.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+            }
+        }
+
+        function hydrateRatingField({ fieldId, fieldValue, viewId }) {
+            const widget = $(`#${viewId}-${fieldId}`);
+            if (!widget.length || typeof widget.rateit !== 'function') return;
+
+            const numericValue = Number(fieldValue);
+            if (Number.isNaN(numericValue)) return;
+
+            widget.rateit('value', numericValue);
+
+            const hiddenInput = document.getElementById(`${viewId}-${fieldId}-value`);
+            if (hiddenInput) {
+                hiddenInput.value = numericValue;
             }
         }
 
@@ -5689,7 +5716,6 @@ function Ktl($, appInfo) {
             state.handler = handler;
             $(document).on(eventName, handler);
         }
-
 
         function teardownConnectionHydrationState(viewId) {
             const state = CONNECTION_HYDRATION_QUEUE.get(viewId);
