@@ -22949,8 +22949,14 @@ function Ktl($, appInfo) {
                         }, STARTUP_WD_TIMEOUT_DELAY * 1000);
 
                         const displayId = (window.screenX || window.screenLeft || 0) === 0 ? 'Display1' : 'Display2';
+
+                        // Get current URL and clean it (remove query params and trailing slash)
+                        let pageUrl = window.location.href;
+                        pageUrl = pageUrl.split('?')[0];  // Remove query parameters
+                        pageUrl = pageUrl.replace(/\/$/, '');  // Remove trailing slash
+
                         const xhr = new XMLHttpRequest();
-                        xhr.open('GET', `http://localhost:${LOCAL_SERVER_PORT}/watchdog?wdTimeoutDelay=${wdTimeoutDelay}&displayId=${displayId}`, true);
+                        xhr.open('GET', `http://localhost:${LOCAL_SERVER_PORT}/watchdog?wdTimeoutDelay=${wdTimeoutDelay}&displayId=${displayId}&url=${encodeURIComponent(pageUrl)}`, true);
                         xhr.onreadystatechange = function () {
                             //console.log('Server response:', xhr.readyState, xhr.status, xhr.statusText, xhr.responseText);
                             if (xhr.readyState === 4 && xhr.status === 200) {
