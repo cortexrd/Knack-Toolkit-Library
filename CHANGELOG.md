@@ -1,6 +1,18 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.35.2    *2025-12-16*
+
+- IoT Agent watchdog improvements for Raspberry Pi devices:
+  - Added URL parameter to watchdog heartbeat for targeted tab refresh
+  - Enables IoT agent to refresh only the frozen tab instead of cycling through all tabs
+  - Supports multiple Knack apps in different tabs independently
+  - Cleans URLs by removing query parameters and trailing slashes for consistent matching
+  - Prevents endless watchdog timeout loops caused by background tab throttling
+- Added barcode "simulatecrash" to test recoveryWatchdog feature on IoT devices
+  - Allows field testing of watchdog recovery without waiting for actual crashes
+  - Uncomment code block in KTL.js to enable testing mode
+
 ## 0.35.0    *2025-11-30*
 
 - Official release of the KTL Discovery Hub
