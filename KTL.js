@@ -22730,13 +22730,13 @@ function Ktl($, appInfo) {
                     $(document).on('knack-scene-render.any', (event, scene) => {
                         resetRecoveryWatchdog(NORMAL_WD_TIMEOUT_DELAY);
 
-                        //    simulateCrash = false;
-                        //    $(document).on('keydown touchstart', function (event) {
-                        //        if (/*event.type === 'touchstart' || */event.key === '!') {
-                        //            ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
-                        //            simulateCrash = true;
-                        //        }
-                        //    })
+                        //Uncoment to test crash simulation via barcode.
+                        // simulateCrash = false;
+                        // $(document).off(`KTL.processBarcode.simulatecrash`).on(`KTL.processBarcode.simulatecrash`, (e, barcodeText) => {
+                        //     if (barcodeText.toLowerCase() !== 'simulatecrash') return;
+                        //     ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
+                        //     simulateCrash = true;
+                        // })
                     });
 
                     function resetRecoveryWatchdog(wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
