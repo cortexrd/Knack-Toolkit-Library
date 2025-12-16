@@ -9666,7 +9666,7 @@ function Ktl($, appInfo) {
                         selector = '';
                 }
 
-                selector && $(selector).text(labelTxt);
+                selector && $(selector).html(ktl.views.processTextMarkup(labelTxt));
             }
         }
 
@@ -17231,6 +17231,29 @@ function Ktl($, appInfo) {
                 }
             },
 
+            // Shared: convert simple text markup tokens into HTML
+            processTextMarkup: function (text = '') {
+                const replacements = {
+                    '{br}': '<br>',
+                    '{strong}': '<strong>',
+                    '{/strong}': '</strong>',
+                    '{em}': '<em>',
+                    '{/em}': '</em>',
+                    '{hr}': '<hr>',
+                    '{ul}': '<ul>',
+                    '{/ul}': '</ul>',
+                    '{li}': '<li>',
+                    '{/li}': '</li>',
+                    '{ol}': '<ol>',
+                    '{/ol}': '</ol>',
+                };
+
+                return Object.entries(replacements).reduce(
+                    (t, [pattern, replacement]) => t.replaceAll(pattern, replacement),
+                    text
+                );
+            },
+
             //Add a tooltip to a field label/header
             addTooltipsToFields: function (viewId, tooltipText, viewType, tooltipIconPosition, tooltipIcon) {
                 if (!viewId || !viewType) return;
@@ -17255,27 +17278,7 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                const ttipText = (() => {
-                    const replacements = {
-                        '{br}': '<br>',
-                        '{strong}': '<strong>',
-                        '{/strong}': '</strong>',
-                        '{em}': '<em>',
-                        '{/em}': '</em>',
-                        '{hr}': '<hr>',
-                        '{ul}': '<ul>',
-                        '{/ul}': '</ul>',
-                        '{li}': '<li>',
-                        '{/li}': '</li>',
-                        '{ol}': '<ol>',
-                        '{/ol}': '</ol>',
-                    };
-
-                    return Object.entries(replacements).reduce(
-                        (text, [pattern, replacement]) => text.replaceAll(pattern, replacement),
-                        tooltipText
-                    );
-                })();
+                const ttipText = this.processTextMarkup(tooltipText);
 
                 $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
                     const icon = $(this);
