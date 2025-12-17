@@ -8884,7 +8884,7 @@ function Ktl($, appInfo) {
                 noFiltering(view);
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
-                labelText(view, keywords);
+                labelText(view);
                 removeConnectionPicker(viewId);
                 setCharacterLimit(view);
                 addCharacterCount(view, keywords);
@@ -9631,23 +9631,25 @@ function Ktl($, appInfo) {
             }
         }
 
-        function labelText({ key: viewId, type: viewType }, keywords) {
-            const kw = '_lbl';// @params = [label text], [options] OR @params = label text
-            if (!viewId || !keywords || !keywords[kw]) return;
+        function labelText({ key: viewId, type: viewType }) {
+            const kw = '_lbl'; // @params = [label text], [options] OR @params = label text
+            if (!viewId) return;
 
-            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
-            if (!$.isEmptyObject(fieldsWithKwObj)) {
-                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                var foundKwObj = {};
-                for (var i = 0; i < fieldsWithKwAr.length; i++) {
-                    fieldId = fieldsWithKwAr[i];
+            const fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            if (fieldsWithKwObj && Object.keys(fieldsWithKwObj).length > 0) {
+                const fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                const foundKwObj = {};
+                for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                    const fieldId = fieldsWithKwAr[i];
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId])
-                        ktl.core.getKeywordsByType(fieldId, kw).forEach(execFieldKw);
+                    if (foundKwObj && foundKwObj[fieldId]) {
+                        const kws = ktl.core.getKeywordsByType(fieldId, kw) || [];
+                        if (Array.isArray(kws)) kws.forEach(k => execFieldKw(fieldId, k));
+                    }
                 }
             }
 
-            function execFieldKw({ params }) {
+            function execFieldKw(fieldId, { params }) {
                 const selectors = {
                     form: `#${viewId} #kn-input-${fieldId} .kn-label span:not(.kn-required)`,
                     details: `#${viewId} .${fieldId} .kn-detail-label span`,
@@ -9655,18 +9657,21 @@ function Ktl($, appInfo) {
                     table: `#${viewId} th.${fieldId} span span:not(span.icon)`
                 };
 
-                let labelTxt = params[0].join(', ');
+                let labelTxt = Array.isArray(params[0]) ? params[0].join(', ') : String(params[0] || '');
                 let selector = selectors[viewType];
 
                 if (params.length === 2) {
-                    let applyToViewTypes = params[1];
-                    if (applyToViewTypes[0].includes(viewType[0]))
-                        selector = selectors[viewType];
-                    else
-                        selector = '';
+                    const applyToViewTypes = params[1];
+                    if (applyToViewTypes[0].includes(viewType[0])) selector = selectors[viewType];
+                    else selector = '';
                 }
 
-                selector && $(selector).html(ktl.views.processTextMarkup(labelTxt));
+                if (selector) {
+                    const nodes = document.querySelectorAll(selector);
+                    nodes.forEach(node => {
+                        node.innerHTML = ktl.views.processTextMarkup(labelTxt);
+                    });
+                }
             }
         }
 
