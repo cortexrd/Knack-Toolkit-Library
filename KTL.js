@@ -264,7 +264,8 @@ function Ktl($, appInfo) {
 
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
     function extractKeywords(strToParse = '', keywords = {}) {
-        const strSplit = strToParse.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
+        const cleanedStr = strToParse.replace(new RegExp('^\\s*' + ESCAPED_UNDERSCORE_PLACEHOLDER + '\\w*\\s*$', 'gm'), '');
+        const strSplit = cleanedStr.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
         strSplit.splice(0, 1);
         for (let i = 0; i < strSplit.length; i++) {
             strSplit[i] = strSplit[i].trim().replace(/\u200B/g, ''); //u200B is a "zero width space".  Caught that once during a copy/paste!
