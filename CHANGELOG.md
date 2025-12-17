@@ -12,6 +12,9 @@
 - Added barcode "simulatecrash" to test recoveryWatchdog feature on IoT devices
   - Allows field testing of watchdog recovery without waiting for actual crashes
   - Uncomment code block in KTL.js to enable testing mode
+- Fixed keyword parser bug where double underscores (e.g., `__trk`) contaminated previous keyword parameters
+  - Lines starting with `__` are now properly filtered out during keyword extraction
+  - Prevents escaped placeholder text from being appended to previous keyword's options
 
 ## 0.35.0    *2025-11-30*
 
