@@ -9642,7 +9642,7 @@ function Ktl($, appInfo) {
                 for (let i = 0; i < fieldsWithKwAr.length; i++) {
                     const fieldId = fieldsWithKwAr[i];
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (foundKwObj && foundKwObj[fieldId]) {
+                    if (foundKwObj[fieldId]) {
                         const kws = ktl.core.getKeywordsByType(fieldId, kw) || [];
                         kws.forEach(k => execFieldKw(fieldId, k));
                     }
@@ -11876,7 +11876,7 @@ function Ktl($, appInfo) {
 
         function autoFillAndSubmitQRGenerator(view, keywords) {
             const kw = '_afsg';
-            if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
+            if (!(view && keywords && keywords[kw]) || ktl.views.getViewType(view.key) !== 'form') return;
 
             const viewId = view.key;
 
@@ -11989,7 +11989,7 @@ function Ktl($, appInfo) {
         function autoFillAndSubmit(view, keywords) {
             const kw = '_afs';
 
-            if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
+            if (!(view && keywords && keywords[kw]) || ktl.views.getViewType(view.key) !== 'form') return;
             if (!(view.action === 'insert' || view.action === 'create')) return;
             if (!!$('.kn-message:visible').length) return;
 
