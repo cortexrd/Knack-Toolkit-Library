@@ -9644,7 +9644,7 @@ function Ktl($, appInfo) {
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
                     if (foundKwObj && foundKwObj[fieldId]) {
                         const kws = ktl.core.getKeywordsByType(fieldId, kw) || [];
-                        if (Array.isArray(kws)) kws.forEach(k => execFieldKw(fieldId, k));
+                        kws.forEach(k => execFieldKw(fieldId, k));
                     }
                 }
             }
@@ -9662,15 +9662,23 @@ function Ktl($, appInfo) {
 
                 if (params.length === 2) {
                     const applyToViewTypes = params[1];
-                    if (applyToViewTypes[0].includes(viewType[0])) selector = selectors[viewType];
-                    else selector = '';
+
+                    // Validate the second parameter before accessing its elements to avoid runtime errors.
+                    let matches = false;
+                    if (Array.isArray(applyToViewTypes) && applyToViewTypes.length > 0 && typeof applyToViewTypes[0] === 'string') {
+                        matches = applyToViewTypes[0].includes(viewType[0]);
+                    } else if (typeof applyToViewTypes === 'string') {
+                        matches = applyToViewTypes.includes(viewType[0]);
+                    }
+
+                    selector = matches ? selectors[viewType] : '';
                 }
 
                 if (selector) {
                     const nodes = document.querySelectorAll(selector);
-                    nodes.forEach(node => {
-                        node.innerHTML = ktl.views.processTextMarkup(labelTxt);
-                    });
+                    for (let i = 0; i < nodes.length; i++) {
+                        nodes[i].innerHTML = ktl.views.processTextMarkup(labelTxt);
+                    }
                 }
             }
         }
