@@ -23367,10 +23367,28 @@ function Ktl($, appInfo) {
     this.developerPopupTool = function () {
         if (!ktl.core.getCfg().enabled.devInfoPopup || !ktl.account.isDeveloper()) return;
 
+        // Ensure repeated calls don't stack global handlers (a common cause of CPU spikes / tab crashes).
+        $(document)
+            .off('KTL.devPopupSetResultText.ktlDevPopup')
+            .off('click.ktlDevPopup')
+            .off('keydown.ktlPopOver')
+            .off('keyup.ktlPopOver')
+            .off('click.ktlPopOverOutside')
+            .off('mouseenter.ktlPopOver')
+            .off('mousemove.ktlPopOverMouse');
+
+        let isCreatingResultWindow = false;
+
         const createResultWindow = function () {
-            if ($('#resultWndId').length) return;
+            if (document.getElementById('resultWndId')) return;
+            if (isCreatingResultWindow) return;
+
+            isCreatingResultWindow = true;
 
             ktl.systemColors.getSystemColors().then((sysColors) => {
+                // Another call may have completed while awaiting colors.
+                if (document.getElementById('resultWndId')) return;
+
                 const DEFAULT_TOP = 80;
                 const DEFAULT_LEFT = 80;
                 const DEFAULT_HEIGHT = window.innerHeight - 160;
@@ -23435,6 +23453,10 @@ function Ktl($, appInfo) {
                     const position = ktl.core.centerElementOnScreen(resultWnd);
                     ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, position);
                 }
+            }).catch(() => {
+                // No-op: dev tool shouldn't crash the page if system colors fail.
+            }).finally(() => {
+                isCreatingResultWindow = false;
             });
         };
 
@@ -23456,19 +23478,16 @@ function Ktl($, appInfo) {
 
                 const resultWndTextDiv = document.getElementById('resultWndTextDivId');
                 if (resultWndTextDiv) {
-                    const resultWndTextDiv = document.getElementById('resultWndTextDivId');
-                    if (resultWndTextDiv) {
-                        if (html !== 'ktlHide' && html !== 'ktlShow') {
-                            resultWndTextDiv.innerHTML = html;
-                        }
+                    if (html !== 'ktlHide' && html !== 'ktlShow') {
+                        resultWndTextDiv.innerHTML = html;
                     }
                 }
             }, 100);
         };
 
-        $(document).on('KTL.devPopupSetResultText', (event, html) => {
+        $(document).on('KTL.devPopupSetResultText.ktlDevPopup', (event, html) => {
             setResultWindowText(html);
-        })
+        });
 
         const createPopup = function () {
             const container = document.createElement('div');
@@ -23940,7 +23959,7 @@ ${viewId} (${viewType})<br><br>`;
             }
         }
 
-        $(document).on('mousemove', function (event) {
+        $(document).on('mousemove.ktlPopOverMouse', function (event) {
             lastMousePosition.x = event.clientX;
             lastMousePosition.y = event.clientY;
         });
@@ -24006,12 +24025,10 @@ ${viewId} (${viewType})<br><br>`;
             }
         });
 
-        $(document).off('mouseenter.ktlPopOver mouseleave.ktlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body, .kn-form .kn-input');
-
-        $(document).on('knack-view-render.any', function (event, view, data) {
-            $('#' + view.key + ' a.kn-add-option').bindFirst('click', function (event) {
-                closePopOver();
-            });
+        // Close popover when entering builder add-option mode. Use one delegated handler instead of
+        // re-binding on every view render (which can accumulate handlers and leak memory).
+        $(document).on('click.ktlDevPopup', 'a.kn-add-option', function () {
+            closePopOver();
         });
     };//developerPopupTool
 
