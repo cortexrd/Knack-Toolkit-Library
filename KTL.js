@@ -22483,6 +22483,7 @@ function Ktl($, appInfo) {
         var cfg = {
             appBcstSWUpdateViewId: swUpdateViewId,
             softwareUpdatesEnabled: !!swUpdateViewId,
+            landingPageUrl: null,
         };
 
         //Comes from here:  https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser
@@ -22731,13 +22732,12 @@ function Ktl($, appInfo) {
                     $(document).on('knack-scene-render.any', (event, scene) => {
                         resetRecoveryWatchdog(NORMAL_WD_TIMEOUT_DELAY);
 
-                        //Uncoment to test crash simulation via barcode.
-                        // simulateCrash = false;
-                        // $(document).off(`KTL.processBarcode.simulatecrash`).on(`KTL.processBarcode.simulatecrash`, (e, barcodeText) => {
-                        //     if (barcodeText.toLowerCase() !== 'simulatecrash') return;
-                        //     ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
-                        //     simulateCrash = true;
-                        // })
+                        simulateCrash = false;
+                        $(document).off(`KTL.processBarcode.simulatecrash`).on(`KTL.processBarcode.simulatecrash`, (e, barcodeText) => {
+                            if (barcodeText.toLowerCase() !== 'simulatecrash') return;
+                            ktl.core.timedPopup('STOPPING WATCHDOG...', 'error', 2000);
+                            simulateCrash = true;
+                        })
                     });
 
                     function resetRecoveryWatchdog(wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
@@ -22951,10 +22951,12 @@ function Ktl($, appInfo) {
 
                         const displayId = (window.screenX || window.screenLeft || 0) === 0 ? 'Display1' : 'Display2';
 
-                        // Get current URL and clean it (remove query params and trailing slash)
-                        let pageUrl = window.location.href;
-                        pageUrl = pageUrl.split('?')[0];  // Remove query parameters
-                        pageUrl = pageUrl.replace(/\/$/, '');  // Remove trailing slash
+                        if (!cfg.landingPageUrl) {
+                            cfg.landingPageUrl = window.location.href;
+                            cfg.landingPageUrl = cfg.landingPageUrl.split('?')[0];
+                            cfg.landingPageUrl = cfg.landingPageUrl.replace(/\/$/, '');
+                        }
+                        const pageUrl = cfg.landingPageUrl;
 
                         const xhr = new XMLHttpRequest();
                         xhr.open('GET', `http://localhost:${LOCAL_SERVER_PORT}/watchdog?wdTimeoutDelay=${wdTimeoutDelay}&displayId=${displayId}&url=${encodeURIComponent(pageUrl)}`, true);
