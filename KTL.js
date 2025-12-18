@@ -23599,9 +23599,11 @@ function Ktl($, appInfo) {
                                 const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
                                 const appUrl = `${Knack.url_base}#${slug}`;
 
-                                 kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a>
-<a href="${appUrl}" target="_self">${appUrl}</a>
-${viewId} (${viewType})<br><br>`;
+                                kwResults += `
+                                    <a href="${builderUrl}" target="_blank">${builderUrl}</a>
+                                    <a href="${appUrl}" target="_self">${appUrl}</a>
+                                    ${viewId} (${viewType})<br><br>
+                                `;
                             }
                         });
 
