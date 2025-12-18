@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.35.3';
+    const KTL_VERSION = '0.35.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -22498,7 +22498,7 @@ function Ktl($, appInfo) {
         const swUpdateViewId = ktl.core.getViewIdByTitle('SW Update', '', true);
         var cfg = {
             appBcstSWUpdateViewId: swUpdateViewId,
-            softwareUpdatesEnabled: !!swUpdateViewId,
+            softwareUpdatesEnabled: !!swUpdateViewId && !!appInfo.ktlVersion,
             landingPageUrl: null,
         };
 
