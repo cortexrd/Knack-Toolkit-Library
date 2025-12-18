@@ -8885,7 +8885,7 @@ function Ktl($, appInfo) {
                 noFiltering(view);
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
-                labelText(view, keywords);
+                labelText(view);
                 removeConnectionPicker(viewId);
                 setCharacterLimit(view);
                 addCharacterCount(view, keywords);
@@ -9632,23 +9632,25 @@ function Ktl($, appInfo) {
             }
         }
 
-        function labelText({ key: viewId, type: viewType }, keywords) {
-            const kw = '_lbl';// @params = [label text], [options] OR @params = label text
-            if (!viewId || !keywords || !keywords[kw]) return;
+        function labelText({ key: viewId, type: viewType }) {
+            const kw = '_lbl'; // @params = [label text], [options] OR @params = label text
+            if (!viewId) return;
 
-            var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
-            if (!$.isEmptyObject(fieldsWithKwObj)) {
-                var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
-                var foundKwObj = {};
-                for (var i = 0; i < fieldsWithKwAr.length; i++) {
-                    fieldId = fieldsWithKwAr[i];
+            const fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+            if (fieldsWithKwObj && Object.keys(fieldsWithKwObj).length > 0) {
+                const fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                const foundKwObj = {};
+                for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                    const fieldId = fieldsWithKwAr[i];
                     ktl.fields.getFieldKeywords(fieldId, foundKwObj);
-                    if (!$.isEmptyObject(foundKwObj) && foundKwObj[fieldId])
-                        ktl.core.getKeywordsByType(fieldId, kw).forEach(execFieldKw);
+                    if (foundKwObj[fieldId]) {
+                        const kws = ktl.core.getKeywordsByType(fieldId, kw) || [];
+                        kws.forEach(k => execFieldKw(fieldId, k));
+                    }
                 }
             }
 
-            function execFieldKw({ params }) {
+            function execFieldKw(fieldId, { params }) {
                 const selectors = {
                     form: `#${viewId} #kn-input-${fieldId} .kn-label span:not(.kn-required)`,
                     details: `#${viewId} .${fieldId} .kn-detail-label span`,
@@ -9656,18 +9658,29 @@ function Ktl($, appInfo) {
                     table: `#${viewId} th.${fieldId} span span:not(span.icon)`
                 };
 
-                let labelTxt = params[0].join(', ');
+                let labelTxt = Array.isArray(params[0]) ? params[0].join(', ') : String(params[0] || '');
                 let selector = selectors[viewType];
 
                 if (params.length === 2) {
-                    let applyToViewTypes = params[1];
-                    if (applyToViewTypes[0].includes(viewType[0]))
-                        selector = selectors[viewType];
-                    else
-                        selector = '';
+                    const applyToViewTypes = params[1];
+
+                    // Validate the second parameter before accessing its elements to avoid runtime errors.
+                    let matches = false;
+                    if (Array.isArray(applyToViewTypes) && applyToViewTypes.length > 0 && typeof applyToViewTypes[0] === 'string') {
+                        matches = applyToViewTypes[0].includes(viewType[0]);
+                    } else if (typeof applyToViewTypes === 'string') {
+                        matches = applyToViewTypes.includes(viewType[0]);
+                    }
+
+                    selector = matches ? selectors[viewType] : '';
                 }
 
-                selector && $(selector).text(labelTxt);
+                if (selector) {
+                    const nodes = document.querySelectorAll(selector);
+                    for (let i = 0; i < nodes.length; i++) {
+                        nodes[i].innerHTML = ktl.views.processTextMarkup(labelTxt);
+                    }
+                }
             }
         }
 
@@ -11864,7 +11877,7 @@ function Ktl($, appInfo) {
 
         function autoFillAndSubmitQRGenerator(view, keywords) {
             const kw = '_afsg';
-            if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
+            if (!(view && keywords && keywords[kw]) || ktl.views.getViewType(view.key) !== 'form') return;
 
             const viewId = view.key;
 
@@ -11977,7 +11990,7 @@ function Ktl($, appInfo) {
         function autoFillAndSubmit(view, keywords) {
             const kw = '_afs';
 
-            if (!(view && keywords && keywords[kw]) && ktl.views.getViewType(view.key) !== 'form') return;
+            if (!(view && keywords && keywords[kw]) || ktl.views.getViewType(view.key) !== 'form') return;
             if (!(view.action === 'insert' || view.action === 'create')) return;
             if (!!$('.kn-message:visible').length) return;
 
@@ -17232,6 +17245,29 @@ function Ktl($, appInfo) {
                 }
             },
 
+            // Shared: convert simple text markup tokens into HTML
+            processTextMarkup: function (text = '') {
+                const replacements = {
+                    '{br}': '<br>',
+                    '{strong}': '<strong>',
+                    '{/strong}': '</strong>',
+                    '{em}': '<em>',
+                    '{/em}': '</em>',
+                    '{hr}': '<hr>',
+                    '{ul}': '<ul>',
+                    '{/ul}': '</ul>',
+                    '{li}': '<li>',
+                    '{/li}': '</li>',
+                    '{ol}': '<ol>',
+                    '{/ol}': '</ol>',
+                };
+
+                return Object.entries(replacements).reduce(
+                    (t, [pattern, replacement]) => t.replaceAll(pattern, replacement),
+                    text
+                );
+            },
+
             //Add a tooltip to a field label/header
             addTooltipsToFields: function (viewId, tooltipText, viewType, tooltipIconPosition, tooltipIcon) {
                 if (!viewId || !viewType) return;
@@ -17256,27 +17292,7 @@ function Ktl($, appInfo) {
                     }
                 }
 
-                const ttipText = (() => {
-                    const replacements = {
-                        '{br}': '<br>',
-                        '{strong}': '<strong>',
-                        '{/strong}': '</strong>',
-                        '{em}': '<em>',
-                        '{/em}': '</em>',
-                        '{hr}': '<hr>',
-                        '{ul}': '<ul>',
-                        '{/ul}': '</ul>',
-                        '{li}': '<li>',
-                        '{/li}': '</li>',
-                        '{ol}': '<ol>',
-                        '{/ol}': '</ol>',
-                    };
-
-                    return Object.entries(replacements).reduce(
-                        (text, [pattern, replacement]) => text.replaceAll(pattern, replacement),
-                        tooltipText
-                    );
-                })();
+                const ttipText = this.processTextMarkup(tooltipText);
 
                 $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
                     const icon = $(this);
@@ -23360,10 +23376,28 @@ function Ktl($, appInfo) {
     this.developerPopupTool = function () {
         if (!ktl.core.getCfg().enabled.devInfoPopup || !ktl.account.isDeveloper()) return;
 
+        // Ensure repeated calls don't stack global handlers (a common cause of CPU spikes / tab crashes).
+        $(document)
+            .off('KTL.devPopupSetResultText.ktlDevPopup')
+            .off('click.ktlDevPopup')
+            .off('keydown.ktlPopOver')
+            .off('keyup.ktlPopOver')
+            .off('click.ktlPopOverOutside')
+            .off('mouseenter.ktlPopOver')
+            .off('mousemove.ktlPopOverMouse');
+
+        let isCreatingResultWindow = false;
+
         const createResultWindow = function () {
-            if ($('#resultWndId').length) return;
+            if (document.getElementById('resultWndId')) return;
+            if (isCreatingResultWindow) return;
+
+            isCreatingResultWindow = true;
 
             ktl.systemColors.getSystemColors().then((sysColors) => {
+                // Another call may have completed while awaiting colors.
+                if (document.getElementById('resultWndId')) return;
+
                 const DEFAULT_TOP = 80;
                 const DEFAULT_LEFT = 80;
                 const DEFAULT_HEIGHT = window.innerHeight - 160;
@@ -23428,6 +23462,10 @@ function Ktl($, appInfo) {
                     const position = ktl.core.centerElementOnScreen(resultWnd);
                     ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, position);
                 }
+            }).catch(() => {
+                // No-op: dev tool shouldn't crash the page if system colors fail.
+            }).finally(() => {
+                isCreatingResultWindow = false;
             });
         };
 
@@ -23449,19 +23487,16 @@ function Ktl($, appInfo) {
 
                 const resultWndTextDiv = document.getElementById('resultWndTextDivId');
                 if (resultWndTextDiv) {
-                    const resultWndTextDiv = document.getElementById('resultWndTextDivId');
-                    if (resultWndTextDiv) {
-                        if (html !== 'ktlHide' && html !== 'ktlShow') {
-                            resultWndTextDiv.innerHTML = html;
-                        }
+                    if (html !== 'ktlHide' && html !== 'ktlShow') {
+                        resultWndTextDiv.innerHTML = html;
                     }
                 }
             }, 100);
         };
 
-        $(document).on('KTL.devPopupSetResultText', (event, html) => {
+        $(document).on('KTL.devPopupSetResultText.ktlDevPopup', (event, html) => {
             setResultWindowText(html);
-        })
+        });
 
         const createPopup = function () {
             const container = document.createElement('div');
@@ -23573,9 +23608,11 @@ function Ktl($, appInfo) {
                                 const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
                                 const appUrl = `${Knack.url_base}#${slug}`;
 
-                                 kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a>
-<a href="${appUrl}" target="_self">${appUrl}</a>
-${viewId} (${viewType})<br><br>`;
+                                kwResults += `
+                                    <a href="${builderUrl}" target="_blank">${builderUrl}</a>
+                                    <a href="${appUrl}" target="_self">${appUrl}</a>
+                                    ${viewId} (${viewType})<br><br>
+                                `;
                             }
                         });
 
@@ -23864,6 +23901,9 @@ ${viewId} (${viewType})<br><br>`;
             const inlineEditing = !!($('#cell-editor, #cell-editor-form').length);
             if (inlineEditing || document.querySelector('#kn-add-option')) return;
 
+            // Avoid reinitializing popover for the same target repeatedly
+            if (openedPopOverTarget === event.currentTarget) return;
+
             $(openedPopOverTarget).removeClass('active').removeData('popover');
             const target = $(event.currentTarget);
             openedPopOverTarget = event.currentTarget;
@@ -23899,13 +23939,38 @@ ${viewId} (${viewType})<br><br>`;
         }
 
         function handleMouseEnter(event) {
-            const options = popoverSelectors[Object.keys(popoverSelectors).find(selector => !!$(event.target).closest(selector).length)];
-            if (options) {
-                showPopOver(options, event);
+            try {
+                const el = event.currentTarget || event.target;
+                const selectors = Object.keys(popoverSelectors);
+                let matched = null;
+
+                // Prefer native matching/closest which is faster than jQuery traversal
+                for (let i = 0; i < selectors.length; i++) {
+                    const sel = selectors[i];
+                    if (el.matches && el.matches(sel)) {
+                        matched = sel;
+                        break;
+                    }
+                    if (el.closest) {
+                        const closest = el.closest(sel);
+                        if (closest) {
+                            matched = sel;
+                            break;
+                        }
+                    }
+                }
+
+                if (matched) {
+                    const options = popoverSelectors[matched];
+                    if (options) showPopOver(options, event);
+                }
+            } catch (e) {
+                // swallow to avoid any uncaught errors causing repeated failures
+                if (console && console.error) console.error('ktl devPopup handleMouseEnter', e);
             }
         }
 
-        $(document).on('mousemove', function (event) {
+        $(document).on('mousemove.ktlPopOverMouse', function (event) {
             lastMousePosition.x = event.clientX;
             lastMousePosition.y = event.clientY;
         });
@@ -23913,13 +23978,14 @@ ${viewId} (${viewType})<br><br>`;
         function findElementForPopover() {
             const element = document.elementFromPoint(lastMousePosition.x, lastMousePosition.y);
             if (element) {
-                const matchingSelector = Object.keys(popoverSelectors).find(selector => !!$(event.target).closest(selector).length);
-                if (matchingSelector) {
-                    return element;
-                }
-                const closestMatchingElement = $(element).closest(Object.keys(popoverSelectors).join(',')).get(0);
-                if (closestMatchingElement) {
-                    return closestMatchingElement;
+                const selectors = Object.keys(popoverSelectors);
+                // Use native closest to find the nearest matching ancestor or self
+                const closestMatchingElement = element.closest(selectors.join(','));
+                if (closestMatchingElement) return closestMatchingElement;
+
+                // Fallback: if element itself matches any selector
+                for (let i = 0; i < selectors.length; i++) {
+                    if (element.matches && element.matches(selectors[i])) return element;
                 }
             }
             return undefined;
@@ -23970,12 +24036,10 @@ ${viewId} (${viewType})<br><br>`;
             }
         });
 
-        $(document).off('mouseenter.ktlPopOver mouseleave.ktlPopOver', '.knTable th, .knTable td, .kn-table .view-header, .kn-view, .kn-detail-label, .kn-detail-body, .kn-form .kn-input');
-
-        $(document).on('knack-view-render.any', function (event, view, data) {
-            $('#' + view.key + ' a.kn-add-option').bindFirst('click', function (event) {
-                closePopOver();
-            });
+        // Close popover when entering builder add-option mode. Use one delegated handler instead of
+        // re-binding on every view render (which can accumulate handlers and leak memory).
+        $(document).on('click.ktlDevPopup', 'a.kn-add-option', function () {
+            closePopOver();
         });
     };//developerPopupTool
 
