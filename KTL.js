@@ -23871,6 +23871,9 @@ ${viewId} (${viewType})<br><br>`;
             const inlineEditing = !!($('#cell-editor, #cell-editor-form').length);
             if (inlineEditing || document.querySelector('#kn-add-option')) return;
 
+            // Avoid reinitializing popover for the same target repeatedly
+            if (openedPopOverTarget === event.currentTarget) return;
+
             $(openedPopOverTarget).removeClass('active').removeData('popover');
             const target = $(event.currentTarget);
             openedPopOverTarget = event.currentTarget;
@@ -23906,9 +23909,34 @@ ${viewId} (${viewType})<br><br>`;
         }
 
         function handleMouseEnter(event) {
-            const options = popoverSelectors[Object.keys(popoverSelectors).find(selector => !!$(event.target).closest(selector).length)];
-            if (options) {
-                showPopOver(options, event);
+            try {
+                const el = event.currentTarget || event.target;
+                const selectors = Object.keys(popoverSelectors);
+                let matched = null;
+
+                // Prefer native matching/closest which is faster than jQuery traversal
+                for (let i = 0; i < selectors.length; i++) {
+                    const sel = selectors[i];
+                    if (el.matches && el.matches(sel)) {
+                        matched = sel;
+                        break;
+                    }
+                    if (el.closest) {
+                        const closest = el.closest(sel);
+                        if (closest) {
+                            matched = sel;
+                            break;
+                        }
+                    }
+                }
+
+                if (matched) {
+                    const options = popoverSelectors[matched];
+                    if (options) showPopOver(options, event);
+                }
+            } catch (e) {
+                // swallow to avoid any uncaught errors causing repeated failures
+                if (console && console.error) console.error('ktl devPopup handleMouseEnter', e);
             }
         }
 
@@ -23920,13 +23948,14 @@ ${viewId} (${viewType})<br><br>`;
         function findElementForPopover() {
             const element = document.elementFromPoint(lastMousePosition.x, lastMousePosition.y);
             if (element) {
-                const matchingSelector = Object.keys(popoverSelectors).find(selector => !!$(event.target).closest(selector).length);
-                if (matchingSelector) {
-                    return element;
-                }
-                const closestMatchingElement = $(element).closest(Object.keys(popoverSelectors).join(',')).get(0);
-                if (closestMatchingElement) {
-                    return closestMatchingElement;
+                const selectors = Object.keys(popoverSelectors);
+                // Use native closest to find the nearest matching ancestor or self
+                const closestMatchingElement = element.closest(selectors.join(','));
+                if (closestMatchingElement) return closestMatchingElement;
+
+                // Fallback: if element itself matches any selector
+                for (let i = 0; i < selectors.length; i++) {
+                    if (element.matches && element.matches(selectors[i])) return element;
                 }
             }
             return undefined;
