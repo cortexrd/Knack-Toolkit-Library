@@ -2299,8 +2299,8 @@ function Ktl($, appInfo) {
                                 if (!recipient?.email) return;
 
                                 const normalizedEmail = recipient.email.toLowerCase();
-                                if (exclude.includes(normalizedEmail)) return;
-                                if (include.length && !include.includes(normalizedEmail)) return;
+                                if (exclude.some(str => normalizedEmail.includes(str))) return;
+                                if (include.length && !include.some(str => normalizedEmail.includes(str))) return;
 
                                 emailsFound.push({
                                     email: recipient.email,
