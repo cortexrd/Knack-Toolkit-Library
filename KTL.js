@@ -8869,6 +8869,7 @@ function Ktl($, appInfo) {
                     keywords._sfv && setFieldValue(viewId, keywords);
                     keywords._ask && askConfirmation(view, keywords);
                     keywords._rcm && removeConfirmationMessage(view, keywords);
+                    keywords._string && generateAndPutString(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -14328,6 +14329,86 @@ function Ktl($, appInfo) {
                         $('#' + view.key + ' .kn-form-confirmation').addClass('ktlHidden_rcm'); //_rcm required to avoid conflict with preprocessSubmit.
                     }, delay);
                 });
+            }
+        }
+
+        function generateAndPutString(view, keywords) {
+            if (!view || !keywords) return;
+            const viewId = view.key;
+            const kw = '_string';
+
+            //Example of keyword usage:  _string=[Project #], [ - ], [Project Name], [ktlTarget, $(`#${viewId} .kn-title`)]
+            //This will generate a string by concatenating the fields with labels "Project # - Project Name" from the current view, and put it in the title element of the target view.
+            //The number of parameter groups is variable.
+            //The ktlTarget group must exist and it defines which element's text will be replaced by the generated string.
+
+            if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+
+                if (!options || !options.ktlTarget) return;
+
+                const targetParam = options.ktlTarget;
+                const isJQueryTarget = ktl.core.extractJQuerySelector(targetParam, viewId);
+                if (!isJQueryTarget) return;
+
+                const paramStr = keywords[kw][0].paramStr || '';
+                const rawParamGroups = [];
+
+                let depth = 0;
+                let currentGroup = '';
+                for (let i = 0; i < paramStr.length; i++) {
+                    const char = paramStr[i];
+                    if (char === '[') {
+                        depth++;
+                        if (depth === 1) continue;
+                    } else if (char === ']') {
+                        depth--;
+                        if (depth === 0) {
+                            rawParamGroups.push(currentGroup);
+                            currentGroup = '';
+                            continue;
+                        }
+                    }
+                    if (depth > 0) {
+                        currentGroup += char;
+                    }
+                }
+
+                const groups = keywords[kw][0].params;
+                let stringParts = [];
+
+                for (let i = 0; i < groups.length; i++) {
+                    const group = groups[i];
+                    if (group.length >= 1) {
+                        const firstParam = group[0];
+                        const rawGroup = rawParamGroups[i] || firstParam;
+                        const rawFirstParam = rawGroup.split(',')[0];
+
+                        if (firstParam.startsWith('field_')) {
+                            const fieldId = firstParam;
+                            const fieldValue = $(`#${viewId} .${fieldId} .kn-detail-body`).text().trim();
+                            stringParts.push(fieldValue);
+                        } else {
+                            const fieldId = ktl.fields.getFieldIdFromLabel(viewId, firstParam.trim());
+                            if (fieldId) {
+                                const fieldValue = $(`#${viewId} .${fieldId} .kn-detail-body`).text().trim();
+                                stringParts.push(fieldValue);
+                            } else {
+                                stringParts.push(rawFirstParam);
+                            }
+                        }
+                    }
+                }
+
+                if (stringParts.length) {
+                    const generatedString = stringParts.join('');
+                    ktl.core.waitSelector(isJQueryTarget)
+                        .then(() => {
+                            $(isJQueryTarget).text(generatedString);
+                        })
+                        .catch(() => { ktl.log.clog('purple', `_string failed waiting for target selector in ${viewId}`); });
+                }
             }
         }
 
