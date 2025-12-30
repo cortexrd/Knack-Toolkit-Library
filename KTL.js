@@ -9628,6 +9628,40 @@ function Ktl($, appInfo) {
 
                         if (isOptionBased) {
                             selector.trigger('liszt:updated');
+
+                            if (isConnection) {
+                                const chznResults = $(`#${viewId}_${fieldId}_chzn .chzn-results`);
+                                if (chznResults.length) {
+                                    const filterChosenResults = () => {
+                                        chznResults.find('li.active-result').each(function () {
+                                            const li = $(this);
+                                            const text = li.text().trim();
+                                            if (optionsToRemove.includes(text)) {
+                                                li.hide();
+                                            }
+                                        });
+
+                                        const visibleResults = chznResults.find('li.active-result:visible');
+                                        const existingNoResults = chznResults.find('li.no-results');
+                                        const ktlNoResults = chznResults.find('li.ktl-no-results');
+
+                                        if (visibleResults.length === 0 && existingNoResults.length === 0) {
+                                            if (ktlNoResults.length === 0) {
+                                                const searchInput = $(`#${viewId}_${fieldId}_chzn .chzn-search input`);
+                                                const searchTerm = searchInput.val() || '';
+                                                chznResults.append(`<li class="no-results ktl-no-results">No results match "<span>${searchTerm}</span>"</li>`);
+                                            }
+                                        } else if (visibleResults.length > 0) {
+                                            ktlNoResults.remove();
+                                        }
+                                    };
+
+                                    filterChosenResults();
+
+                                    const observer = new MutationObserver(filterChosenResults);
+                                    observer.observe(chznResults[0], { childList: true, subtree: true });
+                                }
+                            }
                         }
                     });
             }
@@ -18130,8 +18164,8 @@ function Ktl($, appInfo) {
             //Pre-process keywords.
             var keywords = ktlKeywords[viewId];
             if (keywords) {
-                if (keywords._ro)
-                    $('#' + viewId).addClass('ktlHidden_ro');
+                // if (keywords._ro)
+                //     $('#' + viewId).addClass('ktlHidden_ro');
 
                 keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                 keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
