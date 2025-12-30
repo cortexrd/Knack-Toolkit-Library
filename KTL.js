@@ -11235,6 +11235,7 @@ function Ktl($, appInfo) {
                 let applyButtonLabel;
                 let applyButton;
                 let draggedRecId;
+                let initialGroup;
                 let hasApplyParam = false;
 
                 for (const group of params) {
@@ -11279,8 +11280,6 @@ function Ktl($, appInfo) {
 
                 function processDndSort() {
                     $(`#${viewId} tbody tr:not(.kn-table-group):not(.kn-table-totals):not(.ktlNotAllowed)`).addClass(`ktlDragAndDrop`);
-
-                    let initialGroup;
 
                     const dndDiv = document.querySelector(`#${viewId} tbody`);
                     if (Sortable.get(dndDiv)) return;
@@ -18164,8 +18163,8 @@ function Ktl($, appInfo) {
             //Pre-process keywords.
             var keywords = ktlKeywords[viewId];
             if (keywords) {
-                // if (keywords._ro)
-                //     $('#' + viewId).addClass('ktlHidden_ro');
+                if (keywords._ro)
+                    $('#' + viewId).addClass('ktlHidden_ro');
 
                 keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                 keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
