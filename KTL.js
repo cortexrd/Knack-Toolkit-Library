@@ -14426,9 +14426,13 @@ function Ktl($, appInfo) {
                     cfg.stickGroupingsWithHeader = cfgObj.stickGroupingsWithHeader;
 
                 if (cfgObj.ktlFlashRate !== undefined) {
-                    cfg.ktlFlashRate = cfgObj.ktlFlashRate;
-                    document.documentElement.style.setProperty('--ktlFlashRate', `${cfg.ktlFlashRate}s`);
+                    const rate = parseFloat(cfgObj.ktlFlashRate);
+                    if (!isNaN(rate) && rate > 0) {
+                        cfg.ktlFlashRate = rate;
+                        document.documentElement.style.setProperty('--ktlFlashRate', `${rate}s`);
+                    }
                 }
+
                 if (cfgObj.ktlOutlineColor !== undefined) {
                     cfg.ktlOutlineColor = cfgObj.ktlOutlineColor;
                     document.documentElement.style.setProperty('--ktlOutlineColor', cfg.ktlOutlineColor);
