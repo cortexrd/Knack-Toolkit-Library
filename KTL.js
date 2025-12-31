@@ -132,7 +132,7 @@ function Ktl($, appInfo) {
         const viewKwObj = {};
 
         if (attributes.type === 'rich_text') {
-            const content = (attributes.content || '').replace('<p>_', ' _');
+            const content = (attributes.content || '').replace(/<p>_(?!_)/g, ' _');
             const viewKeywords = getKeywordsFromContent(content);
             Object.assign(viewKwObj, viewKeywords);
 
@@ -276,7 +276,7 @@ function Ktl($, appInfo) {
         // Matches: escaped placeholder + keyword name + optional (= and params until next keyword or end)
         // Preserves any preceding whitespace or newlines by matching them separately
         const cleanedStr = strToParse.replace(new RegExp('(^|\\s|>)' + ESCAPED_UNDERSCORE_PLACEHOLDER + '\\w*(?:=(?:(?!\\s_[a-zA-Z]).)*)?', 'gm'), '$1');
-        const strSplit = cleanedStr.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
+        const strSplit = cleanedStr.split(/(?:^|\s|>)(_[a-zA-Z0-9_]{2,})/gm);
         strSplit.splice(0, 1);
         for (let i = 0; i < strSplit.length; i++) {
             strSplit[i] = strSplit[i].trim().replace(/\u200B/g, ''); //u200B is a "zero width space".  Caught that once during a copy/paste!
@@ -20020,7 +20020,7 @@ function Ktl($, appInfo) {
                         let bodyBg, bodyText, distBg, tableHeaderBg, tableHeaderText;
                         let tableCellBg, tableCellText, tableStripedBg, tableTotalsBg, tableTotalsText;
                         let linkColor, lightText, darkText, topHeaderBg, navBarLinkBg;
-                        let menuButtonBg, menuButtonText, menuButtonBorder;
+                        let menuButtonBg, menuButtonText, menuButtonBorder, inputFieldBg;
 
                         if (settings.mode === 'dark' || settings.mode === 'user') {
                             let newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.12);
@@ -20031,6 +20031,9 @@ function Ktl($, appInfo) {
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.12, 0.15);
                             distBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.04, 0.40);
+                            inputFieldBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.25, 0.25);
                             tableHeaderBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
@@ -20096,6 +20099,7 @@ function Ktl($, appInfo) {
                         document.documentElement.style.setProperty('--ktlTheme_menuButtonBg', menuButtonBg);
                         document.documentElement.style.setProperty('--ktlTheme_menuButtonText', menuButtonText);
                         document.documentElement.style.setProperty('--ktlTheme_menuButtonBorder', menuButtonBorder);
+                        document.documentElement.style.setProperty('--ktlTheme_inputFieldBg', inputFieldBg);
 
                         let existingStyle = document.getElementById('ktlUserThemeStyles');
                         if (!existingStyle) {
@@ -20164,7 +20168,7 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .kn-textarea,
                             .ktlUserTheme .chzn-choices,
                             .ktlUserTheme .chzn-drop {
-                                background-color: var(--ktlTheme_distBg) !important;
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
                                 color: var(--ktlTheme_lightText) !important;
                             }
                             #knack-body.ktlUserTheme input[type="checkbox"],
@@ -20209,6 +20213,27 @@ function Ktl($, appInfo) {
                             }
                             .ktlUserTheme .kn-modal {
                                 background-color: var(--ktlTheme_distBg) !important;
+                            }
+                            .ktlUserTheme .kn-popover.drop {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .kn-button.is-primary:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .redactor-toolbar {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                            }
+                            .ktlUserTheme .redactor-editor,
+                            .ktlUserTheme .redactor-box {
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
+                                border-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .input {
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
+                                border-color: var(--ktlTheme_tableHeaderBg) !important;
                             }
                         `;
 
