@@ -76,7 +76,7 @@ function Ktl($, appInfo) {
 
     // Helper functions for escaping double underscores
     // Double underscores (__) are converted to single underscores (_) in display, but not parsed as keywords
-    const ESCAPED_UNDERSCORE_PLACEHOLDER = '\u0000KTLESC\u0000';
+    const ESCAPED_UNDERSCORE_PLACEHOLDER = '\uFFFEKTLESC\uFFFE';
 
     function escapeDoubleUnderscores(text = '') {
         // Only escape __ at the beginning of a line, after whitespace, or after > (HTML tags), not in the middle of words
@@ -189,19 +189,23 @@ function Ktl($, appInfo) {
         if (!$.isEmptyObject(viewKwObj)) {
             ktlKeywords[view.id] = viewKwObj;
 
-            //Add scene keywords.
+            //Add scene and app-wide keywords.
             if (viewKwObj._km || viewKwObj._kbs || viewKwObj._zoom || viewKwObj._nswd || viewKwObj._kn)
                 ktlKeywords[scene.attributes.key] = viewKwObj;
-            else if (viewKwObj._footer)
+
+            if (viewKwObj._footer)
                 ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
-            else if (viewKwObj._loh) {
+
+            if (viewKwObj._loh) {
                 const logOutHere = scene.attributes.slug;
                 if (logOutHere) {
                     Knack.user.bind('logout', function () {
                         window.location.href = window.location.href.slice(0, window.location.href.indexOf('#') + 1) + logOutHere;
                     });
                 }
-            } else if (viewKwObj._bm) {
+            }
+
+            if (viewKwObj._bm) {
                 if (!ktlKeywords.ktlAppBookmarks) {
                     ktlKeywords.ktlAppBookmarks = [];
                 }
@@ -231,6 +235,10 @@ function Ktl($, appInfo) {
                 }
 
                 ktlKeywords.ktlAppBookmarks.push(bookmarkElement);
+            }
+
+            if (viewKwObj._theme) {
+                ktlKeywords._theme = viewKwObj._theme;
             }
         }
     };
@@ -265,8 +273,9 @@ function Ktl($, appInfo) {
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
     function extractKeywords(strToParse = '', keywords = {}) {
         // Remove escaped keywords (double underscore) and their parameters from anywhere in the string
-        // Matches: optional whitespace + escaped placeholder + keyword name + optional (= and params until next keyword or end)
-        const cleanedStr = strToParse.replace(new RegExp('\\s*' + ESCAPED_UNDERSCORE_PLACEHOLDER + '\\w*(?:=(?:(?!\\s_[a-zA-Z]).)*)?', 'g'), '');
+        // Matches: escaped placeholder + keyword name + optional (= and params until next keyword or end)
+        // Preserves any preceding whitespace or newlines by matching them separately
+        const cleanedStr = strToParse.replace(new RegExp('(^|\\s|>)' + ESCAPED_UNDERSCORE_PLACEHOLDER + '\\w*(?:=(?:(?!\\s_[a-zA-Z]).)*)?', 'gm'), '$1');
         const strSplit = cleanedStr.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
         strSplit.splice(0, 1);
         for (let i = 0; i < strSplit.length; i++) {
@@ -6634,7 +6643,7 @@ function Ktl($, appInfo) {
             adjustRGB_sl: function (hexColor, saturation, lightness) {
                 hexColor = hexColor.replace('#', '');
                 const r = parseInt(hexColor.substring(0, 2), 16);
-                const g = parseInt(hexColor.substring(2, 4, 16));
+                const g = parseInt(hexColor.substring(2, 4), 16);
                 const b = parseInt(hexColor.substring(4, 6), 16);
 
                 const rNorm = r / 255;
@@ -18048,7 +18057,7 @@ function Ktl($, appInfo) {
         $(document).on('KTL.systemColorsReady', function () {
             if (!userThemeApplied) {
                 userThemeApplied = true;
-                ktl.scenes.generateUserTheme({ darkMode: true });
+                ktl.scenes.generateUserTheme();
             }
         });
 
@@ -19974,13 +19983,30 @@ function Ktl($, appInfo) {
             },
 
             generateUserTheme: function (options = {}) {
+                const knHeaderInfo = Knack.app.attributes.design.regions.header;
+                const isLegacy = knHeaderInfo.isLegacy;
+
                 const defaults = {
                     enabled: true,
-                    darkMode: true,
+                    mode: 'dark',
+                    headerColor: isLegacy ? knHeaderInfo.legacySettings.bg_color : knHeaderInfo.backgroundColor,
                 };
-                const settings = { ...defaults, ...options };
+                let settings = { ...defaults, ...options };
 
-                if (!settings.enabled) {
+                if (ktlKeywords._theme && ktlKeywords._theme[0].params && Array.isArray(ktlKeywords._theme[0].params)) {
+                    ktlKeywords._theme[0].params.forEach(param => {
+                        if (Array.isArray(param) && param.length === 2) {
+                            const [key, value] = param;
+                            if (key === 'mode') {
+                                settings.mode = value;
+                            } else if (key === 'header') {
+                                settings.headerColor = value;
+                            }
+                        }
+                    });
+                }
+
+                if (!ktlKeywords._theme || !settings.enabled || settings.mode === 'light') {
                     const existingStyle = document.getElementById('ktlUserThemeStyles');
                     if (existingStyle) existingStyle.remove();
                     document.body.classList.remove('ktlUserTheme');
@@ -19989,13 +20015,14 @@ function Ktl($, appInfo) {
 
                 ktl.systemColors.getSystemColors()
                     .then((sysColors) => {
-                        const headerRgb = sysColors.header.rgb;
+                        let headerRgb = settings.headerColor || sysColors.header.rgb;
 
                         let bodyBg, bodyText, distBg, tableHeaderBg, tableHeaderText;
                         let tableCellBg, tableCellText, tableStripedBg, tableTotalsBg, tableTotalsText;
-                        let linkColor, lightText, darkText, topHeaderBg;
+                        let linkColor, lightText, darkText, topHeaderBg, navBarLinkBg;
+                        let menuButtonBg, menuButtonText, menuButtonBorder;
 
-                        if (settings.darkMode) {
+                        if (settings.mode === 'dark' || settings.mode === 'user') {
                             let newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.12);
                             bodyBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
@@ -20037,6 +20064,18 @@ function Ktl($, appInfo) {
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.2, 0.50);
                             topHeaderBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.25, 0.20);
+                            navBarLinkBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.18);
+                            menuButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.90);
+                            menuButtonText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.6, 0.35);
+                            menuButtonBorder = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
                         }
 
                         document.documentElement.style.setProperty('--ktlTheme_bodyBg', bodyBg);
@@ -20053,6 +20092,10 @@ function Ktl($, appInfo) {
                         document.documentElement.style.setProperty('--ktlTheme_lightText', lightText);
                         document.documentElement.style.setProperty('--ktlTheme_darkText', darkText);
                         document.documentElement.style.setProperty('--ktlTheme_topHeaderBg', topHeaderBg);
+                        document.documentElement.style.setProperty('--ktlTheme_navBarLinkBg', navBarLinkBg);
+                        document.documentElement.style.setProperty('--ktlTheme_menuButtonBg', menuButtonBg);
+                        document.documentElement.style.setProperty('--ktlTheme_menuButtonText', menuButtonText);
+                        document.documentElement.style.setProperty('--ktlTheme_menuButtonBorder', menuButtonBorder);
 
                         let existingStyle = document.getElementById('ktlUserThemeStyles');
                         if (!existingStyle) {
@@ -20069,6 +20112,7 @@ function Ktl($, appInfo) {
                             .ktlUserTheme #knack-dist_1 {
                                 background-color: var(--ktlTheme_distBg) !important;
                             }
+                            .ktlUserTheme .ktlBoxWithBorder,
                             .ktlUserTheme .ktlBoxWithBorder .kn-view {
                                 background-color: var(--ktlTheme_distBg) !important;
                             }
@@ -20128,9 +20172,32 @@ function Ktl($, appInfo) {
                                 accent-color: var(--ktlTheme_linkColor);
                                 filter: invert(0.85) hue-rotate(180deg);
                             }
-                            .ktlUserTheme .knHeader {
+                            .ktlUserTheme .knHeader,
+                            .ktlUserTheme #kn-app-header {
                                 background-color: var(--ktlTheme_topHeaderBg) !important;
                                 color: var(--ktlTheme_tableHeaderText) !important;
+                            }
+                            .ktlUserTheme .kn-navigation-bar a {
+                                background-color: var(--ktlTheme_navBarLinkBg) !important;
+                            }
+                            .ktlUserTheme .kn-navigation-bar a:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                            }
+                            .ktlUserTheme .knMenuLink.knMenuLink--button {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .knHeader .knHeader__menu-link--tab {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                            }
+                            .ktlUserTheme .knHeader__menu-dropdown-link {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .knHeader__menu-dropdown-link:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
                             }
                             .ktlUserTheme .modal-card-head {
                                 background-color: var(--ktlTheme_topHeaderBg) !important;
