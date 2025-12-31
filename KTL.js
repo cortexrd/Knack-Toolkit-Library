@@ -238,7 +238,14 @@ function Ktl($, appInfo) {
             }
 
             if (viewKwObj._theme) {
-                ktlKeywords._theme = viewKwObj._theme;
+                if (!ktlKeywords._theme) {
+                    ktlKeywords._theme = {};
+                }
+                if (viewKwObj._theme[0].params && viewKwObj._theme[0].params[0][0] === 'edit') {
+                    ktlKeywords._theme.edit = view.id;
+                } else {
+                    ktlKeywords._theme.params = viewKwObj._theme[0].params;
+                }
             }
         }
     };
@@ -6591,6 +6598,13 @@ function Ktl($, appInfo) {
                     , (m, r, g, b) => '#' + r + r + g + g + b + b)
                     .substring(1).match(/.{2}/g)
                     .map(x => parseInt(x, 16));
+            },
+
+            rgbToHex: function (r, g, b) {
+                return '#' + [r, g, b].map(x => {
+                    const hex = Math.round(x).toString(16);
+                    return hex.length === 1 ? '0' + hex : hex;
+                }).join('');
             },
 
             //rgb is in #rrggbb string format
@@ -18134,6 +18148,21 @@ function Ktl($, appInfo) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
             ktl.scenes.addKioskButtons(view.key, {});
 
+            // Add Theme Editor button if this is the _theme=edit view
+            if (ktlKeywords._theme && ktlKeywords._theme.edit && view.key === ktlKeywords._theme.edit) {
+                const viewEl = document.getElementById(view.key);
+                if (viewEl && !viewEl.querySelector('.ktlThemeEditorBtn')) {
+                    const titleEl = viewEl.querySelector('.kn-title') || viewEl.querySelector('.kn-view-header') || viewEl;
+                    const btn = ktl.fields.addButton(titleEl, 'Theme Editor', '', ['kn-button', 'is-small', 'ktlThemeEditorBtn'], 'ktlThemeEditorBtn_' + view.key);
+                    if (btn) {
+                        btn.style.marginLeft = '10px';
+                        btn.addEventListener('click', () => {
+                            ktl.scenes.showThemeEditor();
+                        });
+                    }
+                }
+            }
+
             if (view.scene && view.scene.modal === true) {
                 addMenuTitleToTab(); //Need this because scene is not always rendered if we open a modal several times in a row.
                 //Check for modal close
@@ -19990,23 +20019,41 @@ function Ktl($, appInfo) {
                     enabled: true,
                     mode: 'dark',
                     headerColor: isLegacy ? knHeaderInfo.legacySettings.bg_color : knHeaderInfo.backgroundColor,
+                    overrides: {}
                 };
                 let settings = { ...defaults, ...options };
+                const userPrefs = ktl.userPrefs.getUserPrefs();
 
-                if (ktlKeywords._theme && ktlKeywords._theme[0].params && Array.isArray(ktlKeywords._theme[0].params)) {
-                    ktlKeywords._theme[0].params.forEach(param => {
-                        if (Array.isArray(param) && param.length === 2) {
-                            const [key, value] = param;
-                            if (key === 'mode') {
-                                settings.mode = value;
-                            } else if (key === 'header') {
-                                settings.headerColor = value;
+                // If options.headerColor is explicitly passed (preview mode from Theme Editor), use options as-is
+                const isPreviewMode = options.headerColor !== undefined;
+
+                if (!isPreviewMode) {
+                    // Check user preferences first (highest priority)
+                    if (userPrefs.userTheme && userPrefs.userTheme.enabled) {
+                        settings.enabled = userPrefs.userTheme.enabled;
+                        settings.mode = userPrefs.userTheme.mode;
+                        settings.headerColor = userPrefs.userTheme.headerColor || settings.headerColor;
+                        settings.overrides = userPrefs.userTheme.overrides || {};
+                    } else if (ktlKeywords._theme && ktlKeywords._theme.params && Array.isArray(ktlKeywords._theme.params)) {
+                        // Fall back to _theme keyword (default preset for all users)
+                        ktlKeywords._theme.params.forEach(param => {
+                            if (Array.isArray(param) && param.length === 2) {
+                                const [key, value] = param;
+                                if (key === 'mode') {
+                                    settings.mode = value;
+                                } else if (key === 'header') {
+                                    settings.headerColor = value;
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
 
-                if (!ktlKeywords._theme || !settings.enabled || settings.mode === 'light') {
+                const hasThemeKeyword = ktlKeywords._theme && ktlKeywords._theme.params;
+                const hasUserTheme = userPrefs.userTheme && userPrefs.userTheme.enabled;
+                const isPreview = options.headerColor && options.enabled;
+
+                if ((!hasThemeKeyword && !hasUserTheme && !isPreview) || !settings.enabled || settings.mode === 'light') {
                     const existingStyle = document.getElementById('ktlUserThemeStyles');
                     if (existingStyle) existingStyle.remove();
                     document.body.classList.remove('ktlUserTheme');
@@ -20088,6 +20135,20 @@ function Ktl($, appInfo) {
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 1.0, 0.8);
                             activeMenuColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            // Apply user overrides if present
+                            if (settings.overrides) {
+                                if (settings.overrides.bodyBg) bodyBg = settings.overrides.bodyBg;
+                                if (settings.overrides.pageBg) pageBg = settings.overrides.pageBg;
+                                if (settings.overrides.tableHeaderBg) tableHeaderBg = settings.overrides.tableHeaderBg;
+                                if (settings.overrides.tableCellBg) tableCellBg = settings.overrides.tableCellBg;
+                                if (settings.overrides.inputFieldBg) inputFieldBg = settings.overrides.inputFieldBg;
+                                if (settings.overrides.linkColor) linkColor = settings.overrides.linkColor;
+                                if (settings.overrides.menuButtonBg) menuButtonBg = settings.overrides.menuButtonBg;
+                                if (settings.overrides.pageButtonBg) pageButtonBg = settings.overrides.pageButtonBg;
+                                if (settings.overrides.topHeaderBg) topHeaderBg = settings.overrides.topHeaderBg;
+                                if (settings.overrides.navBarLinkBg) navBarLinkBg = settings.overrides.navBarLinkBg;
+                            }
                         }
 
                         document.documentElement.style.setProperty('--ktlTheme_bodyBg', bodyBg);
@@ -20314,6 +20375,379 @@ function Ktl($, appInfo) {
                     .catch((err) => {
                         console.error('generateUserTheme error:', err);
                     });
+            },
+
+            showThemeEditor: function () {
+                const PRESETS = {
+                    blue: '#2563eb',
+                    green: '#16a34a',
+                    purple: '#7c3aed',
+                    orange: '#ea580c',
+                    teal: '#0d9488'
+                };
+
+                const ELEMENT_COLORS = [
+                    { key: 'bodyBg', label: 'Body Background', sat: 0.15, light: 0.15 },
+                    { key: 'pageBg', label: 'Page Background', sat: 0.20, light: 0.20 },
+                    { key: 'tableHeaderBg', label: 'Table Header', sat: 0.25, light: 0.25 },
+                    { key: 'tableCellBg', label: 'Table Cell', sat: 0.08, light: 0.18 },
+                    { key: 'inputFieldBg', label: 'Input Field', sat: 0.04, light: 0.30 },
+                    { key: 'linkColor', label: 'Link Color', sat: 0.5, light: 0.7 },
+                    { key: 'menuButtonBg', label: 'Menu Button', sat: 0.6, light: 0.3 },
+                    { key: 'pageButtonBg', label: 'Page Button', sat: 0.99, light: 0.50 },
+                    { key: 'topHeaderBg', label: 'Top Header', sat: 1.0, light: 1.0 },
+                    { key: 'navBarLinkBg', label: 'Nav Bar Link', sat: 0.80, light: 0.20 },
+                ];
+
+                let existingEditor = document.getElementById('ktlThemeEditor');
+                if (existingEditor) {
+                    existingEditor.remove();
+                    return;
+                }
+
+                const userPrefs = ktl.userPrefs.getUserPrefs();
+                let currentSettings = {
+                    enabled: userPrefs.userTheme?.enabled || false,
+                    mode: userPrefs.userTheme?.mode || 'dark',
+                    preset: userPrefs.userTheme?.preset || null,
+                    headerColor: userPrefs.userTheme?.headerColor || ktl.systemColors.getSystemColors().header?.rgb || '#c3863a',
+                    overrides: { ...(userPrefs.userTheme?.overrides || {}) }
+                };
+
+                let originalSettings = JSON.parse(JSON.stringify(currentSettings));
+
+                const editor = document.createElement('div');
+                editor.id = 'ktlThemeEditor';
+                editor.className = 'ktlThemeEditor';
+
+                const savedPos = ktl.storage.lsGetItem('ktlThemeEditorPos');
+                if (savedPos) {
+                    const pos = JSON.parse(savedPos);
+                    editor.style.left = pos.left + 'px';
+                    editor.style.top = pos.top + 'px';
+                } else {
+                    editor.style.left = '50%';
+                    editor.style.top = '50%';
+                    editor.style.transform = 'translate(-50%, -50%)';
+                }
+
+                const header = document.createElement('div');
+                header.className = 'ktlThemeEditorHeader';
+                header.innerHTML = '<span>Theme Editor</span><span class="ktlThemeEditorClose">X</span>';
+
+                const content = document.createElement('div');
+                content.className = 'ktlThemeEditorContent';
+
+                // Mode Section
+                const modeSection = document.createElement('div');
+                modeSection.className = 'ktlThemeEditorSection';
+                modeSection.innerHTML = '<div class="ktlThemeEditorLabel">Mode</div>';
+                const modeGroup = document.createElement('div');
+                modeGroup.className = 'ktlThemeEditorModeGroup';
+                ['dark', 'light', 'off'].forEach(mode => {
+                    const btn = document.createElement('button');
+                    btn.className = 'ktlThemeEditorModeBtn' + (currentSettings.mode === mode || (!currentSettings.enabled && mode === 'off') ? ' active' : '');
+                    btn.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+                    btn.dataset.mode = mode;
+                    btn.addEventListener('click', () => {
+                        modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        if (mode === 'off') {
+                            currentSettings.enabled = false;
+                        } else {
+                            currentSettings.enabled = true;
+                            currentSettings.mode = mode;
+                        }
+                        applyPreview();
+                    });
+                    modeGroup.appendChild(btn);
+                });
+                modeSection.appendChild(modeGroup);
+                content.appendChild(modeSection);
+
+                // Presets Section
+                const presetsSection = document.createElement('div');
+                presetsSection.className = 'ktlThemeEditorSection';
+                presetsSection.innerHTML = '<div class="ktlThemeEditorLabel">Presets</div>';
+                const presetsGroup = document.createElement('div');
+                presetsGroup.className = 'ktlThemeEditorPresets';
+                Object.entries(PRESETS).forEach(([name, color]) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'ktlThemeEditorPresetBtn' + (currentSettings.preset === name ? ' active' : '');
+                    btn.style.backgroundColor = color;
+                    btn.title = name.charAt(0).toUpperCase() + name.slice(1);
+                    btn.dataset.preset = name;
+                    btn.addEventListener('click', () => {
+                        presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentSettings.preset = name;
+                        currentSettings.headerColor = color;
+                        currentSettings.overrides = {};
+                        currentSettings.enabled = true;
+                        currentSettings.mode = 'dark';
+                        // Update mode buttons to reflect dark mode
+                        modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
+                            b.classList.toggle('active', b.dataset.mode === 'dark');
+                        });
+                        headerColorInput.value = color;
+                        headerColorHex.value = color;
+                        updateElementColors();
+                        applyPreview();
+                    });
+                    presetsGroup.appendChild(btn);
+                });
+                presetsSection.appendChild(presetsGroup);
+                content.appendChild(presetsSection);
+
+                // Header Color Section
+                const headerSection = document.createElement('div');
+                headerSection.className = 'ktlThemeEditorSection';
+                headerSection.innerHTML = '<div class="ktlThemeEditorLabel">Header Color</div>';
+                const headerRow = document.createElement('div');
+                headerRow.className = 'ktlThemeEditorColorRow';
+                const headerColorInput = document.createElement('input');
+                headerColorInput.type = 'color';
+                headerColorInput.className = 'ktlThemeEditorColorInput';
+                headerColorInput.value = currentSettings.headerColor;
+                const headerColorHex = document.createElement('input');
+                headerColorHex.type = 'text';
+                headerColorHex.className = 'ktlThemeEditorColorHex';
+                headerColorHex.value = currentSettings.headerColor;
+
+                headerColorInput.addEventListener('input', () => {
+                    currentSettings.headerColor = headerColorInput.value;
+                    headerColorHex.value = headerColorInput.value;
+                    currentSettings.preset = null;
+                    currentSettings.overrides = {};
+                    presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => b.classList.remove('active'));
+                    updateElementColors();
+                    applyPreview();
+                });
+
+                headerColorHex.addEventListener('change', () => {
+                    if (/^#[0-9A-Fa-f]{6}$/.test(headerColorHex.value)) {
+                        currentSettings.headerColor = headerColorHex.value;
+                        headerColorInput.value = headerColorHex.value;
+                        currentSettings.preset = null;
+                        currentSettings.overrides = {};
+                        presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => b.classList.remove('active'));
+                        updateElementColors();
+                        applyPreview();
+                    }
+                });
+
+                headerRow.appendChild(headerColorInput);
+                headerRow.appendChild(headerColorHex);
+                headerSection.appendChild(headerRow);
+                content.appendChild(headerSection);
+
+                // Element Colors Section
+                const elementsSection = document.createElement('div');
+                elementsSection.className = 'ktlThemeEditorSection';
+                elementsSection.innerHTML = '<div class="ktlThemeEditorLabel">Element Colors</div>';
+                const elementColorInputs = {};
+
+                function deriveColor(headerHex, sat, light) {
+                    const rgb = ktl.systemColors.hexToRgb(headerHex);
+                    const newRgb = ktl.systemColors.adjustRGB_sl(headerHex, sat, light);
+                    return ktl.systemColors.rgbToHex(newRgb[0], newRgb[1], newRgb[2]);
+                }
+
+                ELEMENT_COLORS.forEach(elem => {
+                    const row = document.createElement('div');
+                    row.className = 'ktlThemeEditorColorRow';
+                    const label = document.createElement('span');
+                    label.className = 'ktlThemeEditorColorLabel';
+                    label.textContent = elem.label;
+                    const colorInput = document.createElement('input');
+                    colorInput.type = 'color';
+                    colorInput.className = 'ktlThemeEditorColorInput';
+                    const hexInput = document.createElement('input');
+                    hexInput.type = 'text';
+                    hexInput.className = 'ktlThemeEditorColorHex';
+
+                    const derivedColor = currentSettings.overrides[elem.key] || deriveColor(currentSettings.headerColor, elem.sat, elem.light);
+                    colorInput.value = derivedColor;
+                    hexInput.value = derivedColor;
+                    if (currentSettings.overrides[elem.key]) {
+                        hexInput.classList.add('ktlThemeEditorOverridden');
+                    }
+
+                    colorInput.addEventListener('input', () => {
+                        currentSettings.overrides[elem.key] = colorInput.value;
+                        hexInput.value = colorInput.value;
+                        hexInput.classList.add('ktlThemeEditorOverridden');
+                        applyPreview();
+                    });
+
+                    hexInput.addEventListener('change', () => {
+                        if (/^#[0-9A-Fa-f]{6}$/.test(hexInput.value)) {
+                            currentSettings.overrides[elem.key] = hexInput.value;
+                            colorInput.value = hexInput.value;
+                            hexInput.classList.add('ktlThemeEditorOverridden');
+                            applyPreview();
+                        }
+                    });
+
+                    elementColorInputs[elem.key] = { colorInput, hexInput, elem };
+                    row.appendChild(label);
+                    row.appendChild(colorInput);
+                    row.appendChild(hexInput);
+                    elementsSection.appendChild(row);
+                });
+
+                content.appendChild(elementsSection);
+
+                function updateElementColors() {
+                    ELEMENT_COLORS.forEach(elem => {
+                        const inputs = elementColorInputs[elem.key];
+                        if (!currentSettings.overrides[elem.key]) {
+                            const derivedColor = deriveColor(currentSettings.headerColor, elem.sat, elem.light);
+                            inputs.colorInput.value = derivedColor;
+                            inputs.hexInput.value = derivedColor;
+                            inputs.hexInput.classList.remove('ktlThemeEditorOverridden');
+                        }
+                    });
+                }
+
+                function applyPreview() {
+                    if (!currentSettings.enabled) {
+                        const existingStyle = document.getElementById('ktlUserThemeStyles');
+                        if (existingStyle) existingStyle.remove();
+                        document.body.classList.remove('ktlUserTheme');
+                        return;
+                    }
+                    ktl.scenes.generateUserTheme({
+                        enabled: currentSettings.enabled,
+                        mode: currentSettings.mode,
+                        headerColor: currentSettings.headerColor,
+                        overrides: currentSettings.overrides
+                    });
+                }
+
+                // Actions
+                const actions = document.createElement('div');
+                actions.className = 'ktlThemeEditorActions';
+
+                const resetBtn = document.createElement('button');
+                resetBtn.className = 'ktlThemeEditorBtn';
+                resetBtn.textContent = 'Reset';
+                resetBtn.addEventListener('click', () => {
+                    currentSettings = JSON.parse(JSON.stringify(originalSettings));
+                    headerColorInput.value = currentSettings.headerColor;
+                    headerColorHex.value = currentSettings.headerColor;
+                    presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => {
+                        b.classList.toggle('active', b.dataset.preset === currentSettings.preset);
+                    });
+                    modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
+                        const isOff = !currentSettings.enabled && b.dataset.mode === 'off';
+                        const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
+                        b.classList.toggle('active', isOff || isMode);
+                    });
+                    updateElementColors();
+                    applyPreview();
+                });
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'ktlThemeEditorBtn';
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.addEventListener('click', () => {
+                    currentSettings = JSON.parse(JSON.stringify(originalSettings));
+                    applyPreview();
+                    editor.remove();
+                });
+
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'ktlThemeEditorBtn primary';
+                saveBtn.textContent = 'Save';
+                saveBtn.addEventListener('click', () => {
+                    ktl.scenes.saveThemeSettings(currentSettings);
+                    editor.remove();
+                });
+
+                actions.appendChild(resetBtn);
+                actions.appendChild(cancelBtn);
+                actions.appendChild(saveBtn);
+
+                editor.appendChild(header);
+                editor.appendChild(content);
+                editor.appendChild(actions);
+                document.body.appendChild(editor);
+
+                // Close button
+                header.querySelector('.ktlThemeEditorClose').addEventListener('click', () => {
+                    currentSettings = JSON.parse(JSON.stringify(originalSettings));
+                    applyPreview();
+                    editor.remove();
+                });
+
+                // Draggable
+                let isDragging = false;
+                let dragOffset = { x: 0, y: 0 };
+
+                header.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('ktlThemeEditorClose')) return;
+                    isDragging = true;
+                    editor.style.transform = 'none';
+                    dragOffset.x = e.clientX - editor.offsetLeft;
+                    dragOffset.y = e.clientY - editor.offsetTop;
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    editor.style.left = (e.clientX - dragOffset.x) + 'px';
+                    editor.style.top = (e.clientY - dragOffset.y) + 'px';
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        ktl.storage.lsSetItem('ktlThemeEditorPos', JSON.stringify({
+                            left: editor.offsetLeft,
+                            top: editor.offsetTop
+                        }));
+                    }
+                });
+            },
+
+            saveThemeSettings: function (settings) {
+                const userPrefs = ktl.userPrefs.getUserPrefs();
+                userPrefs.userTheme = {
+                    enabled: settings.enabled,
+                    mode: settings.mode,
+                    preset: settings.preset,
+                    headerColor: settings.headerColor,
+                    overrides: settings.overrides
+                };
+                userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
+
+                // Try to save to database via hidden Edit Account form on the _theme=edit view
+                const editViewId = ktlKeywords._theme?.edit;
+                const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                if (editViewId && acctPrefsFld) {
+                    const prefsField = document.querySelector('#' + editViewId + ' #' + acctPrefsFld);
+                    if (prefsField) {
+                        prefsField.value = JSON.stringify(userPrefs);
+                        const submitBtn = document.querySelector('#' + editViewId + ' .kn-button.is-primary');
+                        if (submitBtn) {
+                            submitBtn.click();
+                        }
+                    } else {
+                        // Try via submitAndWait if updUserPrefsViewId is configured
+                        const updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
+                        if (updUserPrefsViewId) {
+                            ktl.views.submitAndWait(updUserPrefsViewId, { [acctPrefsFld]: JSON.stringify(userPrefs) })
+                                .then(() => {
+                                    ktl.log.clog('green', 'Theme settings saved to database');
+                                })
+                                .catch((err) => {
+                                    ktl.log.clog('red', 'Error saving theme settings: ' + err);
+                                });
+                        }
+                    }
+                }
             },
         }
     })(); //Scenes feature
@@ -20609,8 +21043,14 @@ function Ktl($, appInfo) {
             showExtraDebugInfo: false,
             showIframeWnd: false,
             showDebugWnd: false,
-            workShift: 'A'
-            //TODO:  allow dynamically adding more as per user requirements.
+            workShift: 'A',
+            userTheme: {
+                enabled: false,
+                mode: 'dark',
+                preset: null,
+                headerColor: null,
+                overrides: {}
+            }
         };
 
         var userPrefsObj = defaultUserPrefsObj;
@@ -25244,6 +25684,10 @@ window.ktlKeywordsCount = function () {
 
 window.ktlUserTheme = function (options) {
     ktl.scenes.generateUserTheme(options);
+}
+
+window.ktlThemeEditor = function () {
+    ktl.scenes.showThemeEditor();
 }
 
 window.ktlTablesAndFieldCounts = function () {

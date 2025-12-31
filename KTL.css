@@ -1063,4 +1063,182 @@ ul.ui-autocomplete {
 			color: #1a1a1a;
 		}
 
+/**** Theme Editor ****/
+.ktlThemeEditor {
+	position: fixed;
+	background-color: darkgrey;
+	border: dimgrey;
+	border-width: 3px;
+	border-style: solid;
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	z-index: 2000;
+	min-width: 320px;
+	max-width: 400px;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+	border-radius: 4px;
+}
+
+.ktlThemeEditorHeader {
+	height: 35px;
+	font-size: 14pt;
+	font-weight: 500;
+	line-height: 35px;
+	text-align: center;
+	width: 100%;
+	color: white;
+	background-color: dimgrey;
+	cursor: move;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0 10px;
+	box-sizing: border-box;
+}
+
+.ktlThemeEditorClose {
+	cursor: pointer;
+	font-size: 18px;
+	font-weight: bold;
+}
+
+.ktlThemeEditorClose:hover {
+	color: #ffcccc;
+}
+
+.ktlThemeEditorContent {
+	padding: 15px;
+	overflow-y: auto;
+	max-height: 70vh;
+}
+
+.ktlThemeEditorSection {
+	margin-bottom: 15px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #eee;
+}
+
+.ktlThemeEditorSection:last-child {
+	border-bottom: none;
+	margin-bottom: 0;
+}
+
+.ktlThemeEditorLabel {
+	font-weight: 500;
+	margin-bottom: 8px;
+	color: #333;
+}
+
+.ktlThemeEditorModeGroup {
+	display: flex;
+	gap: 10px;
+}
+
+.ktlThemeEditorModeBtn {
+	padding: 6px 14px;
+	border: 1px solid #ccc;
+	background: #f5f5f5;
+	cursor: pointer;
+	border-radius: 4px;
+	font-size: 13px;
+}
+
+.ktlThemeEditorModeBtn.active {
+	background: #4a90d9;
+	color: white;
+	border-color: #4a90d9;
+}
+
+.ktlThemeEditorPresets {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.ktlThemeEditorPresetBtn {
+	width: 36px;
+	height: 36px;
+	border: 2px solid #ccc;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: transform 0.1s, border-color 0.1s;
+}
+
+.ktlThemeEditorPresetBtn:hover {
+	transform: scale(1.1);
+}
+
+.ktlThemeEditorPresetBtn.active {
+	border-color: #333;
+	border-width: 3px;
+}
+
+.ktlThemeEditorColorRow {
+	display: flex;
+	align-items: center;
+	margin-bottom: 8px;
+	gap: 10px;
+}
+
+.ktlThemeEditorColorLabel {
+	flex: 1;
+	font-size: 13px;
+	color: #555;
+}
+
+.ktlThemeEditorColorInput {
+	width: 50px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.ktlThemeEditorColorHex {
+	width: 75px;
+	font-size: 12px;
+	padding: 4px;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	font-family: monospace;
+}
+
+.ktlThemeEditorOverridden {
+	background-color: #fff3cd;
+}
+
+.ktlThemeEditorActions {
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+	padding: 10px 15px;
+	border-top: 1px solid #eee;
+	background: dimgrey;
+}
+
+.ktlThemeEditorBtn {
+	padding: 8px 16px;
+	border: 1px solid #ccc;
+	background: #fff;
+	cursor: pointer;
+	border-radius: 4px;
+	font-size: 13px;
+}
+
+.ktlThemeEditorBtn:hover {
+	background: #f0f0f0;
+}
+
+.ktlThemeEditorBtn.primary {
+	background: #4a90d9;
+	color: white;
+	border-color: #4a90d9;
+}
+
+.ktlThemeEditorBtn.primary:hover {
+	background: #3a7fc8;
+}
+
 /**** KTL_RELATED - END ****/
