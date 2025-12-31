@@ -20017,22 +20017,25 @@ function Ktl($, appInfo) {
                     .then((sysColors) => {
                         let headerRgb = settings.headerColor || sysColors.header.rgb;
 
-                        let bodyBg, bodyText, distBg, tableHeaderBg, tableHeaderText;
+                        let bodyBg, bodyText, pageBg, tableHeaderBg, tableHeaderText;
                         let tableCellBg, tableCellText, tableStripedBg, tableTotalsBg, tableTotalsText;
                         let linkColor, lightText, darkText, topHeaderBg, navBarLinkBg;
-                        let menuButtonBg, menuButtonText, menuButtonBorder, inputFieldBg;
+                        let menuButtonBg, menuButtonText, menuButtonBorder, inputFieldBg, tableBorderColor, activeMenuColor, pageButtonBg;
 
                         if (settings.mode === 'dark' || settings.mode === 'user') {
-                            let newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.12);
+                            let newRGB = ktl.systemColors.hexToRgb(headerRgb);
+                            topHeaderBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.15);
                             bodyBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.85);
                             bodyText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.12, 0.15);
-                            distBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.20, 0.20);
+                            pageBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.04, 0.40);
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.04, 0.30);
                             inputFieldBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.25, 0.25);
@@ -20043,6 +20046,9 @@ function Ktl($, appInfo) {
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.08, 0.18);
                             tableCellBg = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.75)`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.30);
+                            tableBorderColor = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.85)`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.05, 0.8);
                             tableCellText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
@@ -20065,13 +20071,10 @@ function Ktl($, appInfo) {
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.15);
                             darkText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.2, 0.50);
-                            topHeaderBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.25, 0.20);
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.80, 0.20);
                             navBarLinkBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.18);
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.6, 0.3);
                             menuButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.90);
@@ -20079,11 +20082,17 @@ function Ktl($, appInfo) {
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.6, 0.35);
                             menuButtonBorder = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.99, 0.50);
+                            pageButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 1.0, 0.8);
+                            activeMenuColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
                         }
 
                         document.documentElement.style.setProperty('--ktlTheme_bodyBg', bodyBg);
                         document.documentElement.style.setProperty('--ktlTheme_bodyText', bodyText);
-                        document.documentElement.style.setProperty('--ktlTheme_distBg', distBg);
+                        document.documentElement.style.setProperty('--ktlTheme_pageBg', pageBg);
                         document.documentElement.style.setProperty('--ktlTheme_tableHeaderBg', tableHeaderBg);
                         document.documentElement.style.setProperty('--ktlTheme_tableHeaderText', tableHeaderText);
                         document.documentElement.style.setProperty('--ktlTheme_tableCellBg', tableCellBg);
@@ -20100,6 +20109,9 @@ function Ktl($, appInfo) {
                         document.documentElement.style.setProperty('--ktlTheme_menuButtonText', menuButtonText);
                         document.documentElement.style.setProperty('--ktlTheme_menuButtonBorder', menuButtonBorder);
                         document.documentElement.style.setProperty('--ktlTheme_inputFieldBg', inputFieldBg);
+                        document.documentElement.style.setProperty('--ktlTheme_tableBorderColor', tableBorderColor);
+                        document.documentElement.style.setProperty('--ktlTheme_activeMenuColor', activeMenuColor);
+                        document.documentElement.style.setProperty('--ktlTheme_pageButtonBg', pageButtonBg);
 
                         let existingStyle = document.getElementById('ktlUserThemeStyles');
                         if (!existingStyle) {
@@ -20109,24 +20121,104 @@ function Ktl($, appInfo) {
                         }
 
                         existingStyle.textContent = `
+                            /* Top-Level Page Elements */
                             #knack-body.ktlUserTheme {
                                 background-color: var(--ktlTheme_bodyBg) !important;
                                 color: var(--ktlTheme_bodyText) !important;
                             }
                             .ktlUserTheme #knack-dist_1 {
-                                background-color: var(--ktlTheme_distBg) !important;
+                                background-color: var(--ktlTheme_pageBg) !important;
                             }
+                            .ktlUserTheme .knHeader,
+                            .ktlUserTheme #kn-app-header {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_tableHeaderText) !important;
+                            }
+
+                            /* Modal Containers and Popups */
+                            .ktlUserTheme .modal-card-head {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_tableHeaderText) !important;
+                            }
+                            .ktlUserTheme .modal-card-body {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .kn-modal {
+                                background-color: var(--ktlTheme_pageBg) !important;
+                            }
+                            .ktlUserTheme .kn-popover.drop {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+
+                            /* Menus */
+                            .ktlUserTheme .kn-navigation-bar a:hover,
+                            .ktlUserTheme .kn-navigation-bar .is-active a {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                            }
+                            .ktlUserTheme .knMenuLink.knMenuLink--button {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .knMenuLink.knMenuLink--button:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                border-color: var(--ktlTheme_topHeaderBg) !important;
+                            }
+                            .ktlUserTheme .knMenuLink.knMenuLink--tab {
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .knMenuLink.knMenuLink--tab:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                            }
+                            .ktlUserTheme .knMenuLink--tab.knMenuLink--isActive.knMenuLink--outlined {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                            }
+
+                            /* Legacy Menus */
+                            .ktlUserTheme #kn-app-menu nav.tabs li.is-active a {
+                                color: var(--ktlTheme_activeMenuColor) !important;
+                            }
+                            .ktlUserTheme .kn-content .tabs.is-boxed li.is-active a {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                                border-bottom-color: transparent !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                            }
+
+                            /* New Menus */
+                            .ktlUserTheme .knHeader .knHeader__menu-link--tab {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .knHeader__menu-dropdown-link {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .knHeader__menu-dropdown-link:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                            }
+
+                            /* KTL's Hide/Show View Feature */
                             .ktlUserTheme .ktlBoxWithBorder,
                             .ktlUserTheme .ktlBoxWithBorder .kn-view {
-                                background-color: var(--ktlTheme_distBg) !important;
+                                background-color: var(--ktlTheme_pageBg) !important;
                             }
+
+                            /* Grids */
                             .ktlUserTheme .knTable th {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
                                 color: var(--ktlTheme_tableHeaderText) !important;
+                                border-color: var(--ktlTheme_tableBorderColor) !important;
                             }
                             .ktlUserTheme .knTable td {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
                                 color: var(--ktlTheme_tableCellText) !important;
+                                border-color: var(--ktlTheme_tableBorderColor) !important;
                             }
                             .ktlUserTheme .kn-table.is-striped tbody tr:nth-child(even) {
                                 background-color: var(--ktlTheme_tableStripedBg) !important;
@@ -20135,9 +20227,16 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableTotalsBg) !important;
                                 color: var(--ktlTheme_tableTotalsText) !important;
                             }
+
+                            /* Links */
                             .ktlUserTheme .kn-content a {
                                 color: var(--ktlTheme_linkColor) !important;
                             }
+                            .ktlUserTheme .kn-navigation-bar a {
+                                background-color: var(--ktlTheme_navBarLinkBg);
+                            }
+
+                            /* Text Color */
                             .ktlUserTheme .kn-entries-summary,
                             .ktlUserTheme .ktlAddonsDiv,
                             .ktlUserTheme .kn-title,
@@ -20146,7 +20245,8 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .kn-table,
                             .ktlUserTheme .kn-content,
                             .ktlUserTheme .kn-label,
-                            .ktlUserTheme .search-choice {
+                            .ktlUserTheme .search-choice,
+                            .ktlUserTheme .kn-subtitle {
                                 color: var(--ktlTheme_lightText) !important;
                             }
                             .ktlUserTheme .kn-details .kn-detail-body,
@@ -20163,6 +20263,8 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .filterControl {
                                 color: var(--ktlTheme_darkText) !important;
                             }
+
+                            /* Input Controls */
                             #knack-body.ktlUserTheme input,
                             .ktlUserTheme .kn-select > select,
                             .ktlUserTheme .kn-textarea,
@@ -20176,52 +20278,6 @@ function Ktl($, appInfo) {
                                 accent-color: var(--ktlTheme_linkColor);
                                 filter: invert(0.85) hue-rotate(180deg);
                             }
-                            .ktlUserTheme .knHeader,
-                            .ktlUserTheme #kn-app-header {
-                                background-color: var(--ktlTheme_topHeaderBg) !important;
-                                color: var(--ktlTheme_tableHeaderText) !important;
-                            }
-                            .ktlUserTheme .kn-navigation-bar a {
-                                background-color: var(--ktlTheme_navBarLinkBg) !important;
-                            }
-                            .ktlUserTheme .kn-navigation-bar a:hover {
-                                background-color: var(--ktlTheme_topHeaderBg) !important;
-                            }
-                            .ktlUserTheme .knMenuLink.knMenuLink--button {
-                                background-color: var(--ktlTheme_menuButtonBg) !important;
-                                color: var(--ktlTheme_menuButtonText) !important;
-                                border-color: var(--ktlTheme_menuButtonBorder) !important;
-                            }
-                            .ktlUserTheme .knHeader .knHeader__menu-link--tab {
-                                background-color: var(--ktlTheme_menuButtonBg) !important;
-                                color: var(--ktlTheme_menuButtonText) !important;
-                            }
-                            .ktlUserTheme .knHeader__menu-dropdown-link {
-                                background-color: var(--ktlTheme_tableHeaderBg) !important;
-                                color: var(--ktlTheme_lightText) !important;
-                            }
-                            .ktlUserTheme .knHeader__menu-dropdown-link:hover {
-                                background-color: var(--ktlTheme_topHeaderBg) !important;
-                            }
-                            .ktlUserTheme .modal-card-head {
-                                background-color: var(--ktlTheme_topHeaderBg) !important;
-                                color: var(--ktlTheme_tableHeaderText) !important;
-                            }
-                            .ktlUserTheme .modal-card-body {
-                                background-color: var(--ktlTheme_tableHeaderBg) !important;
-                                color: var(--ktlTheme_lightText) !important;
-                            }
-                            .ktlUserTheme .kn-modal {
-                                background-color: var(--ktlTheme_distBg) !important;
-                            }
-                            .ktlUserTheme .kn-popover.drop {
-                                background-color: var(--ktlTheme_tableHeaderBg) !important;
-                                border-color: var(--ktlTheme_menuButtonBorder) !important;
-                            }
-                            .ktlUserTheme .kn-button.is-primary:hover {
-                                background-color: var(--ktlTheme_topHeaderBg) !important;
-                                border-color: var(--ktlTheme_menuButtonBorder) !important;
-                            }
                             .ktlUserTheme .redactor-toolbar {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
                             }
@@ -20234,6 +20290,22 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .input {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
                                 border-color: var(--ktlTheme_tableHeaderBg) !important;
+                            }
+                            .ktlUserTheme .chzn-container-single .chzn-single {
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
+                                border-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+
+                            /* Submit Buttons */
+                            .ktlUserTheme button.is-primary {
+                                background-color: var(--ktlTheme_pageButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .kn-button.is-primary:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
                             }
                         `;
 
