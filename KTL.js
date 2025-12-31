@@ -18043,6 +18043,14 @@ function Ktl($, appInfo) {
         var idleWatchDogTimeout = null;
         let appIsIdle = false;
         var processMutation = null;
+        let userThemeApplied = false;
+
+        $(document).on('KTL.systemColorsReady', function () {
+            if (!userThemeApplied) {
+                userThemeApplied = true;
+                ktl.scenes.generateUserTheme({ darkMode: true });
+            }
+        });
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (Knack.router.current_scene_key !== scene.key) {
@@ -19963,6 +19971,185 @@ function Ktl($, appInfo) {
                             return scene.attributes.key;
                     }
                 }
+            },
+
+            generateUserTheme: function (options = {}) {
+                const defaults = {
+                    enabled: true,
+                    darkMode: true,
+                };
+                const settings = { ...defaults, ...options };
+
+                if (!settings.enabled) {
+                    const existingStyle = document.getElementById('ktlUserThemeStyles');
+                    if (existingStyle) existingStyle.remove();
+                    document.body.classList.remove('ktlUserTheme');
+                    return;
+                }
+
+                ktl.systemColors.getSystemColors()
+                    .then((sysColors) => {
+                        const headerRgb = sysColors.header.rgb;
+
+                        let bodyBg, bodyText, distBg, tableHeaderBg, tableHeaderText;
+                        let tableCellBg, tableCellText, tableStripedBg, tableTotalsBg, tableTotalsText;
+                        let linkColor, lightText, darkText, topHeaderBg;
+
+                        if (settings.darkMode) {
+                            let newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.12);
+                            bodyBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.85);
+                            bodyText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.12, 0.15);
+                            distBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.25, 0.25);
+                            tableHeaderBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.9);
+                            tableHeaderText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.08, 0.18);
+                            tableCellBg = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.75)`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.05, 0.8);
+                            tableCellText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.22);
+                            tableStripedBg = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.75)`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.2, 0.2);
+                            tableTotalsBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.85);
+                            tableTotalsText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.5, 0.7);
+                            linkColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.08, 0.75);
+                            lightText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.15);
+                            darkText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.2, 0.50);
+                            topHeaderBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                        }
+
+                        document.documentElement.style.setProperty('--ktlTheme_bodyBg', bodyBg);
+                        document.documentElement.style.setProperty('--ktlTheme_bodyText', bodyText);
+                        document.documentElement.style.setProperty('--ktlTheme_distBg', distBg);
+                        document.documentElement.style.setProperty('--ktlTheme_tableHeaderBg', tableHeaderBg);
+                        document.documentElement.style.setProperty('--ktlTheme_tableHeaderText', tableHeaderText);
+                        document.documentElement.style.setProperty('--ktlTheme_tableCellBg', tableCellBg);
+                        document.documentElement.style.setProperty('--ktlTheme_tableCellText', tableCellText);
+                        document.documentElement.style.setProperty('--ktlTheme_tableStripedBg', tableStripedBg);
+                        document.documentElement.style.setProperty('--ktlTheme_tableTotalsBg', tableTotalsBg);
+                        document.documentElement.style.setProperty('--ktlTheme_tableTotalsText', tableTotalsText);
+                        document.documentElement.style.setProperty('--ktlTheme_linkColor', linkColor);
+                        document.documentElement.style.setProperty('--ktlTheme_lightText', lightText);
+                        document.documentElement.style.setProperty('--ktlTheme_darkText', darkText);
+                        document.documentElement.style.setProperty('--ktlTheme_topHeaderBg', topHeaderBg);
+
+                        let existingStyle = document.getElementById('ktlUserThemeStyles');
+                        if (!existingStyle) {
+                            existingStyle = document.createElement('style');
+                            existingStyle.id = 'ktlUserThemeStyles';
+                            document.head.appendChild(existingStyle);
+                        }
+
+                        existingStyle.textContent = `
+                            #knack-body.ktlUserTheme {
+                                background-color: var(--ktlTheme_bodyBg) !important;
+                                color: var(--ktlTheme_bodyText) !important;
+                            }
+                            .ktlUserTheme #knack-dist_1 {
+                                background-color: var(--ktlTheme_distBg) !important;
+                            }
+                            .ktlUserTheme .ktlBoxWithBorder .kn-view {
+                                background-color: var(--ktlTheme_distBg) !important;
+                            }
+                            .ktlUserTheme .knTable th {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_tableHeaderText) !important;
+                            }
+                            .ktlUserTheme .knTable td {
+                                background-color: var(--ktlTheme_tableCellBg) !important;
+                                color: var(--ktlTheme_tableCellText) !important;
+                            }
+                            .ktlUserTheme .kn-table.is-striped tbody tr:nth-child(even) {
+                                background-color: var(--ktlTheme_tableStripedBg) !important;
+                            }
+                            .ktlUserTheme .kn-table-totals > td {
+                                background-color: var(--ktlTheme_tableTotalsBg) !important;
+                                color: var(--ktlTheme_tableTotalsText) !important;
+                            }
+                            .ktlUserTheme .kn-content a {
+                                color: var(--ktlTheme_linkColor) !important;
+                            }
+                            .ktlUserTheme .kn-entries-summary,
+                            .ktlUserTheme .ktlAddonsDiv,
+                            .ktlUserTheme .kn-title,
+                            .ktlUserTheme .kn-info-bar,
+                            .ktlUserTheme .kn-button,
+                            .ktlUserTheme .kn-table,
+                            .ktlUserTheme .kn-content,
+                            .ktlUserTheme .kn-label,
+                            .ktlUserTheme .search-choice {
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .kn-details .kn-detail-body,
+                            .ktlUserTheme .kn-list .kn-detail-body,
+                            .ktlUserTheme .kn-map-list .kn-detail-body {
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .kn-details .kn-detail-label,
+                            .ktlUserTheme .kn-list .kn-detail-label,
+                            .ktlUserTheme .kn-map-list .kn-detail-label {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .filterControl {
+                                color: var(--ktlTheme_darkText) !important;
+                            }
+                            #knack-body.ktlUserTheme input,
+                            .ktlUserTheme .kn-select > select,
+                            .ktlUserTheme .kn-textarea,
+                            .ktlUserTheme .chzn-choices,
+                            .ktlUserTheme .chzn-drop {
+                                background-color: var(--ktlTheme_distBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            #knack-body.ktlUserTheme input[type="checkbox"],
+                            #knack-body.ktlUserTheme input[type="radio"] {
+                                accent-color: var(--ktlTheme_linkColor);
+                                filter: invert(0.85) hue-rotate(180deg);
+                            }
+                            .ktlUserTheme .knHeader {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_tableHeaderText) !important;
+                            }
+                            .ktlUserTheme .modal-card-head {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_tableHeaderText) !important;
+                            }
+                            .ktlUserTheme .modal-card-body {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .kn-modal {
+                                background-color: var(--ktlTheme_distBg) !important;
+                            }
+                        `;
+
+                        document.body.classList.add('ktlUserTheme');
+                    })
+                    .catch((err) => {
+                        console.error('generateUserTheme error:', err);
+                    });
             },
         }
     })(); //Scenes feature
@@ -24889,6 +25076,10 @@ window.ktlKeywordsToString = function (depth = 10) {
 window.ktlKeywordsCount = function () {
     const kwCount = ktl.core.countKeywords(ktlKeywords);
     console.log('Count of each KTL Keywords:\n\n', kwCount);
+}
+
+window.ktlUserTheme = function (options) {
+    ktl.scenes.generateUserTheme(options);
 }
 
 window.ktlTablesAndFieldCounts = function () {
