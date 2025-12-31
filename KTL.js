@@ -12492,11 +12492,11 @@ function Ktl($, appInfo) {
                         const destinationColumn = group[1];
                         const sourceColumnIndex = ktl.views.getColumnIndex(viewId, sourceColumn);
                         const destinationColumnIndex = ktl.views.getColumnIndex(viewId, destinationColumn);
-                        if (sourceColumnIndex && destinationColumnIndex) {
-                            let sourceTargetSelector = `#${viewId} tbody td .col-${sourceColumnIndex}`;
+                        if (sourceColumnIndex >= 0 && destinationColumnIndex >= 0) {
+                            let sourceTargetSelector = `#${viewId} tbody tr td:nth-child(${sourceColumnIndex + 1})`;
                             const element = $(sourceTargetSelector);
 
-                            $(`#${viewId} tbody td .col-${sourceColumnIndex} span span`).filter(function () {
+                            $(`${sourceTargetSelector} span span`).filter(function () {
                                 return $.trim($(this).text()) !== '';
                             }).each(function () {
                                 if (!this.outerHTML.startsWith('<a span'))
@@ -12508,10 +12508,11 @@ function Ktl($, appInfo) {
                                 if (target) {
                                     let recId = target.closest('tr[id]').id;
                                     if (recId) {
-                                        let destinationTargetSelector = `#${viewId} tbody tr[id="${recId}"] td .col-${destinationColumnIndex} a`;
-                                        if ($(destinationTargetSelector).length) {
+                                        const cellSelector = `#${viewId} tbody tr[id="${recId}"] td:nth-child(${destinationColumnIndex + 1})`;
+                                        const clickTarget = $(`${cellSelector} a`)[0] || $(`${cellSelector} span`)[0] || $(cellSelector)[0];
+                                        if (clickTarget) {
                                             e.preventDefault();
-                                            $(destinationTargetSelector)[0].click();
+                                            clickTarget.click();
                                         }
                                     }
                                 }
@@ -17301,12 +17302,12 @@ function Ktl($, appInfo) {
                 if (!['table', 'search'].includes(ktl.views.getViewType(viewId))) return;
 
                 const headerToMatch = headerOrFieldId.startsWith('field_') ? ktl.fields.getFieldLabelFromId(viewId, headerOrFieldId) : headerOrFieldId;
-                const foundHeader = $(`#${viewId} thead th`).filter(function () {
-                    return $(this).text().trim() === headerToMatch;
-                });
+                const headers = $(`#${viewId} thead th`);
 
-                if (foundHeader.length) {
-                    return foundHeader.index();
+                for (let i = 0; i < headers.length; i++) {
+                    if ($(headers[i]).text().trim() === headerToMatch) {
+                        return i;
+                    }
                 }
             },
 
