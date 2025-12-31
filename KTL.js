@@ -264,7 +264,9 @@ function Ktl($, appInfo) {
 
     //Parser step 2 : Separate each keyword from its parameters and parse the parameters.
     function extractKeywords(strToParse = '', keywords = {}) {
-        const cleanedStr = strToParse.replace(new RegExp('^\\s*' + ESCAPED_UNDERSCORE_PLACEHOLDER + '\\w*\\s*$', 'gm'), '');
+        // Remove escaped keywords (double underscore) and their parameters from anywhere in the string
+        // Matches: optional whitespace + escaped placeholder + keyword name + optional (= and params until next keyword or end)
+        const cleanedStr = strToParse.replace(new RegExp('\\s*' + ESCAPED_UNDERSCORE_PLACEHOLDER + '\\w*(?:=(?:(?!\\s_[a-zA-Z]).)*)?', 'g'), '');
         const strSplit = cleanedStr.split(/(?:^|\s)(_[a-zA-Z0-9_]{2,})/gm);
         strSplit.splice(0, 1);
         for (let i = 0; i < strSplit.length; i++) {
@@ -12608,16 +12610,26 @@ function Ktl($, appInfo) {
             function compareNewAndLastData(newData, lastData) {
                 const changes = {};
 
-                newData.forEach((newRecord, index) => {
-                    const lastRecord = lastData ? lastData[index] : undefined;
+                const lastDataById = {};
+                if (lastData) {
+                    lastData.forEach(record => {
+                        lastDataById[record.id] = record;
+                    });
+                }
+
+                newData.forEach((newRecord) => {
                     const recordId = newRecord.id;
+                    const lastRecord = lastDataById[recordId];
+
+                    if (!lastRecord) return;
+
                     changes[recordId] = [];
 
                     for (const key in newRecord) {
                         if (key.endsWith('_raw')) {
-                            const oldValue = lastRecord ? lastRecord[key] : undefined;
+                            const oldValue = lastRecord[key];
                             const newValue = newRecord[key];
-                            if (lastRecord !== undefined && JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+                            if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
                                 const fieldId = key.replace('_raw', '');
                                 changes[recordId].push({
                                     fieldId: fieldId,
