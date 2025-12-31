@@ -12607,15 +12607,8 @@ function Ktl($, appInfo) {
                     flashRate = params[4];
             }
 
-            function compareNewAndLastData(newData, lastData) {
+            function compareNewAndLastData(newData, lastDataById) {
                 const changes = {};
-
-                const lastDataById = {};
-                if (lastData) {
-                    lastData.forEach(record => {
-                        lastDataById[record.id] = record;
-                    });
-                }
 
                 newData.forEach((newRecord) => {
                     const recordId = newRecord.id;
@@ -12650,11 +12643,14 @@ function Ktl($, appInfo) {
             }
 
             function updateDataAndHighlightChanges(viewId, newData) {
-                const lastData = viewData_scv[viewId];
-                if (lastData && (newData.length < lastData.length)) return; //Ignore deletions
-                const changes = lastData !== undefined ? compareNewAndLastData(newData, lastData) : {};
+                const lastDataById = viewData_scv[viewId] || {};
+                const changes = Object.keys(lastDataById).length > 0 ? compareNewAndLastData(newData, lastDataById) : {};
                 highlightChangedCells(viewId, changes, newData);
-                viewData_scv[viewId] = JSON.parse(JSON.stringify(newData));
+
+                if (!viewData_scv[viewId]) viewData_scv[viewId] = {};
+                newData.forEach(record => {
+                    viewData_scv[viewId][record.id] = JSON.parse(JSON.stringify(record));
+                });
             }
 
             function restoreStyle(viewId, recordId, cellKey, fieldIdToRestore) {
