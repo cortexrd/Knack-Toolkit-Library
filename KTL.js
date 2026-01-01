@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.35.4';
+    const KTL_VERSION = '0.36.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -18151,14 +18151,20 @@ function Ktl($, appInfo) {
             // Add Theme Editor button if this is the _theme=edit view
             if (ktlKeywords._theme && ktlKeywords._theme.edit && view.key === ktlKeywords._theme.edit) {
                 const viewEl = document.getElementById(view.key);
-                if (viewEl && !viewEl.querySelector('.ktlThemeEditorBtn')) {
-                    const titleEl = viewEl.querySelector('.kn-title') || viewEl.querySelector('.kn-view-header') || viewEl;
-                    const btn = ktl.fields.addButton(titleEl, 'Theme Editor', '', ['kn-button', 'is-small', 'ktlThemeEditorBtn'], 'ktlThemeEditorBtn_' + view.key);
-                    if (btn) {
-                        btn.style.marginLeft = '10px';
+                if (viewEl && !viewEl.querySelector('.ktlThemeEditorTrigger')) {
+                    const viewHeader = viewEl.querySelector('.view-header');
+                    if (viewHeader) {
+                        const btnContainer = document.createElement('div');
+                        btnContainer.style.marginBottom = '50px';
+                        const btn = document.createElement('button');
+                        btn.id = 'ktlThemeEditorTrigger_' + view.key;
+                        btn.className = 'ktlThemeEditorTrigger kn-button';
+                        btn.innerHTML = '<span style="margin-right:6px">🎨</span>Theme Editor';
                         btn.addEventListener('click', () => {
                             ktl.scenes.showThemeEditor();
                         });
+                        btnContainer.appendChild(btn);
+                        viewHeader.insertAdjacentElement('beforebegin', btnContainer);
                     }
                 }
             }
@@ -20139,15 +20145,27 @@ function Ktl($, appInfo) {
                             // Apply user overrides if present
                             if (settings.overrides) {
                                 if (settings.overrides.bodyBg) bodyBg = settings.overrides.bodyBg;
+                                if (settings.overrides.bodyText) bodyText = settings.overrides.bodyText;
                                 if (settings.overrides.pageBg) pageBg = settings.overrides.pageBg;
+                                if (settings.overrides.topHeaderBg) topHeaderBg = settings.overrides.topHeaderBg;
                                 if (settings.overrides.tableHeaderBg) tableHeaderBg = settings.overrides.tableHeaderBg;
+                                if (settings.overrides.tableHeaderText) tableHeaderText = settings.overrides.tableHeaderText;
                                 if (settings.overrides.tableCellBg) tableCellBg = settings.overrides.tableCellBg;
+                                if (settings.overrides.tableCellText) tableCellText = settings.overrides.tableCellText;
+                                if (settings.overrides.tableStripedBg) tableStripedBg = settings.overrides.tableStripedBg;
+                                if (settings.overrides.tableTotalsBg) tableTotalsBg = settings.overrides.tableTotalsBg;
+                                if (settings.overrides.tableTotalsText) tableTotalsText = settings.overrides.tableTotalsText;
+                                if (settings.overrides.tableBorderColor) tableBorderColor = settings.overrides.tableBorderColor;
                                 if (settings.overrides.inputFieldBg) inputFieldBg = settings.overrides.inputFieldBg;
                                 if (settings.overrides.linkColor) linkColor = settings.overrides.linkColor;
-                                if (settings.overrides.menuButtonBg) menuButtonBg = settings.overrides.menuButtonBg;
-                                if (settings.overrides.pageButtonBg) pageButtonBg = settings.overrides.pageButtonBg;
-                                if (settings.overrides.topHeaderBg) topHeaderBg = settings.overrides.topHeaderBg;
+                                if (settings.overrides.lightText) lightText = settings.overrides.lightText;
+                                if (settings.overrides.darkText) darkText = settings.overrides.darkText;
                                 if (settings.overrides.navBarLinkBg) navBarLinkBg = settings.overrides.navBarLinkBg;
+                                if (settings.overrides.menuButtonBg) menuButtonBg = settings.overrides.menuButtonBg;
+                                if (settings.overrides.menuButtonText) menuButtonText = settings.overrides.menuButtonText;
+                                if (settings.overrides.menuButtonBorder) menuButtonBorder = settings.overrides.menuButtonBorder;
+                                if (settings.overrides.pageButtonBg) pageButtonBg = settings.overrides.pageButtonBg;
+                                if (settings.overrides.activeMenuColor) activeMenuColor = settings.overrides.activeMenuColor;
                             }
                         }
 
@@ -20379,25 +20397,76 @@ function Ktl($, appInfo) {
 
             showThemeEditor: function () {
                 const PRESETS = {
-                    blue: '#2563eb',
-                    green: '#16a34a',
-                    purple: '#7c3aed',
-                    orange: '#ea580c',
-                    teal: '#0d9488'
+                    slate: '#64748b',
+                    stone: '#78716c',
+                    sage: '#6b8e6b',
+                    steel: '#5a7d9a',
+                    mauve: '#8b7b8b',
+                    sand: '#a89880',
+                    olive: '#7a8b5c',
+                    dusk: '#6b5b7a',
+                    clay: '#9b7b6b',
+                    mist: '#6b8b8b'
                 };
 
-                const ELEMENT_COLORS = [
-                    { key: 'bodyBg', label: 'Body Background', sat: 0.15, light: 0.15 },
-                    { key: 'pageBg', label: 'Page Background', sat: 0.20, light: 0.20 },
-                    { key: 'tableHeaderBg', label: 'Table Header', sat: 0.25, light: 0.25 },
-                    { key: 'tableCellBg', label: 'Table Cell', sat: 0.08, light: 0.18 },
-                    { key: 'inputFieldBg', label: 'Input Field', sat: 0.04, light: 0.30 },
-                    { key: 'linkColor', label: 'Link Color', sat: 0.5, light: 0.7 },
-                    { key: 'menuButtonBg', label: 'Menu Button', sat: 0.6, light: 0.3 },
-                    { key: 'pageButtonBg', label: 'Page Button', sat: 0.99, light: 0.50 },
-                    { key: 'topHeaderBg', label: 'Top Header', sat: 1.0, light: 1.0 },
-                    { key: 'navBarLinkBg', label: 'Nav Bar Link', sat: 0.80, light: 0.20 },
+                const knHeaderInfo = Knack.app.attributes.design.regions.header;
+                const isLegacy = knHeaderInfo.isLegacy;
+
+                const ELEMENT_COLOR_GROUPS = [
+                    {
+                        title: 'Page',
+                        colors: [
+                            { key: 'bodyBg', label: 'Body', sat: 0.15, light: 0.15 },
+                            { key: 'pageBg', label: 'Content', sat: 0.20, light: 0.20 },
+                            { key: 'topHeaderBg', label: 'Header', sat: 1.0, light: 1.0 },
+                            { key: 'inputFieldBg', label: 'Input Field', sat: 0.04, light: 0.30 },
+                        ]
+                    },
+                    {
+                        title: 'Tables',
+                        colors: [
+                            { key: 'tableHeaderBg', label: 'Header Bg', sat: 0.25, light: 0.25 },
+                            { key: 'tableCellBg', label: 'Cell Bg', sat: 0.08, light: 0.18 },
+                            { key: 'tableStripedBg', label: 'Striped Row', sat: 0.1, light: 0.22 },
+                            { key: 'tableTotalsBg', label: 'Totals Bg', sat: 0.2, light: 0.2 },
+                            { key: 'tableBorderColor', label: 'Border', sat: 0.15, light: 0.30 },
+                        ]
+                    },
+                    {
+                        title: 'Menus',
+                        colors: [
+                            { key: 'navBarLinkBg', label: 'Nav Bar Link', sat: 0.80, light: 0.20, legacy: true },
+                            { key: 'activeMenuColor', label: 'Active Menu', sat: 1.0, light: 0.8, legacy: true },
+                            { key: 'menuButtonBg', label: 'Button Bg', sat: 0.6, light: 0.3, legacy: false },
+                            { key: 'menuButtonBorder', label: 'Button Border', sat: 0.6, light: 0.35, legacy: false },
+                        ]
+                    },
+                    {
+                        title: 'Buttons',
+                        colors: [
+                            { key: 'pageButtonBg', label: 'Primary Bg', sat: 0.99, light: 0.50 },
+                        ]
+                    },
+                    {
+                        title: 'Text',
+                        colors: [
+                            { key: 'bodyText', label: 'Body', sat: 0.05, light: 0.75 },
+                            { key: 'lightText', label: 'Light', sat: 0.08, light: 0.75 },
+                            { key: 'darkText', label: 'Dark', sat: 0.15, light: 0.15 },
+                            { key: 'linkColor', label: 'Links', sat: 0.5, light: 0.7 },
+                            { key: 'tableHeaderText', label: 'Table Header', sat: 0.1, light: 0.9 },
+                            { key: 'tableCellText', label: 'Table Cell', sat: 0.05, light: 0.8 },
+                            { key: 'tableTotalsText', label: 'Totals', sat: 0.1, light: 0.85 },
+                            { key: 'menuButtonText', label: 'Menu Button', sat: 0.15, light: 0.90 },
+                        ]
+                    },
                 ];
+
+                // Filter colors based on legacy status
+                const FILTERED_COLOR_GROUPS = ELEMENT_COLOR_GROUPS.map(group => ({
+                    title: group.title,
+                    colors: group.colors.filter(elem => elem.legacy === undefined || elem.legacy === isLegacy)
+                })).filter(group => group.colors.length > 0);
 
                 let existingEditor = document.getElementById('ktlThemeEditor');
                 if (existingEditor) {
@@ -20438,25 +20507,56 @@ function Ktl($, appInfo) {
                 const content = document.createElement('div');
                 content.className = 'ktlThemeEditorContent';
 
+                // Check if _theme keyword has header param (for App Preset option)
+                const themeKeywordParams = ktlKeywords._theme?.params;
+                let appPresetColor = null;
+                if (themeKeywordParams && Array.isArray(themeKeywordParams)) {
+                    themeKeywordParams.forEach(param => {
+                        if (Array.isArray(param) && param[0] === 'header') {
+                            appPresetColor = param[1];
+                        }
+                    });
+                }
+
                 // Mode Section
                 const modeSection = document.createElement('div');
                 modeSection.className = 'ktlThemeEditorSection';
                 modeSection.innerHTML = '<div class="ktlThemeEditorLabel">Mode</div>';
                 const modeGroup = document.createElement('div');
                 modeGroup.className = 'ktlThemeEditorModeGroup';
-                ['dark', 'light', 'off'].forEach(mode => {
+
+                const modeOptions = [{ key: 'dark', label: 'Dark' }];
+                if (appPresetColor) {
+                    modeOptions.push({ key: 'appPreset', label: 'App Preset' });
+                }
+                modeOptions.push({ key: 'default', label: 'Default' });
+
+                modeOptions.forEach(({ key, label }) => {
                     const btn = document.createElement('button');
-                    btn.className = 'ktlThemeEditorModeBtn' + (currentSettings.mode === mode || (!currentSettings.enabled && mode === 'off') ? ' active' : '');
-                    btn.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
-                    btn.dataset.mode = mode;
+                    const isActive = (currentSettings.enabled && currentSettings.mode === key) ||
+                        (!currentSettings.enabled && key === 'default');
+                    btn.className = 'ktlThemeEditorModeBtn' + (isActive ? ' active' : '');
+                    btn.textContent = label;
+                    btn.dataset.mode = key;
                     btn.addEventListener('click', () => {
                         modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
-                        if (mode === 'off') {
+                        if (key === 'default') {
                             currentSettings.enabled = false;
+                            currentSettings.preset = null;
+                            currentSettings.overrides = {};
+                        } else if (key === 'appPreset') {
+                            currentSettings.enabled = true;
+                            currentSettings.mode = 'dark';
+                            currentSettings.preset = null;
+                            currentSettings.headerColor = appPresetColor;
+                            currentSettings.overrides = {};
+                            headerColorInput.value = appPresetColor;
+                            headerColorHex.value = appPresetColor;
+                            updateElementColors();
                         } else {
                             currentSettings.enabled = true;
-                            currentSettings.mode = mode;
+                            currentSettings.mode = key;
                         }
                         applyPreview();
                     });
@@ -20543,7 +20643,7 @@ function Ktl($, appInfo) {
 
                 // Element Colors Section
                 const elementsSection = document.createElement('div');
-                elementsSection.className = 'ktlThemeEditorSection';
+                elementsSection.className = 'ktlThemeEditorSection ktlThemeEditorElementsSection';
                 elementsSection.innerHTML = '<div class="ktlThemeEditorLabel">Element Colors</div>';
                 const elementColorInputs = {};
 
@@ -20553,60 +20653,77 @@ function Ktl($, appInfo) {
                     return ktl.systemColors.rgbToHex(newRgb[0], newRgb[1], newRgb[2]);
                 }
 
-                ELEMENT_COLORS.forEach(elem => {
-                    const row = document.createElement('div');
-                    row.className = 'ktlThemeEditorColorRow';
-                    const label = document.createElement('span');
-                    label.className = 'ktlThemeEditorColorLabel';
-                    label.textContent = elem.label;
-                    const colorInput = document.createElement('input');
-                    colorInput.type = 'color';
-                    colorInput.className = 'ktlThemeEditorColorInput';
-                    const hexInput = document.createElement('input');
-                    hexInput.type = 'text';
-                    hexInput.className = 'ktlThemeEditorColorHex';
+                FILTERED_COLOR_GROUPS.forEach(group => {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'ktlThemeEditorColorGroup';
+                    const groupTitle = document.createElement('div');
+                    groupTitle.className = 'ktlThemeEditorGroupTitle';
+                    groupTitle.textContent = group.title;
+                    groupDiv.appendChild(groupTitle);
 
-                    const derivedColor = currentSettings.overrides[elem.key] || deriveColor(currentSettings.headerColor, elem.sat, elem.light);
-                    colorInput.value = derivedColor;
-                    hexInput.value = derivedColor;
-                    if (currentSettings.overrides[elem.key]) {
-                        hexInput.classList.add('ktlThemeEditorOverridden');
-                    }
+                    const colorGrid = document.createElement('div');
+                    colorGrid.className = 'ktlThemeEditorColorGrid';
 
-                    colorInput.addEventListener('input', () => {
-                        currentSettings.overrides[elem.key] = colorInput.value;
-                        hexInput.value = colorInput.value;
-                        hexInput.classList.add('ktlThemeEditorOverridden');
-                        applyPreview();
-                    });
+                    group.colors.forEach(elem => {
+                        const row = document.createElement('div');
+                        row.className = 'ktlThemeEditorColorRow';
+                        const label = document.createElement('span');
+                        label.className = 'ktlThemeEditorColorLabel';
+                        label.textContent = elem.label;
+                        const colorInput = document.createElement('input');
+                        colorInput.type = 'color';
+                        colorInput.className = 'ktlThemeEditorColorInput';
+                        const hexInput = document.createElement('input');
+                        hexInput.type = 'text';
+                        hexInput.className = 'ktlThemeEditorColorHex';
 
-                    hexInput.addEventListener('change', () => {
-                        if (/^#[0-9A-Fa-f]{6}$/.test(hexInput.value)) {
-                            currentSettings.overrides[elem.key] = hexInput.value;
-                            colorInput.value = hexInput.value;
+                        const derivedColor = currentSettings.overrides[elem.key] || deriveColor(currentSettings.headerColor, elem.sat, elem.light);
+                        colorInput.value = derivedColor;
+                        hexInput.value = derivedColor;
+                        if (currentSettings.overrides[elem.key]) {
+                            hexInput.classList.add('ktlThemeEditorOverridden');
+                        }
+
+                        colorInput.addEventListener('input', () => {
+                            currentSettings.overrides[elem.key] = colorInput.value;
+                            hexInput.value = colorInput.value;
                             hexInput.classList.add('ktlThemeEditorOverridden');
                             applyPreview();
-                        }
+                        });
+
+                        hexInput.addEventListener('change', () => {
+                            if (/^#[0-9A-Fa-f]{6}$/.test(hexInput.value)) {
+                                currentSettings.overrides[elem.key] = hexInput.value;
+                                colorInput.value = hexInput.value;
+                                hexInput.classList.add('ktlThemeEditorOverridden');
+                                applyPreview();
+                            }
+                        });
+
+                        elementColorInputs[elem.key] = { colorInput, hexInput, elem };
+                        row.appendChild(label);
+                        row.appendChild(colorInput);
+                        row.appendChild(hexInput);
+                        colorGrid.appendChild(row);
                     });
 
-                    elementColorInputs[elem.key] = { colorInput, hexInput, elem };
-                    row.appendChild(label);
-                    row.appendChild(colorInput);
-                    row.appendChild(hexInput);
-                    elementsSection.appendChild(row);
+                    groupDiv.appendChild(colorGrid);
+                    elementsSection.appendChild(groupDiv);
                 });
 
                 content.appendChild(elementsSection);
 
                 function updateElementColors() {
-                    ELEMENT_COLORS.forEach(elem => {
-                        const inputs = elementColorInputs[elem.key];
-                        if (!currentSettings.overrides[elem.key]) {
-                            const derivedColor = deriveColor(currentSettings.headerColor, elem.sat, elem.light);
-                            inputs.colorInput.value = derivedColor;
-                            inputs.hexInput.value = derivedColor;
-                            inputs.hexInput.classList.remove('ktlThemeEditorOverridden');
-                        }
+                    FILTERED_COLOR_GROUPS.forEach(group => {
+                        group.colors.forEach(elem => {
+                            const inputs = elementColorInputs[elem.key];
+                            if (inputs && !currentSettings.overrides[elem.key]) {
+                                const derivedColor = deriveColor(currentSettings.headerColor, elem.sat, elem.light);
+                                inputs.colorInput.value = derivedColor;
+                                inputs.hexInput.value = derivedColor;
+                                inputs.hexInput.classList.remove('ktlThemeEditorOverridden');
+                            }
+                        });
                     });
                 }
 
@@ -20640,9 +20757,9 @@ function Ktl($, appInfo) {
                         b.classList.toggle('active', b.dataset.preset === currentSettings.preset);
                     });
                     modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
-                        const isOff = !currentSettings.enabled && b.dataset.mode === 'off';
+                        const isDefault = !currentSettings.enabled && b.dataset.mode === 'default';
                         const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
-                        b.classList.toggle('active', isOff || isMode);
+                        b.classList.toggle('active', isDefault || isMode);
                     });
                     updateElementColors();
                     applyPreview();
@@ -20723,30 +20840,24 @@ function Ktl($, appInfo) {
 
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
 
-                // Try to save to database via hidden Edit Account form on the _theme=edit view
-                const editViewId = ktlKeywords._theme?.edit;
+                // Save to database via API call
+                const updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
                 const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-                if (editViewId && acctPrefsFld) {
-                    const prefsField = document.querySelector('#' + editViewId + ' #' + acctPrefsFld);
-                    if (prefsField) {
-                        prefsField.value = JSON.stringify(userPrefs);
-                        const submitBtn = document.querySelector('#' + editViewId + ' .kn-button.is-primary');
-                        if (submitBtn) {
-                            submitBtn.click();
-                        }
-                    } else {
-                        // Try via submitAndWait if updUserPrefsViewId is configured
-                        const updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
-                        if (updUserPrefsViewId) {
-                            ktl.views.submitAndWait(updUserPrefsViewId, { [acctPrefsFld]: JSON.stringify(userPrefs) })
-                                .then(() => {
-                                    ktl.log.clog('green', 'Theme settings saved to database');
-                                })
-                                .catch((err) => {
-                                    ktl.log.clog('red', 'Error saving theme settings: ' + err);
-                                });
-                        }
-                    }
+                const userId = Knack.getUserAttributes()?.id;
+
+                if (updUserPrefsViewId && acctPrefsFld && userId) {
+                    const apiData = { [acctPrefsFld]: JSON.stringify(userPrefs) };
+                    ktl.core.knAPI(updUserPrefsViewId, userId, apiData, 'PUT', [], false)
+                        .then(() => {
+                            ktl.log.clog('green', 'Theme settings saved to database');
+                            ktl.core.timedPopup('Theme saved');
+                        })
+                        .catch((err) => {
+                            ktl.log.clog('red', 'Error saving theme settings: ' + err);
+                            ktl.core.timedPopup('Error saving theme', 'error');
+                        });
+                } else {
+                    ktl.log.clog('purple', 'Theme settings saved locally only - missing config for database save');
                 }
             },
         }

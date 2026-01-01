@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.8.0*/
+/* KTL CSS version: 0.9.0*/
 
 /************ General Settings **************/
 #verButtonId {
@@ -1064,6 +1064,17 @@ ul.ui-autocomplete {
 		}
 
 /**** Theme Editor ****/
+.ktlUserTheme button.ktlThemeEditorTrigger.kn-button {
+	background-color: var(--ktlTheme_pageButtonBg) !important;
+	color: var(--ktlTheme_menuButtonText) !important;
+	border-color: var(--ktlTheme_menuButtonBorder) !important;
+	font-weight: 500 !important;
+}
+
+.ktlUserTheme button.ktlThemeEditorTrigger.kn-button:hover {
+	filter: brightness(1.1);
+}
+
 .ktlThemeEditor {
 	position: fixed;
 	background-color: darkgrey;
@@ -1074,8 +1085,8 @@ ul.ui-autocomplete {
 	flex-direction: column;
 	padding: 0;
 	z-index: 2000;
-	min-width: 320px;
-	max-width: 400px;
+	min-width: 520px;
+	max-width: 600px;
 	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 	border-radius: 4px;
 }
@@ -1174,22 +1185,46 @@ ul.ui-autocomplete {
 	border-width: 3px;
 }
 
+.ktlThemeEditorColorGroup {
+	margin-bottom: 12px;
+}
+
+.ktlThemeEditorColorGroup:last-child {
+	margin-bottom: 0;
+}
+
+.ktlThemeEditorGroupTitle {
+	font-size: 11px;
+	font-weight: 600;
+	color: #333;
+	text-transform: uppercase;
+	margin-bottom: 6px;
+	padding-bottom: 3px;
+	border-bottom: 1px solid #bbb;
+}
+
+.ktlThemeEditorColorGrid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 4px 15px;
+}
+
 .ktlThemeEditorColorRow {
 	display: flex;
 	align-items: center;
-	margin-bottom: 8px;
-	gap: 10px;
+	gap: 6px;
 }
 
 .ktlThemeEditorColorLabel {
 	flex: 1;
-	font-size: 13px;
+	font-size: 11px;
 	color: #555;
+	white-space: nowrap;
 }
 
 .ktlThemeEditorColorInput {
-	width: 50px;
-	height: 28px;
+	width: 32px;
+	height: 24px;
 	padding: 0;
 	border: 1px solid #ccc;
 	border-radius: 3px;
@@ -1197,9 +1232,9 @@ ul.ui-autocomplete {
 }
 
 .ktlThemeEditorColorHex {
-	width: 75px;
-	font-size: 12px;
-	padding: 4px;
+	width: 65px;
+	font-size: 11px;
+	padding: 3px;
 	border: 1px solid #ccc;
 	border-radius: 3px;
 	font-family: monospace;
