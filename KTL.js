@@ -21163,12 +21163,11 @@ function Ktl($, appInfo) {
 
                 function escKeyHandler(e) {
                     if (e.key === 'Escape') {
-                        // Don't close editor if a popup dialog is open
                         if (document.querySelector('.ktlConfirmOverlay')) return;
                         closeEditor();
                     }
                 }
-                document.addEventListener('keydown', escKeyHandler);
+                document.addEventListener('keydown', escKeyHandler, true);
 
                 // Draggable
                 let isDragging = false;
