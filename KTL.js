@@ -21214,13 +21214,13 @@ function Ktl($, appInfo) {
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
 
                 // Save to database via API call
-                const updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
+                const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
                 const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                 const userId = Knack.getUserAttributes()?.id;
 
-                if (updUserPrefsViewId && acctPrefsFld && userId) {
+                if (myUserPrefsViewId && acctPrefsFld && userId) {
                     const apiData = { [acctPrefsFld]: JSON.stringify(userPrefs) };
-                    ktl.core.knAPI(updUserPrefsViewId, userId, apiData, 'PUT', [], false)
+                    ktl.core.knAPI(myUserPrefsViewId, userId, apiData, 'PUT', [], false)
                         .then(() => {
                             ktl.log.clog('green', 'Theme settings saved to database');
                             ktl.core.timedPopup('Theme saved');
@@ -21249,13 +21249,13 @@ function Ktl($, appInfo) {
 
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
 
-                const updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
+                const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
                 const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
                 const userId = Knack.getUserAttributes()?.id;
 
-                if (updUserPrefsViewId && acctPrefsFld && userId) {
+                if (myUserPrefsViewId && acctPrefsFld && userId) {
                     const apiData = { [acctPrefsFld]: JSON.stringify(userPrefs) };
-                    ktl.core.knAPI(updUserPrefsViewId, userId, apiData, 'PUT', [], false)
+                    ktl.core.knAPI(myUserPrefsViewId, userId, apiData, 'PUT', [], false)
                         .then(() => {
                             ktl.log.clog('green', 'Saved themes updated in database');
                         })
