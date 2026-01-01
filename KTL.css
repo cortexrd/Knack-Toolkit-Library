@@ -1077,7 +1077,7 @@ ul.ui-autocomplete {
 
 .ktlThemeEditor {
 	position: fixed;
-	background-color: darkgrey;
+	background-color: var(--ktlTheme_pageBg, #4a4a4a);
 	border: dimgrey;
 	border-width: 3px;
 	border-style: solid;
@@ -1098,8 +1098,8 @@ ul.ui-autocomplete {
 	line-height: 35px;
 	text-align: center;
 	width: 100%;
-	color: white;
-	background-color: dimgrey;
+	color: var(--ktlTheme_menuButtonText, white);
+	background-color: var(--ktlTheme_tableHeaderBg, dimgrey);
 	cursor: move;
 	display: flex;
 	justify-content: space-between;
@@ -1115,7 +1115,7 @@ ul.ui-autocomplete {
 }
 
 .ktlThemeEditorClose:hover {
-	color: #ffcccc;
+	color: var(--ktlTheme_linkColor, #ffcccc);
 }
 
 .ktlThemeEditorContent {
@@ -1127,7 +1127,7 @@ ul.ui-autocomplete {
 .ktlThemeEditorSection {
 	margin-bottom: 15px;
 	padding-bottom: 10px;
-	border-bottom: 1px solid #eee;
+	border-bottom: 1px solid var(--ktlTheme_tableGridColor, #eee);
 }
 
 .ktlThemeEditorSection:last-child {
@@ -1138,7 +1138,7 @@ ul.ui-autocomplete {
 .ktlThemeEditorLabel {
 	font-weight: 500;
 	margin-bottom: 8px;
-	color: #333;
+	color: var(--ktlTheme_lightText, #333);
 }
 
 .ktlThemeEditorModeGroup {
@@ -1148,17 +1148,22 @@ ul.ui-autocomplete {
 
 .ktlThemeEditorModeBtn {
 	padding: 6px 14px;
-	border: 1px solid #ccc;
-	background: #f5f5f5;
+	border: 1px solid var(--ktlTheme_tableGridColor, #ccc);
+	background: var(--ktlTheme_tableCellBg, #f5f5f5);
+	color: var(--ktlTheme_tableCellText, #333);
 	cursor: pointer;
 	border-radius: 4px;
 	font-size: 13px;
 }
 
+.ktlThemeEditorModeBtn:hover {
+	background: var(--ktlTheme_tableHeaderBg, #e0e0e0);
+}
+
 .ktlThemeEditorModeBtn.active {
-	background: #4a90d9;
-	color: white;
-	border-color: #4a90d9;
+	background: var(--ktlTheme_topHeaderBg, #4a90d9);
+	color: var(--ktlTheme_menuButtonText, white);
+	border-color: var(--ktlTheme_topHeaderBg, #4a90d9);
 }
 
 .ktlThemeEditorPresets {
@@ -1170,7 +1175,7 @@ ul.ui-autocomplete {
 .ktlThemeEditorPresetBtn {
 	width: 36px;
 	height: 36px;
-	border: 2px solid #ccc;
+	border: 2px solid var(--ktlTheme_tableGridColor, #ccc);
 	border-radius: 4px;
 	cursor: pointer;
 	transition: transform 0.1s, border-color 0.1s;
@@ -1181,7 +1186,7 @@ ul.ui-autocomplete {
 }
 
 .ktlThemeEditorPresetBtn.active {
-	border-color: #333;
+	border-color: var(--ktlTheme_lightText, #333);
 	border-width: 3px;
 }
 
@@ -1196,11 +1201,11 @@ ul.ui-autocomplete {
 .ktlThemeEditorGroupTitle {
 	font-size: 11px;
 	font-weight: 600;
-	color: #333;
+	color: var(--ktlTheme_lightText, #333);
 	text-transform: uppercase;
 	margin-bottom: 6px;
 	padding-bottom: 3px;
-	border-bottom: 1px solid #bbb;
+	border-bottom: 1px solid var(--ktlTheme_tableGridColor, #bbb);
 }
 
 .ktlThemeEditorColorGrid {
@@ -1218,7 +1223,7 @@ ul.ui-autocomplete {
 .ktlThemeEditorColorLabel {
 	flex: 1;
 	font-size: 11px;
-	color: #555;
+	color: var(--ktlTheme_headersAndLabelsText, #555);
 	white-space: nowrap;
 }
 
@@ -1226,7 +1231,7 @@ ul.ui-autocomplete {
 	width: 32px;
 	height: 24px;
 	padding: 0;
-	border: 1px solid #ccc;
+	border: 1px solid var(--ktlTheme_tableGridColor, #ccc);
 	border-radius: 3px;
 	cursor: pointer;
 }
@@ -1235,13 +1240,115 @@ ul.ui-autocomplete {
 	width: 65px;
 	font-size: 11px;
 	padding: 3px;
-	border: 1px solid #ccc;
+	border: 1px solid var(--ktlTheme_tableGridColor, #ccc);
 	border-radius: 3px;
 	font-family: monospace;
+	background: var(--ktlTheme_inputFieldBg, #fff);
+	color: var(--ktlTheme_inputFieldText, #333);
 }
 
 .ktlThemeEditorOverridden {
-	background-color: #fff3cd;
+	background-color: var(--ktlTheme_tableSummaryBg, #fff3cd) !important;
+}
+
+.ktlThemeEditorCurrentSettings {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 15px;
+}
+
+.ktlThemeEditorSavedColor {
+	width: 32px;
+	height: 32px;
+	border: 2px solid var(--ktlTheme_tableGridColor, #666);
+	border-radius: 4px;
+	flex-shrink: 0;
+}
+
+.ktlThemeEditorHeaderColorGroup {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+
+.ktlThemeEditorHeaderLabelRow {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ktlThemeEditorHeaderInputRow {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ktlThemeEditorHelpIcon {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: var(--ktlTheme_tableHeaderBg, #888);
+	color: var(--ktlTheme_menuButtonText, #fff);
+	font-size: 11px;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+
+.ktlThemeEditorHelpIcon:hover {
+	filter: brightness(1.2);
+}
+
+.ktlThemeEditorTooltip {
+	background: var(--ktlTheme_tableCellBg, #333);
+	color: var(--ktlTheme_tableCellText, #eee);
+	padding: 10px 12px;
+	border-radius: 6px;
+	font-size: 12px;
+	line-height: 1.5;
+	margin-top: 8px;
+	border: 1px solid var(--ktlTheme_tableGridColor, #555);
+	box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.ktlThemeEditorTooltip b {
+	color: var(--ktlTheme_lightText, #fff);
+}
+
+.ktlThemeEditorUndoGroup {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+}
+
+.ktlThemeEditorUndoBtn {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid var(--ktlTheme_tableGridColor, #999);
+	border-radius: 4px;
+	background: var(--ktlTheme_tableCellBg, #f0f0f0);
+	color: var(--ktlTheme_tableCellText, #333);
+	cursor: pointer;
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.ktlThemeEditorUndoBtn:hover {
+	background: var(--ktlTheme_tableStripedBg, #e0e0e0);
+}
+
+.ktlThemeEditorUndoLabel {
+	font-size: 10px;
+	color: var(--ktlTheme_tableCellText, #666);
 }
 
 .ktlThemeEditorActions {
@@ -1249,31 +1356,32 @@ ul.ui-autocomplete {
 	gap: 10px;
 	justify-content: flex-end;
 	padding: 10px 15px;
-	border-top: 1px solid #eee;
-	background: dimgrey;
+	border-top: 1px solid var(--ktlTheme_tableGridColor, #eee);
+	background: var(--ktlTheme_tableHeaderBg, dimgrey);
 }
 
 .ktlThemeEditorBtn {
 	padding: 8px 16px;
-	border: 1px solid #ccc;
-	background: #fff;
+	border: 1px solid var(--ktlTheme_tableGridColor, #ccc);
+	background: var(--ktlTheme_tableCellBg, #fff);
+	color: var(--ktlTheme_tableCellText, #333);
 	cursor: pointer;
 	border-radius: 4px;
 	font-size: 13px;
 }
 
 .ktlThemeEditorBtn:hover {
-	background: #f0f0f0;
+	background: var(--ktlTheme_tableStripedBg, #f0f0f0);
 }
 
 .ktlThemeEditorBtn.primary {
-	background: #4a90d9;
-	color: white;
-	border-color: #4a90d9;
+	background: var(--ktlTheme_pageButtonBg, #4a90d9);
+	color: var(--ktlTheme_menuButtonText, white);
+	border-color: var(--ktlTheme_menuButtonBorder, #4a90d9);
 }
 
 .ktlThemeEditorBtn.primary:hover {
-	background: #3a7fc8;
+	filter: brightness(1.1);
 }
 
 /**** KTL_RELATED - END ****/

@@ -2806,13 +2806,15 @@ function Ktl($, appInfo) {
                 return result;
             },
 
-            selectOption: function (message = 'Are you sure?', optionsText = 'Yes,No') {
+            selectOption: function (message = 'Are you sure?', optionsText = 'Yes,No', defaultValue = '') {
                 return new Promise((resolve) => {
                     const options = optionsText.split(',').map(opt => opt.trim()).filter(opt => opt);
                     if (options.length === 0) options.push('Yes', 'No');
 
-                    const hasOtherOption = options.some(opt => opt === 'ktlOther');
-                    const filteredOptions = options.filter(opt => opt !== 'ktlOther');
+                    const otherOption = options.find(opt => opt === 'ktlOther' || opt.startsWith('ktlOther:'));
+                    const hasOtherOption = !!otherOption;
+                    const otherButtonLabel = hasOtherOption && otherOption.includes(':') ? otherOption.split(':')[1].trim() : 'Other';
+                    const filteredOptions = options.filter(opt => opt !== 'ktlOther' && !opt.startsWith('ktlOther:'));
 
                     const shortcuts = [];
                     const usedKeys = new Set();
@@ -2832,8 +2834,8 @@ function Ktl($, appInfo) {
 
                     if (hasOtherOption) {
                         let otherShortcut = null;
-                        for (const char of 'other') {
-                            if (!usedKeys.has(char)) {
+                        for (const char of otherButtonLabel.toLowerCase()) {
+                            if (/[a-z]/.test(char) && !usedKeys.has(char)) {
                                 otherShortcut = char;
                                 usedKeys.add(char);
                                 break;
@@ -2861,18 +2863,20 @@ function Ktl($, appInfo) {
                     let otherSection = '';
                     if (hasOtherOption) {
                         const otherShortcut = shortcuts[filteredOptions.length];
-                        let otherButtonText = 'Other';
+                        let otherButtonText = otherButtonLabel;
                         if (otherShortcut) {
-                            const shortcutIndex = 'other'.indexOf(otherShortcut);
-                            otherButtonText = 'Other'.substring(0, shortcutIndex) +
-                                `<u>${'Other'[shortcutIndex]}</u>` +
-                                'Other'.substring(shortcutIndex + 1);
+                            const shortcutIndex = otherButtonLabel.toLowerCase().indexOf(otherShortcut);
+                            if (shortcutIndex >= 0) {
+                                otherButtonText = otherButtonLabel.substring(0, shortcutIndex) +
+                                    `<u>${otherButtonLabel[shortcutIndex]}</u>` +
+                                    otherButtonLabel.substring(shortcutIndex + 1);
+                            }
                         }
 
                         otherSection = `
                 <div class="ktlOtherSection">
                     <button class="ktlConfirmOption ktlOtherButton">${otherButtonText}</button>
-                    <input type="text" class="ktlOtherInput" placeholder="Enter custom value..." />
+                    <input type="text" class="ktlOtherInput" placeholder="Enter value..." value="${defaultValue.replace(/"/g, '&quot;')}" />
                 </div>
             `;
                     }
@@ -3007,7 +3011,7 @@ function Ktl($, appInfo) {
                         }
 
                         if (key === 'enter') {
-                            if (hasOtherOption && $('.ktlOtherInput').is(':focus')) {
+                            if (hasOtherOption && (filteredOptions.length === 0 || $('.ktlOtherInput').is(':focus'))) {
                                 const customValue = $('.ktlOtherInput').val().trim();
                                 $(document).off('keydown.ktlConfirm');
                                 overlay.remove();
@@ -3033,7 +3037,13 @@ function Ktl($, appInfo) {
                         }
                     });
 
-                    $('.ktlConfirmOption').first().focus();
+                    if (hasOtherOption && defaultValue) {
+                        const inputEl = $('.ktlOtherInput')[0];
+                        inputEl.focus();
+                        inputEl.select();
+                    } else {
+                        $('.ktlConfirmOption').first().focus();
+                    }
                 });
             },
 
@@ -9110,6 +9120,14 @@ function Ktl($, appInfo) {
                 $('#asset-viewer > div > div > a.kn-asset-prev').trigger('click');
             else if (e.keyCode === 39) //Right arrow
                 $('#asset-viewer > div > div > a.kn-asset-next').trigger('click');
+            else if (e.shiftKey && e.key === 'T') { //Shift+T - Open Theme Editor
+                const target = e.target;
+                const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+                if (!isTextInput && ktl.scenes.showThemeEditor) {
+                    e.preventDefault();
+                    ktl.scenes.showThemeEditor();
+                }
+            }
         })
 
         //Hides a field from the filter's drop-down.
@@ -20070,53 +20088,64 @@ function Ktl($, appInfo) {
                     .then((sysColors) => {
                         let headerRgb = settings.headerColor || sysColors.header.rgb;
 
-                        let bodyBg, bodyText, pageBg, tableHeaderBg, tableHeaderText;
-                        let tableCellBg, tableCellText, tableStripedBg, tableTotalsBg, tableTotalsText;
-                        let linkColor, lightText, darkText, topHeaderBg, navBarLinkBg;
-                        let menuButtonBg, menuButtonText, menuButtonBorder, inputFieldBg, tableBorderColor, activeMenuColor, pageButtonBg;
+                        // Page
+                        let pageBg, topHeaderBg, inputFieldBg;
+                        // Tables
+                        let tableHeaderBg, tableCellBg, tableStripedBg, tableSummaryBg, tableGridColor;
+                        // Menus
+                        let navBarLinkBg, activeMenuColor, menuButtonBg, menuButtonBorder;
+                        // Buttons
+                        let pageButtonBg;
+                        // Text
+                        let bodyText, lightText, darkText, linkColor, headersAndLabelsText, tableCellText, tableSummaryText, inputFieldText, menuButtonText;
 
                         if (settings.mode === 'dark' || settings.mode === 'user') {
+                            // Page
                             let newRGB = ktl.systemColors.hexToRgb(headerRgb);
                             topHeaderBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.15);
-                            bodyBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.85);
-                            bodyText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.20, 0.20);
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.18, 0.18);
                             pageBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.04, 0.30);
                             inputFieldBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
+                            // Tables
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.25, 0.25);
                             tableHeaderBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.9);
-                            tableHeaderText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.08, 0.18);
                             tableCellBg = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.75)`;
-
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.30);
-                            tableBorderColor = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.85)`;
-
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.05, 0.8);
-                            tableCellText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.22);
                             tableStripedBg = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.75)`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.2, 0.2);
-                            tableTotalsBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                            tableSummaryBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.30);
+                            tableGridColor = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.85)`;
+
+                            // Menus
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.80, 0.20);
+                            navBarLinkBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 1.0, 0.8);
+                            activeMenuColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.6, 0.3);
+                            menuButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.6, 0.35);
+                            menuButtonBorder = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            // Buttons
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.99, 0.50);
+                            pageButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            // Text
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.85);
-                            tableTotalsText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.5, 0.7);
-                            linkColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                            bodyText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.08, 0.75);
                             lightText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
@@ -20124,73 +20153,83 @@ function Ktl($, appInfo) {
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.15);
                             darkText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.80, 0.20);
-                            navBarLinkBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.5, 0.7);
+                            linkColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.6, 0.3);
-                            menuButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.9);
+                            headersAndLabelsText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.05, 0.8);
+                            tableCellText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.85);
+                            tableSummaryText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.08, 0.75);
+                            inputFieldText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                             newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.90);
                             menuButtonText = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.6, 0.35);
-                            menuButtonBorder = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.99, 0.50);
-                            pageButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-
-                            newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 1.0, 0.8);
-                            activeMenuColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-
                             // Apply user overrides if present
                             if (settings.overrides) {
-                                if (settings.overrides.bodyBg) bodyBg = settings.overrides.bodyBg;
-                                if (settings.overrides.bodyText) bodyText = settings.overrides.bodyText;
+                                // Page
                                 if (settings.overrides.pageBg) pageBg = settings.overrides.pageBg;
                                 if (settings.overrides.topHeaderBg) topHeaderBg = settings.overrides.topHeaderBg;
-                                if (settings.overrides.tableHeaderBg) tableHeaderBg = settings.overrides.tableHeaderBg;
-                                if (settings.overrides.tableHeaderText) tableHeaderText = settings.overrides.tableHeaderText;
-                                if (settings.overrides.tableCellBg) tableCellBg = settings.overrides.tableCellBg;
-                                if (settings.overrides.tableCellText) tableCellText = settings.overrides.tableCellText;
-                                if (settings.overrides.tableStripedBg) tableStripedBg = settings.overrides.tableStripedBg;
-                                if (settings.overrides.tableTotalsBg) tableTotalsBg = settings.overrides.tableTotalsBg;
-                                if (settings.overrides.tableTotalsText) tableTotalsText = settings.overrides.tableTotalsText;
-                                if (settings.overrides.tableBorderColor) tableBorderColor = settings.overrides.tableBorderColor;
                                 if (settings.overrides.inputFieldBg) inputFieldBg = settings.overrides.inputFieldBg;
-                                if (settings.overrides.linkColor) linkColor = settings.overrides.linkColor;
+                                // Tables
+                                if (settings.overrides.tableHeaderBg) tableHeaderBg = settings.overrides.tableHeaderBg;
+                                if (settings.overrides.tableCellBg) tableCellBg = settings.overrides.tableCellBg;
+                                if (settings.overrides.tableStripedBg) tableStripedBg = settings.overrides.tableStripedBg;
+                                if (settings.overrides.tableSummaryBg) tableSummaryBg = settings.overrides.tableSummaryBg;
+                                if (settings.overrides.tableGridColor) tableGridColor = settings.overrides.tableGridColor;
+                                // Menus
+                                if (settings.overrides.navBarLinkBg) navBarLinkBg = settings.overrides.navBarLinkBg;
+                                if (settings.overrides.activeMenuColor) activeMenuColor = settings.overrides.activeMenuColor;
+                                if (settings.overrides.menuButtonBg) menuButtonBg = settings.overrides.menuButtonBg;
+                                if (settings.overrides.menuButtonBorder) menuButtonBorder = settings.overrides.menuButtonBorder;
+                                // Buttons
+                                if (settings.overrides.pageButtonBg) pageButtonBg = settings.overrides.pageButtonBg;
+                                // Text
+                                if (settings.overrides.bodyText) bodyText = settings.overrides.bodyText;
                                 if (settings.overrides.lightText) lightText = settings.overrides.lightText;
                                 if (settings.overrides.darkText) darkText = settings.overrides.darkText;
-                                if (settings.overrides.navBarLinkBg) navBarLinkBg = settings.overrides.navBarLinkBg;
-                                if (settings.overrides.menuButtonBg) menuButtonBg = settings.overrides.menuButtonBg;
+                                if (settings.overrides.linkColor) linkColor = settings.overrides.linkColor;
+                                if (settings.overrides.headersAndLabelsText) headersAndLabelsText = settings.overrides.headersAndLabelsText;
+                                if (settings.overrides.tableCellText) tableCellText = settings.overrides.tableCellText;
+                                if (settings.overrides.tableSummaryText) tableSummaryText = settings.overrides.tableSummaryText;
+                                if (settings.overrides.inputFieldText) inputFieldText = settings.overrides.inputFieldText;
                                 if (settings.overrides.menuButtonText) menuButtonText = settings.overrides.menuButtonText;
-                                if (settings.overrides.menuButtonBorder) menuButtonBorder = settings.overrides.menuButtonBorder;
-                                if (settings.overrides.pageButtonBg) pageButtonBg = settings.overrides.pageButtonBg;
-                                if (settings.overrides.activeMenuColor) activeMenuColor = settings.overrides.activeMenuColor;
                             }
                         }
 
-                        document.documentElement.style.setProperty('--ktlTheme_bodyBg', bodyBg);
-                        document.documentElement.style.setProperty('--ktlTheme_bodyText', bodyText);
+                        // Page
                         document.documentElement.style.setProperty('--ktlTheme_pageBg', pageBg);
+                        document.documentElement.style.setProperty('--ktlTheme_topHeaderBg', topHeaderBg);
+                        document.documentElement.style.setProperty('--ktlTheme_inputFieldBg', inputFieldBg);
+                        // Tables
                         document.documentElement.style.setProperty('--ktlTheme_tableHeaderBg', tableHeaderBg);
-                        document.documentElement.style.setProperty('--ktlTheme_tableHeaderText', tableHeaderText);
                         document.documentElement.style.setProperty('--ktlTheme_tableCellBg', tableCellBg);
-                        document.documentElement.style.setProperty('--ktlTheme_tableCellText', tableCellText);
                         document.documentElement.style.setProperty('--ktlTheme_tableStripedBg', tableStripedBg);
-                        document.documentElement.style.setProperty('--ktlTheme_tableTotalsBg', tableTotalsBg);
-                        document.documentElement.style.setProperty('--ktlTheme_tableTotalsText', tableTotalsText);
-                        document.documentElement.style.setProperty('--ktlTheme_linkColor', linkColor);
+                        document.documentElement.style.setProperty('--ktlTheme_tableSummaryBg', tableSummaryBg);
+                        document.documentElement.style.setProperty('--ktlTheme_tableGridColor', tableGridColor);
+                        // Menus
+                        document.documentElement.style.setProperty('--ktlTheme_navBarLinkBg', navBarLinkBg);
+                        document.documentElement.style.setProperty('--ktlTheme_activeMenuColor', activeMenuColor);
+                        document.documentElement.style.setProperty('--ktlTheme_menuButtonBg', menuButtonBg);
+                        document.documentElement.style.setProperty('--ktlTheme_menuButtonBorder', menuButtonBorder);
+                        // Buttons
+                        document.documentElement.style.setProperty('--ktlTheme_pageButtonBg', pageButtonBg);
+                        // Text
+                        document.documentElement.style.setProperty('--ktlTheme_bodyText', bodyText);
                         document.documentElement.style.setProperty('--ktlTheme_lightText', lightText);
                         document.documentElement.style.setProperty('--ktlTheme_darkText', darkText);
-                        document.documentElement.style.setProperty('--ktlTheme_topHeaderBg', topHeaderBg);
-                        document.documentElement.style.setProperty('--ktlTheme_navBarLinkBg', navBarLinkBg);
-                        document.documentElement.style.setProperty('--ktlTheme_menuButtonBg', menuButtonBg);
+                        document.documentElement.style.setProperty('--ktlTheme_linkColor', linkColor);
+                        document.documentElement.style.setProperty('--ktlTheme_headersAndLabelsText', headersAndLabelsText);
+                        document.documentElement.style.setProperty('--ktlTheme_tableCellText', tableCellText);
+                        document.documentElement.style.setProperty('--ktlTheme_tableSummaryText', tableSummaryText);
+                        document.documentElement.style.setProperty('--ktlTheme_inputFieldText', inputFieldText);
                         document.documentElement.style.setProperty('--ktlTheme_menuButtonText', menuButtonText);
-                        document.documentElement.style.setProperty('--ktlTheme_menuButtonBorder', menuButtonBorder);
-                        document.documentElement.style.setProperty('--ktlTheme_inputFieldBg', inputFieldBg);
-                        document.documentElement.style.setProperty('--ktlTheme_tableBorderColor', tableBorderColor);
-                        document.documentElement.style.setProperty('--ktlTheme_activeMenuColor', activeMenuColor);
-                        document.documentElement.style.setProperty('--ktlTheme_pageButtonBg', pageButtonBg);
 
                         let existingStyle = document.getElementById('ktlUserThemeStyles');
                         if (!existingStyle) {
@@ -20202,7 +20241,7 @@ function Ktl($, appInfo) {
                         existingStyle.textContent = `
                             /* Top-Level Page Elements */
                             #knack-body.ktlUserTheme {
-                                background-color: var(--ktlTheme_bodyBg) !important;
+                                background-color: var(--ktlTheme_pageBg) !important;
                                 color: var(--ktlTheme_bodyText) !important;
                             }
                             .ktlUserTheme #knack-dist_1 {
@@ -20211,13 +20250,13 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .knHeader,
                             .ktlUserTheme #kn-app-header {
                                 background-color: var(--ktlTheme_topHeaderBg) !important;
-                                color: var(--ktlTheme_tableHeaderText) !important;
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
                             }
 
                             /* Modal Containers and Popups */
                             .ktlUserTheme .modal-card-head {
                                 background-color: var(--ktlTheme_topHeaderBg) !important;
-                                color: var(--ktlTheme_tableHeaderText) !important;
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
                             }
                             .ktlUserTheme .modal-card-body {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
@@ -20291,25 +20330,28 @@ function Ktl($, appInfo) {
                             /* Grids */
                             .ktlUserTheme .knTable th {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
-                                color: var(--ktlTheme_tableHeaderText) !important;
-                                border-color: var(--ktlTheme_tableBorderColor) !important;
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
                             }
                             .ktlUserTheme .knTable td {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
                                 color: var(--ktlTheme_tableCellText) !important;
-                                border-color: var(--ktlTheme_tableBorderColor) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
                             }
                             .ktlUserTheme .kn-table.is-striped tbody tr:nth-child(even) {
                                 background-color: var(--ktlTheme_tableStripedBg) !important;
                             }
                             .ktlUserTheme .kn-table-totals > td {
-                                background-color: var(--ktlTheme_tableTotalsBg) !important;
-                                color: var(--ktlTheme_tableTotalsText) !important;
+                                background-color: var(--ktlTheme_tableSummaryBg) !important;
+                                color: var(--ktlTheme_tableSummaryText) !important;
                             }
 
                             /* Links */
                             .ktlUserTheme .kn-content a {
                                 color: var(--ktlTheme_linkColor) !important;
+                            }
+                            .ktlUserTheme .knTable th a {
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
                             }
                             .ktlUserTheme .kn-navigation-bar a {
                                 background-color: var(--ktlTheme_navBarLinkBg);
@@ -20331,13 +20373,13 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .kn-details .kn-detail-body,
                             .ktlUserTheme .kn-list .kn-detail-body,
                             .ktlUserTheme .kn-map-list .kn-detail-body {
-                                color: var(--ktlTheme_lightText) !important;
+                                color: var(--ktlTheme_tableCellText) !important;
                             }
                             .ktlUserTheme .kn-details .kn-detail-label,
                             .ktlUserTheme .kn-list .kn-detail-label,
                             .ktlUserTheme .kn-map-list .kn-detail-label {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
-                                color: var(--ktlTheme_lightText) !important;
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
                             }
                             .ktlUserTheme .filterControl {
                                 color: var(--ktlTheme_darkText) !important;
@@ -20350,7 +20392,7 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .chzn-choices,
                             .ktlUserTheme .chzn-drop {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
-                                color: var(--ktlTheme_lightText) !important;
+                                color: var(--ktlTheme_inputFieldText) !important;
                             }
                             #knack-body.ktlUserTheme input[type="checkbox"],
                             #knack-body.ktlUserTheme input[type="radio"] {
@@ -20364,7 +20406,7 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .redactor-box {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
                                 border-color: var(--ktlTheme_tableHeaderBg) !important;
-                                color: var(--ktlTheme_lightText) !important;
+                                color: var(--ktlTheme_inputFieldText) !important;
                             }
                             .ktlUserTheme .input {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
@@ -20373,7 +20415,7 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .chzn-container-single .chzn-single {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
                                 border-color: var(--ktlTheme_tableHeaderBg) !important;
-                                color: var(--ktlTheme_lightText) !important;
+                                color: var(--ktlTheme_inputFieldText) !important;
                             }
 
                             /* Submit Buttons */
@@ -20397,16 +20439,18 @@ function Ktl($, appInfo) {
 
             showThemeEditor: function () {
                 const PRESETS = {
-                    slate: '#64748b',
-                    stone: '#78716c',
-                    sage: '#6b8e6b',
-                    steel: '#5a7d9a',
-                    mauve: '#8b7b8b',
-                    sand: '#a89880',
-                    olive: '#7a8b5c',
-                    dusk: '#6b5b7a',
-                    clay: '#9b7b6b',
-                    mist: '#6b8b8b'
+                    ocean: '#3a7ca5',
+                    forest: '#4a9a6a',
+                    sunset: '#c97a3a',
+                    berry: '#7a5a8a',
+                    crimson: '#a54a4a',
+                    teal: '#3a8a7a',
+                    gold: '#b89a3a',
+                    olive: '#7a8a4a',
+                    rose: '#a87a7a',
+                    indigo: '#5a6a9a',
+                    bronze: '#a87a5a',
+                    yellow: '#c9b43a'
                 };
 
                 const knHeaderInfo = Knack.app.attributes.design.regions.header;
@@ -20416,48 +20460,42 @@ function Ktl($, appInfo) {
                     {
                         title: 'Page',
                         colors: [
-                            { key: 'bodyBg', label: 'Body', sat: 0.15, light: 0.15 },
-                            { key: 'pageBg', label: 'Content', sat: 0.20, light: 0.20 },
+                            { key: 'pageBg', label: 'Background', sat: 0.18, light: 0.18 },
                             { key: 'topHeaderBg', label: 'Header', sat: 1.0, light: 1.0 },
-                            { key: 'inputFieldBg', label: 'Input Field', sat: 0.04, light: 0.30 },
                         ]
                     },
                     {
-                        title: 'Tables',
+                        title: 'Views',
                         colors: [
-                            { key: 'tableHeaderBg', label: 'Header Bg', sat: 0.25, light: 0.25 },
-                            { key: 'tableCellBg', label: 'Cell Bg', sat: 0.08, light: 0.18 },
-                            { key: 'tableStripedBg', label: 'Striped Row', sat: 0.1, light: 0.22 },
-                            { key: 'tableTotalsBg', label: 'Totals Bg', sat: 0.2, light: 0.2 },
-                            { key: 'tableBorderColor', label: 'Border', sat: 0.15, light: 0.30 },
+                            { key: 'tableHeaderBg', label: 'Headers/Labels Bg', sat: 0.25, light: 0.25 },
+                            { key: 'tableCellBg', label: 'Cells Bg', sat: 0.08, light: 0.18 },
+                            { key: 'tableStripedBg', label: 'Striped Rows', sat: 0.1, light: 0.22 },
+                            { key: 'tableSummaryBg', label: 'Summary Bg', sat: 0.2, light: 0.2 },
+                            { key: 'tableGridColor', label: 'Grids', sat: 0.15, light: 0.30 },
+                            { key: 'inputFieldBg', label: 'Input Fields Bg', sat: 0.04, light: 0.30 },
                         ]
                     },
                     {
-                        title: 'Menus',
+                        title: 'Menus/Buttons',
                         colors: [
-                            { key: 'navBarLinkBg', label: 'Nav Bar Link', sat: 0.80, light: 0.20, legacy: true },
-                            { key: 'activeMenuColor', label: 'Active Menu', sat: 1.0, light: 0.8, legacy: true },
-                            { key: 'menuButtonBg', label: 'Button Bg', sat: 0.6, light: 0.3, legacy: false },
+                            { key: 'navBarLinkBg', label: 'Buttons/Tabs Bg', sat: 0.80, light: 0.20, legacy: true },
+                            { key: 'activeMenuColor', label: 'Active Menu Txt', sat: 1.0, light: 0.8, legacy: true },
+                            { key: 'menuButtonBg', label: 'Buttons/Tabs Bg', sat: 0.6, light: 0.3, legacy: false },
                             { key: 'menuButtonBorder', label: 'Button Border', sat: 0.6, light: 0.35, legacy: false },
-                        ]
-                    },
-                    {
-                        title: 'Buttons',
-                        colors: [
-                            { key: 'pageButtonBg', label: 'Primary Bg', sat: 0.99, light: 0.50 },
+                            { key: 'pageButtonBg', label: 'Submit Bg', sat: 0.99, light: 0.50 },
                         ]
                     },
                     {
                         title: 'Text',
                         colors: [
-                            { key: 'bodyText', label: 'Body', sat: 0.05, light: 0.75 },
-                            { key: 'lightText', label: 'Light', sat: 0.08, light: 0.75 },
+                            { key: 'lightText', label: 'Titles/Descr/Nav', sat: 0.08, light: 0.75 },
                             { key: 'darkText', label: 'Dark', sat: 0.15, light: 0.15 },
                             { key: 'linkColor', label: 'Links', sat: 0.5, light: 0.7 },
-                            { key: 'tableHeaderText', label: 'Table Header', sat: 0.1, light: 0.9 },
-                            { key: 'tableCellText', label: 'Table Cell', sat: 0.05, light: 0.8 },
-                            { key: 'tableTotalsText', label: 'Totals', sat: 0.1, light: 0.85 },
-                            { key: 'menuButtonText', label: 'Menu Button', sat: 0.15, light: 0.90 },
+                            { key: 'headersAndLabelsText', label: 'Headers/Labels', sat: 0.1, light: 0.9 },
+                            { key: 'tableCellText', label: 'View Data', sat: 0.05, light: 0.8 },
+                            { key: 'tableSummaryText', label: 'Summary', sat: 0.1, light: 0.85 },
+                            { key: 'inputFieldText', label: 'Input Fields', sat: 0.08, light: 0.75 },
+                            { key: 'menuButtonText', label: 'Menus/Buttons', sat: 0.15, light: 0.90 },
                         ]
                     },
                 ];
@@ -20521,7 +20559,37 @@ function Ktl($, appInfo) {
                 // Mode Section
                 const modeSection = document.createElement('div');
                 modeSection.className = 'ktlThemeEditorSection';
-                modeSection.innerHTML = '<div class="ktlThemeEditorLabel">Mode</div>';
+                const modeLabelRow = document.createElement('div');
+                modeLabelRow.className = 'ktlThemeEditorHeaderLabelRow';
+                const modeLabel = document.createElement('span');
+                modeLabel.className = 'ktlThemeEditorLabel';
+                modeLabel.textContent = 'Mode';
+                const modeHelpIcon = document.createElement('span');
+                modeHelpIcon.className = 'ktlThemeEditorHelpIcon';
+                modeHelpIcon.innerHTML = '?';
+                modeHelpIcon.title = 'Click for help';
+                modeHelpIcon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    let tooltip = editor.querySelector('.ktlThemeEditorTooltip');
+                    if (tooltip) {
+                        tooltip.remove();
+                        return;
+                    }
+                    tooltip = document.createElement('div');
+                    tooltip.className = 'ktlThemeEditorTooltip';
+                    tooltip.innerHTML = '<b>Dark:</b> Apply your custom dark theme colors.<br><b>App Preset:</b> Use the app\'s built-in theme color (if defined).<br><b>Default:</b> Disable custom theme and use Knack\'s default styling.';
+                    modeSection.appendChild(tooltip);
+                    const closeTooltip = (evt) => {
+                        if (!tooltip.contains(evt.target) && evt.target !== modeHelpIcon) {
+                            tooltip.remove();
+                            document.removeEventListener('click', closeTooltip);
+                        }
+                    };
+                    setTimeout(() => document.addEventListener('click', closeTooltip), 10);
+                });
+                modeLabelRow.appendChild(modeLabel);
+                modeLabelRow.appendChild(modeHelpIcon);
+                modeSection.appendChild(modeLabelRow);
                 const modeGroup = document.createElement('div');
                 modeGroup.className = 'ktlThemeEditorModeGroup';
 
@@ -20539,6 +20607,7 @@ function Ktl($, appInfo) {
                     btn.textContent = label;
                     btn.dataset.mode = key;
                     btn.addEventListener('click', () => {
+                        saveUndoState();
                         modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         if (key === 'default') {
@@ -20578,6 +20647,7 @@ function Ktl($, appInfo) {
                     btn.title = name.charAt(0).toUpperCase() + name.slice(1);
                     btn.dataset.preset = name;
                     btn.addEventListener('click', () => {
+                        saveUndoState();
                         presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                         currentSettings.preset = name;
@@ -20599,12 +20669,57 @@ function Ktl($, appInfo) {
                 presetsSection.appendChild(presetsGroup);
                 content.appendChild(presetsSection);
 
-                // Header Color Section
+                // Current Settings Section
                 const headerSection = document.createElement('div');
                 headerSection.className = 'ktlThemeEditorSection';
-                headerSection.innerHTML = '<div class="ktlThemeEditorLabel">Header Color</div>';
+                headerSection.innerHTML = '<div class="ktlThemeEditorLabel">Current Settings</div>';
                 const headerRow = document.createElement('div');
-                headerRow.className = 'ktlThemeEditorColorRow';
+                headerRow.className = 'ktlThemeEditorColorRow ktlThemeEditorCurrentSettings';
+
+                // Left side: Saved color box (shows last saved value, clickable to load)
+                const savedColorBox = document.createElement('div');
+                savedColorBox.className = 'ktlThemeEditorSavedColor';
+                savedColorBox.style.backgroundColor = originalSettings.headerColor;
+                savedColorBox.title = 'Click to load saved settings';
+                savedColorBox.style.cursor = 'pointer';
+
+                // Center: Header Color controls
+                const headerColorGroup = document.createElement('div');
+                headerColorGroup.className = 'ktlThemeEditorHeaderColorGroup';
+
+                const headerLabelRow = document.createElement('div');
+                headerLabelRow.className = 'ktlThemeEditorHeaderLabelRow';
+                const headerLabel = document.createElement('span');
+                headerLabel.className = 'ktlThemeEditorColorLabel';
+                headerLabel.textContent = 'Header Color';
+                const helpIcon = document.createElement('span');
+                helpIcon.className = 'ktlThemeEditorHelpIcon';
+                helpIcon.innerHTML = '?';
+                helpIcon.title = 'Click for help';
+                helpIcon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    let tooltip = editor.querySelector('.ktlThemeEditorTooltip');
+                    if (tooltip) {
+                        tooltip.remove();
+                        return;
+                    }
+                    tooltip = document.createElement('div');
+                    tooltip.className = 'ktlThemeEditorTooltip';
+                    tooltip.innerHTML = '<b>Driving Color:</b> Changing this header color will automatically recalculate all element colors based on it.';
+                    headerSection.appendChild(tooltip);
+                    const closeTooltip = (evt) => {
+                        if (!tooltip.contains(evt.target) && evt.target !== helpIcon) {
+                            tooltip.remove();
+                            document.removeEventListener('click', closeTooltip);
+                        }
+                    };
+                    setTimeout(() => document.addEventListener('click', closeTooltip), 10);
+                });
+                headerLabelRow.appendChild(headerLabel);
+                headerLabelRow.appendChild(helpIcon);
+
+                const headerInputRow = document.createElement('div');
+                headerInputRow.className = 'ktlThemeEditorHeaderInputRow';
                 const headerColorInput = document.createElement('input');
                 headerColorInput.type = 'color';
                 headerColorInput.className = 'ktlThemeEditorColorInput';
@@ -20613,8 +20728,76 @@ function Ktl($, appInfo) {
                 headerColorHex.type = 'text';
                 headerColorHex.className = 'ktlThemeEditorColorHex';
                 headerColorHex.value = currentSettings.headerColor;
+                headerInputRow.appendChild(headerColorInput);
+                headerInputRow.appendChild(headerColorHex);
+
+                headerColorGroup.appendChild(headerLabelRow);
+                headerColorGroup.appendChild(headerInputRow);
+
+                // Right side: Undo button with label
+                const undoGroup = document.createElement('div');
+                undoGroup.className = 'ktlThemeEditorUndoGroup';
+                let undoStack = [];
+                const MAX_UNDO = 20;
+                let pendingUndoState = null;
+
+                function saveUndoState() {
+                    const stateStr = JSON.stringify(currentSettings);
+                    // Avoid duplicate consecutive states
+                    if (undoStack.length > 0 && JSON.stringify(undoStack[undoStack.length - 1]) === stateStr) {
+                        return;
+                    }
+                    undoStack.push(JSON.parse(stateStr));
+                    if (undoStack.length > MAX_UNDO) undoStack.shift();
+                }
+
+                function saveUndoStateOnce() {
+                    if (!pendingUndoState) {
+                        pendingUndoState = JSON.parse(JSON.stringify(currentSettings));
+                    }
+                }
+
+                function commitUndoState() {
+                    if (pendingUndoState) {
+                        const stateStr = JSON.stringify(pendingUndoState);
+                        if (undoStack.length === 0 || JSON.stringify(undoStack[undoStack.length - 1]) !== stateStr) {
+                            undoStack.push(pendingUndoState);
+                            if (undoStack.length > MAX_UNDO) undoStack.shift();
+                        }
+                        pendingUndoState = null;
+                    }
+                }
+
+                const undoBtn = document.createElement('button');
+                undoBtn.className = 'ktlThemeEditorUndoBtn';
+                undoBtn.innerHTML = '↩';
+                undoBtn.title = 'Undo last change';
+                const undoLabel = document.createElement('span');
+                undoLabel.className = 'ktlThemeEditorUndoLabel';
+                undoLabel.textContent = 'Undo';
+                undoGroup.appendChild(undoBtn);
+                undoGroup.appendChild(undoLabel);
+
+                undoBtn.addEventListener('click', () => {
+                    if (undoStack.length > 0) {
+                        currentSettings = undoStack.pop();
+                        headerColorInput.value = currentSettings.headerColor;
+                        headerColorHex.value = currentSettings.headerColor;
+                        presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => {
+                            b.classList.toggle('active', b.dataset.preset === currentSettings.preset);
+                        });
+                        modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
+                            const isDefault = !currentSettings.enabled && b.dataset.mode === 'default';
+                            const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
+                            b.classList.toggle('active', isDefault || isMode);
+                        });
+                        updateElementColors(true);
+                        applyPreview();
+                    }
+                });
 
                 headerColorInput.addEventListener('input', () => {
+                    saveUndoStateOnce();
                     currentSettings.headerColor = headerColorInput.value;
                     headerColorHex.value = headerColorInput.value;
                     currentSettings.preset = null;
@@ -20624,8 +20807,13 @@ function Ktl($, appInfo) {
                     applyPreview();
                 });
 
+                headerColorInput.addEventListener('change', () => {
+                    commitUndoState();
+                });
+
                 headerColorHex.addEventListener('change', () => {
                     if (/^#[0-9A-Fa-f]{6}$/.test(headerColorHex.value)) {
+                        saveUndoState();
                         currentSettings.headerColor = headerColorHex.value;
                         headerColorInput.value = headerColorHex.value;
                         currentSettings.preset = null;
@@ -20636,8 +20824,9 @@ function Ktl($, appInfo) {
                     }
                 });
 
-                headerRow.appendChild(headerColorInput);
-                headerRow.appendChild(headerColorHex);
+                headerRow.appendChild(savedColorBox);
+                headerRow.appendChild(headerColorGroup);
+                headerRow.appendChild(undoGroup);
                 headerSection.appendChild(headerRow);
                 content.appendChild(headerSection);
 
@@ -20648,7 +20837,9 @@ function Ktl($, appInfo) {
                 const elementColorInputs = {};
 
                 function deriveColor(headerHex, sat, light) {
-                    const rgb = ktl.systemColors.hexToRgb(headerHex);
+                    if (sat === 1.0 && light === 1.0) {
+                        return headerHex;
+                    }
                     const newRgb = ktl.systemColors.adjustRGB_sl(headerHex, sat, light);
                     return ktl.systemColors.rgbToHex(newRgb[0], newRgb[1], newRgb[2]);
                 }
@@ -20685,14 +20876,20 @@ function Ktl($, appInfo) {
                         }
 
                         colorInput.addEventListener('input', () => {
+                            saveUndoStateOnce();
                             currentSettings.overrides[elem.key] = colorInput.value;
                             hexInput.value = colorInput.value;
                             hexInput.classList.add('ktlThemeEditorOverridden');
                             applyPreview();
                         });
 
+                        colorInput.addEventListener('change', () => {
+                            commitUndoState();
+                        });
+
                         hexInput.addEventListener('change', () => {
                             if (/^#[0-9A-Fa-f]{6}$/.test(hexInput.value)) {
+                                saveUndoState();
                                 currentSettings.overrides[elem.key] = hexInput.value;
                                 colorInput.value = hexInput.value;
                                 hexInput.classList.add('ktlThemeEditorOverridden');
@@ -20713,15 +20910,22 @@ function Ktl($, appInfo) {
 
                 content.appendChild(elementsSection);
 
-                function updateElementColors() {
+                function updateElementColors(forceAll = false) {
                     FILTERED_COLOR_GROUPS.forEach(group => {
                         group.colors.forEach(elem => {
                             const inputs = elementColorInputs[elem.key];
-                            if (inputs && !currentSettings.overrides[elem.key]) {
-                                const derivedColor = deriveColor(currentSettings.headerColor, elem.sat, elem.light);
-                                inputs.colorInput.value = derivedColor;
-                                inputs.hexInput.value = derivedColor;
-                                inputs.hexInput.classList.remove('ktlThemeEditorOverridden');
+                            if (inputs) {
+                                if (forceAll || !currentSettings.overrides[elem.key]) {
+                                    const overrideValue = currentSettings.overrides[elem.key];
+                                    const derivedColor = overrideValue || deriveColor(currentSettings.headerColor, elem.sat, elem.light);
+                                    inputs.colorInput.value = derivedColor;
+                                    inputs.hexInput.value = derivedColor;
+                                    if (overrideValue) {
+                                        inputs.hexInput.classList.add('ktlThemeEditorOverridden');
+                                    } else {
+                                        inputs.hexInput.classList.remove('ktlThemeEditorOverridden');
+                                    }
+                                }
                             }
                         });
                     });
@@ -20742,14 +20946,7 @@ function Ktl($, appInfo) {
                     });
                 }
 
-                // Actions
-                const actions = document.createElement('div');
-                actions.className = 'ktlThemeEditorActions';
-
-                const resetBtn = document.createElement('button');
-                resetBtn.className = 'ktlThemeEditorBtn';
-                resetBtn.textContent = 'Reset';
-                resetBtn.addEventListener('click', () => {
+                function loadSavedSettings() {
                     currentSettings = JSON.parse(JSON.stringify(originalSettings));
                     headerColorInput.value = currentSettings.headerColor;
                     headerColorHex.value = currentSettings.headerColor;
@@ -20761,8 +20958,104 @@ function Ktl($, appInfo) {
                         const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
                         b.classList.toggle('active', isDefault || isMode);
                     });
-                    updateElementColors();
+                    updateElementColors(true);
                     applyPreview();
+                }
+
+                savedColorBox.addEventListener('click', loadSavedSettings);
+
+                // Actions - buttons: Save, Load, Cancel
+                const actions = document.createElement('div');
+                actions.className = 'ktlThemeEditorActions';
+
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'ktlThemeEditorBtn primary';
+                saveBtn.textContent = 'Save';
+                saveBtn.addEventListener('click', async () => {
+                    const savedThemes = ktl.scenes.getSavedThemes();
+                    const themeNames = Object.keys(savedThemes);
+                    const options = ['Save as Active Theme', 'Save as New Theme...'];
+                    if (themeNames.length > 0) {
+                        options.push('Overwrite Existing...');
+                    }
+                    const choice = await ktl.core.selectOption('Save Theme', options.join(','));
+                    if (choice === 0) {
+                        // Save as active theme
+                        ktl.scenes.saveThemeSettings(currentSettings);
+                        originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                        savedColorBox.style.backgroundColor = originalSettings.headerColor;
+                        savedColorBox.title = 'Click to load saved settings';
+                        ktl.core.timedPopup('Theme saved as active!', 'success', 2000);
+                    } else if (choice === 1) {
+                        // Save as new named theme
+                        const userAttrs = Knack.getUserAttributes();
+                        const firstName = userAttrs && userAttrs.values && userAttrs.values.name ? userAttrs.values.name.first : '';
+                        const defaultName = firstName ? firstName + ' Theme' : '';
+                        const themeName = await ktl.core.selectOption('Enter a name for this theme:', 'ktlOther:Theme Name', defaultName);
+                        if (typeof themeName === 'string' && themeName.trim()) {
+                            savedThemes[themeName.trim()] = JSON.parse(JSON.stringify(currentSettings));
+                            ktl.scenes.saveSavedThemes(savedThemes);
+                            ktl.core.timedPopup('Theme "' + themeName.trim() + '" saved!', 'success', 2000);
+                        }
+                    } else if (choice === 2 && themeNames.length > 0) {
+                        // Overwrite existing
+                        const themeChoice = await ktl.core.selectOption('Select theme to overwrite:', themeNames.join(','));
+                        if (themeChoice >= 0 && themeChoice < themeNames.length) {
+                            const selectedName = themeNames[themeChoice];
+                            savedThemes[selectedName] = JSON.parse(JSON.stringify(currentSettings));
+                            ktl.scenes.saveSavedThemes(savedThemes);
+                            ktl.core.timedPopup('Theme "' + selectedName + '" updated!', 'success', 2000);
+                        }
+                    }
+                });
+
+                const loadBtn = document.createElement('button');
+                loadBtn.className = 'ktlThemeEditorBtn';
+                loadBtn.textContent = 'Load';
+                loadBtn.title = 'Load saved theme';
+                loadBtn.addEventListener('click', async () => {
+                    const savedThemes = ktl.scenes.getSavedThemes();
+                    const themeNames = Object.keys(savedThemes);
+                    const options = ['Load Active Theme'];
+                    if (themeNames.length > 0) {
+                        options.push(...themeNames);
+                        options.push('Delete a Theme...');
+                    }
+                    const choice = await ktl.core.selectOption('Load Theme', options.join(','));
+                    if (choice === 0) {
+                        // Load active theme
+                        loadSavedSettings();
+                    } else if (choice > 0 && choice <= themeNames.length) {
+                        // Load named theme
+                        const selectedName = themeNames[choice - 1];
+                        const themeData = savedThemes[selectedName];
+                        if (themeData) {
+                            saveUndoState();
+                            currentSettings = JSON.parse(JSON.stringify(themeData));
+                            headerColorInput.value = currentSettings.headerColor;
+                            headerColorHex.value = currentSettings.headerColor;
+                            presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => {
+                                b.classList.toggle('active', b.dataset.preset === currentSettings.preset);
+                            });
+                            modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
+                                const isDefault = !currentSettings.enabled && b.dataset.mode === 'default';
+                                const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
+                                b.classList.toggle('active', isDefault || isMode);
+                            });
+                            updateElementColors(true);
+                            applyPreview();
+                            ktl.core.timedPopup('Theme "' + selectedName + '" loaded!', 'success', 2000);
+                        }
+                    } else if (choice === themeNames.length + 1) {
+                        // Delete a theme
+                        const deleteChoice = await ktl.core.selectOption('Select theme to delete:', themeNames.join(','));
+                        if (deleteChoice >= 0 && deleteChoice < themeNames.length) {
+                            const nameToDelete = themeNames[deleteChoice];
+                            delete savedThemes[nameToDelete];
+                            ktl.scenes.saveSavedThemes(savedThemes);
+                            ktl.core.timedPopup('Theme "' + nameToDelete + '" deleted!', 'success', 2000);
+                        }
+                    }
                 });
 
                 const cancelBtn = document.createElement('button');
@@ -20774,29 +21067,108 @@ function Ktl($, appInfo) {
                     editor.remove();
                 });
 
-                const saveBtn = document.createElement('button');
-                saveBtn.className = 'ktlThemeEditorBtn primary';
-                saveBtn.textContent = 'Save';
-                saveBtn.addEventListener('click', () => {
-                    ktl.scenes.saveThemeSettings(currentSettings);
-                    editor.remove();
+                const shareBtn = document.createElement('button');
+                shareBtn.className = 'ktlThemeEditorBtn';
+                shareBtn.textContent = 'Share';
+                shareBtn.title = 'Export or import theme via clipboard';
+                shareBtn.addEventListener('click', async () => {
+                    const choice = await ktl.core.selectOption('Share Theme', 'Export to Clipboard,Import from Clipboard');
+                    if (choice === 0) {
+                        // Export - ask for name
+                        const userAttrs = Knack.getUserAttributes();
+                        const firstName = userAttrs && userAttrs.values && userAttrs.values.name ? userAttrs.values.name.first : '';
+                        const defaultName = firstName ? firstName + ' Theme' : '';
+                        const themeName = await ktl.core.selectOption('Enter a name for this theme:', 'ktlOther:Theme Name', defaultName);
+                        if (typeof themeName === 'string' && themeName.trim()) {
+                            const exportData = {
+                                ktlTheme: true,
+                                version: 1,
+                                name: themeName.trim(),
+                                settings: currentSettings
+                            };
+                            const jsonStr = JSON.stringify(exportData, null, 2);
+                            navigator.clipboard.writeText(jsonStr).then(() => {
+                                ktl.core.timedPopup('Theme "' + themeName.trim() + '" exported to clipboard!', 'success', 2000);
+                            }).catch(() => {
+                                ktl.core.timedPopup('Failed to copy to clipboard', 'error', 2000);
+                            });
+                        }
+                    } else if (choice === 1) {
+                        // Import - validate first, then apply for preview
+                        let clipText;
+                        try {
+                            clipText = await navigator.clipboard.readText();
+                        } catch (e) {
+                            ktl.core.timedPopup('Failed to read clipboard', 'error', 2500);
+                            return;
+                        }
+
+                        if (!clipText || !clipText.trim()) {
+                            ktl.core.timedPopup('Clipboard is empty', 'error', 2500);
+                            return;
+                        }
+
+                        let importData;
+                        try {
+                            importData = JSON.parse(clipText);
+                        } catch (parseErr) {
+                            ktl.core.timedPopup('Wrong theme format', 'error', 2500);
+                            return;
+                        }
+
+                        if (!importData.ktlTheme || !importData.settings || !importData.settings.headerColor) {
+                            ktl.core.timedPopup('Wrong theme format', 'error', 2500);
+                            return;
+                        }
+
+                        // Validation passed - apply theme
+                        saveUndoState();
+                        currentSettings = JSON.parse(JSON.stringify(importData.settings));
+                        headerColorInput.value = currentSettings.headerColor;
+                        headerColorHex.value = currentSettings.headerColor;
+                        presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => {
+                            b.classList.toggle('active', b.dataset.preset === currentSettings.preset);
+                        });
+                        modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
+                            const isDefault = !currentSettings.enabled && b.dataset.mode === 'default';
+                            const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
+                            b.classList.toggle('active', isDefault || isMode);
+                        });
+                        updateElementColors(true);
+                        applyPreview();
+                        const importedName = importData.name ? '"' + importData.name + '" ' : '';
+                        ktl.core.timedPopup('Theme ' + importedName + 'imported! Use Save to keep it.', 'success', 2500);
+                    }
                 });
 
-                actions.appendChild(resetBtn);
-                actions.appendChild(cancelBtn);
                 actions.appendChild(saveBtn);
+                actions.appendChild(loadBtn);
+                actions.appendChild(shareBtn);
+                actions.appendChild(cancelBtn);
 
                 editor.appendChild(header);
                 editor.appendChild(content);
                 editor.appendChild(actions);
                 document.body.appendChild(editor);
 
-                // Close button
-                header.querySelector('.ktlThemeEditorClose').addEventListener('click', () => {
+                // Close button and Esc key
+                function closeEditor() {
                     currentSettings = JSON.parse(JSON.stringify(originalSettings));
                     applyPreview();
+                    document.removeEventListener('keydown', escKeyHandler);
                     editor.remove();
-                });
+                }
+
+                header.querySelector('.ktlThemeEditorClose').addEventListener('click', closeEditor);
+
+                function escKeyHandler(e) {
+                    if (e.key === 'Escape') {
+                        // Don't close editor if a popup dialog is open
+                        if (document.querySelector('.ktlConfirmOverlay')) return;
+                        closeEditor();
+                    }
+                }
+                document.addEventListener('keydown', escKeyHandler);
 
                 // Draggable
                 let isDragging = false;
@@ -20829,12 +21201,14 @@ function Ktl($, appInfo) {
 
             saveThemeSettings: function (settings) {
                 const userPrefs = ktl.userPrefs.getUserPrefs();
+                const existingSavedThemes = userPrefs.userTheme?.savedThemes || {};
                 userPrefs.userTheme = {
                     enabled: settings.enabled,
                     mode: settings.mode,
                     preset: settings.preset,
                     headerColor: settings.headerColor,
-                    overrides: settings.overrides
+                    overrides: settings.overrides,
+                    savedThemes: existingSavedThemes
                 };
                 userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
@@ -20858,6 +21232,37 @@ function Ktl($, appInfo) {
                         });
                 } else {
                     ktl.log.clog('purple', 'Theme settings saved locally only - missing config for database save');
+                }
+            },
+
+            getSavedThemes: function () {
+                const userPrefs = ktl.userPrefs.getUserPrefs();
+                return userPrefs.userTheme?.savedThemes || {};
+            },
+
+            saveSavedThemes: function (savedThemes) {
+                const userPrefs = ktl.userPrefs.getUserPrefs();
+                if (!userPrefs.userTheme) {
+                    userPrefs.userTheme = { enabled: false, mode: 'dark', preset: null, headerColor: null, overrides: {}, savedThemes: {} };
+                }
+                userPrefs.userTheme.savedThemes = savedThemes;
+                userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
+
+                const updUserPrefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
+                const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                const userId = Knack.getUserAttributes()?.id;
+
+                if (updUserPrefsViewId && acctPrefsFld && userId) {
+                    const apiData = { [acctPrefsFld]: JSON.stringify(userPrefs) };
+                    ktl.core.knAPI(updUserPrefsViewId, userId, apiData, 'PUT', [], false)
+                        .then(() => {
+                            ktl.log.clog('green', 'Saved themes updated in database');
+                        })
+                        .catch((err) => {
+                            ktl.log.clog('red', 'Error saving themes: ' + err);
+                        });
                 }
             },
         }
@@ -21160,7 +21565,8 @@ function Ktl($, appInfo) {
                 mode: 'dark',
                 preset: null,
                 headerColor: null,
-                overrides: {}
+                overrides: {},
+                savedThemes: {}
             }
         };
 
