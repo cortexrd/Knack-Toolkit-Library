@@ -20374,6 +20374,10 @@ function Ktl($, appInfo) {
                                 color: var(--ktlTheme_tableCellText) !important;
                                 border-color: var(--ktlTheme_tableGridColor) !important;
                             }
+                            .ktlUserTheme .kn-content .fc-widget-header,
+                            .ktlUserTheme .kn-content .fc-widget-content {
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
                             .ktlUserTheme .kn-table.is-striped tbody tr:nth-child(even) {
                                 background-color: var(--ktlTheme_tableStripedBg) !important;
                             }
@@ -20462,6 +20466,13 @@ function Ktl($, appInfo) {
                             }
                             .ktlUserTheme .kn-button.is-primary:hover {
                                 background-color: var(--ktlTheme_topHeaderBg) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+
+                            /* Calendar Buttons */
+                            .ktlUserTheme .kn-content .fc-button {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
                                 border-color: var(--ktlTheme_menuButtonBorder) !important;
                             }
                         `;
@@ -21214,9 +21225,12 @@ function Ktl($, appInfo) {
                         }
                     } else if (choice === 1) {
                         // Save as new named theme
-                        const userAttrs = Knack.getUserAttributes();
-                        const firstName = userAttrs && userAttrs.values && userAttrs.values.name ? userAttrs.values.name.first : '';
-                        const defaultName = firstName ? firstName + ' Theme' : '';
+                        let defaultName = currentSettings.active;
+                        if (!defaultName || defaultName.startsWith('preset_') || defaultName === 'AppPreset' || defaultName === 'KnackDefault') {
+                            const userAttrs = Knack.getUserAttributes();
+                            const firstName = userAttrs && userAttrs.values && userAttrs.values.name ? userAttrs.values.name.first : '';
+                            defaultName = firstName ? firstName + ' Theme' : '';
+                        }
                         const themeName = await ktl.core.selectOption('Enter a name for this theme:', 'ktlOther:Theme Name', defaultName);
                         if (typeof themeName === 'string' && themeName.trim()) {
                             const name = themeName.trim();
@@ -21262,6 +21276,7 @@ function Ktl($, appInfo) {
                     const options = ['Load Active Theme'];
                     if (themeNames.length > 0) {
                         options.push(...themeNames);
+                        options.push('Rename a Theme...');
                         options.push('Delete a Theme...');
                     }
                     const choice = await ktl.core.selectOption('Load Theme', options.join(','));
@@ -21296,6 +21311,35 @@ function Ktl($, appInfo) {
                             ktl.core.timedPopup('Theme "' + selectedName + '" loaded!', 'success', 2000);
                         }
                     } else if (choice === themeNames.length + 1) {
+                        // Rename a theme
+                        const renameChoice = await ktl.core.selectOption('Select theme to rename:', themeNames.join(','));
+                        if (renameChoice >= 0 && renameChoice < themeNames.length) {
+                            const oldName = themeNames[renameChoice];
+                            const newName = await ktl.core.selectOption('Enter new name:', 'ktlOther:New Name', oldName);
+                            if (typeof newName === 'string' && newName.trim() && newName.trim() !== oldName) {
+                                const trimmedName = newName.trim();
+                                if (savedThemes[trimmedName]) {
+                                    ktl.core.timedPopup('Theme "' + trimmedName + '" already exists!', 'error', 2500);
+                                    return;
+                                }
+                                savedThemes[trimmedName] = savedThemes[oldName];
+                                delete savedThemes[oldName];
+                                // Update active if renaming the active theme
+                                let newActive = undefined;
+                                if (currentSettings.active === oldName) {
+                                    currentSettings.active = trimmedName;
+                                    newActive = trimmedName;
+                                    updateThemeNameDisplay();
+                                }
+                                const userPrefs = ktl.userPrefs.getUserPrefs();
+                                if (userPrefs.userTheme?.active === oldName) {
+                                    newActive = trimmedName;
+                                }
+                                ktl.scenes.saveSavedThemes(savedThemes, newActive);
+                                ktl.core.timedPopup('Theme renamed to "' + trimmedName + '"!', 'success', 2000);
+                            }
+                        }
+                    } else if (choice === themeNames.length + 2) {
                         // Delete a theme
                         const deleteChoice = await ktl.core.selectOption('Select theme to delete:', themeNames.join(','));
                         if (deleteChoice >= 0 && deleteChoice < themeNames.length) {
