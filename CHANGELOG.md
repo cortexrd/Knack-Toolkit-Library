@@ -1,6 +1,28 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.35.3    *2026-01-02*
+
+- New Theme Editor feature for user-customizable dark themes:
+  - Access via `_theme` keyword with `headerColor` parameter
+  - Three modes: Dark (user custom), App Preset (from keyword), Default (Knack original)
+  - Color presets: Ocean, Forest, Sunset, Berry, Crimson, Teal, Gold, Olive, Rose, Indigo, Bronze, Sunshine
+  - Fine-tune individual element colors with real-time preview
+  - Undo support (Ctrl+Z) for color changes
+  - Save/Load named themes with persistence in userPrefs (cross-device sync)
+  - Share themes: Export to Clipboard (JSON), Export as Keyword (for admin deployment), Import
+  - Rename and Delete saved themes
+  - Keyboard shortcuts: D/A/E (modes), S/L/H/C (Save/Load/Share/Cancel)
+- Theme styling applied to KTL UI components:
+  - Developer Tools popup, Search Tool, Search Results, Debug Window
+  - Confirm dialogs (selectOption)
+  - Calendar widgets (.fc-button, .fc-widget-header, .fc-widget-content)
+- `_theme` keyword syntax: `_theme=[headerColor, #hex], [elementKey, #hex], ...`
+  - Admin can export theme as keyword and deploy to all users via KTL Settings
+  - All element color overrides are parsed and applied automatically
+- User prefs sync between localStorage and database on Theme Editor open
+- Fixed selectOption keyboard shortcuts interfering with text input
+
 ## 0.35.2    *2025-12-16*
 
 - IoT Agent watchdog improvements for Raspberry Pi devices:

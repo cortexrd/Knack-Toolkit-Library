@@ -241,11 +241,8 @@ function Ktl($, appInfo) {
                 if (!ktlKeywords._theme) {
                     ktlKeywords._theme = {};
                 }
-                if (viewKwObj._theme[0].params && viewKwObj._theme[0].params[0][0] === 'edit') {
-                    ktlKeywords._theme.edit = view.id;
-                } else {
-                    ktlKeywords._theme.params = viewKwObj._theme[0].params;
-                }
+                ktlKeywords._theme.params = viewKwObj._theme[0].params;
+                ktlKeywords._theme.viewId = view.id;
             }
         }
     };
@@ -18178,10 +18175,11 @@ function Ktl($, appInfo) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
             ktl.scenes.addKioskButtons(view.key, {});
 
-            // Add Theme Editor button if _theme has headerColor param
+            // Add Theme Editor button only on the view where _theme keyword is defined
             const themeParams = ktlKeywords._theme?.params;
+            const themeViewId = ktlKeywords._theme?.viewId;
             const hasHeaderColor = themeParams?.some(p => Array.isArray(p) && p[0] === 'headerColor');
-            if (hasHeaderColor) {
+            if (hasHeaderColor && view.key === themeViewId) {
                 const viewEl = document.getElementById(view.key);
                 if (viewEl && !viewEl.querySelector('.ktlThemeEditorTrigger')) {
                     const viewHeader = viewEl.querySelector('.view-header');
