@@ -3000,6 +3000,7 @@ function Ktl($, appInfo) {
                         resolve(customValue || '');
                     });
 
+                    setTimeout(() => {
                     $(document).on('keydown.ktlConfirm', (e) => {
                         const key = e.key.toLowerCase();
                         const inputFocused = $('.ktlOtherInput').is(':focus');
@@ -3054,6 +3055,7 @@ function Ktl($, appInfo) {
                     } else {
                         $('.ktlConfirmOption').first().focus();
                     }
+                    }, 0);
                 });
             },
 
@@ -20673,13 +20675,14 @@ function Ktl($, appInfo) {
                 const modeGroup = document.createElement('div');
                 modeGroup.className = 'ktlThemeEditorModeGroup';
 
-                const modeOptions = [{ key: 'dark', label: 'Dark' }];
+                const modeOptions = [{ key: 'dark', label: 'Dark', shortcut: 'd', html: '<u>D</u>ark' }];
                 if (appPresetColor) {
-                    modeOptions.push({ key: 'appPreset', label: 'App Preset' });
+                    modeOptions.push({ key: 'appPreset', label: 'App Preset', shortcut: 'a', html: '<u>A</u>pp Preset' });
                 }
-                modeOptions.push({ key: 'default', label: 'Default' });
+                modeOptions.push({ key: 'default', label: 'Default', shortcut: 'e', html: 'D<u>e</u>fault' });
 
-                modeOptions.forEach(({ key, label }) => {
+                const modeButtons = {};
+                modeOptions.forEach(({ key, label, shortcut, html }) => {
                     const btn = document.createElement('button');
                     let isActive = false;
                     if (key === 'default' && currentSettings.active === 'KnackDefault') {
@@ -20690,7 +20693,8 @@ function Ktl($, appInfo) {
                         isActive = true;
                     }
                     btn.className = 'ktlThemeEditorModeBtn' + (isActive ? ' active' : '');
-                    btn.textContent = label;
+                    btn.innerHTML = html;
+                    modeButtons[shortcut] = btn;
                     btn.dataset.mode = key;
                     btn.addEventListener('click', () => {
                         saveUndoState();
@@ -20916,7 +20920,7 @@ function Ktl($, appInfo) {
                 const undoBtn = document.createElement('button');
                 undoBtn.className = 'ktlThemeEditorUndoBtn';
                 undoBtn.innerHTML = '↩';
-                undoBtn.title = 'Undo last change';
+                undoBtn.title = 'Undo last change (Ctrl+Z)';
                 const undoLabel = document.createElement('span');
                 undoLabel.className = 'ktlThemeEditorUndoLabel';
                 undoLabel.textContent = 'Undo';
@@ -21403,6 +21407,12 @@ function Ktl($, appInfo) {
                     }
                 });
 
+                // Add shortcut underlines to buttons: Save(S), Load(L), sHare(H), Cancel(C)
+                saveBtn.innerHTML = '<u>S</u>ave';
+                loadBtn.innerHTML = '<u>L</u>oad';
+                shareBtn.innerHTML = 'S<u>h</u>are';
+                cancelBtn.innerHTML = '<u>C</u>ancel';
+
                 actions.appendChild(saveBtn);
                 actions.appendChild(loadBtn);
                 actions.appendChild(shareBtn);
@@ -21422,19 +21432,50 @@ function Ktl($, appInfo) {
                 function closeEditor() {
                     currentSettings = JSON.parse(JSON.stringify(originalSettings));
                     applyPreview();
-                    document.removeEventListener('keydown', escKeyHandler);
+                    document.removeEventListener('keydown', editorKeyHandler);
                     editor.remove();
                 }
 
                 header.querySelector('.ktlThemeEditorClose').addEventListener('click', closeEditor);
 
-                function escKeyHandler(e) {
-                    if (e.key === 'Escape') {
-                        if (document.querySelector('.ktlConfirmOverlay')) return;
+                function editorKeyHandler(e) {
+                    // Skip if a popup is open or text input is focused
+                    if (document.querySelector('.ktlConfirmOverlay')) return;
+                    const activeEl = document.activeElement;
+                    if (activeEl.tagName === 'INPUT' && activeEl.type !== 'color') return;
+
+                    const key = e.key.toLowerCase();
+
+                    if (key === 'escape') {
                         closeEditor();
+                    } else if (key === 'z' && e.ctrlKey) {
+                        e.preventDefault();
+                        undoBtn.click();
+                    } else if (key === 's') {
+                        e.preventDefault();
+                        saveBtn.click();
+                    } else if (key === 'l') {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        loadBtn.click();
+                    } else if (key === 'h') {
+                        e.preventDefault();
+                        shareBtn.click();
+                    } else if (key === 'c') {
+                        e.preventDefault();
+                        cancelBtn.click();
+                    } else if (key === 'd') {
+                        e.preventDefault();
+                        modeButtons['d']?.click();
+                    } else if (key === 'a' && modeButtons['a']) {
+                        e.preventDefault();
+                        modeButtons['a'].click();
+                    } else if (key === 'e') {
+                        e.preventDefault();
+                        modeButtons['e']?.click();
                     }
                 }
-                document.addEventListener('keydown', escKeyHandler, true);
+                document.addEventListener('keydown', editorKeyHandler, true);
 
                 // Draggable
                 let isDragging = false;
