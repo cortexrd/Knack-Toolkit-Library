@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.36.0';
+    const KTL_VERSION = '0.36.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -18178,8 +18178,10 @@ function Ktl($, appInfo) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
             ktl.scenes.addKioskButtons(view.key, {});
 
-            // Add Theme Editor button if this is the _theme=edit view
-            if (ktlKeywords._theme && ktlKeywords._theme.edit && view.key === ktlKeywords._theme.edit) {
+            // Add Theme Editor button if _theme has headerColor param
+            const themeParams = ktlKeywords._theme?.params;
+            const hasHeaderColor = themeParams?.some(p => Array.isArray(p) && p[0] === 'headerColor');
+            if (hasHeaderColor) {
                 const viewEl = document.getElementById(view.key);
                 if (viewEl && !viewEl.querySelector('.ktlThemeEditorTrigger')) {
                     const viewHeader = viewEl.querySelector('.view-header');
@@ -20081,10 +20083,11 @@ function Ktl($, appInfo) {
                         ktlKeywords._theme.params.forEach(param => {
                             if (Array.isArray(param) && param.length === 2) {
                                 const [key, value] = param;
-                                if (key === 'mode') {
-                                    settings.mode = value;
-                                } else if (key === 'header') {
+                                if (key === 'headerColor') {
                                     settings.headerColor = value;
+                                } else {
+                                    // All other keys are overrides
+                                    settings.overrides[key] = value;
                                 }
                             }
                         });
@@ -20099,10 +20102,11 @@ function Ktl($, appInfo) {
                         ktlKeywords._theme.params.forEach(param => {
                             if (Array.isArray(param) && param.length === 2) {
                                 const [key, value] = param;
-                                if (key === 'mode') {
-                                    settings.mode = value;
-                                } else if (key === 'header') {
+                                if (key === 'headerColor') {
                                     settings.headerColor = value;
+                                } else {
+                                    // All other keys are overrides
+                                    settings.overrides[key] = value;
                                 }
                             }
                         });
@@ -20475,6 +20479,99 @@ function Ktl($, appInfo) {
                                 color: var(--ktlTheme_menuButtonText) !important;
                                 border-color: var(--ktlTheme_menuButtonBorder) !important;
                             }
+
+                            /* KTL Developer Tools */
+                            .ktlUserTheme #devBtnsDivId {
+                                background-color: var(--ktlTheme_pageBg) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .ktlDevToolsHeader {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
+                            }
+                            .ktlUserTheme .devBtn {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme #devToolSearchDivId {
+                                background-color: var(--ktlTheme_pageBg) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme #devToolSearchDivId .ktlDevToolsHeader {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
+                            }
+                            .ktlUserTheme #devToolSearchDivId input {
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
+                                color: var(--ktlTheme_inputFieldText) !important;
+                                border-color: var(--ktlTheme_tableHeaderBg) !important;
+                            }
+                            .ktlUserTheme #devToolSearchDivId p {
+                                color: var(--ktlTheme_tableCellText) !important;
+                            }
+                            .ktlUserTheme #resultWndId {
+                                background-color: var(--ktlTheme_tableCellBg) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme #resultWndId .ktlDevToolsHeader {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
+                            }
+                            .ktlUserTheme #resultWndId a {
+                                color: var(--ktlTheme_linkColor) !important;
+                            }
+                            .ktlUserTheme #resultWndId p {
+                                color: var(--ktlTheme_tableCellText) !important;
+                            }
+                            .ktlUserTheme #resultWndTextDivId {
+                                background-color: var(--ktlTheme_tableCellBg) !important;
+                                color: var(--ktlTheme_tableCellText) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+
+                            /* Confirm Dialog (selectOption) */
+                            .ktlUserTheme .ktlConfirmOverlay {
+                                background-color: rgba(0, 0, 0, 0.6) !important;
+                            }
+                            .ktlUserTheme .ktlConfirmDialog {
+                                background-color: var(--ktlTheme_pageBg) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .ktlConfirmMessage {
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .ktlConfirmOption {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .ktlOtherButton {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .ktlOtherInput {
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
+                                color: var(--ktlTheme_inputFieldText) !important;
+                                border-color: var(--ktlTheme_tableHeaderBg) !important;
+                            }
+
+                            /* Debug Window */
+                            .ktlUserTheme #dbgWndId {
+                                background-color: var(--ktlTheme_pageBg) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme #debugWndText {
+                                background-color: var(--ktlTheme_tableCellBg) !important;
+                                color: var(--ktlTheme_tableCellText) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme #debugWndClear {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
                         `;
 
                         document.body.classList.add('ktlUserTheme');
@@ -20485,6 +20582,9 @@ function Ktl($, appInfo) {
             },
 
             showThemeEditor: function () {
+                // Sync user prefs between localStorage and database before opening editor
+                ktl.scenes.syncUserPrefs();
+
                 const PRESETS = {
                     Ocean: '#3a7ca5',
                     Forest: '#4a9a6a',
@@ -20559,13 +20659,18 @@ function Ktl($, appInfo) {
                     return;
                 }
 
-                // Check if _theme keyword has header param (for App Preset option)
+                // Check if _theme keyword has headerColor param (for App Preset option)
                 const themeKeywordParams = ktlKeywords._theme?.params;
                 let appPresetColor = null;
+                let appPresetOverrides = {};
                 if (themeKeywordParams && Array.isArray(themeKeywordParams)) {
                     themeKeywordParams.forEach(param => {
-                        if (Array.isArray(param) && param[0] === 'header') {
-                            appPresetColor = param[1];
+                        if (Array.isArray(param) && param.length === 2) {
+                            if (param[0] === 'headerColor') {
+                                appPresetColor = param[1];
+                            } else {
+                                appPresetOverrides[param[0]] = param[1];
+                            }
                         }
                     });
                 }
@@ -20582,7 +20687,7 @@ function Ktl($, appInfo) {
                         enabled: userPrefs.userTheme?.enabled || false,
                         mode: userPrefs.userTheme?.mode || 'dark',
                         preset: presetFromActive,
-                        headerColor: userPrefs.userTheme?.headerColor || appPresetColor || '#c3863a',
+                        headerColor: userPrefs.userTheme?.headerColor || appPresetColor || '#bf3ac3',
                         overrides: { ...(userPrefs.userTheme?.overrides || {}) },
                         active: activeTheme
                     };
@@ -20593,7 +20698,7 @@ function Ktl($, appInfo) {
                         mode: 'dark',
                         preset: null,
                         headerColor: appPresetColor,
-                        overrides: {},
+                        overrides: { ...appPresetOverrides },
                         active: 'AppPreset'
                     };
                 } else {
@@ -20602,7 +20707,7 @@ function Ktl($, appInfo) {
                         enabled: false,
                         mode: 'dark',
                         preset: null,
-                        headerColor: '#c3863a',
+                        headerColor: '#bf3ac3',
                         overrides: {},
                         active: 'KnackDefault'
                     };
@@ -20723,12 +20828,12 @@ function Ktl($, appInfo) {
                             currentSettings.mode = 'dark';
                             currentSettings.preset = null;
                             currentSettings.headerColor = appPresetColor;
-                            currentSettings.overrides = {};
+                            currentSettings.overrides = { ...appPresetOverrides };
                             currentSettings.active = 'AppPreset';
                             savedColorBox.style.backgroundColor = appPresetColor;
                             headerColorInput.value = appPresetColor;
                             headerColorHex.value = appPresetColor;
-                            updateElementColors();
+                            updateElementColors(true);
                             setEditorControlsEnabled(true);
                         } else {
                             // Dark mode - restore original saved settings
@@ -21372,9 +21477,9 @@ function Ktl($, appInfo) {
                 shareBtn.textContent = 'Share';
                 shareBtn.title = 'Export or import theme via clipboard';
                 shareBtn.addEventListener('click', async () => {
-                    const choice = await ktl.core.selectOption('Share Theme', 'Export to Clipboard,Import from Clipboard');
+                    const choice = await ktl.core.selectOption('Share Theme', 'Export to Clipboard,Export as Keyword,Import from Clipboard');
                     if (choice === 0) {
-                        // Export - ask for name
+                        // Export JSON - ask for name
                         const userAttrs = Knack.getUserAttributes();
                         const firstName = userAttrs && userAttrs.values && userAttrs.values.name ? userAttrs.values.name.first : '';
                         const defaultName = firstName ? firstName + ' Theme' : '';
@@ -21395,6 +21500,21 @@ function Ktl($, appInfo) {
                             });
                         }
                     } else if (choice === 1) {
+                        // Export as _theme keyword for KTL Settings
+                        const parts = ['[headerColor, ' + currentSettings.headerColor + ']'];
+                        const overrides = currentSettings.overrides || {};
+                        Object.keys(overrides).forEach(key => {
+                            if (overrides[key]) {
+                                parts.push('[' + key + ', ' + overrides[key] + ']');
+                            }
+                        });
+                        const keywordStr = '_theme=' + parts.join(', ');
+                        navigator.clipboard.writeText(keywordStr).then(() => {
+                            ktl.core.timedPopup('Keyword copied to clipboard!', 'success', 2000);
+                        }).catch(() => {
+                            ktl.core.timedPopup('Failed to copy to clipboard', 'error', 2000);
+                        });
+                    } else if (choice === 2) {
                         // Import - validate first, then apply for preview
                         let clipText;
                         try {
@@ -21619,6 +21739,57 @@ function Ktl($, appInfo) {
                             ktl.log.clog('red', 'Error saving themes: ' + err);
                         });
                 }
+            },
+
+            syncUserPrefs: function () {
+                const accountsObj = ktl.core.getObjectIdByName(ktl.core.getAccountsObjectName());
+                const acctUserPrefsFld = ktl.core.getFieldIdByName('User Prefs', accountsObj);
+                const userAttrs = Knack.getUserAttributes();
+
+                if (!acctUserPrefsFld || !userAttrs) {
+                    return false;
+                }
+
+                // Get user prefs directly from Knack user attributes
+                const dbPrefsRaw = userAttrs.values?.[acctUserPrefsFld];
+                if (!dbPrefsRaw) {
+                    return false;
+                }
+
+                let dbPrefs;
+                try {
+                    dbPrefs = JSON.parse(dbPrefsRaw);
+                } catch (e) {
+                    return false;
+                }
+
+                const localPrefs = ktl.userPrefs.getUserPrefs();
+                const dbDate = dbPrefs.dt || '';
+                const localDate = localPrefs.dt || '';
+
+                // Compare dates to determine which is more recent
+                if (dbDate > localDate) {
+                    // Database is more recent - update localStorage
+                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(dbPrefs));
+                    ktl.log.clog('blue', 'User prefs synced from database (db: ' + dbDate + ', local: ' + localDate + ')');
+                    return true;
+                } else if (localDate > dbDate) {
+                    // Local is more recent - update database
+                    const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
+                    const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                    if (myUserPrefsViewId && acctPrefsFld) {
+                        const apiData = { [acctPrefsFld]: JSON.stringify(localPrefs) };
+                        ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
+                            .then(() => {
+                                ktl.log.clog('blue', 'User prefs synced to database (local: ' + localDate + ', db: ' + dbDate + ')');
+                            })
+                            .catch((err) => {
+                                ktl.log.clog('red', 'Error syncing to database: ' + err);
+                            });
+                    }
+                    return false;
+                }
+                return false;
             },
         }
     })(); //Scenes feature
@@ -22575,6 +22746,26 @@ function Ktl($, appInfo) {
                 var rec = ktl.views.findRecord(data, cfg.appSettingsItemFld, 'APP_KTL_VERSIONS');
                 if (rec) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
+                    /*
+                    var newKtlVersion = newSWVersion.split('-')[1]?.trim();
+                    var currentKtlVersion = APP_KTL_VERSIONS.split('-')[1].trim();
+                    if (newKtlVersion !== currentKtlVersion) {
+                        if (ktl.sysInfo.getCfg().ktlAutoUpdateEnabled) {
+                            // Update the KTL version in the App Settings table using an API call.
+                            // This use case will be processed by whoever has this app running at that moment.
+                            // That first user will update the version for all others and prevent looping.
+                            const apiData = {};
+                            apiData[cfg.appSettingsValueFld] = APP_KTL_VERSIONS;
+                            ktl.core.knAPI(view.key, rec.id, apiData, 'PUT')
+                                .then(function () {
+                                    console.log('Updated KTL version automatically.');
+                                })
+                                .catch(function (reason) {
+                                    ktl.log.clog('purple', 'An error occurred while updating KTL Version, reason: ', reason);
+                                });
+                            return;
+                        }
+                    */
                     if (newSWVersion !== APP_KTL_VERSIONS && ktl.sysInfo.getCfg().softwareUpdatesEnabled) {
                         const ktlCode = ktl.storage.lsGetItem('ktlCode', true);
                         if (['dev', 'beta', 'local'].includes(ktlCode) || /^\d.*\./.test(ktlCode)) {
@@ -22585,6 +22776,7 @@ function Ktl($, appInfo) {
                                 //Only warn when in Prod mode.
                                 ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
                             } else {
+                                //All other users, force reload.
                                 console.log('sending reloadAppMsg with ver:', newSWVersion);
                                 ktl.wndMsg.send('reloadAppMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP, 0, { reason: 'SW_UPDATE', version: newSWVersion });
                             }
@@ -24288,7 +24480,8 @@ function Ktl($, appInfo) {
         const swUpdateViewId = ktl.core.getViewIdByTitle('SW Update', '', true);
         var cfg = {
             appBcstSWUpdateViewId: swUpdateViewId,
-            softwareUpdatesEnabled: !!swUpdateViewId && !!appInfo.ktlVersion,
+            manualSwUpdatesEnabled: !!swUpdateViewId,
+            ktlAutoUpdateEnabled: !!appInfo.ktlVersion, //Version is blank?
             landingPageUrl: null,
         };
 
