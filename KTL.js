@@ -18093,16 +18093,25 @@ function Ktl($, appInfo) {
         var idleWatchDogTimeout = null;
         let appIsIdle = false;
         var processMutation = null;
-        let userThemeApplied = false;
+        let userThemeAttempted = false;
+        let userThemeAppliedWithAuth = false;
 
         $(document).on('KTL.systemColorsReady', function () {
-            if (!userThemeApplied) {
-                userThemeApplied = true;
+            if (!userThemeAttempted) {
+                userThemeAttempted = true;
                 ktl.scenes.generateUserTheme();
             }
         });
 
         $(document).on('knack-scene-render.any', function (event, scene) {
+            // Re-apply theme after authentication if it was skipped earlier (no userId)
+            const userId = Knack.getUserAttributes()?.id;
+            if (userId && userThemeAttempted && !userThemeAppliedWithAuth) {
+                console.log('knack-scene-render - applying theme after auth');
+                userThemeAppliedWithAuth = true;
+                ktl.scenes.generateUserTheme();
+            }
+
             if (Knack.router.current_scene_key !== scene.key) {
                 alert('ERROR - Scene keys do not match!');
                 return;
@@ -20059,13 +20068,54 @@ function Ktl($, appInfo) {
                 };
                 let settings = { ...defaults, ...options };
                 const userPrefs = ktl.userPrefs.getUserPrefs();
+                const userId = Knack.getUserAttributes()?.id;
+                console.log('generateUserTheme - userId:', userId, 'userPrefs.userTheme:', JSON.stringify(userPrefs.userTheme, null, 2));
 
                 // If options.headerColor is explicitly passed (preview mode from Theme Editor), use options as-is
                 const isPreviewMode = options.headerColor !== undefined;
+                const hasThemeKeyword = ktlKeywords._theme && ktlKeywords._theme.params && Array.isArray(ktlKeywords._theme.params);
 
-                if (!isPreviewMode) {
+                // Check cached theme mode (stored without userId, readable before auth)
+                const cachedThemeMode = localStorage.getItem('KTL_THEME_MODE');
+
+                // If user previously chose KnackDefault, skip theme entirely (even before auth)
+                if (!isPreviewMode && cachedThemeMode === 'KnackDefault') {
+                    console.log('generateUserTheme - skipping, cached KnackDefault');
+                    return;
+                }
+
+                // Apply _theme keyword as default base (even before auth to avoid white flash)
+                if (!isPreviewMode && hasThemeKeyword) {
+                    settings.enabled = true;
+                    settings.mode = 'dark';
+                    ktlKeywords._theme.params.forEach(param => {
+                        if (Array.isArray(param) && param.length === 2) {
+                            const [key, value] = param;
+                            if (key === 'headerColor') {
+                                settings.headerColor = value;
+                            } else {
+                                settings.overrides[key] = value;
+                            }
+                        }
+                    });
+                }
+
+                // If no userId yet, apply _theme keyword only (skip user preference checks)
+                if (!isPreviewMode && !userId) {
+                    if (!hasThemeKeyword) {
+                        console.log('generateUserTheme - skipping, no userId and no _theme keyword');
+                        return;
+                    }
+                    console.log('generateUserTheme - applying _theme keyword (no userId yet)');
+                    // Continue to apply CSS with _theme settings, skip user pref checks below
+                }
+
+                // Check user preferences (only if we have valid userId)
+                if (!isPreviewMode && userId) {
                     // Check if user explicitly chose KnackDefault - skip all custom themes
-                    const userChoseDefault = userPrefs.userTheme && userPrefs.userTheme.active === 'KnackDefault';
+                    const userChoseDefault = userPrefs.userTheme &&
+                        (userPrefs.userTheme.active === 'KnackDefault' ||
+                        (userPrefs.userTheme.enabled === false && userPrefs.userTheme.active !== 'AppPreset'));
                     if (userChoseDefault) {
                         const existingStyle = document.getElementById('ktlUserThemeStyles');
                         if (existingStyle) existingStyle.remove();
@@ -20073,45 +20123,19 @@ function Ktl($, appInfo) {
                         return;
                     }
 
-                    // Check if user explicitly chose AppPreset - use _theme keyword colors
+                    // Check if user explicitly chose AppPreset - use _theme keyword colors (already applied above)
                     const userChoseAppPreset = userPrefs.userTheme && userPrefs.userTheme.active === 'AppPreset';
-                    if (userChoseAppPreset && ktlKeywords._theme && ktlKeywords._theme.params && Array.isArray(ktlKeywords._theme.params)) {
-                        settings.enabled = true;
-                        settings.mode = 'dark';
-                        ktlKeywords._theme.params.forEach(param => {
-                            if (Array.isArray(param) && param.length === 2) {
-                                const [key, value] = param;
-                                if (key === 'headerColor') {
-                                    settings.headerColor = value;
-                                } else {
-                                    // All other keys are overrides
-                                    settings.overrides[key] = value;
-                                }
-                            }
-                        });
+                    if (userChoseAppPreset) {
+                        // AppPreset - _theme colors already applied, nothing more to do
                     } else if (userPrefs.userTheme && userPrefs.userTheme.enabled) {
-                        // Check user preferences (highest priority after AppPreset)
+                        // User has custom settings - override _theme defaults
                         settings.enabled = userPrefs.userTheme.enabled;
                         settings.mode = userPrefs.userTheme.mode;
                         settings.headerColor = userPrefs.userTheme.headerColor || settings.headerColor;
                         settings.overrides = userPrefs.userTheme.overrides || {};
-                    } else if (ktlKeywords._theme && ktlKeywords._theme.params && Array.isArray(ktlKeywords._theme.params)) {
-                        // Fall back to _theme keyword (default preset for all users)
-                        ktlKeywords._theme.params.forEach(param => {
-                            if (Array.isArray(param) && param.length === 2) {
-                                const [key, value] = param;
-                                if (key === 'headerColor') {
-                                    settings.headerColor = value;
-                                } else {
-                                    // All other keys are overrides
-                                    settings.overrides[key] = value;
-                                }
-                            }
-                        });
                     }
                 }
 
-                const hasThemeKeyword = ktlKeywords._theme && ktlKeywords._theme.params;
                 const hasUserTheme = userPrefs.userTheme && userPrefs.userTheme.enabled;
                 const isPreview = options.headerColor && options.enabled;
 
@@ -21263,6 +21287,7 @@ function Ktl($, appInfo) {
 
                     // If AppPreset is selected, save as AppPreset without prompting
                     if (currentSettings.active === 'AppPreset') {
+                        currentSettings.enabled = true;
                         updateThemeNameDisplay();
                         ktl.scenes.saveThemeSettings(currentSettings);
                         originalSettings = JSON.parse(JSON.stringify(currentSettings));
@@ -21669,6 +21694,7 @@ function Ktl($, appInfo) {
             },
 
             saveThemeSettings: function (settings, savedThemes) {
+                console.log('saveThemeSettings - input settings:', JSON.stringify(settings, null, 2));
                 const userPrefs = ktl.userPrefs.getUserPrefs();
                 const existingSavedThemes = savedThemes || userPrefs.userTheme?.savedThemes || {};
                 const existingActive = userPrefs.userTheme?.active || null;
@@ -21681,8 +21707,12 @@ function Ktl($, appInfo) {
                     active: settings.active !== undefined ? settings.active : existingActive
                 };
                 userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                console.log('saveThemeSettings - saving userTheme:', JSON.stringify(userPrefs.userTheme, null, 2));
 
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
+
+                // Cache active theme for quick access before auth (avoids flash of wrong theme)
+                localStorage.setItem('KTL_THEME_MODE', settings.active || '');
 
                 // Save to database via API call
                 const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
@@ -22104,9 +22134,13 @@ function Ktl($, appInfo) {
 
         function readUserPrefsFromLs() {
             try {
+                var userId = Knack.getUserAttributes()?.id || 'Anonymous';
+                console.log('readUserPrefsFromLs - userId:', userId);
                 var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS);
-                if (lsPrefsStr)
+                if (lsPrefsStr) {
                     userPrefsObj = JSON.parse(lsPrefsStr);
+                    console.log('readUserPrefsFromLs - userTheme:', userPrefsObj.userTheme);
+                }
 
                 return lsPrefsStr; //Return string version.
             }
@@ -22150,10 +22184,13 @@ function Ktl($, appInfo) {
                         } else {
                             if (prefsStr && (prefsStr !== lastUserPrefs)) {
                                 ktl.log.clog('blue', 'Prefs have changed!!!!');
+                                console.log('curUserPrefsView - DB prefs userTheme:', JSON.parse(prefsStr).userTheme);
+                                console.log('curUserPrefsView - localStorage userTheme:', ktl.userPrefs.getUserPrefs().userTheme);
 
                                 lastUserPrefs = prefsStr;
 
                                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, prefsStr);
+                                console.log('curUserPrefsView - OVERWROTE localStorage with DB prefs');
                                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
 
                                 ktl.userPrefs.ktlApplyUserPrefs();
