@@ -20465,9 +20465,11 @@ function Ktl($, appInfo) {
                                 color: var(--ktlTheme_headersAndLabelsText) !important;
                                 border-color: var(--ktlTheme_tableGridColor) !important;
                             }
-                            .ktlUserTheme .knTable td {
+                            .ktlUserTheme .knTable td:not([style*="background"]) {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
                                 color: var(--ktlTheme_tableCellText) !important;
+                            }
+                            .ktlUserTheme .knTable td {
                                 border-color: var(--ktlTheme_tableGridColor) !important;
                             }
                             .ktlUserTheme .kn-content .fc-widget-header,
@@ -20499,7 +20501,6 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .kn-title,
                             .ktlUserTheme .kn-info-bar,
                             .ktlUserTheme .kn-button,
-                            .ktlUserTheme .kn-table,
                             .ktlUserTheme .kn-content,
                             .ktlUserTheme .kn-label,
                             .ktlUserTheme .search-choice,
@@ -20530,6 +20531,9 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
                                 color: var(--ktlTheme_inputFieldText) !important;
                             }
+                            .ktlUserTheme .kn-textarea {
+                                border-color: var(--ktlTheme_tableHeaderBg) !important;
+                            }
                             #knack-body.ktlUserTheme input[type="checkbox"],
                             #knack-body.ktlUserTheme input[type="radio"] {
                                 accent-color: var(--ktlTheme_linkColor);
@@ -20546,6 +20550,11 @@ function Ktl($, appInfo) {
                             }
                             .ktlUserTheme .input {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
+                                border-color: var(--ktlTheme_tableHeaderBg) !important;
+                            }
+                            .ktlUserTheme select.select:not([style*="background"]) {
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
+                                color: var(--ktlTheme_inputFieldText) !important;
                                 border-color: var(--ktlTheme_tableHeaderBg) !important;
                             }
                             .ktlUserTheme .chzn-container-single .chzn-single {
@@ -22851,34 +22860,30 @@ function Ktl($, appInfo) {
                 var rec = ktl.views.findRecord(data, cfg.appSettingsItemFld, 'APP_KTL_VERSIONS');
                 if (rec) {
                     var newSWVersion = rec[cfg.appSettingsValueFld];
-                    /*
-                    var newKtlVersion = newSWVersion.split('-')[1]?.trim();
-                    var currentKtlVersion = APP_KTL_VERSIONS.split('-')[1].trim();
-                    if (newKtlVersion !== currentKtlVersion) {
-                        if (ktl.sysInfo.getCfg().ktlAutoUpdateEnabled) {
-                            // Update the KTL version in the App Settings table using an API call.
-                            // This use case will be processed by whoever has this app running at that moment.
-                            // That first user will update the version for all others and prevent looping.
-                            const apiData = {};
-                            apiData[cfg.appSettingsValueFld] = APP_KTL_VERSIONS;
-                            ktl.core.knAPI(view.key, rec.id, apiData, 'PUT')
-                                .then(function () {
-                                    console.log('Updated KTL version automatically.');
-                                })
-                                .catch(function (reason) {
-                                    ktl.log.clog('purple', 'An error occurred while updating KTL Version, reason: ', reason);
-                                });
-                            return;
-                        }
-                    */
-                    if (newSWVersion !== APP_KTL_VERSIONS && ktl.sysInfo.getCfg().softwareUpdatesEnabled) {
+
+                    let appNeedsUpdate = false;
+                    let ktlNeedsUpdate = false;
+
+                    const newAppVersion = newSWVersion.split('-')[0]?.trim();
+                    const currentAppVersion = APP_KTL_VERSIONS.split('-')[0].trim();
+                    if (newAppVersion !== currentAppVersion) {
+                        appNeedsUpdate = true;
+                    }
+
+                    const newKtlVersion = newSWVersion.split('-')[1]?.trim();
+                    const currentKtlVersion = APP_KTL_VERSIONS.split('-')[1].trim();
+                    if (newKtlVersion !== currentKtlVersion && !ktl.sysInfo.getCfg().ktlVersionIsEmpty) {
+                        ktlNeedsUpdate = true;
+                    }
+
+                    if (appNeedsUpdate || ktlNeedsUpdate && ktl.sysInfo.getCfg().manualSwUpdatesEnabled) {
                         const ktlCode = ktl.storage.lsGetItem('ktlCode', true);
                         if (['dev', 'beta', 'local'].includes(ktlCode) || /^\d.*\./.test(ktlCode)) {
                             //Dev, Beta, Local or specific version, ignore.
                         } else {
                             //Prod
                             if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
-                                //Only warn when in Prod mode.
+                                //When user is Developer and in Prod mode, pop up warning to broadcast now.
                                 ktl.wndMsg.send('swVersionsDifferentMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
                             } else {
                                 //All other users, force reload.
@@ -22888,7 +22893,7 @@ function Ktl($, appInfo) {
                         }
                     }
                 } else {
-                    var apiData = {}; //Not found, create new entry.
+                    const apiData = {}; //Not found, create new entry.
                     apiData[ktl.iFrameWnd.getCfg().appSettingsItemFld] = 'APP_KTL_VERSIONS';
                     apiData[ktl.iFrameWnd.getCfg().appSettingsValueFld] = APP_KTL_VERSIONS;
                     apiData[ktl.iFrameWnd.getCfg().appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
@@ -24586,7 +24591,7 @@ function Ktl($, appInfo) {
         var cfg = {
             appBcstSWUpdateViewId: swUpdateViewId,
             manualSwUpdatesEnabled: !!swUpdateViewId,
-            ktlAutoUpdateEnabled: !!appInfo.ktlVersion, //Version is blank?
+            ktlVersionIsEmpty: !!appInfo.ktlVersion,
             landingPageUrl: null,
         };
 
