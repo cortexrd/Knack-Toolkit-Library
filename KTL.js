@@ -4793,6 +4793,74 @@ function Ktl($, appInfo) {
                 }
             },
 
+            //_df keyword - Disable specific fields by ID or label
+            //ex: _df=field_1, field_2, my field name
+            disableFieldsKw: function (viewId, keywords) {
+                if (!viewId || !keywords) return;
+
+                const kw = '_df';
+
+                //Process fields keyword
+                var fieldsWithKwObj = ktl.views.getAllFieldsWithKeywordsInView(viewId);
+                if (!$.isEmptyObject(fieldsWithKwObj)) {
+                    var fieldsWithKwAr = Object.keys(fieldsWithKwObj);
+                    var foundKwObj = {};
+                    for (let i = 0; i < fieldsWithKwAr.length; i++) {
+                        var fieldId = fieldsWithKwAr[i];
+                        ktl.fields.getFieldKeywords(fieldId, foundKwObj);
+                        if (!$.isEmptyObject(foundKwObj)) {
+                            if (foundKwObj[fieldId][kw]) {
+                                if (foundKwObj[fieldId][kw].length && foundKwObj[fieldId][kw][0].options) {
+                                    const options = foundKwObj[fieldId][kw][0].options;
+                                    if (ktl.core.hasRoleAccess(options)) {
+                                        ktl.fields.disableField(viewId, fieldId);
+                                    }
+                                } else
+                                    ktl.fields.disableField(viewId, fieldId);
+                            }
+                        }
+                    }
+                }
+
+                //Process view keyword
+                if (keywords && keywords[kw] && keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
+                    const kwList = ktl.core.getKeywordsByType(viewId, kw);
+                    for (var kwIdx = 0; kwIdx < kwList.length; kwIdx++) {
+                        execKw(kwList[kwIdx]);
+                    }
+
+                    function execKw(kwInstance) {
+                        const options = kwInstance.options;
+                        if (!ktl.core.hasRoleAccess(options)) return;
+
+                        const kwFields = kwInstance.params[0];
+                        for (var i = 0; i < kwFields.length; i++) {
+                            var fieldLabel = kwFields[i];
+                            const fieldId = fieldLabel.startsWith('field_') ? fieldLabel : ktl.fields.getFieldIdFromLabel(viewId, fieldLabel);
+                            if (fieldId) {
+                                ktl.fields.disableField(viewId, fieldId);
+                            }
+                        }
+                    }
+                }
+            },
+
+            disableField: function (viewId, fieldId) {
+                if (!viewId || !fieldId) return;
+                const fieldType = this.getFieldType(fieldId);
+                if (fieldType === 'connection') {
+                    $(`#${viewId} [data-input-id="${fieldId}"] a`).attr('disabled', true);
+                    $(`#${viewId} [data-input-id="${fieldId}"]`).addClass('ktlLinkDisabled');
+                } else {
+                    const input = $(`#${viewId} [data-input-id="${fieldId}"]`);
+                    input.find('input, select, textarea').attr('disabled', true);
+                    input.find('.redactor-editor').attr('contenteditable', 'false');
+                    input.find('.chzn-single').css('background-color', 'rgba(0, 0, 0, 0.1)');
+                    input.find('.rateit').rateit('readonly', true);
+                    input.filter('.kn-input-signature').css('pointer-events', 'none');
+                }
+            },
+
             //Fields can be by label or ID.
             disableFields: function (viewId, fields = []) {
                 if (!viewId || !fields.length) return;
@@ -8922,6 +8990,7 @@ function Ktl($, appInfo) {
 
                 //This section is for keywords that are supported by views and fields.
                 ktl.fields.hideFields(viewId, keywords);
+                ktl.fields.disableFieldsKw(viewId, keywords);
                 quickToggle(viewId, data); //IMPORTANT: quickToggle must be processed BEFORE matchColor.
                 matchColor(viewId, data);
                 colorizeFieldByValue(viewId, data);
@@ -18269,6 +18338,7 @@ function Ktl($, appInfo) {
                 keywords._zoom && ktl.views.applyZoomLevel(viewId, keywords);
                 keywords._dr && ktl.views.numDisplayedRecords(viewId, keywords);
                 ktl.fields.hideFields(viewId, keywords);
+                ktl.fields.disableFieldsKw(viewId, keywords);
 
                 if (!ktl.account.isDeveloper() && !ktl.core.isKiosk())
                     keywords._km && ktl.core.kioskMode(true);
