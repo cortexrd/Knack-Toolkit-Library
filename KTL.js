@@ -20531,13 +20531,27 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
                                 color: var(--ktlTheme_inputFieldText) !important;
                             }
-                            .ktlUserTheme .kn-textarea {
+                            .ktlUserTheme .kn-textarea,
+                            .ktlUserTheme .chzn-choices,
+                            .ktlUserTheme .chzn-drop {
                                 border-color: var(--ktlTheme_tableHeaderBg) !important;
                             }
                             #knack-body.ktlUserTheme input[type="checkbox"],
                             #knack-body.ktlUserTheme input[type="radio"] {
                                 accent-color: var(--ktlTheme_linkColor);
                                 filter: invert(0.85) hue-rotate(180deg);
+                            }
+                            /* Disabled fields */
+                            .ktlUserTheme input[disabled],
+                            .ktlUserTheme .input.is-disabled,
+                            .ktlUserTheme .kn-textarea[disabled],
+                            .ktlUserTheme .kn-textarea.is-disabled,
+                            .ktlUserTheme select[disabled],
+                            .ktlUserTheme .chzn-container-single .chzn-single.chzn-single-disabled {
+                                background-color: #3a3a3a !important;
+                                color: #888 !important;
+                                border-color: #555 !important;
+                                opacity: 0.7;
                             }
                             .ktlUserTheme .redactor-toolbar {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
