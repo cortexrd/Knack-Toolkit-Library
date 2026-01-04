@@ -16991,18 +16991,32 @@ function Ktl($, appInfo) {
                     if (!ktl.core.hasRoleAccess(options)) return;
 
                     const sel = ktl.core.computeTargetSelector(viewId, '', options);
-                    ktl.core.waitSelector(sel, 20000, 'visible')
-                        .then(() => {
-                            $(sel).each((ix, el) => {
-                                const currentStyle = $(el).attr('style') || '';
-                                const mergedStyles = ktl.core.mergeStyles(currentStyle, kwInstance.params[0][0]);
+                    const styleToApply = kwInstance.params[0][0];
 
-                                const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
+                    const applyStyle = () => {
+                        ktl.core.waitSelector(sel, 20000, 'visible')
+                            .then(() => {
+                                $(sel).each((ix, el) => {
+                                    const currentStyle = $(el).attr('style') || '';
+                                    const mergedStyles = ktl.core.mergeStyles(currentStyle, styleToApply);
+                                    const mergedStyleString = Object.entries(mergedStyles).map(([key, value]) => `${key}: ${value}`).join('; ');
+                                    $(el).attr('style', mergedStyleString);
+                                });
+                            })
+                            .catch(function () { })
+                    };
 
-                                $(el).attr('style', mergedStyleString);
+                    if (options && options.ktlCond) {
+                        $(`#${viewId}`).addClass('ktlHidden_style');
+                        ktl.views.validateKtlCond(options, {}, viewId)
+                            .then(conditionMet => {
+                                if (conditionMet)
+                                    applyStyle();
+                                $(`#${viewId}`).removeClass('ktlHidden_style');
                             });
-                        })
-                        .catch(function () { })
+                    } else {
+                        applyStyle();
+                    }
                 }
             },
 
