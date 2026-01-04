@@ -1,8 +1,16 @@
+<h1 align="center">Welcome to the Knack Toolkit Library</h1>
+
+<br>
+
 <p align="center">
-  <img src="./Docs/media/HiRes_Horizontal.png" alt="Cortex R&D Inc." height="80">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="./Docs/media/KTL-Large-Caption.png" alt="Knack Toolkit Library" height="80">
+  <img src="./Docs/media/HiRes_Horizontal.png" alt="Cortex R&D Inc." height="120">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Docs/media/KTL-Large-Caption.png" alt="Knack Toolkit Library" height="120">
 </p>
+
+---
+
+<br>
 
 ## Quick Links
 
