@@ -1,4 +1,8 @@
-# ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
+<p align="center">
+  <img src="./Docs/media/HiRes_Horizontal.png" alt="Cortex R&D Inc." height="80">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="./Docs/media/KTL-Large-Caption.png" alt="Knack Toolkit Library" height="80">
+</p>
 
 ## Quick Links
 
@@ -176,4 +180,4 @@ Blainville, Québec, Canada
 
 [YouTube channel](https://www.youtube.com/@cortexrdinc.4479)
 
-![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
+<img src="./Docs/media/HiRes_Horizontal.png" alt="Cortex R&D Inc." height="50">
