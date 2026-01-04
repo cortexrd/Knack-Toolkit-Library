@@ -13477,6 +13477,8 @@ function Ktl($, appInfo) {
             const viewId = view.key;
             const kw = '_req';
             const requiredFields = new Set();
+            const highlightEnabled = ktl.core.getCfg().enabled.highlightEmptyFields !== false;
+            const emptyClass = highlightEnabled ? 'ktlNotValid_empty' : 'dis_ktlNotValid_empty';
 
             /**
              * Process field keywords.
@@ -13610,21 +13612,21 @@ function Ktl($, appInfo) {
                     ktl.core.waitSelector(signatureSelector, 10000, 'visible')
                         .then(() => {
                             const signatureElem = $(signatureSelector);
-                            signatureElem.addClass('ktlNotValid_empty');
+                            signatureElem.addClass(emptyClass);
                             // Bind a global mouseup event to revalidate the signature field when the user interacts with it
                             $(signatureElem).closest('.kn-input').off('mouseup.ktl_signature').on('mouseup.ktl_signature', () => {
                                 setTimeout(() => {
                                     const lastStrokeButton = viewContainer.find(`[data-input-id='${fieldId}'] input[value="Undo last stroke"]`);
                                     if (lastStrokeButton.length && lastStrokeButton.is(':visible')) {
-                                        signatureElem.removeClass('ktlNotValid_empty');
+                                        signatureElem.removeClass(emptyClass);
                                     } else {
-                                        signatureElem.addClass('ktlNotValid_empty');
+                                        signatureElem.addClass(emptyClass);
                                     }
                                     removeRequestedAttributeOnVisibleFields(viewContainer);
                                     ktl.views.updateSubmitButtonState(
                                         viewId,
                                         'requiredFieldEmpty',
-                                        !document.querySelector(`#${viewId} .ktlNotValid_empty`)
+                                        !document.querySelector(`#${viewId} .${emptyClass}`)
                                     );
                                 }, 100);
                             });
@@ -13632,6 +13634,33 @@ function Ktl($, appInfo) {
                         .catch(() => { /* Handle errors or timeouts silently */ });
                 } else if (fieldType === 'rich_text' || fieldType === 'multiple_choice') {
                     validateNonEmptyTextField(viewContainer, fieldId);
+                } else if (fieldType === 'image' || fieldType === 'file') {
+                    const fileInput = fieldContainer.find('input.is-file');
+                    if (fileInput.length) {
+                        if (highlightEnabled && !document.getElementById('ktlFileInputStyle')) {
+                            const style = document.createElement('style');
+                            style.id = 'ktlFileInputStyle';
+                            style.textContent = `
+                                input.is-file.ktlNotValid_empty::file-selector-button {
+                                    background-color: #ffcccc;
+                                    border-color: #ff6666;
+                                }
+                            `;
+                            document.head.appendChild(style);
+                        }
+                        const validateFileInput = () => {
+                            const isEmpty = fileInput[0].files.length === 0;
+                            fileInput.toggleClass(emptyClass, isEmpty);
+                            removeRequestedAttributeOnVisibleFields(viewContainer);
+                            ktl.views.updateSubmitButtonState(
+                                viewId,
+                                'requiredFieldEmpty',
+                                !document.querySelector(`#${viewId} .${emptyClass}`)
+                            );
+                        };
+                        fileInput.off('change.ktl_req').on('change.ktl_req', validateFileInput);
+                        validateFileInput();
+                    }
                 } else if (fieldType === 'boolean') {
                     console.log('_req - Unsupported field type:', fieldType);
                 } else {
@@ -13665,25 +13694,25 @@ function Ktl($, appInfo) {
                         const selected = $(`#${viewId}_${fieldId}_chzn .result-selected`);
                         const selectedText = selected.length ? selected[0].textContent.trim() : 'Select';
                         if (isRequired && (selectedText === 'Select' || selectedText === 'Select...')) {
-                            singleContainer.find('.chzn-single').addClass('ktlNotValid_empty');
+                            singleContainer.find('.chzn-single').addClass(emptyClass);
                         } else {
-                            singleContainer.find('.chzn-single').removeClass('ktlNotValid_empty');
+                            singleContainer.find('.chzn-single').removeClass(emptyClass);
                         }
                     } else if (multiContainer.length) {
                         const hasSelection = $(`#${viewId}_${fieldId}_chzn .result-selected`).length > 0;
                         const inputs = multiContainer.find('input');
                         const choices = multiContainer.find('.chzn-choices');
                         if (isRequired && !hasSelection) {
-                            inputs.addClass('ktlNotValid_empty');
-                            choices.addClass('ktlNotValid_empty');
+                            inputs.addClass(emptyClass);
+                            choices.addClass(emptyClass);
                         } else {
-                            inputs.removeClass('ktlNotValid_empty');
-                            choices.removeClass('ktlNotValid_empty');
+                            inputs.removeClass(emptyClass);
+                            choices.removeClass(emptyClass);
                         }
                     }
 
                     removeRequestedAttributeOnVisibleFields(viewContainer);
-                    const anyEmpty = $(`#${viewId} .ktlNotValid_empty:visible`).length > 0;
+                    const anyEmpty = $(`#${viewId} .${emptyClass}:visible`).length > 0;
                     ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !anyEmpty);
                 }, 200);
             }
@@ -13716,7 +13745,7 @@ function Ktl($, appInfo) {
                             if (richText.length) {
                                 // Remove <p> and <br> tags and trim whitespace.
                                 const text = richText.html().replace(/<\/?p>|<br\s*\/?>/gi, ' ').trim();
-                                richText.toggleClass('ktlNotValid_empty', !text || text === '\u200B');
+                                richText.toggleClass(emptyClass, !text || text === '\u200B');
                             }
                             break;
                         }
@@ -13725,34 +13754,34 @@ function Ktl($, appInfo) {
                             if (element.length) {
                                 const multiChoiceType = format && format.type;
                                 if (multiChoiceType === 'single') {
-                                    element.toggleClass('ktlNotValid_empty', !element.val());
+                                    element.toggleClass(emptyClass, !element.val());
                                 } else if (multiChoiceType === 'checkboxes') {
                                     const hasSelection = viewContainer.find(`[name="${fieldId}"]:checked`).length > 0;
-                                    element.closest('.kn-checkbox').toggleClass('ktlNotValid_empty', !hasSelection);
+                                    element.closest('.kn-checkbox').toggleClass(emptyClass, !hasSelection);
                                 } else {
                                     // For multi-select dropdowns
                                     const hasSelection = viewContainer.find(`[name="${fieldId}"] option:selected`).length > 0;
                                     const container = $(`#${viewId}_${fieldId}_chzn`);
-                                    container.find('input, .chzn-choices').toggleClass('ktlNotValid_empty', !hasSelection);
+                                    container.find('input, .chzn-choices').toggleClass(emptyClass, !hasSelection);
                                 }
                             } else {
                                 const hasSelection = viewContainer.find(`[name="${viewId}-${fieldId}"]:checked`).length > 0;
                                 const radioElement = viewContainer.find(`[name="${viewId}-${fieldId}"]`);
-                                radioElement.closest('.kn-radio').toggleClass('ktlNotValid_empty', !hasSelection);
+                                radioElement.closest('.kn-radio').toggleClass(emptyClass, !hasSelection);
                             }
                             break;
                         }
                         default: {
                             // Generic case for other text-based fields
                             const fieldElem = viewContainer.find(field);
-                            fieldElem.toggleClass('ktlNotValid_empty', !fieldElem.val());
+                            fieldElem.toggleClass(emptyClass, !fieldElem.val());
                             break;
                         }
                     }
 
                     removeRequestedAttributeOnVisibleFields(viewContainer);
                     // Check if any visible element is still marked as not valid
-                    const hasVisibleEmpty = viewContainer.find(`.ktlNotValid_empty:visible`).length > 0;
+                    const hasVisibleEmpty = viewContainer.find(`.${emptyClass}:visible`).length > 0;
                     ktl.views.updateSubmitButtonState(viewId, 'requiredFieldEmpty', !hasVisibleEmpty);
                 } catch (error) {
                     console.error(`Error validating field ${fieldId}:`, error);
@@ -13775,7 +13804,7 @@ function Ktl($, appInfo) {
                     ktl.views.updateSubmitButtonState(
                         viewId,
                         'requiredFieldEmpty',
-                        !document.querySelector(`#${viewId} .ktlNotValid_empty`)
+                        !document.querySelector(`#${viewId} .${emptyClass}`)
                     );
                 });
 
@@ -13783,11 +13812,12 @@ function Ktl($, appInfo) {
              * Remove validation classes from hidden elements and ensure visible fields are correctly marked.
              */
             function removeRequestedAttributeOnVisibleFields(viewContainer) {
-                viewContainer.find(`.ktlNotValid_empty:not(:visible)`).each(function () {
-                    $(this).removeClass('ktlNotValid_empty').addClass('dis_ktlNotValid_empty');
+                const disabledClass = 'dis_' + emptyClass;
+                viewContainer.find(`.${emptyClass}:not(:visible)`).each(function () {
+                    $(this).removeClass(emptyClass).addClass(disabledClass);
                 });
-                viewContainer.find(`.dis_ktlNotValid_empty:visible`).each(function () {
-                    $(this).removeClass('dis_ktlNotValid_empty').addClass('ktlNotValid_empty');
+                viewContainer.find(`.${disabledClass}:visible`).each(function () {
+                    $(this).removeClass(disabledClass).addClass(emptyClass);
                 });
             }
         }
