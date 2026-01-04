@@ -1,6 +1,14 @@
 # ![A picture containing text, clipart Description automatically generated](./Docs/media/f885aa5ef3409ff28bd30849d54ad54c.jpeg)
 
-See our [YouTube channel for introductory tutorials](https://www.youtube.com/@cortexrdinc.4479)
+## Quick Links
+
+| Resource | Description |
+|----------|-------------|
+| [KTL Configurator](https://cortexrd.github.io/Knack-Toolkit-Library/KTL_Configurator.html) | Interactive tool to generate your KTL configuration |
+| [Keywords Reference](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords) | Complete list of all KTL keywords |
+| [Changelog](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Docs/KTL_Changelog.md) | Version history and release notes |
+| [Cortex R&D YouTube](https://www.youtube.com/@cortexrdinc.4479) | Official KTL tutorials and demos |
+| [CH Project Support YouTube](https://www.youtube.com/@chprojectsupport/search?query=ktl) | Carl Holmes' KTL tutorials and Knack tips |
 
 # Contents
 
