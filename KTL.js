@@ -241,7 +241,7 @@ function Ktl($, appInfo) {
                 if (!ktlKeywords._theme) {
                     ktlKeywords._theme = {};
                 }
-                ktlKeywords._theme.params = viewKwObj._theme[0].params;
+                ktlKeywords._theme.params = viewKwObj._theme[0]?.params || [];
                 ktlKeywords._theme.viewId = view.id;
             }
         }
@@ -18372,10 +18372,8 @@ function Ktl($, appInfo) {
             ktl.scenes.addKioskButtons(view.key, {});
 
             // Add Theme Editor button only on the view where _theme keyword is defined
-            const themeParams = ktlKeywords._theme?.params;
             const themeViewId = ktlKeywords._theme?.viewId;
-            const hasHeaderColor = themeParams?.some(p => Array.isArray(p) && p[0] === 'headerColor');
-            if (hasHeaderColor && view.key === themeViewId) {
+            if (ktlKeywords._theme && view.key === themeViewId) {
                 const viewEl = document.getElementById(view.key);
                 if (viewEl && !viewEl.querySelector('.ktlThemeEditorTrigger')) {
                     const viewHeader = viewEl.querySelector('.view-header');
@@ -20261,7 +20259,7 @@ function Ktl($, appInfo) {
 
                 // If options.headerColor is explicitly passed (preview mode from Theme Editor), use options as-is
                 const isPreviewMode = options.headerColor !== undefined;
-                const hasThemeKeyword = ktlKeywords._theme && ktlKeywords._theme.params && Array.isArray(ktlKeywords._theme.params);
+                const hasThemeKeyword = ktlKeywords._theme && ktlKeywords._theme.params && Array.isArray(ktlKeywords._theme.params) && ktlKeywords._theme.params.length > 0;
 
                 // Check cached theme mode (stored without userId, readable before auth)
                 const cachedThemeMode = localStorage.getItem('KTL_THEME_MODE');
