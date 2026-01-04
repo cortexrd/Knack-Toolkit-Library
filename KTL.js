@@ -8982,6 +8982,7 @@ function Ktl($, appInfo) {
                     keywords._ask && askConfirmation(view, keywords);
                     keywords._rcm && removeConfirmationMessage(view, keywords);
                     keywords._string && generateAndPutString(view, keywords);
+                    keywords._mmb && moveMenuButtons(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -10948,6 +10949,109 @@ function Ktl($, appInfo) {
                         });
                     });
             }
+        }
+
+        //_mmb Move Menu Buttons
+        //Moves all buttons from a menu view to another view's title or submit row.
+        function moveMenuButtons(view, keywords) {
+            const kw = '_mmb';
+            const viewId = view.key;
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType !== 'menu') return;
+
+            if (keywords[kw].length && keywords[kw][0].options) {
+                const options = keywords[kw][0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            if (!keywords[kw].length || !keywords[kw][0].params || !keywords[kw][0].params.length) return;
+
+            const params = keywords[kw][0].params[0];
+            const dstViewTitle = params[0];
+            const location = (params[1] || 'title').toLowerCase();
+            const alignment = (params[2] || 'right').toLowerCase();
+
+            if (!dstViewTitle) return;
+
+            const dstViewId = ktl.scenes.findViewWithTitle(dstViewTitle, true, viewId);
+            if (!dstViewId) {
+                ktl.log.clog('purple', `_mmb: Destination view "${dstViewTitle}" not found.`);
+                return;
+            }
+
+            const menuButtons = document.querySelectorAll(`#${viewId} .menu-links__list-item`);
+            if (!menuButtons.length) return;
+
+            const container = document.createElement('div');
+            container.classList.add('ktlMovedMenuButtons');
+            container.style.display = 'flex';
+            container.style.flexWrap = 'wrap';
+            container.style.gap = '8px';
+            container.style.alignItems = 'baseline';
+
+            menuButtons.forEach(btn => {
+                btn.style.listStyle = 'none';
+                const link = btn.querySelector('.knMenuLink');
+                if (link) {
+                    link.classList.remove('knMenuLink--size-medium');
+                    link.classList.add('knMenuLink--size-small');
+                    link.style.fontSize = 'initial';
+                }
+                container.appendChild(btn);
+            });
+
+            let targetElement;
+            const dstViewType = ktl.views.getViewType(dstViewId);
+
+            if (location === 'submit' && dstViewType === 'form') {
+                targetElement = document.querySelector(`#${dstViewId} .kn-submit`);
+            } else {
+                targetElement = document.querySelector(`#${dstViewId} .view-header`);
+                if (!targetElement) {
+                    targetElement = document.querySelector(`#${dstViewId} .kn-title`);
+                }
+            }
+
+            if (!targetElement) {
+                ktl.log.clog('purple', `_mmb: Target element not found in view "${dstViewId}".`);
+                return;
+            }
+
+            if (location === 'title') {
+                const titleEl = targetElement.querySelector('.kn-title') || targetElement;
+                titleEl.style.display = 'flex';
+                titleEl.style.flexWrap = 'wrap';
+                titleEl.style.alignItems = 'center';
+                titleEl.style.gap = '10px';
+
+                if (alignment === 'right') {
+                    container.style.marginLeft = 'auto';
+                    titleEl.appendChild(container);
+                } else {
+                    const titleText = titleEl.querySelector('span') || titleEl.firstChild;
+                    if (titleText && titleText.nextSibling) {
+                        titleEl.insertBefore(container, titleText.nextSibling);
+                    } else {
+                        titleEl.appendChild(container);
+                    }
+                }
+            } else if (location === 'submit') {
+                targetElement.style.display = 'flex';
+                targetElement.style.flexWrap = 'wrap';
+                targetElement.style.alignItems = 'center';
+                targetElement.style.gap = '10px';
+
+                if (alignment === 'right') {
+                    container.style.marginLeft = 'auto';
+                    targetElement.appendChild(container);
+                } else {
+                    targetElement.insertBefore(container, targetElement.firstChild);
+                }
+            }
+
+            $(`#${viewId} .menu-links`).remove();
         }
 
         const vrdCurrentlySelectedRows = {};
