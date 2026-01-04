@@ -433,6 +433,10 @@
                                     <input type="checkbox" id="formPreValidation" checked>
                                 </div>
                                 <div class="checkbox-inline">
+                                    <label for="highlightEmptyFields">Highlight Empty Fields</label>
+                                    <input type="checkbox" id="highlightEmptyFields" checked>
+                                </div>
+                                <div class="checkbox-inline">
                                     <label for="spinnerWatchDog">Spinner Watchdog</label>
                                     <input type="checkbox" id="spinnerWatchDog" checked>
                                 </div>
@@ -1044,6 +1048,7 @@
                 calendarGotoDate: document.getElementById('calendarGotoDate').checked,
                 rememberMe: document.getElementById('rememberMe').checked,
                 formPreValidation: document.getElementById('formPreValidation').checked,
+                highlightEmptyFields: document.getElementById('highlightEmptyFields').checked,
                 spinnerWatchDog: document.getElementById('spinnerWatchDog').checked,
                 idleWatchDog: document.getElementById('idleWatchDog').checked,
                 debugWnd: document.getElementById('debugWnd').checked,
@@ -1186,6 +1191,7 @@ window.ktlReady = function (appInfo = {}) {
             calendarGotoDate: ${enabled.calendarGotoDate},
             rememberMe: ${enabled.rememberMe},
             formPreValidation: ${enabled.formPreValidation},
+            highlightEmptyFields: ${enabled.highlightEmptyFields},
             spinnerWatchDog: ${enabled.spinnerWatchDog},
             idleWatchDog: ${enabled.idleWatchDog},
             debugWnd: ${enabled.debugWnd},
@@ -1379,6 +1385,7 @@ window.ktlReady = function (appInfo = {}) {
                     calendarGotoDate: document.getElementById('calendarGotoDate').checked,
                     rememberMe: document.getElementById('rememberMe').checked,
                     formPreValidation: document.getElementById('formPreValidation').checked,
+                    highlightEmptyFields: document.getElementById('highlightEmptyFields').checked,
                     spinnerWatchDog: document.getElementById('spinnerWatchDog').checked,
                     idleWatchDog: document.getElementById('idleWatchDog').checked,
                     debugWnd: document.getElementById('debugWnd').checked,
