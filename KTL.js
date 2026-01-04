@@ -10995,9 +10995,10 @@ function Ktl($, appInfo) {
                 btn.style.listStyle = 'none';
                 const link = btn.querySelector('.knMenuLink');
                 if (link) {
-                    link.classList.remove('knMenuLink--size-medium');
-                    link.classList.add('knMenuLink--size-small');
-                    link.style.fontSize = 'initial';
+                    link.style.fontSize = '0.55em';
+                    link.style.paddingBlock = '7px';
+                    link.style.paddingInline = '5px';
+                    link.style.lineHeight = '1';
                 }
                 container.appendChild(btn);
             });
