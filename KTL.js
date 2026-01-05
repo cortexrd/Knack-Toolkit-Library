@@ -16420,13 +16420,12 @@ function Ktl($, appInfo) {
             noInlineEditing: function (view) {
                 if (!view || ktl.scenes.isiFrameWnd()) return;
                 const viewId = view.key;
-
                 const kw = '_ni';
-                var kwInstance = ktlKeywords[viewId] && ktlKeywords[viewId][kw];
-                if (kwInstance) {
-                    if (kwInstance.length)
-                        kwInstance = kwInstance[0];
 
+                const kwList = ktl.core.getKeywordsByType(viewId, kw);
+                kwList.forEach(kwInstance => { execKw(kwInstance); });
+
+                function execKw(kwInstance) {
                     const options = kwInstance.options;
                     if (!ktl.core.hasRoleAccess(options)) return;
 
