@@ -20295,9 +20295,28 @@ function Ktl($, appInfo) {
                 // Check cached theme mode (stored without userId, readable before auth)
                 const cachedThemeMode = localStorage.getItem('KTL_THEME_MODE');
 
+                // Always parse logo URLs from _theme keyword (needed for both dark and light themes)
+                if (hasThemeKeyword && !ktlKeywords._theme.logosParsed) {
+                    ktlKeywords._theme.params.forEach(param => {
+                        if (Array.isArray(param) && param.length === 2) {
+                            const [key, value] = param;
+                            if (key === 'darkLogo') ktlKeywords._theme.darkLogo = value;
+                            else if (key === 'lightLogo') ktlKeywords._theme.lightLogo = value;
+                        }
+                    });
+                    ktlKeywords._theme.logosParsed = true;
+                }
+
                 // If user previously chose KnackDefault, skip theme entirely (even before auth)
                 if (!isPreviewMode && cachedThemeMode === 'KnackDefault') {
                     console.log('generateUserTheme - skipping, cached KnackDefault');
+                    // Ensure light logo is shown for default theme
+                    if (ktlKeywords._theme?.lightLogo) {
+                        const logoEl = document.querySelector('.knHeader__logo-image');
+                        if (logoEl && logoEl.src !== ktlKeywords._theme.lightLogo) {
+                            logoEl.src = ktlKeywords._theme.lightLogo;
+                        }
+                    }
                     return;
                 }
 
@@ -20310,7 +20329,7 @@ function Ktl($, appInfo) {
                             const [key, value] = param;
                             if (key === 'headerColor') {
                                 settings.headerColor = value;
-                            } else {
+                            } else if (key !== 'darkLogo' && key !== 'lightLogo') {
                                 settings.overrides[key] = value;
                             }
                         }
@@ -20337,6 +20356,11 @@ function Ktl($, appInfo) {
                         const existingStyle = document.getElementById('ktlUserThemeStyles');
                         if (existingStyle) existingStyle.remove();
                         document.body.classList.remove('ktlUserTheme');
+                        // Restore light logo when switching to default theme
+                        if (ktlKeywords._theme?.lightLogo) {
+                            const logoEl = document.querySelector('.knHeader__logo-image');
+                            if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
+                        }
                         return;
                     }
 
@@ -20360,6 +20384,10 @@ function Ktl($, appInfo) {
                     const existingStyle = document.getElementById('ktlUserThemeStyles');
                     if (existingStyle) existingStyle.remove();
                     document.body.classList.remove('ktlUserTheme');
+                    if (ktlKeywords._theme?.lightLogo) {
+                        const logoEl = document.querySelector('.knHeader__logo-image');
+                        if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
+                    }
                     return;
                 }
 
@@ -20723,6 +20751,10 @@ function Ktl($, appInfo) {
                                 border-color: var(--ktlTheme_tableHeaderBg) !important;
                                 color: var(--ktlTheme_inputFieldText) !important;
                             }
+                            .ktlUserTheme .kn-radio:hover,
+                            .ktlUserTheme .kn-checkbox:hover {
+                                color: var(--ktlTheme_lightText) !important;
+                            }
 
                             /* Submit Buttons */
                             .ktlUserTheme button.is-primary {
@@ -20837,6 +20869,12 @@ function Ktl($, appInfo) {
                         `;
 
                         document.body.classList.add('ktlUserTheme');
+
+                        // Swap logo for dark theme
+                        if (ktlKeywords._theme?.darkLogo) {
+                            const logoEl = document.querySelector('.knHeader__logo-image');
+                            if (logoEl) logoEl.src = ktlKeywords._theme.darkLogo;
+                        }
                     })
                     .catch((err) => {
                         console.error('generateUserTheme error:', err);
@@ -21098,19 +21136,33 @@ function Ktl($, appInfo) {
                             updateElementColors(true);
                             setEditorControlsEnabled(true);
                         } else {
-                            // Dark mode - restore original saved settings
-                            currentSettings.enabled = originalSettings.enabled;
-                            currentSettings.mode = originalSettings.mode || 'dark';
-                            currentSettings.preset = originalSettings.preset;
-                            currentSettings.headerColor = originalSettings.headerColor;
-                            currentSettings.overrides = { ...originalSettings.overrides };
-                            currentSettings.active = originalSettings.active;
+                            // Dark mode
+                            if (originalSettings.active === 'KnackDefault' || !originalSettings.enabled) {
+                                // Coming from Default - auto-select Ocean preset
+                                currentSettings.enabled = true;
+                                currentSettings.mode = 'dark';
+                                currentSettings.preset = 'Ocean';
+                                currentSettings.headerColor = PRESETS.Ocean;
+                                currentSettings.overrides = {};
+                                currentSettings.active = 'preset_Ocean';
+                                presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => {
+                                    b.classList.toggle('active', b.dataset.preset === 'Ocean');
+                                });
+                            } else {
+                                // Restore original saved settings
+                                currentSettings.enabled = originalSettings.enabled;
+                                currentSettings.mode = originalSettings.mode || 'dark';
+                                currentSettings.preset = originalSettings.preset;
+                                currentSettings.headerColor = originalSettings.headerColor;
+                                currentSettings.overrides = { ...originalSettings.overrides };
+                                currentSettings.active = originalSettings.active;
+                                presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => {
+                                    b.classList.toggle('active', b.dataset.preset === currentSettings.preset);
+                                });
+                            }
                             savedColorBox.style.backgroundColor = currentSettings.headerColor;
                             headerColorInput.value = currentSettings.headerColor;
                             headerColorHex.value = currentSettings.headerColor;
-                            presetsGroup.querySelectorAll('.ktlThemeEditorPresetBtn').forEach(b => {
-                                b.classList.toggle('active', b.dataset.preset === currentSettings.preset);
-                            });
                             updateElementColors(true);
                             setEditorControlsEnabled(true);
                         }
@@ -21479,6 +21531,11 @@ function Ktl($, appInfo) {
                         const existingStyle = document.getElementById('ktlUserThemeStyles');
                         if (existingStyle) existingStyle.remove();
                         document.body.classList.remove('ktlUserTheme');
+                        // Restore light logo for default theme preview
+                        if (ktlKeywords._theme?.lightLogo) {
+                            const logoEl = document.querySelector('.knHeader__logo-image');
+                            if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
+                        }
                         return;
                     }
                     ktl.scenes.generateUserTheme({
