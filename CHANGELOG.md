@@ -1,6 +1,74 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.36.3    *2026-01-05*
+
+- Theme improvements:
+  - Trigger theme earlier via viewScene to prevent white flash on page load
+  - Apply theme before authentication to prevent white flash
+  - Auto-swap logo based on header luminance (dark/light logo support)
+  - Add dual logo support via `_theme` keyword: `darkLogo` and `lightLogo` parameters
+  - Fix radio button and checkbox hover styling in dark mode
+  - Add dropdown borders and disabled field styling
+  - Preserve conditional formatting and add select/textarea styling
+  - Fix `_theme` keyword edge cases and simplify Theme Editor button check
+- New `_mmb` keyword (Move Menu Buttons):
+  - Relocate menu view buttons to another view's title bar or submit row
+  - Parameters: destViewTitle, location (title/submit), alignment (right/left)
+  - Compact button styling with proper vertical alignment
+- New `_df` keyword (Disable Field):
+  - Disable specific fields in forms
+- `_req` keyword enhancements:
+  - Add support for Image and File field types
+  - Add `highlightEmptyFields` global flag to disable pink highlighting on empty required fields
+- `_style` keyword: add `ktlCond` support for conditional style application
+- `_ni` keyword: add multiple instances support
+- KTL Configurator: add `highlightEmptyFields` option in Main Feature Switches
+- README revamp:
+  - Add Quick Links section with Configurator, Keywords, Changelog, YouTube channels
+  - New header with Cortex R&D and KTL logos side by side
+  - Fix Configurator and Changelog links
+- Removed obsolete files
+
+## 0.36.2    *2026-01-03*
+
+- Fix Theme Editor button to only show on views with `_theme` keyword
+
+## 0.36.1    *2026-01-03*
+
+- Theme Editor enhancements:
+  - Keyword export, parsing, and UI theming
+  - Calendar styling improvements
+  - Add keyboard shortcuts to Theme Editor buttons
+  - Fixes for initialization, save logic, and selectOption input handling
+  - Use proper user prefs view to save theme
+  - Fixed escape handler for Theme Editor and child popups
+  - Enhance with saved themes in userPrefs and UI improvements
+
+## 0.36.0    *2026-01-02*
+
+- Theme Editor UI improvements:
+  - Grouped colors by category
+  - API save functionality
+  - Legacy filtering support
+- Add Theme Editor for user-customizable dark themes
+- Reorganize theme colors by category and add pageButtonBg for primary buttons
+- Add dark theme styling for remaining UI elements
+- Integrate `_theme` keyword for user theme customization
+- Add generateUserTheme() for dark mode support
+- New `_string` keyword: concatenates params and sets a specific target
+- `_lbl` keyword: add replacements support (#558)
+- `_ro` keyword: now supports chosen dropdowns with more than 500 entries
+- `_scv` fixes:
+  - Persist record data across sort/filter/search operations
+  - Fix change detection
+- Fix column indexing to use actual DOM position instead of Knack col-x classes
+- Fixed `_dnd` handling when used with grouping
+- Protect flash rate against units being included or non-numeric values
+- Updated findEmails to use "words containing" instead of exact match
+- Fixed refresh looping bug when KTL version is blank
+- Fix IoT watchdog: capture landing page URL for stable watchdog tracking
+
 ## 0.35.3    *2026-01-02*
 
 - New Theme Editor feature for user-customizable dark themes:
