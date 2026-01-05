@@ -20870,10 +20870,18 @@ function Ktl($, appInfo) {
 
                         document.body.classList.add('ktlUserTheme');
 
-                        // Swap logo for dark theme
-                        if (ktlKeywords._theme?.darkLogo) {
+                        // Swap logo based on header luminance (< 50% = dark header, use light logo)
+                        if (ktlKeywords._theme?.darkLogo || ktlKeywords._theme?.lightLogo) {
                             const logoEl = document.querySelector('.knHeader__logo-image');
-                            if (logoEl) logoEl.src = ktlKeywords._theme.darkLogo;
+                            if (logoEl) {
+                                const rgb = ktl.systemColors.hexToRgb(headerRgb);
+                                const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+                                if (luminance < 0.5 && ktlKeywords._theme.darkLogo) {
+                                    logoEl.src = ktlKeywords._theme.darkLogo;
+                                } else if (luminance >= 0.5 && ktlKeywords._theme.lightLogo) {
+                                    logoEl.src = ktlKeywords._theme.lightLogo;
+                                }
+                            }
                         }
                     })
                     .catch((err) => {
