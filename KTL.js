@@ -18314,18 +18314,19 @@ function Ktl($, appInfo) {
         let userThemeAttempted = false;
         let userThemeAppliedWithAuth = false;
 
-        $(document).on('KTL.systemColorsReady', function () {
-            if (!userThemeAttempted) {
-                userThemeAttempted = true;
-                ktl.scenes.generateUserTheme();
-            }
-        });
+        //Too late.  Show white flicker.
+        // $(document).on('KTL.systemColorsReady', function () {
+        //     if (!userThemeAttempted) {
+        //         userThemeAttempted = true;
+        //         ktl.scenes.generateUserTheme();
+        //     }
+        // });
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             // Re-apply theme after authentication if it was skipped earlier (no userId)
             const userId = Knack.getUserAttributes()?.id;
             if (userId && userThemeAttempted && !userThemeAppliedWithAuth) {
-                console.log('knack-scene-render - applying theme after auth');
+                //console.log('knack-scene-render - applying theme after auth');
                 userThemeAppliedWithAuth = true;
                 ktl.scenes.generateUserTheme();
             }
@@ -18457,6 +18458,8 @@ function Ktl($, appInfo) {
         //Early detection of scene change to prevent multi-rendering and flickering of views.
         //Inspired from David Roizenman's code on Slack: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
         Knack.router.on('route:viewScene', function (slug, search) {
+            ktl.scenes.generateUserTheme();
+
             if (!ktl.scenes.isiFrameWnd()) {
                 waitUserId()
                     .then(() => { ktl.core.applyKioskMode(); })
@@ -20286,7 +20289,7 @@ function Ktl($, appInfo) {
                 let settings = { ...defaults, ...options };
                 const userPrefs = ktl.userPrefs.getUserPrefs();
                 const userId = Knack.getUserAttributes()?.id;
-                console.log('generateUserTheme - userId:', userId, 'userPrefs.userTheme:', JSON.stringify(userPrefs.userTheme, null, 2));
+                //console.log('generateUserTheme - userId:', userId, 'userPrefs.userTheme:', JSON.stringify(userPrefs.userTheme, null, 2));
 
                 // If options.headerColor is explicitly passed (preview mode from Theme Editor), use options as-is
                 const isPreviewMode = options.headerColor !== undefined;
@@ -20309,7 +20312,7 @@ function Ktl($, appInfo) {
 
                 // If user previously chose KnackDefault, skip theme entirely (even before auth)
                 if (!isPreviewMode && cachedThemeMode === 'KnackDefault') {
-                    console.log('generateUserTheme - skipping, cached KnackDefault');
+                    //console.log('generateUserTheme - skipping, cached KnackDefault');
                     // Ensure light logo is shown for default theme
                     if (ktlKeywords._theme?.lightLogo) {
                         const logoEl = document.querySelector('.knHeader__logo-image');
@@ -22439,12 +22442,9 @@ function Ktl($, appInfo) {
 
         function readUserPrefsFromLs() {
             try {
-                var userId = Knack.getUserAttributes()?.id || 'Anonymous';
-                console.log('readUserPrefsFromLs - userId:', userId);
                 var lsPrefsStr = ktl.storage.lsGetItem(ktl.const.LS_USER_PREFS);
                 if (lsPrefsStr) {
                     userPrefsObj = JSON.parse(lsPrefsStr);
-                    console.log('readUserPrefsFromLs - userTheme:', userPrefsObj.userTheme);
                 }
 
                 return lsPrefsStr; //Return string version.
