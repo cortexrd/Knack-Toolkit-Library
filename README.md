@@ -16,9 +16,9 @@
 
 | Resource | Description |
 |----------|-------------|
-| [KTL Configurator](https://cortexrd.github.io/Knack-Toolkit-Library/KTL_Configurator.html) | Interactive tool to generate your KTL configuration |
+| [KTL Configurator](https://ctrnd.s3.amazonaws.com/KTL_Configurator.html) | Interactive tool to generate your KTL configuration |
 | [Keywords Reference](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Keywords) | Complete list of all KTL keywords |
-| [Changelog](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/Docs/KTL_Changelog.md) | Version history and release notes |
+| [Changelog](https://github.com/cortexrd/Knack-Toolkit-Library/blob/master/CHANGELOG.md) | Version history and release notes |
 | [Cortex R&D YouTube](https://www.youtube.com/@cortexrdinc.4479) | Official KTL tutorials and demos |
 | [CH Project Support YouTube](https://www.youtube.com/@chprojectsupport/search?query=ktl) | Carl Holmes' KTL tutorials and Knack tips |
 
