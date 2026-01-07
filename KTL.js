@@ -1983,10 +1983,10 @@ function Ktl($, appInfo) {
                     for (let key in obj) {
                         if (key === keyToFind) {
                             if (obj[key] && typeof obj[key] === 'string') {
-                                if (exactMatch && obj[key].trim() === keyValue)
-                                    return obj[keyNameToReturn] || obj;
-                                else if (!exactMatch && obj[key].trim().includes(keyValue))
-                                    return obj[keyNameToReturn] || obj;
+                                if ((exactMatch && obj[key].trim() === keyValue) || (!exactMatch && obj[key].trim().includes(keyValue))) {
+                                    if (obj[keyNameToReturn])
+                                        return obj[keyNameToReturn];
+                                }
                             }
                         } else if (typeof obj[key] === 'object') {
                             let found = this.findKeyWithValueInObject(obj[key], keyToFind, keyValue, keyNameToReturn, exactMatch, maxDepth, currentDepth + 1);
@@ -4023,7 +4023,9 @@ function Ktl($, appInfo) {
 
                     const foundField = ktl.core.findKeyWithValueInObject(viewObjToScan, keyToFind, fieldLabel, keyNameToReturn, exactMatch);
 
-                    if (foundField !== null) {
+                    if (foundField === null) {
+                        return ktl.core.findKeyWithValueInObject(viewObjToScan, keyToFind, fieldLabel, 'field', exactMatch)?.key;
+                    } else {
                         if (typeof foundField === 'string')
                             return foundField;
                         else if (typeof foundField === 'object' && foundField.field && foundField.field.key)
@@ -4853,6 +4855,7 @@ function Ktl($, appInfo) {
                     $(`#${viewId} [data-input-id="${fieldId}"]`).addClass('ktlLinkDisabled');
                 } else {
                     const input = $(`#${viewId} [data-input-id="${fieldId}"]`);
+                    if (!input.length) return;
                     input.find('input, select, textarea').attr('disabled', true);
                     input.find('.redactor-editor').attr('contenteditable', 'false');
                     input.find('.chzn-single').css('background-color', 'rgba(0, 0, 0, 0.1)');
@@ -6396,118 +6399,248 @@ function Ktl($, appInfo) {
 
         let systemColorsReady = false;
 
+        // Local utility functions (needed before ktl.systemColors is fully constructed)
+        function hexToRgb(hex) {
+            return hex.replace(/^#?([a-f\d])([a-f\d])([a-f\d])$/i, (m, r, g, b) => '#' + r + r + g + g + b + b)
+                .substring(1).match(/.{2}/g)
+                .map(x => parseInt(x, 16));
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return [h, s, l];
+        }
+
+        function rgbToHsv(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            const d = max - min;
+            s = max === 0 ? 0 : d / max;
+            if (max === min) {
+                h = 0;
+            } else {
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            return [h, s, v];
+        }
+
+        // Read Knack table settings for colorization decisions
+        function getKnackTableSettings() {
+            const design = Knack.app.attributes.design;
+            return {
+                style: design?.general?.tables?.style || 'borders',      // "borders" | "clean"
+                hover: design?.general?.tables?.hover ?? true,           // Knack's hover setting
+                striped: design?.general?.tables?.striped ?? false,      // Alternating row colors
+                spacing: design?.general?.tables?.spacing || 's',        // "s" | "m" | "l"
+                dividers: design?.general?.tables?.dividers ?? true,
+                border: design?.general?.tables?.border ?? true
+            };
+        }
+
+        function adjustRGB_sl(hexColor, saturation, lightness) {
+            hexColor = hexColor.replace('#', '');
+            const r = parseInt(hexColor.substring(0, 2), 16);
+            const g = parseInt(hexColor.substring(2, 4), 16);
+            const b = parseInt(hexColor.substring(4, 6), 16);
+            const rNorm = r / 255, gNorm = g / 255, bNorm = b / 255;
+            const max = Math.max(rNorm, gNorm, bNorm), min = Math.min(rNorm, gNorm, bNorm);
+            let h, s, l = (max + min) / 2;
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case rNorm: h = (gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0); break;
+                    case gNorm: h = (bNorm - rNorm) / d + 2; break;
+                    case bNorm: h = (rNorm - gNorm) / d + 4; break;
+                }
+                h /= 6;
+            }
+            s = Math.min(Math.max(s * saturation, 0), 1);
+            l = Math.min(Math.max(lightness, 0), 1);
+            let newR, newG, newB;
+            if (s === 0) {
+                newR = newG = newB = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1 / 6) return p + (q - p) * 6 * t;
+                    if (t < 1 / 2) return q;
+                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                };
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                newR = hue2rgb(p, q, h + 1 / 3);
+                newG = hue2rgb(p, q, h);
+                newB = hue2rgb(p, q, h - 1 / 3);
+            }
+            return [Math.round(newR * 255), Math.round(newG * 255), Math.round(newB * 255)];
+        }
+
         const initSystemColors = (function () {
-            ktl.core.waitSelector('#kn-dynamic-styles')
-                .then(function () {
-                    function extractSysElClr(cssSearchStr = '') {
-                        var index = 0, clrIdx = 0;
-                        var hsl = [], hsv = [], rgbClr = [];
-                        index = dynStylesCssTxt.search(cssSearchStr);
-                        clrIdx = dynStylesCssTxt.indexOf('#', index + 1);
-                        var color = dynStylesCssTxt.substr(clrIdx, 7); //Format is #rrggbb
-                        rgbClr = ktl.systemColors.hexToRgb(color);
-                        hsl = ktl.systemColors.rgbToHsl(rgbClr[0], rgbClr[1], rgbClr[2]);
-                        hsv = ktl.systemColors.rgbToHsv(rgbClr[0], rgbClr[1], rgbClr[2]);
-                        return { rgb: color, hsl: hsl, hsv: hsv };
-                    }
+            // Convert hex color to {rgb, hsl, hsv} format for compatibility with derived colors
+            function colorToSysFormat(hexColor) {
+                if (!hexColor || typeof hexColor !== 'string') hexColor = '#808080';
+                const color = hexColor.startsWith('#') ? hexColor : '#' + hexColor;
+                const rgbClr = hexToRgb(color);
+                const hsl = rgbToHsl(rgbClr[0], rgbClr[1], rgbClr[2]);
+                const hsv = rgbToHsv(rgbClr[0], rgbClr[1], rgbClr[2]);
+                return { rgb: color, hsl: hsl, hsv: hsv };
+            }
 
-                    var dynStylesCssTxt = document.querySelector('#kn-dynamic-styles').innerText;
+            // Read colors directly from Knack design settings (synchronous, no CSS parsing)
+            const design = Knack.app.attributes.design;
 
-                    //Basic colors
-                    sysColors.header = extractSysElClr(/#kn-app-header \{\s+background-color: #/gm); //Header background color
-                    sysColors.button = extractSysElClr(/\.is-primary \{\s+background-color: #/gm); //Buttons background color
-                    sysColors.buttonText = extractSysElClr(/\.kn-navigation-bar a \{\s+color: #/gm); //Buttons text color
-                    sysColors.text = extractSysElClr(/\.kn-content a \{\s+color: #/gm); //Text color
-                    sysColors.links = extractSysElClr(/\.knMenuLink.knMenuLink--button \{\s+color: #/gm); //Button Link text color
+            //Basic colors from Knack.app.attributes.design
+            sysColors.header = colorToSysFormat(design?.regions?.header?.legacySettings?.bg_color);
+            sysColors.button = colorToSysFormat(design?.general?.buttons?.bg_color);
+            sysColors.buttonText = colorToSysFormat(design?.general?.buttons?.color);
+            sysColors.text = colorToSysFormat(design?.general?.links?.color);
+            sysColors.links = colorToSysFormat(design?.regions?.header?.menu?.links?.tabs?.colors?.text?.color ||
+                design?.regions?.header?.legacySettings?.menu?.color);
 
-                    //Additional colors, usually derived from basic colors, or hard-coded.
-                    var newSaturation = 1.0;
-                    var newLightness = 1.0;
-                    var newRGB = '';
+            //Additional colors, usually derived from basic colors, or hard-coded.
+            var newSaturation = 1.0;
+            var newLightness = 1.0;
+            var newRGB = '';
 
-                    //Unused for now
-                    newSaturation = 1.0;
-                    newLightness = 0.3;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.borderClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+            //Unused for now
+            newSaturation = 1.0;
+            newLightness = 0.3;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.borderClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                    //User Filter buttons
-                    newSaturation = 0.6;
-                    newLightness = 0.9;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.filterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+            //User Filter buttons
+            newSaturation = 0.6;
+            newLightness = 0.9;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.filterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                    newSaturation = 0.6;
-                    newLightness = 0.9;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.activeFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+            newSaturation = 0.6;
+            newLightness = 0.9;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.activeFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                    //Public Filters
-                    newSaturation = 0.8;
-                    newLightness = 0.8;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.publicFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+            //Public Filters
+            newSaturation = 0.8;
+            newLightness = 0.8;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.publicFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                    newSaturation = 0.8;
-                    newLightness = 0.8;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.activePublicFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+            newSaturation = 0.8;
+            newLightness = 0.8;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.activePublicFilterBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                    //Just a generic pale washed-out color for various items.
-                    newSaturation = 0.2;
-                    newLightness = 0.7;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.paleLowSatClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
-                    sysColors.paleLowSatClrTransparent = `${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}`;
+            //Just a generic pale washed-out color for various items.
+            newSaturation = 0.2;
+            newLightness = 0.7;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.paleLowSatClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+            sysColors.paleLowSatClrTransparent = `${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}`;
 
-                    //Just a generic dark saturated color for highlighted buttons and available for other items.
-                    newSaturation = 0.8;
-                    newLightness = 0.5;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.darkHighSatClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+            //Just a generic dark saturated color for highlighted buttons and available for other items.
+            newSaturation = 0.8;
+            newLightness = 0.5;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.darkHighSatClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
-                    newSaturation = 0.6;
-                    newLightness = 0.7;
-                    newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
-                    sysColors.inlineEditBkgColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.1)`;
-                    sysColors.tableRowHoverBkgColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.2)`;
+            newSaturation = 0.6;
+            newLightness = 0.7;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.inlineEditBkgColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.1)`;
+            sysColors.tableRowHoverBkgColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.2)`;
 
-                    document.documentElement.style.setProperty('--ktlInlineEditableCellsBgColor', sysColors.inlineEditBkgColor);
-                    document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
-                    document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
-                    document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', sysColors.header.rgb + '44');
-                    document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', sysColors.header.rgb + '77');
-                    document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
+            document.documentElement.style.setProperty('--ktlInlineEditableCellsBgColor', sysColors.inlineEditBkgColor);
+            document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
+            document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
+            document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', sysColors.header.rgb + '44');
+            document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', sysColors.header.rgb + '77');
+            document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
 
-                    document.documentElement.style.setProperty('--filterBtnClr', sysColors.filterBtnClr);
-                    document.documentElement.style.setProperty('--publicFilterBtnClr', sysColors.publicFilterBtnClr);
-                    document.documentElement.style.setProperty('--ktlActivePublicFilterBtnClr', sysColors.activePublicFilterBtnClr);
-                    document.documentElement.style.setProperty('--ktlActiveFilterBorderClr', sysColors.darkHighSatClr);
+            document.documentElement.style.setProperty('--filterBtnClr', sysColors.filterBtnClr);
+            document.documentElement.style.setProperty('--publicFilterBtnClr', sysColors.publicFilterBtnClr);
+            document.documentElement.style.setProperty('--ktlActivePublicFilterBtnClr', sysColors.activePublicFilterBtnClr);
+            document.documentElement.style.setProperty('--ktlActiveFilterBorderClr', sysColors.darkHighSatClr);
 
-                    systemColorsReady = true;
-                    $(document).trigger('KTL.systemColorsReady');
-                    return resolve();
-                })
-                .catch(err => {
-                    return 'Timeout waiting for #kn-dynamic-styles:' + err;
-                })
+            systemColorsReady = true;
+            $(document).trigger('KTL.systemColorsReady');
+
+            generateGridColorCSS();
         })();
 
-        $(document).on('knack-view-render.any', function (event, view, data) {
-            ktl.systemColors.getSystemColors().then(sc => {
-                if (ktl.core.getCfg().enabled.rowHoverHighlight && sc.tableRowHoverBkgColor && sc.tableRowHoverBkgColor !== '') {
-                    $('#' + view.key + ' .kn-table').removeClass('knTable--rowHover');
-                    $('#' + view.key + ' .kn-table').addClass('ktlTable--rowHover');
-                }
+        function generateGridColorCSS() {
+            const knackSettings = getKnackTableSettings();
+            const ktlCfg = ktl.core.getCfg().enabled || {};
+            const tableClass = knackSettings.style === 'clean' ? '.knTable--clean' : '.knTable--bordered';
 
-                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor && ktl.views.viewHasInlineEdit(view.key)) {
-                    $(`#${view.key} td.cell-edit`).addClass('ktlInlineEditableCellsStyle');
-                }
-            })
-        })
+            let css = '';
+
+            // Row hover CSS - only if KTL hover is enabled
+            // Removes Knack's default hover via class swap in orchestrator, applies KTL's color
+            if (ktlCfg.rowHoverHighlight) {
+                css += `
+                    .ktlTable--rowHover tbody tr:hover td:not([style*="background"]) {
+                        background-color: var(--ktltableRowHoverBkgColor) !important;
+                        transition: background-color .2s ease-out;
+                    }
+                `;
+            }
+
+            // Inline edit CSS - ensure it works with both table styles
+            if (ktlCfg.inlineEditColor) {
+                css += `
+                    td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]) {
+                        background-color: var(--ktlInlineEditableCellsBgColor) !important;
+                    }
+                `;
+            }
+
+            // Striped rows - ensure hover/inline edit colors respect striping
+            if (knackSettings.striped) {
+                css += `
+                    .kn-table.is-striped tbody tr:nth-child(even) td.ktlInlineEditableCellsStyle:not([style*="background"]) {
+                        background-color: var(--ktlInlineEditableCellsBgColor) !important;
+                    }
+                `;
+            }
+
+            if (css) {
+                const styleEl = document.createElement('style');
+                styleEl.id = 'ktlGridColorCSS';
+                styleEl.textContent = css;
+                document.head.appendChild(styleEl);
+            }
+        }
+
+        // Note: Row hover and inline edit logic moved to ktl.views.applyGridColorization()
 
         return {
             initSystemColors: initSystemColors,
+            getKnackTableSettings: getKnackTableSettings,
+            generateGridColorCSS: generateGridColorCSS,
+            getSysColors: function () { return sysColors; },  // Synchronous accessor (colors are now init'd synchronously)
             setCfg: function (cfgObj = {}) {
                 ktl.systemColors.getSystemColors().then(() => {
                     if (typeof cfgObj.inlineEditBkgColor !== 'undefined') {
@@ -8931,8 +9064,9 @@ function Ktl($, appInfo) {
                     //console.log('keywords =', JSON.stringify(keywords, null, 4));
 
                     //These also need to be pre-processed in the KTL.preprocessView event.
-                    keywords._cls && ktl.views.addRemoveClass(viewId, keywords, data);
-                    keywords._style && ktl.views.setStyle(viewId, keywords);
+                    // Moved to applyGridColorization() orchestrator
+                    //keywords._cls && ktl.views.addRemoveClass(viewId, keywords, data);
+                    //keywords._style && ktl.views.setStyle(viewId, keywords);
 
                     //These don't need to be pre-processed in the KTL.preprocessView event.
                     keywords._ni && ktl.views.noInlineEditing(view);
@@ -8955,8 +9089,9 @@ function Ktl($, appInfo) {
                     keywords._da && dataAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
-                    keywords._sth && stickyTableHeader(viewId, keywords, data);
-                    keywords._stc && stickyTableColumns(viewId, keywords);
+                    // Moved to applyGridColorization() orchestrator
+                    //keywords._sth && stickyTableHeader(viewId, keywords, data);
+                    //keywords._stc && stickyTableColumns(viewId, keywords);
                     keywords._recid && setRecordId(viewId, keywords, data);
                     keywords._parent && goUpParentLevels(viewId, keywords);
                     keywords._vrd && viewRecordDetails(viewId, keywords);
@@ -8994,7 +9129,12 @@ function Ktl($, appInfo) {
                 ktl.fields.disableFieldsKw(viewId, keywords);
                 quickToggle(viewId, data); //IMPORTANT: quickToggle must be processed BEFORE matchColor.
                 matchColor(viewId, data);
-                colorizeFieldByValue(viewId, data);
+                // Moved to applyGridColorization() orchestrator
+                //colorizeFieldByValue(viewId, data);
+
+                // Centralized grid colorization
+                ktl.views.applyGridColorization(viewId, keywords, data);
+
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 noFiltering(view);
@@ -17975,16 +18115,97 @@ function Ktl($, appInfo) {
                 });
             },
 
+            // Centralized grid colorization orchestrator - applies all colorization in deterministic order
+            // Priority (highest to lowest): Knack built-in > _cfv/_cls/_style > sticky > inline edit > row hover > theme
+            applyGridColorization: function (viewId, keywords, data) {
+                // _cfv supports multiple view types (table, search, list, details, form) - has its own type check
+                colorizeFieldByValue(viewId, data);
+
+                const viewType = ktl.views.getViewType(viewId);
+                if (viewType !== 'table' && viewType !== 'search') return;
+
+                const knackSettings = ktl.systemColors.getKnackTableSettings();
+                const sysColors = ktl.systemColors.getSysColors();
+
+                // Layer 6: Theme - already applied via CSS (lowest priority)
+
+                // Layer 5: Row hover (lowest colorization priority - can be overridden by all above)
+                if (ktl.core.getCfg().enabled.rowHoverHighlight && sysColors.tableRowHoverBkgColor) {
+                    $('#' + viewId + ' .kn-table').removeClass('knTable--rowHover').addClass('ktlTable--rowHover');
+                }
+
+                // Layer 4: Inline edit styling
+                if (ktl.core.getCfg().enabled.inlineEditColor && sysColors.inlineEditBkgColor && ktl.views.viewHasInlineEdit(viewId)) {
+                    $(`#${viewId} td.cell-edit`).addClass('ktlInlineEditableCellsStyle');
+                }
+
+                // Layer 3: Sticky headers and columns (opaque backgrounds)
+                if (keywords) {
+                    keywords._sth && stickyTableHeader(viewId, keywords, data);
+                    keywords._stc && stickyTableColumns(viewId, keywords);
+                }
+
+                // Layer 2: Keywords (_cls, _style) - applied last for highest priority
+                if (keywords) {
+                    keywords._cls && ktl.views.addRemoveClass(viewId, keywords, data);
+                    keywords._style && ktl.views.setStyle(viewId, keywords);
+                }
+
+                // Layer 1: Knack built-in - cells with style="background:..." are automatically respected via :not() selectors
+            },
+
             stickTableColumns: function (viewSelector, columnCount, backgroundColor) {
+                const table = $(`#${viewSelector} table`);
+                table.addClass('ktlHasStickyColumns');
+
                 let stickyColWidth = 0;
                 for (let i = 1; i <= columnCount; i++) {
                     const jqthead = $(`#${viewSelector} thead tr th:nth-child(${i})`);
                     const jqtbody = $(`#${viewSelector} tbody tr td:nth-child(${i})`);
                     const columnWidth = jqthead.outerWidth();
                     stickyColWidth += columnWidth;
-                    jqthead.css({ 'z-index': 3, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px' });
-                    jqtbody.css({ 'z-index': 1, 'position': 'sticky', 'left': (stickyColWidth - columnWidth) + 'px', 'background-color': backgroundColor });
+                    const leftPos = (stickyColWidth - columnWidth) + 'px';
+                    jqthead.addClass('ktlStickyHeader').css('left', leftPos);
+                    jqtbody.addClass('ktlStickyCell').css('left', leftPos);
                 }
+
+                // Determine colors based on theme state
+                const isDarkTheme = document.body.classList.contains('ktlUserTheme');
+                const computedStyle = getComputedStyle(document.documentElement);
+                const themeCellBg = isDarkTheme ? computedStyle.getPropertyValue('--ktlTheme_tableCellBg').trim() : '';
+                const themeCellText = isDarkTheme ? computedStyle.getPropertyValue('--ktlTheme_tableCellText').trim() : '';
+                const defaultBg = backgroundColor || themeCellBg || '#f3f6f9';
+                const defaultText = themeCellText || 'inherit';
+
+                // Inject sticky column CSS if not already present
+                if (!document.getElementById('ktlStickyColStyles')) {
+                    const style = document.createElement('style');
+                    style.id = 'ktlStickyColStyles';
+                    style.textContent = `
+                        table.ktlHasStickyColumns.knTable--clean th {
+                            background-color: var(--ktlStickyHeaderBg, ${defaultBg}) !important;
+                        }
+                        th.ktlStickyHeader {
+                            position: sticky !important;
+                            z-index: 3 !important;
+                        }
+                        td.ktlStickyCell {
+                            position: sticky !important;
+                            z-index: 1 !important;
+                        }
+                        td.ktlStickyCell:not([style*="background"]):not(.ktlInlineEditableCellsStyle),
+                        .ktlUserTheme .knTable td.ktlStickyCell:not([style*="background"]):not(.ktlInlineEditableCellsStyle) {
+                            background-color: var(--ktlStickyCellBg, ${defaultBg}) !important;
+                            color: var(--ktlStickyCellText, ${defaultText}) !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+
+                // Always set CSS variables for sticky columns
+                document.documentElement.style.setProperty('--ktlStickyHeaderBg', defaultBg);
+                document.documentElement.style.setProperty('--ktlStickyCellBg', defaultBg);
+                document.documentElement.style.setProperty('--ktlStickyCellText', defaultText);
             },
 
             viewHasInlineEdit: function (viewId) {
@@ -19163,6 +19384,9 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlTheme_tableStripedBg', tableStripedBg);
                     document.documentElement.style.setProperty('--ktlTheme_tableSummaryBg', tableSummaryBg);
                     document.documentElement.style.setProperty('--ktlTheme_tableGridColor', tableGridColor);
+                    // Sticky columns (uses table colors for theme consistency)
+                    document.documentElement.style.setProperty('--ktlStickyHeaderBg', tableHeaderBg);
+                    document.documentElement.style.setProperty('--ktlStickyCellBg', tableCellBg);
                     // Menus
                     document.documentElement.style.setProperty('--ktlTheme_navBarLinkBg', navBarLinkBg);
                     document.documentElement.style.setProperty('--ktlTheme_activeMenuColor', activeMenuColor);
@@ -19283,7 +19507,7 @@ function Ktl($, appInfo) {
                                 color: var(--ktlTheme_headersAndLabelsText) !important;
                                 border-color: var(--ktlTheme_tableGridColor) !important;
                             }
-                            .ktlUserTheme .knTable td:not([style*="background"]) {
+                            .ktlUserTheme .knTable td:not([style*="background"]):not(.ktlInlineEditableCellsStyle):not(.ktlStickyCell) {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
                                 color: var(--ktlTheme_tableCellText) !important;
                             }
@@ -19295,7 +19519,7 @@ function Ktl($, appInfo) {
                                 border-color: var(--ktlTheme_tableGridColor) !important;
                             }
                             .ktlUserTheme .kn-table.is-striped tbody tr:nth-child(even) {
-                                background-color: var(--ktlTheme_tableStripedBg) !important;
+                                background-color: var(--ktlTheme_tableStripedBg);
                             }
                             .ktlUserTheme .kn-table-totals > td {
                                 background-color: var(--ktlTheme_tableSummaryBg) !important;
