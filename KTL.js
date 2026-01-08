@@ -18727,11 +18727,13 @@ function Ktl($, appInfo) {
         //Early detection of scene change to prevent multi-rendering and flickering of views.
         //Inspired from David Roizenman's code on Slack: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
         Knack.router.on('route:viewScene', function (slug, search) {
+            ktl.scenes.syncUserPrefs(); // Sync prefs early if user already logged in
             generateUserTheme(); //Early application of user theme, before user logged-in.  Apply app's default, if any.
 
             if (!ktl.scenes.isiFrameWnd()) {
                 waitUserId()
                     .then(() => {
+                        ktl.scenes.syncUserPrefs(); // Sync prefs after authentication if not already done
                         generateUserTheme(); // Re-apply theme after authentication if it was skipped earlier (no userId) or default applied.
                         ktl.core.applyKioskMode();
                     })
@@ -19335,7 +19337,7 @@ function Ktl($, appInfo) {
                     // Menus
                     let navBarLinkBg, activeMenuColor, menuButtonBg, menuButtonBorder;
                     // Buttons
-                    let pageButtonBg;
+                    let pageButtonBg, filterButtonBg;
                     // Text
                     let bodyText, lightText, darkText, linkColor, headersAndLabelsText, tableCellText, tableSummaryText, inputFieldText, menuButtonText;
 
@@ -19382,6 +19384,9 @@ function Ktl($, appInfo) {
                         // Buttons
                         newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.99, 0.50);
                         pageButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                        newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.5, 0.4);
+                        filterButtonBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
 
                         // Text
                         newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.1, 0.85);
@@ -19430,6 +19435,7 @@ function Ktl($, appInfo) {
                             if (settings.overrides.menuButtonBorder) menuButtonBorder = settings.overrides.menuButtonBorder;
                             // Buttons
                             if (settings.overrides.pageButtonBg) pageButtonBg = settings.overrides.pageButtonBg;
+                            if (settings.overrides.filterButtonBg) filterButtonBg = settings.overrides.filterButtonBg;
                             // Text
                             if (settings.overrides.bodyText) bodyText = settings.overrides.bodyText;
                             if (settings.overrides.lightText) lightText = settings.overrides.lightText;
@@ -19463,6 +19469,7 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlTheme_menuButtonBorder', menuButtonBorder);
                     // Buttons
                     document.documentElement.style.setProperty('--ktlTheme_pageButtonBg', pageButtonBg);
+                    document.documentElement.style.setProperty('--ktlTheme_filterButtonBg', filterButtonBg);
                     // Text
                     document.documentElement.style.setProperty('--ktlTheme_bodyText', bodyText);
                     document.documentElement.style.setProperty('--ktlTheme_lightText', lightText);
@@ -19623,6 +19630,14 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .kn-subtitle {
                                 color: var(--ktlTheme_lightText) !important;
                             }
+                            .ktlUserTheme .kn-content h1,
+                            .ktlUserTheme .kn-content h2,
+                            .ktlUserTheme .kn-content h3,
+                            .ktlUserTheme .kn-content h4,
+                            .ktlUserTheme .kn-content h5,
+                            .ktlUserTheme .kn-content h6 {
+                                color: var(--ktlTheme_lightText) !important;
+                            }
                             .ktlUserTheme .kn-table,
                             .ktlUserTheme .kn-details .kn-detail-body,
                             .ktlUserTheme .kn-list .kn-detail-body,
@@ -19637,6 +19652,17 @@ function Ktl($, appInfo) {
                             }
                             .ktlUserTheme .filterControl {
                                 color: var(--ktlTheme_darkText) !important;
+                            }
+                            .ktlUserTheme .filterBtn {
+                                background-color: var(--ktlTheme_filterButtonBg) !important;
+                                color: var(--ktlTheme_darkText) !important;
+                            }
+                            .ktlUserTheme .filterBtn.public {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .filterBtn.activeFilter {
+                                outline: 2px solid var(--ktlTheme_lightText) !important;
                             }
 
                             /* Input Controls */
@@ -19832,9 +19858,6 @@ function Ktl($, appInfo) {
         }
 
         function showThemeEditor() {
-            // Sync user prefs between localStorage and database before opening editor
-            ktl.scenes.syncUserPrefs();
-
             const PRESETS = {
                 Ocean: '#3a7ca5',
                 Forest: '#4a9a6a',
@@ -19877,7 +19900,8 @@ function Ktl($, appInfo) {
                     colors: [
                         { key: 'navBarLinkBg', label: 'Buttons/Tabs Bg', sat: 0.80, light: 0.20, legacy: true },
                         { key: 'activeMenuColor', label: 'Active Menu', sat: 1.0, light: 0.8, legacy: true },
-                        { key: 'menuButtonBg', label: 'Buttons/Tabs Bg', sat: 0.6, light: 0.3, legacy: false },
+                        { key: 'menuButtonBg', label: 'Menu Buttons Bg', sat: 0.6, light: 0.3, legacy: false },
+                        { key: 'filterButtonBg', label: 'Filter Buttons Bg', sat: 0.5, light: 0.4 },
                         { key: 'menuButtonBorder', label: 'Button Border', sat: 0.6, light: 0.35, legacy: false },
                         { key: 'pageButtonBg', label: 'Submit Bg', sat: 0.99, light: 0.50 },
                     ]
@@ -22398,7 +22422,25 @@ function Ktl($, appInfo) {
 
                 // Get user prefs directly from Knack user attributes
                 const dbPrefsRaw = userAttrs.values?.[acctUserPrefsFld];
+                const localPrefs = ktl.userPrefs.getUserPrefs();
+                const localDate = localPrefs.dt || '';
+
+                // If no database prefs, upload local prefs if they exist
                 if (!dbPrefsRaw) {
+                    if (localDate) {
+                        const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
+                        const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                        if (myUserPrefsViewId && acctPrefsFld) {
+                            const apiData = { [acctPrefsFld]: JSON.stringify(localPrefs) };
+                            ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
+                                .then(() => {
+                                    ktl.log.clog('blue', 'User prefs uploaded to database (no DB prefs existed)');
+                                })
+                                .catch((err) => {
+                                    ktl.log.clog('red', 'Error uploading prefs to database: ' + err);
+                                });
+                        }
+                    }
                     return false;
                 }
 
@@ -22409,9 +22451,7 @@ function Ktl($, appInfo) {
                     return false;
                 }
 
-                const localPrefs = ktl.userPrefs.getUserPrefs();
                 const dbDate = dbPrefs.dt || '';
-                const localDate = localPrefs.dt || '';
 
                 // Helper to parse date string "MM/DD/YYYY HH:mm:ss" to Date object
                 function parsePrefsDate(dateStr) {
@@ -22422,32 +22462,66 @@ function Ktl($, appInfo) {
                     return new Date(year, month - 1, day, hours, minutes, seconds);
                 }
 
+                // Merge prefs: newer values win, but collections (savedThemes, bookmarks) are merged
+                function mergePrefs(newer, older) {
+                    const merged = { ...older, ...newer };
+                    // Merge savedThemes from both sources
+                    if (newer.userTheme?.savedThemes || older.userTheme?.savedThemes) {
+                        merged.userTheme = merged.userTheme || {};
+                        merged.userTheme.savedThemes = {
+                            ...(older.userTheme?.savedThemes || {}),
+                            ...(newer.userTheme?.savedThemes || {})
+                        };
+                    }
+                    // Merge bookmarks from both sources
+                    if (newer.bookmarks || older.bookmarks) {
+                        merged.bookmarks = {
+                            ...(older.bookmarks || {}),
+                            ...(newer.bookmarks || {})
+                        };
+                    }
+                    return merged;
+                }
+
                 const dbDateTime = parsePrefsDate(dbDate);
                 const localDateTime = parsePrefsDate(localDate);
 
-                // Compare dates to determine which is more recent
-                if (dbDateTime > localDateTime) {
-                    // Database is more recent - update localStorage
-                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(dbPrefs));
-                    ktl.log.clog('blue', 'User prefs synced from database (db: ' + dbDate + ', local: ' + localDate + ')');
-                    return true;
-                } else if (localDateTime > dbDateTime) {
-                    // Local is more recent - update database
-                    const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
-                    const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
-                    if (myUserPrefsViewId && acctPrefsFld) {
-                        const apiData = { [acctPrefsFld]: JSON.stringify(localPrefs) };
-                        ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
-                            .then(() => {
-                                ktl.log.clog('blue', 'User prefs synced to database (local: ' + localDate + ', db: ' + dbDate + ')');
-                            })
-                            .catch((err) => {
-                                ktl.log.clog('red', 'Error syncing to database: ' + err);
-                            });
-                    }
+                // If dates are equal, no sync needed
+                if (dbDateTime.getTime() === localDateTime.getTime()) {
                     return false;
                 }
-                return false;
+
+                // Merge prefs (newer takes priority, but collections are merged)
+                const newerPrefs = dbDateTime > localDateTime ? dbPrefs : localPrefs;
+                const olderPrefs = dbDateTime > localDateTime ? localPrefs : dbPrefs;
+                const mergedPrefs = mergePrefs(newerPrefs, olderPrefs);
+                mergedPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+
+                // Update localStorage with merged prefs
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(mergedPrefs));
+                ktl.log.clog('blue', 'User prefs merged (db: ' + dbDate + ', local: ' + localDate + ')');
+
+                // Upload merged prefs to database
+                const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
+                const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                if (myUserPrefsViewId && acctPrefsFld) {
+                    const apiData = { [acctPrefsFld]: JSON.stringify(mergedPrefs) };
+                    ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
+                        .then(() => {
+                            ktl.log.clog('blue', 'Merged prefs uploaded to database');
+                        })
+                        .catch((err) => {
+                            ktl.log.clog('red', 'Error uploading merged prefs: ' + err);
+                        });
+                }
+
+                // Reapply theme if userTheme changed
+                if (mergedPrefs.userTheme && (dbDateTime > localDateTime ||
+                    JSON.stringify(mergedPrefs.userTheme) !== JSON.stringify(localPrefs.userTheme))) {
+                    generateUserTheme();
+                }
+
+                return true;
             },
         }
     })(); //Scenes feature
@@ -22899,6 +22973,7 @@ function Ktl($, appInfo) {
         })
 
         $(document).on('knack-scene-render.any', function (event, scene) {
+            ktl.scenes.syncUserPrefs();
             ktl.userPrefs.ktlApplyUserPrefs();
         })
 
