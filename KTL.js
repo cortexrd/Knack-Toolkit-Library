@@ -22413,13 +22413,25 @@ function Ktl($, appInfo) {
                 const dbDate = dbPrefs.dt || '';
                 const localDate = localPrefs.dt || '';
 
+                // Helper to parse date string "MM/DD/YYYY HH:mm:ss" to Date object
+                function parsePrefsDate(dateStr) {
+                    if (!dateStr) return new Date(0);
+                    const [datePart, timePart] = dateStr.split(' ');
+                    const [month, day, year] = datePart.split('/');
+                    const [hours, minutes, seconds] = (timePart || '00:00:00').split(':');
+                    return new Date(year, month - 1, day, hours, minutes, seconds);
+                }
+
+                const dbDateTime = parsePrefsDate(dbDate);
+                const localDateTime = parsePrefsDate(localDate);
+
                 // Compare dates to determine which is more recent
-                if (dbDate > localDate) {
+                if (dbDateTime > localDateTime) {
                     // Database is more recent - update localStorage
                     ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(dbPrefs));
                     ktl.log.clog('blue', 'User prefs synced from database (db: ' + dbDate + ', local: ' + localDate + ')');
                     return true;
-                } else if (localDate > dbDate) {
+                } else if (localDateTime > dbDateTime) {
                     // Local is more recent - update database
                     const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
                     const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
