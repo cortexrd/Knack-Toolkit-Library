@@ -6616,7 +6616,7 @@ function Ktl($, appInfo) {
 
             // Row hover CSS - always generate, class only added if feature enabled at runtime
             css += `
-                .ktlTable--rowHover tbody tr:hover td:not([style*="background"]) {
+                .ktlTable--rowHover tbody tr:hover td:not([style*="background"]):not(.ktlStickyCell) {
                     background-color: var(--ktltableRowHoverBkgColor, #8882) !important;
                     transition: background-color .2s ease-out;
                 }
@@ -18144,7 +18144,8 @@ function Ktl($, appInfo) {
                         ktl.core.waitSelector('#' + viewId + ' .kn-table.knTable--rowHover')
                             .then(() => {
                                 $('#' + viewId + ' .kn-table').removeClass('knTable--rowHover').addClass('ktlTable--rowHover');
-                            });
+                            })
+                            .catch(() => { /* swallow */ });
                     } else {
                         // Knack hover disabled - just add our class
                         $('#' + viewId + ' .kn-table').addClass('ktlTable--rowHover');
