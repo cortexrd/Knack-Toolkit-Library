@@ -6616,11 +6616,11 @@ function Ktl($, appInfo) {
 
             // Row hover CSS - always generate, class only added if feature enabled at runtime
             css += `
-                .ktlTable--rowHover tbody tr:hover td:not([style*="background"]):not(.ktlStickyCell) {
+                .ktlTable--rowHover tbody tr:hover td:not([style*="background"]):not(.ktlStickyCell):not(.bulkEditSelectedRow) {
                     background-color: var(--ktltableRowHoverBkgColor, #8882) !important;
                     transition: background-color .2s ease-out;
                 }
-                .ktlTable--rowHover tbody tr:hover td[style*="background"] {
+                .ktlTable--rowHover tbody tr:hover td[style*="background"]:not(.bulkEditSelectedRow) {
                     filter: brightness(0.9);
                     transition: filter .2s ease-out;
                 }
@@ -6628,7 +6628,7 @@ function Ktl($, appInfo) {
 
             // Inline edit CSS - always generate, class only added if feature enabled at runtime
             css += `
-                td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]) {
+                td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]):not(.bulkEditSelectedRow) {
                     background-color: var(--ktlInlineEditableCellsBgColor) !important;
                 }
             `;
@@ -19527,7 +19527,7 @@ function Ktl($, appInfo) {
                                 color: var(--ktlTheme_headersAndLabelsText) !important;
                                 border-color: var(--ktlTheme_tableGridColor) !important;
                             }
-                            .ktlUserTheme .knTable td:not([style*="background"]):not(.ktlInlineEditableCellsStyle):not(.ktlStickyCell) {
+                            .ktlUserTheme .knTable td:not([style*="background"]):not(.ktlInlineEditableCellsStyle):not(.ktlStickyCell):not(.bulkEditSelectedRow) {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
                                 color: var(--ktlTheme_tableCellText) !important;
                             }
