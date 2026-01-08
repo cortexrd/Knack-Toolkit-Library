@@ -263,12 +263,12 @@ a.ktlSortDisabled {
 	margin-right: 6px;
 }
 
-/* Bulk Edit Selection - highest priority after Knack inline styles */
-td.cell-edit.bulkEditSelectedRow:not([style*="background"]) {
+/* Bulk Edit Selection - highest priority, inline styles handled via JS */
+td.cell-edit.bulkEditSelectedRow {
 	background-color: var(--bulkEditSelectedRowsCells) !important;
 }
 
-td.bulkEditSelectedCol.bulkEditSelectedRow:not([style*="background"]) {
+td.bulkEditSelectedCol.bulkEditSelectedRow {
 	border-style: dashed;
 	border-width: medium !important;
 	background-color: var(--bulkEditSelectedColsAndRows) !important;

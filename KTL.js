@@ -24126,6 +24126,30 @@ function Ktl($, appInfo) {
             }
         })
 
+        // Override inline background for bulk edit selected cells, restore when deselected
+        function updateBulkEditInlineStyles(viewId) {
+            // For cells with BOTH classes that have inline background - override it
+            $(`#${viewId} td.bulkEditSelectedCol.bulkEditSelectedRow`).each(function () {
+                const el = this;
+                if (el.style.backgroundColor && !el.dataset.bulkEditSavedBg) {
+                    el.dataset.bulkEditSavedBg = el.style.backgroundColor;
+                    el.dataset.bulkEditSavedColor = el.style.color || '';
+                    el.style.backgroundColor = '';
+                    el.style.color = '';
+                }
+            });
+            // For cells that lost one of the classes - restore saved background
+            $(`#${viewId} td[data-bulk-edit-saved-bg]`).each(function () {
+                const el = this;
+                if (!el.classList.contains('bulkEditSelectedCol') || !el.classList.contains('bulkEditSelectedRow')) {
+                    el.style.backgroundColor = el.dataset.bulkEditSavedBg;
+                    el.style.color = el.dataset.bulkEditSavedColor;
+                    delete el.dataset.bulkEditSavedBg;
+                    delete el.dataset.bulkEditSavedColor;
+                }
+            });
+        }
+
         function updateBulkOpsGuiElements(viewId = '') {
             if (!viewId) return;
 
@@ -24143,6 +24167,7 @@ function Ktl($, appInfo) {
             })
 
             const numChecked = updateBulkOpsRecIdArray(viewId);
+            updateBulkEditInlineStyles(viewId);
 
             updateHeaderCheckboxes(viewId, numChecked);
 
