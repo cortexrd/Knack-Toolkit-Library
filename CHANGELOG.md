@@ -1,6 +1,15 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.36.4    *2026-01-07*
+
+- Grid colorization improvements:
+  - Add centralized grid colorization orchestrator for deterministic color application
+  - Priority order: Knack built-in > KTL keywords > Sticky > Inline edit > Row hover > Theme
+  - Add per-view table settings support (table_design_active for hover/striped overrides)
+  - Exclude sticky cells from row hover background to prevent transparency
+  - Read design settings directly from `Knack.app.attributes.design` instead of CSS parsing
+
 ## 0.36.3    *2026-01-05*
 
 - Theme improvements:

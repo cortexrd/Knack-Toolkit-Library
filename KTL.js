@@ -19446,7 +19446,8 @@ function Ktl($, appInfo) {
                             }
 
                             /* Modal Containers and Popups */
-                            .ktlUserTheme .modal-card-head {
+                            .ktlUserTheme .modal-card-head,
+                            .ktlUserTheme .modal-card-foot {
                                 background-color: var(--ktlTheme_topHeaderBg) !important;
                                 color: var(--ktlTheme_headersAndLabelsText) !important;
                             }
@@ -19454,7 +19455,8 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
                                 color: var(--ktlTheme_lightText) !important;
                             }
-                            .ktlUserTheme .kn-modal {
+                            .ktlUserTheme .kn-modal,
+                            .ktlUserTheme #kn-filters-form .kn-filter-item:hover {
                                 background-color: var(--ktlTheme_pageBg) !important;
                             }
                             .ktlUserTheme .kn-popover.drop {
@@ -19559,6 +19561,7 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .kn-entries-summary,
                             .ktlUserTheme .ktlAddonsDiv,
                             .ktlUserTheme .kn-title,
+                            .ktlUserTheme .kn-table,
                             .ktlUserTheme .kn-info-bar,
                             .ktlUserTheme .kn-button,
                             .ktlUserTheme .kn-content,
