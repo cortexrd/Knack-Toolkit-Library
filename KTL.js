@@ -6514,6 +6514,53 @@ function Ktl($, appInfo) {
             return [Math.round(newR * 255), Math.round(newG * 255), Math.round(newB * 255)];
         }
 
+        // Adaptive bulk edit colors based on theme
+        function updateBulkEditColors(headerHex, isDarkTheme) {
+            // Use explicit isDarkTheme if provided, otherwise check body class or fall back to luminance
+            let isDark = false;
+            if (typeof isDarkTheme === 'boolean') {
+                isDark = isDarkTheme;
+            } else if (document.body.classList.contains('ktlUserTheme')) {
+                isDark = true;
+            }
+
+            const hslToRgb = (h, s, l) => {
+                let r, g, b;
+                if (s === 0) { r = g = b = l; }
+                else {
+                    const hue2rgb = (p, q, t) => {
+                        if (t < 0) t += 1; if (t > 1) t -= 1;
+                        if (t < 1 / 6) return p + (q - p) * 6 * t;
+                        if (t < 1 / 2) return q;
+                        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                        return p;
+                    };
+                    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                    const p = 2 * l - q;
+                    r = hue2rgb(p, q, h + 1 / 3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1 / 3);
+                }
+                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+            };
+
+            const bulkHue = 50 / 360; // Yellow/orange
+            const bulkSat = 0.7;
+
+            let rowsCellsRgb, colsRowsRgb, borderRgb;
+            if (isDark) {
+                rowsCellsRgb = hslToRgb(bulkHue, 0.7, 0.8);
+                colsRowsRgb = hslToRgb(bulkHue, 0.3, 0.4);
+                borderRgb = hslToRgb(bulkHue, 1.0, 0.75);
+            } else {
+                rowsCellsRgb = hslToRgb(bulkHue, 0.7, 0.8);
+                colsRowsRgb = hslToRgb(bulkHue, 0.5, 0.6);
+                borderRgb = hslToRgb(bulkHue, 0.75, 0.3);
+            }
+
+            document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', `rgb(${rowsCellsRgb.join(',')})`);
+            document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', `rgb(${colsRowsRgb.join(',')})`);
+            document.documentElement.style.setProperty('--bulkEditSelectedBorders', `rgb(${borderRgb.join(',')})`);
+        }
+
         const initSystemColors = (function () {
             // Convert hex color to {rgb, hsl, hsv} format for compatibility with derived colors
             function colorToSysFormat(hexColor) {
@@ -6592,9 +6639,8 @@ function Ktl($, appInfo) {
             document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
             if (sysColors.tableRowHoverBkgColor)
                 document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
-            document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', sysColors.header.rgb + '44');
-            document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', sysColors.header.rgb + '77');
-            document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
+
+            updateBulkEditColors(sysColors.header.rgb);
 
             document.documentElement.style.setProperty('--filterBtnClr', sysColors.filterBtnClr);
             document.documentElement.style.setProperty('--publicFilterBtnClr', sysColors.publicFilterBtnClr);
@@ -6647,6 +6693,7 @@ function Ktl($, appInfo) {
             initSystemColors: initSystemColors,
             getKnackTableSettings: getKnackTableSettings,
             generateGridColorCSS: generateGridColorCSS,
+            updateBulkEditColors: updateBulkEditColors,
             getSysColors: function () { return sysColors; },  // Synchronous accessor (colors are now init'd synchronously)
             setCfg: function (cfgObj = {}) {
                 ktl.systemColors.getSystemColors().then(() => {
@@ -19270,6 +19317,10 @@ function Ktl($, appInfo) {
                     const logoEl = document.querySelector('.knHeader__logo-image');
                     if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
                 }
+                // Reset bulk edit colors for light theme
+                const sysColors = ktl.systemColors.getSysColors();
+                if (sysColors?.header?.rgb)
+                    ktl.systemColors.updateBulkEditColors(sysColors.header.rgb, false);
                 return;
             }
 
@@ -19423,6 +19474,9 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlTheme_inputFieldText', inputFieldText);
                     document.documentElement.style.setProperty('--ktlTheme_menuButtonText', menuButtonText);
 
+                    // Update bulk edit colors to match theme (dark mode = true)
+                    ktl.systemColors.updateBulkEditColors(headerRgb, true);
+
                     let existingStyle = document.getElementById('ktlUserThemeStyles');
                     if (!existingStyle) {
                         existingStyle = document.createElement('style');
@@ -19531,7 +19585,7 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
                                 color: var(--ktlTheme_tableCellText) !important;
                             }
-                            .ktlUserTheme .knTable td {
+                            .ktlUserTheme .knTable td:not(.bulkEditSelectedCol) {
                                 border-color: var(--ktlTheme_tableGridColor) !important;
                             }
                             .ktlUserTheme .kn-content .fc-widget-header,
@@ -20432,6 +20486,10 @@ function Ktl($, appInfo) {
                         const logoEl = document.querySelector('.knHeader__logo-image');
                         if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
                     }
+                    // Reset bulk edit colors for light theme
+                    const sysColors = ktl.systemColors.getSysColors();
+                    if (sysColors?.header?.rgb)
+                        ktl.systemColors.updateBulkEditColors(sysColors.header.rgb, false);
                     return;
                 }
                 generateUserTheme({
@@ -24128,8 +24186,8 @@ function Ktl($, appInfo) {
 
         // Override inline background for bulk edit selected cells, restore when deselected
         function updateBulkEditInlineStyles(viewId) {
-            // For cells with BOTH classes that have inline background - override it
-            $(`#${viewId} td.bulkEditSelectedCol.bulkEditSelectedRow`).each(function () {
+            // For ALL cells with bulkEditSelectedRow that have inline background - override it
+            $(`#${viewId} td.bulkEditSelectedRow`).each(function () {
                 const el = this;
                 if (el.style.backgroundColor && !el.dataset.bulkEditSavedBg) {
                     el.dataset.bulkEditSavedBg = el.style.backgroundColor;
@@ -24138,10 +24196,10 @@ function Ktl($, appInfo) {
                     el.style.color = '';
                 }
             });
-            // For cells that lost one of the classes - restore saved background
+            // For cells that lost the class - restore saved background
             $(`#${viewId} td[data-bulk-edit-saved-bg]`).each(function () {
                 const el = this;
-                if (!el.classList.contains('bulkEditSelectedCol') || !el.classList.contains('bulkEditSelectedRow')) {
+                if (!el.classList.contains('bulkEditSelectedRow')) {
                     el.style.backgroundColor = el.dataset.bulkEditSavedBg;
                     el.style.color = el.dataset.bulkEditSavedColor;
                     delete el.dataset.bulkEditSavedBg;
