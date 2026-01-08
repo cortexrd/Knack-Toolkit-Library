@@ -19615,7 +19615,6 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .kn-entries-summary,
                             .ktlUserTheme .ktlAddonsDiv,
                             .ktlUserTheme .kn-title,
-                            .ktlUserTheme .kn-table,
                             .ktlUserTheme .kn-info-bar,
                             .ktlUserTheme .kn-button,
                             .ktlUserTheme .kn-content,
@@ -19624,6 +19623,7 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .kn-subtitle {
                                 color: var(--ktlTheme_lightText) !important;
                             }
+                            .ktlUserTheme .kn-table,
                             .ktlUserTheme .kn-details .kn-detail-body,
                             .ktlUserTheme .kn-list .kn-detail-body,
                             .ktlUserTheme .kn-map-list .kn-detail-body {
@@ -20146,6 +20146,7 @@ function Ktl($, appInfo) {
                     currentSettings.enabled = true;
                     currentSettings.mode = 'dark';
                     currentSettings.active = 'preset_' + name;
+                    savedColorBox.style.backgroundColor = color;
                     updateThemeNameDisplay();
                     // Update mode buttons to reflect dark mode
                     modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
@@ -20191,20 +20192,30 @@ function Ktl($, appInfo) {
             themeNameDisplay.className = 'ktlThemeEditorThemeName';
             themeNameDisplay.style.fontWeight = '500';
 
+            function isDirty() {
+                return JSON.stringify(currentSettings) !== JSON.stringify(originalSettings);
+            }
+
             function updateThemeNameDisplay() {
                 if (currentSettings.active) {
-                    const displayName = currentSettings.active.startsWith('preset_')
+                    let displayName = currentSettings.active.startsWith('preset_')
                         ? currentSettings.active.replace('preset_', '') + ' (preset)'
                         : currentSettings.active;
+                    // Show (modified) if there are changes, but not for clean preset selection
+                    // Clean preset = preset selected with no overrides
+                    const hasOverrides = Object.keys(currentSettings.overrides).length > 0;
+                    const isCleanPreset = currentSettings.preset && !hasOverrides;
+                    if (!isCleanPreset && isDirty()) {
+                        displayName += ' (modified)';
+                    }
                     themeNameDisplay.textContent = displayName;
+                    themeNameDisplay.style.fontStyle = 'normal';
                 } else {
                     themeNameDisplay.textContent = '(unsaved)';
                     themeNameDisplay.style.fontStyle = 'italic';
                 }
-                if (currentSettings.active) {
-                    themeNameDisplay.style.fontStyle = 'normal';
-                }
             }
+
             updateThemeNameDisplay();
 
             themeNameGroup.appendChild(themeNameLabel);
@@ -20234,7 +20245,7 @@ function Ktl($, appInfo) {
                 }
                 tooltip = document.createElement('div');
                 tooltip.className = 'ktlThemeEditorTooltip';
-                tooltip.innerHTML = '<b>Driving Color:</b> Changing this header color will automatically recalculate all element colors based on it.';
+                tooltip.innerHTML = '<b>Driving Color:</b> Changing this header color will automatically recalculate all element colors below based on it.';
                 headerSection.appendChild(tooltip);
                 const closeTooltip = (evt) => {
                     if (!tooltip.contains(evt.target) && evt.target !== helpIcon) {
@@ -20321,6 +20332,7 @@ function Ktl($, appInfo) {
                         b.classList.toggle('active', isDefault || isMode);
                     });
                     updateElementColors(true);
+                    updateThemeNameDisplay();
                     applyPreview();
                 }
             });
@@ -20366,7 +20378,7 @@ function Ktl($, appInfo) {
             // Element Colors Section
             const elementsSection = document.createElement('div');
             elementsSection.className = 'ktlThemeEditorSection ktlThemeEditorElementsSection';
-            elementsSection.innerHTML = '<div class="ktlThemeEditorLabel">Element Colors</div>';
+            elementsSection.innerHTML = '<div class="ktlThemeEditorLabel">Element Colors Overrides</div>';
             const elementColorInputs = {};
 
             function deriveColor(headerHex, sat, light) {
@@ -20419,6 +20431,7 @@ function Ktl($, appInfo) {
                             hexInput.classList.add('ktlThemeEditorOverridden');
                         }
                         hexInput.value = colorInput.value;
+                        updateThemeNameDisplay();
                         applyPreview();
                     });
 
@@ -20438,6 +20451,7 @@ function Ktl($, appInfo) {
                                 hexInput.classList.add('ktlThemeEditorOverridden');
                             }
                             colorInput.value = hexInput.value;
+                            updateThemeNameDisplay();
                             applyPreview();
                         }
                     });
@@ -20527,9 +20541,8 @@ function Ktl($, appInfo) {
             saveBtn.textContent = 'Save';
             saveBtn.addEventListener('click', async () => {
                 // If Default mode is selected, save as KnackDefault without prompting
-                if (!currentSettings.enabled) {
-                    currentSettings.active = 'KnackDefault';
-                    updateThemeNameDisplay();
+                if (currentSettings.active === 'KnackDefault') {
+                    currentSettings.enabled = false;
                     saveThemeSettings(currentSettings);
                     originalSettings = JSON.parse(JSON.stringify(currentSettings));
                     ktl.core.timedPopup('Default theme saved!', 'success', 2000);
@@ -20548,61 +20561,53 @@ function Ktl($, appInfo) {
 
                 const savedThemes = getSavedThemes();
                 const themeNames = Object.keys(savedThemes);
-                const options = ['Save as Active Theme', 'Save as New Theme...'];
+
+                // Build dialog title with current theme name
+                const displayName = currentSettings.active
+                    ? (currentSettings.active.startsWith('preset_')
+                        ? currentSettings.active.replace('preset_', '') + ' (preset)'
+                        : currentSettings.active)
+                    : '(unsaved)';
+                const dialogTitle = 'Save Theme: ' + displayName;
+
+                // Check if current theme is a saved user theme (not preset, not special)
+                const isUserTheme = currentSettings.active &&
+                    !currentSettings.active.startsWith('preset_') &&
+                    currentSettings.active !== 'AppPreset' &&
+                    currentSettings.active !== 'KnackDefault' &&
+                    savedThemes[currentSettings.active];
+
+                // Build options
+                let options = [];
+                if (isUserTheme) {
+                    options.push('Save: ' + currentSettings.active);
+                }
+                options.push('Save as New Theme...');
                 if (themeNames.length > 0) {
                     options.push('Overwrite Existing...');
                 }
-                const choice = await ktl.core.selectOption('Save Theme', options.join(','));
-                if (choice === 0) {
-                    // Save as active theme
-                    if (currentSettings.preset) {
-                        // Preset selected - use preset name
-                        currentSettings.active = 'preset_' + currentSettings.preset;
-                        updateThemeNameDisplay();
-                        saveThemeSettings(currentSettings);
-                        originalSettings = JSON.parse(JSON.stringify(currentSettings));
-                        savedColorBox.style.backgroundColor = originalSettings.headerColor;
-                        savedColorBox.title = 'Click to load saved settings';
-                        ktl.core.timedPopup('Theme saved as active!', 'success', 2000);
-                    } else if (currentSettings.active && !currentSettings.active.startsWith('preset_')) {
-                        // Already has a user-defined name - save to savedThemes and keep it active
-                        const name = currentSettings.active;
-                        if (savedThemes[name]) {
-                            const confirm = await ktl.core.selectOption('Theme "' + name + '" already exists. Overwrite?', 'Yes,No');
-                            if (confirm !== 0) return;
-                        }
-                        savedThemes[name] = {
-                            headerColor: currentSettings.headerColor,
-                            overrides: { ...currentSettings.overrides }
-                        };
-                        updateThemeNameDisplay();
-                        saveThemeSettings(currentSettings, savedThemes);
-                        originalSettings = JSON.parse(JSON.stringify(currentSettings));
-                        savedColorBox.style.backgroundColor = originalSettings.headerColor;
-                        savedColorBox.title = 'Click to load saved settings';
-                        ktl.core.timedPopup('Theme "' + name + '" saved!', 'success', 2000);
-                    } else {
-                        // Custom colors without name - prompt for name
-                        const userAttrs = Knack.getUserAttributes();
-                        const firstName = userAttrs && userAttrs.values && userAttrs.values.name ? userAttrs.values.name.first : '';
-                        const defaultName = firstName ? firstName + ' Theme' : '';
-                        const themeName = await ktl.core.selectOption('Enter a name for this theme:', 'ktlOther:Theme Name', defaultName);
-                        if (typeof themeName === 'string' && themeName.trim()) {
-                            const name = themeName.trim();
-                            currentSettings.active = name;
-                            updateThemeNameDisplay();
-                            savedThemes[name] = {
-                                headerColor: currentSettings.headerColor,
-                                overrides: { ...currentSettings.overrides }
-                            };
-                            saveThemeSettings(currentSettings, savedThemes);
-                            originalSettings = JSON.parse(JSON.stringify(currentSettings));
-                            savedColorBox.style.backgroundColor = originalSettings.headerColor;
-                            savedColorBox.title = 'Click to load saved settings';
-                            ktl.core.timedPopup('Theme "' + name + '" saved!', 'success', 2000);
-                        }
-                    }
-                } else if (choice === 1) {
+
+                const choice = await ktl.core.selectOption(dialogTitle, options.join(','));
+
+                // Calculate actual choice based on whether "Save: ThemeName" was shown
+                let saveCurrentIdx = isUserTheme ? 0 : -1;
+                let saveNewIdx = isUserTheme ? 1 : 0;
+                let overwriteIdx = isUserTheme ? 2 : 1;
+
+                if (choice === saveCurrentIdx && isUserTheme) {
+                    // Quick save to current theme
+                    const name = currentSettings.active;
+                    savedThemes[name] = {
+                        headerColor: currentSettings.headerColor,
+                        overrides: { ...currentSettings.overrides }
+                    };
+                    saveThemeSettings(currentSettings, savedThemes);
+                    originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                    savedColorBox.style.backgroundColor = originalSettings.headerColor;
+                    savedColorBox.title = 'Click to load saved settings';
+                    updateThemeNameDisplay();
+                    ktl.core.timedPopup('Theme "' + name + '" saved!', 'success', 2000);
+                } else if (choice === saveNewIdx) {
                     // Save as new named theme
                     let defaultName = currentSettings.active;
                     if (!defaultName || defaultName.startsWith('preset_') || defaultName === 'AppPreset' || defaultName === 'KnackDefault') {
@@ -20619,27 +20624,31 @@ function Ktl($, appInfo) {
                         }
                         currentSettings.active = name;
                         updateThemeNameDisplay();
-                        // Only save headerColor and overrides in savedThemes
                         savedThemes[name] = {
                             headerColor: currentSettings.headerColor,
                             overrides: { ...currentSettings.overrides }
                         };
                         saveThemeSettings(currentSettings, savedThemes);
+                        originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                        savedColorBox.style.backgroundColor = originalSettings.headerColor;
+                        savedColorBox.title = 'Click to load saved settings';
                         ktl.core.timedPopup('Theme "' + name + '" saved!', 'success', 2000);
                     }
-                } else if (choice === 2 && themeNames.length > 0) {
+                } else if (choice === overwriteIdx && themeNames.length > 0) {
                     // Overwrite existing
                     const themeChoice = await ktl.core.selectOption('Select theme to overwrite:', themeNames.join(','));
                     if (themeChoice >= 0 && themeChoice < themeNames.length) {
                         const selectedName = themeNames[themeChoice];
                         currentSettings.active = selectedName;
                         updateThemeNameDisplay();
-                        // Only save headerColor and overrides in savedThemes
                         savedThemes[selectedName] = {
                             headerColor: currentSettings.headerColor,
                             overrides: { ...currentSettings.overrides }
                         };
                         saveThemeSettings(currentSettings, savedThemes);
+                        originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                        savedColorBox.style.backgroundColor = originalSettings.headerColor;
+                        savedColorBox.title = 'Click to load saved settings';
                         ktl.core.timedPopup('Theme "' + selectedName + '" updated!', 'success', 2000);
                     }
                 }
@@ -20664,7 +20673,7 @@ function Ktl($, appInfo) {
                     loadSavedSettings();
                     updateThemeNameDisplay();
                 } else if (choice > 0 && choice <= themeNames.length) {
-                    // Load named theme
+                    // Load named theme - auto-apply as active
                     const selectedName = themeNames[choice - 1];
                     const themeData = savedThemes[selectedName];
                     if (themeData) {
@@ -20676,6 +20685,10 @@ function Ktl($, appInfo) {
                         currentSettings.enabled = true;
                         currentSettings.mode = 'dark';
                         currentSettings.active = selectedName;
+                        // Auto-save as active theme so it persists after refresh
+                        saveThemeSettings(currentSettings, savedThemes);
+                        originalSettings = JSON.parse(JSON.stringify(currentSettings));
+                        savedColorBox.style.backgroundColor = currentSettings.headerColor;
                         updateThemeNameDisplay();
                         headerColorInput.value = currentSettings.headerColor;
                         headerColorHex.value = currentSettings.headerColor;
@@ -20683,11 +20696,13 @@ function Ktl($, appInfo) {
                             b.classList.remove('active');
                         });
                         modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
-                            b.classList.toggle('active', b.dataset.mode === 'dark');
+                            const isDefault = !currentSettings.enabled && b.dataset.mode === 'default';
+                            const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
+                            b.classList.toggle('active', isDefault || isMode);
                         });
                         updateElementColors(true);
                         applyPreview();
-                        ktl.core.timedPopup('Theme "' + selectedName + '" loaded!', 'success', 2000);
+                        ktl.core.timedPopup('Theme "' + selectedName + '" applied!', 'success', 2000);
                     }
                 } else if (choice === themeNames.length + 1) {
                     // Rename a theme
@@ -20740,18 +20755,20 @@ function Ktl($, appInfo) {
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'ktlThemeEditorBtn';
             cancelBtn.textContent = 'Cancel';
-            cancelBtn.addEventListener('click', () => {
-                currentSettings = JSON.parse(JSON.stringify(originalSettings));
-                applyPreview();
-                editor.remove();
-            });
+            cancelBtn.addEventListener('click', closeEditor);
 
             const shareBtn = document.createElement('button');
             shareBtn.className = 'ktlThemeEditorBtn';
             shareBtn.textContent = 'Share';
             shareBtn.title = 'Export or import theme via clipboard';
             shareBtn.addEventListener('click', async () => {
-                const choice = await ktl.core.selectOption('Share Theme', 'Export to Clipboard,Export as Keyword,Import from Clipboard');
+                const isDev = ktl.account.isDeveloper();
+                let options = ['Export to Clipboard'];
+                if (isDev) options.push('Export as Keyword');
+                options.push('Import from Clipboard');
+                const choice = await ktl.core.selectOption('Share Theme', options.join(','));
+                const exportKeywordIdx = isDev ? 1 : -1;
+                const importIdx = isDev ? 2 : 1;
                 if (choice === 0) {
                     // Export JSON - ask for name
                     const userAttrs = Knack.getUserAttributes();
@@ -20773,8 +20790,8 @@ function Ktl($, appInfo) {
                             ktl.core.timedPopup('Failed to copy to clipboard', 'error', 2000);
                         });
                     }
-                } else if (choice === 1) {
-                    // Export as _theme keyword for KTL Settings
+                } else if (choice === exportKeywordIdx) {
+                    // Export as _theme keyword for KTL Settings (developers only)
                     const parts = ['[headerColor, ' + currentSettings.headerColor + ']'];
                     const overrides = currentSettings.overrides || {};
                     Object.keys(overrides).forEach(key => {
@@ -20788,7 +20805,7 @@ function Ktl($, appInfo) {
                     }).catch(() => {
                         ktl.core.timedPopup('Failed to copy to clipboard', 'error', 2000);
                     });
-                } else if (choice === 2) {
+                } else if (choice === importIdx) {
                     // Import - validate first, then apply for preview
                     let clipText;
                     try {
@@ -20836,7 +20853,9 @@ function Ktl($, appInfo) {
                         b.classList.remove('active');
                     });
                     modeGroup.querySelectorAll('.ktlThemeEditorModeBtn').forEach(b => {
-                        b.classList.toggle('active', b.dataset.mode === 'dark');
+                        const isDefault = !currentSettings.enabled && b.dataset.mode === 'default';
+                        const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
+                        b.classList.toggle('active', isDefault || isMode);
                     });
                     updateElementColors(true);
                     applyPreview();
@@ -20867,7 +20886,14 @@ function Ktl($, appInfo) {
             }
 
             // Close button and Esc key
-            function closeEditor() {
+            async function closeEditor() {
+                // Check if there are unsaved changes
+                const hasOverrides = Object.keys(currentSettings.overrides).length > 0;
+                const isCleanPreset = currentSettings.preset && !hasOverrides;
+                if (!isCleanPreset && isDirty()) {
+                    const confirm = await ktl.core.selectOption('Discard unsaved changes?', 'Yes,No');
+                    if (confirm !== 0) return; // User chose No, stay in editor
+                }
                 currentSettings = JSON.parse(JSON.stringify(originalSettings));
                 applyPreview();
                 document.removeEventListener('keydown', editorKeyHandler);
@@ -20975,7 +21001,7 @@ function Ktl($, appInfo) {
                 ktl.core.knAPI(myUserPrefsViewId, userId, apiData, 'PUT', [], false)
                     .then(() => {
                         ktl.log.clog('green', 'Theme settings saved to database');
-                        ktl.core.timedPopup('Theme saved');
+                        //ktl.core.timedPopup('Theme uploaded to user preferences');
                     })
                     .catch((err) => {
                         ktl.log.clog('red', 'Error saving theme settings: ' + err);
