@@ -6443,9 +6443,10 @@ function Ktl($, appInfo) {
         }
 
         // Read Knack table settings for colorization decisions
-        function getKnackTableSettings() {
+        // Per-view settings override global if table_design_active is true
+        function getKnackTableSettings(viewId) {
             const design = Knack.app.attributes.design;
-            return {
+            const globalSettings = {
                 style: design?.general?.tables?.style || 'borders',      // "borders" | "clean"
                 hover: design?.general?.tables?.hover ?? true,           // Knack's hover setting
                 striped: design?.general?.tables?.striped ?? false,      // Alternating row colors
@@ -6453,6 +6454,21 @@ function Ktl($, appInfo) {
                 dividers: design?.general?.tables?.dividers ?? true,
                 border: design?.general?.tables?.border ?? true
             };
+
+            if (viewId) {
+                const viewModel = Knack.views[viewId]?.model?.view;
+                const sceneView = viewModel?.scene?.views?.find(v => v.key === viewId);
+                if (sceneView?.table_design_active) {
+                    const viewDesign = sceneView.table_design;
+                    return {
+                        ...globalSettings,
+                        hover: viewDesign?.hover ?? globalSettings.hover,
+                        striped: viewDesign?.striped ?? globalSettings.striped
+                    };
+                }
+            }
+
+            return globalSettings;
         }
 
         function adjustRGB_sl(hexColor, saturation, lightness) {
@@ -6574,7 +6590,8 @@ function Ktl($, appInfo) {
 
             document.documentElement.style.setProperty('--ktlInlineEditableCellsBgColor', sysColors.inlineEditBkgColor);
             document.documentElement.style.setProperty('--ktlInlineEditableCellsFontWeight', sysColors.inlineEditFontWeight);
-            document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
+            if (sysColors.tableRowHoverBkgColor)
+                document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
             document.documentElement.style.setProperty('--bulkEditSelectedRowsCells', sysColors.header.rgb + '44');
             document.documentElement.style.setProperty('--bulkEditSelectedColsAndRows', sysColors.header.rgb + '77');
             document.documentElement.style.setProperty('--bulkEditSelectedBorders', sysColors.header.rgb);
@@ -6597,34 +6614,24 @@ function Ktl($, appInfo) {
 
             let css = '';
 
-            // Row hover CSS - only if KTL hover is enabled
-            // Removes Knack's default hover via class swap in orchestrator, applies KTL's color
-            if (ktlCfg.rowHoverHighlight) {
-                css += `
-                    .ktlTable--rowHover tbody tr:hover td:not([style*="background"]) {
-                        background-color: var(--ktltableRowHoverBkgColor) !important;
-                        transition: background-color .2s ease-out;
-                    }
-                `;
-            }
+            // Row hover CSS - always generate, class only added if feature enabled at runtime
+            css += `
+                .ktlTable--rowHover tbody tr:hover td:not([style*="background"]) {
+                    background-color: var(--ktltableRowHoverBkgColor, #8882) !important;
+                    transition: background-color .2s ease-out;
+                }
+                .ktlTable--rowHover tbody tr:hover td[style*="background"] {
+                    filter: brightness(0.9);
+                    transition: filter .2s ease-out;
+                }
+            `;
 
-            // Inline edit CSS - ensure it works with both table styles
-            if (ktlCfg.inlineEditColor) {
-                css += `
-                    td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]) {
-                        background-color: var(--ktlInlineEditableCellsBgColor) !important;
-                    }
-                `;
-            }
-
-            // Striped rows - ensure hover/inline edit colors respect striping
-            if (knackSettings.striped) {
-                css += `
-                    .kn-table.is-striped tbody tr:nth-child(even) td.ktlInlineEditableCellsStyle:not([style*="background"]) {
-                        background-color: var(--ktlInlineEditableCellsBgColor) !important;
-                    }
-                `;
-            }
+            // Inline edit CSS - always generate, class only added if feature enabled at runtime
+            css += `
+                td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]) {
+                    background-color: var(--ktlInlineEditableCellsBgColor) !important;
+                }
+            `;
 
             if (css) {
                 const styleEl = document.createElement('style');
@@ -6654,7 +6661,7 @@ function Ktl($, appInfo) {
                     }
 
                     if (typeof cfgObj.tableRowHoverBkgColor !== 'undefined') {
-                        sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor;
+                        sysColors.tableRowHoverBkgColor = cfgObj.tableRowHoverBkgColor || '#8882';
                         document.documentElement.style.setProperty('--ktltableRowHoverBkgColor', sysColors.tableRowHoverBkgColor);
                     }
                 })
@@ -18124,14 +18131,24 @@ function Ktl($, appInfo) {
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType !== 'table' && viewType !== 'search') return;
 
-                const knackSettings = ktl.systemColors.getKnackTableSettings();
+                const knackSettings = ktl.systemColors.getKnackTableSettings(viewId);
                 const sysColors = ktl.systemColors.getSysColors();
 
                 // Layer 6: Theme - already applied via CSS (lowest priority)
 
                 // Layer 5: Row hover (lowest colorization priority - can be overridden by all above)
-                if (ktl.core.getCfg().enabled.rowHoverHighlight && sysColors.tableRowHoverBkgColor) {
-                    $('#' + viewId + ' .kn-table').removeClass('knTable--rowHover').addClass('ktlTable--rowHover');
+                // Removing knTable--rowHover disables Knack's hover, KTL class enables ours
+                if (ktl.core.getCfg().enabled.rowHoverHighlight) {
+                    if (knackSettings.hover) {
+                        // Knack hover enabled - wait for class then swap it
+                        ktl.core.waitSelector('#' + viewId + ' .kn-table.knTable--rowHover')
+                            .then(() => {
+                                $('#' + viewId + ' .kn-table').removeClass('knTable--rowHover').addClass('ktlTable--rowHover');
+                            });
+                    } else {
+                        // Knack hover disabled - just add our class
+                        $('#' + viewId + ' .kn-table').addClass('ktlTable--rowHover');
+                    }
                 }
 
                 // Layer 4: Inline edit styling
