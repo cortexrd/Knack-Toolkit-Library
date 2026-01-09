@@ -20690,6 +20690,7 @@ function Ktl($, appInfo) {
                     const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
                     b.classList.toggle('active', isDefault || isMode);
                 });
+                setEditorControlsEnabled(currentSettings.enabled);
                 updateElementColors(true);
                 applyPreview();
             }
@@ -20864,6 +20865,7 @@ function Ktl($, appInfo) {
                             const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
                             b.classList.toggle('active', isDefault || isMode);
                         });
+                        setEditorControlsEnabled(true);
                         updateElementColors(true);
                         applyPreview();
                         ktl.core.timedPopup('Theme "' + selectedName + '" applied!', 'success', 2000);
@@ -21022,6 +21024,7 @@ function Ktl($, appInfo) {
                         const isMode = currentSettings.enabled && b.dataset.mode === currentSettings.mode;
                         b.classList.toggle('active', isDefault || isMode);
                     });
+                    setEditorControlsEnabled(true);
                     updateElementColors(true);
                     applyPreview();
                     const importedName = importData.name ? '"' + importData.name + '" ' : '';
