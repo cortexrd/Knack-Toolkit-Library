@@ -8268,7 +8268,7 @@ function Ktl($, appInfo) {
                         command = 'PUT';
                     }
 
-                    ktl.log.clog('blue', 'Uploading user filters...');
+                    ktl.log.clog('lightblue', 'Uploading user filters...');
                     ktl.core.knAPI(viewId, recId, apiData, command, [viewId])
                         .then(function (response) { ktl.log.clog('green', 'User filters uploaded successfully!'); })
                         .catch(function (reason) { alert('An error occurred while uploading User filters in table, reason: ' + JSON.stringify(reason)); })
@@ -8279,7 +8279,7 @@ function Ktl($, appInfo) {
             downloadUserFilters: function (newUserFiltersData = {}) {
                 if (!newUserFiltersData.newUserFilters || $.isEmptyObject(newUserFiltersData.newUserFilters)) return;
                 try {
-                    ktl.log.clog('blue', 'Downloading user filters...');
+                    ktl.log.clog('lightblue', 'Downloading user filters...');
                     const userFilters = newUserFiltersData.newUserFilters;
                     setUserFilters(userFilters, false);
 
@@ -8325,7 +8325,7 @@ function Ktl($, appInfo) {
                         command = 'PUT';
                     }
 
-                    ktl.log.clog('blue', 'Uploading public filters...');
+                    ktl.log.clog('lightblue', 'Uploading public filters...');
                     ktl.core.knAPI(viewId, recId, apiData, command, [viewId])
                         .then(function (response) { ktl.log.clog('green', 'Public filters uploaded successfully!'); })
                         .catch(function (reason) { alert('An error occurred while uploading Public filters in table, reason: ' + JSON.stringify(reason)); })
@@ -8337,7 +8337,7 @@ function Ktl($, appInfo) {
                 if (!newPublicFiltersData.newPublicFilters || $.isEmptyObject(newPublicFiltersData.newPublicFilters)) return;
 
                 try {
-                    ktl.log.clog('blue', 'Downloading Public filters...');
+                    ktl.log.clog('lightblue', 'Downloading Public filters...');
                     const publicFilters = newPublicFiltersData.newPublicFilters;
                     setPublicFilters(publicFilters, false);
 
@@ -18329,7 +18329,7 @@ function Ktl($, appInfo) {
                         bulkOpsRecordsArray.forEach(newRequest => {
                             const queue = automatedBulkOpsQueue[bulkOpsViewId];
                             if (!queue.some(request => request.id === newRequest.id)) {
-                                ktl.log.clog('blue', 'New entry added', bulkOpsViewId, newRequest);
+                                ktl.log.clog('lightblue', 'New entry added', bulkOpsViewId, newRequest);
                                 queue.push(newRequest);
                             }
                         });
@@ -22506,7 +22506,7 @@ function Ktl($, appInfo) {
                             const apiData = { [acctPrefsFld]: JSON.stringify(localPrefs) };
                             ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
                                 .then(() => {
-                                    ktl.log.clog('blue', 'User prefs uploaded to database (no DB prefs existed)');
+                                    ktl.log.clog('lightblue', 'User prefs uploaded to database (no DB prefs existed)');
                                 })
                                 .catch((err) => {
                                     ktl.log.clog('red', 'Error uploading prefs to database: ' + err);
@@ -22578,7 +22578,7 @@ function Ktl($, appInfo) {
 
                 // Update localStorage with merged prefs
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(mergedPrefs));
-                ktl.log.clog('blue', 'User prefs merged (db: ' + dbDate + ', local: ' + localDate + ')');
+                ktl.log.clog('lightblue', 'User prefs merged (db: ' + dbDate + ', local: ' + localDate + ')');
 
                 // Upload merged prefs to database
                 const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
@@ -22587,7 +22587,7 @@ function Ktl($, appInfo) {
                     const apiData = { [acctPrefsFld]: JSON.stringify(mergedPrefs) };
                     ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
                         .then(() => {
-                            ktl.log.clog('blue', 'Merged prefs uploaded to database');
+                            ktl.log.clog('lightblue', 'Merged prefs uploaded to database');
                         })
                         .catch((err) => {
                             ktl.log.clog('red', 'Error uploading merged prefs: ' + err);
@@ -22969,7 +22969,7 @@ function Ktl($, appInfo) {
                                 .catch(failure => { ktl.log.clog('red', 'reloadAppMsg failure: ' + failure); })
                         } else {
                             if (prefsStr && (prefsStr !== lastUserPrefs)) {
-                                ktl.log.clog('blue', 'Prefs have changed!!!!');
+                                ktl.log.clog('lightblue', 'Prefs have changed!!!!');
                                 console.log('curUserPrefsView - DB prefs userTheme:', JSON.parse(prefsStr).userTheme);
                                 console.log('curUserPrefsView - localStorage userTheme:', ktl.userPrefs.getUserPrefs().userTheme);
 
@@ -23605,7 +23605,7 @@ function Ktl($, appInfo) {
                     apiData[ktl.iFrameWnd.getCfg().appSettingsItemFld] = 'APP_KTL_VERSIONS';
                     apiData[ktl.iFrameWnd.getCfg().appSettingsValueFld] = APP_KTL_VERSIONS;
                     apiData[ktl.iFrameWnd.getCfg().appSettingsDateTimeFld] = ktl.core.getCurrentDateTime(true, true, false, true);
-                    ktl.log.clog('blue', 'Creating APP_KTL_VERSIONS entry...');
+                    ktl.log.clog('lightblue', 'Creating APP_KTL_VERSIONS entry...');
                     ktl.core.knAPI(view.key, null, apiData, 'POST', [view.key])
                         .then(function (response) { ktl.log.clog('green', 'APP_KTL_VERSIONS entry created successfully!'); })
                         .catch(function (reason) { alert('An error occurred while creating APP_KTL_VERSIONS in table, reason: ' + JSON.stringify(reason)); })
@@ -23850,7 +23850,7 @@ function Ktl($, appInfo) {
                     document.body.appendChild(iFrameWnd);
                     ktl.iFrameWnd.showIFrame(ktl.userPrefs.getUserPrefs().showIframeWnd);
 
-                    //ktl.log.clog('blue', 'Created iFrameWnd');
+                    //ktl.log.clog('lightblue', 'Created iFrameWnd');
 
                     //If creation fails, re-create.
                     iFrameTimeout = setTimeout(() => {
