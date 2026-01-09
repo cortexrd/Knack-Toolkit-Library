@@ -23483,6 +23483,65 @@ function Ktl($, appInfo) {
             { type: ktl.const.LS_NAVIGATION, typeStr: 'Navigation' },
         ];
 
+        function migrateUserFiltersToUserPrefs(tableFilters, recordId) {
+            if (!cfg.acctUserPrefsFld || !ktl.userPrefs.getCfg().myUserPrefsViewId) {
+                ktl.log.clog('orange', 'Cannot migrate: User Prefs field not configured');
+                return;
+            }
+
+            ktl.log.clog('lightblue', 'Migrating user filters to User Prefs...');
+
+            const filtersToMigrate = { ...tableFilters };
+            delete filtersToMigrate.migrated;
+
+            const userPrefsObj = ktl.userPrefs.getUserPrefs();
+            const existingFilters = userPrefsObj.userFilters || {};
+
+            userPrefsObj.userFilters = { ...existingFilters };
+            Object.keys(filtersToMigrate).forEach(key => {
+                if (key !== 'dt') {
+                    userPrefsObj.userFilters[key] = filtersToMigrate[key];
+                }
+            });
+
+            userPrefsObj.userFilters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+            userPrefsObj.dt = userPrefsObj.userFilters.dt;
+
+            ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+            ktl.storage.lsSetItem(LS_UF, JSON.stringify(userPrefsObj.userFilters));
+
+            const userAttrs = Knack.getUserAttributes();
+            const apiData = { [cfg.acctUserPrefsFld]: JSON.stringify(userPrefsObj) };
+
+            ktl.core.knAPI(ktl.userPrefs.getCfg().myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
+                .then(() => {
+                    ktl.log.clog('green', 'User filters migrated to User Prefs successfully');
+                    markUserFiltersAsMigrated(recordId, filtersToMigrate);
+                })
+                .catch(err => {
+                    ktl.log.clog('red', 'Failed to migrate user filters: ' + err);
+                });
+        }
+
+        function markUserFiltersAsMigrated(recordId, originalFilters) {
+            if (!cfg.userFiltersViewId || !cfg.userFiltersCodeFld || !recordId) return;
+
+            const markedFilters = { ...originalFilters, migrated: 'success' };
+
+            const apiData = {
+                [cfg.userFiltersCodeFld]: JSON.stringify(markedFilters),
+                [cfg.userFiltersDateTimeFld]: ktl.core.getCurrentDateTime(true, true, false, true)
+            };
+
+            ktl.core.knAPI(cfg.userFiltersViewId, recordId, apiData, 'PUT', [cfg.userFiltersViewId])
+                .then(() => {
+                    ktl.log.clog('green', 'User Filters table record marked as migrated');
+                })
+                .catch(err => {
+                    ktl.log.clog('orange', 'Could not mark record as migrated: ' + err);
+                });
+        }
+
         $(document).ready(() => {
             if (ktl.scenes.isiFrameWnd())
                 document.querySelector('#knack-body').classList.add('iFrameWnd');
@@ -23523,11 +23582,28 @@ function Ktl($, appInfo) {
                         .catch(function () { })
                 }
             } else if (view.key === cfg.userFiltersViewId) {
+                const canMigrate = cfg.acctUserPrefsFld && ktl.userPrefs.getCfg().myUserPrefsViewId;
+
                 var newUserFilters = '';
                 if (data.length)
                     newUserFilters = data[0][cfg.userFiltersCodeFld];
 
                 try {
+                    if (newUserFilters && newUserFilters.length > 1) {
+                        var parsedFilters = JSON.parse(newUserFilters);
+
+                        if (canMigrate && parsedFilters.migrated === 'success') {
+                            ktl.log.clog('purple', 'Filters already migrated - using User Prefs');
+                            return;
+                        }
+
+                        if (canMigrate && !$.isEmptyObject(parsedFilters)) {
+                            migrateUserFiltersToUserPrefs(parsedFilters, data[0].id);
+                            return;
+                        }
+                    }
+
+                    // Legacy behavior for apps without User Prefs field
                     var cloudUfDt = '';
                     var usrFiltersNeedDownload = false;
                     var usrFiltersNeedUpload = false;
@@ -23543,15 +23619,13 @@ function Ktl($, appInfo) {
                             var lastUfTempObj = JSON.parse(lastUfStr);
                             if (!$.isEmptyObject(lastUfTempObj)) {
                                 var localUfDt = lastUfTempObj.dt;
-                                //console.log('localUfDt =', localUfDt);
-                                //console.log('cloudUfDt =', cloudUfDt);
                                 if (ktl.core.isMoreRecent(cloudUfDt, localUfDt))
                                     usrFiltersNeedDownload = true;
                                 else if (!cloudUfDt || ktl.core.isMoreRecent(localUfDt, cloudUfDt))
                                     usrFiltersNeedUpload = true;
                             }
                         } catch (e) {
-                            alert('Read User Filters - Error Found Parsing Filters:', e);
+                            ktl.core.selectOption('Read User Filters - Error Found Parsing Filters: ' + e, 'OK');
                         }
                     } else
                         usrFiltersNeedDownload = true;
