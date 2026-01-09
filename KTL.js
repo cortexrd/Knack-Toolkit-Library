@@ -18819,6 +18819,16 @@ function Ktl($, appInfo) {
         let bookmarksPosition = 'bottom';
         let bookmarksMinEnabled = true; // default to true
 
+        function uploadUserPrefs(userPrefsObj) {
+            const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
+            const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+            const userAttrs = Knack.getUserAttributes();
+            if (myUserPrefsViewId && acctPrefsFld && userAttrs?.id) {
+                const apiData = { [acctPrefsFld]: JSON.stringify(userPrefsObj) };
+                ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false);
+            }
+        }
+
         function addBookmarks() {
             const bookmarksArr = ktlKeywords.ktlAppBookmarks;
             if (!Array.isArray(bookmarksArr) || ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() || !ktl.account.isLoggedIn()) return;
@@ -18901,6 +18911,7 @@ function Ktl($, appInfo) {
             userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
             ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
             ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+            uploadUserPrefs(userPrefsObj);
 
             refreshBookmarksList(bookmarks);
 
@@ -19118,6 +19129,7 @@ function Ktl($, appInfo) {
                 userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
                 ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                uploadUserPrefs(userPrefsObj);
                 refreshBookmarksList(bookmarks);
                 ktl.core.timedPopup('Bookmark deleted', 'warning', 1500);
             }
@@ -19138,6 +19150,7 @@ function Ktl($, appInfo) {
                     userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                     ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
                     ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                    uploadUserPrefs(userPrefsObj);
                     refreshBookmarksList(bookmarks);
                     ktl.core.timedPopup('Bookmark renamed', 'success', 1500);
                 }
@@ -19663,6 +19676,10 @@ function Ktl($, appInfo) {
                             }
                             .ktlUserTheme .filterBtn.activeFilter {
                                 outline: 2px solid var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .ktlBookmarkButton {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
                             }
 
                             /* Input Controls */
