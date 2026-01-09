@@ -7019,13 +7019,9 @@ function Ktl($, appInfo) {
             const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
             const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
             const userAttrs = Knack.getUserAttributes();
-            console.log('uploadUserPrefsToDb:', { myUserPrefsViewId, acctPrefsFld, userId: userAttrs?.id });
             if (myUserPrefsViewId && acctPrefsFld && userAttrs?.id) {
                 const apiData = { [acctPrefsFld]: JSON.stringify(userPrefsObj) };
-                console.log('Calling knAPI for userFilters upload...');
-                ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
-                    .then(() => console.log('userFilters uploaded successfully'))
-                    .catch(err => console.error('userFilters upload failed:', err));
+                ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false);
             }
         }
 
@@ -7034,7 +7030,6 @@ function Ktl($, appInfo) {
         }
 
         function setUserFilters(filters, dateIsNow = true) {
-            console.log('setUserFilters called, dateIsNow:', dateIsNow);
             try {
                 if (dateIsNow)
                     filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
@@ -7045,7 +7040,6 @@ function Ktl($, appInfo) {
                 userPrefsObj.userFilters = filters;
                 userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
-                console.log('About to call uploadUserPrefsToDb');
                 uploadUserPrefsToDb(userPrefsObj);
             } catch (e) {
                 console.log('Error while saving filters:', e);
