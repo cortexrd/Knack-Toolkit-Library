@@ -20593,11 +20593,15 @@ function Ktl($, appInfo) {
                     slider.id = 'ktlTheme_rowHoverBrightness';
                     slider.min = '-100';
                     slider.max = '100';
-                    slider.value = currentSettings.overrides.rowHoverBrightness ?? -10;
+                    const defaultBrightness = currentSettings.mode === 'dark' ? -10 : 0;
+                    if (currentSettings.overrides.rowHoverBrightness === undefined) {
+                        currentSettings.overrides.rowHoverBrightness = defaultBrightness;
+                    }
+                    slider.value = currentSettings.overrides.rowHoverBrightness;
                     slider.style.width = '100px';
                     const sliderValue = document.createElement('span');
                     sliderValue.id = 'ktlTheme_rowHoverBrightnessValue';
-                    sliderValue.textContent = (currentSettings.overrides.rowHoverBrightness ?? -10) + '%';
+                    sliderValue.textContent = currentSettings.overrides.rowHoverBrightness + '%';
                     sliderValue.style.width = '45px';
                     sliderValue.style.textAlign = 'right';
 
@@ -20955,8 +20959,9 @@ function Ktl($, appInfo) {
                     const parts = ['[headerColor, ' + currentSettings.headerColor + ']'];
                     const overrides = currentSettings.overrides || {};
                     Object.keys(overrides).forEach(key => {
-                        if (overrides[key]) {
-                            parts.push('[' + key + ', ' + overrides[key] + ']');
+                        const val = overrides[key];
+                        if (val !== undefined && val !== null && val !== '') {
+                            parts.push('[' + key + ', ' + val + ']');
                         }
                     });
                     const keywordStr = '_theme=' + parts.join(', ');
