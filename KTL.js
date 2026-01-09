@@ -21067,7 +21067,7 @@ function Ktl($, appInfo) {
         }
 
         function saveThemeSettings(settings, savedThemes) {
-            console.log('saveThemeSettings - input settings:', JSON.stringify(settings, null, 2));
+            //console.log('saveThemeSettings - input settings:', JSON.stringify(settings, null, 2));
             const userPrefs = ktl.userPrefs.getUserPrefs();
             const existingSavedThemes = savedThemes || userPrefs.userTheme?.savedThemes || {};
             const existingActive = userPrefs.userTheme?.active || null;
@@ -21080,7 +21080,7 @@ function Ktl($, appInfo) {
                 active: settings.active !== undefined ? settings.active : existingActive
             };
             userPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-            console.log('saveThemeSettings - saving userTheme:', JSON.stringify(userPrefs.userTheme, null, 2));
+            //console.log('saveThemeSettings - saving userTheme:', JSON.stringify(userPrefs.userTheme, null, 2));
 
             ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
 
