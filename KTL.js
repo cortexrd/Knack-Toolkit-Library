@@ -6660,14 +6660,10 @@ function Ktl($, appInfo) {
 
             let css = '';
 
-            // Row hover CSS - always generate, class only added if feature enabled at runtime
+            // Row hover CSS - uses brightness filter for uniform hover effect on all cells
             css += `
-                .ktlTable--rowHover tbody tr:hover td:not([style*="background"]):not(.ktlStickyCell):not(.bulkEditSelectedRow) {
-                    background-color: var(--ktltableRowHoverBkgColor, #8882) !important;
-                    transition: background-color .2s ease-out;
-                }
-                .ktlTable--rowHover tbody tr:hover td[style*="background"]:not(.bulkEditSelectedRow) {
-                    filter: brightness(0.9);
+                .ktlTable--rowHover tbody tr:hover td:not(.ktlStickyCell):not(.bulkEditSelectedRow) {
+                    filter: brightness(var(--ktlRowHoverBrightness, 0.9));
                     transition: filter .2s ease-out;
                 }
             `;
@@ -19034,8 +19030,8 @@ function Ktl($, appInfo) {
                     button.href = bookmark.url;
 
                     // Only dynamic styles remain here:
-                    const newSaturation = 0.3;
-                    const newLightness = 0.6;
+                    const newSaturation = 0.7;
+                    const newLightness = 0.7;
                     const newRGB = ktl.systemColors.adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
                     const buttonBackgroundColor = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
                     button.style.backgroundColor = buttonBackgroundColor;
@@ -19373,7 +19369,8 @@ function Ktl($, appInfo) {
                     // Page
                     let pageBg, topHeaderBg, inputFieldBg;
                     // Tables
-                    let tableHeaderBg, tableCellBg, tableStripedBg, tableSummaryBg, tableGridColor;
+                    let tableHeaderBg, tableCellBg, tableStripedBg, tableSummaryBg, tableGridColor, inlineEditBg;
+                    let rowHoverBrightness = 0;
                     // Menus
                     let navBarLinkBg, activeMenuColor, menuButtonBg, menuButtonBorder;
                     // Buttons
@@ -19407,6 +19404,11 @@ function Ktl($, appInfo) {
 
                         newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.15, 0.30);
                         tableGridColor = `rgba(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}, 0.85)`;
+
+                        newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.3, 0.35);
+                        inlineEditBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
+                        rowHoverBrightness = -10;
 
                         // Menus
                         newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.80, 0.20);
@@ -19468,6 +19470,8 @@ function Ktl($, appInfo) {
                             if (settings.overrides.tableStripedBg) tableStripedBg = settings.overrides.tableStripedBg;
                             if (settings.overrides.tableSummaryBg) tableSummaryBg = settings.overrides.tableSummaryBg;
                             if (settings.overrides.tableGridColor) tableGridColor = settings.overrides.tableGridColor;
+                            if (settings.overrides.inlineEditBg) inlineEditBg = settings.overrides.inlineEditBg;
+                            if (typeof settings.overrides.rowHoverBrightness !== 'undefined') rowHoverBrightness = settings.overrides.rowHoverBrightness;
                             // Menus
                             if (settings.overrides.navBarLinkBg) navBarLinkBg = settings.overrides.navBarLinkBg;
                             if (settings.overrides.activeMenuColor) activeMenuColor = settings.overrides.activeMenuColor;
@@ -19502,6 +19506,9 @@ function Ktl($, appInfo) {
                     // Sticky columns (uses table colors for theme consistency)
                     document.documentElement.style.setProperty('--ktlStickyHeaderBg', tableHeaderBg);
                     document.documentElement.style.setProperty('--ktlStickyCellBg', tableCellBg);
+                    document.documentElement.style.setProperty('--ktlTheme_inlineEditBg', inlineEditBg);
+                    const brightness = 1 + (rowHoverBrightness / 200);
+                    document.documentElement.style.setProperty('--ktlRowHoverBrightness', brightness);
                     // Menus
                     document.documentElement.style.setProperty('--ktlTheme_navBarLinkBg', navBarLinkBg);
                     document.documentElement.style.setProperty('--ktlTheme_activeMenuColor', activeMenuColor);
@@ -19535,6 +19542,7 @@ function Ktl($, appInfo) {
                             /* Top-Level Page Elements */
                             #knack-body.ktlUserTheme {
                                 background-color: var(--ktlTheme_pageBg) !important;
+                                background-image: none !important;
                                 color: var(--ktlTheme_bodyText) !important;
                             }
                             .ktlUserTheme #knack-dist_1 {
@@ -19665,6 +19673,9 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableSummaryBg) !important;
                                 color: var(--ktlTheme_tableSummaryText) !important;
                             }
+                            .ktlUserTheme td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]):not(.bulkEditSelectedRow) {
+                                background-color: var(--ktlTheme_inlineEditBg) !important;
+                            }
 
                             /* Links */
                             .ktlUserTheme .kn-content a {
@@ -19723,6 +19734,10 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .filterBtn.activeFilter {
                                 outline: 2px solid var(--ktlTheme_lightText) !important;
                             }
+                            .ktlUserTheme .js-filter-menu.tabs .is-active a {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
                             .ktlUserTheme .ktlBookmarkButton {
                                 background-color: var(--ktlTheme_menuButtonBg) !important;
                                 color: var(--ktlTheme_menuButtonText) !important;
@@ -19733,6 +19748,10 @@ function Ktl($, appInfo) {
                                 border: 1px solid var(--ktlTheme_lightText) !important;
                             }
                             .ktlUserTheme .ktlBookmarkMenuItem:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .ktlBookmarksHelperText {
                                 background-color: var(--ktlTheme_topHeaderBg) !important;
                                 color: var(--ktlTheme_lightText) !important;
                             }
@@ -19965,6 +19984,7 @@ function Ktl($, appInfo) {
                         { key: 'tableSummaryBg', label: 'Summary Bg', sat: 0.2, light: 0.2 },
                         { key: 'tableGridColor', label: 'Grids', sat: 0.15, light: 0.30 },
                         { key: 'inputFieldBg', label: 'Input Fields Bg', sat: 0.04, light: 0.30 },
+                        { key: 'inlineEditBg', label: 'Inline Edit Bg', sat: 0.3, light: 0.8 },
                     ]
                 },
                 {
@@ -20560,6 +20580,42 @@ function Ktl($, appInfo) {
                 });
 
                 groupDiv.appendChild(colorGrid);
+
+                if (group.title === 'Views') {
+                    const sliderRow = document.createElement('div');
+                    sliderRow.className = 'ktlThemeEditorColorRow';
+                    sliderRow.style.marginTop = '8px';
+                    const sliderLabel = document.createElement('span');
+                    sliderLabel.className = 'ktlThemeEditorColorLabel';
+                    sliderLabel.textContent = 'Row Hover';
+                    const slider = document.createElement('input');
+                    slider.type = 'range';
+                    slider.id = 'ktlTheme_rowHoverBrightness';
+                    slider.min = '-100';
+                    slider.max = '100';
+                    slider.value = currentSettings.overrides.rowHoverBrightness ?? -10;
+                    slider.style.width = '100px';
+                    const sliderValue = document.createElement('span');
+                    sliderValue.id = 'ktlTheme_rowHoverBrightnessValue';
+                    sliderValue.textContent = (currentSettings.overrides.rowHoverBrightness ?? -10) + '%';
+                    sliderValue.style.width = '45px';
+                    sliderValue.style.textAlign = 'right';
+
+                    slider.addEventListener('input', () => {
+                        const value = parseInt(slider.value);
+                        sliderValue.textContent = value + '%';
+                        currentSettings.overrides.rowHoverBrightness = value;
+                        const brightness = 1 + (value / 200);
+                        document.documentElement.style.setProperty('--ktlRowHoverBrightness', brightness);
+                        updateThemeNameDisplay();
+                    });
+
+                    sliderRow.appendChild(sliderLabel);
+                    sliderRow.appendChild(slider);
+                    sliderRow.appendChild(sliderValue);
+                    colorGrid.appendChild(sliderRow);
+                }
+
                 elementsSection.appendChild(groupDiv);
             });
 
@@ -20584,6 +20640,14 @@ function Ktl($, appInfo) {
                         }
                     });
                 });
+
+                const brightnessSlider = document.getElementById('ktlTheme_rowHoverBrightness');
+                const brightnessValue = document.getElementById('ktlTheme_rowHoverBrightnessValue');
+                if (brightnessSlider && brightnessValue) {
+                    const value = currentSettings.overrides.rowHoverBrightness ?? -10;
+                    brightnessSlider.value = value;
+                    brightnessValue.textContent = value + '%';
+                }
             }
 
             function applyPreview() {
