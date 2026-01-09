@@ -7015,15 +7015,38 @@ function Ktl($, appInfo) {
 
         const FILTER_BTN_STYLE = 'font-weight: bold; margin-left: 2px; margin-right: 2px';
 
+        function uploadUserPrefsToDb(userPrefsObj) {
+            const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
+            const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+            const userAttrs = Knack.getUserAttributes();
+            console.log('uploadUserPrefsToDb:', { myUserPrefsViewId, acctPrefsFld, userId: userAttrs?.id });
+            if (myUserPrefsViewId && acctPrefsFld && userAttrs?.id) {
+                const apiData = { [acctPrefsFld]: JSON.stringify(userPrefsObj) };
+                console.log('Calling knAPI for userFilters upload...');
+                ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
+                    .then(() => console.log('userFilters uploaded successfully'))
+                    .catch(err => console.error('userFilters upload failed:', err));
+            }
+        }
+
         function getUserFilters() {
             return fetchFilters(LS_UF);
         }
 
         function setUserFilters(filters, dateIsNow = true) {
+            console.log('setUserFilters called, dateIsNow:', dateIsNow);
             try {
                 if (dateIsNow)
                     filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
                 ktl.storage.lsSetItem(LS_UF, JSON.stringify(cleanUpFilters(filters)));
+
+                // Also sync to userPrefs for direct DB sync
+                const userPrefsObj = ktl.userPrefs.getUserPrefs();
+                userPrefsObj.userFilters = filters;
+                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                console.log('About to call uploadUserPrefsToDb');
+                uploadUserPrefsToDb(userPrefsObj);
             } catch (e) {
                 console.log('Error while saving filters:', e);
             }
@@ -19113,6 +19136,16 @@ function Ktl($, appInfo) {
             }
             document.addEventListener('click', removeMenu);
             document.body.appendChild(menu);
+
+            // Adjust position if menu would overflow viewport
+            const menuRect = menu.getBoundingClientRect();
+            if (menuRect.bottom > window.innerHeight) {
+                menu.style.top = `${e.clientY - menuRect.height}px`;
+            }
+            if (menuRect.right > window.innerWidth) {
+                menu.style.left = `${e.clientX - menuRect.width}px`;
+            }
+
             window.addEventListener('scroll', removeMenu, { once: true });
             window.addEventListener('resize', removeMenu, { once: true });
         }
@@ -19537,6 +19570,25 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
                                 border-color: var(--ktlTheme_menuButtonBorder) !important;
                             }
+                            .ktlUserTheme #kn-popover {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border: 1px solid var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme #kn-popover span {
+                                color: var(--ktlTheme_menuButtonText) !important;
+                            }
+                            .ktlUserTheme #kn-popover a {
+                                color: var(--ktlTheme_menuButtonText) !important;
+                            }
+                            .ktlUserTheme #kn-popover a[style*="transparent"],
+                            .ktlUserTheme #kn-popover a[style*="transparent"]:hover {
+                                color: transparent !important;
+                            }
+                            .ktlUserTheme #kn-popover a:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
 
                             /* Menus */
                             .ktlUserTheme .kn-navigation-bar a:hover,
@@ -19680,6 +19732,15 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .ktlBookmarkButton {
                                 background-color: var(--ktlTheme_menuButtonBg) !important;
                                 color: var(--ktlTheme_menuButtonText) !important;
+                            }
+                            .ktlUserTheme .ktlBookmarkMenu {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border: 1px solid var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .ktlBookmarkMenuItem:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
                             }
 
                             /* Input Controls */
@@ -22497,6 +22558,13 @@ function Ktl($, appInfo) {
                             ...(newer.bookmarks || {})
                         };
                     }
+                    // Merge userFilters from both sources
+                    if (newer.userFilters || older.userFilters) {
+                        merged.userFilters = {
+                            ...(older.userFilters || {}),
+                            ...(newer.userFilters || {})
+                        };
+                    }
                     return merged;
                 }
 
@@ -22536,6 +22604,12 @@ function Ktl($, appInfo) {
                 if (mergedPrefs.userTheme && (dbDateTime > localDateTime ||
                     JSON.stringify(mergedPrefs.userTheme) !== JSON.stringify(localPrefs.userTheme))) {
                     generateUserTheme();
+                }
+
+                // Sync userFilters to localStorage 'UF' if changed
+                if (mergedPrefs.userFilters && (dbDateTime > localDateTime ||
+                    JSON.stringify(mergedPrefs.userFilters) !== JSON.stringify(localPrefs.userFilters))) {
+                    ktl.storage.lsSetItem(LS_UF, JSON.stringify(mergedPrefs.userFilters));
                 }
 
                 return true;
