@@ -22574,6 +22574,18 @@ function Ktl($, appInfo) {
                 const newerPrefs = dbDateTime > localDateTime ? dbPrefs : localPrefs;
                 const olderPrefs = dbDateTime > localDateTime ? localPrefs : dbPrefs;
                 const mergedPrefs = mergePrefs(newerPrefs, olderPrefs);
+
+                // Check if actual data changed (excluding dt)
+                const localDataOnly = { ...localPrefs };
+                delete localDataOnly.dt;
+                const mergedDataOnly = { ...mergedPrefs };
+                delete mergedDataOnly.dt;
+
+                if (JSON.stringify(mergedDataOnly) === JSON.stringify(localDataOnly)) {
+                    // No actual data change, just timestamp difference - skip upload
+                    return false;
+                }
+
                 mergedPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
 
                 // Update localStorage with merged prefs
@@ -22969,17 +22981,23 @@ function Ktl($, appInfo) {
                                 .catch(failure => { ktl.log.clog('red', 'reloadAppMsg failure: ' + failure); })
                         } else {
                             if (prefsStr && (prefsStr !== lastUserPrefs)) {
-                                ktl.log.clog('lightblue', 'Prefs have changed!!!!');
-                                console.log('curUserPrefsView - DB prefs userTheme:', JSON.parse(prefsStr).userTheme);
-                                console.log('curUserPrefsView - localStorage userTheme:', ktl.userPrefs.getUserPrefs().userTheme);
+                                // Compare data without dt to avoid false positives
+                                const dbPrefs = JSON.parse(prefsStr);
+                                const localPrefs = ktl.userPrefs.getUserPrefs();
+                                const dbDataOnly = { ...dbPrefs };
+                                delete dbDataOnly.dt;
+                                const localDataOnly = { ...localPrefs };
+                                delete localDataOnly.dt;
 
-                                lastUserPrefs = prefsStr;
-
-                                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, prefsStr);
-                                console.log('curUserPrefsView - OVERWROTE localStorage with DB prefs');
-                                ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
-
-                                ktl.userPrefs.ktlApplyUserPrefs();
+                                if (JSON.stringify(dbDataOnly) !== JSON.stringify(localDataOnly)) {
+                                    ktl.log.clog('lightblue', 'Prefs have changed');
+                                    lastUserPrefs = prefsStr;
+                                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, prefsStr);
+                                    ktl.wndMsg.send('userPrefsChangedMsg', 'req', IFRAME_WND_ID, ktl.const.MSG_APP);
+                                    ktl.userPrefs.ktlApplyUserPrefs();
+                                } else {
+                                    lastUserPrefs = prefsStr;
+                                }
                             }
                         }
                     } else {
@@ -23593,7 +23611,7 @@ function Ktl($, appInfo) {
                         var parsedFilters = JSON.parse(newUserFilters);
 
                         if (canMigrate && parsedFilters.migrated === 'success') {
-                            ktl.log.clog('purple', 'Filters already migrated - using User Prefs');
+                            //ktl.log.clog('purple', 'Filters already migrated - using User Prefs');
                             return;
                         }
 
