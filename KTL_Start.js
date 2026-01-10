@@ -9,7 +9,7 @@
 */
 
 let callback;
-function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
+function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = 'min', noCacheBust = false) {
     const KTL_LATEST_JS_VERSION = '0.36.3';
     const KTL_LATEST_CSS_VERSION = '0.9.1';
 
@@ -41,7 +41,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
         ktlVersion = '';
         cssVersion = '';
         prodFolder = '';
-        fullCode = 'full';
+        fullCode = 'forcefull';
         ktlSvr = 'http://localhost:3000/';
 
         function checkFileExists(url) {
@@ -103,16 +103,16 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = '') {
     LazyLoad.js(['https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js']); //Docs: https://github.com/SortableJS/Sortable#readme
 
     if (ktlVersion === 'dev' || ktlVersion === 'beta') {
-        fullCode = 'full';
+        fullCode = 'forcefull';
         cssVersion = ktlVersion;
     }
 
     function loadFilesAndRunApp() {
         //Append this to end of filename to force loading new code without requiring Ctrl+F5.
-        let bypassCacheSuffix = ktlCode !== 'local' ? `?v=${new Date().getTime()}` : '';
+        let bypassCacheSuffix = (!noCacheBust && ktlCode !== 'local') ? `?v=${new Date().getTime()}` : '';
 
         let cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css' + bypassCacheSuffix;
-        let ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'full' ? '' : '.min') + '.js' + bypassCacheSuffix;
+        let ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'forcefull' ? '' : '.min') + '.js' + bypassCacheSuffix;
 
         LazyLoad.css([`${cssFile}`], () => {
             LazyLoad.js([`${ktlFile}`], () => {
