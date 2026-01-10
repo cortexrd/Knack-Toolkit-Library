@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.36.3';
+    const KTL_VERSION = '0.37.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -7013,7 +7013,7 @@ function Ktl($, appInfo) {
 
         function uploadUserPrefsToDb(userPrefsObj) {
             const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
-            const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+            const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
             const userAttrs = Knack.getUserAttributes();
             if (myUserPrefsViewId && acctPrefsFld && userAttrs?.id) {
                 const apiData = { [acctPrefsFld]: JSON.stringify(userPrefsObj) };
@@ -7022,21 +7022,31 @@ function Ktl($, appInfo) {
         }
 
         function getUserFilters() {
+            if (ktl.userPrefs.getCfg().acctUserPrefsFld && ktl.userPrefs.getCfg().myUserPrefsViewId) {
+                if (ktl.storage.lsGetItem(LS_UF))
+                    ktl.storage.lsRemoveItem(LS_UF);
+                return ktl.userPrefs.getUserPrefs().userFilters || {};
+            }
             return fetchFilters(LS_UF);
         }
 
         function setUserFilters(filters, dateIsNow = true) {
             try {
-                if (dateIsNow)
-                    filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                ktl.storage.lsSetItem(LS_UF, JSON.stringify(cleanUpFilters(filters)));
+                const cleanedFilters = cleanUpFilters(filters);
+                const hasUserPrefs = ktl.userPrefs.getCfg().acctUserPrefsFld && ktl.userPrefs.getCfg().myUserPrefsViewId;
 
-                // Also sync to userPrefs for direct DB sync
-                const userPrefsObj = ktl.userPrefs.getUserPrefs();
-                userPrefsObj.userFilters = filters;
-                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
-                uploadUserPrefsToDb(userPrefsObj);
+                if (hasUserPrefs) {
+                    const userPrefsObj = ktl.userPrefs.getUserPrefs();
+                    userPrefsObj.userFilters = cleanedFilters;
+                    if (dateIsNow)
+                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                    uploadUserPrefsToDb(userPrefsObj);
+                } else {
+                    if (dateIsNow)
+                        cleanedFilters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                    ktl.storage.lsSetItem(LS_UF, JSON.stringify(cleanedFilters));
+                }
             } catch (e) {
                 console.log('Error while saving filters:', e);
             }
@@ -7057,23 +7067,7 @@ function Ktl($, appInfo) {
         }
 
         function cleanUpFilters(filters) {
-            //JIC - delete junk empty filters
-            // if (!fltSrc[filterDivId].filters.length) {
-            //     delete fltSrc[filterDivId];
-            //     syncFilters(type, filterDivId);
-            //     return;
-            // }
-
-            //JIC - delete junk unnamed filters
-            // if (!filter || filter.filterName === '') {
-            //     filters[filterDivId].filters.splice(btnIndex, 1);
-            //     if (!filters[filterDivId].filters.length)
-            //         delete filters[filterDivId];
-            //     syncFilters(type, filterDivId);
-            //     errorFound = true;
-            //     console.log('errorFound =', filterDivId, JSON.stringify(filter));
-            //     break;
-            // }
+            delete filters.dt; // Remove nested dt - parent User Prefs dt is sufficient
             return filters;
         }
 
@@ -18834,7 +18828,7 @@ function Ktl($, appInfo) {
 
         function uploadUserPrefs(userPrefsObj) {
             const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
-            const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+            const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
             const userAttrs = Knack.getUserAttributes();
             if (myUserPrefsViewId && acctPrefsFld && userAttrs?.id) {
                 const apiData = { [acctPrefsFld]: JSON.stringify(userPrefsObj) };
@@ -19278,8 +19272,8 @@ function Ktl($, appInfo) {
                 ktlKeywords._theme.logosParsed = true;
             }
 
-            // If user previously chose KnackDefault, skip theme entirely (even before auth)
-            if (!isPreviewMode && cachedThemeMode === 'KnackDefault') {
+            // If user previously chose KnackDefault AND not logged in, skip theme (User Prefs takes over after login)
+            if (!isPreviewMode && !userId && cachedThemeMode === 'KnackDefault') {
                 // Ensure light logo is shown for default theme
                 if (ktlKeywords._theme?.lightLogo) {
                     const logoEl = document.querySelector('.knHeader__logo-image');
@@ -19341,6 +19335,11 @@ function Ktl($, appInfo) {
                     settings.mode = userPrefs.userTheme.mode;
                     settings.headerColor = userPrefs.userTheme.headerColor || settings.headerColor;
                     settings.overrides = userPrefs.userTheme.overrides || {};
+                }
+
+                // Sync KTL_THEME_MODE with User Prefs (so it stays current after sync from other browsers)
+                if (userPrefs.userTheme?.active) {
+                    localStorage.setItem('KTL_THEME_MODE', userPrefs.userTheme.active);
                 }
             }
 
@@ -21161,7 +21160,7 @@ function Ktl($, appInfo) {
 
             // Save to database via API call
             const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
-            const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+            const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
             const userId = Knack.getUserAttributes()?.id;
 
             if (myUserPrefsViewId && acctPrefsFld && userId) {
@@ -21199,7 +21198,7 @@ function Ktl($, appInfo) {
             ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefs));
 
             const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
-            const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+            const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
             const userId = Knack.getUserAttributes()?.id;
 
             if (myUserPrefsViewId && acctPrefsFld && userId) {
@@ -22556,8 +22555,7 @@ function Ktl($, appInfo) {
             },
 
             syncUserPrefs: function () {
-                const accountsObj = ktl.core.getObjectIdByName(ktl.core.getAccountsObjectName());
-                const acctUserPrefsFld = ktl.core.getFieldIdByName('User Prefs', accountsObj);
+                const acctUserPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
                 const userAttrs = Knack.getUserAttributes();
 
                 if (!acctUserPrefsFld || !userAttrs) {
@@ -22573,7 +22571,7 @@ function Ktl($, appInfo) {
                 if (!dbPrefsRaw) {
                     if (localDate) {
                         const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
-                        const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                        const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
                         if (myUserPrefsViewId && acctPrefsFld) {
                             const apiData = { [acctPrefsFld]: JSON.stringify(localPrefs) };
                             ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
@@ -22658,7 +22656,12 @@ function Ktl($, appInfo) {
                     return false;
                 }
 
-                mergedPrefs.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                // Preserve dt from the newer source (don't generate new timestamp)
+                mergedPrefs.dt = newerPrefs.dt;
+
+                // Clean up nested userFilters.dt if present
+                if (mergedPrefs.userFilters?.dt)
+                    delete mergedPrefs.userFilters.dt;
 
                 // Update localStorage with merged prefs
                 ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(mergedPrefs));
@@ -22666,7 +22669,7 @@ function Ktl($, appInfo) {
 
                 // Upload merged prefs to database
                 const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
-                const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
                 if (myUserPrefsViewId && acctPrefsFld) {
                     const apiData = { [acctPrefsFld]: JSON.stringify(mergedPrefs) };
                     ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
@@ -22684,11 +22687,6 @@ function Ktl($, appInfo) {
                     generateUserTheme();
                 }
 
-                // Sync userFilters to localStorage 'UF' if changed
-                if (mergedPrefs.userFilters && (dbDateTime > localDateTime ||
-                    JSON.stringify(mergedPrefs.userFilters) !== JSON.stringify(localPrefs.userFilters))) {
-                    ktl.storage.lsSetItem(LS_UF, JSON.stringify(mergedPrefs.userFilters));
-                }
 
                 return true;
             },
@@ -22999,6 +22997,7 @@ function Ktl($, appInfo) {
 
         var userPrefsObj = defaultUserPrefsObj;
         var myUserPrefsViewId = ktl.core.getViewIdByTitle('My Preferences');
+        var acctUserPrefsFld = ktl.core.getFieldIdByName('User Prefs', ktl.core.getObjectIdByName(ktl.core.getAccountsObjectName()));
 
         //App Callbacks
         var allowShowPrefs = null; //Determines what prefs can be shown, based on app's rules.
@@ -23026,7 +23025,7 @@ function Ktl($, appInfo) {
                 const viewId = view.key;
 
                 if (viewId === ktl.iFrameWnd.getCfg().curUserPrefsViewId) {
-                    var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                    var acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
                     var prefsViewId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
                     if (!prefsViewId || !acctPrefsFld) {
                         ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1020 - prefsViewId = "' + prefsViewId + '", acctPrefsFld = "' + acctPrefsFld + '"');
@@ -23130,7 +23129,7 @@ function Ktl($, appInfo) {
 
                     function updateUserPrefsFormText() {
                         userPrefsTmp.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                        var acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                        var acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
                         $('#' + acctPrefsFld).val(JSON.stringify(userPrefsTmp));
                     }
 
@@ -23162,6 +23161,7 @@ function Ktl($, appInfo) {
             getCfg: function () {
                 return {
                     myUserPrefsViewId,
+                    acctUserPrefsFld,
                 };
             },
 
@@ -23544,7 +23544,6 @@ function Ktl($, appInfo) {
             acctTimeZoneFld: ktl.core.getFieldIdByName('TZ', accountsObj),
             acctLocHbFld: ktl.core.getFieldIdByName('LOC HB', accountsObj),
             acctOnlineFld: ktl.core.getFieldIdByName('Online', accountsObj),
-            acctUserPrefsFld: ktl.core.getFieldIdByName('User Prefs', accountsObj),
             acctUtcLastActFld: (ktl.core.getFieldIdByName('UTC ACT', accountsObj) || ktl.core.getFieldIdByName('UTC Last Activity', accountsObj)),
             acctNameFld: ktl.core.getFieldIdByName('Name', accountsObj),
 
@@ -23574,7 +23573,7 @@ function Ktl($, appInfo) {
         ];
 
         function migrateUserFiltersToUserPrefs(tableFilters, recordId) {
-            if (!cfg.acctUserPrefsFld || !ktl.userPrefs.getCfg().myUserPrefsViewId) {
+            if (!ktl.userPrefs.getCfg().acctUserPrefsFld || !ktl.userPrefs.getCfg().myUserPrefsViewId) {
                 ktl.log.clog('orange', 'Cannot migrate: User Prefs field not configured');
                 return;
             }
@@ -23594,18 +23593,16 @@ function Ktl($, appInfo) {
                 }
             });
 
-            userPrefsObj.userFilters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-            userPrefsObj.dt = userPrefsObj.userFilters.dt;
-
+            userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
             ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
-            ktl.storage.lsSetItem(LS_UF, JSON.stringify(userPrefsObj.userFilters));
 
             const userAttrs = Knack.getUserAttributes();
-            const apiData = { [cfg.acctUserPrefsFld]: JSON.stringify(userPrefsObj) };
+            const apiData = { [ktl.userPrefs.getCfg().acctUserPrefsFld]: JSON.stringify(userPrefsObj) };
 
             ktl.core.knAPI(ktl.userPrefs.getCfg().myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false)
                 .then(() => {
                     ktl.log.clog('green', 'User filters migrated to User Prefs successfully');
+                    ktl.storage.lsRemoveItem(LS_UF);
                     markUserFiltersAsMigrated(recordId, filtersToMigrate);
                 })
                 .catch(err => {
@@ -23672,7 +23669,7 @@ function Ktl($, appInfo) {
                         .catch(function () { })
                 }
             } else if (view.key === cfg.userFiltersViewId) {
-                const canMigrate = cfg.acctUserPrefsFld && ktl.userPrefs.getCfg().myUserPrefsViewId;
+                const canMigrate = ktl.userPrefs.getCfg().acctUserPrefsFld && ktl.userPrefs.getCfg().myUserPrefsViewId;
 
                 var newUserFilters = '';
                 if (data.length)
@@ -24182,7 +24179,7 @@ function Ktl($, appInfo) {
                             if (window.self.frameElement && (event.data.dst === IFRAME_WND_ID)) {
                                 //App to iFrameWnd, when prefs are changed locally by user.
                                 //Upload new prefs so other opened browsers can see the changes.
-                                var fieldId = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+                                var fieldId = ktl.userPrefs.getCfg().acctUserPrefsFld;
                                 var formId = ktl.iFrameWnd.getCfg().updUserPrefsViewId;
                                 if (!formId || !fieldId) return;
 
@@ -26199,7 +26196,7 @@ function Ktl($, appInfo) {
         const localHeartBeatFieldId = ktl.iFrameWnd.getCfg().acctLocHbFld;
         const lastActivityFieldId = ktl.iFrameWnd.getCfg().acctUtcLastActFld;
         const swVersionFieldId = ktl.iFrameWnd.getCfg().acctSwVersionFld;
-        const acctPrefsFld = ktl.iFrameWnd.getCfg().acctUserPrefsFld;
+        const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
 
         const statusMonitoring = {
             online: [],
