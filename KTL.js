@@ -17086,7 +17086,7 @@ function Ktl($, appInfo) {
                                         return checkedBoxes.map((_, el) => $(el).val()).get().join(' ');
                                     } else if (formatType === 'radios') {
                                         const selectedRadio = $(`#${viewId} [data-input-id="${fieldId}"] input[name="${viewId}-${fieldId}"]:checked`);
-                                        return selectedRadio.val();
+                                        return selectedRadio.val() || '';
                                     } else {
                                         // Single or multi-select dropdown
                                         const selectElem = $(`#${viewId} [data-input-id="${fieldId}"] select[name="${fieldId}"]`);
@@ -17099,13 +17099,16 @@ function Ktl($, appInfo) {
                                 };
 
                                 let fieldValue;
+                                let multiChoiceFormat;
+                                let multiChoiceFormatType;
+                                
                                 if (ktl.views.getViewType(viewId) === 'form') {
                                     if (fieldType === 'boolean') {
                                         fieldValue = ($(selector)[0].checked).toString();
                                     } else if (fieldType === 'multiple_choice') {
-                                        const format = Knack.objects.getField(fieldId).attributes.format;
-                                        const formatType = format && format.type;
-                                        fieldValue = getMultiChoiceValue(formatType);
+                                        multiChoiceFormat = Knack.objects.getField(fieldId).attributes.format;
+                                        multiChoiceFormatType = multiChoiceFormat && multiChoiceFormat.type;
+                                        fieldValue = getMultiChoiceValue(multiChoiceFormatType);
                                     } else {
                                         fieldValue = $(selector).val();
                                     }
@@ -17113,11 +17116,9 @@ function Ktl($, appInfo) {
                                     // Listen to appropriate events based on field type
                                     if (fieldType === 'multiple_choice') {
                                         // For multi-choice fields, listen to change events on all inputs and selects
-                                        const format = Knack.objects.getField(fieldId).attributes.format;
-                                        const formatType = format && format.type;
                                         const inputSelector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} [data-input-id="${fieldId}"] select`;
                                         $(inputSelector).off('change.ktlHc').on('change.ktlHc', (event) => {
-                                            const newValue = getMultiChoiceValue(formatType);
+                                            const newValue = getMultiChoiceValue(multiChoiceFormatType);
                                             return resolve(ktlCompare(newValue, operator, value));
                                         });
                                     } else {
@@ -17131,7 +17132,7 @@ function Ktl($, appInfo) {
                                 if (fieldType && numericFieldTypes.includes(fieldType))
                                     fieldValue = ktl.core.extractNumericValue(fieldValue, fieldId);
 
-                                if (!fieldValue)
+                                if (fieldValue === undefined || fieldValue === null)
                                     return resolve(false);
 
                                 return resolve(ktlCompare(fieldValue, operator, value));
