@@ -7016,8 +7016,11 @@ function Ktl($, appInfo) {
             const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
             const userAttrs = Knack.getUserAttributes();
             if (myUserPrefsViewId && acctPrefsFld && userAttrs?.id) {
-                const apiData = { [acctPrefsFld]: JSON.stringify(userPrefsObj) };
+                const prefsStr = JSON.stringify(userPrefsObj);
+                const apiData = { [acctPrefsFld]: prefsStr };
                 ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false);
+                if (userAttrs.values)
+                    userAttrs.values[acctPrefsFld] = prefsStr;
             }
         }
 
