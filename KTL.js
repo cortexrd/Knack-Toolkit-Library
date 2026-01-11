@@ -1131,6 +1131,15 @@ function Ktl($, appInfo) {
 
                     popupStyle += ktl.core.getCfg().popupStyle[status];
 
+                    // Auto-calculate text color if not specified (check for ;color: or ^color: but not background-color:)
+                    if (!/(?:^|[^-])color:/i.test(popupStyle)) {
+                        const bgMatch = popupStyle.match(/background-color:\s*([#\w]+)/i);
+                        if (bgMatch) {
+                            const textColor = ktl.core.getContrastingTextColor(bgMatch[1]);
+                            popupStyle += ';color:' + textColor;
+                        }
+                    }
+
                     timedPopupEl.setAttribute('style', popupStyle);
 
                     timedPopupEl.innerHTML = msg;
@@ -1156,6 +1165,15 @@ function Ktl($, appInfo) {
                 var popupStyle = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%);min-width:300px;min-height:50px;line-height:50px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;padding-left:25px;padding-right:25px;background-color:#81b378;border:5px solid #294125;white-space:pre;z-index:10';
                 if (style)
                     popupStyle = style;
+
+                // Auto-calculate text color if not specified (check for ;color: or ^color: but not background-color:)
+                if (!/(?:^|[^-])color:/i.test(popupStyle)) {
+                    const bgMatch = popupStyle.match(/background-color:\s*([#\w]+)/i);
+                    if (bgMatch) {
+                        const textColor = ktl.core.getContrastingTextColor(bgMatch[1]);
+                        popupStyle += ';color:' + textColor;
+                    }
+                }
 
                 el.id = 'kn-modeless-wnd';
                 el.setAttribute('style', popupStyle);
@@ -3054,6 +3072,16 @@ function Ktl($, appInfo) {
                     }
                     }, 0);
                 });
+            },
+
+            getContrastingTextColor: function (bgColor) {
+                try {
+                    const rgb = ktl.systemColors.hexToRgb(bgColor);
+                    const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+                    return luminance < 0.5 ? '#ffffff' : '#000000';
+                } catch (e) {
+                    return '#000000';
+                }
             },
 
         }
@@ -6662,7 +6690,7 @@ function Ktl($, appInfo) {
 
             // Row hover CSS - uses brightness filter for uniform hover effect on all cells
             css += `
-                .ktlTable--rowHover tbody tr:hover td:not(.ktlStickyCell):not(.bulkEditSelectedRow) {
+                .ktlTable--rowHover tbody tr:hover td:not(.bulkEditSelectedRow) {
                     filter: brightness(var(--ktlRowHoverBrightness, 0.9));
                     transition: filter .2s ease-out;
                 }
@@ -18277,10 +18305,12 @@ function Ktl($, appInfo) {
                     document.head.appendChild(style);
                 }
 
-                // Always set CSS variables for sticky columns
-                document.documentElement.style.setProperty('--ktlStickyHeaderBg', defaultBg);
-                document.documentElement.style.setProperty('--ktlStickyCellBg', defaultBg);
-                document.documentElement.style.setProperty('--ktlStickyCellText', defaultText);
+                // Set CSS variables for sticky columns (only if theme not active)
+                if (!isDarkTheme) {
+                    document.documentElement.style.setProperty('--ktlStickyHeaderBg', defaultBg);
+                    document.documentElement.style.setProperty('--ktlStickyCellBg', defaultBg);
+                    document.documentElement.style.setProperty('--ktlStickyCellText', defaultText);
+                }
             },
 
             viewHasInlineEdit: function (viewId) {
@@ -19378,7 +19408,7 @@ function Ktl($, appInfo) {
                     // Buttons
                     let pageButtonBg, filterButtonBg;
                     // Text
-                    let bodyText, lightText, darkText, linkColor, headersAndLabelsText, tableCellText, tableSummaryText, inputFieldText, menuButtonText;
+                    let bodyText, lightText, darkText, linkColor, headersAndLabelsText, tableCellText, tableSummaryText, inputFieldText, menuButtonText, headerTitleText;
 
                     if (settings.mode === 'dark' || settings.mode === 'user') {
                         // Page
@@ -19505,9 +19535,10 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlTheme_tableStripedBg', tableStripedBg);
                     document.documentElement.style.setProperty('--ktlTheme_tableSummaryBg', tableSummaryBg);
                     document.documentElement.style.setProperty('--ktlTheme_tableGridColor', tableGridColor);
-                    // Sticky columns (uses table colors for theme consistency)
+                    // Sticky columns (uses table colors for theme consistency, but opaque)
                     document.documentElement.style.setProperty('--ktlStickyHeaderBg', tableHeaderBg);
-                    document.documentElement.style.setProperty('--ktlStickyCellBg', tableCellBg);
+                    const stickyCellBg = tableCellBg.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, 'rgb($1,$2,$3)');
+                    document.documentElement.style.setProperty('--ktlStickyCellBg', stickyCellBg);
                     document.documentElement.style.setProperty('--ktlTheme_inlineEditBg', inlineEditBg);
                     const brightness = 1 + (rowHoverBrightness / 200);
                     document.documentElement.style.setProperty('--ktlRowHoverBrightness', brightness);
@@ -19529,6 +19560,24 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlTheme_tableSummaryText', tableSummaryText);
                     document.documentElement.style.setProperty('--ktlTheme_inputFieldText', inputFieldText);
                     document.documentElement.style.setProperty('--ktlTheme_menuButtonText', menuButtonText);
+                    // Calculate headerTitleText based on actual topHeaderBg (which may be overridden)
+                    let titleBgRgb;
+                    let titleBgHex = headerRgb;
+                    if (topHeaderBg.startsWith('rgb')) {
+                        const match = topHeaderBg.match(/(\d+),\s*(\d+),\s*(\d+)/);
+                        titleBgRgb = match ? [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])] : [0, 0, 0];
+                        titleBgHex = ktl.systemColors.rgbToHex(titleBgRgb[0], titleBgRgb[1], titleBgRgb[2]);
+                    } else {
+                        titleBgRgb = ktl.systemColors.hexToRgb(topHeaderBg);
+                        titleBgHex = topHeaderBg;
+                    }
+                    const titleLum = (0.299 * titleBgRgb[0] + 0.587 * titleBgRgb[1] + 0.114 * titleBgRgb[2]) / 255;
+                    // Use derived color: pale for dark headers, dark for light headers
+                    const titleTextRgb = titleLum < 0.5
+                        ? ktl.systemColors.adjustRGB_sl(titleBgHex, 0.8, 0.80)
+                        : ktl.systemColors.adjustRGB_sl(titleBgHex, 0.8, 0.20);
+                    headerTitleText = ktl.systemColors.rgbToHex(titleTextRgb[0], titleTextRgb[1], titleTextRgb[2]);
+                    document.documentElement.style.setProperty('--ktlTheme_headerTitleText', headerTitleText);
 
                     // Update bulk edit colors to match theme (dark mode = true)
                     ktl.systemColors.updateBulkEditColors(headerRgb, true);
@@ -19554,6 +19603,9 @@ function Ktl($, appInfo) {
                             .ktlUserTheme #kn-app-header {
                                 background-color: var(--ktlTheme_topHeaderBg) !important;
                                 color: var(--ktlTheme_headersAndLabelsText) !important;
+                            }
+                            .ktlUserTheme #knack-logo a {
+                                color: var(--ktlTheme_headerTitleText) !important;
                             }
 
                             /* Modal Containers and Popups */
@@ -19681,6 +19733,9 @@ function Ktl($, appInfo) {
 
                             /* Links */
                             .ktlUserTheme .kn-content a {
+                                color: var(--ktlTheme_linkColor) !important;
+                            }
+                            .ktlUserTheme .redactor-toolbar li a {
                                 color: var(--ktlTheme_linkColor) !important;
                             }
                             .ktlUserTheme .knTable th a {
@@ -26878,6 +26933,7 @@ function Ktl($, appInfo) {
         let popover;
         let isMonitoring = false;
         let lastMousePosition = { x: 0, y: 0 };
+        let popoverCloseTimer = null;
 
         const popoverSelectors = {
             '.knTable th': tableHeadOptions,
@@ -26922,13 +26978,64 @@ function Ktl($, appInfo) {
             event.stopPropagation();
         }
 
-        function closePopOver() {
+        function clearPopoverTimer() {
+            if (popoverCloseTimer) {
+                clearTimeout(popoverCloseTimer);
+                popoverCloseTimer = null;
+            }
+        }
+
+        function closePopOver(fadeOut = false) {
+            clearPopoverTimer();
             if (openedPopOverTarget) {
                 $(openedPopOverTarget).removeClass('active').removeData('popover');
                 openedPopOverTarget = null;
-                $('#kn-popover').hide();
+                if (fadeOut) {
+                    $('#kn-popover').fadeOut(2000);
+                } else {
+                    $('#kn-popover').hide();
+                }
                 $('.ktlOutlineDevPopup').removeClass('ktlOutlineDevPopup');
             }
+        }
+
+        function stopPopoverAutoClose() {
+            clearPopoverTimer();
+            $('#kn-popover').off('mouseenter.ktlPopOverTimer mouseleave.ktlPopOverTimer');
+        }
+
+        function startPopoverCloseTimer() {
+            clearPopoverTimer();
+            if (!openedPopOverTarget) return;
+
+            popoverCloseTimer = setTimeout(function () {
+                popoverCloseTimer = null;
+                $('#kn-popover').fadeOut(2000, function () {
+                    // Only close if still fading (not revived)
+                    if ($(this).css('display') === 'none') {
+                        closePopOver();
+                        stopPopoverAutoClose();
+                    }
+                });
+            }, 2000);
+        }
+
+        function startPopoverAutoClose() {
+            if (!openedPopOverTarget) return;
+
+            // Mouse enters popover - pause the timer and revive if fading
+            $('#kn-popover').off('mouseenter.ktlPopOverTimer').on('mouseenter.ktlPopOverTimer', function () {
+                clearPopoverTimer();
+                $(this).stop(true).css({ opacity: 1, display: 'block' });
+            });
+
+            // Mouse leaves popover - restart the timer
+            $('#kn-popover').off('mouseleave.ktlPopOverTimer').on('mouseleave.ktlPopOverTimer', function () {
+                startPopoverCloseTimer();
+            });
+
+            // Start initial timer (mouse is currently outside)
+            startPopoverCloseTimer();
         }
 
         function handleMouseEnter(event) {
@@ -27012,12 +27119,15 @@ function Ktl($, appInfo) {
 
         $(document).on('keydown.ktlPopOver', function (event) {
             if (event.shiftKey && event.ctrlKey) {
-                if (event.key === 'Control' || event.key === 'Shift')
+                if (event.key === 'Control' || event.key === 'Shift') {
+                    stopPopoverAutoClose();
                     startMonitoringMouse();
-                else
+                } else {
                     closePopOver();
+                }
             } else if (event.key === 'Escape') {
                 closePopOver();
+                stopPopoverAutoClose();
                 $(document).off('click.ktlPopOverOutside');
             }
         });
@@ -27025,6 +27135,7 @@ function Ktl($, appInfo) {
         $(document).on('keyup.ktlPopOver', function (event) {
             if (!event.shiftKey || !event.ctrlKey) {
                 stopMonitoringMouse();
+                startPopoverAutoClose();
                 $(document).on('click.ktlPopOverOutside', handleOutsideClick);
             }
         });
