@@ -21073,6 +21073,9 @@ function Ktl($, appInfo) {
             header.querySelector('.ktlThemeEditorClose').addEventListener('click', closeEditor);
 
             function editorKeyHandler(e) {
+                // Skip if editor is not visible
+                if (!document.querySelector('.ktlThemeEditor')) return;
+
                 // Skip if a popup is open or text input is focused
                 if (document.querySelector('.ktlConfirmOverlay')) return;
                 const activeEl = document.activeElement;
