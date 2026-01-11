@@ -18285,6 +18285,9 @@ function Ktl($, appInfo) {
                     const style = document.createElement('style');
                     style.id = 'ktlStickyColStyles';
                     style.textContent = `
+                        table.ktlHasStickyColumns {
+                            border-collapse: unset;
+                        }
                         table.ktlHasStickyColumns.knTable--clean th {
                             background-color: var(--ktlStickyHeaderBg, ${defaultBg}) !important;
                         }
@@ -18305,8 +18308,15 @@ function Ktl($, appInfo) {
                     document.head.appendChild(style);
                 }
 
-                // Set CSS variables for sticky columns (only if theme not active)
-                if (!isDarkTheme) {
+                // Set CSS variables for sticky columns
+                // If custom backgroundColor provided via _stc, always use it (mark as custom)
+                // Otherwise only set defaults if theme not active
+                if (backgroundColor) {
+                    document.documentElement.style.setProperty('--ktlStickyHeaderBg', defaultBg);
+                    document.documentElement.style.setProperty('--ktlStickyCellBg', defaultBg);
+                    document.documentElement.style.setProperty('--ktlStickyCellText', defaultText);
+                    document.documentElement.dataset.ktlCustomStickyBg = 'true';
+                } else if (!isDarkTheme) {
                     document.documentElement.style.setProperty('--ktlStickyHeaderBg', defaultBg);
                     document.documentElement.style.setProperty('--ktlStickyCellBg', defaultBg);
                     document.documentElement.style.setProperty('--ktlStickyCellText', defaultText);
@@ -19536,9 +19546,12 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlTheme_tableSummaryBg', tableSummaryBg);
                     document.documentElement.style.setProperty('--ktlTheme_tableGridColor', tableGridColor);
                     // Sticky columns (uses table colors for theme consistency, but opaque)
-                    document.documentElement.style.setProperty('--ktlStickyHeaderBg', tableHeaderBg);
-                    const stickyCellBg = tableCellBg.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, 'rgb($1,$2,$3)');
-                    document.documentElement.style.setProperty('--ktlStickyCellBg', stickyCellBg);
+                    // Only set if no custom _stc background was specified
+                    if (!document.documentElement.dataset.ktlCustomStickyBg) {
+                        document.documentElement.style.setProperty('--ktlStickyHeaderBg', tableHeaderBg);
+                        const stickyCellBg = tableCellBg.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, 'rgb($1,$2,$3)');
+                        document.documentElement.style.setProperty('--ktlStickyCellBg', stickyCellBg);
+                    }
                     document.documentElement.style.setProperty('--ktlTheme_inlineEditBg', inlineEditBg);
                     const brightness = 1 + (rowHoverBrightness / 200);
                     document.documentElement.style.setProperty('--ktlRowHoverBrightness', brightness);
