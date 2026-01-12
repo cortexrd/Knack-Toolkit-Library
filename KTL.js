@@ -19798,6 +19798,8 @@ function Ktl($, appInfo) {
                             }
                             .ktlUserTheme .knTable td:not([style*="background"]):not(.ktlInlineEditableCellsStyle):not(.ktlStickyCell):not(.bulkEditSelectedRow) {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
+                            }
+                            .ktlUserTheme .knTable td:not([style*="color"]):not(.ktlInlineEditableCellsStyle):not(.ktlStickyCell):not(.bulkEditSelectedRow) {
                                 color: var(--ktlTheme_tableCellText) !important;
                             }
                             .ktlUserTheme .knTable td:not(.bulkEditSelectedCol) {
