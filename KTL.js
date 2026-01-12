@@ -19837,6 +19837,7 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .ktlAddonsDiv,
                             .ktlUserTheme .kn-title,
                             .ktlUserTheme .kn-info-bar,
+                            .ktlUserTheme .kn-instructions,
                             .ktlUserTheme .kn-button,
                             .ktlUserTheme .kn-content,
                             .ktlUserTheme .kn-label,
