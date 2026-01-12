@@ -17101,7 +17101,7 @@ function Ktl($, appInfo) {
                                 let fieldValue;
                                 let multiChoiceFormat;
                                 let multiChoiceFormatType;
-                                
+
                                 if (ktl.views.getViewType(viewId) === 'form') {
                                     if (fieldType === 'boolean') {
                                         fieldValue = ($(selector)[0].checked).toString();
@@ -17112,7 +17112,7 @@ function Ktl($, appInfo) {
                                     } else {
                                         fieldValue = $(selector).val();
                                     }
-                                    
+
                                     // Listen to appropriate events based on field type
                                     if (fieldType === 'multiple_choice') {
                                         // For multi-choice fields, listen to change events on all inputs and selects
@@ -18319,10 +18319,28 @@ function Ktl($, appInfo) {
                 // Determine colors based on theme state
                 const isDarkTheme = document.body.classList.contains('ktlUserTheme');
                 const computedStyle = getComputedStyle(document.documentElement);
-                const themeCellBg = isDarkTheme ? computedStyle.getPropertyValue('--ktlTheme_tableCellBg').trim() : '';
                 const themeCellText = isDarkTheme ? computedStyle.getPropertyValue('--ktlTheme_tableCellText').trim() : '';
-                const defaultBg = backgroundColor || themeCellBg || '#f3f6f9';
                 const defaultText = themeCellText || 'inherit';
+
+                // For sticky cells: use custom color, or 10% lighter theme color, or default
+                let defaultBg;
+                if (backgroundColor) {
+                    defaultBg = backgroundColor;
+                } else if (isDarkTheme) {
+                    // Make sticky cell bg 10% lighter than tableCellBg
+                    const headerRgb = computedStyle.getPropertyValue('--ktlTheme_topHeaderBg').trim();
+                    if (headerRgb) {
+                        const headerHex = headerRgb.startsWith('#') ? headerRgb : ktl.systemColors.rgbToHex(
+                            ...headerRgb.match(/\d+/g).map(Number)
+                        );
+                        const newRGB = ktl.systemColors.adjustRGB_sl(headerHex, 0.08, 0.28);
+                        defaultBg = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+                    } else {
+                        defaultBg = computedStyle.getPropertyValue('--ktlTheme_tableCellBg').trim() || '#f3f6f9';
+                    }
+                } else {
+                    defaultBg = '#f3f6f9';
+                }
 
                 // Inject sticky column CSS if not already present
                 if (!document.getElementById('ktlStickyColStyles')) {
@@ -18343,9 +18361,12 @@ function Ktl($, appInfo) {
                             position: sticky !important;
                             z-index: 1 !important;
                         }
-                        td.ktlStickyCell:not([style*="background"]):not(.ktlInlineEditableCellsStyle),
-                        .ktlUserTheme .knTable td.ktlStickyCell:not([style*="background"]):not(.ktlInlineEditableCellsStyle) {
+                        td.ktlStickyCell:not([style*="background"]):not(.ktlInlineEditableCellsStyle) {
                             background-color: var(--ktlStickyCellBg, ${defaultBg}) !important;
+                            color: var(--ktlStickyCellText, ${defaultText}) !important;
+                        }
+                        .ktlUserTheme .knTable td.ktlStickyCell:not([style*="background"]):not(.ktlInlineEditableCellsStyle) {
+                            background-color: var(--ktlTheme_stickyCellBg) !important;
                             color: var(--ktlStickyCellText, ${defaultText}) !important;
                         }
                     `;
@@ -18353,13 +18374,12 @@ function Ktl($, appInfo) {
                 }
 
                 // Set CSS variables for sticky columns
-                // If custom backgroundColor provided via _stc, always use it (mark as custom)
-                // Otherwise only set defaults if theme not active
+                // Only set if custom color provided OR theme not active (theme code handles dark mode)
                 if (backgroundColor) {
+                    document.documentElement.dataset.ktlCustomStickyBg = 'true';
                     document.documentElement.style.setProperty('--ktlStickyHeaderBg', defaultBg);
                     document.documentElement.style.setProperty('--ktlStickyCellBg', defaultBg);
                     document.documentElement.style.setProperty('--ktlStickyCellText', defaultText);
-                    document.documentElement.dataset.ktlCustomStickyBg = 'true';
                 } else if (!isDarkTheme) {
                     document.documentElement.style.setProperty('--ktlStickyHeaderBg', defaultBg);
                     document.documentElement.style.setProperty('--ktlStickyCellBg', defaultBg);
@@ -19552,7 +19572,20 @@ function Ktl($, appInfo) {
                             if (settings.overrides.inputFieldBg) inputFieldBg = settings.overrides.inputFieldBg;
                             // Tables
                             if (settings.overrides.tableHeaderBg) tableHeaderBg = settings.overrides.tableHeaderBg;
-                            if (settings.overrides.tableCellBg) tableCellBg = settings.overrides.tableCellBg;
+                            if (settings.overrides.tableCellBg) {
+                                const override = settings.overrides.tableCellBg;
+                                // Preserve alpha channel if override doesn't include it
+                                if (override.startsWith('rgba')) {
+                                    tableCellBg = override;
+                                } else if (override.startsWith('rgb')) {
+                                    const match = override.match(/rgb\(([^)]+)\)/);
+                                    tableCellBg = match ? `rgba(${match[1]}, 0.75)` : override;
+                                } else {
+                                    // Hex color - convert to rgba
+                                    const rgb = ktl.systemColors.hexToRgb(override);
+                                    tableCellBg = rgb ? `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.75)` : override;
+                                }
+                            }
                             if (settings.overrides.tableStripedBg) tableStripedBg = settings.overrides.tableStripedBg;
                             if (settings.overrides.tableSummaryBg) tableSummaryBg = settings.overrides.tableSummaryBg;
                             if (settings.overrides.tableGridColor) tableGridColor = settings.overrides.tableGridColor;
@@ -19589,13 +19622,10 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlTheme_tableStripedBg', tableStripedBg);
                     document.documentElement.style.setProperty('--ktlTheme_tableSummaryBg', tableSummaryBg);
                     document.documentElement.style.setProperty('--ktlTheme_tableGridColor', tableGridColor);
-                    // Sticky columns (uses table colors for theme consistency, but opaque)
-                    // Only set if no custom _stc background was specified
-                    if (!document.documentElement.dataset.ktlCustomStickyBg) {
-                        document.documentElement.style.setProperty('--ktlStickyHeaderBg', tableHeaderBg);
-                        const stickyCellBg = tableCellBg.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, 'rgb($1,$2,$3)');
-                        document.documentElement.style.setProperty('--ktlStickyCellBg', stickyCellBg);
-                    }
+                    // Sticky columns - always set for theme (uses separate variable)
+                    document.documentElement.style.setProperty('--ktlStickyHeaderBg', tableHeaderBg);
+                    newRGB = ktl.systemColors.adjustRGB_sl(headerRgb, 0.08, 0.28);
+                    document.documentElement.style.setProperty('--ktlTheme_stickyCellBg', `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`);
                     document.documentElement.style.setProperty('--ktlTheme_inlineEditBg', inlineEditBg);
                     const brightness = 1 + (rowHoverBrightness / 200);
                     document.documentElement.style.setProperty('--ktlRowHoverBrightness', brightness);
