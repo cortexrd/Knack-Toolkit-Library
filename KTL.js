@@ -17000,8 +17000,15 @@ function Ktl($, appInfo) {
                                 if (fieldId)
                                     selector += ' .' + fieldId + ' .kn-detail-body';
                             } else if (viewType === 'form') {
-                                if (fieldId)
-                                    selector += ` [data-input-id=${fieldId}] input`;
+                                if (fieldId) {
+                                    const fieldType = ktl.fields.getFieldType(fieldId);
+                                    // For multiple_choice fields, we need to handle both select and input elements
+                                    if (fieldType === 'multiple_choice') {
+                                        selector += ` [data-input-id=${fieldId}]`;
+                                    } else {
+                                        selector += ` [data-input-id=${fieldId}] input`;
+                                    }
+                                }
                             } else if (viewType === 'table' || viewType === 'search' || viewType === 'list') {
                                 if (!fieldId) {
                                     const actionLink = $(`#${viewId} tr[id="${recordObj.id}"] .kn-action-link:textEquals("${field}")`);
@@ -17072,23 +17079,60 @@ function Ktl($, appInfo) {
                             ktl.core.waitSelector(selector, 10000).then(() => {
                                 const fieldType = ktl.fields.getFieldType(fieldId);
 
+                                // Helper function to get multi-choice field value
+                                const getMultiChoiceValue = (formatType) => {
+                                    if (formatType === 'checkboxes') {
+                                        const checkedBoxes = $(`#${viewId} [data-input-id="${fieldId}"] input[name="${fieldId}"]:checked`);
+                                        return checkedBoxes.map((_, el) => $(el).val()).get().join(' ');
+                                    } else if (formatType === 'radios') {
+                                        const selectedRadio = $(`#${viewId} [data-input-id="${fieldId}"] input[name="${viewId}-${fieldId}"]:checked`);
+                                        return selectedRadio.val() || '';
+                                    } else {
+                                        // Single or multi-select dropdown
+                                        const selectElem = $(`#${viewId} [data-input-id="${fieldId}"] select[name="${fieldId}"]`);
+                                        if (selectElem.length) {
+                                            const val = selectElem.val();
+                                            return Array.isArray(val) ? val.join(' ') : val;
+                                        }
+                                        return '';
+                                    }
+                                };
+
                                 let fieldValue;
+                                let multiChoiceFormat;
+                                let multiChoiceFormatType;
+                                
                                 if (ktl.views.getViewType(viewId) === 'form') {
                                     if (fieldType === 'boolean') {
                                         fieldValue = ($(selector)[0].checked).toString();
+                                    } else if (fieldType === 'multiple_choice') {
+                                        multiChoiceFormat = Knack.objects.getField(fieldId).attributes.format;
+                                        multiChoiceFormatType = multiChoiceFormat && multiChoiceFormat.type;
+                                        fieldValue = getMultiChoiceValue(multiChoiceFormatType);
                                     } else {
                                         fieldValue = $(selector).val();
                                     }
-                                    $(selector).off('keyup.ktlHc').on('keyup.ktlHc', (event) => {
-                                        return resolve(ktlCompare(event.target.value, operator, value));
-                                    })
+                                    
+                                    // Listen to appropriate events based on field type
+                                    if (fieldType === 'multiple_choice') {
+                                        // For multi-choice fields, listen to change events on all inputs and selects
+                                        const inputSelector = `#${viewId} [data-input-id="${fieldId}"] input, #${viewId} [data-input-id="${fieldId}"] select`;
+                                        $(inputSelector).off('change.ktlHc').on('change.ktlHc', (event) => {
+                                            const newValue = getMultiChoiceValue(multiChoiceFormatType);
+                                            return resolve(ktlCompare(newValue, operator, value));
+                                        });
+                                    } else {
+                                        $(selector).off('keyup.ktlHc').on('keyup.ktlHc', (event) => {
+                                            return resolve(ktlCompare(event.target.value, operator, value));
+                                        });
+                                    }
                                 } else
                                     fieldValue = $(selector)[0].textContent.trim();
 
                                 if (fieldType && numericFieldTypes.includes(fieldType))
                                     fieldValue = ktl.core.extractNumericValue(fieldValue, fieldId);
 
-                                if (!fieldValue)
+                                if (fieldValue === undefined || fieldValue === null)
                                     return resolve(false);
 
                                 return resolve(ktlCompare(fieldValue, operator, value));
