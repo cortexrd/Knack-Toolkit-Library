@@ -1,14 +1,45 @@
 # Knack Toolkit Library Changelog
 
 
-## 0.36.4    *2026-01-07*
+## 0.37.0    *2026-01-12*
 
-- Grid colorization improvements:
-  - Add centralized grid colorization orchestrator for deterministic color application
+- Theme Editor enhancements:
+  - Add controls for row hover brightness and inline edit background
+  - Fix export to include rowHoverBrightness setting
+  - Fix controls not enabling on theme load/import
+  - Skip key handler when editor is closed
+  - Improve UX and fix save dialog issues
+  - Instructions popup now uses theme colors
+- Theme styling improvements:
+  - Add adaptive bulk edit colors based on active theme
+  - Bulk edit selection takes priority over other colorization (including `_cfv`)
+  - Improve developer popover auto-close (2s wait, 2s fade, mouse revive)
+  - Bookmark menu and dev popup now themed
+  - Filter buttons now themed
+- Grid colorization:
+  - Add centralized orchestrator for deterministic color application
   - Priority order: Knack built-in > KTL keywords > Sticky > Inline edit > Row hover > Theme
   - Add per-view table settings support (table_design_active for hover/striped overrides)
   - Exclude sticky cells from row hover background to prevent transparency
   - Read design settings directly from `Knack.app.attributes.design` instead of CSS parsing
+- `_stc` keyword (sticky columns):
+  - Fix custom background color not working with dark theme
+  - Add `border-collapse: unset` to prevent grid shift when scrolling
+  - Improve sticky cell bg calculation (10% lighter than tableCellBg)
+  - Preserve alpha channel (0.75) when tableCellBg override is provided
+- User Prefs sync improvements:
+  - Add auto-migration from User Filters table to User Prefs field
+  - Add direct database sync for bookmarks
+  - Add user prefs merge sync between localStorage and database
+  - Fix critical bug in sync date comparison
+  - Fix sync storm by comparing data without timestamps
+  - Clean up User Filters localStorage storage
+  - Fix deleted user filters reappearing after navigation
+- Bug fixes:
+  - Fix `_req` with ktlCond for multi-choice form fields (PR #562)
+- Developer tools:
+  - Add `disableCacheBusting` param to preserve breakpoints during debugging
+  - Change log color from blue to lightblue for better readability
 
 ## 0.36.3    *2026-01-05*
 
