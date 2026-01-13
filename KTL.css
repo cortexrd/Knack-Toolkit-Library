@@ -1385,4 +1385,12 @@ ul.ui-autocomplete {
 	filter: brightness(1.1);
 }
 
+/* Only here to prevent seeing text in the background when scrolling left-right */
+th.ktlStickyHeader {
+    box-shadow: 4px 0 0 0 var(--ktlTheme_tableHeaderBg, #f3f6f9);
+}
+td.ktlStickyCell {
+    box-shadow: 4px 0 0 0 var(--ktlTheme_stickyCellBg, #f3f6f9);
+}
+
 /**** KTL_RELATED - END ****/

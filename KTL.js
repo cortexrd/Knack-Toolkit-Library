@@ -2692,22 +2692,22 @@ function Ktl($, appInfo) {
                         };
 
                         // Check basic view attributes
-                        checkTextInContent(attributes.name, 'name', {...contextObj, url: `/${attributes.type}`});
-                        checkTextInContent(attributes.title, 'title', {...contextObj, url: `/${attributes.type}`});
-                        checkTextInContent(attributes.description, 'description', {...contextObj, url: `/${attributes.type}`});
+                        checkTextInContent(attributes.name, 'name', { ...contextObj, url: `/${attributes.type}` });
+                        checkTextInContent(attributes.title, 'title', { ...contextObj, url: `/${attributes.type}` });
+                        checkTextInContent(attributes.description, 'description', { ...contextObj, url: `/${attributes.type}` });
 
                         // Check rules and emails
                         if (attributes.rules) {
                             if (attributes.rules.submits) {
                                 attributes.rules.submits.forEach(rule => {
-                                    checkTextInContent(rule.message || '', 'submit rule', {...contextObj, url: '/form/rules/submit'});
+                                    checkTextInContent(rule.message || '', 'submit rule', { ...contextObj, url: '/form/rules/submit' });
                                 });
                             }
 
                             if (attributes.rules.emails) {
                                 attributes.rules.emails.forEach(rule => {
                                     if (rule.email) {
-                                        checkEmailContent(rule.email, {...contextObj, url: '/form/emails'});
+                                        checkEmailContent(rule.email, { ...contextObj, url: '/form/emails' });
                                     }
                                 });
                             }
@@ -2715,7 +2715,7 @@ function Ktl($, appInfo) {
 
                         // Check rich text content
                         if (attributes.type === 'rich_text') {
-                            checkTextInContent(attributes.content || '', 'rich text view', {...contextObj, url: `/${attributes.type}`});
+                            checkTextInContent(attributes.content || '', 'rich text view', { ...contextObj, url: `/${attributes.type}` });
                         }
                     });
                 });
@@ -3016,60 +3016,60 @@ function Ktl($, appInfo) {
                     });
 
                     setTimeout(() => {
-                    $(document).on('keydown.ktlConfirm', (e) => {
-                        const key = e.key.toLowerCase();
-                        const inputFocused = $('.ktlOtherInput').is(':focus');
+                        $(document).on('keydown.ktlConfirm', (e) => {
+                            const key = e.key.toLowerCase();
+                            const inputFocused = $('.ktlOtherInput').is(':focus');
 
-                        if (key === 'escape') {
-                            e.preventDefault();
-                            $(document).off('keydown.ktlConfirm');
-                            overlay.remove();
-                            resolve(-1);
-                            return;
-                        }
-
-                        if (key === 'enter') {
-                            if (hasOtherOption && (filteredOptions.length === 0 || inputFocused)) {
-                                e.preventDefault();
-                                const customValue = $('.ktlOtherInput').val().trim();
-                                $(document).off('keydown.ktlConfirm');
-                                overlay.remove();
-                                resolve(customValue || '');
-                                return;
-                            } else if (filteredOptions.length === 2 && !hasOtherOption) {
+                            if (key === 'escape') {
                                 e.preventDefault();
                                 $(document).off('keydown.ktlConfirm');
                                 overlay.remove();
-                                resolve(0);
+                                resolve(-1);
                                 return;
                             }
-                        }
 
-                        // Don't process shortcuts if input field is focused
-                        if (inputFocused) {
-                            return;
-                        }
-
-                        const shortcutIndex = shortcuts.indexOf(key);
-                        if (shortcutIndex !== -1) {
-                            e.preventDefault();
-                            if (shortcutIndex === filteredOptions.length && hasOtherOption) {
-                                $('.ktlOtherInput').focus();
-                            } else {
-                                $(document).off('keydown.ktlConfirm');
-                                overlay.remove();
-                                resolve(shortcutIndex);
+                            if (key === 'enter') {
+                                if (hasOtherOption && (filteredOptions.length === 0 || inputFocused)) {
+                                    e.preventDefault();
+                                    const customValue = $('.ktlOtherInput').val().trim();
+                                    $(document).off('keydown.ktlConfirm');
+                                    overlay.remove();
+                                    resolve(customValue || '');
+                                    return;
+                                } else if (filteredOptions.length === 2 && !hasOtherOption) {
+                                    e.preventDefault();
+                                    $(document).off('keydown.ktlConfirm');
+                                    overlay.remove();
+                                    resolve(0);
+                                    return;
+                                }
                             }
-                        }
-                    });
 
-                    if (hasOtherOption && (defaultValue || filteredOptions.length === 0)) {
-                        const inputEl = $('.ktlOtherInput')[0];
-                        inputEl.focus();
-                        if (defaultValue) inputEl.select();
-                    } else {
-                        $('.ktlConfirmOption').first().focus();
-                    }
+                            // Don't process shortcuts if input field is focused
+                            if (inputFocused) {
+                                return;
+                            }
+
+                            const shortcutIndex = shortcuts.indexOf(key);
+                            if (shortcutIndex !== -1) {
+                                e.preventDefault();
+                                if (shortcutIndex === filteredOptions.length && hasOtherOption) {
+                                    $('.ktlOtherInput').focus();
+                                } else {
+                                    $(document).off('keydown.ktlConfirm');
+                                    overlay.remove();
+                                    resolve(shortcutIndex);
+                                }
+                            }
+                        });
+
+                        if (hasOtherOption && (defaultValue || filteredOptions.length === 0)) {
+                            const inputEl = $('.ktlOtherInput')[0];
+                            inputEl.focus();
+                            if (defaultValue) inputEl.select();
+                        } else {
+                            $('.ktlConfirmOption').first().focus();
+                        }
                     }, 0);
                 });
             },
@@ -6090,39 +6090,39 @@ function Ktl($, appInfo) {
                         ktlKeywords[viewId]._rlv[0].params[0] &&
                         ktlKeywords[viewId]._rlv[0].params[0].length) {
 
-                            // Check expiry date first
-                            const expiryKey = Object.keys(formDataObj[viewId]).filter(key => key === 'expiryDate')[0];
-                            if (expiryKey) {
-                                const now = new Date();
-                                const expiryDate = new Date(formDataObj[viewId][expiryKey]);
-                                if (expiryDate < now) {
-                                    console.log('expired in eraseFormData', expiryDate);
-                                    delete formDataObj[viewId];
-                                    ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
-                                    return;
-                                }
+                        // Check expiry date first
+                        const expiryKey = Object.keys(formDataObj[viewId]).filter(key => key === 'expiryDate')[0];
+                        if (expiryKey) {
+                            const now = new Date();
+                            const expiryDate = new Date(formDataObj[viewId][expiryKey]);
+                            if (expiryDate < now) {
+                                console.log('expired in eraseFormData', expiryDate);
+                                delete formDataObj[viewId];
+                                ktl.storage.lsSetItem(PERSISTENT_FORM_DATA, JSON.stringify(formDataObj));
+                                return;
                             }
+                        }
 
-                            const expiryParams = ktlKeywords[viewId]._rlv[0].params[1];
-                            if (expiryParams && expiryParams[0] === 'expiry') {
-                                const [_, expiryHours = 24] = expiryParams;
-                                const now = new Date();
-                                expiryDate = new Date(
-                                    now.getTime() + (parseInt(expiryHours) * 60 * 60 * 1000)
-                                );
-                            }
-
-                            // Get fields to preserve
-                            const rlvFields = ktlKeywords[viewId]._rlv[0].params[0];
-                            const rlvFieldsId = rlvFields.map(field =>
-                                field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+                        const expiryParams = ktlKeywords[viewId]._rlv[0].params[1];
+                        if (expiryParams && expiryParams[0] === 'expiry') {
+                            const [_, expiryHours = 24] = expiryParams;
+                            const now = new Date();
+                            expiryDate = new Date(
+                                now.getTime() + (parseInt(expiryHours) * 60 * 60 * 1000)
                             );
+                        }
+
+                        // Get fields to preserve
+                        const rlvFields = ktlKeywords[viewId]._rlv[0].params[0];
+                        const rlvFieldsId = rlvFields.map(field =>
+                            field.startsWith('field_') ? field : ktl.fields.getFieldIdFromLabel(viewId, field)
+                        );
 
 
-                            // Only delete fields not in rlvFieldsId
-                            Object.keys(formDataObj[viewId])
-                                .filter(fieldId => !rlvFieldsId.includes(fieldId))
-                                .forEach(fieldId => delete formDataObj[viewId][fieldId]);
+                        // Only delete fields not in rlvFieldsId
+                        Object.keys(formDataObj[viewId])
+                            .filter(fieldId => !rlvFieldsId.includes(fieldId))
+                            .forEach(fieldId => delete formDataObj[viewId][fieldId]);
 
 
                     } else {
@@ -8779,10 +8779,10 @@ function Ktl($, appInfo) {
 
         const automatedBulkOpsQueue = {};
 
-    // Persist scroll positions for views with sticky headers so we can restore after refresh
-    var stickyScrollPositions = {};
+        // Persist scroll positions for views with sticky headers so we can restore after refresh
+        var stickyScrollPositions = {};
 
-    //TODO: Migrate all variables here.
+        //TODO: Migrate all variables here.
         var cfg = {
             hscCollapsedColumnsWidth: '5',
             hscGlobal: false,
@@ -8972,8 +8972,8 @@ function Ktl($, appInfo) {
         })
 
         //$(document).on('knack-modal-render', function (e, view, data) {
-            //Called before view render.  Can be useful some day.
-            //console.log('render modal', view);
+        //Called before view render.  Can be useful some day.
+        //console.log('render modal', view);
         //})
 
         $(document).on('knack-view-render.any', function (event, view, data) {
@@ -16870,10 +16870,10 @@ function Ktl($, appInfo) {
                                         if (['DIV', 'LABEL', 'SPAN'].includes(event.target.nodeName))
                                             return;
 
-                                        switch(event.target.type) {
+                                        switch (event.target.type) {
                                             case 'checkbox':
                                                 if (ktlCompare(event.target.value, operator, value)) {
-                                                    if(event.target.checked)
+                                                    if (event.target.checked)
                                                         hide();
                                                     else
                                                         unhide();
@@ -17350,7 +17350,7 @@ function Ktl($, appInfo) {
                                 const baseFieldId = fieldMatch[0];
                                 const selector = '#' + viewId + ' td.' + baseFieldId + ' span';
 
-                                $(selector).each(function() {
+                                $(selector).each(function () {
                                     const $span = $(this);
                                     const $tdParent = $span.closest('td');
 
@@ -17360,7 +17360,7 @@ function Ktl($, appInfo) {
                                         let titleText = '';
 
                                         if (tdSpans.length > 0) {
-                                            const innerSpanTexts = tdSpans.map(function() {
+                                            const innerSpanTexts = tdSpans.map(function () {
                                                 return $(this).text().trim();
                                             }).get().filter(Boolean);
                                             titleText = innerSpanTexts.join(', ');
@@ -18305,13 +18305,10 @@ function Ktl($, appInfo) {
                 const table = $(`#${viewSelector} table`);
                 table.addClass('ktlHasStickyColumns');
 
-                let stickyColWidth = 0;
                 for (let i = 1; i <= columnCount; i++) {
                     const jqthead = $(`#${viewSelector} thead tr th:nth-child(${i})`);
                     const jqtbody = $(`#${viewSelector} tbody tr td:nth-child(${i})`);
-                    const columnWidth = jqthead.outerWidth();
-                    stickyColWidth += columnWidth;
-                    const leftPos = (stickyColWidth - columnWidth) + 'px';
+                    const leftPos = jqthead[0].offsetLeft + ((i - 1) * 4) + 'px';
                     jqthead.addClass('ktlStickyHeader').css('left', leftPos);
                     jqtbody.addClass('ktlStickyCell').css('left', leftPos);
                 }
@@ -18348,7 +18345,8 @@ function Ktl($, appInfo) {
                     style.id = 'ktlStickyColStyles';
                     style.textContent = `
                         table.ktlHasStickyColumns {
-                            border-collapse: unset;
+                            border-collapse: separate;
+                            border-spacing: 0;
                         }
                         table.ktlHasStickyColumns.kn-table--has-sticky-headers thead {
                             z-index: 2 !important;
@@ -19142,7 +19140,7 @@ function Ktl($, appInfo) {
                     button.style.color = sysColors.buttonText.rgb;
 
                     // Add context menu (right-click) handler
-                    button.addEventListener('contextmenu', function(e) {
+                    button.addEventListener('contextmenu', function (e) {
                         e.preventDefault();
                         showBookmarkContextMenu(e, bookmark, button);
                     });
@@ -19180,7 +19178,7 @@ function Ktl($, appInfo) {
             editOption.textContent = 'Rename';
             editOption.className = 'ktlBookmarkMenuItem';
             editOption.setAttribute('aria-label', 'Rename bookmark');
-            editOption.addEventListener('click', function() {
+            editOption.addEventListener('click', function () {
                 handleEditBookmark(bookmark);
                 menu.remove();
             });
@@ -19191,7 +19189,7 @@ function Ktl($, appInfo) {
             deleteOption.textContent = 'Delete';
             deleteOption.className = 'ktlBookmarkMenuItem';
             deleteOption.setAttribute('aria-label', 'Delete bookmark');
-            deleteOption.addEventListener('click', function() {
+            deleteOption.addEventListener('click', function () {
                 handleDeleteBookmark(bookmark);
                 menu.remove();
             });
@@ -19202,7 +19200,7 @@ function Ktl($, appInfo) {
             openTabOption.textContent = 'Open in New Tab';
             openTabOption.className = 'ktlBookmarkMenuItem';
             openTabOption.setAttribute('aria-label', 'Open bookmark in new tab');
-            openTabOption.addEventListener('click', function() {
+            openTabOption.addEventListener('click', function () {
                 window.open(bookmark.url, '_blank');
                 menu.remove();
             });
@@ -19213,7 +19211,7 @@ function Ktl($, appInfo) {
             openWindowOption.textContent = 'Open in New Window';
             openWindowOption.className = 'ktlBookmarkMenuItem';
             openWindowOption.setAttribute('aria-label', 'Open bookmark in new window');
-            openWindowOption.addEventListener('click', function() {
+            openWindowOption.addEventListener('click', function () {
                 window.open(bookmark.url, '_blank', 'noopener,noreferrer,width=1000,height=800');
                 menu.remove();
             });
