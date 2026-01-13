@@ -18350,6 +18350,9 @@ function Ktl($, appInfo) {
                         table.ktlHasStickyColumns {
                             border-collapse: unset;
                         }
+                        table.ktlHasStickyColumns.kn-table--has-sticky-headers thead {
+                            z-index: 2 !important;
+                        }
                         table.ktlHasStickyColumns.knTable--clean th {
                             background-color: var(--ktlStickyHeaderBg, ${defaultBg}) !important;
                         }
