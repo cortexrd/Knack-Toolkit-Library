@@ -10500,11 +10500,54 @@ function Ktl($, appInfo) {
                                 }
 
                                 if (targetViewType === 'table' || targetViewType === 'search') {
-                                    colNb = ktl.views.getFieldPositionFromHeader(targetViewId, ktlTarget[i]);
-                                    if (colNb === undefined)
-                                        colNb = ktl.views.getFieldPositionFromFieldId(targetViewId, targetFieldId);
-                                    if (colNb >= 0)
-                                        targetSel += ' tr[id="' + record.id + '"] td:nth-child(' + (colNb + 1) + ')' + span + ',';
+                                    const token = ktlTarget[i];
+
+                                    // FIELD TARGETS:
+                                    // If we're targeting a real field, do NOT use nth-child(). Checkbox/bulk-op columns will shift it.
+                                    // Instead prefer:
+                                    //  - td.field_####
+                                    //  - td[data-field-key="field_####"]
+                                    //  - td[data-column-index="X"] (0-based, excludes checkbox columns)
+                                    const effectiveFieldId = (targetFieldId && targetFieldId.startsWith('field_'))
+                                        ? targetFieldId
+                                        : (token.startsWith('field_') ? token : undefined);
+
+                                    if (effectiveFieldId) {
+                                        const recordId = record.id;
+                                        targetSel += ' tr[id="' + recordId + '"] td.' + effectiveFieldId + span +
+                                            ', tr[id="' + recordId + '"] td[data-field-key="' + effectiveFieldId + '"]' + span + ',';
+
+                                        // Fallback for cases where the cell doesn't include the field key/class (some link columns):
+                                        // data-column-index is stable relative to actual data columns.
+                                        let dataColIndex = ktl.views.getFieldPositionFromFieldId(targetViewId, effectiveFieldId);
+                                        if (dataColIndex === undefined)
+                                            dataColIndex = ktl.views.getFieldPositionFromHeader(targetViewId, token);
+                                        if (dataColIndex !== undefined && dataColIndex >= 0) {
+                                            targetSel += ' tr[id="' + recordId + '"] td[data-column-index="' + dataColIndex + '"]' + span + ',';
+                                        }
+                                        continue;
+                                    }
+
+                                    // NON-FIELD / HEADER-ONLY TARGETS:
+                                    // Use HTML header index (checkbox-safe, works with action links and header-only columns).
+                                    let columnIndex = ktl.views.getColumnIndex(targetViewId, token);
+                                    if (columnIndex === undefined && targetFieldId)
+                                        columnIndex = ktl.views.getColumnIndex(targetViewId, targetFieldId);
+
+                                    if (columnIndex !== undefined && columnIndex >= 0) {
+                                        targetSel += ' tr[id="' + record.id + '"] td:nth-child(' + (columnIndex + 1) + ')' + span + ',';
+                                    } else if (targetFieldId && targetFieldId.startsWith('field_')) {
+                                        // Fallback: field class (not always present for links/custom columns).
+                                        targetSel += ' tr[id="' + record.id + '"] td.' + targetFieldId + span + ',';
+                                    } else {
+                                        // Fallback: data-column-index when available.
+                                        colNb = ktl.views.getFieldPositionFromHeader(targetViewId, token);
+                                        if (colNb === undefined)
+                                            colNb = ktl.views.getFieldPositionFromFieldId(targetViewId, targetFieldId);
+                                        if (colNb >= 0) {
+                                            targetSel += ' tr[id="' + record.id + '"] td[data-column-index="' + colNb + '"]' + span + ',';
+                                        }
+                                    }
                                 } else if (targetViewType === 'list') {
                                     targetSel += ' [data-record-id="' + record.id + '"] .kn-detail.' + (propagate ? targetFieldId : targetFieldId + ' .kn-detail-body' + span) + ',';
                                 } else if (targetViewType === 'details') {
@@ -17845,10 +17888,14 @@ function Ktl($, appInfo) {
                 if (!['table', 'search'].includes(ktl.views.getViewType(viewId))) return;
 
                 const headerToMatch = headerOrFieldId.startsWith('field_') ? ktl.fields.getFieldLabelFromId(viewId, headerOrFieldId) : headerOrFieldId;
+                if (!headerToMatch || !headerToMatch.toString().trim()) return;
+
+                const normalize = (s) => (s || '').toString().replace(/\s+/g, ' ').trim().toLowerCase();
+                const headerToMatchNorm = normalize(headerToMatch);
                 const headers = $(`#${viewId} thead th`);
 
                 for (let i = 0; i < headers.length; i++) {
-                    if ($(headers[i]).text().trim() === headerToMatch) {
+                    if (normalize($(headers[i]).text()) === headerToMatchNorm) {
                         return i;
                     }
                 }
