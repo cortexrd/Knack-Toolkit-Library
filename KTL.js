@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.37.0';
+    const KTL_VERSION = '0.37.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -22710,7 +22710,7 @@ function Ktl($, appInfo) {
                 const acctUserPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
                 const userAttrs = Knack.getUserAttributes();
 
-                if (!acctUserPrefsFld || !userAttrs) {
+                if (!acctUserPrefsFld || !userAttrs || userAttrs === 'No user found') {
                     return false;
                 }
 
