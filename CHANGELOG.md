@@ -1,6 +1,14 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.37.2    *2026-01-13*
+
+- Fix pre-login looping error
+- `_stc` keyword (sticky columns):
+  - Fix jittering during horizontal scroll
+  - Fix with Page Layout set to Max Width (Issue #561)
+- Preserve Knack native text colorization in dark theme
+
 ## 0.37.0    *2026-01-12*
 
 - Theme Editor enhancements:
