@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.37.2';
+    const KTL_VERSION = '0.37.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -19796,6 +19796,7 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
                                 color: var(--ktlTheme_headersAndLabelsText) !important;
                                 border-color: var(--ktlTheme_tableGridColor) !important;
+                                border-left-color: transparent !important;
                             }
                             .ktlUserTheme .knTable td:not([style*="background"]):not(.ktlInlineEditableCellsStyle):not(.ktlStickyCell):not(.bulkEditSelectedRow) {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
@@ -19805,6 +19806,7 @@ function Ktl($, appInfo) {
                             }
                             .ktlUserTheme .knTable td:not(.bulkEditSelectedCol) {
                                 border-color: var(--ktlTheme_tableGridColor) !important;
+                                border-left-color: transparent !important;
                             }
                             .ktlUserTheme .kn-content .fc-widget-header,
                             .ktlUserTheme .kn-content .fc-widget-content {
@@ -19822,7 +19824,7 @@ function Ktl($, appInfo) {
                             }
 
                             /* Links */
-                            .ktlUserTheme .kn-content a {
+                            .ktlUserTheme .kn-content a:not([style*="color"]) {
                                 color: var(--ktlTheme_linkColor) !important;
                             }
                             .ktlUserTheme .redactor-toolbar li a {
