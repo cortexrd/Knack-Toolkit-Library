@@ -7091,7 +7091,7 @@ function Ktl($, appInfo) {
             try {
                 if (dateIsNow)
                     filters.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                ktl.storage.lsSetItem(LS_UFP, JSON.stringify(cleanUpFilters(filters)));
+                ktl.storage.lsSetItem(LS_UFP, JSON.stringify(filters));
             } catch (e) {
                 console.log('Error while saving filters:', e);
             }
@@ -23950,19 +23950,19 @@ function Ktl($, appInfo) {
                                 var localPfTempObj = JSON.parse(localPfStr);
                                 if (!$.isEmptyObject(localPfTempObj)) {
                                     if (!localPfTempObj.dt) {
-                                        ktl.log.clog('purple', 'KTL has encountered an empty date in local public filters');
-                                        return;
-                                    }
-
-                                    var localPfDt = localPfTempObj.dt;
-
-                                    if (localPfDt !== cloudPfDt)
-                                        console.log(`Change found: localPfDt: ${localPfDt} vs cloudPfDt: ${cloudPfDt}`);
-
-                                    if (ktl.core.isMoreRecent(cloudPfDt, localPfDt))
+                                        ktl.storage.lsRemoveItem(LS_UFP);
                                         pubFiltersNeedDownload = true;
-                                    else if (Knack.getUserRoleNames().includes('Public Filters') && (!cloudPfDt || ktl.core.isMoreRecent(localPfDt, cloudPfDt))) {
-                                        pubFiltersNeedUpload = true;
+                                    } else {
+                                        var localPfDt = localPfTempObj.dt;
+
+                                        if (localPfDt !== cloudPfDt)
+                                            console.log(`Change found: localPfDt: ${localPfDt} vs cloudPfDt: ${cloudPfDt}`);
+
+                                        if (ktl.core.isMoreRecent(cloudPfDt, localPfDt))
+                                            pubFiltersNeedDownload = true;
+                                        else if (Knack.getUserRoleNames().includes('Public Filters') && (!cloudPfDt || ktl.core.isMoreRecent(localPfDt, cloudPfDt))) {
+                                            pubFiltersNeedUpload = true;
+                                        }
                                     }
                                 }
                             } catch (e) {
