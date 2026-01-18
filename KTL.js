@@ -26698,11 +26698,45 @@ function Ktl($, appInfo) {
 
         const createPopup = function () {
             const container = document.createElement('div');
+
+            const headerRow = document.createElement('div');
+            headerRow.style.display = 'flex';
+            headerRow.style.justifyContent = 'space-between';
+            headerRow.style.alignItems = 'center';
+
             const escSpan = document.createElement('span');
             escSpan.innerText = 'Esc to close';
             escSpan.style.color = 'grey';
             escSpan.style.margin = '0em 0.5em';
-            container.appendChild(escSpan);
+            headerRow.appendChild(escSpan);
+
+            const pinBtn = document.createElement('a');
+            pinBtn.classList.add('is-small', 'ktl-popover-pin');
+            pinBtn.style.display = 'inline-flex';
+            pinBtn.style.margin = '0em 0.5em';
+            pinBtn.style.cursor = 'pointer';
+            pinBtn.title = popoverPinned ? 'Unpin to auto-close' : 'Pin to keep open';
+            const pinIcon = document.createElement('i');
+            pinIcon.classList.add('fa', 'fa-thumb-tack');
+            pinIcon.style.transform = popoverPinned ? 'rotate(0deg)' : 'rotate(45deg)';
+            pinIcon.style.opacity = popoverPinned ? '1' : '0.5';
+            pinIcon.style.transition = 'transform 0.2s, opacity 0.2s';
+            pinBtn.appendChild(pinIcon);
+            pinBtn.addEventListener('click', function () {
+                popoverPinned = !popoverPinned;
+                localStorage.setItem('KTL_POPOVER_PINNED', popoverPinned);
+                pinIcon.style.transform = popoverPinned ? 'rotate(0deg)' : 'rotate(45deg)';
+                pinIcon.style.opacity = popoverPinned ? '1' : '0.5';
+                pinBtn.title = popoverPinned ? 'Unpin to auto-close' : 'Pin to keep open';
+                if (popoverPinned) {
+                    stopPopoverAutoClose();
+                } else {
+                    startPopoverAutoClose();
+                }
+            });
+            headerRow.appendChild(pinBtn);
+
+            container.appendChild(headerRow);
             return container
         }
 
@@ -27084,6 +27118,7 @@ function Ktl($, appInfo) {
         let isMonitoring = false;
         let lastMousePosition = { x: 0, y: 0 };
         let popoverCloseTimer = null;
+        let popoverPinned = localStorage.getItem('KTL_POPOVER_PINNED') === 'true';
 
         const popoverSelectors = {
             '.knTable th': tableHeadOptions,
@@ -27156,7 +27191,7 @@ function Ktl($, appInfo) {
 
         function startPopoverCloseTimer() {
             clearPopoverTimer();
-            if (!openedPopOverTarget) return;
+            if (!openedPopOverTarget || popoverPinned) return;
 
             popoverCloseTimer = setTimeout(function () {
                 popoverCloseTimer = null;
@@ -27171,7 +27206,7 @@ function Ktl($, appInfo) {
         }
 
         function startPopoverAutoClose() {
-            if (!openedPopOverTarget) return;
+            if (!openedPopOverTarget || popoverPinned) return;
 
             // Mouse enters popover - pause the timer and revive if fading
             $('#kn-popover').off('mouseenter.ktlPopOverTimer').on('mouseenter.ktlPopOverTimer', function () {
