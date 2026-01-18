@@ -11352,6 +11352,8 @@ function Ktl($, appInfo) {
                             $(`#${viewId} td`).bindFirst('click.ktl_vrd', processVrd);
 
                             function processVrd(e) {
+                                if (e.target.getAttribute('type') === 'checkbox') return;
+
                                 const clickedViewId = $(e.target).closest('.kn-view[id]').attr('id');
                                 if (clickedViewId && clickedViewId === viewId) {
                                     const clickedObj = e.target.closest('tr') || e.target.closest('[data-record-id]');
@@ -18352,10 +18354,11 @@ function Ktl($, appInfo) {
                 const table = $(`#${viewSelector} table`);
                 table.addClass('ktlHasStickyColumns');
 
+                const firstHeaderOffset = $(`#${viewSelector} thead tr th:nth-child(1)`)[0].offsetLeft;
                 for (let i = 1; i <= columnCount; i++) {
                     const jqthead = $(`#${viewSelector} thead tr th:nth-child(${i})`);
                     const jqtbody = $(`#${viewSelector} tbody tr td:nth-child(${i})`);
-                    const leftPos = jqthead[0].offsetLeft + ((i - 1) * 4) + 'px';
+                    const leftPos = (jqthead[0].offsetLeft - firstHeaderOffset) + ((i - 1) * 4) + 'px';
                     jqthead.addClass('ktlStickyHeader').css('left', leftPos);
                     jqtbody.addClass('ktlStickyCell').css('left', leftPos);
                 }
