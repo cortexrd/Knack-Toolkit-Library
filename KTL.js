@@ -27138,6 +27138,10 @@ function Ktl($, appInfo) {
             // Avoid reinitializing popover for the same target repeatedly
             if (openedPopOverTarget === event.currentTarget) return;
 
+            // Stop any ongoing fadeOut and reset visibility
+            clearPopoverTimer();
+            $('#kn-popover').stop(true).css({ opacity: 1, display: 'block' });
+
             $(openedPopOverTarget).removeClass('active').removeData('popover');
             const target = $(event.currentTarget);
             openedPopOverTarget = event.currentTarget;
