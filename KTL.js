@@ -24731,7 +24731,7 @@ function Ktl($, appInfo) {
                     //If check boxes spread across more than one view, discard all and start again in current target view.
                     if (bulkOpsViewId !== viewId) {
                         if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
-                            $(`#${bulkOpsViewId} .masterSelector`).prop('checked', false);
+                            $(`#${bulkOpsViewId} .masterSelector[data-ktl-bulkops="1"]`).prop('checked', false);
                             $(`#${bulkOpsViewId} tbody ${bulkOpsCheckboxSelector}`).each(function () {
                                 $(this).prop('checked', false);
                             });
@@ -24807,7 +24807,7 @@ function Ktl($, appInfo) {
 
         function isBulkOpsCheckbox(target, viewId) {
             if (!target || !viewId || !target.matches) return false;
-            return target.matches(`#${viewId} ${bulkOpsCheckboxSelector}`);
+            return !!target.closest(`#${viewId}`) && target.matches(bulkOpsCheckboxSelector);
         }
 
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
@@ -24954,13 +24954,14 @@ function Ktl($, appInfo) {
             //Only add checkboxes if there's data and checkboxes not yet added.
             const selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
             if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table th:nth-child(1) input[type=checkbox]')) {
-                // Add the master checkbox to to the header to select/unselect all
+                // Add the master checkbox to the header to select/unselect all
                 $('#' + viewId + ' .kn-table thead tr').prepend('<th style="width: 24px;"><input type="checkbox"></th>');
                 $('#' + viewId + ' .kn-table thead input:first').addClass('masterSelector');
                 $('#' + viewId + ' .kn-table thead input:first').attr('data-ktl-bulkops', '1');
                 $('#' + viewId + ' .masterSelector').change(function () {
+                    const headerChecked = $('#' + viewId + ' th input:checkbox').prop('checked');
                     $(`#${viewId} tbody ${bulkOpsCheckboxSelector}`).each(function () {
-                        $(this).attr('checked', $('#' + viewId + ' th input:checkbox').attr('checked') !== undefined);
+                        $(this).prop('checked', headerChecked);
                     });
 
                     updateBulkOpsGuiElements(viewId);
