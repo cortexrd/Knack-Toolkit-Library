@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.10.2*/
+/* KTL CSS version: 0.10.3*/
 
 /************ General Settings **************/
 #verButtonId {
@@ -798,21 +798,10 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 @keyframes ktlFlashingOnOff {
-	0% {
-		opacity: 1;
-	}
-
-	80% {
-		opacity: 1;
-	}
-
-	80.01% {
-		opacity: 0.3;
-	}
-
-	100% {
-		opacity: 0.3;
-	}
+	0% { filter: brightness(1); }
+	80% { filter: brightness(1); }
+	80.01% { filter: brightness(0.4); }
+	100% { filter: brightness(0.4); }
 }
 
 .ktlFlashingOnOff {
@@ -820,21 +809,10 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 }
 
 @keyframes ktlFlashingFadeInOut {
-	0% {
-		opacity: 1;
-	}
-
-	60% {
-		opacity: 1;
-	}
-
-	80% {
-		opacity: 0.3;
-	}
-
-	100% {
-		opacity: 1;
-	}
+	0% { filter: brightness(1); }
+	60% { filter: brightness(1); }
+	80% { filter: brightness(0.4); }
+	100% { filter: brightness(1); }
 }
 
 .ktlFlashingFadeInOut {
@@ -1387,10 +1365,10 @@ ul.ui-autocomplete {
 
 /* Only here to prevent seeing text in the background when scrolling left-right */
 th.ktlStickyHeader {
-    box-shadow: 4px 0 0 0 var(--ktlTheme_tableHeaderBg, #f3f6f9);
+    box-shadow: 1px 0 0 0 var(--ktlTheme_tableHeaderBg, #f3f6f9);
 }
 td.ktlStickyCell {
-    box-shadow: 4px 0 0 0 var(--ktlTheme_stickyCellBg, #f3f6f9);
+    box-shadow: 1px 0 0 0 var(--ktlTheme_stickyCellBg, #f3f6f9);
 }
 
 /**** KTL_RELATED - END ****/

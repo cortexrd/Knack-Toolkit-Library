@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.37.3';
+    const KTL_VERSION = '0.37.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -18358,7 +18358,7 @@ function Ktl($, appInfo) {
                 for (let i = 1; i <= columnCount; i++) {
                     const jqthead = $(`#${viewSelector} thead tr th:nth-child(${i})`);
                     const jqtbody = $(`#${viewSelector} tbody tr td:nth-child(${i})`);
-                    const leftPos = (jqthead[0].offsetLeft - firstHeaderOffset) + ((i - 1) * 4) + 'px';
+                    const leftPos = (jqthead[0].offsetLeft - firstHeaderOffset) + 'px';
                     jqthead.addClass('ktlStickyHeader').css('left', leftPos);
                     jqtbody.addClass('ktlStickyCell').css('left', leftPos);
                 }
