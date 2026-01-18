@@ -461,6 +461,12 @@ function Ktl($, appInfo) {
         function handleResize() {
             for (const subscriber of resizeSubscribers)
                 subscriber.callback(...subscriber.additionalParameters);
+
+            // Refresh views with sticky columns to recalculate positions
+            $('.ktlHasStickyColumns').each(function () {
+                const viewId = $(this).closest('.kn-view').attr('id');
+                if (viewId) ktl.views.refreshView(viewId);
+            });
         }
 
         let defaultConfigurationReady = false;
