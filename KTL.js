@@ -9731,7 +9731,8 @@ function Ktl($, appInfo) {
             const viewId = String(view?.key || '').trim();
             if (!viewId) return;
 
-            if (view?.type !== 'table') return;
+            const viewType = ktl.views.getViewType(viewId);
+            if (!['table', 'search'].includes(viewType)) return;
 
             if (!keywords || !keywords[kw] || !keywords[kw].length) return;
 
