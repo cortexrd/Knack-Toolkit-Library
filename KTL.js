@@ -9235,6 +9235,7 @@ function Ktl($, appInfo) {
 
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
+                addDataTooltips(view, keywords);
                 noFiltering(view);
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
@@ -9719,6 +9720,154 @@ function Ktl($, appInfo) {
                     tooltipIconPositions.forEach(({ position, text, icon }) => {
                         if ($(position).length) ktl.views.addTooltipsToFields(viewId, text, viewType, position, icon);
                     });
+                }
+            }
+        }
+
+        // Add data-driven tooltip text to a target column using values from a source column.
+        // _dttip=[sourceField, targetField, label?, hideSource?]
+        function addDataTooltips(view, keywords) {
+            const kw = '_dttip';
+            const viewId = String(view?.key || '').trim();
+            if (!viewId) return;
+
+            if (view?.type !== 'table') return;
+
+            if (!keywords || !keywords[kw] || !keywords[kw].length) return;
+
+            const kwList = ktl.core.getKeywordsByType(viewId, kw);
+            if (!Array.isArray(kwList) || kwList.length === 0) return;
+
+            const mappings = [];
+
+            kwList.forEach((kwInstance) => {
+                if (kwInstance?.options && !ktl.core.hasRoleAccess(kwInstance.options)) return;
+                const groups = Array.isArray(kwInstance?.params) ? kwInstance.params : [];
+                groups.forEach((params) => {
+                    if (!Array.isArray(params) || params.length < 2) return;
+
+                    const sourceFieldKey = resolveDttipFieldKey(viewId, params?.[0]);
+                    const targetFieldKey = resolveDttipFieldKey(viewId, params?.[1]);
+                    if (!sourceFieldKey || !targetFieldKey) return;
+
+                    const label = String(params?.[2] ?? '').trim();
+
+                    const rawHide = String(params?.[3] ?? '').trim().toLowerCase();
+                    const hideSource = rawHide ? !['show', 'keep', 'false', '0', 'no'].includes(rawHide) : true;
+
+                    mappings.push({ sourceFieldKey, targetFieldKey, label, hideSource });
+                });
+            });
+
+            if (!mappings.length) return;
+
+            applyDataTooltips(viewId, mappings);
+        }
+
+        function resolveDttipFieldKey(viewId, value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            if (raw.startsWith('field_')) return raw;
+            return ktl.fields.getFieldIdFromLabel(viewId, raw) || '';
+        }
+
+        function extractDttipCellValue(cell) {
+            if (!cell) return '';
+
+            const connectionSpans = Array.from(cell.querySelectorAll('[data-kn="connection-value"]'));
+            const connectionTexts = connectionSpans
+                .map((el) => String(el?.textContent || '').replace(/\s+/g, ' ').trim())
+                .filter(Boolean);
+            if (connectionTexts.length) return connectionTexts.join(', ');
+
+            const html = String(cell.innerHTML || '').trim();
+            if (!html) return '';
+
+            const withNewlines = html
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<\/span>\s*<span/gi, '</span>\n<span')
+                .replace(/<[^>]+>/g, '');
+
+            const parts = withNewlines
+                .split(/\r?\n/)
+                .map((p) => p.replace(/\s+/g, ' ').trim())
+                .filter(Boolean);
+
+            return parts.join(', ');
+        }
+
+        function applyDataTooltips(viewId, mappings = []) {
+            const vid = String(viewId || '').trim();
+            if (!vid) return;
+
+            if (!Array.isArray(mappings) || mappings.length === 0) return;
+
+            const viewElement = document.getElementById(vid);
+            if (!viewElement) return;
+
+            const table = viewElement.querySelector('table.kn-table');
+            if (!table) return;
+
+            const headerCells = Array.from(table.querySelectorAll('thead th'));
+            if (!headerCells.length) return;
+
+            const colIndexCache = new Map();
+            const findColumnIndex = (fieldKey) => {
+                const fk = String(fieldKey || '').trim();
+                if (!fk) return -1;
+                if (colIndexCache.has(fk)) return colIndexCache.get(fk);
+
+                const idx = headerCells.findIndex((th) => {
+                    const dataKey = th.getAttribute('data-field-key') || th.dataset?.fieldKey || '';
+                    if (String(dataKey || '').trim() === fk) return true;
+                    if (th.classList?.contains?.(fk)) return true;
+                    if (typeof th.className === 'string' && th.className.includes(fk)) return true;
+                    return false;
+                });
+
+                colIndexCache.set(fk, idx);
+                return idx;
+            };
+
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            if (!rows.length) return;
+
+            for (const mapping of mappings) {
+                if (!mapping?.sourceFieldKey || !mapping?.targetFieldKey) continue;
+
+                const sourceIdx = findColumnIndex(mapping.sourceFieldKey);
+                const targetIdx = findColumnIndex(mapping.targetFieldKey);
+                if (sourceIdx < 0 || targetIdx < 0) continue;
+
+                const sourceHeader = headerCells[sourceIdx];
+                if (mapping.hideSource && sourceHeader) sourceHeader.style.display = 'none';
+
+                for (const row of rows) {
+                    const cells = Array.from(row.querySelectorAll('td'));
+                    const sourceCell = cells[sourceIdx];
+                    const targetCell = cells[targetIdx];
+                    if (!sourceCell || !targetCell) continue;
+
+                    if (mapping.hideSource) sourceCell.style.display = 'none';
+
+                    const tooltipValue = extractDttipCellValue(sourceCell);
+                    if (!tooltipValue) continue;
+
+                    const label = String(mapping.label || '').trim();
+                    const formattedValue = label ? `${label}: ${tooltipValue}` : tooltipValue;
+
+                    const mappingKey = `${mapping.sourceFieldKey}=>${mapping.targetFieldKey}=>${encodeURIComponent(label)}`;
+                    const appliedAttr = 'ktlDttipApplied';
+                    const appliedRaw = String(targetCell.dataset?.[appliedAttr] || '').trim();
+                    const appliedKeys = appliedRaw ? appliedRaw.split('|').filter(Boolean) : [];
+                    if (appliedKeys.includes(mappingKey)) continue;
+
+                    const existing = String(targetCell.getAttribute('title') || '').trim();
+                    const next = existing ? `${existing}\n${formattedValue}` : formattedValue;
+                    targetCell.setAttribute('title', next);
+
+                    appliedKeys.push(mappingKey);
+                    if (targetCell.dataset) targetCell.dataset[appliedAttr] = appliedKeys.join('|');
                 }
             }
         }
@@ -18015,6 +18164,11 @@ function Ktl($, appInfo) {
                     const icon = $(this);
 
                     const tooltipElement = $(`<div class="ktlTooltip ktlTtip-${viewType}-view">${ttipText}</div>`).appendTo('body');
+                    Object.assign(tooltipElement[0].style, {
+                        maxWidth: '320px',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word'
+                    });
                     const tooltipWidth = tooltipElement.outerWidth();
                     const tooltipHeight = tooltipElement.outerHeight();
 
