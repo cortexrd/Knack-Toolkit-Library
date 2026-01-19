@@ -9781,7 +9781,7 @@ function Ktl($, appInfo) {
                 .filter(Boolean);
             if (connectionTexts.length) return connectionTexts.join(', ');
 
-            const html = String(cell.innerHTML || '').trim();
+            const html = String(cell.innerHTML || '').replace(/\u00a0|&nbsp;/g, ' ').trim();
             if (!html) return '';
 
             const withNewlines = html
@@ -9837,19 +9837,22 @@ function Ktl($, appInfo) {
                 if (!mapping?.sourceFieldKey || !mapping?.targetFieldKey) continue;
 
                 const sourceIdx = findColumnIndex(mapping.sourceFieldKey);
-                const targetIdx = findColumnIndex(mapping.targetFieldKey);
-                if (sourceIdx < 0 || targetIdx < 0) continue;
+                if (sourceIdx < 0) continue;
 
                 const sourceHeader = headerCells[sourceIdx];
                 if (mapping.hideSource && sourceHeader) sourceHeader.style.display = 'none';
 
+                const targetIdx = findColumnIndex(mapping.targetFieldKey);
+
                 for (const row of rows) {
                     const cells = Array.from(row.querySelectorAll('td'));
                     const sourceCell = cells[sourceIdx];
+                    if (mapping.hideSource && sourceCell) sourceCell.style.display = 'none';
+
+                    if (targetIdx < 0) continue;
+
                     const targetCell = cells[targetIdx];
                     if (!sourceCell || !targetCell) continue;
-
-                    if (mapping.hideSource) sourceCell.style.display = 'none';
 
                     const tooltipValue = extractDttipCellValue(sourceCell);
                     if (!tooltipValue) continue;
