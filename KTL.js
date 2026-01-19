@@ -17009,6 +17009,22 @@ function Ktl($, appInfo) {
                         return resolve();
                     }
 
+                    if (value === 'ktlEmpty' && (operator === 'is' || operator === 'not')) {
+                        ktl.views.waitViewDataReady(viewId)
+                            .then(data => {
+                                const isEmpty = !data || (Array.isArray(data) && data.length === 0);
+                                if (isEmpty && operator === 'is')
+                                    hide();
+                                else if (!isEmpty && operator === 'not')
+                                    hide();
+                                else
+                                    unhide();
+                            })
+                            .catch(() => unhide());
+
+                        return resolve();
+                    }
+
                     if (field.startsWith('$(')) {
                         const selector = ktl.core.extractJQuerySelector(field, viewId);
                         ktl.core.waitSelector(selector, 10000).then(() => {
@@ -17139,6 +17155,21 @@ function Ktl($, appInfo) {
                             return resolve(true);
                         else
                             return resolve(false);
+                    }
+
+                    if (value === 'ktlEmpty' && (operator === 'is' || operator === 'not')) {
+                        ktl.views.waitViewDataReady(viewId)
+                            .then(data => {
+                                const isEmpty = !data || (Array.isArray(data) && data.length === 0);
+                                if (isEmpty && operator === 'is')
+                                    return resolve(true);
+                                else if (!isEmpty && operator === 'not')
+                                    return resolve(true);
+                                else
+                                    return resolve(false);
+                            })
+                            .catch(() => resolve(false));
+                        return;
                     }
 
                     let foreignViewId; //Foreign view and field are used by ktlMatch, to indicate where to search.
