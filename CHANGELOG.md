@@ -1,6 +1,24 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.38.0    *2026-01-19*
+
+- New `_dttip` view keyword for displaying data from hidden columns (#568)
+- Developer info popover improvements:
+  - Add PIN icon to disable auto-close
+  - Fix popover continuing to fade when switching targets
+- `_stc` keyword (sticky columns):
+  - Refresh sticky column views on window resize
+  - Fix sticky column left offset
+  - Use brightness filter for flashing animations
+  - Fix double grid display issue
+- Bulk operations:
+  - Refactor checkbox handling for improved reliability (#567)
+  - Fix VRD checkbox conflict
+- Improve selector targeting and header matching logic (#564)
+- Trigger input event after barcode prefix restoration
+- Fix issue with local copy Public Filters without date/time
+
 ## 0.37.2    *2026-01-13*
 
 - Fix pre-login looping error
