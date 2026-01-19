@@ -3609,6 +3609,7 @@ function Ktl($, appInfo) {
                         if (foundPrefix && focusedElement) {
                             focusedElement.value = originalValue;
                             focusedElement.setSelectionRange(selectionStart, selectionEnd);
+                            focusedElement.dispatchEvent(new Event('input', { bubbles: true }));
                             focusedElement = undefined;
                             originalValue = '';
                         }
