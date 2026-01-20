@@ -1791,8 +1791,7 @@ function Ktl($, appInfo) {
                     const isJQueryTarget = ktl.core.extractJQuerySelector(ktlTarget, viewId);
                     if (isJQueryTarget) {
                         targetSel = isJQueryTarget;
-                    }
-                    else {
+                    } else {
                         const targetArray = ktl.core.splitAndTrimToArray(ktlTarget);
                         const arrayLength = targetArray.length;
                         if (arrayLength) {
@@ -1849,11 +1848,11 @@ function Ktl($, appInfo) {
                             const colIndex = ktl.views.getColumnIndex(viewId, targetFieldId);
                             targetSel += ` .col-${colIndex}`;
                         } else
-                            targetSel += ` .${fieldId}`;
+                            targetSel += ` .${targetFieldId}`;
                     } else if (viewType === 'details' || viewType === 'list')
-                        targetSel += ` .${fieldId} .kn-detail-body`;
+                        targetSel += ` .${targetFieldId} .kn-detail-body`;
                     else if (viewType === 'form') {
-                        targetSel += ` input#${fieldId}`;
+                        targetSel += ` input#${targetFieldId}`;
                     }
                     //TODO: Support all view types.
                 }
@@ -4817,7 +4816,7 @@ function Ktl($, appInfo) {
                                 })
                             }
 
-                            ktl.views.hideUnhideValidateKtlCond(options, hide, unhide)
+                            ktl.views.hideUnhideValidateKtlCond(options, hide, unhide, undefined, viewId)
                                 .then(() => {
                                     $('#' + viewId).removeClass(`ktlHidden_hf_viewTemp_${instanceCount}`);
                                 })
@@ -15463,11 +15462,11 @@ function Ktl($, appInfo) {
                                 hide();
                                 ktl.core.waitSelector('.ktlPersistentFormLoadedScene', 5000)
                                     .then(() => {
-                                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide, undefined, viewId);
                                     })
                                     .catch(() => { })
                             } else {
-                                ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                                ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide, undefined, viewId);
                             }
                         }
                     });
@@ -15506,11 +15505,11 @@ function Ktl($, appInfo) {
                             if (viewType === 'form') {
                                 hide();
                                 $(document).one('KTL.persistentForm.completed.scene', () => {
-                                    ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
+                                    ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide, undefined, viewId)
                                         .then(() => { validatingKtlCond = false })
                                 });
                             } else {
-                                ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide)
+                                ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide, undefined, viewId)
                                     .then(() => { validatingKtlCond = false })
                             }
                         }
@@ -16968,11 +16967,11 @@ function Ktl($, appInfo) {
                     const unhide = () => ktl.views.unhideTableColumns(viewId, fields, headers, fixRows);
 
                     if (fields.length || headers.length)
-                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide);
+                        ktl.views.hideUnhideValidateKtlCond(keyword.options, hide, unhide, fixRows, viewId);
                 });
             },
 
-            hideUnhideValidateKtlCond: function (options = {}, hide, unhide, fixRows) {
+            hideUnhideValidateKtlCond: function (options = {}, hide, unhide, fixRows, keywordViewId) {
                 return new Promise(function (resolve) {
                     hide(fixRows);
 
@@ -16996,7 +16995,8 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    const viewId = ktl.scenes.findViewWithTitle(view);
+                    const foundViewId = ktl.scenes.findViewWithTitle(view);
+                    const viewId = foundViewId || keywordViewId;
 
                     if (value === 'ktlMobile' && (operator === 'is' || operator === 'not')) {
                         if (Knack.isMobile() && operator === 'is')
@@ -17010,7 +17010,22 @@ function Ktl($, appInfo) {
                     }
 
                     if (value === 'ktlEmpty' && (operator === 'is' || operator === 'not')) {
-                        ktl.views.waitViewDataReady(viewId)
+                        const viewParam = view || field;
+                        let targetViewId;
+                        if (viewParam && viewParam.startsWith('$(')) {
+                            const selector = ktl.core.extractJQuerySelector(viewParam, keywordViewId);
+                            const viewMatch = selector && selector.match(/#?(view_\d+)/);
+                            targetViewId = viewMatch ? viewMatch[1] : null;
+                        } else {
+                            targetViewId = ktl.scenes.findViewWithTitle(viewParam);
+                        }
+                        if (viewParam && !targetViewId) {
+                            console.error(`ktlCond - ktlEmpty: View "${viewParam}" not found in ${keywordViewId}`);
+                            unhide();
+                            return resolve();
+                        }
+                        if (!targetViewId) targetViewId = keywordViewId;
+                        ktl.views.waitViewDataReady(targetViewId)
                             .then(data => {
                                 const isEmpty = !data || (Array.isArray(data) && data.length === 0);
                                 if (isEmpty && operator === 'is')
@@ -17158,7 +17173,14 @@ function Ktl($, appInfo) {
                     }
 
                     if (value === 'ktlEmpty' && (operator === 'is' || operator === 'not')) {
-                        ktl.views.waitViewDataReady(viewId)
+                        const viewParam = view || field;
+                        let targetViewId = ktl.scenes.findViewWithTitle(viewParam);
+                        if (viewParam && !targetViewId) {
+                            console.error(`ktlCond - ktlEmpty: View "${viewParam}" not found in ${keywordViewId}`);
+                            return resolve(false);
+                        }
+                        if (!targetViewId) targetViewId = keywordViewId;
+                        ktl.views.waitViewDataReady(targetViewId)
                             .then(data => {
                                 const isEmpty = !data || (Array.isArray(data) && data.length === 0);
                                 if (isEmpty && operator === 'is')
