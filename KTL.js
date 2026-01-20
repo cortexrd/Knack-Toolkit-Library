@@ -19097,14 +19097,28 @@ function Ktl($, appInfo) {
         $(document).on('mousemove', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).keydown(function (e) {
-            if (e.shiftKey && e.key === 'T') { //Shift+T - Open Theme Editor
+            // Dynamic hotkey for Theme Editor (user-configurable)
+            const hotkeyStr = localStorage.getItem('ktlThemeEditorHotkey');
+            if (!hotkeyStr || !showThemeEditor) return;
+
+            try {
+                const hotkey = JSON.parse(hotkeyStr);
+                if (!hotkey || !hotkey.key) return;
+
                 const target = e.target;
                 const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-                if (!isTextInput && showThemeEditor) {
+                if (isTextInput) return;
+
+                const keyMatches = e.key.toUpperCase() === hotkey.key.toUpperCase();
+                const ctrlMatches = !!e.ctrlKey === !!hotkey.ctrl;
+                const altMatches = !!e.altKey === !!hotkey.alt;
+                const shiftMatches = !!e.shiftKey === !!hotkey.shift;
+
+                if (keyMatches && ctrlMatches && altMatches && shiftMatches) {
                     e.preventDefault();
                     showThemeEditor();
                 }
-            }
+            } catch (ex) { }
         })
 
         //Early detection of scene change to prevent multi-rendering and flickering of views.
@@ -21450,15 +21464,174 @@ function Ktl($, appInfo) {
                 }
             });
 
-            // Add shortcut underlines to buttons: Save(S), Load(L), sHare(H), Cancel(C)
+            const hotkeyBtn = document.createElement('button');
+            hotkeyBtn.className = 'ktlThemeEditorBtn';
+            hotkeyBtn.textContent = 'Hotkey';
+            hotkeyBtn.title = 'Set keyboard shortcut to open Theme Editor';
+            hotkeyBtn.addEventListener('click', async () => {
+                const STORAGE_KEY = 'ktlThemeEditorHotkey';
+                let capturedKey = null;
+
+                function formatHotkey(hk) {
+                    if (!hk || !hk.key) return 'None (disabled)';
+                    const parts = [];
+                    if (hk.ctrl) parts.push('Ctrl');
+                    if (hk.alt) parts.push('Alt');
+                    if (hk.shift) parts.push('Shift');
+                    parts.push(hk.key.toUpperCase());
+                    return parts.join('+');
+                }
+
+                function isValidHotkey(hk) {
+                    if (!hk || !hk.key) return false;
+                    const key = hk.key.toUpperCase();
+                    const isFunctionKey = /^F([1-9]|1[0-2])$/.test(key);
+                    const hasModifier = hk.ctrl || hk.alt || hk.shift;
+                    const reservedAlone = ['ESCAPE', 'TAB', 'ENTER', 'CONTROL', 'ALT', 'SHIFT', 'META'].includes(key);
+                    if (reservedAlone && !hasModifier) return false;
+                    return isFunctionKey || hasModifier;
+                }
+
+                const currentHotkey = (() => {
+                    try {
+                        const stored = localStorage.getItem(STORAGE_KEY);
+                        return stored ? JSON.parse(stored) : null;
+                    } catch { return null; }
+                })();
+
+                const overlay = document.createElement('div');
+                overlay.className = 'ktlConfirmOverlay';
+                overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:100001;display:flex;align-items:center;justify-content:center;';
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = 'background:var(--ktlTheme_tableCellBg,#fff);color:var(--ktlTheme_tableCellText,#333);border-radius:8px;padding:20px;min-width:320px;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+
+                const title = document.createElement('div');
+                title.textContent = 'Set Theme Editor Hotkey';
+                title.style.cssText = 'font-size:16px;font-weight:bold;margin-bottom:15px;';
+
+                const instruction = document.createElement('div');
+                instruction.textContent = 'Press your desired key combination:';
+                instruction.style.cssText = 'margin-bottom:10px;font-size:13px;';
+
+                const captureBox = document.createElement('div');
+                captureBox.textContent = formatHotkey(currentHotkey);
+                captureBox.style.cssText = 'border:2px solid var(--ktlTheme_tableGridColor,#ccc);border-radius:4px;padding:15px;text-align:center;font-size:18px;font-weight:bold;margin-bottom:15px;cursor:pointer;background:var(--ktlTheme_tableStripedBg,#f9f9f9);';
+                captureBox.tabIndex = 0;
+
+                const hint = document.createElement('div');
+                hint.textContent = 'Requires modifier (Ctrl/Alt/Shift) or function key (F1-F12)';
+                hint.style.cssText = 'font-size:11px;color:#888;margin-bottom:15px;';
+
+                const btnContainer = document.createElement('div');
+                btnContainer.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
+
+                const saveHkBtn = document.createElement('button');
+                saveHkBtn.className = 'ktlThemeEditorBtn primary';
+                saveHkBtn.innerHTML = '<u>S</u>ave';
+
+                const disableBtn = document.createElement('button');
+                disableBtn.className = 'ktlThemeEditorBtn';
+                disableBtn.innerHTML = '<u>D</u>isable';
+
+                const cancelHkBtn = document.createElement('button');
+                cancelHkBtn.className = 'ktlThemeEditorBtn';
+                cancelHkBtn.innerHTML = '<u>C</u>ancel';
+
+                btnContainer.appendChild(saveHkBtn);
+                btnContainer.appendChild(disableBtn);
+                btnContainer.appendChild(cancelHkBtn);
+
+                dialog.appendChild(title);
+                dialog.appendChild(instruction);
+                dialog.appendChild(captureBox);
+                dialog.appendChild(hint);
+                dialog.appendChild(btnContainer);
+                overlay.appendChild(dialog);
+                document.body.appendChild(overlay);
+
+                captureBox.focus();
+
+                function keyHandler(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const key = e.key;
+                    const isModifierOnly = ['Control', 'Alt', 'Shift', 'Meta'].includes(key);
+                    if (isModifierOnly) return;
+
+                    capturedKey = {
+                        ctrl: e.ctrlKey,
+                        alt: e.altKey,
+                        shift: e.shiftKey,
+                        key: key.length === 1 ? key.toUpperCase() : key
+                    };
+                    captureBox.textContent = formatHotkey(capturedKey);
+                    captureBox.style.borderColor = isValidHotkey(capturedKey) ? '#4a90d9' : '#e74c3c';
+                }
+
+                function dialogKeyHandler(e) {
+                    const k = e.key.toLowerCase();
+                    if (k === 's' && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        saveHkBtn.click();
+                    } else if (k === 'd' && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        disableBtn.click();
+                    } else if (k === 'c' && !e.ctrlKey && !e.altKey) {
+                        e.preventDefault();
+                        cancelHkBtn.click();
+                    } else if (k === 'escape') {
+                        e.preventDefault();
+                        cancelHkBtn.click();
+                    }
+                }
+
+                captureBox.addEventListener('keydown', keyHandler);
+                dialog.addEventListener('keydown', dialogKeyHandler);
+
+                function cleanup() {
+                    captureBox.removeEventListener('keydown', keyHandler);
+                    dialog.removeEventListener('keydown', dialogKeyHandler);
+                    overlay.remove();
+                }
+
+                saveHkBtn.addEventListener('click', () => {
+                    if (capturedKey && isValidHotkey(capturedKey)) {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(capturedKey));
+                        ktl.core.timedPopup('Hotkey set to ' + formatHotkey(capturedKey), 'success', 2000);
+                        cleanup();
+                    } else if (!capturedKey && currentHotkey) {
+                        ktl.core.timedPopup('Hotkey unchanged: ' + formatHotkey(currentHotkey), 'info', 2000);
+                        cleanup();
+                    } else {
+                        ktl.core.timedPopup('Invalid hotkey. Use modifier + key or F1-F12.', 'error', 2500);
+                    }
+                });
+
+                disableBtn.addEventListener('click', () => {
+                    localStorage.removeItem(STORAGE_KEY);
+                    ktl.core.timedPopup('Theme Editor hotkey disabled', 'success', 2000);
+                    cleanup();
+                });
+
+                cancelHkBtn.addEventListener('click', cleanup);
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) cleanup();
+                });
+            });
+
+            // Add shortcut underlines to buttons: Save(S), Load(L), sHare(H), hotKey(K), Cancel(C)
             saveBtn.innerHTML = '<u>S</u>ave';
             loadBtn.innerHTML = '<u>L</u>oad';
             shareBtn.innerHTML = 'S<u>h</u>are';
+            hotkeyBtn.innerHTML = 'Hot<u>k</u>ey';
             cancelBtn.innerHTML = '<u>C</u>ancel';
 
             actions.appendChild(saveBtn);
             actions.appendChild(loadBtn);
             actions.appendChild(shareBtn);
+            actions.appendChild(hotkeyBtn);
             actions.appendChild(cancelBtn);
 
             editor.appendChild(header);
@@ -21514,6 +21687,9 @@ function Ktl($, appInfo) {
                 } else if (key === 'h') {
                     e.preventDefault();
                     shareBtn.click();
+                } else if (key === 'k') {
+                    e.preventDefault();
+                    hotkeyBtn.click();
                 } else if (key === 'c') {
                     e.preventDefault();
                     cancelBtn.click();
