@@ -1,6 +1,17 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.38.1    *2026-01-19*
+
+- Add `ktlEmpty` special value for `ktlCond` option:
+  - Check if Grid, List, or Search views have zero records
+  - Supports Universal Selector formats (view ID, title, or jQuery selector)
+  - Falls back to keyword's view when no view specified
+- Theme Editor improvements:
+  - Add configurable hotkey with press-to-capture popup
+  - Remove hardcoded Shift+T shortcut that users triggered accidentally
+  - Users can disable hotkey entirely or set custom modifier+key combo
+
 ## 0.38.0    *2026-01-19*
 
 - New `_dttip` view keyword for displaying data from hidden columns (#568)
