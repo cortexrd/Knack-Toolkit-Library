@@ -26353,63 +26353,63 @@ function Ktl($, appInfo) {
 
                     function resetRecoveryWatchdog(wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY) {
                         function recoveryWdLoop() {
-                            if (!simulateCrash) {
-                                clearTimeout(wdLoopTimeoutId);
-                                ktl.sysInfo.sendRecoveryWdHeartbeat(wdTimeoutDelay)
-                                    .then(svrResponse => {
-                                        if (svrResponse.deviceInfo) {
-                                            const deviceInfo = svrResponse.deviceInfo;
-                                            wdTimeoutDelay = NORMAL_WD_TIMEOUT_DELAY;
-                                            if (deviceInfo && !$.isEmptyObject(deviceInfo)) {
-                                                addToVersionInfoBar(deviceInfo);
-                                                let sysInfo = ktl.sysInfo.getSysInfo();
-                                                sysInfo.keyboardDetected = deviceInfo.keyboardDetected;
+                            if (simulateCrash) return;
 
-                                                if ($('#additionalInfoDiv').length)
-                                                    $('#additionalInfoDiv').removeClass('ktlFlashingOnOff ktlOfflineStatus');
-                                            }
-                                        } else {
-                                            //Force a kiosk-app update.
-                                            ktl.sysInfo.restartService()
-                                                .then(svrResponse => {
-                                                    ktl.core.timedPopup(svrResponse.message, 'success', 4000);
-                                                    ktl.account.updateLocalIP();
-                                                })
-                                                .catch(error => { ktl.core.timedPopup(error, 'error', 4000); })
+                            clearTimeout(wdLoopTimeoutId);
+                            ktl.sysInfo.sendRecoveryWdHeartbeat(wdTimeoutDelay)
+                                .then(svrResponse => {
+                                    if (svrResponse.deviceInfo) {
+                                        const deviceInfo = svrResponse.deviceInfo;
+                                        wdTimeoutDelay = NORMAL_WD_TIMEOUT_DELAY;
+                                        if (deviceInfo && !$.isEmptyObject(deviceInfo)) {
+                                            addToVersionInfoBar(deviceInfo);
+                                            let sysInfo = ktl.sysInfo.getSysInfo();
+                                            sysInfo.keyboardDetected = deviceInfo.keyboardDetected;
 
-
-                                            if (!$('#verButtonId').length) return;
-
-                                            if (!$('#additionalInfoDiv').length) {
-                                                const vbDiv = document.querySelector('#addVersionInfoDiv');
-                                                const additionalInfoDiv = document.createElement('div');
-                                                additionalInfoDiv.setAttribute('id', 'additionalInfoDiv');
-                                                vbDiv.appendChild(additionalInfoDiv);
-
-                                                const sourceDiv = document.getElementById('verButtonId');
-                                                const targetDiv = document.getElementById('additionalInfoDiv');
-
-                                                targetDiv.style.cssText = sourceDiv.style.cssText;
-                                                $('#addVersionInfoDiv').css('display', 'flex');
-                                            }
-
-                                            document.querySelector('#additionalInfoDiv').textContent = ' WAITING FOR UPDATE... ';
+                                            if ($('#additionalInfoDiv').length)
+                                                $('#additionalInfoDiv').removeClass('ktlFlashingOnOff ktlOfflineStatus');
                                         }
-                                    })
-                                    .catch(reason => {
-                                        console.error(reason);
+                                    } else {
+                                        //Force a kiosk-app update.
+                                        ktl.sysInfo.restartService()
+                                            .then(svrResponse => {
+                                                ktl.core.timedPopup(svrResponse.message, 'success', 4000);
+                                                ktl.account.updateLocalIP();
+                                            })
+                                            .catch(error => { ktl.core.timedPopup(error, 'error', 4000); })
 
-                                        if ($('#additionalInfoDiv').length)
-                                            $('#additionalInfoDiv').addClass('ktlFlashingOnOff ktlOfflineStatus');
 
-                                        if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name))
-                                            ktl.core.timedPopup('Reset WD error: ' + reason, 'error');
-                                        wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY;
-                                    })
-                                    .finally(() => {
-                                        wdLoopTimeoutId = setTimeout(recoveryWdLoop, wdTimeoutDelay / WD_SAFETY_MARGIN * 1000);
-                                    });
-                            }
+                                        if (!$('#verButtonId').length) return;
+
+                                        if (!$('#additionalInfoDiv').length) {
+                                            const vbDiv = document.querySelector('#addVersionInfoDiv');
+                                            const additionalInfoDiv = document.createElement('div');
+                                            additionalInfoDiv.setAttribute('id', 'additionalInfoDiv');
+                                            vbDiv.appendChild(additionalInfoDiv);
+
+                                            const sourceDiv = document.getElementById('verButtonId');
+                                            const targetDiv = document.getElementById('additionalInfoDiv');
+
+                                            targetDiv.style.cssText = sourceDiv.style.cssText;
+                                            $('#addVersionInfoDiv').css('display', 'flex');
+                                        }
+
+                                        document.querySelector('#additionalInfoDiv').textContent = ' WAITING FOR UPDATE... ';
+                                    }
+                                })
+                                .catch(reason => {
+                                    console.error(reason);
+
+                                    if ($('#additionalInfoDiv').length)
+                                        $('#additionalInfoDiv').addClass('ktlFlashingOnOff ktlOfflineStatus');
+
+                                    if (ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name))
+                                        ktl.core.timedPopup('Reset WD error: ' + reason, 'error');
+                                    wdTimeoutDelay = STARTUP_WD_TIMEOUT_DELAY;
+                                })
+                                .finally(() => {
+                                    wdLoopTimeoutId = setTimeout(recoveryWdLoop, wdTimeoutDelay / WD_SAFETY_MARGIN * 1000);
+                                });
                         }
 
                         function addToVersionInfoBar(deviceInfo) {
