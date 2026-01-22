@@ -15526,6 +15526,7 @@ function Ktl($, appInfo) {
                 if (userPrefs.showViewId && !$(`#${viewId}-label-id`).length) {
                     const label = $('<label>', {
                         id: `${viewId}-label-id`,
+                        class: 'ktlViewIdLabel',
                         text: `    ${viewId}`,
                         css: {
                             marginLeft: '10px',
