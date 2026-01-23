@@ -18015,6 +18015,7 @@ function Ktl($, appInfo) {
                 const STORAGE_KEY = `cgc_${viewId}`;
                 const DIALOG_ID = `ktlChooseColumns_${viewId}`;
                 const STYLE_ID = `ktlChooseColumnsStyle_${viewId}`;
+                const UI_STYLE_ID = 'ktlChooseColumnsUiStyle';
 
                 let currentStates = null; // In-memory state for column visibility (true = shown)
 
@@ -18042,6 +18043,68 @@ function Ktl($, appInfo) {
                     styleEl.textContent = rules.join('\n');
 
                     updateButtonHiddenState();
+                }
+
+                function ensureDialogStyles() {
+                    if (document.getElementById(UI_STYLE_ID)) return;
+
+                    const styleEl = document.createElement('style');
+                    styleEl.id = UI_STYLE_ID;
+                    styleEl.textContent = `
+                        .table-choose-columns {
+                            position: absolute;
+                            z-index: 10000;
+                            background: #ffffff;
+                            border: 1px solid #ddd;
+                            border-radius: 6px;
+                            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                            padding: 10px;
+                            min-width: 220px;
+                            max-width: 360px;
+                        }
+                        .table-choose-columns .dialog-controls {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            gap: 8px;
+                            margin-bottom: 8px;
+                        }
+                        .table-choose-columns .select-controls {
+                            display: flex;
+                            gap: 6px;
+                        }
+                        #${viewId} .choose-columns-wrapper {
+                            margin-bottom: 5px;
+                        }
+                        .table-choose-columns .checkbox-list {
+                            max-height: 320px;
+                            overflow: auto;
+                            padding-right: 4px;
+                        }
+                        .table-choose-columns .column-option {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 4px 2px;
+                            cursor: pointer;
+                        }
+                        .table-choose-columns .column-option:hover {
+                            background: #f7f7f7;
+                            border-radius: 4px;
+                        }
+                        .table-choose-columns input[type="checkbox"] {
+                            margin: 0;
+                        }
+                        .table-choose-columns .select-all,
+                        .table-choose-columns .clear-all {
+                            padding: 4px 8px;
+                        }
+                        #${viewId} .choose-columns.has-hidden {
+                            background: #fef3c7;
+                            border-color: #f59e0b;
+                        }
+                    `;
+                    document.head.appendChild(styleEl);
                 }
 
                 function createButton() {
@@ -18084,16 +18147,21 @@ function Ktl($, appInfo) {
 
                 function getColumnStates() {
                     const ths = getTableHeaders();
+                    const getHeaderText = (th, idx) => {
+                        const txt = (th.textContent || '').trim();
+                        return txt ? txt : `Column-${idx + 1}`;
+                    };
+
                     if (Array.isArray(currentStates) && currentStates.length === ths.length) {
                         return ths.map((th, idx) => ({
-                            text: (th.textContent || '').trim(),
+                            text: getHeaderText(th, idx),
                             shown: !!currentStates[idx],
                             index: idx
                         }));
                     }
 
                     const states = ths.map((th, idx) => ({
-                        text: (th.textContent || '').trim(),
+                        text: getHeaderText(th, idx),
                         shown: window.getComputedStyle(th).display !== 'none',
                         index: idx
                     }));
@@ -18202,6 +18270,8 @@ function Ktl($, appInfo) {
                 function createColumnDialog() {
                     const existingDialog = document.getElementById(DIALOG_ID);
                     if (existingDialog) existingDialog.remove();
+
+                    ensureDialogStyles();
 
                     const headers = getColumnStates();
                     if (!headers.length) return;
