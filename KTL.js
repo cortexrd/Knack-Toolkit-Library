@@ -8776,6 +8776,9 @@ function Ktl($, appInfo) {
         var prevStartDate = '';
         let chooseGridColumnsGlobalListenerAdded = false;
         let chooseGridColumnsGlobalClickHandler = null;
+        let chooseGridColumnsGlobalKeyHandler = null;
+        let chooseGridColumnsOpenDialogs = 0;
+        const chooseGridColumnsInitState = {};
         let quickToggleParams = {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
@@ -8971,6 +8974,9 @@ function Ktl($, appInfo) {
                 ktl.bulkOps.prepareBulkOps(view, data);
                 ktl.views.fixTableRowsAlignment(viewId);
                 ktlProcessKeywords(view, data);
+                if (keywords && keywords._cgc) {
+                    ktl.views.chooseGridColumns(view, keywords);
+                }
             }
         }
 
@@ -9188,7 +9194,6 @@ function Ktl($, appInfo) {
                     keywords._copy && ktl.views.copyToClipboard(viewId, keywords);
                     keywords._da && dataAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
-                    keywords._cgc && ktl.views.chooseGridColumns(view, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
                     // Moved to applyGridColorization() orchestrator
                     //keywords._sth && stickyTableHeader(viewId, keywords, data);
@@ -18020,21 +18025,75 @@ function Ktl($, appInfo) {
 
                 let currentStates = null; // In-memory state for column visibility (true = shown)
                 let savedColumnsLoaded = false;
+                let lastAppliedStates = null;
+                let lastAppliedRowCount = 0;
+                let tableCache = { table: null, rows: null, rowCount: 0 };
 
                 function getTableHeaders() {
                     return Array.from(document.querySelectorAll(`#${viewId} table th`));
                 }
 
+                function getTable() {
+                    const table = document.querySelector(`#${viewId} table`);
+                    if (tableCache.table !== table) {
+                        tableCache = { table, rows: null, rowCount: 0 };
+                        lastAppliedStates = null;
+                        lastAppliedRowCount = 0;
+                    }
+                    return table;
+                }
+
+                function getTableRows() {
+                    const table = getTable();
+                    if (!table) return [];
+
+                    const rows = table.querySelectorAll('tr');
+                    if (!tableCache.rows || tableCache.rowCount !== rows.length) {
+                        tableCache.rows = Array.from(rows);
+                        tableCache.rowCount = rows.length;
+                    }
+
+                    return tableCache.rows || [];
+                }
+
                 function updateStyleRules() {
                     if (!Array.isArray(currentStates)) return;
 
-                    const rules = [];
-                    currentStates.forEach((show, idx) => {
-                        if (!show) {
-                            const n = idx + 1;
-                            rules.push(`#${viewId} table th:nth-child(${n}), #${viewId} table td:nth-child(${n}) { display: none !important; }`);
-                        }
-                    });
+                    const rows = getTableRows();
+                    if (!rows.length) return;
+
+                    const toggleColumn = (idx, hide) => {
+                        rows.forEach(row => {
+                            const cells = row.querySelectorAll('th, td');
+                            const cell = cells[idx];
+                            if (cell) {
+                                cell.classList.toggle('ktlDisplayNone_cgc', hide);
+                            }
+                        });
+                    };
+
+                    const shouldResetAll = !lastAppliedStates || lastAppliedRowCount !== rows.length;
+                    if (shouldResetAll) {
+                        rows.forEach(row => {
+                            row.querySelectorAll('th, td').forEach(cell => {
+                                cell.classList.remove('ktlDisplayNone_cgc');
+                            });
+                        });
+
+                        currentStates.forEach((show, idx) => {
+                            if (!show) {
+                                toggleColumn(idx, true);
+                            }
+                        });
+                    } else {
+                        currentStates.forEach((show, idx) => {
+                            if (lastAppliedStates[idx] === show) return;
+                            toggleColumn(idx, !show);
+                        });
+                    }
+
+                    lastAppliedStates = currentStates.slice();
+                    lastAppliedRowCount = rows.length;
 
                     let styleEl = document.getElementById(STYLE_ID);
                     if (!styleEl) {
@@ -18042,7 +18101,7 @@ function Ktl($, appInfo) {
                         styleEl.id = STYLE_ID;
                         document.head.appendChild(styleEl);
                     }
-                    styleEl.textContent = rules.join('\n');
+                    styleEl.textContent = '';
 
                     updateButtonHiddenState();
                 }
@@ -18076,7 +18135,7 @@ function Ktl($, appInfo) {
                             gap: 6px;
                         }
                         #${viewId} .choose-columns-wrapper {
-                            margin-bottom: 5px;
+                            margin-bottom: 10px;
                         }
                         .table-choose-columns .checkbox-list {
                             max-height: 320px;
@@ -18115,15 +18174,13 @@ function Ktl($, appInfo) {
                     const nav = document.querySelector(`#${viewId} div.kn-records-nav`);
                     if (!nav) return;
 
+                    ensureDialogStyles();
+
                     const button = document.createElement('button');
                     button.className = 'choose-columns kn-button';
                     button.dataset.view = viewId;
                     button.type = 'button';
                     button.textContent = 'Choose Columns';
-                    button.disabled = !savedColumnsLoaded;
-                    if (!savedColumnsLoaded) {
-                        button.dataset.loading = 'true';
-                    }
 
                     const wrapper = document.createElement('div');
                     wrapper.className = 'choose-columns-wrapper';
@@ -18148,22 +18205,18 @@ function Ktl($, appInfo) {
                         const headerCount = getTableHeaders().length;
                         if (!headerCount || saved.length !== headerCount) return;
                         currentStates = saved.map(s => !!s);
+                        getLockedHiddenIndexes().forEach(idx => {
+                            currentStates[idx] = true;
+                        });
                         updateStyleRules();
                     } catch (error) {
                         console.error('Error loading saved columns from localStorage:', error);
-                    } finally {
-                        savedColumnsLoaded = true;
-                        const btn = document.querySelector(`#${viewId} .choose-columns`);
-                        if (btn) {
-                            btn.disabled = false;
-                            delete btn.dataset.loading;
-                            updateButtonHiddenState();
-                        }
                     }
                 }
 
                 function getColumnStates() {
                     const ths = getTableHeaders();
+                    const isLockedHiddenHeader = (th) => th && th.classList && th.classList.contains('ktlDisplayNone_hc');
                     const getHeaderText = (th, idx) => {
                         const txt = (th.textContent || '').trim();
                         return txt ? txt : `Column-${idx + 1}`;
@@ -18173,6 +18226,7 @@ function Ktl($, appInfo) {
                         return ths.map((th, idx) => ({
                             text: getHeaderText(th, idx),
                             shown: !!currentStates[idx],
+                            locked: isLockedHiddenHeader(th),
                             index: idx
                         }));
                     }
@@ -18180,10 +18234,17 @@ function Ktl($, appInfo) {
                     const states = ths.map((th, idx) => ({
                         text: getHeaderText(th, idx),
                         shown: window.getComputedStyle(th).display !== 'none',
+                        locked: isLockedHiddenHeader(th),
                         index: idx
                     }));
                     currentStates = states.map(s => !!s.shown);
                     return states;
+                }
+
+                function getLockedHiddenIndexes() {
+                    return getTableHeaders()
+                        .map((th, idx) => (th.classList && th.classList.contains('ktlDisplayNone_hc') ? idx : -1))
+                        .filter(idx => idx >= 0);
                 }
 
                 function detectCheckboxColumnIndex() {
@@ -18201,7 +18262,7 @@ function Ktl($, appInfo) {
                     const btn = document.querySelector(`#${viewId} .choose-columns`);
                     if (!btn) return;
                     const headers = getColumnStates();
-                    const hasHidden = headers.some(h => !h.shown);
+                    const hasHidden = headers.some(h => !h.shown && !h.locked);
                     btn.classList.toggle('has-hidden', hasHidden);
                 }
 
@@ -18284,6 +18345,12 @@ function Ktl($, appInfo) {
                         fullStates[checkboxIdx] = true;
                     }
 
+                    getLockedHiddenIndexes().forEach(idx => {
+                        if (idx >= 0 && idx < fullStates.length) {
+                            fullStates[idx] = true;
+                        }
+                    });
+
                     try {
                         currentStates = fullStates.map(s => !!s);
                         updateStyleRules();
@@ -18292,12 +18359,12 @@ function Ktl($, appInfo) {
                         console.error('Error saving column visibility to localStorage:', err);
                     }
 
-                    dialog.remove();
+                    closeDialog(dialog);
                 }
 
                 function createColumnDialog() {
                     const existingDialog = document.getElementById(DIALOG_ID);
-                    if (existingDialog) existingDialog.remove();
+                    if (existingDialog) closeDialog(existingDialog);
 
                     ensureDialogStyles();
 
@@ -18305,9 +18372,10 @@ function Ktl($, appInfo) {
                     if (!headers.length) return;
 
                     const checkboxIdx = detectCheckboxColumnIndex();
-                    const dialogHeaders = checkboxIdx >= 0
+                    const dialogHeaders = (checkboxIdx >= 0
                         ? headers.filter(h => h.index !== checkboxIdx)
-                        : headers;
+                        : headers)
+                        .filter(h => !h.locked);
 
                     const dialogHtml = createDialogHtml(dialogHeaders);
                     document.body.insertAdjacentHTML('beforeend', dialogHtml);
@@ -18326,33 +18394,90 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    if (dialog)
+                    if (dialog) {
+                        registerDialog(dialog);
                         setupEventHandlers(dialog);
+                    }
                 }
 
-                ktl.core.waitSelector(`#${viewId} .kn-records-nav`, 10000)
-                    .then(createButton)
-                    .catch(() => { });
+                function registerDialog(dialog) {
+                    if (!dialog || dialog.dataset.cgcOpen === 'true') return;
+                    dialog.dataset.cgcOpen = 'true';
+                    chooseGridColumnsOpenDialogs += 1;
+                }
 
-                ktl.core.waitSelector(`#${viewId} table th`, 10000)
-                    .then(loadSavedColumns)
-                    .catch(() => { });
+                function closeDialog(dialog) {
+                    if (!dialog) return;
+                    if (dialog.dataset.cgcOpen === 'true') {
+                        chooseGridColumnsOpenDialogs = Math.max(0, chooseGridColumnsOpenDialogs - 1);
+                        delete dialog.dataset.cgcOpen;
+                    }
+                    dialog.remove();
+                }
+
+                const initState = chooseGridColumnsInitState[viewId] || { token: 0, inFlight: false };
+                initState.token += 1;
+                initState.inFlight = true;
+                chooseGridColumnsInitState[viewId] = initState;
+
+                const token = initState.token;
+
+                Promise.all([
+                    ktl.core.waitSelector(`#${viewId} .kn-records-nav`, 10000),
+                    ktl.core.waitSelector(`#${viewId} table th`, 10000)
+                ])
+                    .then(() => {
+                        if (!chooseGridColumnsInitState[viewId] || chooseGridColumnsInitState[viewId].token !== token) return;
+
+                        ensureDialogStyles();
+                        loadSavedColumns();
+                        savedColumnsLoaded = true;
+                        createButton();
+
+                        const btn = document.querySelector(`#${viewId} .choose-columns`);
+                        if (btn) {
+                            btn.disabled = false;
+                            delete btn.dataset.loading;
+                        }
+                        updateButtonHiddenState();
+                    })
+                    .catch(() => { })
+                    .finally(() => {
+                        if (chooseGridColumnsInitState[viewId] && chooseGridColumnsInitState[viewId].token === token) {
+                            chooseGridColumnsInitState[viewId].inFlight = false;
+                        }
+                    });
 
                 if (!chooseGridColumnsGlobalListenerAdded) {
-                    chooseGridColumnsGlobalClickHandler = function (event) {
-                        document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => {
-                            if (dialog && !event.target.closest(`#${dialog.id}`) && !event.target.closest('.choose-columns')) {
-                                dialog.remove();
-                            }
-                        });
-
-                        if (!document.querySelector('.choose-columns') && !document.querySelector('.table-choose-columns')) {
+                    const removeGlobalHandlersIfUnused = () => {
+                        if (!document.querySelector('.choose-columns') && chooseGridColumnsOpenDialogs === 0) {
                             document.removeEventListener('click', chooseGridColumnsGlobalClickHandler);
+                            document.removeEventListener('keydown', chooseGridColumnsGlobalKeyHandler);
                             chooseGridColumnsGlobalClickHandler = null;
+                            chooseGridColumnsGlobalKeyHandler = null;
                             chooseGridColumnsGlobalListenerAdded = false;
                         }
                     };
+
+                    chooseGridColumnsGlobalClickHandler = function (event) {
+                        document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => {
+                            if (dialog && !event.target.closest(`#${dialog.id}`) && !event.target.closest('.choose-columns')) {
+                                closeDialog(dialog);
+                            }
+                        });
+
+                        removeGlobalHandlersIfUnused();
+                    };
+
+                    chooseGridColumnsGlobalKeyHandler = function (event) {
+                        if (event.key === 'Escape') {
+                            document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => closeDialog(dialog));
+                            removeGlobalHandlersIfUnused();
+                        }
+                    };
+
                     document.addEventListener('click', chooseGridColumnsGlobalClickHandler);
+                    document.addEventListener('keydown', chooseGridColumnsGlobalKeyHandler);
                     chooseGridColumnsGlobalListenerAdded = true;
                 }
             },
