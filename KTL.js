@@ -8774,7 +8774,8 @@ function Ktl($, appInfo) {
         var gotoDateObj = new Date();
         var prevType = '';
         var prevStartDate = '';
-        var chooseGridColumnsGlobalListenerAdded = false;
+        let chooseGridColumnsGlobalListenerAdded = false;
+        let chooseGridColumnsGlobalClickHandler = null;
         let quickToggleParams = {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
@@ -18015,9 +18016,10 @@ function Ktl($, appInfo) {
                 const STORAGE_KEY = `cgc_${viewId}`;
                 const DIALOG_ID = `ktlChooseColumns_${viewId}`;
                 const STYLE_ID = `ktlChooseColumnsStyle_${viewId}`;
-                const UI_STYLE_ID = 'ktlChooseColumnsUiStyle';
+                const UI_STYLE_ID = `ktlChooseColumnsUiStyle_${viewId}`;
 
                 let currentStates = null; // In-memory state for column visibility (true = shown)
+                let savedColumnsLoaded = false;
 
                 function getTableHeaders() {
                     return Array.from(document.querySelectorAll(`#${viewId} table th`));
@@ -18118,6 +18120,10 @@ function Ktl($, appInfo) {
                     button.dataset.view = viewId;
                     button.type = 'button';
                     button.textContent = 'Choose Columns';
+                    button.disabled = !savedColumnsLoaded;
+                    if (!savedColumnsLoaded) {
+                        button.dataset.loading = 'true';
+                    }
 
                     const wrapper = document.createElement('div');
                     wrapper.className = 'choose-columns-wrapper';
@@ -18128,6 +18134,7 @@ function Ktl($, appInfo) {
                     button.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        if (!savedColumnsLoaded) return;
                         createColumnDialog();
                     });
 
@@ -18138,10 +18145,20 @@ function Ktl($, appInfo) {
                     try {
                         const saved = ktl.storage.getItemJSON(STORAGE_KEY);
                         if (!Array.isArray(saved)) return;
+                        const headerCount = getTableHeaders().length;
+                        if (!headerCount || saved.length !== headerCount) return;
                         currentStates = saved.map(s => !!s);
                         updateStyleRules();
                     } catch (error) {
                         console.error('Error loading saved columns from localStorage:', error);
+                    } finally {
+                        savedColumnsLoaded = true;
+                        const btn = document.querySelector(`#${viewId} .choose-columns`);
+                        if (btn) {
+                            btn.disabled = false;
+                            delete btn.dataset.loading;
+                            updateButtonHiddenState();
+                        }
                     }
                 }
 
@@ -18189,6 +18206,12 @@ function Ktl($, appInfo) {
                 }
 
                 function createDialogHtml(headers) {
+                    const escapeHtml = (value = '') => {
+                        const div = document.createElement('div');
+                        div.textContent = value;
+                        return div.innerHTML;
+                    };
+
                     return `
                         <div id="${DIALOG_ID}" class="table-choose-columns" data-view="${viewId}">
                             <div class="dialog-controls">
@@ -18204,7 +18227,7 @@ function Ktl($, appInfo) {
                                         <input type="checkbox"
                                                data-index="${header.index}"
                                                ${header.shown ? 'checked' : ''}>
-                                        <span class="checkbox-label">${header.text}</span>
+                                        <span class="checkbox-label">${escapeHtml(header.text)}</span>
                                     </label>
                                 `).join('')}
                             </div>
@@ -18256,6 +18279,11 @@ function Ktl($, appInfo) {
                         }
                     });
 
+                    const checkboxIdx = detectCheckboxColumnIndex();
+                    if (checkboxIdx >= 0 && checkboxIdx < fullStates.length) {
+                        fullStates[checkboxIdx] = true;
+                    }
+
                     try {
                         currentStates = fullStates.map(s => !!s);
                         updateStyleRules();
@@ -18277,7 +18305,9 @@ function Ktl($, appInfo) {
                     if (!headers.length) return;
 
                     const checkboxIdx = detectCheckboxColumnIndex();
-                    const dialogHeaders = headers.filter(h => h.index !== (checkboxIdx >= 0 ? checkboxIdx : 0));
+                    const dialogHeaders = checkboxIdx >= 0
+                        ? headers.filter(h => h.index !== checkboxIdx)
+                        : headers;
 
                     const dialogHtml = createDialogHtml(dialogHeaders);
                     document.body.insertAdjacentHTML('beforeend', dialogHtml);
@@ -18309,13 +18339,20 @@ function Ktl($, appInfo) {
                     .catch(() => { });
 
                 if (!chooseGridColumnsGlobalListenerAdded) {
-                    document.addEventListener('click', (event) => {
+                    chooseGridColumnsGlobalClickHandler = function (event) {
                         document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => {
                             if (dialog && !event.target.closest(`#${dialog.id}`) && !event.target.closest('.choose-columns')) {
                                 dialog.remove();
                             }
                         });
-                    });
+
+                        if (!document.querySelector('.choose-columns') && !document.querySelector('.table-choose-columns')) {
+                            document.removeEventListener('click', chooseGridColumnsGlobalClickHandler);
+                            chooseGridColumnsGlobalClickHandler = null;
+                            chooseGridColumnsGlobalListenerAdded = false;
+                        }
+                    };
+                    document.addEventListener('click', chooseGridColumnsGlobalClickHandler);
                     chooseGridColumnsGlobalListenerAdded = true;
                 }
             },
