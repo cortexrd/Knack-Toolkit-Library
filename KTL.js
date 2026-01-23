@@ -8774,6 +8774,7 @@ function Ktl($, appInfo) {
         var gotoDateObj = new Date();
         var prevType = '';
         var prevStartDate = '';
+        var chooseGridColumnsGlobalListenerAdded = false;
         let quickToggleParams = {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
@@ -9186,6 +9187,7 @@ function Ktl($, appInfo) {
                     keywords._copy && ktl.views.copyToClipboard(viewId, keywords);
                     keywords._da && dataAlignment(view, keywords);
                     keywords._hsc && ktl.views.hideShowColumns(viewId, keywords);
+                    keywords._cgc && ktl.views.chooseGridColumns(view, keywords);
                     keywords._dl && ktl.views.disableLinks(viewId, keywords);
                     // Moved to applyGridColorization() orchestrator
                     //keywords._sth && stickyTableHeader(viewId, keywords, data);
@@ -17992,6 +17994,259 @@ function Ktl($, appInfo) {
                     $('#' + viewId + ' .kn-detail-body').each(function () {
                         $(this).text(PRIVATE_DATA);
                     });
+                }
+            },
+
+            chooseGridColumns: function (view, keywords) {
+                if (!view || !keywords) return;
+
+                const kw = '_cgc';
+                const viewId = view.key;
+                if (!keywords[kw]) return;
+
+                const viewType = ktl.views.getViewType(viewId);
+                if (!['table', 'search'].includes(viewType)) return;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                const STORAGE_KEY = `cgc_${viewId}`;
+                const DIALOG_ID = `ktlChooseColumns_${viewId}`;
+                const STYLE_ID = `ktlChooseColumnsStyle_${viewId}`;
+
+                let currentStates = null; // In-memory state for column visibility (true = shown)
+
+                function getTableHeaders() {
+                    return Array.from(document.querySelectorAll(`#${viewId} table th`));
+                }
+
+                function updateStyleRules() {
+                    if (!Array.isArray(currentStates)) return;
+
+                    const rules = [];
+                    currentStates.forEach((show, idx) => {
+                        if (!show) {
+                            const n = idx + 1;
+                            rules.push(`#${viewId} table th:nth-child(${n}), #${viewId} table td:nth-child(${n}) { display: none !important; }`);
+                        }
+                    });
+
+                    let styleEl = document.getElementById(STYLE_ID);
+                    if (!styleEl) {
+                        styleEl = document.createElement('style');
+                        styleEl.id = STYLE_ID;
+                        document.head.appendChild(styleEl);
+                    }
+                    styleEl.textContent = rules.join('\n');
+
+                    updateButtonHiddenState();
+                }
+
+                function createButton() {
+                    if (document.querySelector(`#${viewId} .choose-columns`)) return;
+
+                    const nav = document.querySelector(`#${viewId} div.kn-records-nav`);
+                    if (!nav) return;
+
+                    const button = document.createElement('button');
+                    button.className = 'choose-columns kn-button';
+                    button.dataset.view = viewId;
+                    button.type = 'button';
+                    button.textContent = 'Choose Columns';
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'choose-columns-wrapper';
+                    wrapper.appendChild(button);
+
+                    nav.appendChild(wrapper);
+
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        createColumnDialog();
+                    });
+
+                    setTimeout(() => updateButtonHiddenState(), 0);
+                }
+
+                function loadSavedColumns() {
+                    try {
+                        const saved = ktl.storage.getItemJSON(STORAGE_KEY);
+                        if (!Array.isArray(saved)) return;
+                        currentStates = saved.map(s => !!s);
+                        updateStyleRules();
+                    } catch (error) {
+                        console.error('Error loading saved columns from localStorage:', error);
+                    }
+                }
+
+                function getColumnStates() {
+                    const ths = getTableHeaders();
+                    if (Array.isArray(currentStates) && currentStates.length === ths.length) {
+                        return ths.map((th, idx) => ({
+                            text: (th.textContent || '').trim(),
+                            shown: !!currentStates[idx],
+                            index: idx
+                        }));
+                    }
+
+                    const states = ths.map((th, idx) => ({
+                        text: (th.textContent || '').trim(),
+                        shown: window.getComputedStyle(th).display !== 'none',
+                        index: idx
+                    }));
+                    currentStates = states.map(s => !!s.shown);
+                    return states;
+                }
+
+                function detectCheckboxColumnIndex() {
+                    const ths = getTableHeaders();
+                    for (let i = 0; i < ths.length; i++) {
+                        const th = ths[i];
+                        if (th.querySelector('input[type="checkbox"], input[type="radio"]')) return i;
+                        const html = (th.innerHTML || '').toLowerCase();
+                        if (html.includes('kn-check') || html.includes('checkbox') || html.includes('check')) return i;
+                    }
+                    return -1;
+                }
+
+                function updateButtonHiddenState() {
+                    const btn = document.querySelector(`#${viewId} .choose-columns`);
+                    if (!btn) return;
+                    const headers = getColumnStates();
+                    const hasHidden = headers.some(h => !h.shown);
+                    btn.classList.toggle('has-hidden', hasHidden);
+                }
+
+                function createDialogHtml(headers) {
+                    return `
+                        <div id="${DIALOG_ID}" class="table-choose-columns" data-view="${viewId}">
+                            <div class="dialog-controls">
+                                <div class="select-controls">
+                                    <button class="select-all" type="button">Select All</button>
+                                    <button class="clear-all" type="button">Clear All</button>
+                                </div>
+                                <button class="done button_a" data-view="${viewId}" type="button">Apply</button>
+                            </div>
+                            <div class="checkbox-list">
+                                ${headers.map((header) => `
+                                    <label class="column-option">
+                                        <input type="checkbox"
+                                               data-index="${header.index}"
+                                               ${header.shown ? 'checked' : ''}>
+                                        <span class="checkbox-label">${header.text}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                function setupEventHandlers(dialog) {
+                    dialog.addEventListener('click', (e) => {
+                        const sel = e.target;
+                        if (sel.matches('.select-all')) {
+                            dialog.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+                            return;
+                        }
+                        if (sel.matches('.clear-all')) {
+                            dialog.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                            return;
+                        }
+
+                        const opt = sel.closest('.column-option');
+                        if (opt && !sel.matches('input[type="checkbox"]')) {
+                            const checkbox = opt.querySelector('input[type="checkbox"]');
+                            if (checkbox) {
+                                checkbox.checked = !checkbox.checked;
+                                checkbox.dispatchEvent(new Event('change'));
+                                e.preventDefault();
+                            }
+                        }
+                    });
+
+                    const done = dialog.querySelector('.done');
+                    if (done)
+                        done.addEventListener('click', saveAndApplyChanges);
+                }
+
+                function saveAndApplyChanges() {
+                    const dialog = document.getElementById(DIALOG_ID);
+                    if (!dialog) return;
+
+                    const fullStates = Array.isArray(currentStates)
+                        ? currentStates.slice()
+                        : getColumnStates().map(h => !!h.shown);
+
+                    const dialogCheckboxes = Array.from(dialog.querySelectorAll('input[type="checkbox"]'));
+                    dialogCheckboxes.forEach(cb => {
+                        const idx = parseInt(cb.dataset.index, 10);
+                        if (!Number.isNaN(idx) && idx >= 0 && idx < fullStates.length) {
+                            fullStates[idx] = !!cb.checked;
+                        }
+                    });
+
+                    try {
+                        currentStates = fullStates.map(s => !!s);
+                        updateStyleRules();
+                        ktl.storage.setItemJSON(STORAGE_KEY, fullStates);
+                    } catch (err) {
+                        console.error('Error saving column visibility to localStorage:', err);
+                    }
+
+                    dialog.remove();
+                }
+
+                function createColumnDialog() {
+                    const existingDialog = document.getElementById(DIALOG_ID);
+                    if (existingDialog) existingDialog.remove();
+
+                    const headers = getColumnStates();
+                    if (!headers.length) return;
+
+                    const checkboxIdx = detectCheckboxColumnIndex();
+                    const dialogHeaders = headers.filter(h => h.index !== (checkboxIdx >= 0 ? checkboxIdx : 0));
+
+                    const dialogHtml = createDialogHtml(dialogHeaders);
+                    document.body.insertAdjacentHTML('beforeend', dialogHtml);
+
+                    const dialog = document.getElementById(DIALOG_ID);
+                    const btn = document.querySelector(`#${viewId} .choose-columns`);
+                    if (btn && dialog) {
+                        const buttonPos = btn.getBoundingClientRect();
+                        dialog.style.position = 'absolute';
+                        dialog.style.top = `${buttonPos.bottom + window.scrollY}px`;
+                        const leftPos = Math.max(8, buttonPos.left + window.scrollX);
+                        dialog.style.left = `${leftPos}px`;
+                        const maxRight = window.innerWidth - 8;
+                        if (leftPos + dialog.offsetWidth > maxRight) {
+                            dialog.style.left = `${Math.max(8, maxRight - dialog.offsetWidth)}px`;
+                        }
+                    }
+
+                    if (dialog)
+                        setupEventHandlers(dialog);
+                }
+
+                ktl.core.waitSelector(`#${viewId} .kn-records-nav`, 10000)
+                    .then(createButton)
+                    .catch(() => { });
+
+                ktl.core.waitSelector(`#${viewId} table th`, 10000)
+                    .then(loadSavedColumns)
+                    .catch(() => { });
+
+                if (!chooseGridColumnsGlobalListenerAdded) {
+                    document.addEventListener('click', (event) => {
+                        document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => {
+                            if (dialog && !event.target.closest(`#${dialog.id}`) && !event.target.closest('.choose-columns')) {
+                                dialog.remove();
+                            }
+                        });
+                    });
+                    chooseGridColumnsGlobalListenerAdded = true;
                 }
             },
 
