@@ -23964,7 +23964,7 @@ function Ktl($, appInfo) {
                                 $('.kn-login.kn-view' + '#' + viewId).addClass('ktlHidden');
                                 $('#email').val(credentials.email);
                                 $('#password').val(credentials.password);
-                                $('.remember input')[0].checked = true;
+                                $('.remember input').prop('checked', true);
                                 $('.kn-login-form .kn-button.is-primary').click();
                             } else {
                                 getAutoLoginInfoFromLocalStorage();
