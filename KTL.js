@@ -26005,18 +26005,32 @@ function Ktl($, appInfo) {
 
         let preventClick = false;
         $(document).on('mousedown', function (e) {
-            //Upon Ctrl+click on a header checkboxes, toggle all on or off.
-            if (e.ctrlKey && e.target.getAttribute('type') === 'checkbox' && e.target.classList.contains('bulkEditHeaderCbox')) {
-                const knView = e.target.closest('.kn-view[id]');
-                if (knView) {
-                    const viewId = knView.id;
-                    if (!bulkOpsActive[viewId] || !isBulkOpsCheckbox(e.target, viewId)) return;
-                    e.stopImmediatePropagation();
-                    preventClick = true;
-                    const checked = $('#' + viewId + ' .bulkEditHeaderCbox:checked');
-                    $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', checked.length === 0);
-                    updateBulkOpsGuiElements(viewId);
-                }
+            if (!e.ctrlKey || e.target.getAttribute('type') !== 'checkbox') return;
+
+            const knView = e.target.closest('.kn-view[id]');
+            if (!knView) return;
+
+            const viewId = knView.id;
+            if (!bulkOpsActive[viewId] || !isBulkOpsCheckbox(e.target, viewId)) return;
+
+            //Upon Ctrl+click on master checkbox, toggle all row checkboxes on or off.
+            if (e.target.classList.contains('masterSelector')) {
+                e.stopImmediatePropagation();
+                preventClick = true;
+                const checkedRows = $(`#${viewId} tbody ${bulkOpsCheckboxSelector}:checked`);
+                $(`#${viewId} tbody ${bulkOpsCheckboxSelector}`).prop('checked', checkedRows.length === 0);
+                $(e.target).prop('checked', checkedRows.length === 0);
+                updateBulkOpsGuiElements(viewId);
+                return;
+            }
+
+            //Upon Ctrl+click on a header checkbox, toggle all header checkboxes on or off.
+            if (e.target.classList.contains('bulkEditHeaderCbox')) {
+                e.stopImmediatePropagation();
+                preventClick = true;
+                const checked = $('#' + viewId + ' .bulkEditHeaderCbox:checked');
+                $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', checked.length === 0);
+                updateBulkOpsGuiElements(viewId);
             }
         })
 
