@@ -8933,9 +8933,6 @@ function Ktl($, appInfo) {
                 ktl.bulkOps.prepareBulkOps(view, data);
                 ktl.views.fixTableRowsAlignment(viewId);
                 ktlProcessKeywords(view, data);
-                if (keywords && keywords._cgc) {
-                    ktl.views.chooseGridColumns(view, keywords);
-                }
             }
         }
 
@@ -9184,6 +9181,7 @@ function Ktl($, appInfo) {
                     keywords._string && generateAndPutString(view, keywords);
                     keywords._mmb && moveMenuButtons(view, keywords);
                     keywords._tags && addRemoveTags(viewId, keywords, data);
+                    kywords._cgc && ktl.views.chooseGridColumns(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -18515,6 +18513,41 @@ function Ktl($, appInfo) {
                     document.head.appendChild(styleEl);
                 }
 
+                /**
+                 * Remove global Choose Columns handlers when no dialogs or buttons remain.
+                 * @example
+                 * removeGlobalHandlersIfUnused();
+                 */
+                function removeGlobalHandlersIfUnused() {
+                    if (!document.querySelector('.ktlChooseColumnsBtn') && chooseGridColumnsOpenDialogs === 0) {
+                        if (chooseGridColumnsGlobalClickHandler) {
+                            document.removeEventListener('click', chooseGridColumnsGlobalClickHandler);
+                        }
+                        if (chooseGridColumnsGlobalKeyHandler) {
+                            document.removeEventListener('keydown', chooseGridColumnsGlobalKeyHandler);
+                        }
+                        chooseGridColumnsGlobalClickHandler = null;
+                        chooseGridColumnsGlobalKeyHandler = null;
+                        chooseGridColumnsGlobalListenerAdded = false;
+                    }
+                }
+
+                /**
+                 * Toggle the Choose Columns button loading state for this view.
+                 * @param {boolean} isLoading
+                 */
+                function setButtonLoadingState(isLoading) {
+                    const btn = document.querySelector(`#${viewId} .ktlChooseColumnsBtn`);
+                    if (!btn) return;
+
+                    btn.disabled = !!isLoading;
+                    if (isLoading) {
+                        btn.dataset.loading = 'true';
+                    } else {
+                        delete btn.dataset.loading;
+                    }
+                }
+
                 function createButton() {
                     if (document.querySelector(`#${viewId} .ktlChooseColumnsBtn`)) return;
 
@@ -18528,6 +18561,8 @@ function Ktl($, appInfo) {
                     button.dataset.view = viewId;
                     button.type = 'button';
                     button.textContent = 'Choose Columns';
+                    button.disabled = true;
+                    button.dataset.loading = 'true';
 
                     const wrapper = document.createElement('div');
                     wrapper.className = 'ktlChooseColumnsWrapper';
@@ -18538,7 +18573,7 @@ function Ktl($, appInfo) {
                     button.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        if (!savedColumnsLoaded) return;
+                        if (button.dataset.loading === 'true' || !savedColumnsLoaded) return;
                         createColumnDialog();
                     });
 
@@ -18733,12 +18768,19 @@ function Ktl($, appInfo) {
                         const buttonPos = btn.getBoundingClientRect();
                         dialog.style.position = 'absolute';
                         dialog.style.top = `${buttonPos.bottom + window.scrollY}px`;
-                        const leftPos = Math.max(8, buttonPos.left + window.scrollX);
-                        dialog.style.left = `${leftPos}px`;
-                        const maxRight = window.innerWidth - 8;
-                        if (leftPos + dialog.offsetWidth > maxRight) {
-                            dialog.style.left = `${Math.max(8, maxRight - dialog.offsetWidth)}px`;
-                        }
+                        dialog.style.visibility = 'hidden';
+
+                        requestAnimationFrame(() => {
+                            const dialogWidth = dialog.offsetWidth || 0;
+                            const leftPos = Math.max(8, buttonPos.left + window.scrollX);
+                            const maxRight = window.innerWidth - 8;
+                            const adjustedLeft = (leftPos + dialogWidth > maxRight)
+                                ? Math.max(8, maxRight - dialogWidth)
+                                : leftPos;
+
+                            dialog.style.left = `${adjustedLeft}px`;
+                            dialog.style.visibility = '';
+                        });
                     }
 
                     if (dialog) {
@@ -18760,7 +18802,43 @@ function Ktl($, appInfo) {
                         delete dialog.dataset.cgcOpen;
                     }
                     dialog.remove();
+                    removeGlobalHandlersIfUnused();
                 }
+
+                /**
+                 * Clean up Choose Columns UI for this view, including dialogs and listeners.
+                 * @param {string} targetViewId
+                 * @example
+                 * cleanupChooseGridColumns('view_123');
+                 */
+                function cleanupChooseGridColumns(targetViewId) {
+                    if (!targetViewId || targetViewId !== viewId) return;
+
+                    const dialog = document.getElementById(DIALOG_ID);
+                    if (dialog) {
+                        closeDialog(dialog);
+                    }
+
+                    const buttonWrapper = document.querySelector(`#${viewId} .ktlChooseColumnsWrapper`);
+                    if (buttonWrapper) {
+                        buttonWrapper.remove();
+                    }
+
+                    savedColumnsLoaded = false;
+                    currentStates = null;
+                    lastAppliedStates = null;
+                    lastAppliedRowCount = 0;
+                    tableCache = { table: null, rows: null, rowCount: 0 };
+
+                    removeGlobalHandlersIfUnused();
+                }
+
+                $(document)
+                    .off(`knack-view-unrender.${viewId}.ktl_cgc`)
+                    .on(`knack-view-unrender.${viewId}.ktl_cgc`, function (event, view) {
+                        if (!view || view.key !== viewId) return;
+                        cleanupChooseGridColumns(viewId);
+                    });
 
                 const initState = chooseGridColumnsInitState[viewId] || { token: 0, inFlight: false };
                 initState.token += 1;
@@ -18768,6 +18846,8 @@ function Ktl($, appInfo) {
                 chooseGridColumnsInitState[viewId] = initState;
 
                 const token = initState.token;
+
+                setButtonLoadingState(true);
 
                 Promise.all([
                     ktl.core.waitSelector(`#${viewId} .kn-records-nav`, 10000),
@@ -18781,14 +18861,12 @@ function Ktl($, appInfo) {
                         savedColumnsLoaded = true;
                         createButton();
 
-                        const btn = document.querySelector(`#${viewId} .ktlChooseColumnsBtn`);
-                        if (btn) {
-                            btn.disabled = false;
-                            delete btn.dataset.loading;
-                        }
+                        setButtonLoadingState(false);
                         updateButtonHiddenState();
                     })
-                    .catch(() => { })
+                    .catch((error) => {
+                        ktl.log.clog('purple', `Choose columns init failed for ${viewId}:`, error);
+                    })
                     .finally(() => {
                         if (chooseGridColumnsInitState[viewId] && chooseGridColumnsInitState[viewId].token === token) {
                             chooseGridColumnsInitState[viewId].inFlight = false;
@@ -18796,16 +18874,6 @@ function Ktl($, appInfo) {
                     });
 
                 if (!chooseGridColumnsGlobalListenerAdded) {
-                    const removeGlobalHandlersIfUnused = () => {
-                        if (!document.querySelector('.ktlChooseColumnsBtn') && chooseGridColumnsOpenDialogs === 0) {
-                            document.removeEventListener('click', chooseGridColumnsGlobalClickHandler);
-                            document.removeEventListener('keydown', chooseGridColumnsGlobalKeyHandler);
-                            chooseGridColumnsGlobalClickHandler = null;
-                            chooseGridColumnsGlobalKeyHandler = null;
-                            chooseGridColumnsGlobalListenerAdded = false;
-                        }
-                    };
-
                     chooseGridColumnsGlobalClickHandler = function (event) {
                         document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => {
                             if (dialog && !event.target.closest(`#${dialog.id}`) && !event.target.closest('.ktlChooseColumnsBtn')) {
@@ -18873,9 +18941,9 @@ function Ktl($, appInfo) {
 
                 const headers = document.querySelectorAll('#' + viewId + ' .kn-table th');
                 for (var i = 0; i < headers.length; i++) {
-                    colFieldId = headers[i].classList && headers[i].classList.value && headers[i].classList.value.match(/field_\d+/);
-                    if (colFieldId && colFieldId.length) {
-                        colFieldId = colFieldId[0];
+                    const colFieldIdMatch = headers[i].classList && headers[i].classList.value && headers[i].classList.value.match(/field_\d+/);
+                    if (colFieldIdMatch && colFieldIdMatch.length) {
+                        const colFieldId = colFieldIdMatch[0];
                         if (colFieldId === fieldId)
                             return i;
                     }
