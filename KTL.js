@@ -9216,7 +9216,7 @@ function Ktl($, appInfo) {
                     keywords._rcm && removeConfirmationMessage(view, keywords);
                     keywords._string && generateAndPutString(view, keywords);
                     keywords._mmb && moveMenuButtons(view, keywords);
-                    keywords._tags && processTags(viewId, keywords, data);
+                    keywords._tags && addRemoveTags(viewId, keywords, data);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -11839,7 +11839,7 @@ function Ktl($, appInfo) {
             });
         }
 
-        function processTags(viewId, keywords, data) {
+        function addRemoveTags(viewId, keywords, data) {
             const kw = '_tags';
             if (!(viewId && keywords && keywords[kw])) return;
 
