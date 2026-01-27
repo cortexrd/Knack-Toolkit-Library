@@ -2615,100 +2615,336 @@ function Ktl($, appInfo) {
                 console.log(output);
             },
 
-            universalSearch: function (textToFind) {
-                if (!textToFind) {
+            universalSearch: function (query, options = {}) {
+                const opts = {
+                    outputFormat: 'both',   // 'html', 'console', 'both'
+                    maxResults: 200,
+                    ...options
+                };
+
+                if (!query) {
                     console.error('Search text is required');
-                    return;
+                    return { query: '', results: [], html: NO_RESULTS };
                 }
 
                 if (!Knack || !Knack.scenes || !Knack.scenes.models) {
                     console.error('Knack scenes are not defined');
-                    return;
+                    return { query, results: [], html: NO_RESULTS };
                 }
 
-                let textFound = false;
-                const searchTerm = textToFind.toLowerCase();
+                const st = window.performance.now();
+                const results = [];
                 const skipKeys = new Set(['el', '$el', 'parent', 'collection', '_events', 'cid', 'scene']);
 
-                const checkTextInContent = (text, context, contextObj, isObject = false) => {
+                // Parse query for +/- modifiers
+                const parseQuery = (q) => {
+                    const required = [];    // +terms (AND - all must match)
+                    const optional = [];    // plain terms (OR - any can match)
+                    const excluded = [];    // -terms (NOT - must not match)
+
+                    const tokens = q.match(/[+-]?"[^"]+"|[+-]?\S+/g) || [];
+                    tokens.forEach(token => {
+                        let term = token;
+                        let prefix = '';
+
+                        if (term.startsWith('+') || term.startsWith('-')) {
+                            prefix = term[0];
+                            term = term.slice(1);
+                        }
+
+                        // Remove surrounding quotes
+                        if (term.startsWith('"') && term.endsWith('"')) {
+                            term = term.slice(1, -1);
+                        }
+
+                        term = term.toLowerCase().trim();
+                        if (!term) return;
+
+                        if (prefix === '+') {
+                            required.push(term);
+                        } else if (prefix === '-') {
+                            excluded.push(term);
+                        } else {
+                            optional.push(term);
+                        }
+                    });
+
+                    // Determine mode: if any required terms exist, mode is 'all' for those
+                    const mode = required.length > 0 ? 'all' : 'any';
+                    const searchTerms = required.length > 0 ? required : optional;
+
+                    return { searchTerms, excluded, mode };
+                };
+
+                const { searchTerms, excluded, mode } = parseQuery(query);
+
+                if (searchTerms.length === 0 && excluded.length === 0) {
+                    return { query, results: [], html: NO_RESULTS };
+                }
+
+                // Collect all text from an object into a single string (for AND mode)
+                const collectAllText = (obj, depth = 0) => {
+                    if (!obj || depth > 20) return '';
+                    if (typeof obj === 'string') return obj + ' ';
+                    if (typeof obj !== 'object') return '';
+                    if (Array.isArray(obj)) {
+                        return obj.map(item => collectAllText(item, depth + 1)).join(' ');
+                    }
+                    return Object.keys(obj)
+                        .filter(key => !skipKeys.has(key))
+                        .map(key => {
+                            try { return collectAllText(obj[key], depth + 1); }
+                            catch (e) { return ''; }
+                        }).join(' ');
+                };
+
+                // Check if text matches (for individual strings in OR mode)
+                const matchesQuerySingle = (text) => {
                     if (!text || typeof text !== 'string') return false;
-                    if (!text.toLowerCase().includes(searchTerm)) return false;
+                    const textLower = text.toLowerCase();
+                    if (excluded.some(term => textLower.includes(term))) return false;
+                    if (searchTerms.length === 0) return true;
+                    return searchTerms.some(term => textLower.includes(term));
+                };
 
-                    const maxLength = 50;
-                    const truncatedText = text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
-                    const linkUrl = isObject ?
-                        `${baseURL}${contextObj.url}` :
-                        `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
+                // Check if combined text matches all terms (for AND mode)
+                const matchesQueryAll = (combinedText) => {
+                    if (!combinedText) return false;
+                    const textLower = combinedText.toLowerCase();
+                    if (excluded.some(term => textLower.includes(term))) return false;
+                    if (searchTerms.length === 0) return true;
+                    return searchTerms.every(term => textLower.includes(term));
+                };
 
-                    const span = document.createElement('span');
-                    span.textContent = text;
+                const checkTextInContent = (text, path, contextObj, isTask = false, skipMatchCheck = false) => {
+                    if (!skipMatchCheck && !matchesQuerySingle(text)) return false;
+                    if (results.length >= opts.maxResults) return false;
 
-                    console.log(`Found text: ${truncatedText} in ${context}:`, span);
-                    console.log(`%cClick here to open the builder link: ${linkUrl}`, 'color: blue; cursor: pointer;');
+                    const maxLength = 80;
+                    const contextPadding = 20;
+                    let truncatedText = text;
 
-                    textFound = true;
+                    if (text.length > maxLength) {
+                        // Find the longest (most specific) term's position for context
+                        const textLower = text.toLowerCase();
+                        const sortedTerms = [...searchTerms].sort((a, b) => b.length - a.length);
+                        let matchPos = -1;
+                        let matchTerm = '';
+                        for (const term of sortedTerms) {
+                            const pos = textLower.indexOf(term);
+                            if (pos !== -1) {
+                                matchPos = pos;
+                                matchTerm = term;
+                                break;
+                            }
+                        }
+
+                        if (matchPos !== -1) {
+                            // Show context around the match, centering on the matched term
+                            const halfContext = Math.floor((maxLength - matchTerm.length) / 2);
+                            const start = Math.max(0, matchPos - halfContext);
+                            const end = Math.min(text.length, start + maxLength);
+                            truncatedText = (start > 0 ? '...' : '') + text.substring(start, end) + (end < text.length ? '...' : '');
+                        } else {
+                            truncatedText = text.substring(0, maxLength) + '...';
+                        }
+                    }
+                    const builderUrl = isTask
+                        ? `${baseURL}${contextObj.url}`
+                        : `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
+
+                    const result = {
+                        type: isTask ? 'task' : 'view',
+                        sceneId: contextObj.sceneId || null,
+                        viewId: contextObj.viewId || null,
+                        viewTitle: contextObj.viewTitle || '',
+                        matchedText: truncatedText,
+                        fullText: text,
+                        path: path,
+                        builderUrl: builderUrl,
+                        appUrl: contextObj.appUrl || null
+                    };
+
+                    results.push(result);
+
+                    if (opts.outputFormat === 'console' || opts.outputFormat === 'both') {
+                        console.log(`Found: "${truncatedText}" in ${path}`);
+                        console.log(`%cBuilder: ${builderUrl}`, 'color: blue; cursor: pointer;');
+                        if (result.appUrl) {
+                            console.log(`%cApp: ${result.appUrl}`, 'color: green; cursor: pointer;');
+                        }
+                    }
+
                     return true;
                 };
 
-                const deepSearch = (obj, path, contextObj, depth = 0) => {
-                    if (!obj || depth > 20) return;
+                const deepSearch = (obj, path, contextObj, depth = 0, isTask = false) => {
+                    if (!obj || depth > 20 || results.length >= opts.maxResults) return;
 
                     if (typeof obj === 'string') {
-                        checkTextInContent(obj, path, contextObj);
+                        checkTextInContent(obj, path, contextObj, isTask);
                         return;
                     }
 
                     if (typeof obj !== 'object') return;
 
                     if (Array.isArray(obj)) {
-                        obj.forEach((item, i) => deepSearch(item, `${path}[${i}]`, contextObj, depth + 1));
+                        obj.forEach((item, i) => deepSearch(item, `${path}[${i}]`, contextObj, depth + 1, isTask));
                         return;
                     }
 
                     Object.keys(obj).forEach(key => {
                         if (skipKeys.has(key)) return;
                         try {
-                            deepSearch(obj[key], path ? `${path}.${key}` : key, contextObj, depth + 1);
+                            deepSearch(obj[key], path ? `${path}.${key}` : key, contextObj, depth + 1, isTask);
                         } catch (e) { }
                     });
                 };
 
+                // Find best matching text in an object for display
+                const findBestMatch = (obj, depth = 0) => {
+                    if (!obj || depth > 20) return null;
+                    if (typeof obj === 'string') {
+                        const textLower = obj.toLowerCase();
+                        const matchCount = searchTerms.filter(term => textLower.includes(term)).length;
+                        return matchCount > 0 ? { text: obj, matchCount } : null;
+                    }
+                    if (typeof obj !== 'object') return null;
+
+                    let best = null;
+                    const items = Array.isArray(obj) ? obj : Object.values(obj);
+                    for (const item of items) {
+                        const result = findBestMatch(item, depth + 1);
+                        if (result && (!best || result.matchCount > best.matchCount)) {
+                            best = result;
+                        }
+                    }
+                    return best;
+                };
+
+                // Search scenes and views
                 Knack.scenes.models.forEach(scene => {
                     if (!scene.views || !scene.views.models) return;
+                    if (results.length >= opts.maxResults) return;
+
+                    const sceneId = scene.attributes.key;
+                    const sceneSlug = scene.attributes.slug;
 
                     scene.views.models.forEach(view => {
                         if (!view || !view.attributes) return;
+                        if (results.length >= opts.maxResults) return;
 
                         const { attributes } = view;
+
+                        // For AND mode, check if all terms exist somewhere in this view
+                        if (mode === 'all') {
+                            const combinedText = collectAllText(attributes);
+                            if (!matchesQueryAll(combinedText)) return;
+
+                            // Find the best text to display (most matching terms)
+                            const bestMatch = findBestMatch(attributes);
+                            const contextObj = {
+                                sceneId: sceneId,
+                                viewId: attributes.key,
+                                viewTitle: attributes.title || '',
+                                url: `/${attributes.type || ''}`,
+                                appUrl: `${Knack.url_base}#${sceneSlug}`
+                            };
+
+                            if (bestMatch) {
+                                checkTextInContent(bestMatch.text, 'attributes (AND match)', contextObj, false, true);
+                            }
+                            return;
+                        }
+
                         const contextObj = {
-                            sceneId: scene.attributes.key,
+                            sceneId: sceneId,
                             viewId: attributes.key,
-                            url: `/${attributes.type || ''}`
+                            viewTitle: attributes.title || '',
+                            url: `/${attributes.type || ''}`,
+                            appUrl: `${Knack.url_base}#${sceneSlug}`
                         };
 
                         deepSearch(attributes, 'attributes', contextObj);
                     });
                 });
 
+                // Search object tasks
                 if (Knack.objects && Knack.objects.models) {
                     Knack.objects.models.forEach(object => {
                         if (!object || !object.tasks || !object.tasks.models) return;
+                        if (results.length >= opts.maxResults) return;
 
                         object.tasks.models.forEach(task => {
                             if (!task || !task.attributes) return;
+                            if (results.length >= opts.maxResults) return;
 
                             const contextObj = {
                                 url: `/tasks/objects/${object.id}/${task.id}/task`
                             };
 
-                            deepSearch(task.attributes, 'task.attributes', contextObj, true);
+                            // For AND mode, check if all terms exist somewhere in this task
+                            if (mode === 'all') {
+                                const combinedText = collectAllText(task.attributes);
+                                if (!matchesQueryAll(combinedText)) return;
+
+                                const bestMatch = findBestMatch(task.attributes);
+                                if (bestMatch) {
+                                    checkTextInContent(bestMatch.text, 'task.attributes (AND match)', contextObj, true, true);
+                                }
+                                return;
+                            }
+
+                            deepSearch(task.attributes, 'task.attributes', contextObj, 0, true);
                         });
                     });
                 }
 
-                if (!textFound) {
-                    ktl.log.clog('green', `No matches found for "${textToFind}"`);
+                const en = window.performance.now();
+                const searchTime = Math.trunc(en - st);
+
+                // Format HTML output
+                let html = '';
+                if (results.length === 0) {
+                    html = NO_RESULTS;
+                    if (opts.outputFormat === 'console' || opts.outputFormat === 'both') {
+                        ktl.log.clog('green', `No matches found for "${query}"`);
+                    }
+                } else {
+                    const modeDesc = mode === 'all' ? 'AND' : 'OR';
+                    const excludeDesc = excluded.length > 0 ? ` (excluding: ${excluded.join(', ')})` : '';
+                    html = `<strong>Search: "${query}" [${modeDesc}]${excludeDesc}</strong><br>`;
+                    html += `<strong>${results.length} result(s) found in ${searchTime} ms</strong><br><br>`;
+
+                    results.forEach((result, idx) => {
+                        html += `<strong>${idx + 1}. ${result.viewId || 'Task'}${result.viewTitle ? ': ' + result.viewTitle : ''}</strong><br>`;
+                        html += `<em>Path: ${result.path}</em><br>`;
+                        html += `Match: ${result.matchedText}<br>`;
+                        html += `<a href="${result.builderUrl}" target="_blank">Open in Builder</a>`;
+                        if (result.appUrl) {
+                            html += ` | <a href="${result.appUrl}" target="_self">Open in App</a>`;
+                        }
+                        html += `<br><br>`;
+                    });
+
+                    if (results.length >= opts.maxResults) {
+                        html += `<br><em>Results limited to ${opts.maxResults}. Refine your search for more specific results.</em><br>`;
+                    }
                 }
+
+                if (opts.outputFormat === 'console' || opts.outputFormat === 'both') {
+                    console.log(`\nSearch completed in ${searchTime} ms. Found ${results.length} result(s).`);
+                }
+
+                return {
+                    query,
+                    mode,
+                    excluded,
+                    totalMatches: results.length,
+                    searchTime,
+                    results,
+                    html
+                };
             },
 
             //Parameter examples:
@@ -23774,8 +24010,9 @@ function Ktl($, appInfo) {
                                     }
 
                                     var paragraph = document.createElement('p');
-                                    paragraph.appendChild(document.createTextNode('Enter field_id, view_id, scene_id,\n'));
-                                    paragraph.appendChild(document.createTextNode('a specific keyword or kw for all keywords.'));
+                                    paragraph.appendChild(document.createTextNode('Search: text, IDs (field_, view_, scene_)\n'));
+                                    paragraph.appendChild(document.createTextNode('Prefix: type:, email:, kw, _keyword\n'));
+                                    paragraph.appendChild(document.createTextNode('+term=AND, -term=exclude'));
                                     paragraph.style.whiteSpace = 'pre';
                                     devToolSearchDiv.appendChild(paragraph);
 
@@ -23788,6 +24025,104 @@ function Ktl($, appInfo) {
                                     searchInput.focus();
 
                                     var resultWndText;
+
+                                    // Build autocomplete source from Knack data
+                                    let autocompleteSource = null;
+                                    function buildAutocompleteSource() {
+                                        if (autocompleteSource) return autocompleteSource;
+
+                                        const source = [];
+
+                                        // Add scenes
+                                        if (Knack?.scenes?.models) {
+                                            Knack.scenes.models.forEach(scene => {
+                                                const attr = scene.attributes;
+                                                source.push({
+                                                    label: `${attr.key}: ${attr.name || attr.slug}`,
+                                                    value: attr.key,
+                                                    category: 'Scenes'
+                                                });
+                                            });
+                                        }
+
+                                        // Add views
+                                        if (Knack?.scenes?.models) {
+                                            Knack.scenes.models.forEach(scene => {
+                                                if (scene.views?.models) {
+                                                    scene.views.models.forEach(view => {
+                                                        const attr = view.attributes;
+                                                        if (attr?.key) {
+                                                            source.push({
+                                                                label: `${attr.key}: ${attr.title || attr.type || '<no title>'}`,
+                                                                value: attr.key,
+                                                                category: 'Views'
+                                                            });
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+
+                                        // Add fields (sample from objects)
+                                        if (Knack?.objects?.models) {
+                                            Knack.objects.models.forEach(obj => {
+                                                if (obj.fields?.models) {
+                                                    obj.fields.models.forEach(field => {
+                                                        const attr = field.attributes;
+                                                        if (attr?.key) {
+                                                            source.push({
+                                                                label: `${attr.key}: ${attr.name || '<unnamed>'}`,
+                                                                value: attr.key,
+                                                                category: 'Fields'
+                                                            });
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+
+                                        // Add common KTL keywords
+                                        const commonKeywords = ['_ar', '_ni', '_ro', '_cfv', '_hv', '_dtp', '_cls', '_svf', '_ac', '_rlv', '_rd', '_fvf'];
+                                        commonKeywords.forEach(kw => {
+                                            source.push({
+                                                label: kw,
+                                                value: kw,
+                                                category: 'Keywords'
+                                            });
+                                        });
+
+                                        // Add search prefixes
+                                        const prefixes = [
+                                            { label: 'type:', value: 'type:', category: 'Prefixes' },
+                                            { label: 'email:', value: 'email:', category: 'Prefixes' },
+                                            { label: 'kw (all keywords)', value: 'kw', category: 'Prefixes' }
+                                        ];
+                                        source.push(...prefixes);
+
+                                        autocompleteSource = source;
+                                        return source;
+                                    }
+
+                                    // Setup jQuery UI autocomplete
+                                    $(searchInput).autocomplete({
+                                        source: function (request, response) {
+                                            const source = buildAutocompleteSource();
+                                            const term = request.term.toLowerCase();
+                                            const filtered = source.filter(item =>
+                                                item.label.toLowerCase().includes(term) ||
+                                                item.value.toLowerCase().includes(term)
+                                            ).slice(0, 25);
+                                            response(filtered);
+                                        },
+                                        minLength: 2,
+                                        delay: 150,
+                                        select: function (event, ui) {
+                                            searchInput.value = ui.item.value;
+                                            ktlDevToolsLastSearch = ui.item.value;
+                                            performSearch(ui.item.value);
+                                            return false;
+                                        }
+                                    });
 
                                     searchInput.addEventListener('keyup', function (event) {
                                         if (event.key === 'Enter') {
@@ -23853,10 +24188,41 @@ function Ktl($, appInfo) {
                                         } else if (query.startsWith('type:')) {
                                             const viewType = query.split(':')[1];
                                             kwResults = ktl.core.findViewsByType(viewType);
+                                        } else if (query.startsWith('email:')) {
+                                            // Email search using findEmails
+                                            const emailQuery = query.substring(6).trim();
+                                            const emailResults = ktl.core.findEmails(emailQuery);
+                                            if (emailResults && emailResults.length > 0) {
+                                                kwResults = `<strong>Email Search: "${emailQuery}"</strong><br>`;
+                                                kwResults += `<strong>${emailResults.length} email(s) found</strong><br><br>`;
+                                                const uniqueEmails = [...new Set(emailResults.map(e => e.email.toLowerCase()))].sort();
+                                                kwResults += `<strong>Unique emails (${uniqueEmails.length}):</strong><br>`;
+                                                uniqueEmails.forEach(email => {
+                                                    kwResults += `${email}<br>`;
+                                                });
+                                                kwResults += `<br><strong>Details:</strong><br>`;
+                                                emailResults.forEach((entry, idx) => {
+                                                    const loc = entry.location;
+                                                    const sceneSlug = Knack.scenes.getByKey(loc.scene)?.attributes?.slug || '';
+                                                    kwResults += `${idx + 1}. ${entry.email}<br>`;
+                                                    kwResults += `   Scene: ${loc.scene}, View: ${loc.view}<br>`;
+                                                    const viewBuilderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${loc.scene}/views/${loc.view}/form`;
+                                                    kwResults += `   <a href="${viewBuilderUrl}" target="_blank">Open in Builder</a>`;
+                                                    if (sceneSlug) {
+                                                        kwResults += ` | <a href="${Knack.url_base}#${sceneSlug}" target="_self">Open in App</a>`;
+                                                    }
+                                                    kwResults += `<br><br>`;
+                                                });
+                                            }
                                         } else if (query === 'kw') {
                                             kwResults = ktl.core.findAllKeywords();
-                                        } else {
+                                        } else if (query.startsWith('_')) {
+                                            // Keyword-specific search (e.g., _ar, _ni)
                                             kwResults = ktl.core.findAllKeywords(query);
+                                        } else {
+                                            // Use unified universal search for general text
+                                            const searchResult = ktl.core.universalSearch(query, { outputFormat: 'html' });
+                                            kwResults = searchResult.html || NO_RESULTS;
                                         }
 
                                         if (builderUrl || appUrl || kwResults) {
@@ -23873,9 +24239,9 @@ function Ktl($, appInfo) {
                                             }
 
                                             if (kwResults) {
-                                                //console.log(kwResults);
                                                 if (kwResults === NO_RESULTS) {
                                                     searchInput.classList.add('ktlNotValid');
+                                                    ktl.core.timedPopup(`"${query}" not found`, 'warning', 2000);
                                                 } else {
                                                     $(document).trigger('KTL.devPopupSetResultText', kwResults);
                                                 }
@@ -29394,8 +29760,8 @@ window.ktlTablesAndFieldCounts = function () {
     console.log('Count of Tables:', Knack.objects.length);
 }
 
-window.ktlUniversalSearch = function (search) {
-    ktl.core.universalSearch(search);
+window.ktlUniversalSearch = function (search, options = {}) {
+    return ktl.core.universalSearch(search, { outputFormat: 'console', ...options });
 }
 
 window.ktlFindEmails = function (excludeEmails) {
