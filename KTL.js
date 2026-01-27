@@ -18112,7 +18112,7 @@ function Ktl($, appInfo) {
                     const styleEl = document.createElement('style');
                     styleEl.id = UI_STYLE_ID;
                     styleEl.textContent = `
-                        .table-choose-columns {
+                        .ktlChooseColumnsDialog {
                             position: absolute;
                             z-index: 10000;
                             background: #ffffff;
@@ -18123,44 +18123,44 @@ function Ktl($, appInfo) {
                             min-width: 220px;
                             max-width: 360px;
                         }
-                        .table-choose-columns .dialog-controls {
+                        .ktlChooseColumnsDialog .ktlDialogControls {
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
                             gap: 8px;
                             margin-bottom: 8px;
                         }
-                        .table-choose-columns .select-controls {
+                        .ktlChooseColumnsDialog .ktlSelectControls {
                             display: flex;
                             gap: 6px;
                         }
-                        #${viewId} .choose-columns-wrapper {
+                        #${viewId} .ktlChooseColumnsWrapper {
                             margin-bottom: 10px;
                         }
-                        .table-choose-columns .checkbox-list {
+                        .ktlChooseColumnsDialog .ktlCheckboxList {
                             max-height: 320px;
                             overflow: auto;
                             padding-right: 4px;
                         }
-                        .table-choose-columns .column-option {
+                        .ktlChooseColumnsDialog .ktlColumnOption {
                             display: flex;
                             align-items: center;
                             gap: 8px;
                             padding: 4px 2px;
                             cursor: pointer;
                         }
-                        .table-choose-columns .column-option:hover {
+                        .ktlChooseColumnsDialog .ktlColumnOption:hover {
                             background: #f7f7f7;
                             border-radius: 4px;
                         }
-                        .table-choose-columns input[type="checkbox"] {
+                        .ktlChooseColumnsDialog input[type="checkbox"] {
                             margin: 0;
                         }
-                        .table-choose-columns .select-all,
-                        .table-choose-columns .clear-all {
+                        .ktlChooseColumnsDialog .ktlSelectAll,
+                        .ktlChooseColumnsDialog .ktlClearAll {
                             padding: 4px 8px;
                         }
-                        #${viewId} .choose-columns.has-hidden {
+                        #${viewId} .ktlChooseColumnsBtn.ktlHasHidden {
                             background: #fef3c7;
                             border-color: #f59e0b;
                         }
@@ -18169,21 +18169,21 @@ function Ktl($, appInfo) {
                 }
 
                 function createButton() {
-                    if (document.querySelector(`#${viewId} .choose-columns`)) return;
+                    if (document.querySelector(`#${viewId} .ktlChooseColumnsBtn`)) return;
 
-                    const nav = document.querySelector(`#${viewId} div.kn-records-nav`);
+                    const nav = ktl.views.getKtlAddOnsDiv(viewId);
                     if (!nav) return;
 
                     ensureDialogStyles();
 
                     const button = document.createElement('button');
-                    button.className = 'choose-columns kn-button';
+                    button.className = 'ktlChooseColumnsBtn kn-button';
                     button.dataset.view = viewId;
                     button.type = 'button';
                     button.textContent = 'Choose Columns';
 
                     const wrapper = document.createElement('div');
-                    wrapper.className = 'choose-columns-wrapper';
+                    wrapper.className = 'ktlChooseColumnsWrapper';
                     wrapper.appendChild(button);
 
                     nav.appendChild(wrapper);
@@ -18259,11 +18259,11 @@ function Ktl($, appInfo) {
                 }
 
                 function updateButtonHiddenState() {
-                    const btn = document.querySelector(`#${viewId} .choose-columns`);
+                    const btn = document.querySelector(`#${viewId} .ktlChooseColumnsBtn`);
                     if (!btn) return;
                     const headers = getColumnStates();
                     const hasHidden = headers.some(h => !h.shown && !h.locked);
-                    btn.classList.toggle('has-hidden', hasHidden);
+                    btn.classList.toggle('ktlHasHidden', hasHidden);
                 }
 
                 function createDialogHtml(headers) {
@@ -18274,17 +18274,17 @@ function Ktl($, appInfo) {
                     };
 
                     return `
-                        <div id="${DIALOG_ID}" class="table-choose-columns" data-view="${viewId}">
-                            <div class="dialog-controls">
-                                <div class="select-controls">
-                                    <button class="select-all" type="button">Select All</button>
-                                    <button class="clear-all" type="button">Clear All</button>
+                        <div id="${DIALOG_ID}" class="ktlChooseColumnsDialog" data-view="${viewId}">
+                            <div class="ktlDialogControls">
+                                <div class="ktlSelectControls">
+                                    <button class="ktlSelectAll" type="button">Select All</button>
+                                    <button class="ktlClearAll" type="button">Clear All</button>
                                 </div>
                                 <button class="done button_a" data-view="${viewId}" type="button">Apply</button>
                             </div>
-                            <div class="checkbox-list">
+                            <div class="ktlCheckboxList">
                                 ${headers.map((header) => `
-                                    <label class="column-option">
+                                    <label class="ktlColumnOption">
                                         <input type="checkbox"
                                                data-index="${header.index}"
                                                ${header.shown ? 'checked' : ''}>
@@ -18299,16 +18299,16 @@ function Ktl($, appInfo) {
                 function setupEventHandlers(dialog) {
                     dialog.addEventListener('click', (e) => {
                         const sel = e.target;
-                        if (sel.matches('.select-all')) {
+                        if (sel.matches('.ktlSelectAll')) {
                             dialog.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
                             return;
                         }
-                        if (sel.matches('.clear-all')) {
+                        if (sel.matches('.ktlClearAll')) {
                             dialog.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
                             return;
                         }
 
-                        const opt = sel.closest('.column-option');
+                        const opt = sel.closest('.ktlColumnOption');
                         if (opt && !sel.matches('input[type="checkbox"]')) {
                             const checkbox = opt.querySelector('input[type="checkbox"]');
                             if (checkbox) {
@@ -18381,7 +18381,7 @@ function Ktl($, appInfo) {
                     document.body.insertAdjacentHTML('beforeend', dialogHtml);
 
                     const dialog = document.getElementById(DIALOG_ID);
-                    const btn = document.querySelector(`#${viewId} .choose-columns`);
+                    const btn = document.querySelector(`#${viewId} .ktlChooseColumnsBtn`);
                     if (btn && dialog) {
                         const buttonPos = btn.getBoundingClientRect();
                         dialog.style.position = 'absolute';
@@ -18434,7 +18434,7 @@ function Ktl($, appInfo) {
                         savedColumnsLoaded = true;
                         createButton();
 
-                        const btn = document.querySelector(`#${viewId} .choose-columns`);
+                        const btn = document.querySelector(`#${viewId} .ktlChooseColumnsBtn`);
                         if (btn) {
                             btn.disabled = false;
                             delete btn.dataset.loading;
@@ -18450,7 +18450,7 @@ function Ktl($, appInfo) {
 
                 if (!chooseGridColumnsGlobalListenerAdded) {
                     const removeGlobalHandlersIfUnused = () => {
-                        if (!document.querySelector('.choose-columns') && chooseGridColumnsOpenDialogs === 0) {
+                        if (!document.querySelector('.ktlChooseColumnsBtn') && chooseGridColumnsOpenDialogs === 0) {
                             document.removeEventListener('click', chooseGridColumnsGlobalClickHandler);
                             document.removeEventListener('keydown', chooseGridColumnsGlobalKeyHandler);
                             chooseGridColumnsGlobalClickHandler = null;
@@ -18461,7 +18461,7 @@ function Ktl($, appInfo) {
 
                     chooseGridColumnsGlobalClickHandler = function (event) {
                         document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => {
-                            if (dialog && !event.target.closest(`#${dialog.id}`) && !event.target.closest('.choose-columns')) {
+                            if (dialog && !event.target.closest(`#${dialog.id}`) && !event.target.closest('.ktlChooseColumnsBtn')) {
                                 closeDialog(dialog);
                             }
                         });
@@ -19355,7 +19355,7 @@ function Ktl($, appInfo) {
                     }
 
                     ktlAddonsDiv.classList.add('ktlAddonsDiv');
-                    $(ktlAddonsDiv).css('margin-bottom', '1.1em');
+                    $(ktlAddonsDiv).css({'margin-bottom': '1.1em', 'margin-left': '1.1em'});
                     prepend ? $(div).prepend(ktlAddonsDiv) : ktl.core.insertAfter(ktlAddonsDiv, div);
                 }
 
