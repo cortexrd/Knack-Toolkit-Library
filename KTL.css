@@ -7,7 +7,13 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.10.4*/
+/* KTL CSS version: 0.11.5*/
+
+/************ KTL Spacing Constants **************/
+:root {
+	--ktlButtonSpacing: 5px;
+	--ktlGroupSpacing: 15px;
+}
 
 /************ General Settings **************/
 #verButtonId {
@@ -245,7 +251,13 @@ a.ktlSortDisabled {
 	}
 
 .ktlButtonMargin {
-	margin-inline: 5px !important;
+	margin-inline: calc(var(--ktlButtonSpacing) / 2) !important;
+}
+
+.ktlFeatureGroup {
+	display: inline-flex;
+	gap: var(--ktlButtonSpacing);
+	margin-left: var(--ktlGroupSpacing);
 }
 
 .bulkEditCb {
