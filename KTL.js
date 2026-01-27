@@ -2616,7 +2616,6 @@ function Ktl($, appInfo) {
             },
 
             universalSearch: function (textToFind) {
-                // Input validation
                 if (!textToFind) {
                     console.error('Search text is required');
                     return;
@@ -2629,17 +2628,14 @@ function Ktl($, appInfo) {
 
                 let textFound = false;
                 const searchTerm = textToFind.toLowerCase();
+                const skipKeys = new Set(['el', '$el', 'parent', 'collection', '_events', 'cid', 'scene']);
 
-                // Helper function to check content
                 const checkTextInContent = (text, context, contextObj, isObject = false) => {
                     if (!text || typeof text !== 'string') return false;
-
                     if (!text.toLowerCase().includes(searchTerm)) return false;
 
                     const maxLength = 50;
-                    const truncatedText = text.length > maxLength ?
-                        `${text.substring(0, maxLength)}...` : text;
-
+                    const truncatedText = text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
                     const linkUrl = isObject ?
                         `${baseURL}${contextObj.url}` :
                         `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
@@ -2654,37 +2650,31 @@ function Ktl($, appInfo) {
                     return true;
                 };
 
-                // Helper function to check email content
-                const checkEmailContent = (email, contextObj, isObject = false) => {
-                    if (!email) return;
+                const deepSearch = (obj, path, contextObj, depth = 0) => {
+                    if (!obj || depth > 20) return;
 
-                    const {
-                        message = '',
-                        subject = '',
-                        from_name = '',
-                        from_email = '',
-                        recipients = []
-                    } = email;
-
-                    if (recipients && Array.isArray(recipients)) {
-                        recipients.forEach(recipient => {
-                            const email = recipient.email || '';
-                            checkTextInContent(email, 'email recipient', contextObj, isObject);
-                        });
-                    }
-
-                    checkTextInContent(message, 'email message', contextObj, isObject);
-                    checkTextInContent(subject, 'email subject', contextObj, isObject);
-                    checkTextInContent(from_name, 'email from name', contextObj, isObject);
-                    checkTextInContent(from_email, 'email from email', contextObj, isObject);
-                };
-
-                // Process scenes and views
-                Knack.scenes.models.forEach(scene => {
-                    if (!scene.views || !scene.views.models) {
-                        console.warn('No views found in scene:', scene);
+                    if (typeof obj === 'string') {
+                        checkTextInContent(obj, path, contextObj);
                         return;
                     }
+
+                    if (typeof obj !== 'object') return;
+
+                    if (Array.isArray(obj)) {
+                        obj.forEach((item, i) => deepSearch(item, `${path}[${i}]`, contextObj, depth + 1));
+                        return;
+                    }
+
+                    Object.keys(obj).forEach(key => {
+                        if (skipKeys.has(key)) return;
+                        try {
+                            deepSearch(obj[key], path ? `${path}.${key}` : key, contextObj, depth + 1);
+                        } catch (e) { }
+                    });
+                };
+
+                Knack.scenes.models.forEach(scene => {
+                    if (!scene.views || !scene.views.models) return;
 
                     scene.views.models.forEach(view => {
                         if (!view || !view.attributes) return;
@@ -2693,62 +2683,31 @@ function Ktl($, appInfo) {
                         const contextObj = {
                             sceneId: scene.attributes.key,
                             viewId: attributes.key,
-                            url: ''
+                            url: `/${attributes.type || ''}`
                         };
 
-                        // Check basic view attributes
-                        checkTextInContent(attributes.name, 'name', { ...contextObj, url: `/${attributes.type}` });
-                        checkTextInContent(attributes.title, 'title', { ...contextObj, url: `/${attributes.type}` });
-                        checkTextInContent(attributes.description, 'description', { ...contextObj, url: `/${attributes.type}` });
-
-                        // Check rules and emails
-                        if (attributes.rules) {
-                            if (attributes.rules.submits) {
-                                attributes.rules.submits.forEach(rule => {
-                                    checkTextInContent(rule.message || '', 'submit rule', { ...contextObj, url: '/form/rules/submit' });
-                                });
-                            }
-
-                            if (attributes.rules.emails) {
-                                attributes.rules.emails.forEach(rule => {
-                                    if (rule.email) {
-                                        checkEmailContent(rule.email, { ...contextObj, url: '/form/emails' });
-                                    }
-                                });
-                            }
-                        }
-
-                        // Check rich text content
-                        if (attributes.type === 'rich_text') {
-                            checkTextInContent(attributes.content || '', 'rich text view', { ...contextObj, url: `/${attributes.type}` });
-                        }
+                        deepSearch(attributes, 'attributes', contextObj);
                     });
                 });
 
-                // Check tasks
                 if (Knack.objects && Knack.objects.models) {
                     Knack.objects.models.forEach(object => {
                         if (!object || !object.tasks || !object.tasks.models) return;
 
                         object.tasks.models.forEach(task => {
-                            if (!task || !task.attributes || !task.attributes.action) return;
+                            if (!task || !task.attributes) return;
 
-                            const { id: taskId, attributes: { action } } = task;
+                            const contextObj = {
+                                url: `/tasks/objects/${object.id}/${task.id}/task`
+                            };
 
-                            if (action.email) {
-                                const contextObj = {
-                                    url: `/tasks/objects/${object.id}/${taskId}/task`
-                                };
-                                checkEmailContent(action.email, contextObj, true);
-                            }
+                            deepSearch(task.attributes, 'task.attributes', contextObj, true);
                         });
                     });
                 }
 
                 if (!textFound) {
-                    ktl.log.clog('green',
-                        `No matches found for "${textToFind}" in views, descriptions, titles, rules, inputs, or emails`
-                    );
+                    ktl.log.clog('green', `No matches found for "${textToFind}"`);
                 }
             },
 
