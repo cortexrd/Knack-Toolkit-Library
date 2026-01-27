@@ -8733,6 +8733,11 @@ function Ktl($, appInfo) {
         var gotoDateObj = new Date();
         var prevType = '';
         var prevStartDate = '';
+        let chooseGridColumnsGlobalListenerAdded = false;
+        let chooseGridColumnsGlobalClickHandler = null;
+        let chooseGridColumnsGlobalKeyHandler = null;
+        let chooseGridColumnsOpenDialogs = 0;
+        const chooseGridColumnsInitState = {};
         let quickToggleParams = {
             bgColorTrue: '#39d91f',
             bgColorFalse: '#f04a3b',
@@ -9176,6 +9181,7 @@ function Ktl($, appInfo) {
                     keywords._string && generateAndPutString(view, keywords);
                     keywords._mmb && moveMenuButtons(view, keywords);
                     keywords._tags && addRemoveTags(viewId, keywords, data);
+                    kywords._cgc && ktl.views.chooseGridColumns(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -18342,6 +18348,555 @@ function Ktl($, appInfo) {
                 }
             },
 
+            chooseGridColumns: function (view, keywords) {
+                if (!view || !keywords) return;
+
+                const kw = '_cgc';
+                const viewId = view.key;
+                if (!keywords[kw]) return;
+
+                const viewType = ktl.views.getViewType(viewId);
+                if (!['table', 'search'].includes(viewType)) return;
+
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+
+                const STORAGE_KEY = `cgc_${viewId}`;
+                const DIALOG_ID = `ktlChooseColumns_${viewId}`;
+                const STYLE_ID = `ktlChooseColumnsStyle_${viewId}`;
+                const UI_STYLE_ID = `ktlChooseColumnsUiStyle_${viewId}`;
+
+                let currentStates = null; // In-memory state for column visibility (true = shown)
+                let savedColumnsLoaded = false;
+                let lastAppliedStates = null;
+                let lastAppliedRowCount = 0;
+                let tableCache = { table: null, rows: null, rowCount: 0 };
+
+                function getTableHeaders() {
+                    return Array.from(document.querySelectorAll(`#${viewId} table th`));
+                }
+
+                function getTable() {
+                    const table = document.querySelector(`#${viewId} table`);
+                    if (tableCache.table !== table) {
+                        tableCache = { table, rows: null, rowCount: 0 };
+                        lastAppliedStates = null;
+                        lastAppliedRowCount = 0;
+                    }
+                    return table;
+                }
+
+                function getTableRows() {
+                    const table = getTable();
+                    if (!table) return [];
+
+                    const rows = table.querySelectorAll('tr');
+                    if (!tableCache.rows || tableCache.rowCount !== rows.length) {
+                        tableCache.rows = Array.from(rows);
+                        tableCache.rowCount = rows.length;
+                    }
+
+                    return tableCache.rows || [];
+                }
+
+                function updateStyleRules() {
+                    if (!Array.isArray(currentStates)) return;
+
+                    const rows = getTableRows();
+                    if (!rows.length) return;
+
+                    const toggleColumn = (idx, hide) => {
+                        rows.forEach(row => {
+                            const cells = row.querySelectorAll('th, td');
+                            const cell = cells[idx];
+                            if (cell) {
+                                cell.classList.toggle('ktlDisplayNone_cgc', hide);
+                            }
+                        });
+                    };
+
+                    const shouldResetAll = !lastAppliedStates || lastAppliedRowCount !== rows.length;
+                    if (shouldResetAll) {
+                        rows.forEach(row => {
+                            row.querySelectorAll('th, td').forEach(cell => {
+                                cell.classList.remove('ktlDisplayNone_cgc');
+                            });
+                        });
+
+                        currentStates.forEach((show, idx) => {
+                            if (!show) {
+                                toggleColumn(idx, true);
+                            }
+                        });
+                    } else {
+                        currentStates.forEach((show, idx) => {
+                            if (lastAppliedStates[idx] === show) return;
+                            toggleColumn(idx, !show);
+                        });
+                    }
+
+                    lastAppliedStates = currentStates.slice();
+                    lastAppliedRowCount = rows.length;
+
+                    let styleEl = document.getElementById(STYLE_ID);
+                    if (!styleEl) {
+                        styleEl = document.createElement('style');
+                        styleEl.id = STYLE_ID;
+                        document.head.appendChild(styleEl);
+                    }
+                    styleEl.textContent = '';
+
+                    updateButtonHiddenState();
+                }
+
+                function ensureDialogStyles() {
+                    if (document.getElementById(UI_STYLE_ID)) return;
+
+                    const styleEl = document.createElement('style');
+                    styleEl.id = UI_STYLE_ID;
+                    styleEl.textContent = `
+                        .ktlChooseColumnsDialog {
+                            position: absolute;
+                            z-index: 10000;
+                            background: #ffffff;
+                            border: 1px solid #ddd;
+                            border-radius: 6px;
+                            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                            padding: 10px;
+                            min-width: 220px;
+                            max-width: 360px;
+                        }
+                        .ktlChooseColumnsDialog .ktlDialogControls {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            gap: 8px;
+                            margin-bottom: 8px;
+                        }
+                        .ktlChooseColumnsDialog .ktlSelectControls {
+                            display: flex;
+                            gap: 6px;
+                        }
+                        #${viewId} .ktlChooseColumnsWrapper {
+                            margin-bottom: 10px;
+                        }
+                        .ktlChooseColumnsDialog .ktlCheckboxList {
+                            max-height: 320px;
+                            overflow: auto;
+                            padding-right: 4px;
+                        }
+                        .ktlChooseColumnsDialog .ktlColumnOption {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 4px 2px;
+                            cursor: pointer;
+                        }
+                        .ktlChooseColumnsDialog .ktlColumnOption:hover {
+                            background: #f7f7f7;
+                            border-radius: 4px;
+                        }
+                        .ktlChooseColumnsDialog input[type="checkbox"] {
+                            margin: 0;
+                        }
+                        .ktlChooseColumnsDialog .ktlSelectAll,
+                        .ktlChooseColumnsDialog .ktlClearAll {
+                            padding: 4px 8px;
+                        }
+                        #${viewId} .ktlChooseColumnsBtn.ktlHasHidden {
+                            background: #fef3c7;
+                            border-color: #f59e0b;
+                        }
+                    `;
+                    document.head.appendChild(styleEl);
+                }
+
+                /**
+                 * Remove global Choose Columns handlers when no dialogs or buttons remain.
+                 * @example
+                 * removeGlobalHandlersIfUnused();
+                 */
+                function removeGlobalHandlersIfUnused() {
+                    if (!document.querySelector('.ktlChooseColumnsBtn') && chooseGridColumnsOpenDialogs === 0) {
+                        if (chooseGridColumnsGlobalClickHandler) {
+                            document.removeEventListener('click', chooseGridColumnsGlobalClickHandler);
+                        }
+                        if (chooseGridColumnsGlobalKeyHandler) {
+                            document.removeEventListener('keydown', chooseGridColumnsGlobalKeyHandler);
+                        }
+                        chooseGridColumnsGlobalClickHandler = null;
+                        chooseGridColumnsGlobalKeyHandler = null;
+                        chooseGridColumnsGlobalListenerAdded = false;
+                    }
+                }
+
+                /**
+                 * Toggle the Choose Columns button loading state for this view.
+                 * @param {boolean} isLoading
+                 */
+                function setButtonLoadingState(isLoading) {
+                    const btn = document.querySelector(`#${viewId} .ktlChooseColumnsBtn`);
+                    if (!btn) return;
+
+                    btn.disabled = !!isLoading;
+                    if (isLoading) {
+                        btn.dataset.loading = 'true';
+                    } else {
+                        delete btn.dataset.loading;
+                    }
+                }
+
+                function createButton() {
+                    if (document.querySelector(`#${viewId} .ktlChooseColumnsBtn`)) return;
+
+                    const nav = ktl.views.getKtlAddOnsDiv(viewId);
+                    if (!nav) return;
+
+                    ensureDialogStyles();
+
+                    const button = document.createElement('button');
+                    button.className = 'ktlChooseColumnsBtn kn-button';
+                    button.dataset.view = viewId;
+                    button.type = 'button';
+                    button.textContent = 'Choose Columns';
+                    button.disabled = true;
+                    button.dataset.loading = 'true';
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'ktlChooseColumnsWrapper';
+                    wrapper.appendChild(button);
+
+                    nav.appendChild(wrapper);
+
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (button.dataset.loading === 'true' || !savedColumnsLoaded) return;
+                        createColumnDialog();
+                    });
+
+                    setTimeout(() => updateButtonHiddenState(), 0);
+                }
+
+                function loadSavedColumns() {
+                    try {
+                        const saved = ktl.storage.getItemJSON(STORAGE_KEY);
+                        if (!Array.isArray(saved)) return;
+                        const headerCount = getTableHeaders().length;
+                        if (!headerCount || saved.length !== headerCount) return;
+                        currentStates = saved.map(s => !!s);
+                        getLockedHiddenIndexes().forEach(idx => {
+                            currentStates[idx] = true;
+                        });
+                        updateStyleRules();
+                    } catch (error) {
+                        console.error('Error loading saved columns from localStorage:', error);
+                    }
+                }
+
+                function getColumnStates() {
+                    const ths = getTableHeaders();
+                    const isLockedHiddenHeader = (th) => th && th.classList && th.classList.contains('ktlDisplayNone_hc');
+                    const getHeaderText = (th, idx) => {
+                        const txt = (th.textContent || '').trim();
+                        return txt ? txt : `Column-${idx + 1}`;
+                    };
+
+                    if (Array.isArray(currentStates) && currentStates.length === ths.length) {
+                        return ths.map((th, idx) => ({
+                            text: getHeaderText(th, idx),
+                            shown: !!currentStates[idx],
+                            locked: isLockedHiddenHeader(th),
+                            index: idx
+                        }));
+                    }
+
+                    const states = ths.map((th, idx) => ({
+                        text: getHeaderText(th, idx),
+                        shown: window.getComputedStyle(th).display !== 'none',
+                        locked: isLockedHiddenHeader(th),
+                        index: idx
+                    }));
+                    currentStates = states.map(s => !!s.shown);
+                    return states;
+                }
+
+                function getLockedHiddenIndexes() {
+                    return getTableHeaders()
+                        .map((th, idx) => (th.classList && th.classList.contains('ktlDisplayNone_hc') ? idx : -1))
+                        .filter(idx => idx >= 0);
+                }
+
+                function detectCheckboxColumnIndex() {
+                    const ths = getTableHeaders();
+                    for (let i = 0; i < ths.length; i++) {
+                        const th = ths[i];
+                        if (th.querySelector('input[type="checkbox"], input[type="radio"]')) return i;
+                        const html = (th.innerHTML || '').toLowerCase();
+                        if (html.includes('kn-check') || html.includes('checkbox') || html.includes('check')) return i;
+                    }
+                    return -1;
+                }
+
+                function updateButtonHiddenState() {
+                    const btn = document.querySelector(`#${viewId} .ktlChooseColumnsBtn`);
+                    if (!btn) return;
+                    const headers = getColumnStates();
+                    const hasHidden = headers.some(h => !h.shown && !h.locked);
+                    btn.classList.toggle('ktlHasHidden', hasHidden);
+                }
+
+                function createDialogHtml(headers) {
+                    const escapeHtml = (value = '') => {
+                        const div = document.createElement('div');
+                        div.textContent = value;
+                        return div.innerHTML;
+                    };
+
+                    return `
+                        <div id="${DIALOG_ID}" class="ktlChooseColumnsDialog" data-view="${viewId}">
+                            <div class="ktlDialogControls">
+                                <div class="ktlSelectControls">
+                                    <button class="ktlSelectAll" type="button">Select All</button>
+                                    <button class="ktlClearAll" type="button">Clear All</button>
+                                </div>
+                                <button class="done button_a" data-view="${viewId}" type="button">Apply</button>
+                            </div>
+                            <div class="ktlCheckboxList">
+                                ${headers.map((header) => `
+                                    <label class="ktlColumnOption">
+                                        <input type="checkbox"
+                                               data-index="${header.index}"
+                                               ${header.shown ? 'checked' : ''}>
+                                        <span class="checkbox-label">${escapeHtml(header.text)}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                function setupEventHandlers(dialog) {
+                    dialog.addEventListener('click', (e) => {
+                        const sel = e.target;
+                        if (sel.matches('.ktlSelectAll')) {
+                            dialog.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+                            return;
+                        }
+                        if (sel.matches('.ktlClearAll')) {
+                            dialog.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                            return;
+                        }
+
+                        const opt = sel.closest('.ktlColumnOption');
+                        if (opt && !sel.matches('input[type="checkbox"]')) {
+                            const checkbox = opt.querySelector('input[type="checkbox"]');
+                            if (checkbox) {
+                                checkbox.checked = !checkbox.checked;
+                                checkbox.dispatchEvent(new Event('change'));
+                                e.preventDefault();
+                            }
+                        }
+                    });
+
+                    const done = dialog.querySelector('.done');
+                    if (done)
+                        done.addEventListener('click', saveAndApplyChanges);
+                }
+
+                function saveAndApplyChanges() {
+                    const dialog = document.getElementById(DIALOG_ID);
+                    if (!dialog) return;
+
+                    const fullStates = Array.isArray(currentStates)
+                        ? currentStates.slice()
+                        : getColumnStates().map(h => !!h.shown);
+
+                    const dialogCheckboxes = Array.from(dialog.querySelectorAll('input[type="checkbox"]'));
+                    dialogCheckboxes.forEach(cb => {
+                        const idx = parseInt(cb.dataset.index, 10);
+                        if (!Number.isNaN(idx) && idx >= 0 && idx < fullStates.length) {
+                            fullStates[idx] = !!cb.checked;
+                        }
+                    });
+
+                    const checkboxIdx = detectCheckboxColumnIndex();
+                    if (checkboxIdx >= 0 && checkboxIdx < fullStates.length) {
+                        fullStates[checkboxIdx] = true;
+                    }
+
+                    getLockedHiddenIndexes().forEach(idx => {
+                        if (idx >= 0 && idx < fullStates.length) {
+                            fullStates[idx] = true;
+                        }
+                    });
+
+                    try {
+                        currentStates = fullStates.map(s => !!s);
+                        updateStyleRules();
+                        ktl.storage.setItemJSON(STORAGE_KEY, fullStates);
+                    } catch (err) {
+                        console.error('Error saving column visibility to localStorage:', err);
+                    }
+
+                    closeDialog(dialog);
+                }
+
+                function createColumnDialog() {
+                    const existingDialog = document.getElementById(DIALOG_ID);
+                    if (existingDialog) closeDialog(existingDialog);
+
+                    ensureDialogStyles();
+
+                    const headers = getColumnStates();
+                    if (!headers.length) return;
+
+                    const checkboxIdx = detectCheckboxColumnIndex();
+                    const dialogHeaders = (checkboxIdx >= 0
+                        ? headers.filter(h => h.index !== checkboxIdx)
+                        : headers)
+                        .filter(h => !h.locked);
+
+                    const dialogHtml = createDialogHtml(dialogHeaders);
+                    document.body.insertAdjacentHTML('beforeend', dialogHtml);
+
+                    const dialog = document.getElementById(DIALOG_ID);
+                    const btn = document.querySelector(`#${viewId} .ktlChooseColumnsBtn`);
+                    if (btn && dialog) {
+                        const buttonPos = btn.getBoundingClientRect();
+                        dialog.style.position = 'absolute';
+                        dialog.style.top = `${buttonPos.bottom + window.scrollY}px`;
+                        dialog.style.visibility = 'hidden';
+
+                        requestAnimationFrame(() => {
+                            const dialogWidth = dialog.offsetWidth || 0;
+                            const leftPos = Math.max(8, buttonPos.left + window.scrollX);
+                            const maxRight = window.innerWidth - 8;
+                            const adjustedLeft = (leftPos + dialogWidth > maxRight)
+                                ? Math.max(8, maxRight - dialogWidth)
+                                : leftPos;
+
+                            dialog.style.left = `${adjustedLeft}px`;
+                            dialog.style.visibility = '';
+                        });
+                    }
+
+                    if (dialog) {
+                        registerDialog(dialog);
+                        setupEventHandlers(dialog);
+                    }
+                }
+
+                function registerDialog(dialog) {
+                    if (!dialog || dialog.dataset.cgcOpen === 'true') return;
+                    dialog.dataset.cgcOpen = 'true';
+                    chooseGridColumnsOpenDialogs += 1;
+                }
+
+                function closeDialog(dialog) {
+                    if (!dialog) return;
+                    if (dialog.dataset.cgcOpen === 'true') {
+                        chooseGridColumnsOpenDialogs = Math.max(0, chooseGridColumnsOpenDialogs - 1);
+                        delete dialog.dataset.cgcOpen;
+                    }
+                    dialog.remove();
+                    removeGlobalHandlersIfUnused();
+                }
+
+                /**
+                 * Clean up Choose Columns UI for this view, including dialogs and listeners.
+                 * @param {string} targetViewId
+                 * @example
+                 * cleanupChooseGridColumns('view_123');
+                 */
+                function cleanupChooseGridColumns(targetViewId) {
+                    if (!targetViewId || targetViewId !== viewId) return;
+
+                    const dialog = document.getElementById(DIALOG_ID);
+                    if (dialog) {
+                        closeDialog(dialog);
+                    }
+
+                    const buttonWrapper = document.querySelector(`#${viewId} .ktlChooseColumnsWrapper`);
+                    if (buttonWrapper) {
+                        buttonWrapper.remove();
+                    }
+
+                    savedColumnsLoaded = false;
+                    currentStates = null;
+                    lastAppliedStates = null;
+                    lastAppliedRowCount = 0;
+                    tableCache = { table: null, rows: null, rowCount: 0 };
+
+                    removeGlobalHandlersIfUnused();
+                }
+
+                $(document)
+                    .off(`knack-view-unrender.${viewId}.ktl_cgc`)
+                    .on(`knack-view-unrender.${viewId}.ktl_cgc`, function (event, view) {
+                        if (!view || view.key !== viewId) return;
+                        cleanupChooseGridColumns(viewId);
+                    });
+
+                const initState = chooseGridColumnsInitState[viewId] || { token: 0, inFlight: false };
+                initState.token += 1;
+                initState.inFlight = true;
+                chooseGridColumnsInitState[viewId] = initState;
+
+                const token = initState.token;
+
+                setButtonLoadingState(true);
+
+                Promise.all([
+                    ktl.core.waitSelector(`#${viewId} .kn-records-nav`, 10000),
+                    ktl.core.waitSelector(`#${viewId} table th`, 10000)
+                ])
+                    .then(() => {
+                        if (!chooseGridColumnsInitState[viewId] || chooseGridColumnsInitState[viewId].token !== token) return;
+
+                        ensureDialogStyles();
+                        loadSavedColumns();
+                        savedColumnsLoaded = true;
+                        createButton();
+
+                        setButtonLoadingState(false);
+                        updateButtonHiddenState();
+                    })
+                    .catch((error) => {
+                        ktl.log.clog('purple', `Choose columns init failed for ${viewId}:`, error);
+                    })
+                    .finally(() => {
+                        if (chooseGridColumnsInitState[viewId] && chooseGridColumnsInitState[viewId].token === token) {
+                            chooseGridColumnsInitState[viewId].inFlight = false;
+                        }
+                    });
+
+                if (!chooseGridColumnsGlobalListenerAdded) {
+                    chooseGridColumnsGlobalClickHandler = function (event) {
+                        document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => {
+                            if (dialog && !event.target.closest(`#${dialog.id}`) && !event.target.closest('.ktlChooseColumnsBtn')) {
+                                closeDialog(dialog);
+                            }
+                        });
+
+                        removeGlobalHandlersIfUnused();
+                    };
+
+                    chooseGridColumnsGlobalKeyHandler = function (event) {
+                        if (event.key === 'Escape') {
+                            document.querySelectorAll('[id^="ktlChooseColumns_"]').forEach(dialog => closeDialog(dialog));
+                            removeGlobalHandlersIfUnused();
+                        }
+                    };
+
+                    document.addEventListener('click', chooseGridColumnsGlobalClickHandler);
+                    document.addEventListener('keydown', chooseGridColumnsGlobalKeyHandler);
+                    chooseGridColumnsGlobalListenerAdded = true;
+                }
+            },
+
             hideShowColumns: function (viewId, keywords) {
                 if (!viewId) return;
 
@@ -18386,9 +18941,9 @@ function Ktl($, appInfo) {
 
                 const headers = document.querySelectorAll('#' + viewId + ' .kn-table th');
                 for (var i = 0; i < headers.length; i++) {
-                    colFieldId = headers[i].classList && headers[i].classList.value && headers[i].classList.value.match(/field_\d+/);
-                    if (colFieldId && colFieldId.length) {
-                        colFieldId = colFieldId[0];
+                    const colFieldIdMatch = headers[i].classList && headers[i].classList.value && headers[i].classList.value.match(/field_\d+/);
+                    if (colFieldIdMatch && colFieldIdMatch.length) {
+                        const colFieldId = colFieldIdMatch[0];
                         if (colFieldId === fieldId)
                             return i;
                     }
@@ -19215,7 +19770,7 @@ function Ktl($, appInfo) {
                     }
 
                     ktlAddonsDiv.classList.add('ktlAddonsDiv');
-                    $(ktlAddonsDiv).css('margin-bottom', '1.1em');
+                    $(ktlAddonsDiv).css({'margin-bottom': '1.1em', 'margin-left': '1.1em'});
                     prepend ? $(div).prepend(ktlAddonsDiv) : ktl.core.insertAfter(ktlAddonsDiv, div);
                 }
 
