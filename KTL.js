@@ -9216,6 +9216,7 @@ function Ktl($, appInfo) {
                     keywords._rcm && removeConfirmationMessage(view, keywords);
                     keywords._string && generateAndPutString(view, keywords);
                     keywords._mmb && moveMenuButtons(view, keywords);
+                    keywords._tags && processTags(viewId, keywords, data);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -11479,6 +11480,393 @@ function Ktl($, appInfo) {
             }
 
             $(`#${viewId} .menu-links`).remove();
+        }
+
+        //_tags - Bulk add/remove tags in grid views
+        const TAGS_BULK_OPS_CHECKBOX_SELECTOR = 'input[type="checkbox"].bulkEditCb[data-ktl-bulkops="1"]';
+
+        function tagsNormalizeTag(tag) {
+            if (!tag) return '';
+            return tag.trim().replace(/\s+/g, '_');
+        }
+
+        function tagsParseTagsFromField(fieldValue) {
+            if (!fieldValue) return [];
+            return fieldValue.split(',').map(t => t.trim()).filter(t => t.length > 0);
+        }
+
+        function tagsCollectExistingTags(fieldId, data) {
+            const tagSet = new Set();
+            if (!data || !data.length) return [];
+
+            data.forEach(record => {
+                const rawValue = record[fieldId + '_raw'] || record[fieldId] || '';
+                const tags = tagsParseTagsFromField(rawValue);
+                tags.forEach(tag => tagSet.add(tag));
+            });
+
+            return Array.from(tagSet).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        }
+
+        function tagsCollectTagsFromRecords(viewId, fieldId, recordIds) {
+            const tagSet = new Set();
+            const viewType = ktl.views.getViewType(viewId);
+
+            recordIds.forEach(recId => {
+                let record;
+                if (viewType === 'search') {
+                    record = Knack.views[viewId].model.results_model.data._byId[recId]?.attributes;
+                } else {
+                    record = Knack.views[viewId].model.data._byId[recId]?.attributes;
+                }
+
+                if (record) {
+                    const rawValue = record[fieldId + '_raw'] || record[fieldId] || '';
+                    const tags = tagsParseTagsFromField(rawValue);
+                    tags.forEach(tag => tagSet.add(tag));
+                }
+            });
+
+            return Array.from(tagSet).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        }
+
+        function tagsGetSelectedRecordIds(viewId) {
+            const recordIds = [];
+            $(`#${viewId} tbody ${TAGS_BULK_OPS_CHECKBOX_SELECTOR}:checked`).each(function () {
+                const recordId = $(this).closest('tr').attr('id');
+                if (recordId) recordIds.push(recordId);
+            });
+            return recordIds;
+        }
+
+        function tagsGetAllVisibleRecordIds(viewId) {
+            const recordIds = [];
+            $(`#${viewId} tbody tr[id]:not(.kn-table-group):not(.kn-table-totals)`).each(function () {
+                const recordId = $(this).attr('id');
+                if (recordId) recordIds.push(recordId);
+            });
+            return recordIds;
+        }
+
+        function tagsHasBulkOpsEnabled(viewId) {
+            return $(`#${viewId} tbody ${TAGS_BULK_OPS_CHECKBOX_SELECTOR}`).length > 0;
+        }
+
+        function tagsAddDialogStyles() {
+            if (document.querySelector('#ktlTagDialogStyles')) return;
+
+            const styles = `
+                <style id="ktlTagDialogStyles">
+                    .ktlTagDialogOverlay {
+                        position: fixed;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        background: rgba(0,0,0,0.5);
+                        z-index: 10000;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    .ktlTagDialog {
+                        background: white;
+                        border-radius: 8px;
+                        padding: 20px;
+                        min-width: 350px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                    }
+                    .ktlTagDialogTitle {
+                        font-size: 18px;
+                        font-weight: bold;
+                        margin-bottom: 15px;
+                    }
+                    .ktlTagDialogContent {
+                        margin-bottom: 20px;
+                    }
+                    .ktlTagInput {
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #ccc;
+                        border-radius: 4px;
+                        font-size: 14px;
+                        box-sizing: border-box;
+                    }
+                    .ktlTagDropdownLabel {
+                        margin-top: 10px;
+                        margin-bottom: 5px;
+                        font-size: 12px;
+                        color: #666;
+                    }
+                    .ktlTagDropdown {
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #ccc;
+                        border-radius: 4px;
+                        font-size: 14px;
+                    }
+                    .ktlTagDialogButtons {
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 10px;
+                    }
+                    .ktlTagBtn {
+                        padding: 8px 16px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 14px;
+                    }
+                    .ktlTagBtnCancel {
+                        background: #f0f0f0;
+                    }
+                    .ktlTagBtnOk {
+                        background: #4a90d9;
+                        color: white;
+                    }
+                    .ktlTagBtn:hover {
+                        opacity: 0.9;
+                    }
+                </style>
+            `;
+
+            $('head').append(styles);
+        }
+
+        function tagsShowDialog(existingTags, mode) {
+            return new Promise((resolve) => {
+                const title = mode === 'add' ? 'Add Tag' : 'Remove Tag';
+                const placeholder = mode === 'add' ? 'Enter new tag or select existing...' : 'Select tag to remove...';
+
+                const overlay = $('<div class="ktlTagDialogOverlay"></div>');
+
+                const optionsHtml = existingTags.map(tag =>
+                    `<option value="${tag}">${tag}</option>`
+                ).join('');
+
+                const dialog = $(`
+                    <div class="ktlTagDialog">
+                        <div class="ktlTagDialogTitle">${title}</div>
+                        <div class="ktlTagDialogContent">
+                            <input type="text" class="ktlTagInput" placeholder="${placeholder}" />
+                            ${existingTags.length ? `
+                                <div class="ktlTagDropdownLabel">Or select existing:</div>
+                                <select class="ktlTagDropdown">
+                                    <option value="">-- Select --</option>
+                                    ${optionsHtml}
+                                </select>
+                            ` : ''}
+                        </div>
+                        <div class="ktlTagDialogButtons">
+                            <button class="ktlTagBtn ktlTagBtnCancel">Cancel</button>
+                            <button class="ktlTagBtn ktlTagBtnOk">${mode === 'add' ? 'Add' : 'Remove'}</button>
+                        </div>
+                    </div>
+                `);
+
+                tagsAddDialogStyles();
+
+                overlay.append(dialog);
+                $('body').append(overlay);
+
+                dialog.find('.ktlTagInput').focus();
+
+                dialog.find('.ktlTagDropdown').on('change', function () {
+                    dialog.find('.ktlTagInput').val($(this).val());
+                });
+
+                dialog.find('.ktlTagInput').on('input', function () {
+                    dialog.find('.ktlTagDropdown').val('');
+                });
+
+                dialog.find('.ktlTagBtnCancel').on('click', function () {
+                    overlay.remove();
+                    resolve(null);
+                });
+
+                dialog.find('.ktlTagBtnOk').on('click', function () {
+                    const tag = tagsNormalizeTag(dialog.find('.ktlTagInput').val());
+                    overlay.remove();
+                    resolve(tag || null);
+                });
+
+                dialog.find('.ktlTagInput').on('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        dialog.find('.ktlTagBtnOk').click();
+                    } else if (e.key === 'Escape') {
+                        dialog.find('.ktlTagBtnCancel').click();
+                    }
+                });
+
+                overlay.on('click', function (e) {
+                    if ($(e.target).hasClass('ktlTagDialogOverlay')) {
+                        overlay.remove();
+                        resolve(null);
+                    }
+                });
+            });
+        }
+
+        async function tagsUpdateRecords(viewId, fieldId, recordIds, tag, mode) {
+            ktl.core.infoPopup();
+            ktl.core.setInfoPopupText(`Processing ${recordIds.length} records...`);
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (let i = 0; i < recordIds.length; i++) {
+                const recId = recordIds[i];
+                ktl.core.setInfoPopupText(`Processing record ${i + 1} of ${recordIds.length}...`);
+
+                try {
+                    const record = await ktl.core.knAPI(viewId, recId, {}, 'GET', [], false);
+                    const currentTags = tagsParseTagsFromField(record[fieldId + '_raw'] || record[fieldId] || '');
+
+                    let newTags;
+                    if (mode === 'add') {
+                        const tagLower = tag.toLowerCase();
+                        const exists = currentTags.some(t => t.toLowerCase() === tagLower);
+                        if (!exists) {
+                            newTags = [...currentTags, tag];
+                        } else {
+                            newTags = currentTags;
+                        }
+                    } else {
+                        const tagLower = tag.toLowerCase();
+                        newTags = currentTags.filter(t => t.toLowerCase() !== tagLower);
+                    }
+
+                    const currentSorted = currentTags.map(t => t.toLowerCase()).sort().join(',');
+                    const newSorted = newTags.map(t => t.toLowerCase()).sort().join(',');
+                    if (currentSorted !== newSorted) {
+                        const apiData = {};
+                        apiData[fieldId] = newTags.join(', ');
+                        await ktl.core.knAPI(viewId, recId, apiData, 'PUT', [], false);
+                    }
+
+                    successCount++;
+                } catch (error) {
+                    errorCount++;
+                    ktl.log.clog('red', `_tags: Error updating record ${recId}:`, error);
+                }
+            }
+
+            ktl.core.removeInfoPopup();
+            await ktl.views.refreshView(viewId);
+
+            if (errorCount === 0) {
+                ktl.core.timedPopup(`Tag ${mode === 'add' ? 'added to' : 'removed from'} ${successCount} record(s)`, 'success');
+            } else {
+                ktl.core.timedPopup(`Completed with ${errorCount} error(s)`, 'warning');
+            }
+        }
+
+        async function tagsHandleButtonClick(viewId, fieldId, data, mode) {
+            const hasBulkOps = tagsHasBulkOpsEnabled(viewId);
+            let recordIds;
+
+            if (hasBulkOps) {
+                recordIds = tagsGetSelectedRecordIds(viewId);
+                if (recordIds.length === 0) {
+                    ktl.core.timedPopup('Please select at least one record', 'warning');
+                    return;
+                }
+            } else {
+                recordIds = tagsGetAllVisibleRecordIds(viewId);
+                if (recordIds.length === 0) {
+                    ktl.core.timedPopup('No visible records found', 'warning');
+                    return;
+                }
+
+                const confirmResult = await ktl.core.selectOption(
+                    `No bulk selection available.\nThis will ${mode} the tag ${mode === 'add' ? 'to' : 'from'} all ${recordIds.length} visible record(s).\n\nContinue?`,
+                    'Yes,No'
+                );
+                if (confirmResult !== 0) return;
+            }
+
+            let tagsForDialog;
+            if (mode === 'remove') {
+                tagsForDialog = tagsCollectTagsFromRecords(viewId, fieldId, recordIds);
+            } else {
+                tagsForDialog = tagsCollectExistingTags(fieldId, data);
+            }
+
+            const tag = await tagsShowDialog(tagsForDialog, mode);
+
+            if (!tag) return;
+
+            if (!/^[\w-]+$/.test(tag)) {
+                ktl.core.timedPopup('Invalid tag format. Use letters, numbers, underscores, and dashes only.', 'error', 3000);
+                return;
+            }
+
+            await tagsUpdateRecords(viewId, fieldId, recordIds, tag, mode);
+        }
+
+        function tagsUpdateButtonsState(viewId) {
+            const hasBulkOps = tagsHasBulkOpsEnabled(viewId);
+            if (hasBulkOps) {
+                const selectedIds = tagsGetSelectedRecordIds(viewId);
+                const hasSelection = selectedIds.length > 0;
+                $(`#ktlAddTag-${viewId}`).prop('disabled', !hasSelection);
+                $(`#ktlRemoveTag-${viewId}`).prop('disabled', !hasSelection);
+            } else {
+                $(`#ktlAddTag-${viewId}`).prop('disabled', false);
+                $(`#ktlRemoveTag-${viewId}`).prop('disabled', false);
+            }
+        }
+
+        function tagsCreateButtons(viewId, fieldId, data) {
+            if (document.querySelector(`#ktlTagsDiv-${viewId}`)) return;
+
+            const ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+            if (!ktlAddonsDiv) return;
+
+            const tagsDiv = document.createElement('div');
+            tagsDiv.id = `ktlTagsDiv-${viewId}`;
+            tagsDiv.classList.add('ktlTagsControlsDiv', 'ktlFeatureGroup');
+
+            const addTagBtn = ktl.fields.addButton(tagsDiv, 'Add Tag', '', ['kn-button'], `ktlAddTag-${viewId}`);
+            const removeTagBtn = ktl.fields.addButton(tagsDiv, 'Remove Tag', '', ['kn-button'], `ktlRemoveTag-${viewId}`);
+
+            ktlAddonsDiv.appendChild(tagsDiv);
+
+            $(addTagBtn).on('click', () => tagsHandleButtonClick(viewId, fieldId, data, 'add'));
+            $(removeTagBtn).on('click', () => tagsHandleButtonClick(viewId, fieldId, data, 'remove'));
+
+            tagsUpdateButtonsState(viewId);
+
+            $(document).on('KTL.BulkOperations.Updated', function (e, bViewId) {
+                if (bViewId === viewId) tagsUpdateButtonsState(viewId);
+            });
+        }
+
+        function processTags(viewId, keywords, data) {
+            const kw = '_tags';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(viewType === 'table' || viewType === 'search')) return;
+
+            const kwInstance = keywords[kw]?.[0];
+            if (kwInstance?.options && !ktl.core.hasRoleAccess(kwInstance.options)) return;
+
+            let fieldId = null;
+            const param = kwInstance?.params?.[0]?.[0];
+            if (param) {
+                if (param.startsWith('field_')) {
+                    fieldId = param;
+                } else {
+                    fieldId = ktl.fields.getFieldIdFromLabel(viewId, param);
+                }
+            } else {
+                fieldId = ktl.fields.getFieldIdFromLabel(viewId, 'Tags');
+            }
+
+            if (!fieldId) {
+                ktl.log.clog('purple', '_tags: Could not find Tags field in view', viewId);
+                return;
+            }
+
+            tagsCreateButtons(viewId, fieldId, data);
         }
 
         const vrdCurrentlySelectedRows = {};
@@ -25418,7 +25806,7 @@ function Ktl($, appInfo) {
             const ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
 
             const bulkOpsControlsDiv = document.createElement('div');
-            bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv');
+            bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv', 'ktlFeatureGroup');
             bulkOpsControlsDiv.setAttribute('id', `bulkOpsControlsDiv-${viewId}`);
 
             const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
@@ -25447,7 +25835,7 @@ function Ktl($, appInfo) {
 
             //Add Delete Selected button.
             if (!document.querySelector('#ktl-bulk-delete-selected-' + viewId)) {
-                const deleteRecordsBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-selected-' + viewId);
+                const deleteRecordsBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), '', '', ['kn-button'], 'ktl-bulk-delete-selected-' + viewId);
                 deleteRecordsBtn.addEventListener('click', function (event) {
                     const deleteArray = [];
                     $(`#${viewId} tbody ${bulkOpsCheckboxSelector}:checked`).each(function () {
@@ -25498,7 +25886,7 @@ function Ktl($, appInfo) {
             //Delete All button for massive delete operations, with automated looping over all pages automatically.
             //Only possible when filtering is used.
             if (document.querySelector('#' + viewId + ' .kn-tag-filter') && !document.querySelector('#ktl-bulk-delete-all-' + viewId)) {
-                const deleteAllRecordsBtn = ktl.fields.addButton(document.querySelector(`#${viewId} .bulkOpsControlsDiv`), '', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-delete-all-' + viewId);
+                const deleteAllRecordsBtn = ktl.fields.addButton(document.querySelector(`#${viewId} .bulkOpsControlsDiv`), '', '', ['kn-button'], 'ktl-bulk-delete-all-' + viewId);
                 if (data.length > 0)
                     deleteAllRecordsBtn.disabled = false;
                 else
@@ -25553,7 +25941,7 @@ function Ktl($, appInfo) {
             if (!viewCanDoBulkOp(viewId, 'edit')) return;
 
             if (document.querySelector('#ktl-bulk-copy-' + viewId)) return;
-            const copyBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Copy', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-copy-' + viewId);
+            const copyBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Copy', '', ['kn-button'], 'ktl-bulk-copy-' + viewId);
             copyBtn.addEventListener('click', function (e) {
                 let checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
                 if (!checkedFields.length)
@@ -25596,7 +25984,7 @@ function Ktl($, appInfo) {
             const viewId = view.key;
             if (!viewCanDoBulkOp(viewId, 'edit')) return;
             if (document.querySelector('#ktl-bulk-paste-' + viewId)) return;
-            const pasteBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Paste', '', ['kn-button', 'ktlButtonMargin', 'bulkEditSelectSrc'], 'ktl-bulk-paste-' + viewId);
+            const pasteBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Paste', '', ['kn-button', 'bulkEditSelectSrc'], 'ktl-bulk-paste-' + viewId);
             pasteBtn.addEventListener('click', function (e) {
                 if (e.ctrlKey)
                     previewLastBulkEditData();
@@ -25609,7 +25997,7 @@ function Ktl($, appInfo) {
             const viewId = view.key;
             if (!viewCanDoBulkOp(viewId, 'copy')) return;
             if (document.querySelector(`#ktl-bulk-duplicate-${viewId}`)) return;
-            const duplicateBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Duplicate', '', ['kn-button', 'ktlButtonMargin'], 'ktl-bulk-duplicate-' + viewId);
+            const duplicateBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Duplicate', '', ['kn-button'], 'ktl-bulk-duplicate-' + viewId);
             duplicateBtn.addEventListener('click', function (e) {
                 apiData = {};
                 processBulkOps(viewId, e);

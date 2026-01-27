@@ -2,3 +2,4 @@ compare.txt
 ~*
 .claude
 tmpclaude-*
+.playwright-mcp/
