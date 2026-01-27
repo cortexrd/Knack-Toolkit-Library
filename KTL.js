@@ -2950,12 +2950,20 @@ function Ktl($, appInfo) {
             //Parameter examples:
             // for most views: 'table', 'search', 'details', 'list', 'form', 'calendar', 'map' and more
             // for reports: 'report/table', 'report/pie', 'report/line', 'report/area' and more
-            findViewsByType: function (viewType) {
+            findViewsByType: function (viewType, textFilter = '') {
                 let result = '';
                 const st = window.performance.now();
 
                 const [parentType, childType] = viewType.includes('/') ? viewType.split('/') : [viewType, null];
+                const filterLower = textFilter.toLowerCase();
                 let count = 0;
+
+                // Helper to check if view contains the text filter
+                const viewContainsText = (view) => {
+                    if (!textFilter) return true;
+                    const viewStr = JSON.stringify(view.attributes).toLowerCase();
+                    return viewStr.includes(filterLower);
+                };
 
                 for (var s = 0; s < Knack.scenes.models.length; s++) {
                     var views = Knack.scenes.models[s].views;
@@ -2988,6 +2996,11 @@ function Ktl($, appInfo) {
                                 }
                             }
 
+                            // Apply text filter if specified
+                            if (found && !viewContainsText(view)) {
+                                found = false;
+                            }
+
                             if (found) {
                                 count++;
                                 const sceneId = attr.scene.key;
@@ -3010,9 +3023,11 @@ function Ktl($, appInfo) {
                 }
 
                 if (count === 0) {
-                    result = `<em>No views found with type: ${viewType}</em>`;
+                    const filterInfo = textFilter ? ` containing "${textFilter}"` : '';
+                    result = `<em>No views found with type: ${viewType}${filterInfo}</em>`;
                 } else {
-                    result = `<strong>Found ${count} view(s) of type: ${viewType}</strong><br><br>` + result;
+                    const filterInfo = textFilter ? ` containing "${textFilter}"` : '';
+                    result = `<strong>Found ${count} view(s) of type: ${viewType}${filterInfo}</strong><br><br>` + result;
                 }
 
                 const en = window.performance.now();
@@ -24186,8 +24201,11 @@ function Ktl($, appInfo) {
                                                 }
                                             }
                                         } else if (query.startsWith('type:')) {
-                                            const viewType = query.split(':')[1];
-                                            kwResults = ktl.core.findViewsByType(viewType);
+                                            const typeQuery = query.substring(5).trim();
+                                            const parts = typeQuery.split(/\s+/);
+                                            const viewType = parts[0];
+                                            const textFilter = parts.slice(1).join(' ').trim();
+                                            kwResults = ktl.core.findViewsByType(viewType, textFilter);
                                         } else if (query.startsWith('email:')) {
                                             // Email search using findEmails
                                             const emailQuery = query.substring(6).trim();
