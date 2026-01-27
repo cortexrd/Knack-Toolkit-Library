@@ -9181,7 +9181,7 @@ function Ktl($, appInfo) {
                     keywords._string && generateAndPutString(view, keywords);
                     keywords._mmb && moveMenuButtons(view, keywords);
                     keywords._tags && addRemoveTags(viewId, keywords, data);
-                    kywords._cgc && ktl.views.chooseGridColumns(view, keywords);
+                    keywords._cgc && ktl.views.chooseGridColumns(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -11810,6 +11810,8 @@ function Ktl($, appInfo) {
 
             const viewType = ktl.views.getViewType(viewId);
             if (!(viewType === 'table' || viewType === 'search')) return;
+
+            if (!data || !data.length) return;
 
             const kwInstance = keywords[kw]?.[0];
             if (kwInstance?.options && !ktl.core.hasRoleAccess(kwInstance.options)) return;
@@ -18479,9 +18481,6 @@ function Ktl($, appInfo) {
                             display: flex;
                             gap: 6px;
                         }
-                        #${viewId} .ktlChooseColumnsWrapper {
-                            margin-bottom: 10px;
-                        }
                         .ktlChooseColumnsDialog .ktlCheckboxList {
                             max-height: 320px;
                             overflow: auto;
@@ -18565,7 +18564,7 @@ function Ktl($, appInfo) {
                     button.dataset.loading = 'true';
 
                     const wrapper = document.createElement('div');
-                    wrapper.className = 'ktlChooseColumnsWrapper';
+                    wrapper.className = 'ktlChooseColumnsWrapper ktlFeatureGroup';
                     wrapper.appendChild(button);
 
                     nav.appendChild(wrapper);
@@ -19749,9 +19748,19 @@ function Ktl($, appInfo) {
                     ktlAddonsDiv = document.createElement('div');
 
                     let prepend = false;
+                    let appendInside = false;
+                    let hasSearchElement = false;
 
-                    let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`) ||
-                        document.querySelector(`#${viewId} .kn-submit.control`);
+                    let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`);
+                    if (div) {
+                        hasSearchElement = true;
+                    } else {
+                        div = document.querySelector(`#${viewId} .kn-submit.control`);
+                        if (div) {
+                            hasSearchElement = true;
+                            appendInside = true;
+                        }
+                    }
 
                     const viewHasHSV = ktl.core.checkIfViewHasKeyword(viewId, '_hsv');
                     if (!div && viewHasHSV) {
@@ -19765,13 +19774,22 @@ function Ktl($, appInfo) {
 
                     if (!div) {
                         div = document.querySelector(`#${viewId}`);
-                        if (!div) return; // Support other layout options as we go.
+                        if (!div) return;
                         prepend = true;
                     }
 
                     ktlAddonsDiv.classList.add('ktlAddonsDiv');
-                    $(ktlAddonsDiv).css({'margin-bottom': '1.1em', 'margin-left': '1.1em'});
-                    prepend ? $(div).prepend(ktlAddonsDiv) : ktl.core.insertAfter(ktlAddonsDiv, div);
+                    const styles = { 'margin-bottom': '1.1em' };
+                    if (hasSearchElement) styles['margin-left'] = '1.1em';
+                    $(ktlAddonsDiv).css(styles);
+
+                    if (appendInside) {
+                        div.appendChild(ktlAddonsDiv);
+                    } else if (prepend) {
+                        $(div).prepend(ktlAddonsDiv);
+                    } else {
+                        ktl.core.insertAfter(ktlAddonsDiv, div);
+                    }
                 }
 
                 return ktlAddonsDiv;

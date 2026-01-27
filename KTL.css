@@ -260,6 +260,10 @@ a.ktlSortDisabled {
 	margin-left: var(--ktlGroupSpacing);
 }
 
+.ktlFeatureGroup:first-child {
+	margin-left: 0;
+}
+
 .bulkEditCb {
 	width: 18px;
 	height: 18px;
