@@ -726,45 +726,297 @@ function Ktl($, appInfo) {
                     .catch(() => { ktl.log.clog('purple', 'hideSelector failed waiting for selector: ' + sel); });
             },
 
-            //Param: sel is a string, not the jquery object.
-            waitSelector: function (sel = '', timeout = 5000, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
+                        /**
+             * Waits for a selector (or its absence) before resolving.
+             * Legacy signature mirrors previous behavior: (selector, timeout, is, outcome, scanSpd).
+             * Modern usage accepts an options object as the first parameter. Supported options:
+             *  - selector {string|string[]} Primary selector (string or array)
+             *  - selectors {string[]} Optional additional selectors array
+             *  - timeout {number}
+             *  - is {string} pseudo state or 'none'
+             *  - outcome {number} ktl.const.* action when timing out
+             *  - scanSpd {number} polling interval in ms
+             *  - allowSceneChange {boolean} set true to ignore scene transitions
+             *  - requireVisible {boolean} filters matches to :visible only
+             *  - root {Element|string|jQuery} scope searches within this root
+             *  - signal {AbortSignal} allows cancellation
+             *  - onCancel {(selector: string, reason: string) => void} cancellation hook
+             *  - matchMode {'all'|'any'} wait for every selector (default) or first that matches
+             *  - returnFirstMatch {boolean} resolve with only the first element found
+             *  - useObserver {boolean} when true (default) uses MutationObserver before polling
+             * @param {string|Object} selOrOptions Selector string or options object.
+             * @param {number} [timeout=5000] Legacy timeout parameter.
+             * @param {string} [is=''] Legacy pseudo selector or 'none'.
+             * @param {number} [outcome=ktl.const.WAIT_SEL_IGNORE] Legacy timeout outcome flag.
+             * @param {number} [scanSpd=ktl.const.WAIT_SELECTOR_SCAN_SPD] Legacy poll speed.
+             * @returns {Promise<HTMLElement[]|HTMLElement|null>} Array of elements (default) or a single element when returnFirstMatch is true.
+             */
+            waitSelector: function (selOrOptions = '', timeout = 5000, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
+                const buildOptions = function () {
+                    const defaults = {
+                        selector: typeof selOrOptions === 'string' ? selOrOptions.trim() : '',
+                        selectors: [],
+                        timeout,
+                        is,
+                        outcome,
+                        scanSpd: typeof scanSpd === 'number' ? scanSpd : ktl.const.WAIT_SELECTOR_SCAN_SPD,
+                        allowSceneChange: false,
+                        requireVisible: false,
+                        root: null,
+                        signal: null,
+                        onCancel: null,
+                        matchMode: 'all',
+                        returnFirstMatch: false,
+                        useObserver: true
+                    };
+
+                    if (selOrOptions && typeof selOrOptions === 'object' && !Array.isArray(selOrOptions)) {
+                        const merged = Object.assign({}, defaults, selOrOptions);
+                        if (typeof selOrOptions.selector === 'string') {
+                            merged.selector = selOrOptions.selector.trim();
+                        }
+                        return merged;
+                    }
+
+                    return defaults;
+                };
+
                 return new Promise(function (resolve, reject) {
-                    if (selIsValid(sel)) {
-                        resolve();
+                    const options = buildOptions();
+                    const selectors = collectSelectors(options.selector, options.selectors);
+
+                    if (!selectors.length) {
+                        reject(options.selector);
                         return;
                     }
 
-                    var intervalId = setInterval(function () {
-                        if (selIsValid(sel)) {
-                            clearTimeout(failsafe);
-                            clearInterval(intervalId);
-                            resolve();
+                    const selectorLabel = selectors.join(', ');
+                    const timeoutMs = clampTimeout(options.timeout);
+                    const pseudoState = typeof options.is === 'string' ? options.is.trim() : '';
+                    const context = resolveContext(options.root);
+                    const sceneKey = !options.allowSceneChange && typeof Knack !== 'undefined' && Knack.router ? Knack.router.current_scene_key : null;
+                    console.log('waitSelector invoked for:', selectorLabel);
+
+                    let timeoutId = null;
+                    let observer = null;
+                    const legacyDomListeners = [];
+                    let abortHandler = null;
+                    let settled = false;
+
+                    const cleanup = function () {
+                        if (timeoutId !== null) {
+                            clearTimeout(timeoutId);
+                            timeoutId = null;
+                        }
+                        if (observer) {
+                            observer.disconnect();
+                            observer = null;
+                        }
+                        if (legacyDomListeners.length) {
+                            legacyDomListeners.forEach(listener => {
+                                listener.target.removeEventListener(listener.type, listener.handler, listener.capture);
+                            });
+                            legacyDomListeners.length = 0;
+                        }
+                        if (options.signal && abortHandler) {
+                            options.signal.removeEventListener('abort', abortHandler);
+                            abortHandler = null;
+                        }
+                    };
+
+                    const notifyCancellation = function (reason) {
+                        if (typeof options.onCancel === 'function') {
+                            try {
+                                options.onCancel(selectorLabel, reason);
+                            } catch (err) {
+                                ktl.log.clog('purple', 'waitSelector onCancel error: ' + err);
+                            }
+                        }
+                    };
+
+                    const rejectWithReason = function (reason) {
+                        if (settled)
+                            return;
+                        settled = true;
+                        cleanup();
+                        notifyCancellation(reason);
+                        reject(selectorLabel);
+                    };
+
+                    const resolveWithElements = function (elements) {
+                        if (settled)
+                            return;
+                        settled = true;
+                        cleanup();
+                        resolve(elements);
+                    };
+
+                    const logTimeout = function () {
+                        if (options.outcome === ktl.const.WAIT_SEL_LOG_WARN) {
+                            ktl.log.addLog(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + selectorLabel + ' in ' + Knack.router.current_scene_key);
+                        } else if (options.outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + selectorLabel + ' in ' + Knack.router.current_scene_key);
+                        } else if (options.outcome === ktl.const.WAIT_SEL_ALERT && ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
+                            alert('waitSelector timed out for ' + selectorLabel + ' in ' + Knack.router.current_scene_key);
+                        }
+                    };
+
+                    const evaluateAndAct = function () {
+                        if (settled)
+                            return;
+
+                        if (sceneKey && (!Knack || !Knack.router || Knack.router.current_scene_key !== sceneKey)) {
+                            rejectWithReason('sceneChange');
                             return;
                         }
-                    }, scanSpd);
 
-                    var failsafe = setTimeout(function () {
-                        clearInterval(intervalId);
-                        if (outcome === ktl.const.WAIT_SEL_LOG_WARN) {
-                            ktl.log.addLog(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                        } else if (outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
-                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                        } else if (outcome === ktl.const.WAIT_SEL_ALERT && ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name))
-                            alert('waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
+                        const evaluation = evaluateSelectors(selectors, context, pseudoState, options.requireVisible, options.matchMode, options.returnFirstMatch);
+                        if (evaluation.isMatch) {
+                            console.log('waitSelector resolved selector(s):', selectorLabel);
+                            resolveWithElements(evaluation.elements);
+                        } else {
+                            console.log('waitSelector check: no match yet for', selectorLabel);
+                        }
+                    };
 
-                        reject(sel);
-                    }, timeout);
+                    const supportsObserver = typeof MutationObserver !== 'undefined';
+                    const shouldUseObserver = options.useObserver !== false && supportsObserver;
+                    const observerTarget = (context && context.length ? context[0] : (document.body || document.documentElement));
+                    if (shouldUseObserver && observerTarget) {
+                        observer = new MutationObserver(function () {
+                            evaluateAndAct();
+                        });
+                        observer.observe(observerTarget, { childList: true, subtree: true, attributes: true });
+                    } else {
+                        const legacyHandler = function () {
+                            evaluateAndAct();
+                        };
+                        ['DOMNodeInserted', 'DOMNodeRemoved', 'DOMSubtreeModified', 'DOMAttrModified'].forEach(evt => {
+                            document.addEventListener(evt, legacyHandler, true);
+                            legacyDomListeners.push({ target: document, type: evt, handler: legacyHandler, capture: true });
+                        });
+                    }
 
-                    function selIsValid(sel) {
-                        var testSel = $(sel);
-                        if (is) {
-                            if (is === 'none') //Special case: Checks if selector does not exist.
-                                testSel = !$(sel).length;
-                            else
-                                testSel = $(sel).is(':' + is);
+                    timeoutId = setTimeout(function () {
+                        if (settled)
+                            return;
+                        cleanup();
+                        logTimeout();
+                        reject(selectorLabel);
+                    }, timeoutMs);
+
+                    if (options.signal && typeof options.signal.addEventListener === 'function') {
+                        abortHandler = function () {
+                            rejectWithReason('aborted');
+                        };
+                        if (options.signal.aborted) {
+                            abortHandler();
+                            return;
+                        }
+                        options.signal.addEventListener('abort', abortHandler, { once: true });
+                    }
+
+                    evaluateAndAct();
+
+                    function collectSelectors(primarySelector, additionalSelectors) {
+                        const normalized = [];
+                        const add = function (sel) {
+                            if (typeof sel === 'string') {
+                                const trimmed = sel.trim();
+                                if (trimmed)
+                                    normalized.push(trimmed);
+                            }
+                        };
+
+                        if (Array.isArray(primarySelector)) {
+                            primarySelector.forEach(add);
+                        } else {
+                            add(primarySelector);
                         }
 
-                        return (testSel === true || testSel.length > 0);
+                        if (Array.isArray(additionalSelectors)) {
+                            additionalSelectors.forEach(add);
+                        }
+
+                        return normalized;
+                    }
+
+                    function clampTimeout(value) {
+                        const numeric = Number(value);
+                        if (!Number.isFinite(numeric))
+                            return 5000;
+                        return Math.min(Math.max(0, numeric), 2147483647);
+                    }
+
+                    function resolveContext(root) {
+                        if (!root)
+                            return null;
+                        return $(root);
+                    }
+
+                    function evaluateSelectors(selectorSet, ctx, stateFilter, requireVisible, mode, returnFirstMatch) {
+                        const emptyValue = returnFirstMatch ? null : [];
+                        if (!selectorSet.length)
+                            return { isMatch: false, elements: emptyValue };
+
+                        const normalizedMode = mode === 'any' ? 'any' : 'all';
+                        const collectFirst = !!returnFirstMatch;
+
+                        if (normalizedMode === 'any') {
+                            for (const selector of selectorSet) {
+                                const result = evaluateSingle(selector, ctx, stateFilter, requireVisible);
+                                if (result.isMatch) {
+                                    return {
+                                        isMatch: true,
+                                        elements: collectFirst ? (result.elements[0] || null) : result.elements
+                                    };
+                                }
+                            }
+                            return { isMatch: false, elements: emptyValue };
+                        }
+
+                        const aggregated = [];
+                        for (const selector of selectorSet) {
+                            const result = evaluateSingle(selector, ctx, stateFilter, requireVisible);
+                            if (!result.isMatch) {
+                                return { isMatch: false, elements: emptyValue };
+                            }
+                            if (result.elements && result.elements.length) {
+                                aggregated.push(...result.elements);
+                            }
+                        }
+
+                        return {
+                            isMatch: true,
+                            elements: collectFirst ? (aggregated[0] || null) : aggregated
+                        };
+                    }
+
+                    function evaluateSingle(selector, ctx, stateFilter, requireVisible) {
+                        const selection = ctx && ctx.length ? ctx.find(selector) : $(selector);
+
+                        if (stateFilter === 'none') {
+                            return {
+                                isMatch: selection.length === 0,
+                                elements: []
+                            };
+                        }
+
+                        let workingSet = selection;
+                        if (stateFilter) {
+                            const stateSelector = stateFilter.charAt(0) === ':' ? stateFilter : ':' + stateFilter;
+                            workingSet = workingSet.filter(stateSelector);
+                        }
+
+                        if (requireVisible) {
+                            workingSet = workingSet.filter(':visible');
+                        }
+
+                        const domElements = workingSet.toArray ? workingSet.toArray() : Array.from(workingSet);
+                        return {
+                            isMatch: domElements.length > 0,
+                            elements: domElements
+                        };
                     }
                 });
             },
