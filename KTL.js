@@ -834,41 +834,131 @@ function Ktl($, appInfo) {
                 }
             },
 
-            //Drag n drop using the Sortable library.
-            //TODO: make all moved object visible, not just handle.
+            //Native drag implementation for dev tool windows.
             enableSortableDrag: function (element, callback = () => { }) {
                 if (!element) return;
 
-                new Sortable(element, {
-                    handle: '.ktlDevToolsHeader',
-                    animation: 150,
-                    sort: false,
+                const header = element.querySelector('.ktlDevToolsHeader');
+                if (!header) return;
 
-                    onStart: function (evt) {
-                        evt.item.style.cursor = 'grabbing';
-                        const rect = evt.target.getBoundingClientRect();
-                        dndOrgX = rect.x;
-                        dndOrgY = rect.y;
-                        dndFromX = evt.originalEvent.x;
-                        dndFromY = evt.originalEvent.y;
-                    },
+                let isDragging = false;
+                let startX, startY, startLeft, startTop;
 
-                    onEnd: function (evt) {
-                        evt.item.style.cursor = 'grab';
-                        dndToX = evt.originalEvent.x || evt.originalEvent.changedTouches[0].screenX;
-                        dndToY = evt.originalEvent.y || evt.originalEvent.changedTouches[0].screenY;
-                        let deltaX = dndToX - dndFromX;
-                        let deltaY = dndToY - dndFromY;
-                        const position = {
-                            left: (dndOrgX + deltaX),
-                            top: (dndOrgY + deltaY)
-                        };
+                function onDragStart(e) {
+                    if (e.target.closest('.ktlDevToolsCloseBtn, .kn-button, button, input')) return;
 
-                        element.style.left = position.left + 'px';
-                        element.style.top = position.top + 'px';
-                        callback(position);
-                    },
+                    isDragging = true;
+                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                    startX = clientX;
+                    startY = clientY;
+                    startLeft = element.offsetLeft;
+                    startTop = element.offsetTop;
+
+                    header.style.cursor = 'grabbing';
+                    element.style.opacity = '0.9';
+
+                    document.addEventListener('mousemove', onDragMove);
+                    document.addEventListener('mouseup', onDragEnd);
+                    document.addEventListener('touchmove', onDragMove, { passive: false });
+                    document.addEventListener('touchend', onDragEnd);
+
+                    e.preventDefault();
+                }
+
+                function onDragMove(e) {
+                    if (!isDragging) return;
+
+                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                    const deltaX = clientX - startX;
+                    const deltaY = clientY - startY;
+
+                    element.style.left = (startLeft + deltaX) + 'px';
+                    element.style.top = (startTop + deltaY) + 'px';
+
+                    e.preventDefault();
+                }
+
+                function onDragEnd(e) {
+                    if (!isDragging) return;
+
+                    isDragging = false;
+                    header.style.cursor = 'grab';
+                    element.style.opacity = '1';
+
+                    document.removeEventListener('mousemove', onDragMove);
+                    document.removeEventListener('mouseup', onDragEnd);
+                    document.removeEventListener('touchmove', onDragMove);
+                    document.removeEventListener('touchend', onDragEnd);
+
+                    const position = {
+                        left: element.offsetLeft,
+                        top: element.offsetTop
+                    };
+                    callback(position);
+                }
+
+                header.style.cursor = 'grab';
+                header.addEventListener('mousedown', onDragStart);
+                header.addEventListener('touchstart', onDragStart, { passive: false });
+            },
+
+            createDevToolCloseBtn: function (parentWindow, closeCallback) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'ktlDevToolsCloseBtn';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.title = 'Close';
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (closeCallback) closeCallback();
+                    else $(parentWindow).hide();
                 });
+                return closeBtn;
+            },
+
+            devToolWindows: [],
+            devToolTopZIndex: 100,
+
+            bringDevToolToFront: function (windowElement) {
+                if (!windowElement) return;
+                ktl.core.devToolTopZIndex++;
+                windowElement.style.zIndex = ktl.core.devToolTopZIndex;
+
+                ktl.core.devToolWindows.forEach(w => w.element.classList.remove('ktlDevToolFocused'));
+                windowElement.classList.add('ktlDevToolFocused');
+            },
+
+            registerDevToolWindow: function (windowElement, closeCallback) {
+                if (!windowElement) return;
+
+                const windowInfo = { element: windowElement, close: closeCallback };
+                const existingIndex = ktl.core.devToolWindows.findIndex(w => w.element === windowElement);
+                if (existingIndex === -1) {
+                    ktl.core.devToolWindows.push(windowInfo);
+                } else {
+                    ktl.core.devToolWindows[existingIndex] = windowInfo;
+                }
+
+                windowElement.addEventListener('mousedown', () => ktl.core.bringDevToolToFront(windowElement));
+                windowElement.addEventListener('touchstart', () => ktl.core.bringDevToolToFront(windowElement), { passive: true });
+
+                ktl.core.bringDevToolToFront(windowElement);
+            },
+
+            closeTopDevToolWindow: function () {
+                const visibleWindows = ktl.core.devToolWindows
+                    .filter(w => {
+                        const style = window.getComputedStyle(w.element);
+                        return style.display !== 'none' && style.visibility !== 'hidden';
+                    })
+                    .sort((a, b) => (parseInt(b.element.style.zIndex) || 0) - (parseInt(a.element.style.zIndex) || 0));
+
+                if (visibleWindows.length > 0) {
+                    const topWindow = visibleWindows[0];
+                    if (topWindow.close) topWindow.close();
+                    else $(topWindow.element).hide();
+                }
             },
 
             splitUrl: function (url) {
@@ -8806,8 +8896,18 @@ function Ktl($, appInfo) {
                                     var debugWndHeader = document.createElement('div');
                                     debugWndHeader.setAttribute('id', 'dbgWndIdheader');
                                     debugWndHeader.classList.add('ktlDevToolsHeader');
-                                    debugWndHeader.innerText = ':: KTL Debug Wnd ::';
                                     debugWndHeader.style['background-color'] = sysColors.paleLowSatClr;
+
+                                    const debugTitleSpan = document.createElement('span');
+                                    debugTitleSpan.className = 'ktlDevToolsHeaderTitle';
+                                    debugTitleSpan.innerText = ':: KTL Debug Wnd ::';
+                                    debugWndHeader.appendChild(debugTitleSpan);
+
+                                    const debugCloseBtn = ktl.core.createDevToolCloseBtn(debugWnd, () => {
+                                        ktl.debugWnd.showDebugWnd(false);
+                                    });
+                                    debugWndHeader.appendChild(debugCloseBtn);
+
                                     debugWnd.appendChild(debugWndHeader);
 
                                     var debugWndText = document.createElement('div');
@@ -8818,21 +8918,19 @@ function Ktl($, appInfo) {
                                     //Clear button
                                     var debugWndClear = document.createElement('div');
                                     debugWndClear.setAttribute('id', 'debugWndClear');
-                                    debugWndClear.style.height = '30px';
-                                    debugWndClear.style.width = '80px';
-                                    debugWndClear.style.position = 'absolute';
-                                    debugWndClear.style.right = '5px';
+                                    debugWndClear.style.height = '26px';
+                                    debugWndClear.style.lineHeight = '26px';
                                     debugWndClear.style['color'] = sysColors.buttonText.rgb;
                                     debugWndClear.style['background-color'] = sysColors.button.rgb;
                                     debugWndClear.style['padding-left'] = '12px';
                                     debugWndClear.style['padding-right'] = '12px';
-                                    debugWndClear.style['margin-right'] = '7px';
                                     debugWndClear.style['box-sizing'] = 'border-box';
+                                    debugWndClear.style['margin-right'] = '8px';
                                     debugWndClear.innerText = 'Clear';
                                     debugWndClear.classList.add('pointer', 'kn-button');
-                                    debugWndHeader.appendChild(debugWndClear);
-                                    debugWndClear.addEventListener('click', function (e) { clearLsLogs(); })
-                                    debugWndClear.addEventListener('touchstart', function (e) { clearLsLogs(); })
+                                    debugWndHeader.insertBefore(debugWndClear, debugCloseBtn);
+                                    debugWndClear.addEventListener('click', function (e) { e.stopPropagation(); clearLsLogs(); })
+                                    debugWndClear.addEventListener('touchstart', function (e) { e.stopPropagation(); clearLsLogs(); })
 
                                     document.body.appendChild(debugWnd);
 
@@ -8873,6 +8971,8 @@ function Ktl($, appInfo) {
                                         const position = ktl.core.centerElementOnScreen(debugWnd);
                                         ktl.core.ktlDevToolsAdjustPositionAndSave(debugWnd, devToolStorageName, position);
                                     }
+
+                                    ktl.core.registerDevToolWindow(debugWnd, () => ktl.debugWnd.showDebugWnd(false));
                                 } else {
                                     ktl.debugWnd.showLogsInDebugWnd();
                                 }
@@ -23583,7 +23683,7 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--viBarOpacity', vi.viOpacity.toString() + '%');
                 };
 
-                let ktlDevToolsLastSearch = '';
+                let ktlDevToolsLastSearch = ktl.storage.lsGetItem('ktlDevToolsLastSearch') || '';
 
                 //Special Dev Options popup, require a PIN to access options.
                 $('#verButtonId').on('click touchstart', function (e) {
@@ -23898,7 +23998,16 @@ function Ktl($, appInfo) {
                                 devBtnsDivHeader.style['background-color'] = sysColors.paleLowSatClr;
                                 devBtnsDivHeader.classList.add('ktlDevToolsHeader');
 
-                                devBtnsDivHeader.innerText = ':: KTL Developer Tools ::';
+                                const devBtnsTitleSpan = document.createElement('span');
+                                devBtnsTitleSpan.className = 'ktlDevToolsHeaderTitle';
+                                devBtnsTitleSpan.innerText = ':: KTL Developer Tools ::';
+                                devBtnsDivHeader.appendChild(devBtnsTitleSpan);
+
+                                const devBtnsCloseBtn = ktl.core.createDevToolCloseBtn(devBtnsDiv, () => {
+                                    $('#devBtnsDivId').hide();
+                                });
+                                devBtnsDivHeader.appendChild(devBtnsCloseBtn);
+
                                 devBtnsDiv.appendChild(devBtnsDivHeader);
 
                                 document.body.appendChild(devBtnsDiv);
@@ -24058,7 +24167,16 @@ function Ktl($, appInfo) {
                                     devToolSearchHdr.style['background-color'] = sysColors.paleLowSatClr;
                                     devToolSearchHdr.classList.add('ktlDevToolsHeader');
 
-                                    devToolSearchHdr.innerText = ':: KTL Search Tool ::';
+                                    const searchTitleSpan = document.createElement('span');
+                                    searchTitleSpan.className = 'ktlDevToolsHeaderTitle';
+                                    searchTitleSpan.innerText = ':: KTL Search Tool ::';
+                                    devToolSearchHdr.appendChild(searchTitleSpan);
+
+                                    const searchCloseBtn = ktl.core.createDevToolCloseBtn(devToolSearchDiv, () => {
+                                        $('#devToolSearchDivId').hide();
+                                    });
+                                    devToolSearchHdr.appendChild(searchCloseBtn);
+
                                     devToolSearchDiv.appendChild(devToolSearchHdr);
                                     document.body.appendChild(devToolSearchDiv);
 
@@ -24077,6 +24195,8 @@ function Ktl($, appInfo) {
                                         const position = ktl.core.centerElementOnScreen(devToolSearchDiv);
                                         ktl.core.ktlDevToolsAdjustPositionAndSave(devToolSearchDiv, devToolStorageName, position);
                                     }
+
+                                    ktl.core.registerDevToolWindow(devToolSearchDiv, () => $('#devToolSearchDivId').hide());
 
                                     var headerDiv = document.createElement('div');
                                     headerDiv.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:5px;';
@@ -24148,11 +24268,12 @@ function Ktl($, appInfo) {
 
                                     var searchInput = document.createElement("input");
                                     searchInput.type = 'text';
-                                    searchInput.value = '';
+                                    searchInput.value = ktlDevToolsLastSearch;
                                     searchInput.setAttribute('id', 'ktlDevToolsSearchInputId');
                                     searchInput.classList.add('ktlDevToolsSearchInput');
                                     devToolSearchDiv.appendChild(searchInput);
                                     searchInput.focus();
+                                    searchInput.select();
 
                                     var resultWndText;
 
@@ -24304,6 +24425,7 @@ function Ktl($, appInfo) {
                                         select: function (event, ui) {
                                             searchInput.value = ui.item.value;
                                             ktlDevToolsLastSearch = ui.item.value;
+                                            ktl.storage.lsSetItem('ktlDevToolsLastSearch', ui.item.value);
                                             performSearch(ui.item.value);
                                             return false;
                                         }
@@ -24311,7 +24433,9 @@ function Ktl($, appInfo) {
 
                                     searchInput.addEventListener('keyup', function (event) {
                                         if (event.key === 'Enter') {
+                                            $(searchInput).autocomplete('close');
                                             ktlDevToolsLastSearch = searchInput.value;
+                                            ktl.storage.lsSetItem('ktlDevToolsLastSearch', searchInput.value);
                                             performSearch(searchInput.value);
                                         }
                                     });
@@ -24570,25 +24694,22 @@ function Ktl($, appInfo) {
                                 ktl.core.enableSortableDrag(devBtnsDiv, debounce((newPosition) => {
                                     ktl.core.ktlDevToolsAdjustPositionAndSave(devBtnsDiv, devToolStorageName, newPosition);
                                 }));
+
+                                ktl.core.registerDevToolWindow(devBtnsDiv, () => $('#devBtnsDivId').hide());
                             })
                     }
 
                     return false; //False to prevent firing both events on mobile devices.
                 })
 
-                //For Dev Options popup, act like a modal window: close when clicking outside, or pressing escape.
+                //Close popup form when clicking outside.
                 $(document).on('click', function (e) {
                     if (e.target.closest('.kn-content') || (e.target && e.target.id && e.target.id === 'knack-body')) {
                         $('#popupFormId').remove();
-                        ktl.debugWnd.showDebugWnd(false);
-                        $('#devToolSearchDivId').hide();
-                        $('#devBtnsDivId').hide();
-                        if (!e.target.closest('.fa-sign-in'))
-                            $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
                     }
                 })
 
-                //Hotkey for Dev Popup and Search: Ctrl+Shift+F to open search, Esc to close.
+                //Hotkey for Dev Popup and Search: Ctrl+Shift+F to open search, Escape to close top window.
                 $(document).on('keydown.ktlDevPopup', function (event) {
                     if (event.shiftKey && event.ctrlKey) {
                         if (event.key === 'F') {
@@ -24603,10 +24724,18 @@ function Ktl($, appInfo) {
                                 })
                         }
                     } else if (event.key === 'Escape') {
-                        ktl.debugWnd.showDebugWnd(false);
-                        $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
-                        $('#devToolSearchDivId').hide();
-                        $('#devBtnsDivId').hide();
+                        const inDevToolWindow = event.target.closest('#devBtnsDivId, #devToolSearchDivId, #resultWndId, #dbgWndId');
+                        const inOtherInput = event.target.closest('input, textarea, select, [contenteditable]') && !inDevToolWindow;
+                        if (!inOtherInput) {
+                            if (inDevToolWindow) {
+                                // Close the focused window, not the topmost
+                                const windowInfo = ktl.core.devToolWindows.find(w => w.element === inDevToolWindow);
+                                if (windowInfo?.close) windowInfo.close();
+                                else $(inDevToolWindow).hide();
+                            } else {
+                                ktl.core.closeTopDevToolWindow();
+                            }
+                        }
                     }
                 });
             },
@@ -28511,7 +28640,17 @@ function Ktl($, appInfo) {
                 resultWndHdr.setAttribute('id', 'resultWndIdheader');
                 resultWndHdr.classList.add('ktlDevToolsHeader');
                 resultWndHdr.style['background-color'] = sysColors.paleLowSatClr;
-                resultWndHdr.innerText = ':: KTL Search Results ::';
+
+                const resultTitleSpan = document.createElement('span');
+                resultTitleSpan.className = 'ktlDevToolsHeaderTitle';
+                resultTitleSpan.innerText = ':: KTL Search Results ::';
+                resultWndHdr.appendChild(resultTitleSpan);
+
+                const resultCloseBtn = ktl.core.createDevToolCloseBtn(resultWnd, () => {
+                    $(document).trigger('KTL.devPopupSetResultText', 'ktlHide');
+                });
+                resultWndHdr.appendChild(resultCloseBtn);
+
                 resultWnd.appendChild(resultWndHdr);
 
                 const resultWndTextDiv = document.createElement('div');
@@ -28559,6 +28698,8 @@ function Ktl($, appInfo) {
                     const position = ktl.core.centerElementOnScreen(resultWnd);
                     ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, position);
                 }
+
+                ktl.core.registerDevToolWindow(resultWnd, () => $(document).trigger('KTL.devPopupSetResultText', 'ktlHide'));
             }).catch(() => {
                 // No-op: dev tool shouldn't crash the page if system colors fail.
             }).finally(() => {
