@@ -716,12 +716,13 @@ function Ktl($, appInfo) {
 
             //Param is selector string and optionally if we want to put back a hidden element as it was.
             hideSelector: function (sel = '', show = false) {
-                sel && ktl.core.waitSelector(sel)
-                    .then(() => {
+                sel && this.waitSelector({ selector: sel, returnFirstMatch: true })
+                    .then((element) => {
+                        const target = element ? $(element) : $(sel);
                         if (show)
-                            $(sel).removeClass('ktlHidden');
+                            target.removeClass('ktlHidden');
                         else
-                            $(sel).addClass('ktlHidden');
+                            target.addClass('ktlHidden');
                     })
                     .catch(() => { ktl.log.clog('purple', 'hideSelector failed waiting for selector: ' + sel); });
             },
@@ -729,7 +730,9 @@ function Ktl($, appInfo) {
             /**
              * Waits for a selector (or its absence) before resolving.
              * Legacy signature mirrors previous behavior: (selector, timeout, is, outcome, scanSpd).
-             * Modern usage accepts an options object as the first parameter. Supported options:
+             * Modern usage accepts an options object as the first parameter.
+             *
+             * Supported options:
              *  - selector {string|string[]} Primary selector (string or array)
              *  - selectors {string[]} Optional additional selectors array
              *  - timeout {number}
@@ -744,6 +747,12 @@ function Ktl($, appInfo) {
              *  - matchMode {'all'|'any'} wait for every selector (default) or first that matches
              *  - returnFirstMatch {boolean} resolve with only the first element found
              *  - useObserver {boolean} when true (default) uses MutationObserver before polling
+             *
+             * Backwards compatibility notes:
+             *  - Old calls that relied on polling for state changes (e.g. :visible) are supported via polling fallback.
+             *  - Legacy return value was `undefined` on resolve; this resolves with elements. Existing `await waitSelector(...)` usage
+             *    remains fine, but if you need the legacy no-value resolve, just ignore the result.
+             *
              * @param {string|Object} selOrOptions Selector string or options object.
              * @param {number} [timeout=5000] Legacy timeout parameter.
              * @param {string} [is=''] Legacy pseudo selector or 'none'.
@@ -775,6 +784,10 @@ function Ktl($, appInfo) {
                         if (typeof selOrOptions.selector === 'string') {
                             merged.selector = selOrOptions.selector.trim();
                         }
+                        // Normalise scanSpd if options provided
+                        if (typeof merged.scanSpd !== 'number') {
+                            merged.scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD;
+                        }
                         return merged;
                     }
 
@@ -794,10 +807,12 @@ function Ktl($, appInfo) {
                     const timeoutMs = clampTimeout(options.timeout);
                     const pseudoState = typeof options.is === 'string' ? options.is.trim() : '';
                     const context = resolveContext(options.root);
+
+                    // Scene guard
                     const sceneKey = !options.allowSceneChange && typeof Knack !== 'undefined' && Knack.router ? Knack.router.current_scene_key : null;
-                    console.log('waitSelector invoked for:', selectorLabel);
 
                     let timeoutId = null;
+                    let intervalId = null;
                     let observer = null;
                     const legacyDomListeners = [];
                     let abortHandler = null;
@@ -807,6 +822,10 @@ function Ktl($, appInfo) {
                         if (timeoutId !== null) {
                             clearTimeout(timeoutId);
                             timeoutId = null;
+                        }
+                        if (intervalId !== null) {
+                            clearInterval(intervalId);
+                            intervalId = null;
                         }
                         if (observer) {
                             observer.disconnect();
@@ -843,12 +862,19 @@ function Ktl($, appInfo) {
                         reject(selectorLabel);
                     };
 
+                    const isLegacyCall = typeof selOrOptions === 'string';
+
                     const resolveWithElements = function (elements) {
                         if (settled)
                             return;
                         settled = true;
                         cleanup();
-                        resolve(elements);
+                        // Legacy (string-first) calls resolved with no value
+                        if (isLegacyCall) {
+                            resolve();
+                        } else {
+                            resolve(elements);
+                        }
                     };
 
                     const logTimeout = function () {
@@ -865,6 +891,7 @@ function Ktl($, appInfo) {
                         if (settled)
                             return;
 
+                        // If you navigate away mid-wait, reject (legacy behaviour effectively stopped waiting in practice)
                         if (sceneKey && (!Knack || !Knack.router || Knack.router.current_scene_key !== sceneKey)) {
                             rejectWithReason('sceneChange');
                             return;
@@ -872,21 +899,23 @@ function Ktl($, appInfo) {
 
                         const evaluation = evaluateSelectors(selectors, context, pseudoState, options.requireVisible, options.matchMode, options.returnFirstMatch);
                         if (evaluation.isMatch) {
-                            console.log('waitSelector resolved selector(s):', selectorLabel);
                             resolveWithElements(evaluation.elements);
-                        } else {
-                            console.log('waitSelector check: no match yet for', selectorLabel);
                         }
                     };
 
+                    // Observer (fast path) + polling fallback (compat / state-change safety net)
                     const supportsObserver = typeof MutationObserver !== 'undefined';
                     const shouldUseObserver = options.useObserver !== false && supportsObserver;
-                    const observerTarget = (context && context.length ? context[0] : (document.body || document.documentElement));
-                    if (shouldUseObserver && observerTarget) {
-                        observer = new MutationObserver(function () {
-                            evaluateAndAct();
-                        });
-                        observer.observe(observerTarget, { childList: true, subtree: true, attributes: true });
+
+                    if (shouldUseObserver) {
+                        // Observe the whole doc for robustness. Root is applied during querying, not observing.
+                        const observerTarget = document.documentElement || document.body;
+                        if (observerTarget) {
+                            observer = new MutationObserver(function () {
+                                evaluateAndAct();
+                            });
+                            observer.observe(observerTarget, { childList: true, subtree: true, attributes: true });
+                        }
                     } else {
                         const legacyHandler = function () {
                             evaluateAndAct();
@@ -896,6 +925,11 @@ function Ktl($, appInfo) {
                             legacyDomListeners.push({ target: document, type: evt, handler: legacyHandler, capture: true });
                         });
                     }
+
+                    // Polling fallback to preserve old behaviour (especially for :visible / CSS-driven state changes)
+                    intervalId = setInterval(function () {
+                        evaluateAndAct();
+                    }, clampScanSpd(options.scanSpd));
 
                     timeoutId = setTimeout(function () {
                         if (settled)
@@ -916,6 +950,7 @@ function Ktl($, appInfo) {
                         options.signal.addEventListener('abort', abortHandler, { once: true });
                     }
 
+                    // Initial check (important when element already exists)
                     evaluateAndAct();
 
                     function collectSelectors(primarySelector, additionalSelectors) {
@@ -948,10 +983,21 @@ function Ktl($, appInfo) {
                         return Math.min(Math.max(0, numeric), 2147483647);
                     }
 
+                    function clampScanSpd(value) {
+                        const numeric = Number(value);
+                        if (!Number.isFinite(numeric) || numeric <= 0)
+                            return ktl.const.WAIT_SELECTOR_SCAN_SPD;
+                        // Don’t allow zero here — can peg CPU.
+                        return Math.min(Math.max(25, numeric), 2147483647);
+                    }
+
                     function resolveContext(root) {
                         if (!root)
                             return null;
-                        return $(root);
+
+                        // If a root was explicitly provided, do not fall back to global selection when it's empty.
+                        const wrapped = $(root);
+                        return wrapped.length ? wrapped : $([]);
                     }
 
                     function evaluateSelectors(selectorSet, ctx, stateFilter, requireVisible, mode, returnFirstMatch) {
@@ -993,7 +1039,8 @@ function Ktl($, appInfo) {
                     }
 
                     function evaluateSingle(selector, ctx, stateFilter, requireVisible) {
-                        const selection = ctx && ctx.length ? ctx.find(selector) : $(selector);
+                        // ctx is either null (global) or a jQuery set (possibly empty)
+                        const selection = ctx === null ? $(selector) : ctx.find(selector);
 
                         if (stateFilter === 'none') {
                             return {
@@ -1630,12 +1677,14 @@ function Ktl($, appInfo) {
 
             sortMenu: function () {
                 if (!ktl.core.getCfg().enabled.sortedMenus || ktl.scenes.isiFrameWnd()) return;
+                const core = this;
 
                 if (Knack.isMobile()) {
                     $('.kn-mobile-controls').mousedown(function (e) {
-                        ktl.core.waitSelector('#kn-mobile-menu.is-visible')
-                            .then(() => {
-                                var allMenus = $('#kn-mobile-menu').find('.kn-dropdown-menu-list');
+                        core.waitSelector({ selector: '#kn-mobile-menu.is-visible', returnFirstMatch: true })
+                            .then((menuElement) => {
+                                const menuRoot = menuElement ? $(menuElement) : $('#kn-mobile-menu');
+                                var allMenus = menuRoot.find('.kn-dropdown-menu-list');
                                 for (var i = 0; i < allMenus.length - 1; i++)
                                     ktl.core.sortUList(allMenus[i]);
                             })
@@ -1803,10 +1852,12 @@ function Ktl($, appInfo) {
                     ktl.storage.lsRemoveItem('KIOSK', false, true);
 
                 const headerSelector = '#kn-app-header,.knHeader,.kn-info-bar';
-                ktl.core.waitSelector(headerSelector, 30000)
-                    .then(() => {
+                this.waitSelector({ selector: headerSelector, timeout: 30000 })
+                    .then((elements) => {
+                        const headerElements = Array.isArray(elements) ? elements : (elements ? [elements] : []);
+                        const headerTargets = headerElements.length ? $(headerElements) : $(headerSelector);
                         if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
-                            $(headerSelector).addClass('ktlDisplayNone');
+                            headerTargets.addClass('ktlDisplayNone');
                             $('body').addClass('ktlKioskMode');
 
                             //Add extra space at bottom of screen in kiosk mode, to allow editing
@@ -1818,7 +1869,7 @@ function Ktl($, appInfo) {
                         } else {
                             $('.ktlFormKioskButtons').removeClass('ktlFormKioskButtons');
                             $('.ktlKioskButtons').removeClass('ktlKioskButtons');
-                            $(headerSelector).removeClass('ktlDisplayNone');
+                            headerTargets.removeClass('ktlDisplayNone');
                             $('body').removeClass('ktlKioskMode');
                         }
                     })
@@ -1913,6 +1964,7 @@ function Ktl($, appInfo) {
             //Otherwise, can be a field label/ID and optionally a view title/ID.
             //If optionalViewId parameter is provided, it will be used as the default view if not found explicitly in selector.
             getTextFromSelector: function (selector, optionalViewId) {
+                const core = this;
                 return new Promise(function (resolve, reject) {
                     if (!selector)
                         return reject('getTextFromSelector called with empty parameter');
@@ -1967,16 +2019,17 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    ktl.core.waitSelector(selector, 10000)
-                        .then(() => {
-                            if ($(selector).length) {
+                    core.waitSelector({ selector: selector, timeout: 10000, returnFirstMatch: true })
+                        .then((element) => {
+                            const resolvedElement = element || $(selector)[0];
+                            if (resolvedElement) {
                                 const fieldType = ktl.fields.getFieldType(fieldId);
 
                                 let value;
                                 if (ktl.views.getViewType(viewId) === 'form')
-                                    value = $(selector)[0].value.trim();
+                                    value = resolvedElement.value.trim();
                                 else
-                                    value = $(selector)[0].textContent.trim();
+                                    value = resolvedElement.textContent.trim();
 
                                 if (selector.includes('.kn-table-totals') || (fieldType && numericFieldTypes.includes(fieldType)))
                                     value = ktl.core.extractNumericValue(value, fieldId);
