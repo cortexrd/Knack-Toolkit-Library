@@ -2521,17 +2521,29 @@ function Ktl($, appInfo) {
                             for (const scene of Knack.scenes.models) {
                                 if (kwKey === scene.attributes.key) {
                                     builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${kwKey}`;
+                                    const slug = scene.attributes.slug;
+                                    appUrl = `${Knack.url_base}#${slug}`;
+                                    const sceneName = scene.attributes.name || '<unnamed>';
                                     console.log(`Builder: ${builderUrl}`);
+                                    console.log(`App: ${appUrl}`);
+                                    console.log(`${kwKey}: ${sceneName}`);
                                     result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                                     result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
+                                    result += `${kwKey}: ${sceneName}<br>`;
                                     break;
                                 }
                             }
                         } else if (kwKey.startsWith('field_')) {
-                            const objectId = Knack.objects.getField(kwKey).attributes.object_key;
-                            builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${objectId}/fields/${kwKey}/settings`;
-                            console.log(`Builder: ${builderUrl}`);
-                            result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                            const field = Knack.objects.getField(kwKey);
+                            if (field) {
+                                const objectId = field.attributes.object_key;
+                                const fieldName = field.attributes.name || '<unnamed>';
+                                builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${objectId}/fields/${kwKey}/settings`;
+                                console.log(`Builder: ${builderUrl}`);
+                                console.log(`${kwKey}: ${fieldName}`);
+                                result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                result += `${kwKey}: ${fieldName}<br>`;
+                            }
                         }
 
                         if (isKeyword) {
@@ -24540,7 +24552,11 @@ function Ktl($, appInfo) {
                                                 });
                                             }
                                         } else if (query === 'kw') {
-                                            kwResults = ktl.core.findAllKeywords();
+                                            // Add summary at beginning
+                                            const kwCount = ktl.core.countKeywords(ktlKeywords);
+                                            const summaryHtml = kwCount.replace(/\n/g, '<br>').replace(/  /g, '&nbsp;&nbsp;');
+                                            let summary = '<b>Keywords Summary</b><br>' + summaryHtml + '<br><hr><br>';
+                                            kwResults = summary + ktl.core.findAllKeywords();
                                         } else if (query.startsWith('_')) {
                                             // Keyword-specific search (e.g., _ar, _ni)
                                             kwResults = ktl.core.findAllKeywords(query);
@@ -24550,17 +24566,104 @@ function Ktl($, appInfo) {
                                             kwResults = searchResult.html || NO_RESULTS;
                                         }
 
-                                        if (builderUrl || appUrl || kwResults) {
-                                            if (builderUrl) {
-                                                kwResults = kwResults === NO_RESULTS ? '' : kwResults;
-                                                kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
-                                                kwResults += `Open "${query}" in Builder<br>`;
+                                        // Helper to extract paramStr from keyword value
+                                        const extractParamStr = (val) => {
+                                            if (val === undefined || val === null) return '[]';
+                                            if (typeof val === 'string') return val || '[]';
+                                            if (Array.isArray(val)) {
+                                                // Flatten nested arrays and extract paramStr
+                                                const params = val.flat(2).filter(item => item && typeof item === 'object');
+                                                if (params.length > 0 && params[0].paramStr) {
+                                                    return params.map(p => p.paramStr).join(', ');
+                                                }
+                                                // If no paramStr, check if it's simple values
+                                                const simpleVals = val.flat(2).filter(v => typeof v === 'string' || typeof v === 'number');
+                                                if (simpleVals.length > 0) return simpleVals.join(', ');
+                                                return '[]'; // Empty array
+                                            }
+                                            if (typeof val === 'object' && val.paramStr) return val.paramStr;
+                                            return '[]';
+                                        };
+
+                                        // Helper to format keywords grouped by source
+                                        const formatKeywordsForId = (id) => {
+                                            let html = '';
+                                            const groups = {}; // { sourceId: { title, keywords: [{kw, val}] } }
+
+                                            // Direct keywords on the ID
+                                            if (ktlKeywords[id]) {
+                                                const keywords = [];
+                                                Object.entries(ktlKeywords[id]).forEach(([kw, val]) => {
+                                                    if (kw.startsWith('_')) {
+                                                        keywords.push({ kw, val: extractParamStr(val) });
+                                                    }
+                                                });
+                                                if (keywords.length > 0) {
+                                                    groups[id] = { title: null, keywords }; // null title = already shown in header
+                                                }
                                             }
 
-                                            if (appUrl) {
+                                            // For scenes, also check all views in the scene
+                                            if (id.startsWith('scene_')) {
+                                                const scene = Knack.scenes.getByKey(id);
+                                                if (scene?.views?.models) {
+                                                    scene.views.models.forEach(view => {
+                                                        const viewId = view.attributes.key;
+                                                        const viewTitle = view.attributes.title || '<no title>';
+                                                        if (ktlKeywords[viewId]) {
+                                                            const keywords = [];
+                                                            Object.entries(ktlKeywords[viewId]).forEach(([kw, val]) => {
+                                                                if (kw.startsWith('_')) {
+                                                                    keywords.push({ kw, val: extractParamStr(val) });
+                                                                }
+                                                            });
+                                                            if (keywords.length > 0) {
+                                                                groups[viewId] = { title: viewTitle, keywords };
+                                                            }
+                                                        }
+                                                    });
+                                                }
+                                            }
+
+                                            // Format output grouped by source
+                                            for (const [sourceId, group] of Object.entries(groups)) {
+                                                if (group.title) {
+                                                    html += `<br><b>${sourceId}: ${group.title}</b><br>`;
+                                                }
+                                                group.keywords.sort((a, b) => a.kw.localeCompare(b.kw));
+                                                group.keywords.forEach(entry => {
+                                                    html += `&nbsp;&nbsp;&nbsp;${entry.kw}=${entry.val}<br>`;
+                                                });
+                                            }
+                                            return html;
+                                        };
+
+                                        if (builderUrl || appUrl || kwResults !== NO_RESULTS) {
+                                            // Format ID lookup results consistently
+                                            if (query.startsWith('field_') || query.startsWith('view_') || query.startsWith('scene_')) {
+                                                let title = '';
+                                                if (query.startsWith('field_')) {
+                                                    const field = Knack.objects.getField(query);
+                                                    title = field?.attributes?.name || '<unnamed>';
+                                                } else if (query.startsWith('view_')) {
+                                                    for (const scene of Knack.scenes.models) {
+                                                        const view = scene.views.models.find(v => v?.attributes?.key === query);
+                                                        if (view) { title = view.attributes.title || '<no title>'; break; }
+                                                    }
+                                                } else if (query.startsWith('scene_')) {
+                                                    const scene = Knack.scenes.getByKey(query);
+                                                    title = scene?.attributes?.name || '<unnamed>';
+                                                }
+
+                                                kwResults = '';
+                                                if (builderUrl) kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                                if (appUrl) kwResults += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
+                                                kwResults += `${query}: ${title}<br>`;
+                                                kwResults += formatKeywordsForId(query);
+                                            } else if (builderUrl || appUrl) {
                                                 kwResults = kwResults === NO_RESULTS ? '' : kwResults;
-                                                kwResults += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
-                                                kwResults += `Open "${query}" in App<br>`;
+                                                if (builderUrl) kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                                if (appUrl) kwResults += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
                                             }
 
                                             if (kwResults) {
