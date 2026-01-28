@@ -726,7 +726,7 @@ function Ktl($, appInfo) {
                     .catch(() => { ktl.log.clog('purple', 'hideSelector failed waiting for selector: ' + sel); });
             },
 
-                        /**
+            /**
              * Waits for a selector (or its absence) before resolving.
              * Legacy signature mirrors previous behavior: (selector, timeout, is, outcome, scanSpd).
              * Modern usage accepts an options object as the first parameter. Supported options:
