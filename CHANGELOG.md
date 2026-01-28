@@ -1,6 +1,26 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.39.1    *2026-01-27*
+
+- KTL Search improvements:
+  - Unify search tools with enhanced search capabilities
+  - Add `type:` filter support for filtering by view/object type
+  - Improve UI with help text and popup
+  - Modernize dev tool windows with standard window behavior (drag, resize, close button)
+
+## 0.39.0    *2026-01-27*
+
+- New `_tags` keyword for bulk tag management in grid views
+- Bulk operations:
+  - Add Ctrl+click toggle for master checkbox
+  - Fix ktlAddonsDiv layout and button visibility
+  - Fix crash when checkbox is not available in some accounts
+- Add dedicated dialog styles for column chooser UI (#572)
+- Improve universalSearch to search all nested attributes
+- Add CSS class to view ID labels for styling (#571)
+- Simplified crash simulation flag processing
+
 ## 0.38.1    *2026-01-19*
 
 - Add `ktlEmpty` special value for `ktlCond` option:
