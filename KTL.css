@@ -725,12 +725,12 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 
 .devToolSearchDiv {
 	z-index: 20;
-	min-width: 220px;
+	min-width: 300px;
 	position: fixed;
 }
 
 .ktlDevToolsSearchInput {
-	width: auto;
+	width: 80%;
 	height: 26px;
 	margin-top: 5px;
 }

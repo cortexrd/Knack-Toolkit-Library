@@ -24107,14 +24107,14 @@ function Ktl($, appInfo) {
 </div>
 <div style="text-align:left; font-size:13px; line-height:1.7;">
 <b>Basic Search</b><br>
-<b>Keywords</b><br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">kw</code> - All KTL keywords in app<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">_ar</code> - Find specific keyword usage<br>
-<br>
 <code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">warehouse</code> - Find text anywhere<br>
 <code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">field_123</code> - Search field by ID<br>
 <code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">view_456</code> - Search view by ID<br>
 <code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">scene_789</code> - Search scene by ID<br>
+<br>
+<b>Keywords</b><br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">kw</code> - All KTL keywords in app<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">_ar</code> - Find specific keyword usage<br>
 <br>
 <b>Multiple Terms</b><br>
 <code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">warehouse inventory</code> - Will find either warehouse or inventory<br>
