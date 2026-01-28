@@ -716,7 +716,7 @@ function Ktl($, appInfo) {
 
             //Param is selector string and optionally if we want to put back a hidden element as it was.
             hideSelector: function (sel = '', show = false) {
-                sel && this.waitSelector({ selector: sel })
+                sel && ktl.core.waitSelector({ selector: sel })
                     .then((result) => {
                         const element = Array.isArray(result) ? result[0] : result;
                         const target = element ? $(element) : $(sel);
@@ -730,11 +730,15 @@ function Ktl($, appInfo) {
 
             /**
              * Waits for a selector (or its absence) before resolving.
-             * Legacy signature mirrors previous behavior: (selector, timeout, is, outcome, scanSpd).
-             * Modern usage accepts an options object as the first parameter.
              *
-             * Supported options:
-             *  - selector {string|string[]} Primary selector (string or array)
+             * Modern usage (preferred):
+             *  waitSelector({ selector: '.my-el', timeout: 8000, matchMode: 'any' })
+             *
+             * Legacy usage (string signature; kept for compatibility):
+             *  waitSelector(selector, timeout, is, outcome, scanSpd)
+             *
+             * Supported options (options-object):
+             *  - selector {string|string[]} Primary selector (string; arrays are supported via options-object only)
              *  - selectors {string[]} Optional additional selectors array
              *  - timeout {number}
              *  - is {string} pseudo state or 'none'
@@ -742,18 +746,21 @@ function Ktl($, appInfo) {
              *  - scanSpd {number} polling interval in ms
              *  - allowSceneChange {boolean} set true to ignore scene transitions
              *  - requireVisible {boolean} filters matches to :visible only
-             *  - root {Element|string|jQuery} scope searches within this root
+             *  - root {Element|string|jQuery} scope searches within this root (strict: if root resolves to empty, no global fallback)
              *  - signal {AbortSignal} allows cancellation
              *  - onCancel {(selector: string, reason: string) => void} cancellation hook
              *  - matchMode {'all'|'any'} wait for every selector (default) or first that matches
+             *  - observeAttributes {boolean} observe attribute changes (defaults to true when using is/requireVisible)
+             *  - attributeFilter {string[]} optional attribute filter for observer when observeAttributes is true (default: ['class','style'])
              *  - useObserver {boolean} when true (default) uses MutationObserver before polling
              *
              * Backwards compatibility notes:
              *  - Old calls that relied on polling for state changes (e.g. :visible) are supported via polling fallback.
-             *  - Legacy return value was `undefined` on resolve; this resolves with elements. Existing `await waitSelector(...)` usage
-             *    remains fine, but if you need the legacy no-value resolve, just ignore the result.
+             *  - Legacy (string-signature) calls resolve with `undefined`, matching previous behavior.
+             *  - Options-object calls resolve with elements (single or array depending on matchMode/selector count).
+             *    Existing `await waitSelector(...)` usage remains fine; ignore the result if you don't need it.
              *
-             * @param {string|Object} selOrOptions Selector string or options object.
+             * @param {Object|string} selOrOptions Options object (preferred) or legacy selector string.
              * @param {number} [timeout=5000] Legacy timeout parameter.
              * @param {string} [is=''] Legacy pseudo selector or 'none'.
              * @param {number} [outcome=ktl.const.WAIT_SEL_IGNORE] Legacy timeout outcome flag.
@@ -776,6 +783,8 @@ function Ktl($, appInfo) {
                         signal: null,
                         onCancel: null,
                         matchMode: 'all',
+                        observeAttributes: undefined,
+                        attributeFilter: null,
                         useObserver: true
                     };
 
@@ -783,10 +792,16 @@ function Ktl($, appInfo) {
                         const merged = Object.assign({}, defaults, selOrOptions);
                         if (typeof selOrOptions.selector === 'string') {
                             merged.selector = selOrOptions.selector.trim();
+                        } else if (Array.isArray(selOrOptions.selector)) {
+                            merged.selector = selOrOptions.selector
+                                .map(item => (typeof item === 'string' ? item.trim() : item))
+                                .filter(item => typeof item === 'string' ? item.length > 0 : item != null);
                         }
-                        // Normalise scanSpd if options provided
-                        if (typeof merged.scanSpd !== 'number') {
-                            merged.scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD;
+                        if (merged.observeAttributes === undefined) {
+                            merged.observeAttributes = !!(merged.requireVisible || (typeof merged.is === 'string' && merged.is.trim()));
+                        }
+                        if (merged.observeAttributes && !merged.attributeFilter) {
+                            merged.attributeFilter = ['class', 'style'];
                         }
                         return merged;
                     }
@@ -809,12 +824,13 @@ function Ktl($, appInfo) {
                     const context = resolveContext(options.root);
 
                     // Scene guard
-                    const sceneKey = !options.allowSceneChange && typeof Knack !== 'undefined' && Knack.router ? Knack.router.current_scene_key : null;
+                    const sceneKey = !options.allowSceneChange && typeof Knack !== 'undefined' && Knack.router && Knack.router.current_scene_key
+                        ? Knack.router.current_scene_key
+                        : null;
 
                     let timeoutId = null;
                     let intervalId = null;
                     let observer = null;
-                    const legacyDomListeners = [];
                     let abortHandler = null;
                     let settled = false;
 
@@ -830,12 +846,6 @@ function Ktl($, appInfo) {
                         if (observer) {
                             observer.disconnect();
                             observer = null;
-                        }
-                        if (legacyDomListeners.length) {
-                            legacyDomListeners.forEach(listener => {
-                                listener.target.removeEventListener(listener.type, listener.handler, listener.capture);
-                            });
-                            legacyDomListeners.length = 0;
                         }
                         if (options.signal && abortHandler) {
                             options.signal.removeEventListener('abort', abortHandler);
@@ -903,6 +913,17 @@ function Ktl($, appInfo) {
                         }
                     };
 
+                    if (options.signal && typeof options.signal.addEventListener === 'function') {
+                        abortHandler = function () {
+                            rejectWithReason('aborted');
+                        };
+                        if (options.signal.aborted) {
+                            abortHandler();
+                            return;
+                        }
+                        options.signal.addEventListener('abort', abortHandler, { once: true });
+                    }
+
                     // Observer (fast path) + polling fallback (compat / state-change safety net)
                     const supportsObserver = typeof MutationObserver !== 'undefined';
                     const shouldUseObserver = options.useObserver !== false && supportsObserver;
@@ -914,16 +935,16 @@ function Ktl($, appInfo) {
                             observer = new MutationObserver(function () {
                                 evaluateAndAct();
                             });
-                            observer.observe(observerTarget, { childList: true, subtree: true, attributes: true });
+                            const observerOptions = {
+                                childList: true,
+                                subtree: true,
+                                attributes: options.observeAttributes === true
+                            };
+                            if (observerOptions.attributes && Array.isArray(options.attributeFilter) && options.attributeFilter.length) {
+                                observerOptions.attributeFilter = options.attributeFilter;
+                            }
+                            observer.observe(observerTarget, observerOptions);
                         }
-                    } else {
-                        const legacyHandler = function () {
-                            evaluateAndAct();
-                        };
-                        ['DOMNodeInserted', 'DOMNodeRemoved', 'DOMSubtreeModified', 'DOMAttrModified'].forEach(evt => {
-                            document.addEventListener(evt, legacyHandler, true);
-                            legacyDomListeners.push({ target: document, type: evt, handler: legacyHandler, capture: true });
-                        });
                     }
 
                     // Polling fallback to preserve old behaviour (especially for :visible / CSS-driven state changes)
@@ -934,21 +955,11 @@ function Ktl($, appInfo) {
                     timeoutId = setTimeout(function () {
                         if (settled)
                             return;
+                        settled = true;
                         cleanup();
                         logTimeout();
                         reject(selectorLabel);
                     }, timeoutMs);
-
-                    if (options.signal && typeof options.signal.addEventListener === 'function') {
-                        abortHandler = function () {
-                            rejectWithReason('aborted');
-                        };
-                        if (options.signal.aborted) {
-                            abortHandler();
-                            return;
-                        }
-                        options.signal.addEventListener('abort', abortHandler, { once: true });
-                    }
 
                     // Initial check (important when element already exists)
                     evaluateAndAct();
@@ -1679,13 +1690,13 @@ function Ktl($, appInfo) {
 
                 if (Knack.isMobile()) {
                     $('.kn-mobile-controls').mousedown(function (e) {
-                        this.waitSelector({ selector: '#kn-mobile-menu.is-visible' })
+                        ktl.core.waitSelector({ selector: '#kn-mobile-menu.is-visible' })
                             .then((result) => {
                                 const menuElement = Array.isArray(result) ? result[0] : result;
                                 const menuRoot = menuElement ? $(menuElement) : $('#kn-mobile-menu');
                                 const allMenus = menuRoot.find('.kn-dropdown-menu-list');
                                 for (let i = 0; i < allMenus.length - 1; i++)
-                                    this.sortUList(allMenus[i]);
+                                    ktl.core.sortUList(allMenus[i]);
                             })
                             .catch((err) => { console.log('Failed finding menu.', err); });
                     })
@@ -2015,7 +2026,7 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    this.waitSelector({ selector: selector, timeout: 10000 })
+                    ktl.core.waitSelector({ selector: selector, timeout: 10000 })
                         .then((result) => {
                             const resolvedElement = Array.isArray(result) ? result[0] : result || $(selector)[0];
                             if (resolvedElement) {
