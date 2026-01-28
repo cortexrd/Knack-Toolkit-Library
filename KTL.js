@@ -1677,16 +1677,15 @@ function Ktl($, appInfo) {
 
             sortMenu: function () {
                 if (!ktl.core.getCfg().enabled.sortedMenus || ktl.scenes.isiFrameWnd()) return;
-                const core = this;
 
                 if (Knack.isMobile()) {
                     $('.kn-mobile-controls').mousedown(function (e) {
-                        core.waitSelector({ selector: '#kn-mobile-menu.is-visible', returnFirstMatch: true })
+                        this.waitSelector({ selector: '#kn-mobile-menu.is-visible', returnFirstMatch: true })
                             .then((menuElement) => {
                                 const menuRoot = menuElement ? $(menuElement) : $('#kn-mobile-menu');
-                                var allMenus = menuRoot.find('.kn-dropdown-menu-list');
-                                for (var i = 0; i < allMenus.length - 1; i++)
-                                    ktl.core.sortUList(allMenus[i]);
+                                const allMenus = menuRoot.find('.kn-dropdown-menu-list');
+                                for (let i = 0; i < allMenus.length - 1; i++)
+                                    this.sortUList(allMenus[i]);
                             })
                             .catch((err) => { console.log('Failed finding menu.', err); });
                     })
@@ -1852,12 +1851,10 @@ function Ktl($, appInfo) {
                     ktl.storage.lsRemoveItem('KIOSK', false, true);
 
                 const headerSelector = '#kn-app-header,.knHeader,.kn-info-bar';
-                this.waitSelector({ selector: headerSelector, timeout: 30000 })
-                    .then((elements) => {
-                        const headerElements = Array.isArray(elements) ? elements : (elements ? [elements] : []);
-                        const headerTargets = headerElements.length ? $(headerElements) : $(headerSelector);
+                ktl.core.waitSelector(headerSelector, 30000)
+                    .then(() => {
                         if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
-                            headerTargets.addClass('ktlDisplayNone');
+                            $(headerSelector).addClass('ktlDisplayNone');
                             $('body').addClass('ktlKioskMode');
 
                             //Add extra space at bottom of screen in kiosk mode, to allow editing
@@ -1869,7 +1866,7 @@ function Ktl($, appInfo) {
                         } else {
                             $('.ktlFormKioskButtons').removeClass('ktlFormKioskButtons');
                             $('.ktlKioskButtons').removeClass('ktlKioskButtons');
-                            headerTargets.removeClass('ktlDisplayNone');
+                            $(headerSelector).removeClass('ktlDisplayNone');
                             $('body').removeClass('ktlKioskMode');
                         }
                     })
@@ -1964,7 +1961,6 @@ function Ktl($, appInfo) {
             //Otherwise, can be a field label/ID and optionally a view title/ID.
             //If optionalViewId parameter is provided, it will be used as the default view if not found explicitly in selector.
             getTextFromSelector: function (selector, optionalViewId) {
-                const core = this;
                 return new Promise(function (resolve, reject) {
                     if (!selector)
                         return reject('getTextFromSelector called with empty parameter');
@@ -2019,7 +2015,7 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    core.waitSelector({ selector: selector, timeout: 10000, returnFirstMatch: true })
+                    this.waitSelector({ selector: selector, timeout: 10000, returnFirstMatch: true })
                         .then((element) => {
                             const resolvedElement = element || $(selector)[0];
                             if (resolvedElement) {
