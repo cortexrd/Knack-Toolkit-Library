@@ -3036,6 +3036,60 @@ function Ktl($, appInfo) {
                 return result;
             },
 
+            //Parameter examples: 'short_text', 'paragraph_text', 'number', 'date_time', 'connection',
+            //                    'email', 'phone', 'address', 'image', 'file', 'link', 'boolean',
+            //                    'multiple_choice', 'equation', 'auto_increment', 'rich_text', 'signature', 'timer', 'user_roles'
+            findFieldsByType: function (fieldType, textFilter = '') {
+                let result = '';
+                const st = window.performance.now();
+                const filterLower = textFilter.toLowerCase();
+                let count = 0;
+
+                if (Knack?.objects?.models) {
+                    Knack.objects.models.forEach(obj => {
+                        if (obj.fields?.models) {
+                            obj.fields.models.forEach(field => {
+                                const attr = field.attributes;
+                                if (attr?.type === fieldType) {
+                                    // Apply text filter if specified
+                                    if (textFilter) {
+                                        const fieldStr = JSON.stringify(attr).toLowerCase();
+                                        if (!fieldStr.includes(filterLower)) return;
+                                    }
+
+                                    count++;
+                                    const objectId = obj.attributes.key;
+                                    const objectName = obj.attributes.name;
+                                    const fieldId = attr.key;
+                                    const fieldName = attr.name || '<unnamed>';
+                                    const builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${objectId}/fields/${fieldId}/settings`;
+
+                                    console.log(`Builder: ${builderUrl}`);
+                                    console.log(`${fieldId}: ${fieldName} (${objectName})\n`);
+
+                                    result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                    result += `${fieldId} (${attr.type}): ${fieldName}<br>`;
+                                    result += `Object: ${objectId} - ${objectName}<br><br>`;
+                                }
+                            });
+                        }
+                    });
+                }
+
+                if (count === 0) {
+                    const filterInfo = textFilter ? ` containing "${textFilter}"` : '';
+                    result = `<em>No fields found with type: ${fieldType}${filterInfo}</em>`;
+                } else {
+                    const filterInfo = textFilter ? ` containing "${textFilter}"` : '';
+                    result = `<strong>Found ${count} field(s) of type: ${fieldType}${filterInfo}</strong><br><br>` + result;
+                }
+
+                const en = window.performance.now();
+                console.log(`Finding fields by type took ${Math.trunc(en - st)} ms`);
+
+                return result;
+            },
+
             selectOption: function (message = 'Are you sure?', optionsText = 'Yes,No', defaultValue = '') {
                 return new Promise((resolve) => {
                     const options = optionsText.split(',').map(opt => opt.trim()).filter(opt => opt);
@@ -24024,12 +24078,73 @@ function Ktl($, appInfo) {
                                         ktl.core.ktlDevToolsAdjustPositionAndSave(devToolSearchDiv, devToolStorageName, position);
                                     }
 
-                                    var paragraph = document.createElement('p');
-                                    paragraph.appendChild(document.createTextNode('Search: text, IDs (field_, view_, scene_)\n'));
-                                    paragraph.appendChild(document.createTextNode('Prefix: type:, email:, kw, _keyword\n'));
-                                    paragraph.appendChild(document.createTextNode('+term=AND, -term=exclude'));
-                                    paragraph.style.whiteSpace = 'pre';
-                                    devToolSearchDiv.appendChild(paragraph);
+                                    var headerDiv = document.createElement('div');
+                                    headerDiv.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:5px;';
+
+                                    var titleSpan = document.createElement('span');
+                                    titleSpan.textContent = 'KTL Search';
+                                    titleSpan.style.fontWeight = 'bold';
+                                    headerDiv.appendChild(titleSpan);
+
+                                    var helpBtn = document.createElement('span');
+                                    helpBtn.textContent = '?';
+                                    helpBtn.title = 'Click for help';
+                                    helpBtn.style.cssText = 'cursor:pointer; width:18px; height:18px; border-radius:50%; background:#4a90d9; color:white; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold;';
+                                    helpBtn.addEventListener('click', function () {
+                                        const existingHelp = document.getElementById('ktlSearchHelpPopup');
+                                        if (existingHelp) { existingHelp.remove(); return; }
+
+                                        const overlay = document.createElement('div');
+                                        overlay.id = 'ktlSearchHelpPopup';
+                                        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:10001; display:flex; align-items:center; justify-content:center;';
+
+                                        const popup = document.createElement('div');
+                                        popup.style.cssText = 'background:white; border-radius:8px; padding:20px; max-width:420px; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+                                        popup.innerHTML = `
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+<span style="font-size:16px; font-weight:bold;">Search Help</span>
+<span id="ktlSearchHelpClose" style="cursor:pointer; font-size:20px; color:#666;">&times;</span>
+</div>
+<div style="text-align:left; font-size:13px; line-height:1.7;">
+<b>Basic Search</b><br>
+<b>Keywords</b><br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">kw</code> - All KTL keywords in app<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">_ar</code> - Find specific keyword usage<br>
+<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">warehouse</code> - Find text anywhere<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">field_123</code> - Search field by ID<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">view_456</code> - Search view by ID<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">scene_789</code> - Search scene by ID<br>
+<br>
+<b>Multiple Terms</b><br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">warehouse inventory</code> - Will find either warehouse or inventory<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">+warehouse +inventory</code> - Must include both warehouse and inventory<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">warehouse -inventory</code> - May include warehouse but not inventory<br>
+<br>
+<b>Type Search</b><br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:search</code> - All search views<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:table</code> - All table views<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:form</code> - All form views<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:connection</code> - All connection fields<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:email</code> - All email fields<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:search warehouse</code> - Search views with "warehouse"<br>
+<br>
+<b>Email Search</b><br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">email:</code> - All emails in schema<br>
+<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">email:@domain.com</code> - Emails matching domain<br>
+</div>`;
+                                        overlay.appendChild(popup);
+                                        document.body.appendChild(overlay);
+
+                                        const closeHelp = () => overlay.remove();
+                                        overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHelp(); });
+                                        popup.querySelector('#ktlSearchHelpClose').addEventListener('click', closeHelp);
+                                        document.addEventListener('keydown', function escHandler(e) {
+                                            if (e.key === 'Escape') { closeHelp(); document.removeEventListener('keydown', escHandler); }
+                                        });
+                                    });
+                                    headerDiv.appendChild(helpBtn);
+                                    devToolSearchDiv.appendChild(headerDiv);
 
                                     var searchInput = document.createElement("input");
                                     searchInput.type = 'text';
@@ -24096,9 +24211,17 @@ function Ktl($, appInfo) {
                                             });
                                         }
 
-                                        // Add common KTL keywords
-                                        const commonKeywords = ['_ar', '_ni', '_ro', '_cfv', '_hv', '_dtp', '_cls', '_svf', '_ac', '_rlv', '_rd', '_fvf'];
-                                        commonKeywords.forEach(kw => {
+                                        // Add all KTL keywords found in schema
+                                        const allKeywords = new Set();
+                                        for (const key in ktlKeywords) {
+                                            const kwObj = ktlKeywords[key];
+                                            if (kwObj && typeof kwObj === 'object') {
+                                                Object.keys(kwObj).forEach(kw => {
+                                                    if (kw.startsWith('_')) allKeywords.add(kw);
+                                                });
+                                            }
+                                        }
+                                        [...allKeywords].sort().forEach(kw => {
                                             source.push({
                                                 label: kw,
                                                 value: kw,
@@ -24106,9 +24229,45 @@ function Ktl($, appInfo) {
                                             });
                                         });
 
+                                        // Collect unique view types
+                                        const viewTypes = new Set();
+                                        Knack.scenes.models.forEach(scene => {
+                                            scene.views.models.forEach(view => {
+                                                if (view?.attributes?.type) viewTypes.add(view.attributes.type);
+                                            });
+                                        });
+                                        [...viewTypes].sort().forEach(vt => {
+                                            source.push({
+                                                label: `type:${vt} (view)`,
+                                                value: `type:${vt}`,
+                                                category: 'View Types'
+                                            });
+                                        });
+
+                                        // Collect unique field types
+                                        const fieldTypes = new Set();
+                                        if (Knack?.objects?.models) {
+                                            Knack.objects.models.forEach(obj => {
+                                                if (obj.fields?.models) {
+                                                    obj.fields.models.forEach(field => {
+                                                        if (field?.attributes?.type) fieldTypes.add(field.attributes.type);
+                                                    });
+                                                }
+                                            });
+                                        }
+                                        [...fieldTypes].sort().forEach(ft => {
+                                            if (!viewTypes.has(ft)) {
+                                                source.push({
+                                                    label: `type:${ft} (field)`,
+                                                    value: `type:${ft}`,
+                                                    category: 'Field Types'
+                                                });
+                                            }
+                                        });
+
                                         // Add search prefixes
                                         const prefixes = [
-                                            { label: 'type:', value: 'type:', category: 'Prefixes' },
+                                            { label: 'type: (show types)', value: 'type:', category: 'Prefixes' },
                                             { label: 'email:', value: 'email:', category: 'Prefixes' },
                                             { label: 'kw (all keywords)', value: 'kw', category: 'Prefixes' }
                                         ];
@@ -24123,10 +24282,21 @@ function Ktl($, appInfo) {
                                         source: function (request, response) {
                                             const source = buildAutocompleteSource();
                                             const term = request.term.toLowerCase();
-                                            const filtered = source.filter(item =>
-                                                item.label.toLowerCase().includes(term) ||
-                                                item.value.toLowerCase().includes(term)
-                                            ).slice(0, 25);
+                                            let filtered;
+
+                                            // Special handling for "type:" prefix - show all types
+                                            if (term.startsWith('type:')) {
+                                                const typeFilter = term.substring(5);
+                                                filtered = source.filter(item =>
+                                                    (item.category === 'View Types' || item.category === 'Field Types') &&
+                                                    (typeFilter === '' || item.value.toLowerCase().includes(typeFilter))
+                                                ).slice(0, 30);
+                                            } else {
+                                                filtered = source.filter(item =>
+                                                    item.label.toLowerCase().includes(term) ||
+                                                    item.value.toLowerCase().includes(term)
+                                                ).slice(0, 25);
+                                            }
                                             response(filtered);
                                         },
                                         minLength: 2,
@@ -24203,9 +24373,22 @@ function Ktl($, appInfo) {
                                         } else if (query.startsWith('type:')) {
                                             const typeQuery = query.substring(5).trim();
                                             const parts = typeQuery.split(/\s+/);
-                                            const viewType = parts[0];
+                                            const typeName = parts[0];
                                             const textFilter = parts.slice(1).join(' ').trim();
-                                            kwResults = ktl.core.findViewsByType(viewType, textFilter);
+                                            const viewResults = ktl.core.findViewsByType(typeName, textFilter);
+                                            const fieldResults = ktl.core.findFieldsByType(typeName, textFilter);
+                                            const hasViews = !viewResults.includes('No views found');
+                                            const hasFields = !fieldResults.includes('No fields found');
+                                            if (hasViews && hasFields) {
+                                                kwResults = viewResults + '<hr>' + fieldResults;
+                                            } else if (hasViews) {
+                                                kwResults = viewResults;
+                                            } else if (hasFields) {
+                                                kwResults = fieldResults;
+                                            } else {
+                                                const filterInfo = textFilter ? ` containing "${textFilter}"` : '';
+                                                kwResults = `<em>No views or fields found with type: ${typeName}${filterInfo}</em>`;
+                                            }
                                         } else if (query.startsWith('email:')) {
                                             // Email search using findEmails
                                             const emailQuery = query.substring(6).trim();
