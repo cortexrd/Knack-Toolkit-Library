@@ -717,8 +717,9 @@ function Ktl($, appInfo) {
             //Param is selector string and optionally if we want to put back a hidden element as it was.
             hideSelector: function (sel = '', show = false) {
                 sel && this.waitSelector({ selector: sel })
-                    .then((elements) => {
-                        const target = elements && elements.length ? $(elements[0]) : $(sel);
+                    .then((result) => {
+                        const element = Array.isArray(result) ? result[0] : result;
+                        const target = element ? $(element) : $(sel);
                         if (show)
                             target.removeClass('ktlHidden');
                         else
@@ -757,7 +758,8 @@ function Ktl($, appInfo) {
              * @param {string} [is=''] Legacy pseudo selector or 'none'.
              * @param {number} [outcome=ktl.const.WAIT_SEL_IGNORE] Legacy timeout outcome flag.
              * @param {number} [scanSpd=ktl.const.WAIT_SELECTOR_SCAN_SPD] Legacy poll speed.
-             * @returns {Promise<HTMLElement[]>} Array of elements.
+             * @returns {Promise<HTMLElement[]|HTMLElement|null>} Array of elements when matchMode is 'all' with multiple selectors,
+             * a single element when matchMode is 'any' or only one selector is provided, otherwise null.
              */
             waitSelector: function (selOrOptions = '', timeout = 5000, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
                 const buildOptions = function () {
@@ -999,11 +1001,11 @@ function Ktl($, appInfo) {
                     }
 
                     function evaluateSelectors(selectorSet, ctx, stateFilter, requireVisible, mode) {
-                        const emptyValue = [];
+                        const normalizedMode = mode === 'any' ? 'any' : 'all';
+                        const shouldReturnSingle = normalizedMode === 'any' || selectorSet.length === 1;
+                        const emptyValue = shouldReturnSingle ? null : [];
                         if (!selectorSet.length)
                             return { isMatch: false, elements: emptyValue };
-
-                        const normalizedMode = mode === 'any' ? 'any' : 'all';
 
                         if (normalizedMode === 'any') {
                             for (const selector of selectorSet) {
@@ -1011,7 +1013,7 @@ function Ktl($, appInfo) {
                                 if (result.isMatch) {
                                     return {
                                         isMatch: true,
-                                        elements: result.elements
+                                        elements: result.elements && result.elements.length ? result.elements[0] : null
                                     };
                                 }
                             }
@@ -1031,7 +1033,7 @@ function Ktl($, appInfo) {
 
                         return {
                             isMatch: true,
-                            elements: aggregated
+                            elements: shouldReturnSingle ? (aggregated[0] || null) : aggregated
                         };
                     }
 
@@ -1674,16 +1676,16 @@ function Ktl($, appInfo) {
 
             sortMenu: function () {
                 if (!ktl.core.getCfg().enabled.sortedMenus || ktl.scenes.isiFrameWnd()) return;
-                const core = this;
 
                 if (Knack.isMobile()) {
                     $('.kn-mobile-controls').mousedown(function (e) {
-                        core.waitSelector({ selector: '#kn-mobile-menu.is-visible' })
-                            .then((menuElements) => {
-                                const menuRoot = menuElements && menuElements.length ? $(menuElements[0]) : $('#kn-mobile-menu');
+                        this.waitSelector({ selector: '#kn-mobile-menu.is-visible' })
+                            .then((result) => {
+                                const menuElement = Array.isArray(result) ? result[0] : result;
+                                const menuRoot = menuElement ? $(menuElement) : $('#kn-mobile-menu');
                                 const allMenus = menuRoot.find('.kn-dropdown-menu-list');
                                 for (let i = 0; i < allMenus.length - 1; i++)
-                                    core.sortUList(allMenus[i]);
+                                    this.sortUList(allMenus[i]);
                             })
                             .catch((err) => { console.log('Failed finding menu.', err); });
                     })
@@ -1849,11 +1851,10 @@ function Ktl($, appInfo) {
                     ktl.storage.lsRemoveItem('KIOSK', false, true);
 
                 const headerSelector = '#kn-app-header,.knHeader,.kn-info-bar';
-                this.waitSelector({ selector: headerSelector, timeout: 30000 })
-                    .then((headerElements) => {
-                        const headerTargets = headerElements && headerElements.length ? $(headerElements) : $(headerSelector);
+                ktl.core.waitSelector(headerSelector, 30000)
+                    .then(() => {
                         if (ktl.storage.lsGetItem('KIOSK', false, true) === 'true') {
-                            headerTargets.addClass('ktlDisplayNone');
+                            $(headerSelector).addClass('ktlDisplayNone');
                             $('body').addClass('ktlKioskMode');
 
                             //Add extra space at bottom of screen in kiosk mode, to allow editing
@@ -1865,7 +1866,7 @@ function Ktl($, appInfo) {
                         } else {
                             $('.ktlFormKioskButtons').removeClass('ktlFormKioskButtons');
                             $('.ktlKioskButtons').removeClass('ktlKioskButtons');
-                            headerTargets.removeClass('ktlDisplayNone');
+                            $(headerSelector).removeClass('ktlDisplayNone');
                             $('body').removeClass('ktlKioskMode');
                         }
                     })
@@ -1960,7 +1961,6 @@ function Ktl($, appInfo) {
             //Otherwise, can be a field label/ID and optionally a view title/ID.
             //If optionalViewId parameter is provided, it will be used as the default view if not found explicitly in selector.
             getTextFromSelector: function (selector, optionalViewId) {
-                const core = this;
                 return new Promise(function (resolve, reject) {
                     if (!selector)
                         return reject('getTextFromSelector called with empty parameter');
@@ -2015,9 +2015,9 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    core.waitSelector({ selector: selector, timeout: 10000 })
-                        .then((elements) => {
-                            const resolvedElement = elements && elements.length ? elements[0] : $(selector)[0];
+                    this.waitSelector({ selector: selector, timeout: 10000 })
+                        .then((result) => {
+                            const resolvedElement = Array.isArray(result) ? result[0] : result || $(selector)[0];
                             if (resolvedElement) {
                                 const fieldType = ktl.fields.getFieldType(fieldId);
 
