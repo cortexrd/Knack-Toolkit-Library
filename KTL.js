@@ -769,6 +769,403 @@ function Ktl($, appInfo) {
                 });
             },
 
+
+            /**
+             * Waits for one or more DOM elements to meet specific conditions.
+             * @param {string|string[]} selectors
+             *        A CSS selector or array of selectors to wait for.
+             *        - string → waits for a single selector
+             *        - string[] → supports `mode: 'all'` or `mode: 'race'`
+             * @param {Object} [options]
+             * @param {'single'|'all'|'race'} [options.mode]
+             *        Matching mode:
+             *        - 'single' (default for single selector): first match of the selector
+             *        - 'all': all matches across selectors
+             *        - 'race' (default for selector array): first selector that matches
+             * @param {number} [options.timeout=8000]
+             *        Maximum time to wait in milliseconds. Set to 0 to disable timeout.
+             * @param {number} [options.interval=60]
+             *        Polling interval in milliseconds (MutationObserver is still primary).
+             *        Minimum value is 16ms.
+             * @param {Element|DocumentFragment|string} [options.root=document]
+             *        Root element or selector used to scope queries.
+             * @param {'none'|'visible'|'hidden'|'disabled'|'enabled'|'checked'|'focus'} [options.is='none']
+             *        Optional pseudo-state condition the element must satisfy.
+             * @param {string|RegExp|function(string,Element):boolean} [options.text]
+             *        Text-content condition. If a function is provided it receives
+             *        (textContent, element).
+             * @param {Object<string,(string|number|boolean|null|RegExp)>} [options.attrs]
+             *        Attribute conditions keyed by attribute name.
+             *        - true  → attribute must exist
+             *        - null  → attribute must not exist
+             *        - RegExp → tested against attribute value
+             * @param {function(Element):boolean} [options.condition]
+             *        Custom predicate invoked with the element.
+             *        Errors are swallowed and treated as a non-match.
+             * @param {AbortSignal} [options.signal]
+             *        Optional AbortSignal to cancel the wait manually.
+             * @param {boolean} [options.abortOnSceneChange=true]
+             *        When true (default), the wait is automatically aborted when
+             *        `knack-scene-render` fires.
+             * @returns {Promise<WaitElementResult>}
+             *          Resolves when a match is found.
+             * @throws {TypeError}
+             *         If options are invalid.
+             */
+            waitElement: function(selectors, options = {}) {
+                let knackSceneController;
+                let knackSceneHooked = false;
+
+                const startTime = performance.now();
+                const opts = normaliseOptions(selectors, options);
+
+                const elapsedMs = () => Math.trunc(performance.now() - startTime);
+                // Scene abort is default
+                const sceneSignal = opts.abortOnSceneChange ? getKnackSceneSignal() : null;
+                const combinedSignal = combineSignals([sceneSignal, opts.signal]);
+
+                return new Promise((resolve, reject) => {
+                    let observer;
+                    let pollTimer;
+                    let timeoutTimer;
+                    let settled = false;
+
+                    const cleanup = () => {
+                        observer?.disconnect();
+                        observer = null;
+
+                        clearInterval(pollTimer);
+                        pollTimer = null;
+
+                        clearTimeout(timeoutTimer);
+                        timeoutTimer = null;
+
+                        combinedSignal?.removeEventListener('abort', onAbort);
+                    };
+
+                    const resolveResult = (elements, meta = {}) => {
+                        if (settled) return;
+                        settled = true;
+                        cleanup();
+
+                        resolve({
+                            elements,
+                            first: elements[0] || null,
+                            selector: meta.selector ?? null,
+                            index: meta.index ?? null,
+                            mode: opts.mode,
+                            elapsed: elapsedMs()
+                        });
+                    };
+
+                    const rejectTimeout = () => {
+                        if (settled) return;
+                        settled = true;
+                        cleanup();
+
+                        const err = new Error(
+                            `waitElement timed out after ${elapsedMs()}ms (mode="${opts.mode}")`
+                        );
+                        err.code = 'WAIT_TIMEOUT';
+                        err.elapsed = elapsedMs();
+                        err.selectors = opts.selectors.slice();
+                        err.mode = opts.mode;
+
+                        reject(err);
+                    };
+
+                    const rejectAbort = (code = 'WAIT_ABORTED', message = 'The operation was aborted.') => {
+                        if (settled) return;
+                        settled = true;
+                        cleanup();
+
+                        let err;
+                        try {
+                            err = new DOMException(message, 'AbortError');
+                        } catch {
+                            err = new Error(message);
+                            err.name = 'AbortError';
+                        }
+
+                        err.code = code;
+                        err.elapsed = elapsedMs();
+                        err.selectors = opts.selectors.slice();
+                        err.mode = opts.mode;
+
+                        reject(err);
+                    };
+
+                    const onAbort = () => {
+                        const sceneAborted = !!sceneSignal?.aborted;
+                        rejectAbort(
+                            sceneAborted ? 'WAIT_SCENE_CHANGED' : 'WAIT_ABORTED',
+                            sceneAborted ? 'Scene changed while waiting.' : 'The operation was aborted.'
+                        );
+                    };
+
+                    const tick = () => {
+                        if (combinedSignal?.aborted) {
+                            onAbort();
+                            return;
+                        }
+
+                        try {
+                            const match = findMatches(opts.root, opts);
+                            if (match) {
+                                resolveResult(match.elements, match.meta);
+                            }
+                        } catch (e) {
+                            if (settled) return;
+                            settled = true;
+                            cleanup();
+                            reject(e instanceof Error ? e : new Error(String(e)));
+                        }
+                    };
+
+                    if (combinedSignal) {
+                        if (combinedSignal.aborted) {
+                            onAbort();
+                            return;
+                        }
+                        combinedSignal.addEventListener('abort', onAbort, { once: true });
+                    }
+
+                    observer = new MutationObserver(tick);
+
+                    const observeTarget = opts.root === document
+                        ? document.documentElement
+                        : opts.root;
+
+                    if (observeTarget && observeTarget.nodeType) {
+                        try {
+                            observer.observe(observeTarget, {
+                                childList: true,
+                                subtree: true,
+                                attributes: true,
+                                characterData: !!opts.text
+                            });
+                        } catch {
+                            // polling fallback still works
+                        }
+                    }
+
+                    pollTimer = setInterval(tick, opts.interval);
+
+                    if (opts.timeout > 0) {
+                        timeoutTimer = setTimeout(rejectTimeout, opts.timeout);
+                    }
+
+                    tick();
+                });
+
+                /* -------------------- Knack scene abort (shared) -------------------- */
+
+                function getKnackSceneSignal() {
+                    if (!knackSceneController) {
+                        knackSceneController = new AbortController();
+                    }
+
+                    if (!knackSceneHooked) {
+                        hookKnackSceneRenderOnce();
+                        knackSceneHooked = true;
+                    }
+
+                    return knackSceneController.signal;
+                }
+
+                function hookKnackSceneRenderOnce() {
+                    const refreshSceneController = () => {
+                        try {
+                            knackSceneController?.abort();
+                        } catch {}
+                        knackSceneController = new AbortController();
+                    };
+
+                    if (window.jQuery && typeof window.jQuery === 'function') {
+                        window.jQuery(document).on('knack-scene-render', refreshSceneController);
+                        return;
+                    }
+
+                    document.addEventListener('knack-scene-render', refreshSceneController);
+                }
+
+                function combineSignals(signals) {
+                    const active = (signals || []).filter(Boolean);
+                    if (!active.length) return null;
+
+                    for (const sig of active) {
+                        if (sig.aborted) {
+                            const controller = new AbortController();
+                            controller.abort();
+                            return controller.signal;
+                        }
+                    }
+
+                    if (active.length === 1) return active[0];
+
+                    const controller = new AbortController();
+                    const onAbort = () => controller.abort();
+                    active.forEach((sig) => sig.addEventListener('abort', onAbort, { once: true }));
+                    return controller.signal;
+                }
+
+                /* -------------------- Internals -------------------- */
+
+                function normaliseOptions(selectors, options) {
+                    const list = Array.isArray(selectors) ? selectors : [selectors];
+                    const cleaned = list.filter((s) => typeof s === 'string' && s.trim());
+
+                    if (!cleaned.length) {
+                        throw new TypeError('waitElement: selectors must be a non-empty string or array');
+                    }
+
+                    const mode = (options.mode || (Array.isArray(selectors) ? 'race' : 'single')).toLowerCase();
+                    if (!['single', 'all', 'race'].includes(mode)) {
+                        throw new TypeError(`waitElement: invalid mode "${mode}"`);
+                    }
+
+                    const timeout = options.timeout ?? 8000;
+                    if (!Number.isFinite(timeout) || timeout < 0) {
+                        throw new TypeError('waitElement: timeout must be a finite number >= 0');
+                    }
+
+                    const interval = options.interval ?? 60;
+                    if (!Number.isFinite(interval) || interval < 16) {
+                        throw new TypeError('waitElement: interval must be a finite number >= 16 (ms)');
+                    }
+
+                    const signal = options.signal;
+                    if (signal != null && typeof signal !== 'object') {
+                        throw new TypeError('waitElement: signal must be an AbortSignal or undefined');
+                    }
+
+                    const abortOnSceneChange = options.abortOnSceneChange !== false;
+
+                    return {
+                        selectors: cleaned,
+                        mode,
+                        timeout,
+                        interval,
+                        root: resolveRoot(options.root),
+                        is: (options.is ?? 'none').toLowerCase(),
+                        text: options.text,
+                        attrs: options.attrs,
+                        condition: options.condition,
+                        signal,
+                        abortOnSceneChange
+                    };
+                }
+
+                function resolveRoot(root) {
+                    if (!root) return document;
+                    if (root === document || root instanceof Element || root instanceof DocumentFragment) return root;
+
+                    if (typeof root === 'string') {
+                        const el = document.querySelector(root);
+                        if (!el) throw new Error(`waitElement: root not found "${root}"`);
+                        return el;
+                    }
+
+                    throw new TypeError('waitElement: root must be a selector string, an Element, or undefined');
+                }
+
+                function findMatches(root, opts) {
+                    if (opts.mode === 'single') {
+                        const sel = opts.selectors[0];
+                        const el = findFirst(root, sel, opts);
+                        if (el) return { elements: [el], meta: { selector: sel, index: 0 } };
+                        return null;
+                    }
+
+                    if (opts.mode === 'all') {
+                        const all = [];
+                        for (const sel of opts.selectors) {
+                            root.querySelectorAll(sel).forEach((el) => {
+                                if (el instanceof Element && passes(el, opts)) all.push(el);
+                            });
+                        }
+                        return all.length ? { elements: all, meta: {} } : null;
+                    }
+
+                    for (let i = 0; i < opts.selectors.length; i++) {
+                        const sel = opts.selectors[i];
+                        const el = findFirst(root, sel, opts);
+                        if (el) return { elements: [el], meta: { selector: sel, index: i } };
+                    }
+
+                    return null;
+                }
+
+                function findFirst(root, selector, opts) {
+                    const nodes = root.querySelectorAll(selector);
+                    for (const el of nodes) {
+                        if (el instanceof Element && passes(el, opts)) return el;
+                    }
+                    return null;
+                }
+
+                function passes(el, opts) {
+                    if (opts.is !== 'none' && !passesPseudo(el, opts.is)) return false;
+                    if (opts.attrs && !matchAttrs(el, opts.attrs)) return false;
+                    if (opts.text != null && !matchText(el, opts.text)) return false;
+                    if (typeof opts.condition === 'function' && !safeCall(opts.condition, el)) return false;
+                    return true;
+                }
+
+                function passesPseudo(el, state) {
+                    switch (state) {
+                        case 'visible':
+                            return isVisible(el);
+                        case 'hidden':
+                            return !isVisible(el);
+                        case 'disabled':
+                            return 'disabled' in el ? !!el.disabled : el.getAttribute('aria-disabled') === 'true';
+                        case 'enabled':
+                            return 'disabled' in el ? !el.disabled : el.getAttribute('aria-disabled') !== 'true';
+                        case 'checked':
+                            return 'checked' in el ? !!el.checked : el.getAttribute('aria-checked') === 'true';
+                        case 'focus':
+                            return document.activeElement === el;
+                        default:
+                            return true;
+                    }
+                }
+
+                function isVisible(el) {
+                    if (!el.isConnected) return false;
+                    const style = window.getComputedStyle(el);
+                    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+                    const rects = el.getClientRects();
+                    return !!(rects && rects.length);
+                }
+
+                function matchAttrs(el, attrs) {
+                    return Object.entries(attrs).every(([key, expected]) => {
+                        const actual = el.getAttribute(key);
+                        if (expected === true) return actual !== null;
+                        if (expected === null) return actual === null;
+                        if (expected instanceof RegExp) return typeof actual === 'string' && expected.test(actual);
+                        return String(actual) === String(expected);
+                    });
+                }
+
+                function matchText(el, rule) {
+                    const text = (el.textContent || '').trim();
+                    if (typeof rule === 'string') return text.includes(rule);
+                    if (rule instanceof RegExp) return rule.test(text);
+                    if (typeof rule === 'function') return safeCall(rule, text, el);
+                    throw new TypeError('waitElement: text must be a string, RegExp, function, or undefined');
+                }
+
+                function safeCall(fn, ...args) {
+                    try {
+                        return !!fn(...args);
+                    } catch {
+                        return false;
+                    }
+                }
+            },
+
             waitAndReload: function (delay = 5000) {
                 setTimeout(function () {
                     location.reload(true);
@@ -19647,28 +20044,27 @@ function Ktl($, appInfo) {
                 setButtonLoadingState(true);
 
                 Promise.all([
-                    ktl.core.waitSelector(`#${viewId} .kn-records-nav`, 10000),
-                    ktl.core.waitSelector(`#${viewId} table th`, 10000)
-                ])
-                    .then(() => {
-                        if (!chooseGridColumnsInitState[viewId] || chooseGridColumnsInitState[viewId].token !== token) return;
+                    ktl.core.waitElement(`#${viewId} .kn-records-nav`, { timeout: 10000 }),
+                    ktl.core.waitElement(`#${viewId} table th`, { timeout: 10000 })
+                ]).then(() => {
+                    if (!chooseGridColumnsInitState[viewId] || chooseGridColumnsInitState[viewId].token !== token) return;
 
-                        ensureDialogStyles();
-                        loadSavedColumns();
-                        savedColumnsLoaded = true;
-                        createButton();
+                    ensureDialogStyles();
+                    loadSavedColumns();
+                    savedColumnsLoaded = true;
+                    createButton();
 
-                        setButtonLoadingState(false);
-                        updateButtonHiddenState();
-                    })
-                    .catch((error) => {
-                        ktl.log.clog('purple', `Choose columns init failed for ${viewId}:`, error);
-                    })
-                    .finally(() => {
-                        if (chooseGridColumnsInitState[viewId] && chooseGridColumnsInitState[viewId].token === token) {
-                            chooseGridColumnsInitState[viewId].inFlight = false;
-                        }
-                    });
+                    setButtonLoadingState(false);
+                    updateButtonHiddenState();
+                })
+                .catch((error) => {
+                    ktl.log.clog('purple', `Choose columns init failed for ${viewId}:`, error);
+                })
+                .finally(() => {
+                    if (chooseGridColumnsInitState[viewId] && chooseGridColumnsInitState[viewId].token === token) {
+                        chooseGridColumnsInitState[viewId].inFlight = false;
+                    }
+                });
 
                 if (!chooseGridColumnsGlobalListenerAdded) {
                     chooseGridColumnsGlobalClickHandler = function (event) {
@@ -20115,7 +20511,9 @@ function Ktl($, appInfo) {
 
             stickTableHeader: function (viewSelector, viewHeight) {
                 if (!Knack.app.attributes.design.regions.header.isLegacy)
-                    $('.knHeader__menu-dropdown-list').css('z-index', '5');
+                    document.querySelectorAll('.knHeader__menu-dropdown-list').forEach((el) => {
+                        el.style.zIndex = '5';
+                    });
 
                 if (!viewSelector) return;
 
@@ -20189,27 +20587,32 @@ function Ktl($, appInfo) {
                 }
 
                 // Compute grouping offsets when header row is present
-                ktl.core.waitSelector(`#${viewSelector} thead tr`).then(() => {
-                    const $theadTr = $(`#${viewSelector} thead tr`);
-                    const headerHeight = $theadTr.outerHeight() || 0;
+                ktl.core.waitElement(`#${viewSelector} thead tr`).then(({ first }) => {
+                    const headerHeight = first?.getBoundingClientRect()?.height ?? 0;
                     let stickyTopOffset = headerHeight - 1;
 
+                    const groupRows = document.querySelectorAll(
+                        `#${viewSelector} tbody tr[class*='kn-group-level-']`
+                    );
+
                     const groupSet = new Set();
-                    $(`#${viewSelector} tbody tr[class*='kn-group-level-']`).each(function () {
-                        const m = this.className.match(/kn-group-level-\d+/);
-                        if (m) groupSet.add(m[0]);
-                    });
+                    for (const row of groupRows) {
+                        const match = row.className.match(/kn-group-level-\d+/);
+                        if (match) groupSet.add(match[0]);
+                    }
 
-                    const groups = Array.from(groupSet).map(name => ({ name, index: parseInt(name.split('-')[3], 10) }));
-                    groups.sort((a, b) => a.index - b.index);
+                    const groups = Array.from(groupSet)
+                        .map((name) => ({ name, index: Number.parseInt(name.split('-')[3], 10) }))
+                        .sort((a, b) => a.index - b.index);
 
-                    groups.forEach(g => {
-                        const outerHeight = $(`.${g.name}`).outerHeight() || 0;
-                        const topVal = stickyTopOffset - g.index;
-                        cssText += `#${viewSelector} tbody tr.${g.name} { position: sticky; top: ${topVal}px; z-index: 4; color: black; }\n`;
-                        cssText += `#${viewSelector} tbody tr.${g.name} td { background-color: #c7c7c7; }\n`;
+                    for (const group of groups) {
+                        const groupRow = document.querySelector(`.${group.name}`);
+                        const outerHeight = groupRow?.getBoundingClientRect()?.height ?? 0;
+                        const topVal = stickyTopOffset - group.index;
+                        cssText += `#${viewSelector} tbody tr.${group.name} { position: sticky; top: ${topVal}px; z-index: 4; color: black; }\n`;
+                        cssText += `#${viewSelector} tbody tr.${group.name} td { background-color: #c7c7c7; }\n`;
                         stickyTopOffset += outerHeight;
-                    });
+                    }
 
                     upsertStyle(cssText);
                 }).catch(() => {
