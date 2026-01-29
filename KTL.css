@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.11.1*/
+/* KTL CSS version: 0.12.0*/
 
 /************ KTL Spacing Constants **************/
 :root {
@@ -651,19 +651,19 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	}
 
 #debugWnd::-webkit-scrollbar-thumb {
-	background-color: rgba(0, 0, 0, .28);
-	border: 2px solid #ffffff;
+	background-color: var(--ktlTheme_scrollbarThumb, rgba(0, 0, 0, .28));
+	border: 2px solid var(--ktlTheme_scrollbarTrack, #ffffff);
 }
 
 #debugWnd::-webkit-scrollbar-track {
-	background-color: #ffffff;
+	background-color: var(--ktlTheme_scrollbarTrack, #ffffff);
 }
 
 /* Dev Options popup */
 .devBtnsDiv {
 	position: fixed;
-	background-color: #ffffff;
-	border: dimgrey;
+	background-color: var(--ktlTheme_pageBg, #ffffff);
+	border-color: var(--ktlTheme_tableGridColor, dimgrey);
 	border-width: 3px;
 	border-style: solid;
 	display: inline-grid;
@@ -678,6 +678,9 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	height: 30px;
 	margin-bottom: 5px;
 	align-items: center !important;
+	background-color: var(--ktlTheme_menuButtonBg, #4a5568);
+	color: var(--ktlTheme_menuButtonText, #fff);
+	border-color: var(--ktlTheme_menuButtonBorder, #4a5568);
 }
 
 .devBtnWithHelp {
@@ -715,7 +718,8 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	font-weight: 500;
 	line-height: 35px;
 	width: 100%;
-	color: black;
+	color: var(--ktlTheme_menuButtonText, white);
+	background-color: var(--ktlTheme_tableHeaderBg, dimgrey);
 	margin-bottom: 10px;
 	display: flex;
 	justify-content: space-between;
@@ -724,6 +728,18 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	box-sizing: border-box;
 	cursor: grab;
 	user-select: none;
+	transition: opacity 0.15s;
+}
+
+/* Dim non-focused dev tool window headers */
+.devBtnsDiv:not(.ktlDevToolFocused) .ktlDevToolsHeader,
+.devBtnsDiv:not(.ktlDevToolFocused) .ktlThemeEditorHeader {
+	opacity: 0.5;
+}
+
+.devBtnsDiv.ktlDevToolFocused .ktlDevToolsHeader,
+.devBtnsDiv.ktlDevToolFocused .ktlThemeEditorHeader {
+	opacity: 1;
 }
 
 .ktlDevToolsHeaderTitle {
@@ -736,7 +752,7 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	height: 24px;
 	border: none;
 	background: transparent;
-	color: #666;
+	color: var(--ktlTheme_menuButtonText, #666);
 	font-size: 18px;
 	font-weight: bold;
 	cursor: pointer;
@@ -757,12 +773,17 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	z-index: 20;
 	min-width: 300px;
 	position: fixed;
+	background-color: var(--ktlTheme_pageBg, #ffffff);
+	border-color: var(--ktlTheme_tableGridColor, dimgrey);
 }
 
 .ktlDevToolsSearchInput {
 	width: 80%;
 	height: 26px;
 	margin-top: 5px;
+	background-color: var(--ktlTheme_inputFieldBg, #ffffff);
+	color: var(--ktlTheme_inputFieldText, #333);
+	border: 1px solid var(--ktlTheme_tableGridColor, #ccc);
 }
 
 .ktlConsoleDiv {
@@ -770,13 +791,99 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	font-family: monospace;
 	font-weight: bold;
 	font-size: 12px;
-	background-color: #dee1e1;
+	background-color: var(--ktlTheme_tableCellBg, #dee1e1);
+	color: var(--ktlTheme_tableCellText, #333);
 	white-space: pre;
 	border-width: 3px;
 	border-style: solid;
+	border-color: var(--ktlTheme_tableGridColor, dimgrey);
 	padding: 10px;
 	resize: both;
 	box-sizing: border-box;
+}
+
+.ktlConsoleDiv::-webkit-scrollbar {
+	-webkit-appearance: none;
+	width: 14px;
+	height: 14px;
+}
+
+.ktlConsoleDiv::-webkit-scrollbar-thumb {
+	background-color: var(--ktlTheme_scrollbarThumb, rgba(0, 0, 0, .28));
+	border: 2px solid var(--ktlTheme_scrollbarTrack, #ffffff);
+	border-radius: 7px;
+}
+
+.ktlConsoleDiv::-webkit-scrollbar-track {
+	background-color: var(--ktlTheme_scrollbarTrack, #ffffff);
+}
+
+/* Hotkey Settings Popup */
+.ktlHotkeySettingsDiv {
+	z-index: 25;
+	min-width: 420px;
+	max-width: 550px;
+	position: fixed;
+	background-color: var(--ktlTheme_pageBg, #ffffff);
+	color: var(--ktlTheme_tableCellText, #333);
+}
+
+.ktlHotkeyGrid {
+	display: grid;
+	grid-template-columns: 1fr 120px;
+	gap: 8px 12px;
+	padding: 10px;
+	align-items: center;
+}
+
+.ktlHotkeyGridHeader {
+	font-weight: bold;
+	font-size: 12px;
+	color: var(--ktlTheme_headersAndLabelsText, #666);
+	padding-bottom: 5px;
+	border-bottom: 1px solid var(--ktlTheme_tableGridColor, #ccc);
+}
+
+.ktlHotkeyFeatureName {
+	font-size: 14px;
+	color: var(--ktlTheme_tableCellText, #333);
+}
+
+.ktlHotkeyCapture {
+	padding: 6px 10px;
+	border: 2px solid var(--ktlTheme_tableGridColor, #ccc);
+	border-radius: 4px;
+	text-align: center;
+	cursor: pointer;
+	font-weight: bold;
+	font-size: 12px;
+	min-width: 100px;
+	background: var(--ktlTheme_menuButtonBg, #4a5568);
+	color: var(--ktlTheme_menuButtonText, #fff);
+}
+
+.ktlHotkeyCapture:focus {
+	border-color: var(--ktlTheme_pageButtonBg, #4a90d9);
+	outline: none;
+}
+
+.ktlHotkeyCapture.capturing {
+	border-color: #e74c3c;
+	background: var(--ktlTheme_tableStripedBg, #fff3f3);
+	color: var(--ktlTheme_tableCellText, #333);
+}
+
+.ktlHotkeyCapture.invalid {
+	border-color: #e74c3c;
+}
+
+.ktlHotkeyButtonBar {
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+	padding: 10px;
+	border-top: 1px solid var(--ktlTheme_tableGridColor, #ccc);
+	margin-top: 10px;
 }
 
 
@@ -1054,16 +1161,35 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 ul.ui-autocomplete {
 	border-radius: 0 0 4px 4px;
 	background-clip: padding-box;
-	border: 1px solid #dbdbdb;
-	border-top: 0;
-	background: white;
+	border: 1px solid var(--ktlTheme_tableGridColor, #dbdbdb) !important;
+	border-top: 0 !important;
+	background-color: var(--ktlTheme_tableCellBg, white) !important;
 	margin-top: -8px;
 	list-style: none;
 }
 
 .ui-autocomplete .ui-menu-item {
-	color: #1a1a1a;
+	color: var(--ktlTheme_tableCellText, #1a1a1a) !important;
+	background-color: var(--ktlTheme_tableCellBg, white) !important;
 	position: relative;
+}
+
+.ui-autocomplete .ui-menu-item a,
+.ui-autocomplete.ui-widget-content a {
+	color: var(--ktlTheme_tableCellText, #1a1a1a) !important;
+}
+
+.ui-autocomplete .ui-menu-item .ui-menu-item-wrapper {
+	color: inherit !important;
+	background-color: transparent !important;
+}
+
+.ui-autocomplete .ui-menu-item.ui-state-active,
+.ui-autocomplete .ui-menu-item.ui-state-focus,
+.ui-autocomplete .ui-menu-item .ui-state-active,
+.ui-autocomplete .ui-menu-item .ui-state-focus {
+	background-color: var(--ktlTheme_tableHeaderBg, #f0f0f0) !important;
+	color: var(--ktlTheme_tableCellText, #1a1a1a) !important;
 }
 
 	.ui-autocomplete .ui-menu-item i {
@@ -1081,11 +1207,13 @@ ul.ui-autocomplete {
 			content: "\F00D";
 			top: 3px;
 			right: 13px;
-			color: #c1bdbd;
+			color: var(--ktlTheme_tableCellText, #c1bdbd);
+			opacity: 0.5;
 		}
 
 		.ui-autocomplete .ui-menu-item i:hover:after {
-			color: #1a1a1a;
+			color: var(--ktlTheme_tableCellText, #1a1a1a);
+			opacity: 1;
 		}
 
 /**** Theme Editor ****/
@@ -1131,6 +1259,7 @@ ul.ui-autocomplete {
 	align-items: center;
 	padding: 0 10px;
 	box-sizing: border-box;
+	transition: opacity 0.15s;
 }
 
 .ktlThemeEditorClose {
@@ -1147,6 +1276,21 @@ ul.ui-autocomplete {
 	padding: 15px;
 	overflow-y: auto;
 	max-height: 70vh;
+}
+
+.ktlThemeEditorContent::-webkit-scrollbar {
+	-webkit-appearance: none;
+	width: 12px;
+}
+
+.ktlThemeEditorContent::-webkit-scrollbar-thumb {
+	background-color: var(--ktlTheme_scrollbarThumb, rgba(0, 0, 0, .28));
+	border: 2px solid var(--ktlTheme_scrollbarTrack, #ffffff);
+	border-radius: 6px;
+}
+
+.ktlThemeEditorContent::-webkit-scrollbar-track {
+	background-color: var(--ktlTheme_scrollbarTrack, #ffffff);
 }
 
 .ktlThemeEditorSection {

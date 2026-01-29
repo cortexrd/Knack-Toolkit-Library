@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.39.1';
+    const KTL_VERSION = '0.40.0';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3453,6 +3453,374 @@ function Ktl($, appInfo) {
                 } catch (e) {
                     return '#000000';
                 }
+            },
+
+            //====================================================
+            // Centralized Hotkey Management
+            //====================================================
+            getDefaultHotkeySettings: function () {
+                return {
+                    version: 1,
+                    hotkeys: {
+                        themeEditor: { ctrl: false, alt: true, shift: false, key: 'T', priority: false, enabled: true },
+                        devTools: { ctrl: false, alt: true, shift: false, key: 'X', priority: false, enabled: true },
+                        searchTool: { ctrl: false, alt: true, shift: false, key: 'S', priority: false, enabled: true },
+                        modeSwitcher: { ctrl: false, alt: true, shift: false, key: 'M', priority: false, enabled: true },
+                        hotkeySettings: { ctrl: false, alt: true, shift: false, key: 'K', priority: false, enabled: true },
+                        devPopup: { ctrl: true, alt: false, shift: true, key: null, priority: false, enabled: true }
+                    }
+                };
+            },
+
+            getHotkeySettings: function () {
+                const STORAGE_KEY = 'ktlHotkeySettings';
+                try {
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (parsed && parsed.hotkeys) {
+                            const defaults = ktl.core.getDefaultHotkeySettings();
+                            for (const featureId in defaults.hotkeys) {
+                                if (!parsed.hotkeys[featureId]) {
+                                    parsed.hotkeys[featureId] = defaults.hotkeys[featureId];
+                                }
+                            }
+                            return parsed;
+                        }
+                    }
+                } catch (e) { }
+                return ktl.core.getDefaultHotkeySettings();
+            },
+
+            saveHotkeySettings: function (settings) {
+                const STORAGE_KEY = 'ktlHotkeySettings';
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+                    return true;
+                } catch (e) {
+                    console.error('Failed to save hotkey settings:', e);
+                    return false;
+                }
+            },
+
+            isValidHotkey: function (hk) {
+                if (!hk) return false;
+                const modifierCount = (hk.ctrl ? 1 : 0) + (hk.alt ? 1 : 0) + (hk.shift ? 1 : 0);
+                if (!hk.key) {
+                    return modifierCount >= 2;
+                }
+                const key = hk.key.toUpperCase();
+                const isFunctionKey = /^F([1-9]|1[0-2])$/.test(key);
+                const hasModifier = modifierCount > 0;
+                const reservedAlone = ['ESCAPE', 'TAB', 'ENTER', 'CONTROL', 'ALT', 'SHIFT', 'META'].includes(key);
+                if (reservedAlone && !hasModifier) return false;
+                return isFunctionKey || hasModifier;
+            },
+
+            formatHotkey: function (hk) {
+                if (!hk) return 'None';
+                const parts = [];
+                if (hk.ctrl) parts.push('Ctrl');
+                if (hk.alt) parts.push('Alt');
+                if (hk.shift) parts.push('Shift');
+                if (hk.key) parts.push(hk.key.toUpperCase());
+                return parts.length > 0 ? parts.join('+') : 'None';
+            },
+
+            hotkeyEquals: function (hk1, hk2) {
+                if (!hk1 || !hk2) return false;
+                const key1 = hk1.key ? hk1.key.toUpperCase() : null;
+                const key2 = hk2.key ? hk2.key.toUpperCase() : null;
+                return hk1.ctrl === hk2.ctrl &&
+                    hk1.alt === hk2.alt &&
+                    hk1.shift === hk2.shift &&
+                    key1 === key2;
+            },
+
+            checkHotkeyConflict: function (featureId, hotkey) {
+                const settings = ktl.core.getHotkeySettings();
+                for (const id in settings.hotkeys) {
+                    if (id !== featureId && settings.hotkeys[id].enabled && ktl.core.hotkeyEquals(settings.hotkeys[id], hotkey)) {
+                        return id;
+                    }
+                }
+                return null;
+            },
+
+            migrateHotkeySettings: function () {
+                const STORAGE_KEY = 'ktlHotkeySettings';
+                const LEGACY_KEY = 'ktlThemeEditorHotkey';
+
+                if (localStorage.getItem(STORAGE_KEY)) return;
+
+                const legacyHotkey = localStorage.getItem(LEGACY_KEY);
+                if (legacyHotkey) {
+                    try {
+                        const parsed = JSON.parse(legacyHotkey);
+                        const defaultSettings = ktl.core.getDefaultHotkeySettings();
+                        defaultSettings.hotkeys.themeEditor = {
+                            ...parsed,
+                            priority: false,
+                            enabled: true
+                        };
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultSettings));
+                        localStorage.removeItem(LEGACY_KEY);
+                        console.log('KTL: Migrated Theme Editor hotkey to centralized settings');
+                    } catch (e) { }
+                }
+            },
+
+            showHotkeySettings: function () {
+                const existingPopup = document.getElementById('ktlHotkeySettingsDiv');
+                if (existingPopup) {
+                    existingPopup.style.display = 'block';
+                    ktl.core.bringDevToolToFront(existingPopup);
+                    return;
+                }
+
+                const featureNames = {
+                    themeEditor: 'Theme Editor',
+                    devTools: 'KTL Developer Tools',
+                    searchTool: 'KTL Search Tool',
+                    modeSwitcher: 'KTL Code Switcher',
+                    hotkeySettings: 'Hotkey Settings',
+                    devPopup: 'Dev Info Popup'
+                };
+
+                const sysColors = ktl.systemColors.getSysColors();
+                let settings = ktl.core.getHotkeySettings();
+
+                const popup = document.createElement('div');
+                popup.id = 'ktlHotkeySettingsDiv';
+                popup.classList.add('devBtnsDiv', 'ktlHotkeySettingsDiv');
+
+                const header = document.createElement('div');
+                header.id = 'ktlHotkeySettingsDivheader';
+                header.style.backgroundColor = sysColors.paleLowSatClr;
+                header.classList.add('ktlDevToolsHeader');
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'ktlDevToolsHeaderTitle';
+                titleSpan.innerText = ':: KTL Hotkey Settings ::';
+                header.appendChild(titleSpan);
+
+                const closeBtn = ktl.core.createDevToolCloseBtn(popup, () => {
+                    popup.style.display = 'none';
+                });
+                header.appendChild(closeBtn);
+                popup.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'ktlHotkeyGrid';
+
+                const headerFeature = document.createElement('div');
+                headerFeature.className = 'ktlHotkeyGridHeader';
+                headerFeature.textContent = 'Feature';
+                grid.appendChild(headerFeature);
+
+                const headerHotkey = document.createElement('div');
+                headerHotkey.className = 'ktlHotkeyGridHeader';
+                headerHotkey.textContent = 'Hotkey';
+                grid.appendChild(headerHotkey);
+
+                for (const featureId in featureNames) {
+                    const nameCell = document.createElement('div');
+                    nameCell.className = 'ktlHotkeyFeatureName';
+                    nameCell.textContent = featureNames[featureId];
+                    grid.appendChild(nameCell);
+
+                    const hotkeyCell = document.createElement('div');
+                    hotkeyCell.className = 'ktlHotkeyCapture';
+                    hotkeyCell.tabIndex = 0;
+                    hotkeyCell.dataset.featureId = featureId;
+
+                    const hk = settings.hotkeys[featureId];
+                    const isHotkeySet = hk && hk.enabled && (hk.key || (hk.ctrl || hk.alt || hk.shift));
+                    hotkeyCell.textContent = isHotkeySet ? ktl.core.formatHotkey(hk) : 'None';
+
+                    let capturing = false;
+                    let capturedKey = null;
+                    let pendingModifiers = null;
+
+                    function getHotkeyDisplayText(hk) {
+                        const isSet = hk && hk.enabled && (hk.key || (hk.ctrl || hk.alt || hk.shift));
+                        return isSet ? ktl.core.formatHotkey(hk) : 'None';
+                    }
+
+                    function saveHotkey(capturedKey) {
+                        const conflict = ktl.core.checkHotkeyConflict(featureId, capturedKey);
+                        if (conflict) {
+                            ktl.core.selectOption(
+                                `This hotkey is already assigned to "${featureNames[conflict]}".\nReplace it?`,
+                                'Yes,No'
+                            ).then(result => {
+                                if (result === 0) {
+                                    settings.hotkeys[conflict] = { ...settings.hotkeys[conflict], key: null, ctrl: false, alt: false, shift: false, enabled: false };
+                                    const conflictCell = grid.querySelector(`[data-feature-id="${conflict}"]`);
+                                    if (conflictCell) conflictCell.textContent = 'None';
+
+                                    settings.hotkeys[featureId] = { ...capturedKey, priority: settings.hotkeys[featureId]?.priority || false, enabled: true };
+                                    ktl.core.saveHotkeySettings(settings);
+                                    hotkeyCell.textContent = ktl.core.formatHotkey(capturedKey);
+                                } else {
+                                    hotkeyCell.textContent = getHotkeyDisplayText(settings.hotkeys[featureId]);
+                                }
+                                capturing = false;
+                                pendingModifiers = null;
+                                hotkeyCell.classList.remove('capturing');
+                            });
+                            return;
+                        }
+
+                        settings.hotkeys[featureId] = { ...capturedKey, priority: settings.hotkeys[featureId]?.priority || false, enabled: true };
+                        ktl.core.saveHotkeySettings(settings);
+                        capturing = false;
+                        pendingModifiers = null;
+                        hotkeyCell.classList.remove('capturing');
+                        hotkeyCell.textContent = ktl.core.formatHotkey(capturedKey);
+                    }
+
+                    hotkeyCell.addEventListener('click', function () {
+                        if (!capturing) {
+                            capturing = true;
+                            capturedKey = null;
+                            pendingModifiers = null;
+                            hotkeyCell.classList.add('capturing');
+                            hotkeyCell.textContent = 'Press keys...';
+                            hotkeyCell.focus();
+                        }
+                    });
+
+                    hotkeyCell.addEventListener('keydown', function (e) {
+                        if (!capturing) return;
+
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const key = e.key;
+
+                        if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) {
+                            pendingModifiers = {
+                                ctrl: e.ctrlKey || key === 'Control',
+                                alt: e.altKey || key === 'Alt',
+                                shift: e.shiftKey || key === 'Shift',
+                                key: null
+                            };
+                            const modifierCount = (pendingModifiers.ctrl ? 1 : 0) + (pendingModifiers.alt ? 1 : 0) + (pendingModifiers.shift ? 1 : 0);
+                            if (modifierCount >= 2) {
+                                hotkeyCell.textContent = ktl.core.formatHotkey(pendingModifiers) + ' (release to set)';
+                            } else {
+                                hotkeyCell.textContent = ktl.core.formatHotkey(pendingModifiers) + '...';
+                            }
+                            return;
+                        }
+
+                        pendingModifiers = null;
+
+                        if (key === 'Escape') {
+                            capturing = false;
+                            hotkeyCell.classList.remove('capturing');
+                            hotkeyCell.textContent = getHotkeyDisplayText(settings.hotkeys[featureId]);
+                            return;
+                        }
+
+                        if (key === 'Delete') {
+                            settings.hotkeys[featureId] = { ctrl: false, alt: false, shift: false, key: null, priority: settings.hotkeys[featureId]?.priority || false, enabled: false };
+                            ktl.core.saveHotkeySettings(settings);
+                            capturing = false;
+                            hotkeyCell.classList.remove('capturing');
+                            hotkeyCell.textContent = 'None';
+                            return;
+                        }
+
+                        capturedKey = {
+                            ctrl: e.ctrlKey,
+                            alt: e.altKey,
+                            shift: e.shiftKey,
+                            key: key.length === 1 ? key.toUpperCase() : key
+                        };
+
+                        if (!ktl.core.isValidHotkey(capturedKey)) {
+                            hotkeyCell.textContent = ktl.core.formatHotkey(capturedKey) + ' (invalid)';
+                            hotkeyCell.classList.add('invalid');
+                            return;
+                        }
+
+                        hotkeyCell.classList.remove('invalid');
+                        saveHotkey(capturedKey);
+                    });
+
+                    hotkeyCell.addEventListener('keyup', function (e) {
+                        if (!capturing || !pendingModifiers) return;
+
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        if (ktl.core.isValidHotkey(pendingModifiers)) {
+                            hotkeyCell.classList.remove('invalid');
+                            saveHotkey(pendingModifiers);
+                        } else {
+                            pendingModifiers = null;
+                            hotkeyCell.textContent = 'Press keys...';
+                        }
+                    });
+
+                    hotkeyCell.addEventListener('blur', function () {
+                        if (capturing) {
+                            capturing = false;
+                            pendingModifiers = null;
+                            hotkeyCell.classList.remove('capturing');
+                            hotkeyCell.textContent = getHotkeyDisplayText(settings.hotkeys[featureId]);
+                        }
+                    });
+
+                    grid.appendChild(hotkeyCell);
+                }
+
+                popup.appendChild(grid);
+
+                const buttonBar = document.createElement('div');
+                buttonBar.className = 'ktlHotkeyButtonBar';
+
+                const resetBtn = document.createElement('button');
+                resetBtn.className = 'ktlThemeEditorBtn';
+                resetBtn.textContent = 'Reset Defaults';
+                resetBtn.addEventListener('click', async function () {
+                    const result = await ktl.core.selectOption('Reset all hotkeys to defaults?', 'Yes,No');
+                    if (result === 0) {
+                        settings = ktl.core.getDefaultHotkeySettings();
+                        ktl.core.saveHotkeySettings(settings);
+
+                        for (const featureId in featureNames) {
+                            const hotkeyCell = grid.querySelector(`[data-feature-id="${featureId}"]`);
+                            const hk = settings.hotkeys[featureId];
+                            if (hotkeyCell) {
+                                const isSet = hk && hk.enabled && (hk.key || (hk.ctrl || hk.alt || hk.shift));
+                                hotkeyCell.textContent = isSet ? ktl.core.formatHotkey(hk) : 'None';
+                            }
+                        }
+                        ktl.core.timedPopup('Hotkeys reset to defaults', 'success', 2000);
+                    }
+                });
+                buttonBar.appendChild(resetBtn);
+
+                const closeButton = document.createElement('button');
+                closeButton.className = 'ktlThemeEditorBtn';
+                closeButton.textContent = 'Close';
+                closeButton.addEventListener('click', function () {
+                    popup.style.display = 'none';
+                });
+                buttonBar.appendChild(closeButton);
+
+                popup.appendChild(buttonBar);
+                document.body.appendChild(popup);
+
+                ktl.core.enableSortableDrag(popup);
+                ktl.core.registerDevToolWindow(popup, () => popup.style.display = 'none');
+
+                const position = ktl.core.centerElementOnScreen(popup);
+                popup.style.left = position.left + 'px';
+                popup.style.top = position.top + 'px';
             },
 
         }
@@ -20383,7 +20751,7 @@ function Ktl($, appInfo) {
             //Kiosk buttons must be added each time a view is rendered, otherwise they disappear after a view's refresh.
             ktl.scenes.addKioskButtons(view.key, {});
 
-            // Add Theme Editor button only on the view where _theme keyword is defined
+            // Add Hotkeys and Theme Editor buttons only on the view where _theme keyword is defined
             const themeViewId = ktlKeywords._theme?.viewId;
             if (ktlKeywords._theme && view.key === themeViewId) {
                 const viewEl = document.getElementById(view.key);
@@ -20392,6 +20760,18 @@ function Ktl($, appInfo) {
                     if (viewHeader) {
                         const btnContainer = document.createElement('div');
                         btnContainer.style.marginBottom = '50px';
+                        btnContainer.style.display = 'flex';
+                        btnContainer.style.gap = '10px';
+
+                        const hotkeysBtn = document.createElement('button');
+                        hotkeysBtn.id = 'ktlHotkeysTrigger_' + view.key;
+                        hotkeysBtn.className = 'ktlHotkeysTrigger kn-button';
+                        hotkeysBtn.innerHTML = '<span style="margin-right:6px">&#x2328;</span>Hotkeys';
+                        hotkeysBtn.addEventListener('click', () => {
+                            ktl.core.showHotkeySettings();
+                        });
+                        btnContainer.appendChild(hotkeysBtn);
+
                         const btn = document.createElement('button');
                         btn.id = 'ktlThemeEditorTrigger_' + view.key;
                         btn.className = 'ktlThemeEditorTrigger kn-button';
@@ -20434,29 +20814,94 @@ function Ktl($, appInfo) {
         $(document).on('mousedown', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('mousemove', function (e) { ktl.scenes.resetIdleWatchdog(); })
         $(document).on('keypress', function (e) { ktl.scenes.resetIdleWatchdog(); })
-        $(document).keydown(function (e) {
-            // Dynamic hotkey for Theme Editor (user-configurable)
-            const hotkeyStr = localStorage.getItem('ktlThemeEditorHotkey');
-            if (!hotkeyStr || !showThemeEditor) return;
 
-            try {
-                const hotkey = JSON.parse(hotkeyStr);
-                if (!hotkey || !hotkey.key) return;
+        // Unified KTL Hotkey Handler
+        ktl.core.migrateHotkeySettings();
 
-                const target = e.target;
-                const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-                if (isTextInput) return;
+        const hotkeyFeatureActions = {
+            themeEditor: () => showThemeEditor && showThemeEditor(),
+            devTools: () => {
+                if ($('#devBtnsDivId').length)
+                    $('#devBtnsDivId').show();
+                else
+                    $('#verButtonId').click();
+            },
+            searchTool: () => {
+                if ($('#devBtnsDivId').length)
+                    $('#devBtnsDivId').show();
+                else
+                    $('#verButtonId').click();
+                ktl.core.waitSelector('#ktlDevToolsSearchButtonId')
+                    .then(() => { $('#ktlDevToolsSearchButtonId').click(); });
+            },
+            modeSwitcher: async () => {
+                const newKtlCode = await ktl.core.selectOption('Select which KTL version to use - or a specific number', 'Prod, Beta, Dev, Local, ktlOther');
+                if (newKtlCode === -1) return;
 
-                const keyMatches = e.key.toUpperCase() === hotkey.key.toUpperCase();
-                const ctrlMatches = !!e.ctrlKey === !!hotkey.ctrl;
-                const altMatches = !!e.altKey === !!hotkey.alt;
-                const shiftMatches = !!e.shiftKey === !!hotkey.shift;
-
-                if (keyMatches && ctrlMatches && altMatches && shiftMatches) {
-                    e.preventDefault();
-                    showThemeEditor();
+                if (newKtlCode === 0) {
+                    ktl.core.switchKtlCode('prod');
+                } else if (newKtlCode === 3) {
+                    ktl.core.checkLocalhostServer(3000)
+                        .then(() => { ktl.core.switchKtlCode('local'); })
+                        .catch(() => { ktl.core.timedPopup('Local server not running', 'error', 3000); });
+                } else {
+                    let ktlCode;
+                    if (newKtlCode === 1) ktlCode = 'beta';
+                    else if (newKtlCode === 2) ktlCode = 'dev';
+                    else if (/^\d.*\./.test(newKtlCode)) ktlCode = newKtlCode;
+                    if (ktlCode) ktl.core.switchKtlCode(ktlCode);
                 }
-            } catch (ex) { }
+            },
+            hotkeySettings: () => {
+                ktl.core.showHotkeySettings();
+            }
+        };
+
+        const hotkeyFeatureNames = {
+            themeEditor: 'Theme Editor',
+            devTools: 'KTL Developer Tools',
+            searchTool: 'KTL Search Tool',
+            modeSwitcher: 'KTL Code Switcher',
+            hotkeySettings: 'Hotkey Settings',
+            devPopup: 'Dev Info Popup'
+        };
+
+        function matchesHotkey(e, hk) {
+            if (!hk) return false;
+            const ctrlMatches = !!e.ctrlKey === !!hk.ctrl;
+            const altMatches = !!e.altKey === !!hk.alt;
+            const shiftMatches = !!e.shiftKey === !!hk.shift;
+
+            if (!hk.key) {
+                const isModifierKey = ['Control', 'Alt', 'Shift', 'Meta'].includes(e.key);
+                return isModifierKey && ctrlMatches && altMatches && shiftMatches;
+            }
+
+            const keyMatches = e.key.toUpperCase() === hk.key.toUpperCase();
+            return keyMatches && ctrlMatches && altMatches && shiftMatches;
+        }
+
+        function executeHotkeyAction(featureId) {
+            const action = hotkeyFeatureActions[featureId];
+            if (action) action();
+        }
+
+        // Hotkeys handler
+        $(document).on('keydown.ktlHotkeys', function (e) {
+            const target = e.target;
+            const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+            if (isTextInput) return;
+
+            const settings = ktl.core.getHotkeySettings();
+            for (const featureId in settings.hotkeys) {
+                if (featureId === 'devPopup') continue;
+                const hk = settings.hotkeys[featureId];
+                if (hk.enabled && matchesHotkey(e, hk)) {
+                    e.preventDefault();
+                    executeHotkeyAction(featureId);
+                    return;
+                }
+            }
         })
 
         //Early detection of scene change to prevent multi-rendering and flickering of views.
@@ -21268,6 +21713,24 @@ function Ktl($, appInfo) {
                     document.documentElement.style.setProperty('--ktlTheme_tableSummaryText', tableSummaryText);
                     document.documentElement.style.setProperty('--ktlTheme_inputFieldText', inputFieldText);
                     document.documentElement.style.setProperty('--ktlTheme_menuButtonText', menuButtonText);
+                    // Scrollbars - derive from tableCellBg
+                    const scrollbarTrack = tableCellBg;
+                    const scrollbarThumbRgb = ktl.systemColors.adjustRGB_sl(headerRgb, 0.2, 0.50);
+                    const scrollbarThumb = `rgb(${scrollbarThumbRgb[0]}, ${scrollbarThumbRgb[1]}, ${scrollbarThumbRgb[2]})`;
+                    document.documentElement.style.setProperty('--ktlTheme_scrollbarTrack', scrollbarTrack);
+                    document.documentElement.style.setProperty('--ktlTheme_scrollbarThumb', scrollbarThumb);
+                    // Auto-contrast text for popups/autocomplete based on tableCellBg
+                    try {
+                        let cellBgHex = tableCellBg || '#ffffff';
+                        if (cellBgHex.startsWith('rgb')) {
+                            const match = cellBgHex.match(/(\d+),\s*(\d+),\s*(\d+)/);
+                            if (match) cellBgHex = ktl.systemColors.rgbToHex(parseInt(match[1]), parseInt(match[2]), parseInt(match[3]));
+                        }
+                        const autoContrastText = ktl.systemColors.getContrastingTextColor(cellBgHex);
+                        document.documentElement.style.setProperty('--ktlTheme_autoContrastText', autoContrastText);
+                    } catch (e) {
+                        document.documentElement.style.setProperty('--ktlTheme_autoContrastText', '#ffffff');
+                    }
                     // Calculate headerTitleText based on actual topHeaderBg (which may be overridden)
                     let titleBgRgb;
                     let titleBgHex = headerRgb;
@@ -22802,180 +23265,24 @@ function Ktl($, appInfo) {
                 }
             });
 
-            const hotkeyBtn = document.createElement('button');
-            hotkeyBtn.className = 'ktlThemeEditorBtn';
-            hotkeyBtn.textContent = 'Hotkey';
-            hotkeyBtn.title = 'Set keyboard shortcut to open Theme Editor';
-            hotkeyBtn.addEventListener('click', async () => {
-                const STORAGE_KEY = 'ktlThemeEditorHotkey';
-                let capturedKey = null;
-
-                function formatHotkey(hk) {
-                    if (!hk || !hk.key) return 'None (disabled)';
-                    const parts = [];
-                    if (hk.ctrl) parts.push('Ctrl');
-                    if (hk.alt) parts.push('Alt');
-                    if (hk.shift) parts.push('Shift');
-                    parts.push(hk.key.toUpperCase());
-                    return parts.join('+');
-                }
-
-                function isValidHotkey(hk) {
-                    if (!hk || !hk.key) return false;
-                    const key = hk.key.toUpperCase();
-                    const isFunctionKey = /^F([1-9]|1[0-2])$/.test(key);
-                    const hasModifier = hk.ctrl || hk.alt || hk.shift;
-                    const reservedAlone = ['ESCAPE', 'TAB', 'ENTER', 'CONTROL', 'ALT', 'SHIFT', 'META'].includes(key);
-                    if (reservedAlone && !hasModifier) return false;
-                    return isFunctionKey || hasModifier;
-                }
-
-                const currentHotkey = (() => {
-                    try {
-                        const stored = localStorage.getItem(STORAGE_KEY);
-                        return stored ? JSON.parse(stored) : null;
-                    } catch { return null; }
-                })();
-
-                const overlay = document.createElement('div');
-                overlay.className = 'ktlConfirmOverlay';
-                overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:100001;display:flex;align-items:center;justify-content:center;';
-
-                const dialog = document.createElement('div');
-                dialog.style.cssText = 'background:var(--ktlTheme_tableCellBg,#fff);color:var(--ktlTheme_tableCellText,#333);border-radius:8px;padding:20px;min-width:320px;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
-
-                const title = document.createElement('div');
-                title.textContent = 'Set Theme Editor Hotkey';
-                title.style.cssText = 'font-size:16px;font-weight:bold;margin-bottom:15px;';
-
-                const instruction = document.createElement('div');
-                instruction.textContent = 'Press your desired key combination:';
-                instruction.style.cssText = 'margin-bottom:10px;font-size:13px;';
-
-                const captureBox = document.createElement('div');
-                captureBox.textContent = formatHotkey(currentHotkey);
-                captureBox.style.cssText = 'border:2px solid var(--ktlTheme_tableGridColor,#ccc);border-radius:4px;padding:15px;text-align:center;font-size:18px;font-weight:bold;margin-bottom:15px;cursor:pointer;background:var(--ktlTheme_tableStripedBg,#f9f9f9);';
-                captureBox.tabIndex = 0;
-
-                const hint = document.createElement('div');
-                hint.textContent = 'Requires modifier (Ctrl/Alt/Shift) or function key (F1-F12)';
-                hint.style.cssText = 'font-size:11px;color:#888;margin-bottom:15px;';
-
-                const btnContainer = document.createElement('div');
-                btnContainer.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
-
-                const saveHkBtn = document.createElement('button');
-                saveHkBtn.className = 'ktlThemeEditorBtn primary';
-                saveHkBtn.innerHTML = '<u>S</u>ave';
-
-                const disableBtn = document.createElement('button');
-                disableBtn.className = 'ktlThemeEditorBtn';
-                disableBtn.innerHTML = '<u>D</u>isable';
-
-                const cancelHkBtn = document.createElement('button');
-                cancelHkBtn.className = 'ktlThemeEditorBtn';
-                cancelHkBtn.innerHTML = '<u>C</u>ancel';
-
-                btnContainer.appendChild(saveHkBtn);
-                btnContainer.appendChild(disableBtn);
-                btnContainer.appendChild(cancelHkBtn);
-
-                dialog.appendChild(title);
-                dialog.appendChild(instruction);
-                dialog.appendChild(captureBox);
-                dialog.appendChild(hint);
-                dialog.appendChild(btnContainer);
-                overlay.appendChild(dialog);
-                document.body.appendChild(overlay);
-
-                captureBox.focus();
-
-                function keyHandler(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const key = e.key;
-                    const isModifierOnly = ['Control', 'Alt', 'Shift', 'Meta'].includes(key);
-                    if (isModifierOnly) return;
-
-                    capturedKey = {
-                        ctrl: e.ctrlKey,
-                        alt: e.altKey,
-                        shift: e.shiftKey,
-                        key: key.length === 1 ? key.toUpperCase() : key
-                    };
-                    captureBox.textContent = formatHotkey(capturedKey);
-                    captureBox.style.borderColor = isValidHotkey(capturedKey) ? '#4a90d9' : '#e74c3c';
-                }
-
-                function dialogKeyHandler(e) {
-                    const k = e.key.toLowerCase();
-                    if (k === 's' && !e.ctrlKey && !e.altKey) {
-                        e.preventDefault();
-                        saveHkBtn.click();
-                    } else if (k === 'd' && !e.ctrlKey && !e.altKey) {
-                        e.preventDefault();
-                        disableBtn.click();
-                    } else if (k === 'c' && !e.ctrlKey && !e.altKey) {
-                        e.preventDefault();
-                        cancelHkBtn.click();
-                    } else if (k === 'escape') {
-                        e.preventDefault();
-                        cancelHkBtn.click();
-                    }
-                }
-
-                captureBox.addEventListener('keydown', keyHandler);
-                dialog.addEventListener('keydown', dialogKeyHandler);
-
-                function cleanup() {
-                    captureBox.removeEventListener('keydown', keyHandler);
-                    dialog.removeEventListener('keydown', dialogKeyHandler);
-                    overlay.remove();
-                }
-
-                saveHkBtn.addEventListener('click', () => {
-                    if (capturedKey && isValidHotkey(capturedKey)) {
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(capturedKey));
-                        ktl.core.timedPopup('Hotkey set to ' + formatHotkey(capturedKey), 'success', 2000);
-                        cleanup();
-                    } else if (!capturedKey && currentHotkey) {
-                        ktl.core.timedPopup('Hotkey unchanged: ' + formatHotkey(currentHotkey), 'info', 2000);
-                        cleanup();
-                    } else {
-                        ktl.core.timedPopup('Invalid hotkey. Use modifier + key or F1-F12.', 'error', 2500);
-                    }
-                });
-
-                disableBtn.addEventListener('click', () => {
-                    localStorage.removeItem(STORAGE_KEY);
-                    ktl.core.timedPopup('Theme Editor hotkey disabled', 'success', 2000);
-                    cleanup();
-                });
-
-                cancelHkBtn.addEventListener('click', cleanup);
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) cleanup();
-                });
-            });
-
-            // Add shortcut underlines to buttons: Save(S), Load(L), sHare(H), hotKey(K), Cancel(C)
+            // Add shortcut underlines to buttons: Save(S), Load(L), sHare(H), Cancel(C)
             saveBtn.innerHTML = '<u>S</u>ave';
             loadBtn.innerHTML = '<u>L</u>oad';
             shareBtn.innerHTML = 'S<u>h</u>are';
-            hotkeyBtn.innerHTML = 'Hot<u>k</u>ey';
             cancelBtn.innerHTML = '<u>C</u>ancel';
 
             actions.appendChild(saveBtn);
             actions.appendChild(loadBtn);
             actions.appendChild(shareBtn);
-            actions.appendChild(hotkeyBtn);
             actions.appendChild(cancelBtn);
 
             editor.appendChild(header);
             editor.appendChild(content);
             editor.appendChild(actions);
+            editor.classList.add('devBtnsDiv');
             document.body.appendChild(editor);
+
+            ktl.core.registerDevToolWindow(editor, closeEditor);
 
             // Set initial disabled state only if user explicitly chose KnackDefault
             if (currentSettings.active === 'KnackDefault') {
@@ -22993,7 +23300,9 @@ function Ktl($, appInfo) {
                 }
                 currentSettings = JSON.parse(JSON.stringify(originalSettings));
                 applyPreview();
-                document.removeEventListener('keydown', editorKeyHandler);
+                document.removeEventListener('keydown', editorKeyHandler, true);
+                const idx = ktl.core.devToolWindows.findIndex(w => w.element === editor);
+                if (idx !== -1) ktl.core.devToolWindows.splice(idx, 1);
                 editor.remove();
             }
 
@@ -23011,6 +23320,9 @@ function Ktl($, appInfo) {
                 const key = e.key.toLowerCase();
 
                 if (key === 'escape') {
+                    // Only close if Theme Editor is the focused (topmost) window
+                    if (!editor.classList.contains('ktlDevToolFocused')) return;
+                    e.stopImmediatePropagation();
                     closeEditor();
                 } else if (key === 'z' && e.ctrlKey) {
                     e.preventDefault();
@@ -24812,26 +25124,14 @@ function Ktl($, appInfo) {
                     }
                 })
 
-                //Hotkey for Dev Popup and Search: Ctrl+Shift+F to open search, Escape to close top window.
-                $(document).on('keydown.ktlDevPopup', function (event) {
-                    if (event.shiftKey && event.ctrlKey) {
-                        if (event.key === 'F') {
-                            if ($('#devBtnsDivId').length)
-                                $('#devBtnsDivId').show();
-                            else
-                                $('#verButtonId').click();
-
-                            ktl.core.waitSelector('#ktlDevToolsSearchButtonId')
-                                .then(() => {
-                                    $('#ktlDevToolsSearchButtonId').click();
-                                })
-                        }
-                    } else if (event.key === 'Escape') {
-                        const inDevToolWindow = event.target.closest('#devBtnsDivId, #devToolSearchDivId, #resultWndId, #dbgWndId');
+                // Escape key handler for closing dev tool windows (hotkeys now handled by unified handler)
+                $(document).on('keydown.ktlDevToolEscape', function (event) {
+                    if (event.key === 'Escape') {
+                        const inDevToolWindow = event.target.closest('#devBtnsDivId, #devToolSearchDivId, #resultWndId, #dbgWndId, #ktlHotkeySettingsDiv, #ktlThemeEditor');
                         const inOtherInput = event.target.closest('input, textarea, select, [contenteditable]') && !inDevToolWindow;
                         if (!inOtherInput) {
+                            event.stopPropagation();
                             if (inDevToolWindow) {
-                                // Close the focused window, not the topmost
                                 const windowInfo = ktl.core.devToolWindows.find(w => w.element === inDevToolWindow);
                                 if (windowInfo?.close) windowInfo.close();
                                 else $(inDevToolWindow).hide();
@@ -29449,23 +29749,52 @@ function Ktl($, appInfo) {
             }
         }
 
+        function matchesDevPopupHotkey(event) {
+            const settings = ktl.core.getHotkeySettings();
+            const hk = settings.hotkeys.devPopup;
+            if (!hk || !hk.enabled) return false;
+
+            const ctrlMatch = !!event.ctrlKey === !!hk.ctrl;
+            const altMatch = !!event.altKey === !!hk.alt;
+            const shiftMatch = !!event.shiftKey === !!hk.shift;
+
+            if (hk.key) {
+                return ctrlMatch && altMatch && shiftMatch && event.key.toUpperCase() === hk.key.toUpperCase();
+            }
+            const isModifierKey = ['Control', 'Alt', 'Shift', 'Meta'].includes(event.key);
+            return isModifierKey && ctrlMatch && altMatch && shiftMatch;
+        }
+
+        function devPopupModifiersReleased(event) {
+            const settings = ktl.core.getHotkeySettings();
+            const hk = settings.hotkeys.devPopup;
+            if (!hk || !hk.enabled) return true;
+
+            if (hk.ctrl && !event.ctrlKey) return true;
+            if (hk.alt && !event.altKey) return true;
+            if (hk.shift && !event.shiftKey) return true;
+            return false;
+        }
+
         $(document).on('keydown.ktlPopOver', function (event) {
-            if (event.shiftKey && event.ctrlKey) {
-                if (event.key === 'Control' || event.key === 'Shift') {
-                    stopPopoverAutoClose();
-                    startMonitoringMouse();
-                } else {
-                    closePopOver();
-                }
-            } else if (event.key === 'Escape') {
-                closePopOver();
+            if (matchesDevPopupHotkey(event)) {
                 stopPopoverAutoClose();
-                $(document).off('click.ktlPopOverOutside');
+                startMonitoringMouse();
+            } else if (event.key === 'Escape') {
+                const hasVisibleDevTool = ktl.core.devToolWindows.some(w => {
+                    const style = window.getComputedStyle(w.element);
+                    return style.display !== 'none' && style.visibility !== 'hidden';
+                });
+                if (!hasVisibleDevTool) {
+                    closePopOver();
+                    stopPopoverAutoClose();
+                    $(document).off('click.ktlPopOverOutside');
+                }
             }
         });
 
         $(document).on('keyup.ktlPopOver', function (event) {
-            if (!event.shiftKey || !event.ctrlKey) {
+            if (devPopupModifiersReleased(event)) {
                 stopMonitoringMouse();
                 startPopoverAutoClose();
                 $(document).on('click.ktlPopOverOutside', handleOutsideClick);
