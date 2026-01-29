@@ -17760,7 +17760,7 @@ function Ktl($, appInfo) {
                     if (view === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
                         if (userAttr !== 'No user found' && field.startsWith('field_')) {
-                            const userValue = userAttr['values'][field];
+                            const userValue = userAttr['values'][field].full;
                             return resolve(ktlCompare(userValue, operator, value));
                         } else {
                             console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
@@ -17926,7 +17926,7 @@ function Ktl($, appInfo) {
                     if (view === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
                         if (userAttr !== 'No user found' && field.startsWith('field_')) {
-                            const userValue = userAttr['values'][field];
+                            const userValue = userAttr['values'][field].full;
                             return resolve(ktlCompare(userValue, operator, value));
                         } else {
                             console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
