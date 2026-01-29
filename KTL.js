@@ -24659,6 +24659,20 @@ function Ktl($, appInfo) {
                                             });
                                         }
 
+                                        // Add objects (tables)
+                                        if (Knack?.objects?.models) {
+                                            Knack.objects.models.forEach(obj => {
+                                                const attr = obj.attributes;
+                                                if (attr?.key) {
+                                                    source.push({
+                                                        label: `${attr.key}: ${attr.name || '<unnamed>'}`,
+                                                        value: attr.key,
+                                                        category: 'Objects'
+                                                    });
+                                                }
+                                            });
+                                        }
+
                                         // Add views
                                         if (Knack?.scenes?.models) {
                                             Knack.scenes.models.forEach(scene => {
@@ -24857,6 +24871,37 @@ function Ktl($, appInfo) {
                                                     break;
                                                 }
                                             }
+                                        } else if (query.startsWith('object_')) {
+                                            const obj = Knack.objects.models.find(o => o.attributes.key === query);
+                                            if (obj) {
+                                                builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/schema/list/objects/${query}/fields`;
+                                                console.log('Open in Builder:', builderUrl);
+
+                                                // Find all views using this object as data source
+                                                const viewsUsingObject = [];
+                                                Knack.scenes.models.forEach(scene => {
+                                                    scene.views.models.forEach(view => {
+                                                        if (view?.attributes?.source?.object === query) {
+                                                            viewsUsingObject.push({
+                                                                viewId: view.attributes.key,
+                                                                viewTitle: view.attributes.title || view.attributes.type || '<no title>',
+                                                                viewType: view.attributes.type,
+                                                                sceneId: scene.attributes.key,
+                                                                sceneName: scene.attributes.name || scene.attributes.slug
+                                                            });
+                                                        }
+                                                    });
+                                                });
+
+                                                if (viewsUsingObject.length > 0) {
+                                                    kwResults = '';
+                                                    kwResults += `<br><b>Views using this object (${viewsUsingObject.length}):</b><br>`;
+                                                    viewsUsingObject.forEach(v => {
+                                                        const vBuilderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${v.sceneId}/views/${v.viewId}/${v.viewType}`;
+                                                        kwResults += `&nbsp;&nbsp;<a href="${vBuilderUrl}" target="_blank">${v.viewId}</a>: ${v.viewTitle} <span style="opacity:0.6">(${v.viewType})</span><br>`;
+                                                    });
+                                                }
+                                            }
                                         } else if (query.startsWith('type:')) {
                                             const typeQuery = query.substring(5).trim();
                                             const parts = typeQuery.split(/\s+/);
@@ -24991,7 +25036,7 @@ function Ktl($, appInfo) {
 
                                         if (builderUrl || appUrl || kwResults !== NO_RESULTS) {
                                             // Format ID lookup results consistently
-                                            if (query.startsWith('field_') || query.startsWith('view_') || query.startsWith('scene_')) {
+                                            if (query.startsWith('field_') || query.startsWith('view_') || query.startsWith('scene_') || query.startsWith('object_')) {
                                                 let title = '';
                                                 if (query.startsWith('field_')) {
                                                     const field = Knack.objects.getField(query);
@@ -25004,13 +25049,22 @@ function Ktl($, appInfo) {
                                                 } else if (query.startsWith('scene_')) {
                                                     const scene = Knack.scenes.getByKey(query);
                                                     title = scene?.attributes?.name || '<unnamed>';
+                                                } else if (query.startsWith('object_')) {
+                                                    const obj = Knack.objects.models.find(o => o.attributes.key === query);
+                                                    title = obj?.attributes?.name || '<unnamed>';
                                                 }
 
+                                                // For objects, preserve the views list built earlier
+                                                const existingKwResults = query.startsWith('object_') ? kwResults : '';
                                                 kwResults = '';
                                                 if (builderUrl) kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
                                                 if (appUrl) kwResults += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
                                                 kwResults += `${query}: ${title}<br>`;
-                                                kwResults += formatKeywordsForId(query);
+                                                if (query.startsWith('object_')) {
+                                                    kwResults += existingKwResults;
+                                                } else {
+                                                    kwResults += formatKeywordsForId(query);
+                                                }
                                             } else if (builderUrl || appUrl) {
                                                 kwResults = kwResults === NO_RESULTS ? '' : kwResults;
                                                 if (builderUrl) kwResults += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
