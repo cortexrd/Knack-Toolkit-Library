@@ -3581,12 +3581,12 @@ function Ktl($, appInfo) {
                 }
 
                 const featureNames = {
+                    devTools: 'Developer Tools',
+                    devPopup: 'Dev Info Popup',
+                    searchTool: 'Search Tool',
+                    modeSwitcher: 'Code Switcher',
                     themeEditor: 'Theme Editor',
-                    devTools: 'KTL Developer Tools',
-                    searchTool: 'KTL Search Tool',
-                    modeSwitcher: 'KTL Code Switcher',
                     hotkeySettings: 'Hotkey Settings',
-                    devPopup: 'Dev Info Popup'
                 };
 
                 const sysColors = ktl.systemColors.getSysColors();
@@ -22265,7 +22265,7 @@ function Ktl($, appInfo) {
                     colors: [
                         { key: 'navBarLinkBg', label: 'Buttons/Tabs Bg', sat: 0.80, light: 0.20, legacy: true },
                         { key: 'activeMenuColor', label: 'Active Menu', sat: 1.0, light: 0.8, legacy: true },
-                        { key: 'menuButtonBg', label: 'Menu Buttons Bg', sat: 0.6, light: 0.3, legacy: false },
+                        { key: 'menuButtonBg', label: 'Menu Buttons Bg', sat: 0.6, light: 0.3 },
                         { key: 'filterButtonBg', label: 'Filter Buttons Bg', sat: 0.5, light: 0.4 },
                         { key: 'menuButtonBorder', label: 'Button Border', sat: 0.6, light: 0.35, legacy: false },
                         { key: 'pageButtonBg', label: 'Submit Bg', sat: 0.99, light: 0.50 },
