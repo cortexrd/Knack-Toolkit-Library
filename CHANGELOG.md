@@ -1,6 +1,14 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.40.0    *2026-01-29*
+
+- Show Menu Buttons: Add background color picker for all app designs
+- Fix Escape key handling and dev tool theming
+- Add centralized hotkey settings and theme support for dev tools
+- Fix `ktlLoggedInAccount` in `ktlCond` getting Name field
+- KTL Search: Enhance ID lookups and keyword display
+
 ## 0.39.1    *2026-01-27*
 
 - KTL Search improvements:
