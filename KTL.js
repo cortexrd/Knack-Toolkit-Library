@@ -493,6 +493,646 @@ function Ktl($, appInfo) {
             }
         })
 
+        /**
+         * Standardized result payload for modern `waitSelector` calls.
+         * @typedef {Object} WaitSelectorResult
+         * @property {Element[]} elements - All matched elements.
+         * @property {Element|null} first - First matched element.
+         * @property {string|null} selector - Winning selector (race/single).
+         * @property {number|null} index - Winning selector index (race/single).
+         * @property {'single'|'all'|'race'} mode - Match mode.
+         * @property {number} elapsed - Elapsed milliseconds.
+         */
+
+        /* -------------------- Modern implementation -------------------- */
+
+        /**
+         * Wait for selectors using the modern signature.
+         * @param {string|string[]} selectors
+         * @param {Object} options
+         * @returns {Promise<WaitSelectorResult>}
+         */
+        function waitSelectorModern(selectors, options = {}) {
+            const start = performance.now();
+            const opts = normaliseOptions(selectors, options);
+
+            // Scene abort is default. If enabled, ensure the shared scene controller exists.
+            const sceneSignal = opts.abortOnSceneChange ? getKnackSceneSignal() : null;
+
+            // If caller provided a signal, combine it with the scene signal (when enabled)
+            // so either can cancel the wait.
+            const combinedSignal = combineSignals([sceneSignal, opts.signal]);
+
+            return new Promise((resolve, reject) => {
+                let observer;
+                let pollTimer;
+                let timeoutTimer;
+                let settled = false;
+
+                const elapsedMs = () => Math.round(performance.now() - start);
+
+                const cleanup = () => {
+                    observer?.disconnect();
+                    observer = null;
+
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+
+                    clearTimeout(timeoutTimer);
+                    timeoutTimer = null;
+
+                    combinedSignal?.removeEventListener('abort', onAbort);
+                };
+
+                const resolveResult = (elements, meta = {}) => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+
+                    resolve({
+                        elements,
+                        first: elements[0] || null,
+                        selector: meta.selector ?? null,
+                        index: meta.index ?? null,
+                        mode: opts.mode,
+                        elapsed: elapsedMs()
+                    });
+                };
+
+                const rejectTimeout = () => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+
+                    const err = new Error(
+                        `waitSelector timed out after ${elapsedMs()}ms (mode="${opts.mode}")`
+                    );
+                    err.code = 'WAIT_TIMEOUT';
+                    err.elapsed = elapsedMs();
+                    err.selectors = opts.selectors.slice();
+                    err.mode = opts.mode;
+
+                    reject(err);
+                };
+
+                const rejectAbort = (code = 'WAIT_ABORTED', message = 'The operation was aborted.') => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+
+                    let err;
+                    try {
+                        err = new DOMException(message, 'AbortError');
+                    } catch {
+                        err = new Error(message);
+                        err.name = 'AbortError';
+                    }
+
+                    err.code = code;
+                    err.elapsed = elapsedMs();
+                    err.selectors = opts.selectors.slice();
+                    err.mode = opts.mode;
+
+                    reject(err);
+                };
+
+                const onAbort = () => {
+                    const sceneAborted = !!sceneSignal?.aborted;
+                    rejectAbort(
+                        sceneAborted ? 'WAIT_SCENE_CHANGED' : 'WAIT_ABORTED',
+                        sceneAborted ? 'Scene changed while waiting.' : 'The operation was aborted.'
+                    );
+                };
+
+                const tick = () => {
+                    if (combinedSignal?.aborted) {
+                        onAbort();
+                        return;
+                    }
+
+                    try {
+                        const match = findMatches(opts.root, opts);
+                        if (match) {
+                            resolveResult(match.elements, match.meta);
+                        }
+                    } catch (e) {
+                        if (settled) return;
+                        settled = true;
+                        cleanup();
+                        reject(e instanceof Error ? e : new Error(String(e)));
+                    }
+                };
+
+                if (combinedSignal) {
+                    if (combinedSignal.aborted) {
+                        onAbort();
+                        return;
+                    }
+                    combinedSignal.addEventListener('abort', onAbort, { once: true });
+                }
+
+                observer = new MutationObserver(tick);
+
+                const observeTarget = opts.root === document
+                    ? document.documentElement
+                    : opts.root;
+
+                if (observeTarget && observeTarget.nodeType) {
+                    try {
+                        observer.observe(observeTarget, {
+                            childList: true,
+                            subtree: true,
+                            attributes: true,
+                            characterData: !!opts.text
+                        });
+                    } catch {
+                        // Polling fallback still works if observe fails.
+                    }
+                }
+
+                pollTimer = setInterval(tick, opts.interval);
+
+                if (opts.timeout > 0) {
+                    timeoutTimer = setTimeout(rejectTimeout, opts.timeout);
+                }
+
+                tick();
+            });
+        }
+
+        /* -------------------- Legacy implementation -------------------- */
+
+        /**
+         * Legacy waitSelector implementation.
+         * @param {string} [sel]
+         * @param {number} [timeout]
+         * @param {string} [is]
+         * @param {*} outcome
+         * @param {number} [scanSpd]
+         * @returns {Promise<void>}
+         */
+        function waitSelectorLegacy(sel = '', timeout = 5000, is = '', outcome, scanSpd) {
+            const legacyTimeout = Number.isFinite(timeout) ? timeout : 5000;
+            const legacyInterval = Math.max(16, Number.isFinite(scanSpd) ? scanSpd : 60);
+            const legacyStart = performance.now();
+
+            const legacyLog = (status, extra = '') => {
+                const elapsed = Math.round(performance.now() - legacyStart);
+                const msg = `waitSelectorLegacy ${status} (${elapsed}ms) ${sel}${extra ? ' - ' + extra : ''}`;
+                if (ktl?.log?.clog) {
+                    ktl.log.clog('teal', msg);
+                } else if (console && typeof console.info === 'function') {
+                    console.info(msg);
+                }
+            };
+
+            // Default abort on scene change for legacy calls too.
+            const sceneSignal = getKnackSceneSignal();
+
+            return new Promise((resolve, reject) => {
+                let observer;
+                let pollTimer;
+                let timeoutTimer;
+                let settled = false;
+
+                const cleanup = () => {
+                    observer?.disconnect();
+                    observer = null;
+
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+
+                    clearTimeout(timeoutTimer);
+                    timeoutTimer = null;
+
+                    sceneSignal?.removeEventListener('abort', onAbort);
+                };
+
+                const onAbort = () => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    legacyLog('aborted');
+                    reject(sel);
+                };
+
+                const selIsValid = () => {
+                    try {
+                        let testSel = $(sel);
+                        if (is) {
+                            if (String(is).toLowerCase() === 'none') {
+                                testSel = !$(sel).length;
+                            } else {
+                                testSel = $(sel).is(':' + String(is).toLowerCase());
+                            }
+                        }
+
+                        return (testSel === true || testSel.length > 0);
+                    } catch (e) {
+                        ktl?.log?.clog?.('purple', 'waitSelectorLegacy invalid selector: ' + sel);
+                        return false;
+                    }
+                };
+
+                const tick = () => {
+                    if (sceneSignal?.aborted) {
+                        onAbort();
+                        return;
+                    }
+
+                    if (selIsValid()) {
+                        if (settled) return;
+                        settled = true;
+                        cleanup();
+                        legacyLog('resolved');
+                        resolve();
+                    }
+                };
+
+                if (sceneSignal) {
+                    if (sceneSignal.aborted) {
+                        onAbort();
+                        return;
+                    }
+                    sceneSignal.addEventListener('abort', onAbort, { once: true });
+                }
+
+                observer = new MutationObserver(tick);
+                try {
+                    observer.observe(document.documentElement, {
+                        childList: true,
+                        subtree: true,
+                        attributes: true,
+                        characterData: true
+                    });
+                } catch {
+                    // ignore
+                }
+
+                pollTimer = setInterval(tick, legacyInterval);
+
+                timeoutTimer = setTimeout(() => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+
+                    legacyOutcomeSideEffects(sel, outcome);
+                    legacyLog('timeout');
+                    reject(sel);
+                }, legacyTimeout);
+
+                tick();
+            });
+        }
+
+        /**
+         * Run legacy outcome logging/alert side effects.
+         * @param {string} sel
+         * @param {*} outcome
+         */
+        function legacyOutcomeSideEffects(sel, outcome) {
+            if (!window.ktl || !ktl.const) return;
+
+            try {
+                if (outcome === ktl.const.WAIT_SEL_LOG_WARN) {
+                    ktl.log?.addLog?.(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + sel + ' in ' + getKnackSceneKeySafe());
+                } else if (outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
+                    ktl.log?.addLog?.(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + sel + ' in ' + getKnackSceneKeySafe());
+                } else if (outcome === ktl.const.WAIT_SEL_ALERT) {
+                    const devNames = ktl.core?.getCfg?.()?.developerNames;
+                    const userName = window.Knack?.getUserAttributes?.()?.name;
+                    if (Array.isArray(devNames) && devNames.includes(userName)) {
+                        // eslint-disable-next-line no-alert
+                        alert('waitSelector timed out for ' + sel + ' in ' + getKnackSceneKeySafe());
+                    }
+                }
+            } catch {
+                // Never let logging break behaviour
+            }
+        }
+
+        /**
+         * Get the current Knack scene key without throwing.
+         * @returns {string}
+         */
+        function getKnackSceneKeySafe() {
+            try {
+                return window.Knack?.router?.current_scene_key || 'unknown_scene';
+            } catch {
+                return 'unknown_scene';
+            }
+        }
+
+        /* -------------------- Knack scene abort (shared) -------------------- */
+
+        let knackSceneController;
+        let knackSceneHooked = false;
+
+        /**
+         * Get a shared AbortSignal that is aborted on Knack scene change.
+         * @returns {AbortSignal}
+         */
+        function getKnackSceneSignal() {
+            if (!knackSceneController) {
+                knackSceneController = new AbortController();
+            }
+
+            if (!knackSceneHooked) {
+                hookKnackSceneRenderOnce();
+                knackSceneHooked = true;
+            }
+
+            return knackSceneController.signal;
+        }
+
+        /**
+         * Hook Knack scene render once to refresh the shared AbortController.
+         */
+        function hookKnackSceneRenderOnce() {
+            const refreshSceneController = () => {
+                try {
+                    knackSceneController?.abort();
+                } catch {
+                    // ignore
+                }
+                knackSceneController = new AbortController();
+            };
+
+            if (window.jQuery && typeof window.jQuery === 'function') {
+                window.jQuery(document).on('knack-scene-render', refreshSceneController);
+                return;
+            }
+
+            document.addEventListener('knack-scene-render', refreshSceneController);
+        }
+
+        /**
+         * Combine multiple AbortSignals into a single signal.
+         * @param {AbortSignal[]} signals
+         * @returns {AbortSignal|null}
+         */
+        function combineSignals(signals) {
+            const active = (signals || []).filter(Boolean);
+            if (!active.length) return null;
+
+            for (const sig of active) {
+                if (sig.aborted) {
+                    const controller = new AbortController();
+                    controller.abort();
+                    return controller.signal;
+                }
+            }
+
+            if (active.length === 1) return active[0];
+
+            const controller = new AbortController();
+
+            const onAbort = () => {
+                try {
+                    controller.abort();
+                } catch {
+                    // ignore
+                }
+            };
+
+            active.forEach((sig) => sig.addEventListener('abort', onAbort, { once: true }));
+
+            return controller.signal;
+        }
+
+        /**
+         * Check if a value is a plain object.
+         * @param {*} value
+         * @returns {boolean}
+         */
+        function isPlainObject(value) {
+            return !!value && Object.prototype.toString.call(value) === '[object Object]';
+        }
+
+        /* -------------------- Internals (matching) -------------------- */
+
+        /**
+         * Normalize modern waitSelector options.
+         * @param {string|string[]} selectors
+         * @param {Object} options
+         * @returns {Object}
+         */
+        function normaliseOptions(selectors, options) {
+            const list = Array.isArray(selectors) ? selectors : [selectors];
+            const cleaned = list
+                .filter((s) => typeof s === 'string' && s.trim())
+                .map((s) => s.trim());
+
+            if (!cleaned.length) {
+                throw new TypeError('waitSelector: selectors must be a non-empty string or array of strings');
+            }
+
+            const mode = (options.mode ||
+                (Array.isArray(selectors) ? 'race' : 'single')).toLowerCase();
+
+            if (!['single', 'all', 'race'].includes(mode)) {
+                throw new TypeError(`waitSelector: invalid mode "${mode}"`);
+            }
+
+            const timeout = options.timeout ?? 8000;
+            if (!Number.isFinite(timeout) || timeout < 0) {
+                throw new TypeError('waitSelector: timeout must be a finite number >= 0');
+            }
+
+            const interval = options.interval ?? 60;
+            if (!Number.isFinite(interval) || interval < 16) {
+                throw new TypeError('waitSelector: interval must be a finite number >= 16 (ms)');
+            }
+
+            const signal = options.signal;
+            if (signal != null && typeof signal !== 'object') {
+                throw new TypeError('waitSelector: signal must be an AbortSignal or undefined');
+            }
+
+            const abortOnSceneChange = options.abortOnSceneChange !== false;
+
+            return {
+                selectors: cleaned,
+                mode,
+                timeout,
+                interval,
+                root: resolveRoot(options.root),
+                is: (options.is ?? 'none').toLowerCase(),
+                text: options.text,
+                attrs: options.attrs,
+                condition: options.condition,
+                signal,
+                abortOnSceneChange
+            };
+        }
+
+        /**
+         * Resolve the root container for selector queries.
+         * @param {string|Element|DocumentFragment|Document} root
+         * @returns {Element|DocumentFragment|Document}
+         */
+        function resolveRoot(root) {
+            if (!root) return document;
+            if (root === document || root instanceof Element || root instanceof DocumentFragment) return root;
+
+            if (typeof root === 'string') {
+                const el = document.querySelector(root);
+                if (!el) throw new Error(`waitSelector: root not found "${root}"`);
+                return el;
+            }
+
+            throw new TypeError('waitSelector: root must be a selector string, an Element, a DocumentFragment, or undefined');
+        }
+
+        /**
+         * Find matches based on the configured mode.
+         * @param {Element|DocumentFragment|Document} root
+         * @param {Object} opts
+         * @returns {{elements: Element[], meta: Object}|null}
+         */
+        function findMatches(root, opts) {
+            if (opts.mode === 'single') {
+                const sel = opts.selectors[0];
+                const el = findFirst(root, sel, opts);
+                if (el) return { elements: [el], meta: { selector: sel, index: 0 } };
+                return null;
+            }
+
+            if (opts.mode === 'all') {
+                const all = [];
+                for (const sel of opts.selectors) {
+                    root.querySelectorAll(sel).forEach((el) => {
+                        if (el instanceof Element && passes(el, opts)) all.push(el);
+                    });
+                }
+                return all.length ? { elements: all, meta: {} } : null;
+            }
+
+            for (let i = 0; i < opts.selectors.length; i++) {
+                const sel = opts.selectors[i];
+                const el = findFirst(root, sel, opts);
+                if (el) return { elements: [el], meta: { selector: sel, index: i } };
+            }
+
+            return null;
+        }
+
+        /**
+         * Find the first element that passes the filters.
+         * @param {Element|DocumentFragment|Document} root
+         * @param {string} selector
+         * @param {Object} opts
+         * @returns {Element|null}
+         */
+        function findFirst(root, selector, opts) {
+            const nodes = root.querySelectorAll(selector);
+            for (const el of nodes) {
+                if (el instanceof Element && passes(el, opts)) return el;
+            }
+            return null;
+        }
+
+        /**
+         * Check if an element passes all configured predicates.
+         * @param {Element} el
+         * @param {Object} opts
+         * @returns {boolean}
+         */
+        function passes(el, opts) {
+            if (opts.is !== 'none' && !passesPseudo(el, opts.is)) return false;
+            if (opts.attrs && !matchAttrs(el, opts.attrs)) return false;
+            if (opts.text != null && !matchText(el, opts.text)) return false;
+            if (typeof opts.condition === 'function' && !safeCall(opts.condition, el)) return false;
+            return true;
+        }
+
+        /**
+         * Apply pseudo-state filters.
+         * @param {Element} el
+         * @param {string} state
+         * @returns {boolean}
+         */
+        function passesPseudo(el, state) {
+            switch (state) {
+                case 'visible':
+                    return isVisible(el);
+                case 'hidden':
+                    return !isVisible(el);
+                case 'disabled':
+                    return 'disabled' in el ? !!el.disabled : el.getAttribute('aria-disabled') === 'true';
+                case 'enabled':
+                    return 'disabled' in el ? !el.disabled : el.getAttribute('aria-disabled') !== 'true';
+                case 'checked':
+                    return 'checked' in el ? !!el.checked : el.getAttribute('aria-checked') === 'true';
+                case 'focus':
+                    return document.activeElement === el;
+                default:
+                    return true;
+            }
+        }
+
+        /**
+         * Determine if an element is visible.
+         * @param {Element} el
+         * @returns {boolean}
+         */
+        function isVisible(el) {
+            if (!el.isConnected) return false;
+
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+
+            const rects = el.getClientRects();
+            return !!(rects && rects.length);
+        }
+
+        /**
+         * Match element attributes against provided rules.
+         * @param {Element} el
+         * @param {Object} attrs
+         * @returns {boolean}
+         */
+        function matchAttrs(el, attrs) {
+            return Object.entries(attrs).every(([key, expected]) => {
+                const actual = el.getAttribute(key);
+
+                if (expected === true) return actual !== null;
+                if (expected === null) return actual === null;
+                if (expected instanceof RegExp) return typeof actual === 'string' && expected.test(actual);
+                return String(actual) === String(expected);
+            });
+        }
+
+        /**
+         * Match element text content against a rule.
+         * @param {Element} el
+         * @param {string|RegExp|Function} rule
+         * @returns {boolean}
+         */
+        function matchText(el, rule) {
+            const text = (el.textContent || '').trim();
+
+            if (typeof rule === 'string') return text.includes(rule);
+            if (rule instanceof RegExp) return rule.test(text);
+            if (typeof rule === 'function') return safeCall(rule, text, el);
+
+            throw new TypeError('waitSelector: text must be a string, RegExp, function, or undefined');
+        }
+
+        /**
+         * Safely call a predicate function.
+         * @param {Function} fn
+         * @param {...*} args
+         * @returns {boolean}
+         */
+        function safeCall(fn, ...args) {
+            try {
+                return !!fn(...args);
+            } catch {
+                return false;
+            }
+        }
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.developerNames && (cfg.developerNames = cfgObj.developerNames);
@@ -716,57 +1356,27 @@ function Ktl($, appInfo) {
 
             //Param is selector string and optionally if we want to put back a hidden element as it was.
             hideSelector: function (sel = '', show = false) {
-                sel && ktl.core.waitSelector(sel)
-                    .then(() => {
+                sel && ktl.core.waitSelector(sel, { mode: 'single' })
+                    .then((result) => {
+                        const el = result?.first;
+                        if (!el) return;
                         if (show)
-                            $(sel).removeClass('ktlHidden');
+                            el.classList.remove('ktlHidden');
                         else
-                            $(sel).addClass('ktlHidden');
+                            el.classList.add('ktlHidden');
                     })
                     .catch(() => { ktl.log.clog('purple', 'hideSelector failed waiting for selector: ' + sel); });
             },
 
             //Param: sel is a string, not the jquery object.
-            waitSelector: function (sel = '', timeout = 5000, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
-                return new Promise(function (resolve, reject) {
-                    if (selIsValid(sel)) {
-                        resolve();
-                        return;
-                    }
+            waitSelector: function (selectors = '', options = {}, is = '', outcome = ktl.const.WAIT_SEL_IGNORE, scanSpd = ktl.const.WAIT_SELECTOR_SCAN_SPD) {
+                // Legacy signature detection:
+                // waitSelector(sel, timeout, is, outcome, scanSpd)
+                if (typeof selectors === 'string' && !isPlainObject(options)) {
+                    return waitSelectorLegacy(selectors, options, is, outcome, scanSpd);
+                }
 
-                    var intervalId = setInterval(function () {
-                        if (selIsValid(sel)) {
-                            clearTimeout(failsafe);
-                            clearInterval(intervalId);
-                            resolve();
-                            return;
-                        }
-                    }, scanSpd);
-
-                    var failsafe = setTimeout(function () {
-                        clearInterval(intervalId);
-                        if (outcome === ktl.const.WAIT_SEL_LOG_WARN) {
-                            ktl.log.addLog(ktl.const.LS_WRN, 'kEC_1011 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                        } else if (outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
-                            ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1001 - waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-                        } else if (outcome === ktl.const.WAIT_SEL_ALERT && ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name))
-                            alert('waitSelector timed out for ' + sel + ' in ' + Knack.router.current_scene_key);
-
-                        reject(sel);
-                    }, timeout);
-
-                    function selIsValid(sel) {
-                        var testSel = $(sel);
-                        if (is) {
-                            if (is === 'none') //Special case: Checks if selector does not exist.
-                                testSel = !$(sel).length;
-                            else
-                                testSel = $(sel).is(':' + is);
-                        }
-
-                        return (testSel === true || testSel.length > 0);
-                    }
-                });
+                return waitSelectorModern(selectors, options);
             },
 
             waitAndReload: function (delay = 5000) {
