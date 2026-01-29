@@ -3469,6 +3469,7 @@ function Ktl($, appInfo) {
                         searchTool: { ctrl: false, alt: true, shift: false, key: 'S', priority: false, enabled: true },
                         modeSwitcher: { ctrl: false, alt: true, shift: false, key: 'M', priority: false, enabled: true },
                         hotkeySettings: { ctrl: false, alt: true, shift: false, key: 'K', priority: false, enabled: true },
+                        viewIds: { ctrl: false, alt: true, shift: false, key: 'I', priority: false, enabled: true },
                         devPopup: { ctrl: true, alt: false, shift: true, key: null, priority: false, enabled: true }
                     }
                 };
@@ -3584,6 +3585,7 @@ function Ktl($, appInfo) {
                     devTools: 'Developer Tools',
                     devPopup: 'Dev Info Popup',
                     searchTool: 'Search Tool',
+                    viewIds: 'Toggle View IDs',
                     modeSwitcher: 'Code Switcher',
                     themeEditor: 'Theme Editor',
                     hotkeySettings: 'Hotkey Settings',
@@ -20867,16 +20869,8 @@ function Ktl($, appInfo) {
             },
             hotkeySettings: () => {
                 ktl.core.showHotkeySettings();
-            }
-        };
-
-        const hotkeyFeatureNames = {
-            themeEditor: 'Theme Editor',
-            devTools: 'KTL Developer Tools',
-            searchTool: 'KTL Search Tool',
-            modeSwitcher: 'KTL Code Switcher',
-            hotkeySettings: 'Hotkey Settings',
-            devPopup: 'Dev Info Popup'
+            },
+            viewIds: () => ktl.userPrefs.toggleViewIds()
         };
 
         function matchesHotkey(e, hk) {
@@ -23194,7 +23188,7 @@ function Ktl($, appInfo) {
 
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'ktlThemeEditorBtn';
-            cancelBtn.textContent = 'Cancel';
+            cancelBtn.textContent = 'Close';
             cancelBtn.addEventListener('click', closeEditor);
 
             const shareBtn = document.createElement('button');
@@ -23310,7 +23304,7 @@ function Ktl($, appInfo) {
             saveBtn.innerHTML = '<u>S</u>ave';
             loadBtn.innerHTML = '<u>L</u>oad';
             shareBtn.innerHTML = 'S<u>h</u>are';
-            cancelBtn.innerHTML = '<u>C</u>ancel';
+            cancelBtn.innerHTML = 'Close';
 
             actions.appendChild(saveBtn);
             actions.appendChild(loadBtn);
@@ -23368,6 +23362,8 @@ function Ktl($, appInfo) {
                 } else if (key === 'z' && e.ctrlKey) {
                     e.preventDefault();
                     undoBtn.click();
+                } else if (e.ctrlKey || e.altKey || e.metaKey) {
+                    return; // Don't intercept modifier key combos like Ctrl+C
                 } else if (key === 's') {
                     e.preventDefault();
                     saveBtn.click();
@@ -23381,9 +23377,6 @@ function Ktl($, appInfo) {
                 } else if (key === 'k') {
                     e.preventDefault();
                     hotkeyBtn.click();
-                } else if (key === 'c') {
-                    e.preventDefault();
-                    cancelBtn.click();
                 } else if (key === 'd') {
                     e.preventDefault();
                     modeButtons['d']?.click();
@@ -24342,9 +24335,7 @@ function Ktl($, appInfo) {
 
                     function showDevPopup() {
                         ktl.systemColors.getSystemColors()
-                            .then((sc) => {
-                                let sysColors = sc;
-
+                            .then(() => {
                                 ktl.storage.lsSetItem('pinAlreadyEntered', true, false, true);
                                 let userPrefsObj = ktl.userPrefs.getUserPrefs();
 
@@ -24409,107 +24400,6 @@ function Ktl($, appInfo) {
                                         }
                                     }
                                 })
-
-                                ktl.fields.addButton(devBtnsDiv, 'View IDs', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                                    userPrefsObj.showViewId = !userPrefsObj.showViewId;
-                                    userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                                    ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
-                                    ktl.scenes.renderViews();
-                                    ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
-                                })
-
-                                let showHiddenElements = (ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true) === 'true');
-                                var showHiddenElemBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Elements: ' + (showHiddenElements ? 'Show' : 'Default'), '', ['devBtn', 'kn-button']);
-                                showHiddenElemBtn.addEventListener('click', () => {
-                                    showHiddenElements = !showHiddenElements;
-                                    showHiddenElemBtn.textContent = 'Hidden Elements: ' + (showHiddenElements ? 'Show' : 'Default');
-
-                                    ktl.storage.lsSetItem('SHOW_HIDDEN_ELEMENTS', showHiddenElements, false, true);
-
-                                    if (showHiddenElements)
-                                        showHiddenElemements();
-                                    else
-                                        hideHiddenElemements();
-                                })
-
-                                kioskModeBtn = ktl.fields.addButton(devBtnsDiv, 'Kiosk: No', '', ['devBtn', 'kn-button']);
-                                if (ktl.core.isKiosk())
-                                    kioskModeBtn.textContent = 'Kiosk: Yes';
-
-                                kioskModeBtn.addEventListener('click', () => {
-                                    if (ktl.core.isKiosk()) {
-                                        kioskModeBtn.textContent = 'Kiosk: No';
-                                        ktl.core.timedPopup('Switching back to Normal mode...');
-                                    } else {
-                                        kioskModeBtn.textContent = 'Kiosk: Yes';
-                                        ktl.core.timedPopup('Switching to Kiosk mode...');
-                                    }
-
-                                    ktl.core.kioskMode();
-                                    Knack.router.scene_view.render();
-                                    processLogoutBtn(); //To update name, depending if visible of not.
-                                })
-
-                                const iFrmWndBtn = ktl.fields.addButton(devBtnsDiv, 'iFrameWnd: N/A', '', ['devBtn', 'kn-button']);
-                                if (ktl.core.getCfg().enabled.iFrameWnd && ktl.iFrameWnd.getiFrameWnd()) {
-                                    iFrmWndBtn.textContent = 'iFrameWnd: ' + (userPrefsObj.showIframeWnd ? 'Show' : 'Hide');
-                                    iFrmWndBtn.addEventListener('click', () => {
-                                        userPrefsObj.showIframeWnd = !userPrefsObj.showIframeWnd;
-                                        ktl.iFrameWnd.showIFrame(userPrefsObj.showIframeWnd);
-                                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
-                                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
-                                        iFrmWndBtn.textContent = 'iFrameWnd: ' + (userPrefsObj.showIframeWnd ? 'Show' : 'Hide');
-                                    })
-                                } else
-                                    iFrmWndBtn.setAttribute('disabled', 'true');
-
-                                const dbgWnd = ktl.fields.addButton(devBtnsDiv, 'DebugWnd', '', ['devBtn', 'kn-button']);
-                                if (ktl.core.getCfg().enabled.debugWnd)
-                                    dbgWnd.addEventListener('click', () => {
-                                        if ($('#debugWnd').length)
-                                            ktl.debugWnd.showDebugWnd(false);
-                                        else
-                                            ktl.debugWnd.showDebugWnd(true);
-                                    })
-                                else
-                                    dbgWnd.setAttribute('disabled', 'true');
-
-                                ktl.fields.addButton(devBtnsDiv, 'Reset Auto-Login', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                                    ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
-                                    var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
-                                    if (loginInfo) {
-                                        if (loginInfo === 'SkipAutoLogin')
-                                            ktl.storage.lsRemoveItem('AES_LI', true, false, false);
-                                        else
-                                            ktl.storage.lsRemoveItem('AES_LI', true, false, true);
-                                    }
-
-                                    ktl.storage.lsRemoveItem('AES_EK', true, false, false);
-
-                                    setTimeout(() => {
-                                        if (confirm('Do you want to logout?')) {
-                                            ktl.account.logout();
-                                            processLogoutBtn();
-                                        }
-                                    }, 500)
-                                })
-
-                                //Bypass the KTL, but only for this session.
-                                ktl.fields.addButton(devBtnsDiv, 'Bypass KTL', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                                    if (confirm('Bypass KTL on this device?')) {
-                                        ktl.storage.lsSetItem('bypassKtl', true, true, true);
-                                        location.reload(true);
-                                    }
-                                })
-
-                                //Execute custom code that is fetched from core's config.
-                                var devDebugCode = ktl.core.getCfg().devDebugCode;
-                                if (devDebugCode && devDebugCode !== '') {
-                                    ktl.fields.addButton(devBtnsDiv, 'Exec devDebugCode', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                                        const exec = new Function('ktl', devDebugCode);
-                                        exec(ktl);
-                                    })
-                                }
 
                                 var searchBtn = ktl.fields.addButton(devBtnsDiv, 'Search...', '', ['devBtn', 'kn-button'], 'ktlDevToolsSearchButtonId');
                                 searchBtn.addEventListener('click', () => {
@@ -24577,44 +24467,51 @@ function Ktl($, appInfo) {
                                         const existingHelp = document.getElementById('ktlSearchHelpPopup');
                                         if (existingHelp) { existingHelp.remove(); return; }
 
+                                        const isDark = document.body.classList.contains('ktlUserTheme');
+                                        const cs = getComputedStyle(document.documentElement);
+                                        const bgColor = isDark ? cs.getPropertyValue('--ktlTheme_pageBg').trim() || '#2d2d2d' : 'white';
+                                        const textColor = isDark ? cs.getPropertyValue('--ktlTheme_lightText').trim() || '#e0e0e0' : 'inherit';
+                                        const closeColor = isDark ? '#aaa' : '#666';
+                                        const codeBg = isDark ? cs.getPropertyValue('--ktlTheme_tableHeaderBg').trim() || '#404040' : '#f0f0f0';
+
                                         const overlay = document.createElement('div');
                                         overlay.id = 'ktlSearchHelpPopup';
                                         overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:10001; display:flex; align-items:center; justify-content:center;';
 
                                         const popup = document.createElement('div');
-                                        popup.style.cssText = 'background:white; border-radius:8px; padding:20px; max-width:420px; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+                                        popup.style.cssText = `background:${bgColor}; color:${textColor}; border-radius:8px; padding:20px; max-width:420px; max-height:80vh; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
                                         popup.innerHTML = `
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
 <span style="font-size:16px; font-weight:bold;">Search Help</span>
-<span id="ktlSearchHelpClose" style="cursor:pointer; font-size:20px; color:#666;">&times;</span>
+<span id="ktlSearchHelpClose" style="cursor:pointer; font-size:20px; color:${closeColor};">&times;</span>
 </div>
 <div style="text-align:left; font-size:13px; line-height:1.7;">
 <b>Basic Search</b><br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">warehouse</code> - Find text anywhere<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">field_123</code> - Search field by ID<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">view_456</code> - Search view by ID<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">scene_789</code> - Search scene by ID<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">warehouse</code> - Find text anywhere<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">field_123</code> - Search field by ID<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">view_456</code> - Search view by ID<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">scene_789</code> - Search scene by ID<br>
 <br>
 <b>Keywords</b><br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">kw</code> - All KTL keywords in app<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">_ar</code> - Find specific keyword usage<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">kw</code> - All KTL keywords in app<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">_ar</code> - Find specific keyword usage<br>
 <br>
 <b>Multiple Terms</b><br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">warehouse inventory</code> - Will find either warehouse or inventory<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">+warehouse +inventory</code> - Must include both warehouse and inventory<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">warehouse -inventory</code> - May include warehouse but not inventory<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">warehouse inventory</code> - Will find either warehouse or inventory<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">+warehouse +inventory</code> - Must include both warehouse and inventory<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">warehouse -inventory</code> - May include warehouse but not inventory<br>
 <br>
 <b>Type Search</b><br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:search</code> - All search views<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:table</code> - All table views<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:form</code> - All form views<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:connection</code> - All connection fields<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:email</code> - All email fields<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">type:search warehouse</code> - Search views with "warehouse"<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">type:search</code> - All search views<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">type:table</code> - All table views<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">type:form</code> - All form views<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">type:connection</code> - All connection fields<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">type:email</code> - All email fields<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">type:search warehouse</code> - Search views with "warehouse"<br>
 <br>
 <b>Email Search</b><br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">email:</code> - All emails in schema<br>
-<code style="background:#f0f0f0; padding:1px 4px; border-radius:3px;">email:@domain.com</code> - Emails matching domain<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">email:</code> - All emails in schema<br>
+<code style="background:${codeBg}; padding:1px 4px; border-radius:3px;">email:@domain.com</code> - Emails matching domain<br>
 </div>`;
                                         overlay.appendChild(popup);
                                         document.body.appendChild(overlay);
@@ -24623,8 +24520,12 @@ function Ktl($, appInfo) {
                                         overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHelp(); });
                                         popup.querySelector('#ktlSearchHelpClose').addEventListener('click', closeHelp);
                                         document.addEventListener('keydown', function escHandler(e) {
-                                            if (e.key === 'Escape') { closeHelp(); document.removeEventListener('keydown', escHandler); }
-                                        });
+                                            if (e.key === 'Escape') {
+                                                e.stopImmediatePropagation();
+                                                closeHelp();
+                                                document.removeEventListener('keydown', escHandler, true);
+                                            }
+                                        }, true);
                                     });
                                     headerDiv.appendChild(helpBtn);
                                     devToolSearchDiv.appendChild(headerDiv);
@@ -24777,6 +24678,7 @@ function Ktl($, appInfo) {
 
                                     // Setup jQuery UI autocomplete
                                     $(searchInput).autocomplete({
+                                        appendTo: '#devToolSearchDivId',
                                         source: function (request, response) {
                                             const source = buildAutocompleteSource();
                                             const term = request.term.toLowerCase();
@@ -24894,6 +24796,12 @@ function Ktl($, appInfo) {
                                                 });
 
                                                 if (viewsUsingObject.length > 0) {
+                                                    // Sort by view ID number
+                                                    viewsUsingObject.sort((a, b) => {
+                                                        const numA = parseInt(a.viewId.replace('view_', ''));
+                                                        const numB = parseInt(b.viewId.replace('view_', ''));
+                                                        return numA - numB;
+                                                    });
                                                     kwResults = '';
                                                     kwResults += `<br><b>Views using this object (${viewsUsingObject.length}):</b><br>`;
                                                     viewsUsingObject.forEach(v => {
@@ -25083,6 +24991,81 @@ function Ktl($, appInfo) {
                                     }
                                 })
 
+                                ktl.fields.addButton(devBtnsDiv, 'View IDs', '', ['devBtn', 'kn-button']).addEventListener('click', () => ktl.userPrefs.toggleViewIds())
+
+                                let showHiddenElements = (ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true) === 'true');
+                                var showHiddenElemBtn = ktl.fields.addButton(devBtnsDiv, 'Hidden Elements: ' + (showHiddenElements ? 'Show' : 'Default'), '', ['devBtn', 'kn-button']);
+                                showHiddenElemBtn.addEventListener('click', () => {
+                                    showHiddenElements = !showHiddenElements;
+                                    showHiddenElemBtn.textContent = 'Hidden Elements: ' + (showHiddenElements ? 'Show' : 'Default');
+
+                                    ktl.storage.lsSetItem('SHOW_HIDDEN_ELEMENTS', showHiddenElements, false, true);
+
+                                    if (showHiddenElements)
+                                        showHiddenElemements();
+                                    else
+                                        hideHiddenElemements();
+                                })
+
+                                kioskModeBtn = ktl.fields.addButton(devBtnsDiv, 'Kiosk: No', '', ['devBtn', 'kn-button']);
+                                if (ktl.core.isKiosk())
+                                    kioskModeBtn.textContent = 'Kiosk: Yes';
+
+                                kioskModeBtn.addEventListener('click', () => {
+                                    if (ktl.core.isKiosk()) {
+                                        kioskModeBtn.textContent = 'Kiosk: No';
+                                        ktl.core.timedPopup('Switching back to Normal mode...');
+                                    } else {
+                                        kioskModeBtn.textContent = 'Kiosk: Yes';
+                                        ktl.core.timedPopup('Switching to Kiosk mode...');
+                                    }
+
+                                    ktl.core.kioskMode();
+                                    Knack.router.scene_view.render();
+                                    processLogoutBtn(); //To update name, depending if visible of not.
+                                })
+
+                                const iFrmWndBtn = ktl.fields.addButton(devBtnsDiv, 'iFrameWnd: N/A', '', ['devBtn', 'kn-button']);
+                                if (ktl.core.getCfg().enabled.iFrameWnd && ktl.iFrameWnd.getiFrameWnd()) {
+                                    iFrmWndBtn.textContent = 'iFrameWnd: ' + (userPrefsObj.showIframeWnd ? 'Show' : 'Hide');
+                                    iFrmWndBtn.addEventListener('click', () => {
+                                        userPrefsObj.showIframeWnd = !userPrefsObj.showIframeWnd;
+                                        ktl.iFrameWnd.showIFrame(userPrefsObj.showIframeWnd);
+                                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                                        iFrmWndBtn.textContent = 'iFrameWnd: ' + (userPrefsObj.showIframeWnd ? 'Show' : 'Hide');
+                                    })
+                                } else
+                                    iFrmWndBtn.setAttribute('disabled', 'true');
+
+                                const dbgWnd = ktl.fields.addButton(devBtnsDiv, 'DebugWnd', '', ['devBtn', 'kn-button']);
+                                if (ktl.core.getCfg().enabled.debugWnd)
+                                    dbgWnd.addEventListener('click', () => {
+                                        if ($('#debugWnd').length)
+                                            ktl.debugWnd.showDebugWnd(false);
+                                        else
+                                            ktl.debugWnd.showDebugWnd(true);
+                                    })
+                                else
+                                    dbgWnd.setAttribute('disabled', 'true');
+
+                                //Bypass the KTL, but only for this session.
+                                ktl.fields.addButton(devBtnsDiv, 'Bypass KTL', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                    if (confirm('Bypass KTL on this device?')) {
+                                        ktl.storage.lsSetItem('bypassKtl', true, true, true);
+                                        location.reload(true);
+                                    }
+                                })
+
+                                //Execute custom code that is fetched from core's config.
+                                var devDebugCode = ktl.core.getCfg().devDebugCode;
+                                if (devDebugCode && devDebugCode !== '') {
+                                    ktl.fields.addButton(devBtnsDiv, 'Exec devDebugCode', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                        const exec = new Function('ktl', devDebugCode);
+                                        exec(ktl);
+                                    })
+                                }
+
                                 // Create button with help icon inside
                                 const sendKtlUsageBtn = ktl.fields.addButton(devBtnsDiv, 'Send KTL Usage', '', ['devBtn', 'kn-button', 'devBtnWithHelp']);
                                 sendKtlUsageBtn.addEventListener('click', () => {
@@ -25126,6 +25109,27 @@ function Ktl($, appInfo) {
                                 });
                                 sendKtlUsageBtn.appendChild(helpIcon);
 
+                                ktl.fields.addButton(devBtnsDiv, 'Reset Auto-Login', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
+                                    ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
+                                    var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
+                                    if (loginInfo) {
+                                        if (loginInfo === 'SkipAutoLogin')
+                                            ktl.storage.lsRemoveItem('AES_LI', true, false, false);
+                                        else
+                                            ktl.storage.lsRemoveItem('AES_LI', true, false, true);
+                                    }
+
+                                    ktl.storage.lsRemoveItem('AES_EK', true, false, false);
+
+                                    setTimeout(() => {
+                                        if (confirm('Do you want to logout?')) {
+                                            ktl.account.logout();
+                                            processLogoutBtn();
+                                        }
+                                    }, 500)
+                                })
+
+                                //Logout button with user name
                                 logoutBtn = ktl.fields.addButton(devBtnsDiv, '', '', ['devBtn', 'kn-button']);
                                 processLogoutBtn();
                                 logoutBtn.addEventListener('click', () => {
@@ -25897,6 +25901,14 @@ function Ktl($, appInfo) {
 
             getDefaultUserPrefs: function () {
                 return defaultUserPrefsObj;
+            },
+
+            toggleViewIds: function () {
+                userPrefsObj.showViewId = !userPrefsObj.showViewId;
+                userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                ktl.scenes.renderViews();
+                ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
             }
         }
     })(); //User Prefs
