@@ -949,6 +949,7 @@ function Ktl($, appInfo) {
             closeTopDevToolWindow: function () {
                 const visibleWindows = ktl.core.devToolWindows
                     .filter(w => {
+                        if (!w.element.isConnected) return false;
                         const style = window.getComputedStyle(w.element);
                         return style.display !== 'none' && style.visibility !== 'hidden';
                     })
@@ -958,7 +959,9 @@ function Ktl($, appInfo) {
                     const topWindow = visibleWindows[0];
                     if (topWindow.close) topWindow.close();
                     else $(topWindow.element).hide();
+                    return true;
                 }
+                return false;
             },
 
             splitUrl: function (url) {
@@ -1992,7 +1995,6 @@ function Ktl($, appInfo) {
                         var popupHdr = document.createElement('div');
                         popupHdr.setAttribute('id', 'popupHdrIdheader');
                         popupHdr.classList.add('ktlDevToolsHeader');
-                        popupHdr.style['background-color'] = sysColors.paleLowSatClr;
                         popupHdr.innerText = ':: Enter Password ::';
                         popupForm.appendChild(popupHdr);
                         document.body.appendChild(popupForm);
@@ -3596,7 +3598,6 @@ function Ktl($, appInfo) {
 
                 const header = document.createElement('div');
                 header.id = 'ktlHotkeySettingsDivheader';
-                header.style.backgroundColor = sysColors.paleLowSatClr;
                 header.classList.add('ktlDevToolsHeader');
 
                 const titleSpan = document.createElement('span');
@@ -4527,7 +4528,7 @@ function Ktl($, appInfo) {
                 if (style !== '')
                     button.setAttribute('style', style);
 
-                if (!style.includes('color:')) //TODO: improve this to ignore background-color, but still trigger on (font) color.  Need better parsing.
+                if (!style.includes('color:') && !classes.includes('devBtn')) //Skip devBtn - uses CSS theme styling
                     ktl.systemColors.getSystemColors().then(sc => { button.style.color = sc.text.rgb });
 
                 if (classes.length > 0)
@@ -7160,6 +7161,7 @@ function Ktl($, appInfo) {
             activePublicFilterBtnClr: '',
             paleLowSatClr: '',
             paleLowSatClrTransparent: '',
+            devToolBtnClr: '',
             tableRowHoverBkgColor: '',
             inlineEditBkgColor: '',
             inlineEditFontWeight: '500', //Can be 'bold' or a numeric value like 600.
@@ -7391,6 +7393,12 @@ function Ktl($, appInfo) {
             sysColors.paleLowSatClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
             sysColors.paleLowSatClrTransparent = `${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]}`;
 
+            // Even paler color for dev tool buttons
+            newSaturation = 0.1;
+            newLightness = 0.82;
+            newRGB = adjustRGB_sl(sysColors.header.rgb, newSaturation, newLightness);
+            sysColors.devToolBtnClr = `rgb(${newRGB[0]}, ${newRGB[1]}, ${newRGB[2]})`;
+
             //Just a generic dark saturated color for highlighted buttons and available for other items.
             newSaturation = 0.8;
             newLightness = 0.5;
@@ -7414,6 +7422,12 @@ function Ktl($, appInfo) {
             document.documentElement.style.setProperty('--publicFilterBtnClr', sysColors.publicFilterBtnClr);
             document.documentElement.style.setProperty('--ktlActivePublicFilterBtnClr', sysColors.activePublicFilterBtnClr);
             document.documentElement.style.setProperty('--ktlActiveFilterBorderClr', sysColors.darkHighSatClr);
+
+            // Set base dev tool colors (used when no dark theme is active)
+            document.documentElement.style.setProperty('--ktlTheme_tableHeaderBg', sysColors.paleLowSatClr);
+            document.documentElement.style.setProperty('--ktlTheme_menuButtonBg', sysColors.devToolBtnClr);
+            document.documentElement.style.setProperty('--ktlTheme_menuButtonBorder', sysColors.devToolBtnClr);
+            document.documentElement.style.setProperty('--ktlTheme_menuButtonText', sysColors.text.rgb);
 
             systemColorsReady = true;
             $(document).trigger('KTL.systemColorsReady');
@@ -9276,7 +9290,6 @@ function Ktl($, appInfo) {
                                     var debugWndHeader = document.createElement('div');
                                     debugWndHeader.setAttribute('id', 'dbgWndIdheader');
                                     debugWndHeader.classList.add('ktlDevToolsHeader');
-                                    debugWndHeader.style['background-color'] = sysColors.paleLowSatClr;
 
                                     const debugTitleSpan = document.createElement('span');
                                     debugTitleSpan.className = 'ktlDevToolsHeaderTitle';
@@ -21412,6 +21425,31 @@ function Ktl($, appInfo) {
             });
         }
 
+        function clearThemeCssVariables() {
+            const props = [
+                '--ktlTheme_pageBg', '--ktlTheme_topHeaderBg', '--ktlTheme_inputFieldBg',
+                '--ktlTheme_tableHeaderBg', '--ktlTheme_tableCellBg', '--ktlTheme_tableStripedBg',
+                '--ktlTheme_tableSummaryBg', '--ktlTheme_tableGridColor', '--ktlStickyHeaderBg',
+                '--ktlTheme_stickyCellBg', '--ktlTheme_inlineEditBg', '--ktlRowHoverBrightness',
+                '--ktlTheme_navBarLinkBg', '--ktlTheme_activeMenuColor', '--ktlTheme_menuButtonBg',
+                '--ktlTheme_menuButtonBorder', '--ktlTheme_pageButtonBg', '--ktlTheme_filterButtonBg',
+                '--ktlTheme_bodyText', '--ktlTheme_lightText', '--ktlTheme_darkText', '--ktlTheme_linkColor',
+                '--ktlTheme_headersAndLabelsText', '--ktlTheme_tableCellText', '--ktlTheme_tableSummaryText',
+                '--ktlTheme_inputFieldText', '--ktlTheme_menuButtonText', '--ktlTheme_scrollbarTrack',
+                '--ktlTheme_scrollbarThumb', '--ktlTheme_autoContrastText', '--ktlTheme_headerTitleText'
+            ];
+            props.forEach(p => document.documentElement.style.removeProperty(p));
+
+            // Set base dev tool colors from app's system colors (pale desaturated header color)
+            const sysColors = ktl.systemColors.getSysColors();
+            if (sysColors?.paleLowSatClr) {
+                document.documentElement.style.setProperty('--ktlTheme_tableHeaderBg', sysColors.paleLowSatClr);
+                document.documentElement.style.setProperty('--ktlTheme_menuButtonBg', sysColors.devToolBtnClr);
+                document.documentElement.style.setProperty('--ktlTheme_menuButtonBorder', sysColors.devToolBtnClr);
+                document.documentElement.style.setProperty('--ktlTheme_menuButtonText', sysColors.text.rgb);
+            }
+        }
+
         function generateUserTheme(options = {}) {
             const knHeaderInfo = Knack.app.attributes.design.regions.header;
             const isLegacy = knHeaderInfo.isLegacy;
@@ -21490,6 +21528,7 @@ function Ktl($, appInfo) {
                     const existingStyle = document.getElementById('ktlUserThemeStyles');
                     if (existingStyle) existingStyle.remove();
                     document.body.classList.remove('ktlUserTheme');
+                    clearThemeCssVariables();
                     // Restore light logo when switching to default theme
                     if (ktlKeywords._theme?.lightLogo) {
                         const logoEl = document.querySelector('.knHeader__logo-image');
@@ -21523,6 +21562,7 @@ function Ktl($, appInfo) {
                 const existingStyle = document.getElementById('ktlUserThemeStyles');
                 if (existingStyle) existingStyle.remove();
                 document.body.classList.remove('ktlUserTheme');
+                clearThemeCssVariables();
                 if (ktlKeywords._theme?.lightLogo) {
                     const logoEl = document.querySelector('.knHeader__logo-image');
                     if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
@@ -22892,6 +22932,7 @@ function Ktl($, appInfo) {
                     const existingStyle = document.getElementById('ktlUserThemeStyles');
                     if (existingStyle) existingStyle.remove();
                     document.body.classList.remove('ktlUserTheme');
+                    clearThemeCssVariables();
                     // Restore light logo for default theme preview
                     if (ktlKeywords._theme?.lightLogo) {
                         const logoEl = document.querySelector('.knHeader__logo-image');
@@ -24319,7 +24360,6 @@ function Ktl($, appInfo) {
                                 //Header
                                 let devBtnsDivHeader = document.createElement('div');
                                 devBtnsDivHeader.setAttribute('id', 'devBtnsDivIdheader');
-                                devBtnsDivHeader.style['background-color'] = sysColors.paleLowSatClr;
                                 devBtnsDivHeader.classList.add('ktlDevToolsHeader');
 
                                 const devBtnsTitleSpan = document.createElement('span');
@@ -24488,7 +24528,6 @@ function Ktl($, appInfo) {
 
                                     var devToolSearchHdr = document.createElement('div');
                                     devToolSearchHdr.setAttribute('id', 'devToolSearchDivIdheader');
-                                    devToolSearchHdr.style['background-color'] = sysColors.paleLowSatClr;
                                     devToolSearchHdr.classList.add('ktlDevToolsHeader');
 
                                     const searchTitleSpan = document.createElement('span');
@@ -25130,13 +25169,8 @@ function Ktl($, appInfo) {
                         const inDevToolWindow = event.target.closest('#devBtnsDivId, #devToolSearchDivId, #resultWndId, #dbgWndId, #ktlHotkeySettingsDiv, #ktlThemeEditor');
                         const inOtherInput = event.target.closest('input, textarea, select, [contenteditable]') && !inDevToolWindow;
                         if (!inOtherInput) {
-                            event.stopPropagation();
-                            if (inDevToolWindow) {
-                                const windowInfo = ktl.core.devToolWindows.find(w => w.element === inDevToolWindow);
-                                if (windowInfo?.close) windowInfo.close();
-                                else $(inDevToolWindow).hide();
-                            } else {
-                                ktl.core.closeTopDevToolWindow();
+                            if (ktl.core.closeTopDevToolWindow()) {
+                                event.stopPropagation();
                             }
                         }
                     }
@@ -29042,7 +29076,6 @@ function Ktl($, appInfo) {
                 const resultWndHdr = document.createElement('div');
                 resultWndHdr.setAttribute('id', 'resultWndIdheader');
                 resultWndHdr.classList.add('ktlDevToolsHeader');
-                resultWndHdr.style['background-color'] = sysColors.paleLowSatClr;
 
                 const resultTitleSpan = document.createElement('span');
                 resultTitleSpan.className = 'ktlDevToolsHeaderTitle';
