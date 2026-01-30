@@ -1,6 +1,14 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.40.1    *2026-01-29*
+
+- KTL Search: Add object search capability
+- Add View IDs hotkey (Alt+I) and fix keyboard handling issues
+- Fix z-index management for dev tool windows (Alt+S, Alt+X now properly bring windows to front)
+- Allow dev tool hotkeys to work when KTL search input has focus
+- Improve dev tool window overflow handling
+
 ## 0.40.0    *2026-01-29*
 
 - Show Menu Buttons: Add background color picker for all app designs
@@ -8,6 +16,7 @@
 - Add centralized hotkey settings and theme support for dev tools
 - Fix `ktlLoggedInAccount` in `ktlCond` getting Name field
 - KTL Search: Enhance ID lookups and keyword display
+- Dark theme styling for dev tools: DebugWnd Clear button, DevTools buttons, Search Results resize gripper
 
 ## 0.39.1    *2026-01-27*
 
