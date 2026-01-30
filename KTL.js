@@ -20288,22 +20288,20 @@ function Ktl($, appInfo) {
              * All checkboxes between the two clicks will be checked/unchecked to match the second click.
              *
              * @param {string} viewId - The ID of the view containing the checkboxes
-             * @param {string} selector - CSS selector for the checkboxes (default: tbody tr td input:checkbox)
+             * @param {string} selector - CSS selector for the checkboxes (default: tbody tr td input[type="checkbox"])
              *
              * @example
              * // After adding checkboxes to a table:
              * ktl.views.addShiftClickToCheckboxes('view_123');
              */
-            addShiftClickToCheckboxes: function (viewId, selector = 'tbody tr td input:checkbox') {
+            addShiftClickToCheckboxes: function (viewId, selector = 'tbody tr td input[type="checkbox"]') {
                 if (!viewId) return;
 
                 let lastCheckedIndex = null;
                 const viewElement = document.getElementById(viewId);
                 if (!viewElement) return;
 
-                // Convert jQuery-style :checkbox to valid CSS
-                const cssSelector = selector.replace(':checkbox', '[type="checkbox"]');
-                const fullSelector = `#${viewId} ${cssSelector}`;
+                const fullSelector = `#${viewId} ${selector}`;
 
                 // Use event delegation on the view container
                 viewElement.addEventListener('click', function (e) {
