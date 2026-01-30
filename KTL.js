@@ -918,14 +918,18 @@ function Ktl($, appInfo) {
             },
 
             devToolWindows: [],
-            devToolTopZIndex: 100,
+            devToolBaseZIndex: 2000,
 
             bringDevToolToFront: function (windowElement) {
                 if (!windowElement) return;
-                ktl.core.devToolTopZIndex++;
-                windowElement.style.zIndex = ktl.core.devToolTopZIndex;
 
-                ktl.core.devToolWindows.forEach(w => w.element.classList.remove('ktlDevToolFocused'));
+                ktl.core.devToolWindows.forEach(w => {
+                    w.element.classList.remove('ktlDevToolFocused');
+                    if (w.element !== windowElement) {
+                        w.element.style.zIndex = ktl.core.devToolBaseZIndex - 1;
+                    }
+                });
+                windowElement.style.zIndex = ktl.core.devToolBaseZIndex;
                 windowElement.classList.add('ktlDevToolFocused');
             },
 
@@ -19300,13 +19304,35 @@ function Ktl($, appInfo) {
                         .ktlChooseColumnsDialog input[type="checkbox"] {
                             margin: 0;
                         }
-                        .ktlChooseColumnsDialog .ktlSelectAll,
-                        .ktlChooseColumnsDialog .ktlClearAll {
-                            padding: 4px 8px;
-                        }
                         #${viewId} .ktlChooseColumnsBtn.ktlHasHidden {
                             background: #fef3c7;
                             border-color: #f59e0b;
+                        }
+                        /* Dark theme support */
+                        .ktlUserTheme .ktlChooseColumnsDialog {
+                            background: var(--ktlTheme_pageBg, #2d2d2d);
+                            border-color: var(--ktlTheme_tableHeaderBg, #404040);
+                            color: var(--ktlTheme_lightText, #e0e0e0);
+                        }
+                        .ktlUserTheme .ktlChooseColumnsDialog .ktlColumnOption:hover {
+                            background: var(--ktlTheme_tableHeaderBg, #404040);
+                        }
+                        .ktlUserTheme .ktlChooseColumnsDialog button {
+                            padding: 6px 14px;
+                            border: 1px solid var(--ktlTheme_tableGridColor, #ccc);
+                            background: var(--ktlTheme_tableCellBg, #f5f5f5);
+                            color: var(--ktlTheme_tableCellText, #333);
+                            cursor: pointer;
+                            border-radius: 4px;
+                            font-size: 13px;
+                        }
+                        .ktlUserTheme .ktlChooseColumnsDialog button:hover {
+                            background: var(--ktlTheme_tableHeaderBg, #e0e0e0);
+                        }
+                        .ktlUserTheme #${viewId} .ktlChooseColumnsBtn.ktlHasHidden {
+                            background: #4a4520;
+                            border: 1px solid var(--ktlTheme_linkColor, #eab308);
+                            color: var(--ktlTheme_linkColor, #eab308);
                         }
                     `;
                     document.head.appendChild(styleEl);
@@ -20836,9 +20862,10 @@ function Ktl($, appInfo) {
         const hotkeyFeatureActions = {
             themeEditor: () => showThemeEditor && showThemeEditor(),
             devTools: () => {
-                if ($('#devBtnsDivId').length)
+                if ($('#devBtnsDivId').length) {
                     $('#devBtnsDivId').show();
-                else
+                    ktl.core.bringDevToolToFront(document.getElementById('devBtnsDivId'));
+                } else
                     $('#verButtonId').click();
             },
             searchTool: () => {
@@ -20847,7 +20874,13 @@ function Ktl($, appInfo) {
                 else
                     $('#verButtonId').click();
                 ktl.core.waitSelector('#ktlDevToolsSearchButtonId')
-                    .then(() => { $('#ktlDevToolsSearchButtonId').click(); });
+                    .then(() => {
+                        $('#ktlDevToolsSearchButtonId').click();
+                        const searchDiv = document.getElementById('devToolSearchDivId');
+                        if (searchDiv) {
+                            ktl.core.bringDevToolToFront(searchDiv);
+                        }
+                    });
             },
             modeSwitcher: async () => {
                 const newKtlCode = await ktl.core.selectOption('Select which KTL version to use - or a specific number', 'Prod, Beta, Dev, Local, ktlOther');
@@ -20897,9 +20930,23 @@ function Ktl($, appInfo) {
         $(document).on('keydown.ktlHotkeys', function (e) {
             const target = e.target;
             const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-            if (isTextInput) return;
+            const isKtlSearchInput = target.id === 'ktlDevToolsSearchInputId';
 
             const settings = ktl.core.getHotkeySettings();
+
+            // Allow dev tool hotkeys even when in KTL search input
+            if (isTextInput && !isKtlSearchInput) return;
+            if (isTextInput && isKtlSearchInput) {
+                for (const featureId of ['searchTool', 'devTools']) {
+                    const hk = settings.hotkeys[featureId];
+                    if (hk && hk.enabled && matchesHotkey(e, hk)) {
+                        e.preventDefault();
+                        executeHotkeyAction(featureId);
+                        return;
+                    }
+                }
+                return;
+            }
             for (const featureId in settings.hotkeys) {
                 if (featureId === 'devPopup') continue;
                 const hk = settings.hotkeys[featureId];
@@ -22110,9 +22157,13 @@ function Ktl($, appInfo) {
                                 color: var(--ktlTheme_headersAndLabelsText) !important;
                             }
                             .ktlUserTheme .devBtn {
-                                background-color: var(--ktlTheme_menuButtonBg) !important;
-                                color: var(--ktlTheme_menuButtonText) !important;
-                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                                background-color: var(--ktlTheme_tableCellBg) !important;
+                                color: var(--ktlTheme_tableCellText) !important;
+                                border: 1px solid var(--ktlTheme_tableGridColor) !important;
+                                border-radius: 4px !important;
+                            }
+                            .ktlUserTheme .devBtn:hover {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
                             }
                             .ktlUserTheme #devToolSearchDivId {
                                 background-color: var(--ktlTheme_pageBg) !important;
@@ -22148,6 +22199,13 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableCellBg) !important;
                                 color: var(--ktlTheme_tableCellText) !important;
                                 border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme #resultWndTextDivId::-webkit-resizer {
+                                background:
+                                    linear-gradient(135deg, var(--ktlTheme_tableCellBg, #2a2a1a) 0%, var(--ktlTheme_tableCellBg, #2a2a1a) 25%, var(--ktlTheme_tableGridColor, #555) 25%, var(--ktlTheme_tableGridColor, #555) 35%, var(--ktlTheme_tableCellBg, #2a2a1a) 35%, var(--ktlTheme_tableCellBg, #2a2a1a) 45%, var(--ktlTheme_tableGridColor, #555) 45%, var(--ktlTheme_tableGridColor, #555) 55%, var(--ktlTheme_tableCellBg, #2a2a1a) 55%, var(--ktlTheme_tableCellBg, #2a2a1a) 65%, var(--ktlTheme_tableGridColor, #555) 65%, var(--ktlTheme_tableGridColor, #555) 75%, var(--ktlTheme_tableCellBg, #2a2a1a) 75%, var(--ktlTheme_tableCellBg, #2a2a1a) 100%) !important;
+                            }
+                            .ktlUserTheme #resultWndTextDivId::-webkit-scrollbar-corner {
+                                background-color: var(--ktlTheme_tableHeaderBg, #404040) !important;
                             }
 
                             /* Confirm Dialog (selectOption) */
@@ -22187,10 +22245,21 @@ function Ktl($, appInfo) {
                                 color: var(--ktlTheme_tableCellText) !important;
                                 border-color: var(--ktlTheme_tableGridColor) !important;
                             }
+                            .ktlUserTheme #debugWndText::-webkit-resizer {
+                                background:
+                                    linear-gradient(135deg, var(--ktlTheme_tableCellBg, #2a2a1a) 0%, var(--ktlTheme_tableCellBg, #2a2a1a) 25%, var(--ktlTheme_tableGridColor, #555) 25%, var(--ktlTheme_tableGridColor, #555) 35%, var(--ktlTheme_tableCellBg, #2a2a1a) 35%, var(--ktlTheme_tableCellBg, #2a2a1a) 45%, var(--ktlTheme_tableGridColor, #555) 45%, var(--ktlTheme_tableGridColor, #555) 55%, var(--ktlTheme_tableCellBg, #2a2a1a) 55%, var(--ktlTheme_tableCellBg, #2a2a1a) 65%, var(--ktlTheme_tableGridColor, #555) 65%, var(--ktlTheme_tableGridColor, #555) 75%, var(--ktlTheme_tableCellBg, #2a2a1a) 75%, var(--ktlTheme_tableCellBg, #2a2a1a) 100%) !important;
+                            }
+                            .ktlUserTheme #debugWndText::-webkit-scrollbar-corner {
+                                background-color: var(--ktlTheme_tableHeaderBg, #404040) !important;
+                            }
                             .ktlUserTheme #debugWndClear {
-                                background-color: var(--ktlTheme_menuButtonBg) !important;
-                                color: var(--ktlTheme_menuButtonText) !important;
-                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                                background-color: var(--ktlTheme_tableCellBg) !important;
+                                color: var(--ktlTheme_tableCellText) !important;
+                                border: 1px solid var(--ktlTheme_tableGridColor) !important;
+                                border-radius: 4px !important;
+                            }
+                            .ktlUserTheme #debugWndClear:hover {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
                             }
                         `;
 
@@ -24404,6 +24473,8 @@ function Ktl($, appInfo) {
                                 var searchBtn = ktl.fields.addButton(devBtnsDiv, 'Search...', '', ['devBtn', 'kn-button'], 'ktlDevToolsSearchButtonId');
                                 searchBtn.addEventListener('click', () => {
                                     if ($('#devToolSearchDivId').length) {
+                                        const searchDiv = document.getElementById('devToolSearchDivId');
+                                        ktl.core.bringDevToolToFront(searchDiv);
                                         $('#devToolSearchDivId').show();
                                         $(document).trigger('KTL.devPopupSetResultText', 'ktlShow');
                                         $('#ktlDevToolsSearchInputId').focus();
@@ -29136,7 +29207,6 @@ function Ktl($, appInfo) {
                 resultWnd.setAttribute('id', 'resultWndId');
                 resultWnd.style.top = DEFAULT_TOP + 'px';
                 resultWnd.style.left = DEFAULT_LEFT + 'px';
-                resultWnd.style['z-index'] = 2000; //Allow to be seen over modal dialogs.
                 resultWnd.classList.add('devBtnsDiv', 'devToolSearchDiv');
 
                 const resultWndHdr = document.createElement('div');

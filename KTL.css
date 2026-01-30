@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.12.0*/
+/* KTL CSS version: 0.12.1*/
 
 /************ KTL Spacing Constants **************/
 :root {
@@ -659,6 +659,18 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	background-color: var(--ktlTheme_scrollbarTrack, #ffffff);
 }
 
+#debugWndClear {
+	background-color: var(--ktlTheme_tableCellBg, #f5f5f5) !important;
+	color: var(--ktlTheme_tableCellText, #333) !important;
+	border: 1px solid var(--ktlTheme_tableGridColor, #ccc) !important;
+	border-radius: 4px !important;
+	cursor: pointer;
+}
+
+#debugWndClear:hover {
+	background-color: var(--ktlTheme_tableHeaderBg, #e0e0e0) !important;
+}
+
 /* Dev Options popup */
 .devBtnsDiv {
 	position: fixed;
@@ -678,9 +690,15 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	height: 30px;
 	margin-bottom: 5px;
 	align-items: center !important;
-	background-color: var(--ktlTheme_menuButtonBg, #4a5568);
-	color: var(--ktlTheme_menuButtonText, #fff);
-	border-color: var(--ktlTheme_menuButtonBorder, #4a5568);
+	background: var(--ktlTheme_tableCellBg, #f5f5f5) !important;
+	color: var(--ktlTheme_tableCellText, #333) !important;
+	border: 1px solid var(--ktlTheme_tableGridColor, #ccc) !important;
+	border-radius: 4px !important;
+	cursor: pointer;
+}
+
+.devBtn:hover {
+	background: var(--ktlTheme_tableHeaderBg, #e0e0e0) !important;
 }
 
 .devBtnWithHelp {

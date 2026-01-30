@@ -8,6 +8,9 @@
 - Add centralized hotkey settings and theme support for dev tools
 - Fix `ktlLoggedInAccount` in `ktlCond` getting Name field
 - KTL Search: Enhance ID lookups and keyword display
+- Dark theme styling for dev tools: DebugWnd Clear button, DevTools buttons, Search Results resize gripper
+- Fix z-index management for dev tool windows (Alt+S, Alt+X now properly bring windows to front)
+- Allow dev tool hotkeys to work when KTL search input has focus
 
 ## 0.39.1    *2026-01-27*
 
