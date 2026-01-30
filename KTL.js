@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.40.0';
+    const KTL_VERSION = '0.40.1';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -2163,25 +2163,32 @@ function Ktl($, appInfo) {
             },
 
             ktlDevToolsAdjustPositionAndSave: function (div, devToolStorageName, position = {}) {
-                if (!devToolStorageName || !position)
+                if (!devToolStorageName)
                     return;
 
+                const MIN_VISIBLE = 80; // ~2cm at 96 DPI - minimum grab area for header
                 const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
                 const screenHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+                const divWidth = div.clientWidth;
+                const header = div.querySelector('.ktlDevToolsHeader');
+                const headerHeight = header ? header.offsetHeight : 30;
 
-                const ktlDevToolWidth = div.clientWidth;
-                const ktlDevToolHeight = div.clientHeight;
+                let left = !$.isEmptyObject(position) ? position.left : div.offsetLeft;
+                let top = !$.isEmptyObject(position) ? position.top : div.offsetTop;
 
-                if ((div.offsetLeft + ktlDevToolWidth > screenWidth) || (div.offsetTop + ktlDevToolHeight > screenHeight)) {
-                    position = ktl.core.centerElementOnScreen(div);
-                    ktl.storage.appendItemJSON(devToolStorageName, position);
-                } else {
-                    if (!$.isEmptyObject(position)) {
-                        div.style.left = position.left + 'px';
-                        div.style.top = position.top + 'px';
-                        ktl.storage.appendItemJSON(devToolStorageName, position);
-                    }
-                }
+                // Ensure header is always grabbable horizontally (at least MIN_VISIBLE pixels visible)
+                const minLeft = MIN_VISIBLE - divWidth;
+                const maxLeft = screenWidth - MIN_VISIBLE;
+                left = Math.max(minLeft, Math.min(left, maxLeft));
+
+                // Ensure header is always grabbable vertically (header must remain on screen)
+                const minTop = 0;
+                const maxTop = screenHeight - headerHeight;
+                top = Math.max(minTop, Math.min(top, maxTop));
+
+                div.style.left = left + 'px';
+                div.style.top = top + 'px';
+                ktl.storage.appendItemJSON(devToolStorageName, { left, top });
             },
 
             objectToString: function (obj, depth = 10) {
