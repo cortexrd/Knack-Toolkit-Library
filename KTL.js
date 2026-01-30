@@ -15996,6 +15996,7 @@ function Ktl($, appInfo) {
 
             const hideShowId = `hideShow_${viewId}`;
             const viewElement = $(`#${viewId}`);
+            viewElement.addClass('ktlHideShowView');
 
             wrapContentForHideShow(viewElement, viewType, hideShowId);
 
@@ -20281,6 +20282,55 @@ function Ktl($, appInfo) {
                 }
             },
 
+            /**
+             * Adds shift-click functionality to checkboxes in a table view.
+             * Allows users to select a range of checkboxes by clicking one, then shift-clicking another.
+             * All checkboxes between the two clicks will be checked/unchecked to match the second click.
+             *
+             * @param {string} viewId - The ID of the view containing the checkboxes
+             * @param {string} selector - CSS selector for the checkboxes (default: tbody tr td input:checkbox)
+             *
+             * @example
+             * // After adding checkboxes to a table:
+             * ktl.views.addShiftClickToCheckboxes('view_123');
+             */
+            addShiftClickToCheckboxes: function (viewId, selector = 'tbody tr td input:checkbox') {
+                if (!viewId) return;
+
+                let lastCheckedIndex = null;
+                const viewElement = document.getElementById(viewId);
+                if (!viewElement) return;
+
+                // Convert jQuery-style :checkbox to valid CSS
+                const cssSelector = selector.replace(':checkbox', '[type="checkbox"]');
+                const fullSelector = `#${viewId} ${cssSelector}`;
+
+                // Use event delegation on the view container
+                viewElement.addEventListener('click', function (e) {
+                    const target = e.target;
+
+                    // Check if clicked element is a checkbox in tbody tr td
+                    if (target.type === 'checkbox' && target.closest(`#${viewId} tbody tr td`)) {
+                        const checkboxes = Array.from(document.querySelectorAll(fullSelector));
+                        const currentIndex = checkboxes.indexOf(target);
+
+                        if (currentIndex === -1) return; // Checkbox not in our list
+
+                        if (e.shiftKey && lastCheckedIndex !== null && lastCheckedIndex !== currentIndex) {
+                            const start = Math.min(lastCheckedIndex, currentIndex);
+                            const end = Math.max(lastCheckedIndex, currentIndex);
+                            const isChecked = target.checked;
+
+                            for (let i = start; i <= end; i++) {
+                                checkboxes[i].checked = isChecked;
+                            }
+                        }
+
+                        lastCheckedIndex = currentIndex;
+                    }
+                });
+            },
+
             addCheckboxesToTable: function (viewId, withMaster = true) {
                 if (!viewId) return;
                 const viewType = ktl.views.getViewType(viewId);
@@ -20317,6 +20367,9 @@ function Ktl($, appInfo) {
                     });
 
                     $('#' + viewId + ' tbody tr td input:checkbox').addClass('bulkEditCb');
+
+                    // Add shift-click functionality for range selection
+                    ktl.views.addShiftClickToCheckboxes(viewId);
                 }
             },
 
@@ -28042,6 +28095,9 @@ function Ktl($, appInfo) {
                 });
 
                 $('#' + viewId + ' tbody tr td input:checkbox').addClass('bulkEditCb').attr('data-ktl-bulkops', '1');
+
+                // Add shift-click functionality for range selection
+                ktl.views.addShiftClickToCheckboxes(viewId);
             }
         }
 
@@ -28173,7 +28229,9 @@ function Ktl($, appInfo) {
                 });
             }
 
-            $(`#${viewId} ${bulkOpsCheckboxSelector}`).on('click', function (e) {
+            // Note: Shift-click handler for selecting range is added in bulkOpsAddCheckboxesToTable
+            // This handler is for the bulk delete all functionality
+            $(`#${viewId} tbody ${bulkOpsCheckboxSelector}`).on('click', function (e) {
                 const numChecked = $(`#${viewId} tbody ${bulkOpsCheckboxSelector}:checked`).length;
 
                 //If Delete All was used, just keep going!
