@@ -542,6 +542,7 @@ function Ktl($, appInfo) {
 
             // Generic Knack API call function.
             // BTW, you can use connected records by enclosing your recId param in braces.  Ex: [myRecId]
+
             knAPI: function (viewId = null, recId = null, apiData = {}, requestType = '', viewsToRefresh = [], showSpinner = true, filters) {
                 return new Promise(function (resolve, reject) {
                     requestType = requestType.toUpperCase();
