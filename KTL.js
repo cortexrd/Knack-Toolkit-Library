@@ -808,6 +808,12 @@ function Ktl($, appInfo) {
              * @param {boolean} [options.abortOnSceneChange=true]
              *        When true (default), the wait is automatically aborted when
              *        `knack-scene-render` fires.
+             * @param {string} [options.outcome=ktl.const.WAIT_SEL_IGNORE]
+             *        Defines timeout behavior:
+             *        - ktl.const.WAIT_SEL_IGNORE: Silent timeout (default)
+             *        - ktl.const.WAIT_SEL_LOG_WARN: Log warning
+             *        - ktl.const.WAIT_SEL_LOG_ERROR: Log error
+             *        - ktl.const.WAIT_SEL_ALERT: Show alert for developers
              * @returns {Promise<WaitElementResult>}
              *          Resolves when a match is found.
              * @throws {TypeError}
@@ -863,6 +869,17 @@ function Ktl($, appInfo) {
                         if (settled) return;
                         settled = true;
                         cleanup();
+
+                        const selectorsStr = opts.selectors.join(', ');
+                        const sceneKey = Knack?.router?.current_scene_key || 'unknown';
+
+                        if (opts.outcome === ktl.const.WAIT_SEL_LOG_WARN) {
+                            ktl.log.addLog(ktl.const.LS_WRN, `kEC_1012 - waitElement timed out for ${selectorsStr} in ${sceneKey}`);
+                        } else if (opts.outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, `KEC_1002 - waitElement timed out for ${selectorsStr} in ${sceneKey}`);
+                        } else if (opts.outcome === ktl.const.WAIT_SEL_ALERT && ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
+                            alert(`waitElement timed out for ${selectorsStr} in ${sceneKey}`);
+                        }
 
                         const err = new Error(
                             `waitElement timed out after ${elapsedMs()}ms (mode="${opts.mode}")`
@@ -1041,6 +1058,7 @@ function Ktl($, appInfo) {
                     }
 
                     const abortOnSceneChange = options.abortOnSceneChange !== false;
+                    const outcome = options.outcome ?? ktl.const.WAIT_SEL_IGNORE;
 
                     return {
                         selectors: cleaned,
@@ -1053,7 +1071,8 @@ function Ktl($, appInfo) {
                         attrs: options.attrs,
                         condition: options.condition,
                         signal,
-                        abortOnSceneChange
+                        abortOnSceneChange,
+                        outcome
                     };
                 }
 
