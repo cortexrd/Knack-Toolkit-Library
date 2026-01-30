@@ -538,7 +538,7 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	text-align: center;
 	display: block;
 	width: fit-content;
-	margin: -10px auto -10px auto;
+	margin: 2px auto -10px auto;
 }
 
 .ktlHideShowButton {
